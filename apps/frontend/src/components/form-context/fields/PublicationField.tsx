@@ -1,5 +1,4 @@
 import { withForm } from "../FormContext";
-
 import { BilingualTextField } from "./BilingualTextField";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,11 +17,7 @@ export const PublicationField = withForm({
     return (
       <div className="flex flex-col gap-3">
         {/* Title */}
-        <BilingualTextField
-          form={form}
-          baseName={`${baseName}.title`}
-          label="Title"
-        />
+        <BilingualTextField form={form} baseName={`${baseName}.title`} label="Title" />
 
         {/* DOI */}
         <form.AppField name={`${baseName}.doi` as AnyName}>

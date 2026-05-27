@@ -1,15 +1,14 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import * as schema from "@/db/schema";
-import type {
-  MiscPageContent,
-  MiscPagesOutput,
-} from "../../../../backend/joomla/lib/types";
+
+import type { MiscPageContent, MiscPagesOutput } from "../../../../backend/joomla/lib/types";
 import { buildDatabaseUrl } from "./utils";
 
 const MISC_JSON_PATH = path.join(
@@ -17,9 +16,7 @@ const MISC_JSON_PATH = path.join(
   "../../../../backend/joomla/output/misc-pages.json",
 );
 
-async function ensureSystemUser(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-): Promise<string> {
+async function ensureSystemUser(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
   const [existing] = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -43,9 +40,7 @@ async function ensureSystemUser(
   return created.id;
 }
 
-async function resolveAuthorId(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-): Promise<string> {
+async function resolveAuthorId(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
   const seedId = process.env.SEED_AUTHOR_ID;
   const email = process.env.SEED_AUTHOR_EMAIL;
   const name = process.env.SEED_AUTHOR_NAME || "Seed User";
@@ -94,11 +89,7 @@ async function resolveAuthorId(
 
   if (admin) return admin.id;
 
-  const [anyUser] = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .limit(1)
-    .execute();
+  const [anyUser] = await db.select({ id: schema.user.id }).from(schema.user).limit(1).execute();
 
   if (anyUser) return anyUser.id;
 
@@ -193,9 +184,7 @@ export async function seedContent(
         }
       }
 
-      console.log(
-        `  [${translations.map((t) => t.lang).join("/")}] ${contentId}`,
-      );
+      console.log(`  [${translations.map((t) => t.lang).join("/")}] ${contentId}`);
     }
 
     return { created, skipped };
@@ -221,17 +210,13 @@ async function run(overwrite = false) {
     with: { type: "json" },
   })) as { default: MiscPagesOutput };
 
-  console.log(
-    `Loaded ${raw.pages.length} pages (generated at ${raw.generatedAt})`,
-  );
+  console.log(`Loaded ${raw.pages.length} pages (generated at ${raw.generatedAt})`);
 
   const { created, skipped } = await seedContent(raw.pages, overwrite);
 
   console.log(`\nSeeding complete!`);
   console.log(`  Created: ${created} content item(s)`);
-  console.log(
-    `  Skipped: ${skipped} (already exist; use --overwrite to replace)`,
-  );
+  console.log(`  Skipped: ${skipped} (already exist; use --overwrite to replace)`);
 }
 
 if (import.meta.main) {

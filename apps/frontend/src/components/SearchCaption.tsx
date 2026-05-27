@@ -1,13 +1,11 @@
-import { useLocation, Link } from "@tanstack/react-router";
 import { Filter, Search, X } from "lucide-react";
-import { startTransition, useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
+
+import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 export function SearchCaption({
   title,
@@ -56,83 +54,24 @@ export function SearchCaption({
     });
   }
 
-  const location = useLocation();
-
-  const place = location.pathname.split("/").at(-1) as "dataset" | "research";
-  const switchSearch = getTableSwitchSearch(
-    location.search as Record<string, unknown>,
-  );
-
-  const tCommon = useTranslations("common");
-
   return (
     <div className="flex h-fit flex-wrap items-center justify-between">
       <div className="flex items-baseline gap-10">
-        <h3 className="before:bg-secondary relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2">
+        <h3 className="relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
           {title}
         </h3>
         {resultsCount}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <ToggleGroup
-          variant="pill"
-          type="single"
-          value={place}
-          className="border border-gray-200"
-        >
-          <ToggleGroupItem
-            asChild
-            value="research"
-            variant="pill"
-            className="data-[state=on]:bg-accent px-8"
-          >
-            <Link
-              className="no-underline"
-              to="/{-$lang}/research"
-              search={switchSearch.research}
-            >
-              {tCommon("research")}
-            </Link>
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            asChild
-            value="dataset"
-            variant="pill"
-            className="data-[state=on]:bg-secondary px-8"
-          >
-            <Link
-              className="no-underline"
-              to="/{-$lang}/dataset"
-              search={switchSearch.dataset}
-            >
-              {tCommon("dataset")}
-            </Link>
-          </ToggleGroupItem>
-        </ToggleGroup>
         <div className="flex gap-1">
-          <Button
-            variant={"tableAction"}
-            className="h-fit"
-            size={"tableAction"}
-            onClick={onCopy}
-          >
+          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button
-            variant={"tableAction"}
-            className="h-fit"
-            size={"tableAction"}
-            onClick={onCsv}
-          >
+          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCsv}>
             CSV
           </Button>
-          <Button
-            variant={"tableAction"}
-            className="h-fit"
-            size={"tableAction"}
-            onClick={onExcel}
-          >
+          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onExcel}>
             Excel
           </Button>
         </div>
@@ -152,7 +91,7 @@ export function SearchCaption({
                   <Button
                     variant={"plain"}
                     size={"icon"}
-                    className={"text-foreground-light pointer-events-auto"}
+                    className={"pointer-events-auto text-foreground-light"}
                     onClick={handleResetInput}
                   >
                     <X size={22} />
@@ -189,7 +128,7 @@ export function SearchCaption({
             <span className="flex items-center gap-1.5">
               {t("filters")}
               {filtersCount && filtersCount > 0 ? (
-                <span className="text-secondary min-w-[1.2rem] rounded-full bg-white px-1.5 py-0.5 text-center text-[10px] leading-none font-bold">
+                <span className="min-w-[1.2rem] rounded-full bg-white px-1.5 py-0.5 text-center font-bold text-[10px] text-secondary leading-none">
                   {filtersCount}
                 </span>
               ) : null}
@@ -201,57 +140,4 @@ export function SearchCaption({
   );
 }
 
-const researchSorts = new Set([
-  "humId",
-  "title",
-  "releaseDate",
-  "datePublished",
-  "dateModified",
-  "relevance",
-]);
-const datasetSorts = new Set(["datasetId", "releaseDate", "relevance"]);
 
-function getTableSwitchSearch(currentSearch: Record<string, unknown>) {
-  return {
-    research: cleanEmptyParams(
-      buildTableSwitchSearch(currentSearch, "research"),
-    ),
-    dataset: cleanEmptyParams(buildTableSwitchSearch(currentSearch, "dataset")),
-  };
-}
-
-function buildTableSwitchSearch(
-  currentSearch: Record<string, unknown>,
-  target: "dataset" | "research",
-) {
-  if (target === "research") {
-    return {
-      page: 1,
-      limit: currentSearch.limit,
-      sort: isStringInSet(currentSearch.sort, researchSorts)
-        ? currentSearch.sort
-        : undefined,
-      order: currentSearch.order,
-      query: currentSearch.query,
-      datePublished: currentSearch.datePublished,
-      dateModified: currentSearch.dateModified,
-      datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
-    };
-  }
-
-  return {
-    page: 1,
-    limit: currentSearch.limit,
-    sort: isStringInSet(currentSearch.sort, datasetSorts)
-      ? currentSearch.sort
-      : undefined,
-    order: currentSearch.order,
-    query: currentSearch.query,
-    humId: currentSearch.humId,
-    filters: currentSearch.filters ?? currentSearch.datasetFilters,
-  };
-}
-
-function isStringInSet(value: unknown, set: Set<string>): value is string {
-  return typeof value === "string" && set.has(value);
-}

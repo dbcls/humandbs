@@ -1,8 +1,6 @@
-import {
-  ResearchSearchBodySchema,
-  ResearchListingQuerySchema,
-} from "@humandbs/backend/types";
 import { z } from "zod";
+
+import { ResearchListingQuerySchema, ResearchSearchBodySchema } from "@humandbs/backend/types";
 
 export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   lang: true,
@@ -16,20 +14,21 @@ export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
  * lang not needed because use context
  * pagination also not needed because infinite scroll
  */
-export const authedResearchesListSearchParamsSchema =
-  ResearchListingQuerySchema.extend(ResearchSearchBodySchema.shape)
-    .pick({
-      sort: true,
-      order: true,
-      status: true,
-      page: true,
-      limit: true,
-    })
-    .extend(
-      z.object({
-        q: z.string().optional(),
-      }).shape,
-    );
+export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema.extend(
+  ResearchSearchBodySchema.shape,
+)
+  .pick({
+    sort: true,
+    order: true,
+    status: true,
+    page: true,
+    limit: true,
+  })
+  .extend(
+    z.object({
+      q: z.string().optional(),
+    }).shape,
+  );
 
 export type AuthedResearchesListSearchParams = z.infer<
   typeof authedResearchesListSearchParamsSchema
@@ -52,9 +51,7 @@ export const alertsAdminSearchParamsSchema = z.object({
   activeTo: z.string().optional(),
 });
 
-export type AlertsAdminSearchParams = z.infer<
-  typeof alertsAdminSearchParamsSchema
->;
+export type AlertsAdminSearchParams = z.infer<typeof alertsAdminSearchParamsSchema>;
 
 export const newsPublicSearchParamsSchema = z.object({
   q: z.string().optional(),
@@ -63,6 +60,4 @@ export const newsPublicSearchParamsSchema = z.object({
   tagIds: z.array(z.string()).optional(),
 });
 
-export type NewsPublicSearchParams = z.infer<
-  typeof newsPublicSearchParamsSchema
->;
+export type NewsPublicSearchParams = z.infer<typeof newsPublicSearchParamsSchema>;

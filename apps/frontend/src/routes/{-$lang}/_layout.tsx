@@ -1,15 +1,10 @@
-import {
-  CatchBoundary,
-  createFileRoute,
-  Outlet,
-  redirect,
-} from "@tanstack/react-router";
+import { CatchBoundary, createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { IntlProvider } from "use-intl";
 
+import { Navbar } from "@/components/Navbar";
 import { i18n, localeSchema } from "@/config/i18n";
 import { $getMessages } from "@/serverFunctions/i18n";
 import { $getSiteNavigation } from "@/serverFunctions/siteNavigation";
-import { Navbar } from "@/components/Navbar";
 
 // import { getMessagesFn } from "@/serverFunctions/locale";
 

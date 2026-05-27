@@ -1,3 +1,10 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { XIcon } from "lucide-react";
+import { useTranslations } from "use-intl";
+
+import { useEffect, useRef } from "react";
+
 import { Card } from "@/components/Card";
 import { DateRangePicker } from "@/components/DatePicker";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -7,11 +14,6 @@ import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
 import { newsPublicSearchParamsSchema } from "@/utils/queryParams";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { XIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
   component: RouteComponent,
@@ -31,16 +33,8 @@ function RouteComponent() {
     tagIds: search.tagIds,
   };
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    isPending,
-  } = useInfiniteQuery(
-    getPublishedNewsTitlesInfiniteQueryOptions({ locale: lang, filters }),
-  );
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
+    useInfiniteQuery(getPublishedNewsTitlesInfiniteQueryOptions({ locale: lang, filters }));
 
   const newsItems = data?.pages.flat() ?? [];
 
@@ -96,12 +90,8 @@ function RouteComponent() {
               ? { from: search.publishedFrom, to: search.publishedTo }
               : undefined
           }
-          onSelect={(range) =>
-            setFilters({ publishedFrom: range.from, publishedTo: range.to })
-          }
-          onClear={() =>
-            setFilters({ publishedFrom: undefined, publishedTo: undefined })
-          }
+          onSelect={(range) => setFilters({ publishedFrom: range.from, publishedTo: range.to })}
+          onClear={() => setFilters({ publishedFrom: undefined, publishedTo: undefined })}
         />
 
         {hasActiveFilters && (
@@ -149,13 +139,11 @@ function RouteComponent() {
             );
           })}
           {newsItems.length === 0 && (
-            <li className="text-muted-foreground py-4 text-center text-sm">
-              No news items found
-            </li>
+            <li className="py-4 text-center text-muted-foreground text-sm">No news items found</li>
           )}
           <div ref={sentinelRef} className="h-4 shrink-0">
             {isFetchingNextPage && (
-              <span className="text-muted-foreground block py-2 text-center text-xs">
+              <span className="block py-2 text-center text-muted-foreground text-xs">
                 Loading more…
               </span>
             )}

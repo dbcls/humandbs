@@ -28,8 +28,7 @@ export const Route = createFileRoute("/auth/login")({
 
         const cfg = await $$getOIDCConfig();
         const code_verifier = oidc.randomPKCECodeVerifier();
-        const code_challenge =
-          await oidc.calculatePKCECodeChallenge(code_verifier);
+        const code_challenge = await oidc.calculatePKCECodeChallenge(code_verifier);
         const state = buildAuthState(oidc.randomState(), redirect_to);
 
         const stash = { code_verifier, state, redirect_to };

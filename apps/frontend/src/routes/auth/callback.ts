@@ -1,39 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
+import { and, eq, ne } from "drizzle-orm";
 import * as jose from "jose";
 import * as oidc from "openid-client";
-
-import { and, eq, ne } from "drizzle-orm";
 
 import { db } from "@/db/database";
 import { user } from "@/db/schema";
 import { $$getOIDCConfig } from "@/lib/oidc";
 import { $$resolveUserRole } from "@/serverFunctions/authUser";
-import {
-  type AccessTokenClaims,
-  $$buildSessionFromTokenResponse,
-  $$createSessionCookie,
-} from "@/utils/jwt-helpers";
+import type { AccessTokenClaims } from "@/utils/jwt-helpers";
+import { $$buildSessionFromTokenResponse, $$createSessionCookie } from "@/utils/jwt-helpers";
 
-import {
-  parseAuthState,
-  redirectWithCookies,
-  sanitizeRedirectPath,
-} from "./-utils";
+import { parseAuthState, redirectWithCookies, sanitizeRedirectPath } from "./-utils";
 
 function restartLogin(redirectTo: string, clearPkce = true) {
   const loginUrl = new URL("/auth/login", "http://localhost");
   loginUrl.searchParams.set("redirect", redirectTo);
 
-  const cookies = clearPkce
-    ? [serialize("oidc_pkce", "", { path: "/", maxAge: 0 })]
-    : [];
+  const cookies = clearPkce ? [serialize("oidc_pkce", "", { path: "/", maxAge: 0 })] : [];
 
-  return redirectWithCookies(
-    `${loginUrl.pathname}${loginUrl.search}`,
-    cookies,
-    302,
-  );
+  return redirectWithCookies(`${loginUrl.pathname}${loginUrl.search}`, cookies, 302);
 }
 
 export const Route = createFileRoute("/auth/callback")({
@@ -87,15 +73,11 @@ export const Route = createFileRoute("/auth/callback")({
         session.role = await $$resolveUserRole(session.access_token);
 
         // Decode token to get user claims and upsert user to local DB
-        const claims = jose.decodeJwt(
-          session.access_token,
-        ) as AccessTokenClaims;
+        const claims = jose.decodeJwt(session.access_token) as AccessTokenClaims;
 
         // Remove stale rows with the same email but a different id (e.g. after Keycloak reset)
         if (claims.email) {
-          await db
-            .delete(user)
-            .where(and(eq(user.email, claims.email), ne(user.id, claims.sub)));
+          await db.delete(user).where(and(eq(user.email, claims.email), ne(user.id, claims.sub)));
         }
 
         await db

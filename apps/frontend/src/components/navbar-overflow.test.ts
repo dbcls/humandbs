@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  getNavbarOverflowDropOrder,
-  getNavbarOverflowLayout,
-} from "./navbar-overflow";
+import { getNavbarOverflowDropOrder, getNavbarOverflowLayout } from "./navbar-overflow";
 
 const GAP = 32;
 
@@ -33,11 +30,7 @@ describe("getNavbarOverflowLayout", () => {
   test("keeps all items visible when they fit", () => {
     expect(
       getNavbarOverflowLayout({
-        items: [
-          { priority: "important" },
-          { priority: "medium" },
-          { priority: "optional" },
-        ],
+        items: [{ priority: "important" }, { priority: "medium" }, { priority: "optional" }],
         itemWidths: [80, 90, 100],
         containerWidth: 80 + 90 + 100 + GAP * 2,
         overflowTriggerWidth: 48,
@@ -52,11 +45,7 @@ describe("getNavbarOverflowLayout", () => {
   test("moves the lowest-priority item into overflow first", () => {
     expect(
       getNavbarOverflowLayout({
-        items: [
-          { priority: "important" },
-          { priority: "medium" },
-          { priority: "optional" },
-        ],
+        items: [{ priority: "important" }, { priority: "medium" }, { priority: "optional" }],
         itemWidths: [80, 90, 100],
         containerWidth: 80 + 90 + GAP + 48 + GAP,
         overflowTriggerWidth: 48,
@@ -71,11 +60,7 @@ describe("getNavbarOverflowLayout", () => {
   test("uses rightmost tie-breaking within a shared priority", () => {
     expect(
       getNavbarOverflowLayout({
-        items: [
-          { priority: "medium" },
-          { priority: "medium" },
-          { priority: "medium" },
-        ],
+        items: [{ priority: "medium" }, { priority: "medium" }, { priority: "medium" }],
         itemWidths: [80, 90, 100],
         containerWidth: 80 + 90 + GAP + 48 + GAP,
         overflowTriggerWidth: 48,
@@ -90,11 +75,7 @@ describe("getNavbarOverflowLayout", () => {
   test("continues hiding through higher-priority items when necessary", () => {
     expect(
       getNavbarOverflowLayout({
-        items: [
-          { priority: "important" },
-          { priority: "medium" },
-          { priority: "optional" },
-        ],
+        items: [{ priority: "important" }, { priority: "medium" }, { priority: "optional" }],
         itemWidths: [100, 100, 100],
         containerWidth: 100 + 48 + GAP,
         overflowTriggerWidth: 48,

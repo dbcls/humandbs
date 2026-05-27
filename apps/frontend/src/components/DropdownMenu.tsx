@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import {
   DropdownMenu as DropdownMenuBase,
   DropdownMenuContent,
@@ -7,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Fragment } from "react";
 
 export interface DropdownMenuProps {
   trigger: React.ReactNode;
@@ -22,10 +23,10 @@ export function DropdownMenu({ trigger, dropdownItems }: DropdownMenuProps) {
   const grouped = dropdownItems.reduce(
     (acc, curr) => {
       if (!curr.group) {
-        if (!acc["ungrouped"]) {
-          acc["ungrouped"] = [curr];
+        if (!acc.ungrouped) {
+          acc.ungrouped = [curr];
         } else {
-          acc["ungrouped"].push(curr);
+          acc.ungrouped.push(curr);
         }
       } else {
         if (!acc[curr.group]) {
@@ -47,9 +48,7 @@ export function DropdownMenu({ trigger, dropdownItems }: DropdownMenuProps) {
         {Object.entries(grouped).map(([group, items], index, array) => (
           <Fragment key={group}>
             <DropdownMenuGroup key={group}>
-              {group === "ungrouped" ? null : (
-                <DropdownMenuLabel>{group}</DropdownMenuLabel>
-              )}
+              {group === "ungrouped" ? null : <DropdownMenuLabel>{group}</DropdownMenuLabel>}
               {items.map((item, i) => (
                 <DropdownMenuItem onClick={(e) => item.onClick(e)} key={i}>
                   {item.item}

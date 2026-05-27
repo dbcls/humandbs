@@ -3,21 +3,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { i18n, type Locale, localeSchema } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n, localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
-import {
-  contentItem,
-  contentTranslation,
-  DOCUMENT_VERSION_STATUS,
-  type DocVersionStatus,
-} from "@/db/schema";
-import {
-  contentTranslationInsertSchema,
-  type ContentTranslationSelect,
-  type DocumentVersionStatus,
-  statusSchema,
-  type User,
-} from "@/db/types";
+import type { DocVersionStatus } from "@/db/schema";
+import { contentItem, contentTranslation, DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import type { ContentTranslationSelect, DocumentVersionStatus, User } from "@/db/types";
+import { contentTranslationInsertSchema, statusSchema } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
@@ -119,19 +111,13 @@ const $getContentItems = createServerFn({ method: "GET" })
     });
   });
 
-export type ContentTranslationResponse = Omit<
-  ContentTranslationSelect,
-  "lang" | "contentId"
->;
+export type ContentTranslationResponse = Omit<ContentTranslationSelect, "lang" | "contentId">;
 
 export interface ContentItemResponse {
   author?: Pick<User, "name" | "email">;
   hideTOC: boolean;
   translations: Partial<
-    Record<
-      Locale,
-      Partial<Record<DocumentVersionStatus, ContentTranslationResponse>>
-    >
+    Record<Locale, Partial<Record<DocumentVersionStatus, ContentTranslationResponse>>>
   >;
 }
 
@@ -189,7 +175,7 @@ export const $getContentItem = createServerFn({ method: "GET" })
 
     // copy published content into draft if no draft present
     for (const locale of presentLocales) {
-      if (!translations[locale]?.draft && !!translations[locale]?.published) {
+      if (!translations[locale]?.draft && translations[locale]?.published) {
         translations[locale].draft = { ...translations[locale].published };
       }
     }
@@ -208,10 +194,7 @@ export const $updateContentItemHideTOC = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("contents", "update");
 
-    await db
-      .update(contentItem)
-      .set({ hideTOC: data.hideTOC })
-      .where(eq(contentItem.id, data.id));
+    await db.update(contentItem).set({ hideTOC: data.hideTOC }).where(eq(contentItem.id, data.id));
   });
 
 export function getContentTranslationQueryOptions(data: {
@@ -220,12 +203,7 @@ export function getContentTranslationQueryOptions(data: {
   status?: DocumentVersionStatus;
 }) {
   return queryOptions({
-    queryKey: [
-      "contents",
-      data.id,
-      data.lang,
-      data.status || DOCUMENT_VERSION_STATUS.PUBLISHED,
-    ],
+    queryKey: ["contents", data.id, data.lang, data.status || DOCUMENT_VERSION_STATUS.PUBLISHED],
     queryFn: () =>
       $getContentItemTranslation({
         data: {
@@ -244,9 +222,7 @@ const getContentItemTranslationParamsSchema = z.object({
   status: statusSchema,
 });
 
-export type GetContentItemTranslationParams = z.infer<
-  typeof getContentItemTranslationParamsSchema
->;
+export type GetContentItemTranslationParams = z.infer<typeof getContentItemTranslationParamsSchema>;
 
 /**
  * Get content published translation
@@ -259,11 +235,7 @@ export const $getContentItemTranslation = createServerFn({
     const { id, lang, status } = data;
     const translation = await db.query.contentTranslation.findFirst({
       where: (table, { and, eq }) =>
-        and(
-          eq(table.contentId, id),
-          eq(table.lang, lang),
-          eq(table.status, status),
-        ),
+        and(eq(table.contentId, id), eq(table.lang, lang), eq(table.status, status)),
       with: {
         contentItem: {
           columns: {
@@ -400,15 +372,8 @@ export const $saveContentItemTranslationDraft = createServerFn({
         title: data.translation.title,
       })
       .onConflictDoUpdate({
-        target: [
-          contentTranslation.contentId,
-          contentTranslation.lang,
-          contentTranslation.status,
-        ],
-        set: buildConflictUpdateColumns(contentTranslation, [
-          "content",
-          "title",
-        ]),
+        target: [contentTranslation.contentId, contentTranslation.lang, contentTranslation.status],
+        set: buildConflictUpdateColumns(contentTranslation, ["content", "title"]),
       })
       .returning();
     return result;
@@ -451,16 +416,8 @@ export const $publishContentItemDraftTranslation = createServerFn({
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: [
-          contentTranslation.contentId,
-          contentTranslation.lang,
-          contentTranslation.status,
-        ],
-        set: buildConflictUpdateColumns(contentTranslation, [
-          "title",
-          "content",
-          "updatedAt",
-        ]),
+        target: [contentTranslation.contentId, contentTranslation.lang, contentTranslation.status],
+        set: buildConflictUpdateColumns(contentTranslation, ["title", "content", "updatedAt"]),
       })
       .returning();
 

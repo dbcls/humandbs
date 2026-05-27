@@ -1,11 +1,12 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
+
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 interface CardProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof cardCaptionVariants> {
   caption?: ReactNode;
   captionClassName?: string;
@@ -13,16 +14,15 @@ interface CardProps
   hideCaptionBorder?: boolean;
 }
 
-const cardCaptionVariants = cva("text-secondary relative font-bold", {
+const cardCaptionVariants = cva("relative font-bold text-secondary", {
   variants: {
     captionSize: {
-      lg: "text-lg mt-10",
-      sm: "text-sm mt-3",
-      default: "text-base mt-1",
+      lg: "text-lg",
+      sm: "text-sm",
+      default: "text-base",
     },
     hideCaptionBorder: {
-      false:
-        "before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3",
+      false: "pl-3 before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary",
       true: "",
     },
   },
@@ -47,10 +47,7 @@ function Card({
       {caption ? (
         <div
           id="caption"
-          className={cn(
-            cardCaptionVariants({ captionSize, hideCaptionBorder }),
-            captionClassName,
-          )}
+          className={cn(cardCaptionVariants({ captionSize, hideCaptionBorder }), captionClassName)}
         >
           {typeof caption === "string" ? <h3>{caption}</h3> : caption}
         </div>
@@ -72,31 +69,28 @@ function Card({
   );
 }
 
-const cardWithColorCaptionVariants = cva(
-  " bg-linear-to-r rounded-t-md text-white",
-  {
-    variants: {
-      variant: {
-        light: " from-secondary to-secondary-light",
-        dark: " from-tetriary to-tetriary-light ",
-      },
-      size: {
-        sm: "p-2",
-        lg: " px-7 pb-4 pt-5",
-      },
+const cardWithColorCaptionVariants = cva("rounded-t-md bg-linear-to-r text-white", {
+  variants: {
+    variant: {
+      light: "from-secondary to-secondary-light",
+      dark: "from-tetriary to-tetriary-light",
     },
-    defaultVariants: {
-      size: "sm",
-      variant: "light",
+    size: {
+      sm: "p-2",
+      lg: "px-7 pt-5 pb-4",
     },
   },
-);
+  defaultVariants: {
+    size: "sm",
+    variant: "light",
+  },
+});
 
-const contentVariants = cva("text-inherit flex flex-col", {
+const contentVariants = cva("flex flex-col text-inherit", {
   variants: {
     size: {
-      lg: "p-7 gap-5",
-      sm: "p-3 gap-3",
+      lg: "gap-5 p-7",
+      sm: "gap-3 p-3",
     },
   },
   defaultVariants: {
@@ -105,7 +99,8 @@ const contentVariants = cva("text-inherit flex flex-col", {
 });
 
 interface CardWithCaptionProps
-  extends CardProps, VariantProps<typeof cardWithColorCaptionVariants> {}
+  extends CardProps,
+    VariantProps<typeof cardWithColorCaptionVariants> {}
 
 function CardWithCaption({
   children,
@@ -120,20 +115,13 @@ function CardWithCaption({
   return (
     <div className={cn("h-fit rounded-md bg-white", className)} {...rest}>
       {caption ? (
-        <div
-          className={cn(
-            cardWithColorCaptionVariants({ size, variant }),
-            captionClassName,
-          )}
-        >
+        <div className={cn(cardWithColorCaptionVariants({ size, variant }), captionClassName)}>
           {caption}
         </div>
       ) : null}
-      <div className={cn(contentVariants({ size }), containerClassName)}>
-        {children}
-      </div>
+      <div className={cn(contentVariants({ size }), containerClassName)}>{children}</div>
     </div>
   );
 }
 
-export { CardWithCaption, Card };
+export { Card, CardWithCaption };

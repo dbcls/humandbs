@@ -22,9 +22,7 @@ export interface NavbarCommittedGroup {
  * @param config - json config from the db.
  * @returns top-level nav groups with resolved sub-group ids.
  */
-export function deriveNavbarCommittedGroups(
-  config: SiteNavigationConfig,
-): NavbarCommittedGroup[] {
+export function deriveNavbarCommittedGroups(config: SiteNavigationConfig): NavbarCommittedGroup[] {
   const itemById = new Map(config.items.map((item) => [item.id, item]));
 
   return config.zones.navbar.groups
@@ -52,17 +50,13 @@ export function deriveNavbarCommittedGroups(
         (item) => item.item.id === group.linkedItemId && item.enabled,
       );
 
-      const ownSubItems = ownItems.filter(
-        (item) => item.item.id !== group.linkedItemId,
-      );
+      const ownSubItems = ownItems.filter((item) => item.item.id !== group.linkedItemId);
 
       return {
         group: {
           ...group,
           parentGroupId: undefined,
-          enabled:
-            group.enabled &&
-            (linkedItem !== undefined || ownSubItems.length > 0),
+          enabled: group.enabled && (linkedItem !== undefined || ownSubItems.length > 0),
         },
         ...(linkedItem ? { linkedItem: { item: linkedItem.item } } : {}),
         subItems: [...ownSubItems, ...legacyChildItems],
@@ -81,9 +75,7 @@ export function mergeCommittedNavbarGroups(
   current: SiteNavigationConfig,
   navGroups: NavbarCommittedGroup[],
 ): SiteNavigationConfig {
-  const currentItemsById = new Map(
-    current.items.map((item) => [item.id, item]),
-  );
+  const currentItemsById = new Map(current.items.map((item) => [item.id, item]));
 
   for (const group of navGroups) {
     if (group.linkedItem) {
@@ -95,22 +87,19 @@ export function mergeCommittedNavbarGroups(
     }
   }
 
-  const nextNavbarGroups: NavigationGroup[] = navGroups.map(
-    ({ group, linkedItem, subItems }) => ({
-      ...group,
-      parentGroupId: undefined,
-      enabled:
-        linkedItem !== undefined || subItems.length > 0 ? group.enabled : false,
-      linkedItemId: linkedItem?.item.id,
-      items: [
-        ...(linkedItem ? [{ id: linkedItem.item.id }] : []),
-        ...subItems.map(({ item, enabled }) => ({
-          id: item.id,
-          enabled,
-        })),
-      ],
-    }),
-  );
+  const nextNavbarGroups: NavigationGroup[] = navGroups.map(({ group, linkedItem, subItems }) => ({
+    ...group,
+    parentGroupId: undefined,
+    enabled: linkedItem !== undefined || subItems.length > 0 ? group.enabled : false,
+    linkedItemId: linkedItem?.item.id,
+    items: [
+      ...(linkedItem ? [{ id: linkedItem.item.id }] : []),
+      ...subItems.map(({ item, enabled }) => ({
+        id: item.id,
+        enabled,
+      })),
+    ],
+  }));
 
   return {
     ...current,

@@ -3,10 +3,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { type ContentId } from "@/config/content-config";
+import type { ContentId } from "@/config/content-config";
 import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
-import { document, documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
@@ -58,33 +58,32 @@ export const $getDocuments = createServerFn({
       documents.map(async (doc) => {
         const translations = await Promise.all(
           i18n.locales.map(async (locale) => {
-            const [latestPublishedVersion, latestDraftVersion] =
-              await Promise.all([
-                db.query.documentVersion.findFirst({
-                  where: (table, { and, eq }) =>
-                    and(
-                      eq(table.documentId, doc.id),
-                      eq(table.locale, locale),
-                      eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                    ),
-                  orderBy: (table, { desc }) => desc(table.versionNumber),
-                  columns: {
-                    title: true,
-                  },
-                }),
-                db.query.documentVersion.findFirst({
-                  where: (table, { and, eq }) =>
-                    and(
-                      eq(table.documentId, doc.id),
-                      eq(table.locale, locale),
-                      eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                    ),
-                  orderBy: (table, { desc }) => desc(table.versionNumber),
-                  columns: {
-                    title: true,
-                  },
-                }),
-              ]);
+            const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.documentId, doc.id),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.documentId, doc.id),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+            ]);
 
             return {
               lang: locale,
@@ -99,8 +98,7 @@ export const $getDocuments = createServerFn({
         return {
           ...doc,
           translations: translations.filter(
-            (translation) =>
-              translation.statuses.published || translation.statuses.draft,
+            (translation) => translation.statuses.published || translation.statuses.draft,
           ),
         };
       }),
@@ -128,15 +126,11 @@ export const $createDocument = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "create");
 
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
     const doc = await db.insert(document).values(data).returning();
 
-    await documentVersionRepo.createVersionFromPublished(
-      data.contentId,
-      userId,
-    );
+    await documentVersionRepo.createVersionFromPublished(data.contentId, userId);
 
     return doc;
   });
@@ -176,6 +170,19 @@ export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
       .where(eq(document.contentId, data.contentId));
   });
 
+/** Update hideRevisions flag for a document */
+export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ contentId: z.string(), hideRevisions: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await db
+      .update(document)
+      .set({ hideRevisions: data.hideRevisions })
+      .where(eq(document.contentId, data.contentId));
+  });
+
 /**
  * Delete document by contentId
  */
@@ -185,10 +192,7 @@ export const $deleteDocument = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "delete");
 
-    const doc = await db
-      .delete(document)
-      .where(eq(document.contentId, data.contentId))
-      .returning();
+    const doc = await db.delete(document).where(eq(document.contentId, data.contentId)).returning();
 
     return doc;
   });

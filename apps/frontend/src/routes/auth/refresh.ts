@@ -2,13 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { parse } from "cookie";
 
 import { $$resolveUserRole } from "@/serverFunctions/authUser";
+import type { SessionMeta } from "@/utils/jwt-helpers";
 import {
-  createClearSessionCookie,
   $$createSessionCookie,
   $$ensureFreshSession,
   $$parseSession,
+  createClearSessionCookie,
   SESSION_COOKIE_NAME,
-  type SessionMeta,
 } from "@/utils/jwt-helpers";
 
 export const Route = createFileRoute("/auth/refresh")({
@@ -20,10 +20,9 @@ export const Route = createFileRoute("/auth/refresh")({
         const rawSession = cookies[SESSION_COOKIE_NAME];
         const existingSession = rawSession ? $$parseSession(rawSession) : null;
 
-        const { session, claims, refreshed, shouldClear } =
-          await $$ensureFreshSession({
-            session: existingSession,
-          });
+        const { session, claims, refreshed, shouldClear } = await $$ensureFreshSession({
+          session: existingSession,
+        });
 
         if (!session || !claims) {
           const headers = new Headers();

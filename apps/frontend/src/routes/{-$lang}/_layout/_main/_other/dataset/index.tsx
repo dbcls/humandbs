@@ -1,40 +1,33 @@
-import {
-  DatasetSearchBodySchema,
-  type DatasetSearchBody,
-  type DatasetSearchResponse,
-} from "@humandbs/backend/types";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import {
-  createColumnHelper,
-  functionalUpdate,
-  type SortingState,
-  type Updater,
-} from "@tanstack/react-table";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
+import type { SortingState, Updater } from "@tanstack/react-table";
+import { createColumnHelper, functionalUpdate } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
 import { useLocale, useTranslations } from "use-intl";
 
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+
+import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
+import { DatasetSearchBodySchema } from "@humandbs/backend/types";
+
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { DatasetCartRowButton } from "@/components/DatasetCartRowButton";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
-import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
+import type { SectionConfig } from "@/components/SearchPanel";
+import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
-import { useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
@@ -50,29 +43,25 @@ const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   sort: DatasetSearchBodySchema.shape.sort.default("relevance"),
 });
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
-  {
-    component: RouteComponent,
-    validateSearch: zodValidator(datasetListQuerySchema),
-    errorComponent: (props) =>
-      isCancelledError(props.error) ? null : (
-        <DefaultCatchBoundary {...props} />
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
+  component: RouteComponent,
+  validateSearch: zodValidator(datasetListQuerySchema),
+  errorComponent: (props) =>
+    isCancelledError(props.error) ? null : <DefaultCatchBoundary {...props} />,
+  loader: ({ context, location }) => {
+    return Promise.all([
+      context.queryClient.ensureQueryData(
+        getDatasetsPaginatedQueryOptions({
+          ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
+          lang: context.lang,
+        }),
       ),
-    loader: ({ context, location }) => {
-      return Promise.all([
-        context.queryClient.ensureQueryData(
-          getDatasetsPaginatedQueryOptions({
-            ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
-            lang: context.lang,
-          }),
-        ),
-        context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
-      ]);
-    },
-    wrapInSuspense: true,
-    pendingComponent: () => <SkeletonLoading />,
+      context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
+    ]);
   },
-);
+  wrapInSuspense: true,
+  pendingComponent: () => <SkeletonLoading />,
+});
 
 function RouteComponent() {
   const t = useTranslations("Dataset");
@@ -110,6 +99,7 @@ function RouteComponent() {
   const filtersCount = Object.keys(filters.filters || {}).length;
   return (
     <FilterableCard
+      className="flex flex-col"
       captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
@@ -171,9 +161,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
     }),
   );
 
-  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(
-    getAllFacetsQueryOptions(),
-  );
+  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(getAllFacetsQueryOptions());
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
@@ -184,17 +172,9 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
         uiGroup: "basic-info",
       },
     ];
-    const facetSections = buildFacetSections(
-      filters.filters ?? {},
-      "filters",
-      allFacetsData?.data,
-    );
-    const dateSections = facetSections.filter(
-      (section) => section.uiGroup === "dates",
-    );
-    const remainingFacetSections = facetSections.filter(
-      (section) => section.uiGroup !== "dates",
-    );
+    const facetSections = buildFacetSections(filters.filters ?? {}, "filters", allFacetsData?.data);
+    const dateSections = facetSections.filter((section) => section.uiGroup === "dates");
+    const remainingFacetSections = facetSections.filter((section) => section.uiGroup !== "dates");
 
     return [...dateSections, ...topLevel, ...remainingFacetSections];
   }, [filters, allFacetsData]);
@@ -211,9 +191,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -225,9 +211,9 @@ function useDatasetsSearchQuery() {
   const search = Route.useSearch();
   const lang = useLocale();
   const searchParams = { ...search, lang };
-  const lastResolvedSearchRef = useRef<
-    Omit<DatasetSearchBody, "includeFacets"> | undefined
-  >(undefined);
+  const lastResolvedSearchRef = useRef<Omit<DatasetSearchBody, "includeFacets"> | undefined>(
+    undefined,
+  );
 
   const query = useQuery({
     ...getDatasetsPaginatedQueryOptions(searchParams),
@@ -236,22 +222,17 @@ function useDatasetsSearchQuery() {
         ? (previousQuery.queryKey as readonly unknown[])[2]
         : undefined;
 
-      return isBackgroundTransition(previousSearch, searchParams)
-        ? previousData
-        : undefined;
+      return isBackgroundTransition(previousSearch, searchParams) ? previousData : undefined;
     },
   });
 
-  const transitionType = getSearchTransitionType(
-    lastResolvedSearchRef.current,
-    searchParams,
-  );
+  const transitionType = getSearchTransitionType(lastResolvedSearchRef.current, searchParams);
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
-      lastResolvedSearchRef.current = searchParams;
+      lastResolvedSearchRef.current = { ...search, lang };
     }
-  }, [query.isFetching, query.data, searchParams]);
+  }, [query.isFetching, query.data, search, lang]);
 
   return { ...query, transitionType };
 }
@@ -289,11 +270,7 @@ function getSearchTransitionType(
 }
 
 function omitSortParams(value: unknown) {
-  const {
-    sort: _sort,
-    order: _order,
-    ...rest
-  } = value as Record<string, unknown>;
+  const { sort: _sort, order: _order, ...rest } = value as Record<string, unknown>;
 
   return rest;
 }
@@ -312,10 +289,7 @@ function stableSerialize(value: unknown): string {
   if (value && typeof value === "object") {
     return `{${Object.entries(value)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, entryValue]) =>
-          `${JSON.stringify(key)}:${stableSerialize(entryValue)}`,
-      )
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
       .join(",")}}`;
   }
 
@@ -355,20 +329,18 @@ function TableWrapper() {
     [setFilters, filters],
   );
 
-  const { data, isFetching, isPlaceholderData, transitionType } =
-    useDatasetsSearchQuery();
+  const { data, isFetching, isPlaceholderData, transitionType } = useDatasetsSearchQuery();
 
   const loadingSortColumnId =
     isFetching && isPlaceholderData && transitionType === "sort"
       ? (search.sort ?? "datasetId")
       : undefined;
-  const isPaginating =
-    isFetching && isPlaceholderData && transitionType === "pagination";
+  const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!data || (isFetching && !isPlaceholderData)) {
     return (
       <TableLoadingSpinner
-        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        className="min-h-full w-max min-w-full flex-1 text-sm"
         columns={datasetsColumns}
         meta={{ t, lang }}
       />
@@ -377,13 +349,14 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       onSortingChange={handleSortingChange}
       sorting={sorting}
       meta={{ t, lang, loadingSortColumnId, activeSort }}
       columns={datasetsColumns}
       data={data.data}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }
@@ -398,40 +371,31 @@ function PaginationWrapper() {
   return <Pagination className="pr-5" pagination={data.meta.pagination} />;
 }
 
-export const datasetsColumnHelper =
-  createColumnHelper<DatasetSearchResponse["data"][number]>();
+export const datasetsColumnHelper = createColumnHelper<DatasetSearchResponse["data"][number]>();
 
 export const datasetsColumns = [
   datasetsColumnHelper.display({
     id: "cart",
-    header: (ctx) => {
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: ctx.table.options.data,
-      });
-
-      return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart || (someInCart ? "indeterminate" : false)}
-          onClick={handleClickCart}
-        />
-      );
-    },
-    cell: (ctx) => {
-      const { handleClickCart, inCart } = useCartTableRow({
-        dataset: ctx.row.original,
-      });
-
-      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
-    },
+    header: (ctx) => (
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <DatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
+        </ClientOnly>
+      </div>
+    ),
+    cell: (ctx) => (
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <DatasetCartRowButton dataset={ctx.row.original} />
+        </ClientOnly>
+      </div>
+    ),
     maxSize: 1,
     size: 1,
   }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
@@ -444,12 +408,7 @@ export const datasetsColumns = [
 
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("releaseDate")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
   }),
 
   datasetsColumnHelper.accessor("versionReleaseDate", {
@@ -461,34 +420,52 @@ export const datasetsColumns = [
     header: (ctx) => {
       return <p>{ctx.table.options.meta?.t?.("typeOfData")}</p>;
     },
-    cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ??
-      "",
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((item, i) => ({
-          id: i,
-          content: (
-            <span>
-              {
-                item.header?.[
-                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                ]?.text
-              }
-            </span>
-          ),
-        }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((item, i) => (
+            <li key={i}>
+              <span>
+                {
+                  item.header?.[
+                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                  ]?.text
+                }
+              </span>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-ignore TODO fix types`
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
 ];
+
+function DatasetsCartHeaderButton({
+  tableDatasets,
+}: {
+  tableDatasets: DatasetSearchResponse["data"];
+}) {
+  const t = useTranslations("common");
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
+      onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
+    />
+  );
+}

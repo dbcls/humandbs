@@ -1,6 +1,8 @@
 import { useTranslations } from "use-intl";
+
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 export function EnumFacetItem({

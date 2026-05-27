@@ -12,15 +12,12 @@ export function Callout({
 }) {
   return (
     <div
-      className={cn(
-        "border-secondary mt-2 flex items-center gap-4 rounded-md border px-6 py-4",
-        {
-          "border-secondary": type === "info",
-          "border-secondary-light": type === "tip",
-          "border-amber-300": type === "warning",
-          "border-red-600": type === "error",
-        },
-      )}
+      className={cn("mt-2 flex items-center gap-4 rounded-md border border-secondary px-6 py-4", {
+        "border-secondary": type === "info",
+        "border-secondary-light": type === "tip",
+        "border-amber-300": type === "warning",
+        "border-red-600": type === "error",
+      })}
     >
       {type === "info" && FA_ICONS.info}
       {type === "tip" && FA_ICONS.tip}

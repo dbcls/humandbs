@@ -1,19 +1,18 @@
 import { createMiddleware } from "@tanstack/react-start";
 
-import { hasPermission, type Permissions } from "@/config/permissions";
+import type { Permissions } from "@/config/permissions";
+import { hasPermission } from "@/config/permissions";
 import { $getAuthUser } from "@/serverFunctions/authUser";
 
-export const authMiddleware = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
-    const { user, session } = await $getAuthUser();
+export const authMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const { user, session } = await $getAuthUser();
 
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
 
-    return next({ context: { user, session } });
-  },
-);
+  return next({ context: { user, session } });
+});
 
 export const hasPermissionMiddleware = createMiddleware({
   type: "function",

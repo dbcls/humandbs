@@ -8,9 +8,5 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  return (
-    <div>
-      Hello "/-$lang/_layout/_authed/admin/researches/$humId-$ver-$lang"!
-    </div>
-  );
+  return <div>Hello "/-$lang/_layout/_authed/admin/researches/$humId-$ver-$lang"!</div>;
 }

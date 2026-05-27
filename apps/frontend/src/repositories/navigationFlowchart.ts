@@ -3,11 +3,11 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
 import { db } from "@/db/database";
+import type { NavigationFlowchartStatus } from "@/db/schema";
 import {
+  NAVIGATION_FLOWCHART_STATUS,
   navigationFlowchart,
   navigationFlowchartRevision,
-  NAVIGATION_FLOWCHART_STATUS,
-  type NavigationFlowchartStatus,
 } from "@/db/schema";
 
 export class NavigationFlowchartConflictError extends Error {
@@ -66,9 +66,7 @@ interface SaveParams {
   userId?: string;
 }
 
-function parseRecord(
-  row: typeof navigationFlowchart.$inferSelect,
-): NavigationFlowchartRecord {
+function parseRecord(row: typeof navigationFlowchart.$inferSelect): NavigationFlowchartRecord {
   try {
     return { ...row, config: parseNavigationFlowchartConfig(row.config) };
   } catch {
@@ -102,10 +100,7 @@ export function createNavigationFlowchartRepository(
           config: navigationFlowchart.config,
         })
         .from(navigationFlowchart)
-        .orderBy(
-          desc(navigationFlowchart.isEntryPoint),
-          navigationFlowchart.nameEn,
-        );
+        .orderBy(desc(navigationFlowchart.isEntryPoint), navigationFlowchart.nameEn);
 
       return rows.map((row) => {
         const config = row.config as NavigationFlowchartConfig;
@@ -170,18 +165,7 @@ export function createNavigationFlowchartRepository(
       });
     },
 
-    async save(
-      id,
-      {
-        config,
-        nameEn,
-        nameJa,
-        isEntryPoint,
-        status,
-        expectedRevision,
-        userId,
-      },
-    ) {
+    async save(id, { config, nameEn, nameJa, isEntryPoint, status, expectedRevision, userId }) {
       const parsedConfig = parseNavigationFlowchartConfig(config);
       const current = await this.getById(id);
 
@@ -199,12 +183,7 @@ export function createNavigationFlowchartRepository(
           await tx
             .update(navigationFlowchart)
             .set({ isEntryPoint: false })
-            .where(
-              and(
-                eq(navigationFlowchart.isEntryPoint, true),
-                ne(navigationFlowchart.id, id),
-              ),
-            );
+            .where(and(eq(navigationFlowchart.isEntryPoint, true), ne(navigationFlowchart.id, id)));
         }
 
         const [updated] = await tx
@@ -234,9 +213,7 @@ export function createNavigationFlowchartRepository(
     },
 
     async delete(id) {
-      await database
-        .delete(navigationFlowchart)
-        .where(eq(navigationFlowchart.id, id));
+      await database.delete(navigationFlowchart).where(eq(navigationFlowchart.id, id));
     },
 
     async getDependencies(id) {
@@ -269,5 +246,4 @@ export function createNavigationFlowchartRepository(
   };
 }
 
-export const navigationFlowchartRepository =
-  createNavigationFlowchartRepository(db);
+export const navigationFlowchartRepository = createNavigationFlowchartRepository(db);

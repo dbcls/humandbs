@@ -1,6 +1,7 @@
+import * as path from "path";
+
 import axios from "axios";
 import * as cheerio from "cheerio";
-import * as path from "path";
 
 // Constants
 const BASE_URL = "https://humandbs.dbcls.jp";
@@ -26,16 +27,7 @@ const FILE_EXTENSIONS = [
   ".xml",
 ];
 
-const IMAGE_EXTENSIONS = [
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".webp",
-  ".svg",
-  ".bmp",
-  ".tiff",
-];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".tiff"];
 
 const SKIP_PATHS = ["sitemap", "search", "logout", "login"];
 const SKIP_TITLES = ["Japanese", "English"];
@@ -160,10 +152,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
         const documentId = extractDocumentId(fullUrl, title);
 
         // Skip certain pages
-        if (
-          !SKIP_PATHS.some((path) => href.includes(path)) &&
-          !SKIP_TITLES.includes(title)
-        ) {
+        if (!SKIP_PATHS.some((path) => href.includes(path)) && !SKIP_TITLES.includes(title)) {
           pages.push({
             title,
             url: fullUrl,
@@ -190,9 +179,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
           !SKIP_PATHS.some((path) => href.includes(path)) &&
           !SKIP_TITLES.includes(title) &&
           !pages.some((p) => p.url === fullUrl) &&
-          !pages.some(
-            (p) => p.documentId === documentId && p.language === language,
-          )
+          !pages.some((p) => p.documentId === documentId && p.language === language)
         ) {
           pages.push({
             title,
@@ -206,8 +193,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
 
     // Remove duplicates based on URL
     const uniquePages = pages.filter(
-      (page, index, self) =>
-        index === self.findIndex((p) => p.url === page.url),
+      (page, index, self) => index === self.findIndex((p) => p.url === page.url),
     );
 
     console.log(`Found ${uniquePages.length} unique pages`);
@@ -221,9 +207,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
 /**
  * Extract attachments from a single page
  */
-export async function extractAttachmentsFromPage(
-  page: PageInfo,
-): Promise<AttachmentInfo[]> {
+export async function extractAttachmentsFromPage(page: PageInfo): Promise<AttachmentInfo[]> {
   try {
     const response = await axios.get<string>(page.url);
     const $ = cheerio.load(response.data);
@@ -280,9 +264,7 @@ export async function extractAttachmentsFromPage(
     return attachments;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(
-      `Failed to process ${page.title} (${page.language}): ${errorMessage}`,
-    );
+    console.error(`Failed to process ${page.title} (${page.language}): ${errorMessage}`);
     return [];
   }
 }
@@ -334,9 +316,7 @@ export async function processAttachmentsConcurrently(
   concurrency = DEFAULT_CONCURRENCY,
   delay = DEFAULT_DELAY_MS,
 ): Promise<AttachmentInfo[]> {
-  console.log(
-    `Starting attachment processing with concurrency: ${concurrency}`,
-  );
+  console.log(`Starting attachment processing with concurrency: ${concurrency}`);
   const allAttachments: AttachmentInfo[] = [];
 
   for (let i = 0; i < pages.length; i += concurrency) {
@@ -425,14 +405,10 @@ export function getFileNameFromUrl(url: string): string {
 /**
  * Display summary statistics for attachments
  */
-export function displayAttachmentsSummary(
-  attachments: AttachmentInfo[],
-  totalPages: number,
-): void {
+export function displayAttachmentsSummary(attachments: AttachmentInfo[], totalPages: number): void {
   // Remove duplicates based on URL (same file might be linked from multiple pages)
   const uniqueAttachments = attachments.filter(
-    (attachment, index, self) =>
-      index === self.findIndex((a) => a.url === attachment.url),
+    (attachment, index, self) => index === self.findIndex((a) => a.url === attachment.url),
   );
 
   console.log(`\n📊 Results Summary:`);

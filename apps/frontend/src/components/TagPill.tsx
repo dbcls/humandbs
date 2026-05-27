@@ -11,7 +11,7 @@ export function TagPill({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-gray-500 bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500"
+      className="inline-flex items-center gap-1 rounded-full border border-gray-500 bg-gray-200 px-2 py-0.5 font-medium text-gray-500 text-xs"
       style={{
         backgroundColor: color ?? undefined,
         color: color ?? undefined,

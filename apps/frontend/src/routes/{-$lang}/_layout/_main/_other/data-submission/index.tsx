@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { Markdown } from "@/components/Merkdown";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import { Button } from "@/components/ui/button";
@@ -10,11 +11,8 @@ import {
   $getPublishedDocumentVersionList,
 } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
-import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-submission/")({
   component: RouteComponent,
   loader: async ({ context }) => {
     const data = await $getLatestPublishedDocumentVersion({

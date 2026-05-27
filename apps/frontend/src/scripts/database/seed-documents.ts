@@ -1,13 +1,16 @@
-import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { and, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+
 import { buildDatabaseUrl } from "./utils";
 
 const DOCUMENTS_DIR = path.join(
@@ -19,10 +22,7 @@ const DOCUMENTS_DIR = path.join(
 
 const SUPPORTED_LOCALES = i18n.locales;
 
-type DocumentLocaleMap = Map<
-  string,
-  Map<Locale, { content: string; dir: string }>
->;
+type DocumentLocaleMap = Map<string, Map<Locale, { content: string; dir: string }>>;
 
 function extractTitle(content: string): {
   title: string | null;
@@ -42,9 +42,7 @@ function extractTitle(content: string): {
       title = titleMatch[1].trim();
     }
     // Remove frontmatter from content
-    workingContent = workingContent
-      .slice(frontmatterMatch[0].length)
-      .trimStart();
+    workingContent = workingContent.slice(frontmatterMatch[0].length).trimStart();
   }
 
   // If no frontmatter title, try to extract from first # heading
@@ -60,9 +58,7 @@ function extractTitle(content: string): {
   return { title, content: workingContent };
 }
 
-async function ensureSystemUser(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-): Promise<string> {
+async function ensureSystemUser(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
   const [existing] = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -88,9 +84,7 @@ async function ensureSystemUser(
   return created.id;
 }
 
-async function resolveAuthorId(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-): Promise<string> {
+async function resolveAuthorId(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
   const seedId = process.env.SEED_AUTHOR_ID;
   const email = process.env.SEED_AUTHOR_EMAIL;
   const name = process.env.SEED_AUTHOR_NAME || "Seed User";
@@ -139,11 +133,7 @@ async function resolveAuthorId(
 
   if (admin) return admin.id;
 
-  const [anyUser] = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .limit(1)
-    .execute();
+  const [anyUser] = await db.select({ id: schema.user.id }).from(schema.user).limit(1).execute();
 
   if (anyUser) return anyUser.id;
 
@@ -263,9 +253,7 @@ async function seedDocuments(overwrite = false) {
         .execute();
 
       const maxVersion =
-        existingVersions.length > 0
-          ? Math.max(...existingVersions.map((v) => v.versionNumber))
-          : 0;
+        existingVersions.length > 0 ? Math.max(...existingVersions.map((v) => v.versionNumber)) : 0;
 
       const versionNumber = maxVersion === 0 ? 1 : maxVersion;
 

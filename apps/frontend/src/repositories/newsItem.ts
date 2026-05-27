@@ -1,17 +1,6 @@
-import {
-  and,
-  desc,
-  eq,
-  exists,
-  gte,
-  ilike,
-  inArray,
-  lte,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, desc, eq, exists, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 
-import { type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
 import { db } from "@/db/database";
 import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
@@ -134,17 +123,14 @@ function mapTags(
 function mapTranslations(
   translation: NewsTranslationSelect[],
 ): Partial<Record<Locale, NewsItemTranslation>> {
-  return translation.reduce<Partial<Record<Locale, NewsItemTranslation>>>(
-    (acc, curr) => {
-      acc[curr.lang as Locale] = {
-        content: curr.content,
-        title: curr.title,
-        updatedAt: curr.updatedAt,
-      };
-      return acc;
-    },
-    {},
-  );
+  return translation.reduce<Partial<Record<Locale, NewsItemTranslation>>>((acc, curr) => {
+    acc[curr.lang as Locale] = {
+      content: curr.content,
+      title: curr.title,
+      updatedAt: curr.updatedAt,
+    };
+    return acc;
+  }, {});
 }
 
 async function syncTags(
@@ -154,23 +140,16 @@ async function syncTags(
 ) {
   await tx.delete(newsItemTag).where(eq(newsItemTag.newsId, itemId));
   if (tagIds.length > 0) {
-    await tx
-      .insert(newsItemTag)
-      .values(tagIds.map((tagId) => ({ newsId: itemId, tagId })));
+    await tx.insert(newsItemTag).values(tagIds.map((tagId) => ({ newsId: itemId, tagId })));
   }
 }
 
-export function createNewsItemRepository(
-  database: typeof db,
-): NewsItemRepository {
+export function createNewsItemRepository(database: typeof db): NewsItemRepository {
   return {
     async listPublishedTitles({ limit = 5, offset = 0, locale, filters = {} }) {
       const nowStr = toDateString(new Date())!;
 
-      const conditions = [
-        eq(newsTranslation.lang, locale),
-        lte(newsItem.publishedAt, nowStr),
-      ];
+      const conditions = [eq(newsTranslation.lang, locale), lte(newsItem.publishedAt, nowStr)];
 
       if (filters.publishedFrom) {
         conditions.push(gte(newsItem.publishedAt, filters.publishedFrom));
@@ -191,10 +170,7 @@ export function createNewsItemRepository(
               .where(
                 and(
                   eq(newsTranslation.newsId, newsItem.id),
-                  or(
-                    ilike(newsTranslation.title, term),
-                    ilike(newsTranslation.content, term),
-                  ),
+                  or(ilike(newsTranslation.title, term), ilike(newsTranslation.content, term)),
                 ),
               ),
           ),
@@ -268,10 +244,7 @@ export function createNewsItemRepository(
                   .where(
                     and(
                       eq(newsTranslation.newsId, table.id),
-                      or(
-                        ilike(newsTranslation.title, term),
-                        ilike(newsTranslation.content, term),
-                      ),
+                      or(ilike(newsTranslation.title, term), ilike(newsTranslation.content, term)),
                     ),
                   ),
               ),
@@ -347,14 +320,9 @@ export function createNewsItemRepository(
     },
     async create({ authorId, publishedAt, translations, tags = [] }) {
       return database.transaction(async (tx) => {
-        const [created] = await tx
-          .insert(newsItem)
-          .values({ authorId, publishedAt })
-          .returning();
+        const [created] = await tx.insert(newsItem).values({ authorId, publishedAt }).returning();
 
-        const translationEntries = Object.entries(translations).filter(
-          ([, tr]) => !!tr,
-        );
+        const translationEntries = Object.entries(translations).filter(([, tr]) => !!tr);
 
         if (translationEntries.length > 0) {
           await tx
@@ -400,30 +368,26 @@ export function createNewsItemRepository(
           ...result,
 
           tags: mapTags(result.tags),
-          translations: result.translations.reduce<
-            Partial<Record<Locale, NewsItemTranslation>>
-          >((acc, curr) => {
-            acc[curr.lang as Locale] = {
-              content: curr.content,
-              title: curr.title,
-              updatedAt: curr.updatedAt,
-            };
-            return acc;
-          }, {}),
+          translations: result.translations.reduce<Partial<Record<Locale, NewsItemTranslation>>>(
+            (acc, curr) => {
+              acc[curr.lang as Locale] = {
+                content: curr.content,
+                title: curr.title,
+                updatedAt: curr.updatedAt,
+              };
+              return acc;
+            },
+            {},
+          ),
         };
       });
     },
 
     async update({ id, publishedAt, translations, tags = [] }) {
       await database.transaction(async (tx) => {
-        await tx
-          .update(newsItem)
-          .set({ publishedAt })
-          .where(eq(newsItem.id, id));
+        await tx.update(newsItem).set({ publishedAt }).where(eq(newsItem.id, id));
 
-        const translationEntries = Object.entries(translations).filter(
-          ([, tr]) => !!tr,
-        );
+        const translationEntries = Object.entries(translations).filter(([, tr]) => !!tr);
 
         if (translationEntries.length > 0) {
           await tx

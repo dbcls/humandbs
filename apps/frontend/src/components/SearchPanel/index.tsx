@@ -1,15 +1,13 @@
-import type { RangeFilter } from "@humandbs/backend/types";
 import { ChevronRight } from "lucide-react";
-import { startTransition, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
+
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+
+import type { RangeFilter } from "@humandbs/backend/types";
 
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { BooleanFacetItem } from "./BooleanFacetItem";
 import { CheckboxFacetItem } from "./CheckboxFacetItem";
@@ -17,8 +15,8 @@ import { EnumFacetItem } from "./EnumFacetItem";
 import { RangeFacetItem } from "./RangeFacetItem";
 import { TextFacetItem } from "./TextFacetItem";
 import { TextListFacetItem } from "./TextListFacetItem";
-import { isNestedConfig } from "./types";
 import type { DraftState, SearchPanelProps, SectionConfig } from "./types";
+import { isNestedConfig } from "./types";
 
 function buildDraftState(sections: SectionConfig[]): DraftState {
   const draft: DraftState = {};
@@ -60,10 +58,7 @@ function normalizeValue(value: unknown): unknown {
   return value;
 }
 
-function buildPayload(
-  sections: SectionConfig[],
-  draft: DraftState,
-): Record<string, unknown> {
+function buildPayload(sections: SectionConfig[], draft: DraftState): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   const groups: Record<string, Record<string, unknown>> = {};
 
@@ -105,12 +100,8 @@ function PanelHeader({
   const t = useTranslations("Filters");
   if (!hasAnyFilter) return null;
   return (
-    <div className="bg-secondary/10 flex justify-end p-2 pb-[3px]">
-      <Button
-        variant="tableAction"
-        className="h-[21px] px-2 text-[10px]"
-        onClick={onReset}
-      >
+    <div className="flex justify-end bg-secondary/10 p-2 pb-[3px]">
+      <Button variant="tableAction" className="h-[21px] px-2 text-[10px]" onClick={onReset}>
         {t("panel-reset-all")}
       </Button>
     </div>
@@ -178,11 +169,7 @@ function AccordionFilterItem({
         <TextListFacetItem
           key={section.id}
           id={section.id}
-          draftValue={
-            Array.isArray(draft[section.id])
-              ? (draft[section.id] as string[])
-              : []
-          }
+          draftValue={Array.isArray(draft[section.id]) ? (draft[section.id] as string[]) : []}
           onUpdate={onUpdate}
         />
       );
@@ -225,32 +212,33 @@ export function SearchPanel({
   const committedDraft = useMemo(() => buildDraftState(sections), [sections]);
 
   const [draft, setDraft] = useState<DraftState>(committedDraft);
+  const hasPendingUserEditRef = useRef(false);
+  const latestSectionsRef = useRef(sections);
+  const latestOnSetFiltersRef = useRef(onSetFilters);
 
   useEffect(() => {
     setDraft(committedDraft);
   }, [committedDraft]);
 
+  useEffect(() => {
+    latestSectionsRef.current = sections;
+    latestOnSetFiltersRef.current = onSetFilters;
+  });
+
   const hasAnyFilter = hasAnyDraftValue(draft);
 
   const updateDraftField = (id: string, value: unknown) => {
+    hasPendingUserEditRef.current = true;
     setDraft((prev) => ({ ...prev, [id]: value }));
   };
 
   function handleResetAll() {
+    hasPendingUserEditRef.current = true;
     setDraft(Object.fromEntries(sections.map((s) => [s.id, undefined])));
   }
 
-  const handleSearch = () => {
-    const payload = buildPayload(sections, draft);
-
-    startTransition(() => {
-      onSetFilters({ ...payload, page: 1 });
-    });
-  };
-
   const groupedSections = sections.reduce((acc, curr) => {
-    const displayKey =
-      "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
+    const displayKey = "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
     if (!acc[displayKey]) acc[displayKey] = [];
     acc[displayKey].push(curr);
     return acc;
@@ -271,38 +259,35 @@ export function SearchPanel({
     }
   }, []);
 
-  const handleSectionToggle = (
-    key: string,
-    isOpen: boolean,
-    val: SectionConfig[],
-  ) => {
-    const nextSections = isOpen
-      ? [...openSections, key]
-      : openSections.filter((k) => k !== key);
+  const handleSectionToggle = (key: string, isOpen: boolean, val: SectionConfig[]) => {
+    const nextSections = isOpen ? [...openSections, key] : openSections.filter((k) => k !== key);
     setOpenSections(nextSections);
-    localStorage.setItem(
-      "searchPanel_openSections",
-      JSON.stringify(nextSections),
-    );
+    localStorage.setItem("searchPanel_openSections", JSON.stringify(nextSections));
 
     if (isOpen) {
       const nextFacets = { ...openFacets, [key]: val.map((s) => s.id) };
       setOpenFacets(nextFacets);
-      localStorage.setItem(
-        "searchPanel_openFacets",
-        JSON.stringify(nextFacets),
-      );
+      localStorage.setItem("searchPanel_openFacets", JSON.stringify(nextFacets));
     }
   };
 
   const getActiveFacets = (val: SectionConfig[]) => {
-    return val
-      .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-      .map((s) => s.id);
+    return val.filter((s) => normalizeValue(draft[s.id]) !== undefined).map((s) => s.id);
   };
 
   useEffect(() => {
-    const timeout = setTimeout(handleSearch, 500);
+    if (!hasPendingUserEditRef.current) {
+      return;
+    }
+    hasPendingUserEditRef.current = false;
+
+    const timeout = setTimeout(() => {
+      const payload = buildPayload(latestSectionsRef.current, draft);
+
+      startTransition(() => {
+        latestOnSetFiltersRef.current({ ...payload, page: 1 });
+      });
+    }, 500);
 
     return () => {
       clearTimeout(timeout);
@@ -311,11 +296,7 @@ export function SearchPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PanelHeader
-        hasAnyFilter={hasAnyFilter}
-        onReset={handleResetAll}
-        onClose={onClose}
-      />
+      <PanelHeader hasAnyFilter={hasAnyFilter} onReset={handleResetAll} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto">
         {Object.entries(groupedSections).map(([key, val]) => {
@@ -331,14 +312,14 @@ export function SearchPanel({
               }}
               asChild
             >
-              <section className="border-b border-gray-400 last:border-b-0">
+              <section className="border-gray-400 border-b last:border-b-0">
                 {!isTopLevel && (
                   <CollapsibleTrigger asChild>
                     <div className="group sticky top-0 z-20 flex cursor-pointer items-center justify-between bg-[#e8eff8] px-5 py-2.5 transition-colors hover:bg-[#d1dff2]">
-                      <h3 className="text-secondary-foreground text-sm font-bold">
+                      <h3 className="font-bold text-secondary-foreground text-sm">
                         {t(key as any)}
                       </h3>
-                      <ChevronRight className="text-secondary-foreground h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      <ChevronRight className="h-5 w-5 text-secondary-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </div>
                   </CollapsibleTrigger>
                 )}
@@ -351,10 +332,7 @@ export function SearchPanel({
                     onValueChange={(newVal) => {
                       const nextFacets = { ...openFacets, [key]: newVal };
                       setOpenFacets(nextFacets);
-                      localStorage.setItem(
-                        "searchPanel_openFacets",
-                        JSON.stringify(nextFacets),
-                      );
+                      localStorage.setItem("searchPanel_openFacets", JSON.stringify(nextFacets));
                     }}
                   >
                     {val.map((v, i) => (

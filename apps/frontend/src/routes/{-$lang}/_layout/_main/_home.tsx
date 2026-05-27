@@ -1,26 +1,23 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Search } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { Download, Search, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
-import SubmitDataIcon from "@/assets/submit-data.svg?react";
-import UseDataIcon from "@/assets/use-data.svg?react";
+import { lazy, Suspense, useState } from "react";
+
 import { Card } from "@/components/Card";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/ui/button";
-import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { Input } from "@/components/Input";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
+import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
   loader: ({ context }) => {
-    context.queryClient.ensureQueryData(
-      getNewsTitlesQueryOptions({ locale: context.lang }),
-    );
+    context.queryClient.ensureQueryData(getNewsTitlesQueryOptions({ locale: context.lang }));
   },
   errorComponent: () => <div>Oh no, an error!</div>,
 });
@@ -41,7 +38,7 @@ function RouteComponent() {
     // All that after the Navbar component
     <section className="flex w-full flex-col items-stretch gap-4">
       <section className="flex h-fit items-start justify-between gap-4">
-        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
+        <div className="prose-h1:mt-8 prose-h1:mb-0 flex prose-h1:w-full flex-1 flex-col items-center rounded-md bg-white p-8 pb-24 prose-h1:text-left prose-h1:font-bold prose-h1:text-lg prose-h1:text-secondary">
           <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
@@ -90,39 +87,33 @@ function RouteComponent() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Button
                 variant={"accent"}
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-submission" });
                 }}
-                size={"xl"}
-                className="relative block h-[6.8rem] w-[27rem] text-center"
+                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
+                <Upload className="h-10 w-10 shrink-0" />
                 <span>{t("data-submission-button")}</span>
-                <SubmitDataIcon className="absolute right-2 bottom-2 h-auto w-40" />
               </Button>
 
               <Button
                 variant={"action"}
-                size={"xl"}
-                className="relative block h-[6.8rem] w-[27rem] text-center"
+                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-use" });
                 }}
               >
+                <Download className="h-10 w-10 shrink-0" />
                 <span>{t("data-usage-button")}</span>
-                <UseDataIcon className="absolute bottom-2 left-0 h-auto w-40" />
               </Button>
             </div>
           </div>
         </div>
 
-        <Card
-          caption={"News"}
-          containerClassName="px-3"
-          className="w-[30rem] shrink-0"
-        >
+        <Card caption={"News"} containerClassName="px-3" className="w-[30rem] shrink-0">
           <ErrorResetBoundary getResetKey={() => "reset"}>
             <Suspense fallback={<SkeletonLoading />}>
               <News />
@@ -132,11 +123,7 @@ function RouteComponent() {
       </section>
       <div className="w-full">
         <Suspense
-          fallback={
-            <div className="flex h-40 w-full items-center justify-center">
-              Loading...
-            </div>
-          }
+          fallback={<div className="flex h-40 w-full items-center justify-center">Loading...</div>}
         >
           <LazyFrontStats />
         </Suspense>
@@ -145,6 +132,4 @@ function RouteComponent() {
   );
 }
 
-const LazyFrontStats = lazy(
-  () => import("@/components/FrontStatsVisualization/index"),
-);
+const LazyFrontStats = lazy(() => import("@/components/FrontStatsVisualization/index"));

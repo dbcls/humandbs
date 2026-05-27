@@ -1,15 +1,12 @@
+import { useStore } from "@tanstack/react-form";
+
 import { cn } from "@/lib/utils";
 
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-
-import { ResetFieldButton } from "./fields/ResetFieldButton";
-import {
-  getFieldDefaultValue,
-  isFieldModified,
-} from "./fields/useFieldModified";
 import { useFieldContext } from "./FormContext";
-import { useStore } from "@tanstack/react-form";
+import { ResetFieldButton } from "./fields/ResetFieldButton";
+import { getFieldDefaultValue, isFieldModified } from "./fields/useFieldModified";
 
 export default function TextField({
   label,
@@ -25,13 +22,10 @@ export default function TextField({
   const field = useFieldContext<string>();
   const isModified = isFieldModified(field);
 
-  const [isValid, errors] = useStore(field.store, (s) => [
-    s.meta.isValid,
-    s.meta.errors,
-  ]);
+  const [isValid, errors] = useStore(field.store, (s) => [s.meta.isValid, s.meta.errors]);
 
   return (
-    <Label className="flex-col items-stretch">
+    <Label className="flex-1 flex-col items-stretch">
       <div
         className={cn("flex items-center gap-2", className, {
           "flex-col items-stretch": type === "col",
@@ -47,21 +41,14 @@ export default function TextField({
           />
           {isModified && (
             <ResetFieldButton
-              onClick={() =>
-                field.handleChange(
-                  (getFieldDefaultValue(field) as string) ?? null,
-                )
-              }
+              onClick={() => field.handleChange((getFieldDefaultValue(field) as string) ?? null)}
             />
           )}
         </div>
         {afterField}
       </div>
       {!isValid && (
-        <em
-          role="alert"
-          className="text-danger inline-block space-y-1.5 text-xs"
-        >
+        <em role="alert" className="inline-block space-y-1.5 text-danger text-xs">
           {errors.map((e, i) => {
             const msg =
               e && typeof e === "object" && "message" in e

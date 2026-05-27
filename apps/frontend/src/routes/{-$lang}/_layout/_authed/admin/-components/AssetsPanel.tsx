@@ -1,5 +1,6 @@
-import { Suspense, useState } from "react";
 import { PanelLeftClose, PanelRight } from "lucide-react";
+
+import { Suspense, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,12 +13,9 @@ export function AssetsPanel() {
 
   return (
     <div
-      className={cn(
-        "relative flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all",
-        {
-          "w-cms-assets-panel": assetsOpen,
-        },
-      )}
+      className={cn("relative flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all", {
+        "w-cms-assets-panel": assetsOpen,
+      })}
     >
       <Button
         onClick={() => setAssetsOpen((prev) => !prev)}

@@ -1,23 +1,22 @@
-import { useState, useRef, useEffect, lazy } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { lazy, useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import type { Locale } from "@/config/i18n";
 import type {
   NavigationFlowchartData,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
 } from "@/config/navigation-flowchart";
+import { cn } from "@/lib/utils";
 import {
   getNavigationEntryPointQueryOptions,
   getNavigationFlowchartByIdQueryOptions,
   getNavigationFlowchartNamesQueryOptions,
 } from "@/serverFunctions/navigationFlowchart";
-import type { Locale } from "@/config/i18n";
 
-const MarkdownClientPreview = lazy(
-  () => import("@/components/markdown/MarkdownClientPreview"),
-);
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 // Legacy shape kept for backward compat with callers not yet migrated
 export interface NavigationData {
@@ -82,7 +81,7 @@ interface BreadcrumbsProps {
 function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
   if (items.length === 0) return null;
   return (
-    <nav className="mb-4 flex items-center gap-2 text-sm text-gray-500">
+    <nav className="mb-4 flex items-center gap-2 text-gray-500 text-sm">
       {items.map((item, i) => {
         const name = locale === "ja" ? item.nameJa : item.nameEn;
         const isLast = i === items.length - 1;
@@ -99,9 +98,7 @@ function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
                 {name}
               </Button>
             ) : (
-              <span className={isLast ? "font-medium text-gray-700" : ""}>
-                {name}
-              </span>
+              <span className={isLast ? "font-medium text-gray-700" : ""}>{name}</span>
             )}
           </span>
         );
@@ -144,8 +141,8 @@ const OptionComponent = ({
   const title = locale === "ja" ? option.title.ja : option.title.en;
   const description = option.description
     ? locale === "ja"
-      ? (option.description.ja || option.description.en)
-      : (option.description.en || option.description.ja)
+      ? option.description.ja || option.description.en
+      : option.description.en || option.description.ja
     : null;
   const linkText =
     locale === "ja"
@@ -168,9 +165,7 @@ const OptionComponent = ({
   const titleBlock = (
     <>
       {title}
-      {description && (
-        <span className="block text-base font-normal">{description}</span>
-      )}
+      {description && <span className="block font-normal text-base">{description}</span>}
     </>
   );
 
@@ -181,6 +176,7 @@ const OptionComponent = ({
       <div
         className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -196,8 +192,7 @@ const OptionComponent = ({
     );
   }
 
-  const resolvedLink =
-    locale === "ja" ? option.link : (option.linkEn ?? option.link);
+  const resolvedLink = locale === "ja" ? option.link : (option.linkEn ?? option.link);
 
   if (resolvedLink) {
     const displayText = linkText ?? resolvedLink;
@@ -207,6 +202,7 @@ const OptionComponent = ({
       <div
         className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -215,7 +211,7 @@ const OptionComponent = ({
             href={resolvedLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="from-accent to-accent-light inline-block rounded bg-gradient-to-r px-8 py-1 text-sm text-white"
+            className="inline-block rounded bg-gradient-to-r from-accent to-accent-light px-8 py-1 text-sm text-white"
           >
             {displayText} →
           </a>
@@ -241,8 +237,8 @@ const OptionComponent = ({
       className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center"
       style={{ height: `calc(100% - ${buttonHeight}px + 32px)` }}
     >
-      <div className="bg-tetriary h-full w-[3px]" />
-      <div className="border-t-tetriary h-0 w-0 border-t-8 border-r-8 border-l-8 border-r-transparent border-l-transparent" />
+      <div className="h-full w-[3px] bg-tetriary" />
+      <div className="h-0 w-0 border-t-8 border-t-tetriary border-r-8 border-r-transparent border-l-8 border-l-transparent" />
     </div>
   ) : null;
 
@@ -253,8 +249,8 @@ const OptionComponent = ({
         onClick={onOptionClick}
         disabled={!isEnabled || isSelected}
         className={cn(optionBaseClasses, {
-          "hover:bg-tetriary cursor-pointer hover:text-white":
-            isEnabled && !isSelected,
+          "cursor-pointer hover:bg-tetriary hover:text-white": isEnabled && !isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -302,20 +298,15 @@ const StepComponent = ({
     <div className="relative">
       <div
         className={cn(
-          "bg-primary rounded-xl px-16 py-7",
-          isCurrent && "ring-secondary-light ring-4",
+          "rounded-xl bg-primary px-16 py-7",
+          isCurrent && "ring-4 ring-secondary-light",
         )}
       >
-        <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
-          {title}
-        </h2>
+        <h2 className="mb-2 text-center font-bold text-4xl text-secondary">{title}</h2>
 
-        <MarkdownClientPreview
-          className="m-auto mb-5 w-2/3 max-w-3xl"
-          source={text}
-        />
+        <MarkdownClientPreview className="m-auto mb-5 w-2/3 max-w-3xl" source={text} />
 
-        <div className="text-tetriary flex flex-wrap justify-center gap-8">
+        <div className="flex flex-wrap justify-center gap-8 text-tetriary">
           {sortedOptions.map((option) => {
             // Arrow only for nextStep pointing to the immediately following step.
             // Linked flowchart options never get an arrow.
@@ -327,10 +318,7 @@ const StepComponent = ({
               ? linkedFlowchartNames[option.linkedFlowchartId]
               : undefined;
             return (
-              <div
-                key={option.id}
-                className="relative w-[25vw] max-w-xl min-w-sm text-center"
-              >
+              <div key={option.id} className="relative w-[25vw] min-w-sm max-w-xl text-center">
                 <OptionComponent
                   option={option}
                   locale={locale}
@@ -375,12 +363,7 @@ function NavigationChartInner({
   locale?: Locale;
   answers: FlowchartAnswers;
   linkedFlowchartNames: Record<string, string>;
-  onAnswerChange: (
-    slug: string,
-    stepId: string,
-    optionId: string,
-    clearStepIds?: string[],
-  ) => void;
+  onAnswerChange: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
   onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
   initialStepId?: string;
 }) {
@@ -407,11 +390,13 @@ function NavigationChartInner({
   };
 
   const [enabledStepIndex, setEnabledStepIndex] = useState(computeEnabledIndex);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const handleOptionClick = (
-    option: NavigationFlowchartOption,
-    stepIndex: number,
-  ) => {
+  useEffect(() => {
+    stepRefs.current[enabledStepIndex]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [enabledStepIndex]);
+
+  const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
     const step = data.steps[stepIndex];
     if (!step) return;
     // Allow clicking any step that is currently enabled (answered or current).
@@ -444,6 +429,9 @@ function NavigationChartInner({
         return (
           <div
             key={step.id}
+            ref={(el) => {
+              stepRefs.current[index] = el;
+            }}
             className={cn(
               "transition-opacity duration-300",
               isEnabled ? "opacity-100" : "opacity-30",
@@ -556,9 +544,7 @@ function NavigationChartEntryPointDB({
       ]
     : [];
 
-  const { data: namesMap = {} } = useQuery(
-    getNavigationFlowchartNamesQueryOptions(linkedIds),
-  );
+  const { data: namesMap = {} } = useQuery(getNavigationFlowchartNamesQueryOptions(linkedIds));
 
   const linkedFlowchartNames: Record<string, string> = {};
   for (const [id, names] of Object.entries(namesMap)) {
@@ -607,9 +593,7 @@ function NavigationChartByIdDB({
   onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
   initialStepId?: string;
 }) {
-  const { data } = useQuery(
-    getNavigationFlowchartByIdQueryOptions(flowchartId, locale),
-  );
+  const { data } = useQuery(getNavigationFlowchartByIdQueryOptions(flowchartId, locale));
 
   const linkedIds = data
     ? [
@@ -622,9 +606,7 @@ function NavigationChartByIdDB({
       ]
     : [];
 
-  const { data: namesMap = {} } = useQuery(
-    getNavigationFlowchartNamesQueryOptions(linkedIds),
-  );
+  const { data: namesMap = {} } = useQuery(getNavigationFlowchartNamesQueryOptions(linkedIds));
 
   const linkedFlowchartNames: Record<string, string> = {};
   for (const [id, names] of Object.entries(namesMap)) {
@@ -661,9 +643,7 @@ function LegacyNavigationChart({
   navigate?: (options: { to: string }) => void;
 }) {
   const [enabledStepIndex, setEnabledStepIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<number, string>
-  >({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, string>>({});
 
   // Convert legacy steps to new shape for rendering
   const newSteps: NavigationFlowchartStep[] = data.steps.map((s) => ({
@@ -679,15 +659,8 @@ function LegacyNavigationChart({
     })),
   }));
 
-  const handleOptionClick = (
-    option: NavigationFlowchartOption,
-    stepIndex: number,
-  ) => {
-    if (
-      stepIndex > enabledStepIndex ||
-      selectedOptions[stepIndex] === option.id
-    )
-      return;
+  const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
+    if (stepIndex > enabledStepIndex || selectedOptions[stepIndex] === option.id) return;
     if (option.link && !option.link.startsWith("http")) {
       navigate?.({ to: option.link });
       return;
@@ -726,5 +699,5 @@ function LegacyNavigationChart({
   );
 }
 
-export { NavigationChart, Breadcrumbs, NavigationChartInner };
 export type { BreadcrumbItem };
+export { Breadcrumbs, NavigationChart, NavigationChartInner };

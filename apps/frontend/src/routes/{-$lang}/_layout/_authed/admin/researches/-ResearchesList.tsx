@@ -1,41 +1,32 @@
-import {
-  ResearchStatusSchema,
-  type ResearchSearchResponse,
-  type ResearchSummary,
-} from "@humandbs/backend/types";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseInfiniteQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { Trash2Icon } from "lucide-react";
+
 import { Suspense, useEffect, useRef } from "react";
 
+import type { ResearchSearchResponse, ResearchSummary } from "@humandbs/backend/types";
+import { ResearchStatusSchema } from "@humandbs/backend/types";
+
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
+import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Locale } from "@/config/i18n";
 import { useCan } from "@/hooks/useCan";
+import { useFilters } from "@/hooks/useFilters";
+import { cn } from "@/lib/utils";
 import {
   $deleteResearch,
   getAuthedResearchesInfiniteQueryOptions,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { FilterSearchInput } from "@/components/FilterSearchInput";
-import { StatusTag } from "@/components/StatusTag";
-import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useFilters } from "@/hooks/useFilters";
-import { cn } from "@/lib/utils";
-import { Trash2Icon } from "lucide-react";
 import { AdminListItem } from "../-components/AdminListItem";
-import {
-  createDummyResearch,
-  DUMMY_HUM_ID,
-  isDummyResearch,
-} from "./-dummyResearch";
 import { NoItemsMessage } from "../-components/NoItemsMessage";
+import { createDummyResearch, DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
 
 type ResearchesInfiniteData = {
   pages: Array<{ data: ResearchSummary[] }>;
@@ -74,9 +65,7 @@ export function ResearchesList({
       .getQueriesData<ResearchesInfiniteData>({
         queryKey: ["researches", "list", "infinite"],
       })
-      .some(([, data]) =>
-        data?.pages.some((page) => page.data.some(hasDummyResearch)),
-      );
+      .some(([, data]) => data?.pages.some((page) => page.data.some(hasDummyResearch)));
 
   function handleAddNew() {
     const dummy = createDummyResearch(lang);
@@ -84,9 +73,7 @@ export function ResearchesList({
       { queryKey: ["researches", "list", "infinite"] },
       (old) => {
         if (!old) return old;
-        if (
-          old.pages.some((page) => page.data.some((r) => hasDummyResearch(r)))
-        ) {
+        if (old.pages.some((page) => page.data.some((r) => hasDummyResearch(r)))) {
           return old;
         }
         return {
@@ -116,32 +103,31 @@ export function ResearchesList({
         queryKey: ["researches", "list"],
       });
 
-      queryClient.setQueriesData<
-        ResearchSearchResponse | ResearchesInfiniteData
-      >({ queryKey: ["researches", "list"] }, (oldData) => {
-        if (!oldData) return oldData;
+      queryClient.setQueriesData<ResearchSearchResponse | ResearchesInfiniteData>(
+        { queryKey: ["researches", "list"] },
+        (oldData) => {
+          if (!oldData) return oldData;
 
-        if ("pages" in oldData) {
+          if ("pages" in oldData) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page) => ({
+                ...page,
+                data: page.data.map((research) =>
+                  research.humId === humId ? markResearchDeleted(research) : research,
+                ),
+              })),
+            };
+          }
+
           return {
             ...oldData,
-            pages: oldData.pages.map((page) => ({
-              ...page,
-              data: page.data.map((research) =>
-                research.humId === humId
-                  ? markResearchDeleted(research)
-                  : research,
-              ),
-            })),
+            data: oldData.data.map((research) =>
+              research.humId === humId ? markResearchDeleted(research) : research,
+            ),
           };
-        }
-
-        return {
-          ...oldData,
-          data: oldData.data.map((research) =>
-            research.humId === humId ? markResearchDeleted(research) : research,
-          ),
-        };
-      });
+        },
+      );
 
       return { previousLists };
     },
@@ -251,7 +237,7 @@ function ListItems({
     <>
       <div
         className={cn(
-          "h-full overflow-x-hidden overflow-y-auto transition-opacity",
+          "h-full overflow-y-auto overflow-x-hidden transition-opacity",
           isFetching && !isFetchingNextPage && "opacity-60",
         )}
       >
@@ -260,15 +246,13 @@ function ListItems({
             const isActive = research.humId === selectedHumId;
             const isDummy = isDummyResearch(research.humId);
 
-            const translations = Object.entries(research.title).map(
-              ([lang, title]) => ({
-                lang,
-                statuses: { [research.status]: title },
-              }),
-            );
+            const translations = Object.entries(research.title).map(([lang, title]) => ({
+              lang,
+              statuses: { [research.status]: title },
+            }));
 
             return (
-              <li key={`${research.humId}-${index}`}>
+              <li key={`${research.humId}`}>
                 <ListItem
                   role="menuitem"
                   onClick={() => onSelectResearch(research.humId)}
@@ -280,12 +264,7 @@ function ListItems({
                   <AdminListItem
                     id={research.humId}
                     translations={translations}
-                    meta={
-                      <StatusTag
-                        className="capitalize"
-                        status={research.status}
-                      />
-                    }
+                    meta={<StatusTag className="capitalize" status={research.status} />}
                     hideUnpublishedDot
                     menuItems={
                       canDelete && !isDummy
@@ -305,9 +284,7 @@ function ListItems({
                     }
                   />
                 </ListItem>
-                {index < allResearches.length - 1 && (
-                  <hr className="my-2 border-gray-200" />
-                )}
+                {index < allResearches.length - 1 && <hr className="my-2 border-gray-200" />}
               </li>
             );
           })}
@@ -315,7 +292,7 @@ function ListItems({
 
         <div ref={sentinelRef} className="h-4 shrink-0">
           {isFetchingNextPage && (
-            <span className="text-foreground-light block py-2 text-center text-xs">
+            <span className="block py-2 text-center text-foreground-light text-xs">
               Loading more…
             </span>
           )}
@@ -324,8 +301,8 @@ function ListItems({
 
       {isFetching && !isFetchingNextPage ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-          <div className="bg-primary/20 mx-2 h-1 rounded-full">
-            <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+          <div className="mx-2 h-1 rounded-full bg-primary/20">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
           </div>
         </div>
       ) : null}
@@ -341,9 +318,7 @@ const statuses = [...ResearchStatusSchema.options, "all"] as const;
 
 /** Research filters on top of the Researches Card */
 function ResearchFilters() {
-  const { filters, setFilters } = useFilters(
-    "/{-$lang}/_layout/_authed/admin/researches/",
-  );
+  const { filters, setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
 
   return (
     <div className="flex flex-col gap-2">
@@ -356,20 +331,13 @@ function ResearchFilters() {
         }}
       >
         {statuses.map((status) => (
-          <ToggleGroupItem
-            className="cursor-pointer capitalize"
-            key={status}
-            value={status}
-          >
+          <ToggleGroupItem className="cursor-pointer capitalize" key={status} value={status}>
             {status}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
 
-      <FilterSearchInput
-        value={filters.q}
-        onChange={(q) => setFilters({ q })}
-      />
+      <FilterSearchInput value={filters.q} onChange={(q) => setFilters({ q })} />
     </div>
   );
 }

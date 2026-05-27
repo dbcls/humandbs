@@ -1,20 +1,10 @@
-import {
-  ClientOnly,
-  useNavigate,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
-import {
-  LucideLogIn,
-  LucideLogOut,
-  MoreVertical,
-  ShoppingCart,
-} from "lucide-react";
-import { Fragment, forwardRef, useLayoutEffect, useRef, useState } from "react";
+import { ClientOnly, useNavigate, useRouteContext, useRouter } from "@tanstack/react-router";
+import { LucideLogIn, LucideLogOut, MoreVertical, ShoppingCart } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import { Fragment, forwardRef, useLayoutEffect, useRef, useState } from "react";
+
 import Logo from "@/assets/Logo.png";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -24,12 +14,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-navigation";
 import { asLinkProps } from "@/config/site-navigation";
-import type {
-  ResolvedNavbarItem,
-  ResolvedSiteNavigation,
-} from "@/config/site-navigation";
 import { useCart } from "@/hooks/useCart";
+import { cn } from "@/lib/utils";
 
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
@@ -45,8 +33,7 @@ export function Navbar() {
     from: "/{-$lang}/_layout",
   });
 
-  const items: ResolvedNavbarItem[] = (siteNavigation as ResolvedSiteNavigation)
-    .navbar;
+  const items: ResolvedNavbarItem[] = (siteNavigation as ResolvedSiteNavigation).navbar;
   const navContainerRef = useRef<HTMLDivElement>(null);
   const navListRef = useRef<HTMLUListElement>(null);
   const measureItemRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -62,11 +49,8 @@ export function Navbar() {
     const measure = () => {
       const containerWidth = container.clientWidth;
       const gap = getNavigationListGap(navListRef.current);
-      const itemWidths = items.map(
-        (_, index) => measureItemRefs.current[index]?.scrollWidth ?? 0,
-      );
-      const overflowTriggerWidth =
-        measureOverflowTriggerRef.current?.scrollWidth ?? 0;
+      const itemWidths = items.map((_, index) => measureItemRefs.current[index]?.scrollWidth ?? 0);
+      const overflowTriggerWidth = measureOverflowTriggerRef.current?.scrollWidth ?? 0;
 
       const nextLayout = getNavbarOverflowLayout({
         items,
@@ -105,13 +89,8 @@ export function Navbar() {
         to="/{-$lang}"
         params={{ lang }}
       >
-        <img
-          src={Logo}
-          width={200}
-          height={50}
-          className="block w-40 md:w-80"
-        />
-        <div className="text-center text-xs font-semibold whitespace-nowrap">
+        <img src={Logo} width={200} height={50} className="block w-40 md:w-80" />
+        <div className="whitespace-nowrap text-center font-semibold text-xs">
           {tCommon("humandb")}
         </div>
       </Link>
@@ -119,7 +98,7 @@ export function Navbar() {
       <NavigationMenu
         ref={navContainerRef}
         viewport={false}
-        className="relative hidden w-full max-w-none min-w-0 flex-1 justify-start md:flex"
+        className="relative hidden w-full min-w-0 max-w-none flex-1 justify-start md:flex"
       >
         <NavigationMenuList
           ref={navListRef}
@@ -162,9 +141,7 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-        <ClientOnly
-          fallback={<ShoppingCart className="text-secondary size-6" />}
-        >
+        <ClientOnly fallback={<ShoppingCart className="size-6 text-secondary" />}>
           <ShoppingCartButton />
         </ClientOnly>
         <UserMenu />
@@ -201,7 +178,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
-            <ul className="w-max max-w-[400px] min-w-full">
+            <ul className="w-max min-w-full max-w-[400px]">
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
@@ -223,11 +200,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
         <>
           {item.linkOptions ? (
             <NavigationMenuLink asChild>
-              <Link
-                variant="nav"
-                className="whitespace-nowrap"
-                {...asLinkProps(item.linkOptions)}
-              >
+              <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
                 {item.label}
               </Link>
             </NavigationMenuLink>
@@ -253,10 +226,7 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
             {items.map((item, index) => (
               <Fragment key={item.id}>
                 {index > 0 && (
-                  <li
-                    className="bg-primary-translucent -mx-4 my-2 h-px"
-                    role="separator"
-                  />
+                  <li className="-mx-4 my-2 h-px bg-primary-translucent" role="separator" />
                 )}
                 <OverflowMenuItem item={item} />
               </Fragment>
@@ -268,26 +238,25 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
   );
 }
 
-const OverflowTrigger = forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<typeof Button>
->(({ className, ...props }, ref) => {
-  return (
-    <Button
-      ref={ref}
-      variant="plain"
-      size="icon"
-      className={cn(
-        "hover:bg-hover text-secondary rounded-full transition-colors",
-        className ?? "size-10",
-      )}
-      {...props}
-    >
-      <MoreVertical className="size-6" strokeWidth={2.5} />
-      <span className="sr-only">More navigation items</span>
-    </Button>
-  );
-});
+const OverflowTrigger = forwardRef<HTMLButtonElement, React.ComponentProps<typeof Button>>(
+  ({ className, ...props }, ref) => {
+    return (
+      <Button
+        ref={ref}
+        variant="plain"
+        size="icon"
+        className={cn(
+          "rounded-full text-secondary transition-colors hover:bg-hover",
+          className ?? "size-10",
+        )}
+        {...props}
+      >
+        <MoreVertical className="size-6" strokeWidth={2.5} />
+        <span className="sr-only">More navigation items</span>
+      </Button>
+    );
+  },
+);
 OverflowTrigger.displayName = "OverflowTrigger";
 
 function getNavigationListGap(list: HTMLUListElement | null) {
@@ -320,9 +289,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
           </Link>
         </NavigationMenuLink>
       ) : (
-        <span className="block w-full px-2 py-1.5 text-xs text-neutral-400">
-          {item.label}
-        </span>
+        <span className="block w-full px-2 py-1.5 text-neutral-400 text-xs">{item.label}</span>
       )}
       {item.children?.length ? (
         <ul className="flex flex-col gap-1">
@@ -347,10 +314,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
 }
 
 function areIndexArraysEqual(left: number[], right: number[]) {
-  return (
-    left.length === right.length &&
-    left.every((value, index) => value === right[index])
-  );
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function UserMenu() {
@@ -399,7 +363,7 @@ function UserMenu() {
           variant={"outline"}
           className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         >
-          <span className="text-xs font-bold">{userInitials}</span>
+          <span className="font-bold text-xs">{userInitials}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -412,10 +376,8 @@ function UserMenu() {
           <Button
             variant={"plain"}
             type="button"
-            className="hover:bg-hover block w-full text-left text-inherit"
-            onClick={() =>
-              navigate({ to: "/{-$lang}/admin", params: { lang } })
-            }
+            className="block w-full text-left text-inherit hover:bg-hover"
+            onClick={() => navigate({ to: "/{-$lang}/admin", params: { lang } })}
           >
             My Page
           </Button>
@@ -460,11 +422,11 @@ function ShoppingCartButton() {
       onClick={handleClick}
     >
       {cart.length > 0 ? (
-        <span className="bg-accent absolute top-0 right-0 w-fit min-w-4 rounded-full p-0.5 text-[10px] leading-none text-white">
+        <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-[10px] text-white leading-none">
           {cart.length}
         </span>
       ) : null}
-      <ShoppingCart className="text-secondary size-6" />
+      <ShoppingCart className="size-6 text-secondary" />
     </Button>
   );
 }

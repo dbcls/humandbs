@@ -1,6 +1,7 @@
-import { Menu } from "lucide-react";
-import { useState } from "react";
 import { useRouteContext } from "@tanstack/react-router";
+import { Menu } from "lucide-react";
+
+import { useState } from "react";
 
 import {
   Accordion,
@@ -9,16 +10,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Link } from "./Link";
-import { asLinkProps } from "@/config/site-navigation";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { ResolvedSiteNavigation } from "@/config/site-navigation";
+import { asLinkProps } from "@/config/site-navigation";
+
+import { Link } from "./Link";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -42,9 +38,7 @@ export function MobileNav() {
               if (item.children && item.children.length > 0) {
                 return (
                   <AccordionItem key={item.id} value={item.id}>
-                    <AccordionTrigger className="py-3 text-base">
-                      {item.label}
-                    </AccordionTrigger>
+                    <AccordionTrigger className="py-3 text-base">{item.label}</AccordionTrigger>
                     <AccordionContent>
                       <div className="flex flex-col gap-2 pl-4">
                         {item.linkOptions && (
@@ -53,7 +47,7 @@ export function MobileNav() {
                             variant="nav"
                             {...asLinkProps(item.linkOptions)}
                             onClick={() => setOpen(false)}
-                            className="block py-2 text-sm font-medium"
+                            className="block py-2 font-medium text-sm"
                           >
                             {item.label}
                           </Link>
@@ -83,7 +77,7 @@ export function MobileNav() {
                     variant="nav"
                     {...asLinkProps(item.linkOptions)}
                     onClick={() => setOpen(false)}
-                    className="block text-base font-medium"
+                    className="block font-medium text-base"
                   >
                     {item.label}
                   </Link>

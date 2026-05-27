@@ -6,14 +6,16 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
+
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
-import { useAppForm } from "@/components/form-context/FormContext";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,32 +28,33 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
 import {
+  $updateDocumentHideRevisions,
   $updateDocumentHideTOC,
   getDocumentQueryOptions,
 } from "@/serverFunctions/document";
+import type {
+  DocVersionListItemResponse,
+  DocVersionResponse,
+} from "@/serverFunctions/documentVersion";
 import {
   $createDocumentVersion,
   $publishDocumentVersionDraft,
   $resetDocumentVersionDraft,
   $saveDocumentVersionDraft,
   $unpublishDocumentVersion,
-  type DocVersionListItemResponse,
-  type DocVersionResponse,
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
-import { StatusTag, Tag } from "@/components/StatusTag";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
-const MarkdownClientPreview = lazy(
-  () => import("@/components/markdown/MarkdownClientPreview"),
-);
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 interface FormMeta {
   submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;
@@ -79,13 +82,9 @@ export function DocumentVersion({
   version?: number;
   onSelectVersion: (versionNumber: number) => void;
 }) {
-  const { selectedVersionNumber, versions } = useDocVersionsList(
-    contentId,
-    version,
-  );
+  const { selectedVersionNumber, versions } = useDocVersionsList(contentId, version);
 
-  const { mutate: createVersion, isPending: isCreatingVersion } =
-    useCreateVersion(contentId);
+  const { mutate: createVersion, isPending: isCreatingVersion } = useCreateVersion(contentId);
 
   if (versions.length === 0) {
     return (
@@ -132,6 +131,9 @@ export function DocumentVersion({
           <Suspense>
             <ShowTOCCheckbox contentId={contentId} />
           </Suspense>
+          <Suspense>
+            <ShowRevisionsCheckbox contentId={contentId} />
+          </Suspense>
         </span>
       }
     >
@@ -161,24 +163,17 @@ function DocumentVersionContent({
 
   const savingStatuses = useMutationState({
     filters: {
-      mutationKey: [
-        "documentVersion",
-        contentId,
-        versionNumber,
-        "draft",
-        "save",
-      ],
+      mutationKey: ["documentVersion", contentId, versionNumber, "draft", "save"],
     },
     select: (mutation) => mutation.state.status,
   });
 
-  const { isPending: isPublishPending } = usePublishDraft(
+  const { isPending: isPublishPending } = usePublishDraft(contentId, versionNumber);
+
+  const { mutate: unpublishVersion, isPending: isUnpublishPending } = useUnpublishVersion(
     contentId,
     versionNumber,
   );
-
-  const { mutate: unpublishVersion, isPending: isUnpublishPending } =
-    useUnpublishVersion(contentId, versionNumber);
 
   const [baselineTranslations, setBaselineTranslations] = useState(
     () => selectedVersionContent?.translations ?? {},
@@ -203,10 +198,8 @@ function DocumentVersionContent({
           const published = state.values.translations[loc]?.published;
           const changed =
             state.isValid &&
-            (normalizeDocTextValue(draft?.content) !==
-              normalizeDocTextValue(published?.content) ||
-              normalizeDocTextValue(draft?.title) !==
-                normalizeDocTextValue(published?.title));
+            (normalizeDocTextValue(draft?.content) !== normalizeDocTextValue(published?.content) ||
+              normalizeDocTextValue(draft?.title) !== normalizeDocTextValue(published?.title));
           return [loc, changed];
         }),
       ) as Record<Locale, boolean>,
@@ -228,9 +221,7 @@ function DocumentVersionContent({
                 variant="outline"
                 size="lg"
                 disabled={!dirtyLocales[lang]}
-                onClick={() =>
-                  form.handleSubmit({ submitAction: "resetDraft" })
-                }
+                onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
               >
                 Reset
               </Button>
@@ -263,11 +254,7 @@ function DocumentVersionContent({
         </TabsList>
 
         {i18n.locales.map((loc) => (
-          <TabsContent
-            key={loc}
-            value={loc}
-            className="flex min-h-0 flex-1 flex-col"
-          >
+          <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col">
             <Tabs
               className="flex min-h-0 flex-1 flex-col"
               defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
@@ -305,10 +292,8 @@ function DocumentVersionContent({
               >
                 <form.Subscribe
                   selector={(state) => ({
-                    draftContent:
-                      state.values.translations[loc]?.draft?.content ?? "",
-                    draftTitle:
-                      state.values.translations[loc]?.draft?.title ?? "",
+                    draftContent: state.values.translations[loc]?.draft?.content ?? "",
+                    draftTitle: state.values.translations[loc]?.draft?.title ?? "",
                   })}
                 >
                   {({ draftContent, draftTitle }) => (
@@ -377,12 +362,11 @@ function DocumentVersionContent({
                 className="flex min-h-0 flex-1 flex-col gap-2"
                 value={DOCUMENT_VERSION_STATUS.PUBLISHED}
               >
-                {!selectedVersionContent.translations[loc]?.published
-                  ?.content ? (
+                {!selectedVersionContent.translations[loc]?.published?.content ? (
                   <div>No published content</div>
                 ) : (
                   <>
-                    <div className="border-foreground-light flex justify-end border-b pb-2">
+                    <div className="flex justify-end border-foreground-light border-b pb-2">
                       <Button
                         variant="outline"
                         size="lg"
@@ -394,10 +378,7 @@ function DocumentVersionContent({
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto">
                       <MarkdownClientPreview
-                        source={
-                          selectedVersionContent.translations[loc]?.published
-                            ?.content ?? ""
-                        }
+                        source={selectedVersionContent.translations[loc]?.published?.content ?? ""}
                       />
                     </div>
                   </>
@@ -417,8 +398,7 @@ function ShowTOCCheckbox({ contentId }: { contentId: string }) {
   const { data: doc } = useSuspenseQuery(docQO);
 
   const { mutate: updateHideTOC, isPending } = useMutation({
-    mutationFn: (hideTOC: boolean) =>
-      $updateDocumentHideTOC({ data: { contentId, hideTOC } }),
+    mutationFn: (hideTOC: boolean) => $updateDocumentHideTOC({ data: { contentId, hideTOC } }),
     onMutate: async (hideTOC) => {
       await queryClient.cancelQueries(docQO);
       const prev = queryClient.getQueryData(docQO.queryKey);
@@ -450,6 +430,45 @@ function ShowTOCCheckbox({ contentId }: { contentId: string }) {
   );
 }
 
+function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
+  const queryClient = useQueryClient();
+  const docQO = getDocumentQueryOptions(contentId);
+  const { data: doc } = useSuspenseQuery(docQO);
+
+  const { mutate: updateHideRevisions, isPending } = useMutation({
+    mutationFn: (hideRevisions: boolean) =>
+      $updateDocumentHideRevisions({ data: { contentId, hideRevisions } }),
+    onMutate: async (hideRevisions) => {
+      await queryClient.cancelQueries(docQO);
+      const prev = queryClient.getQueryData(docQO.queryKey);
+      queryClient.setQueryData(docQO.queryKey, (old: typeof doc | undefined) =>
+        old ? { ...old, hideRevisions } : old,
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(docQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries(docQO),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-revisions"
+        checked={!(doc?.hideRevisions ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideRevisions(!checked)}
+      />
+      <Label htmlFor="show-revisions" className="cursor-pointer font-normal">
+        Show previous versions
+      </Label>
+    </div>
+  );
+}
+
 function useDocumentVersionForm({
   initialValues,
   setBaselineTranslations,
@@ -457,17 +476,12 @@ function useDocumentVersionForm({
   versionNumber,
 }: {
   initialValues: FormData;
-  setBaselineTranslations: React.Dispatch<
-    React.SetStateAction<FormData["translations"]>
-  >;
+  setBaselineTranslations: React.Dispatch<React.SetStateAction<FormData["translations"]>>;
   contentId: string;
   versionNumber: number;
 }) {
   const { mutate: saveDraft } = useSaveDraft(contentId, versionNumber);
-  const { mutateAsync: publishDraft } = usePublishDraft(
-    contentId,
-    versionNumber,
-  );
+  const { mutateAsync: publishDraft } = usePublishDraft(contentId, versionNumber);
   const { mutateAsync: resetDraft } = useResetDraft(contentId, versionNumber);
 
   const isIgnoreRef = useRef(false);
@@ -497,10 +511,8 @@ function useDocumentVersionForm({
           isIgnoreRef.current = true;
           resetDraft({ locale: value.lang })
             .then(() => {
-              const publishedTitle =
-                value.translations?.[value.lang]?.published?.title ?? "";
-              const publishedContent =
-                value.translations?.[value.lang]?.published?.content ?? "";
+              const publishedTitle = value.translations?.[value.lang]?.published?.title ?? "";
+              const publishedContent = value.translations?.[value.lang]?.published?.content ?? "";
 
               const newTranslations = {
                 ...value.translations,
@@ -562,10 +574,8 @@ function useDocumentVersionForm({
             const draft = value.translations[loc]?.draft;
             const published = value.translations[loc]?.published;
             return (
-              normalizeDocTextValue(draft?.content) !==
-                normalizeDocTextValue(published?.content) ||
-              normalizeDocTextValue(draft?.title) !==
-                normalizeDocTextValue(published?.title)
+              normalizeDocTextValue(draft?.content) !== normalizeDocTextValue(published?.content) ||
+              normalizeDocTextValue(draft?.title) !== normalizeDocTextValue(published?.title)
             );
           });
 
@@ -635,14 +645,11 @@ function DocumentVersionSelector({
   versionNumber,
   contentId,
 }: DocumentVersionSelectorProps) {
-  const { mutate: createVersion, isPending: isCreating } =
-    useCreateVersion(contentId);
+  const { mutate: createVersion, isPending: isCreating } = useCreateVersion(contentId);
 
   if (typeof versionNumber !== "number") return null;
 
-  const selectedItem = items.find(
-    (item) => item.versionNumber === versionNumber,
-  );
+  const selectedItem = items.find((item) => item.versionNumber === versionNumber);
 
   const handleCreateVersion = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -666,9 +673,7 @@ function DocumentVersionSelector({
     >
       <SelectTrigger className="h-auto w-auto min-w-48 py-1">
         <SelectValue>
-          {selectedItem && (
-            <DocumentVersionSelectorItem item={selectedItem} compact />
-          )}
+          {selectedItem && <DocumentVersionSelectorItem item={selectedItem} compact />}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -677,21 +682,13 @@ function DocumentVersionSelector({
             <SelectItem
               key={item.versionNumber}
               value={`${item.versionNumber}`}
-              className="group focus:bg-secondary-light py-2"
+              className="group py-2 focus:bg-secondary-light"
             >
               <DocumentVersionSelectorItem item={item} />
             </SelectItem>
           ))}
-          <Button
-            variant="accent"
-            onClick={handleCreateVersion}
-            disabled={isCreating}
-          >
-            {isCreating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
-            )}
+          <Button variant="accent" onClick={handleCreateVersion} disabled={isCreating}>
+            {isCreating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             New Version
           </Button>
         </SelectGroup>
@@ -714,10 +711,7 @@ function DocumentVersionSelectorItem({
         <ul className="space-y-2">
           {item.translations.map((tr) => (
             <li key={tr.locale} className="flex items-start gap-1">
-              <Tag
-                tag={tr.locale}
-                className="group-focus:border-white group-focus:text-white"
-              />
+              <Tag tag={tr.locale} className="group-focus:border-white group-focus:text-white" />
               <ul className="flex flex-col items-start gap-0.5">
                 {tr.statuses.map((st) => (
                   <li key={st.status} className="flex items-start gap-2">
@@ -725,9 +719,7 @@ function DocumentVersionSelectorItem({
                       status={st.status}
                       className="group-focus:border-white group-focus:text-white"
                     />
-                    <span className="max-w-48 truncate">
-                      {st.title || "(no title)"}
-                    </span>
+                    <span className="max-w-48 truncate">{st.title || "(no title)"}</span>
                   </li>
                 ))}
               </ul>
@@ -750,8 +742,10 @@ function useDocVersionQueryOptions(contentId: string, versionNumber: number) {
 }
 
 function useSaveDraft(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } =
-    useDocVersionQueryOptions(contentId, versionNumber);
+  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
+    contentId,
+    versionNumber,
+  );
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -824,27 +818,17 @@ function useSaveDraft(contentId: string, versionNumber: number) {
 }
 
 function usePublishDraft(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } =
-    useDocVersionQueryOptions(contentId, versionNumber);
+  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
+    contentId,
+    versionNumber,
+  );
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: [
-      "documentVersion",
-      contentId,
-      versionNumber,
-      "published",
-      "publish",
-    ],
+    mutationKey: ["documentVersion", contentId, versionNumber, "published", "publish"],
     mutationFn: async ({ locale }: { locale: Locale }) => {
       await waitUntilNoMutations(queryClient, {
-        mutationKey: [
-          "documentVersion",
-          contentId,
-          versionNumber,
-          "draft",
-          "save",
-        ],
+        mutationKey: ["documentVersion", contentId, versionNumber, "draft", "save"],
       });
       return $publishDocumentVersionDraft({
         data: { contentId, versionNumber, locale },
@@ -883,16 +867,10 @@ function usePublishDraft(contentId: string, versionNumber: number) {
     },
     onError: (_, __, context) => {
       if (context?.previousVersion) {
-        queryClient.setQueryData(
-          docVersionQO.queryKey,
-          context.previousVersion,
-        );
+        queryClient.setQueryData(docVersionQO.queryKey, context.previousVersion);
       }
       if (context?.previousList) {
-        queryClient.setQueryData(
-          docVersionsListQO.queryKey,
-          context.previousList,
-        );
+        queryClient.setQueryData(docVersionsListQO.queryKey, context.previousList);
       }
     },
     onSettled: async () => {
@@ -903,18 +881,14 @@ function usePublishDraft(contentId: string, versionNumber: number) {
 }
 
 function useResetDraft(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } =
-    useDocVersionQueryOptions(contentId, versionNumber);
+  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
+    contentId,
+    versionNumber,
+  );
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: [
-      "documentVersion",
-      contentId,
-      versionNumber,
-      "draft",
-      "reset",
-    ],
+    mutationKey: ["documentVersion", contentId, versionNumber, "draft", "reset"],
     mutationFn: ({ locale }: { locale: Locale }) =>
       $resetDocumentVersionDraft({
         data: { contentId, versionNumber, locale },
@@ -960,18 +934,14 @@ function useResetDraft(contentId: string, versionNumber: number) {
 }
 
 function useUnpublishVersion(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } =
-    useDocVersionQueryOptions(contentId, versionNumber);
+  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
+    contentId,
+    versionNumber,
+  );
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: [
-      "documentVersion",
-      contentId,
-      versionNumber,
-      "published",
-      "unpublish",
-    ],
+    mutationKey: ["documentVersion", contentId, versionNumber, "published", "unpublish"],
     mutationFn: ({ locale }: { locale: Locale }) =>
       $unpublishDocumentVersion({
         data: { contentId, versionNumber, locale },
@@ -1011,15 +981,9 @@ function useUnpublishVersion(contentId: string, versionNumber: number) {
               ...item,
               translations: item.translations.map((t) => {
                 if (t.locale !== data.locale) return t;
-                const withoutPublished = t.statuses.filter(
-                  (s) => s.status !== "published",
-                );
-                const hasDraft = withoutPublished.some(
-                  (s) => s.status === "draft",
-                );
-                const publishedEntry = t.statuses.find(
-                  (s) => s.status === "published",
-                );
+                const withoutPublished = t.statuses.filter((s) => s.status !== "published");
+                const hasDraft = withoutPublished.some((s) => s.status === "draft");
+                const publishedEntry = t.statuses.find((s) => s.status === "published");
                 return {
                   ...t,
                   statuses:
@@ -1043,16 +1007,10 @@ function useUnpublishVersion(contentId: string, versionNumber: number) {
     },
     onError: (_, __, context) => {
       if (context?.previousVersion) {
-        queryClient.setQueryData(
-          docVersionQO.queryKey,
-          context.previousVersion,
-        );
+        queryClient.setQueryData(docVersionQO.queryKey, context.previousVersion);
       }
       if (context?.previousList) {
-        queryClient.setQueryData(
-          docVersionsListQO.queryKey,
-          context.previousList,
-        );
+        queryClient.setQueryData(docVersionsListQO.queryKey, context.previousList);
       }
     },
     onSettled: async () => {

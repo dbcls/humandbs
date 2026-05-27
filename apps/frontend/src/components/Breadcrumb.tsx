@@ -1,6 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
-import { isMatch, useMatches, Link } from "@tanstack/react-router";
+import { isMatch, Link, useMatches } from "@tanstack/react-router";
 import { Home, MoreHorizontal } from "lucide-react";
+
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -14,31 +15,25 @@ const Breadcrumb = React.forwardRef<
 >(({ ...props }, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />);
 Breadcrumb.displayName = "Breadcrumb";
 
-const BreadcrumbList = React.forwardRef<
-  HTMLOListElement,
-  React.ComponentPropsWithoutRef<"ol">
->(({ className, ...props }, ref) => (
-  <ol
-    ref={ref}
-    className={cn(
-      "text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words sm:gap-2.5",
-      className,
-    )}
-    {...props}
-  />
-));
+const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
+  ({ className, ...props }, ref) => (
+    <ol
+      ref={ref}
+      className={cn(
+        "flex flex-wrap items-center gap-1.5 break-words text-muted-foreground text-sm sm:gap-2.5",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
 BreadcrumbList.displayName = "BreadcrumbList";
 
-const BreadcrumbItem = React.forwardRef<
-  HTMLLIElement,
-  React.ComponentPropsWithoutRef<"li">
->(({ className, ...props }, ref) => (
-  <li
-    ref={ref}
-    className={cn("inline-flex items-center gap-1.5", className)}
-    {...props}
-  />
-));
+const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWithoutRef<"li">>(
+  ({ className, ...props }, ref) => (
+    <li ref={ref} className={cn("inline-flex items-center gap-1.5", className)} {...props} />
+  ),
+);
 BreadcrumbItem.displayName = "BreadcrumbItem";
 
 const BreadcrumbLink = React.forwardRef<
@@ -52,33 +47,29 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <Comp
       ref={ref}
-      className={cn("hover:text-foreground transition-colors", className)}
+      className={cn("transition-colors hover:text-foreground", className)}
       {...props}
     />
   );
 });
 BreadcrumbLink.displayName = "BreadcrumbLink";
 
-const BreadcrumbPage = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => (
-  <span
-    ref={ref}
-    role="link"
-    aria-disabled="true"
-    aria-current="page"
-    className={cn("text-foreground font-normal", className)}
-    {...props}
-  />
-));
+const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWithoutRef<"span">>(
+  ({ className, ...props }, ref) => (
+    <span
+      ref={ref}
+      role="link"
+      tabIndex={0}
+      aria-disabled="true"
+      aria-current="page"
+      className={cn("font-normal text-foreground", className)}
+      {...props}
+    />
+  ),
+);
 BreadcrumbPage.displayName = "BreadcrumbPage";
 
-const BreadcrumbSeparator = ({
-  children,
-  className,
-  ...props
-}: React.ComponentProps<"li">) => (
+const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
   <li
     role="presentation"
     aria-hidden="true"
@@ -90,10 +81,7 @@ const BreadcrumbSeparator = ({
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
 
-const BreadcrumbEllipsis = ({
-  className,
-  ...props
-}: React.ComponentProps<"span">) => (
+const BreadcrumbEllipsis = ({ className, ...props }: React.ComponentProps<"span">) => (
   <span
     role="presentation"
     aria-hidden="true"
@@ -139,21 +127,16 @@ function Breadcrumbs() {
           <React.Fragment key={`${href}-${index}`}>
             <BreadcrumbItem>
               <Link
-                //@ts-expect-error
                 to={href}
                 className={cn("text-foreground-light", {
                   "text-secondary": index === crumbs.length - 1,
                 })}
               >
-                {index === 0 ? (
-                  <Home className="mr-1 inline" size={12} />
-                ) : null}
+                {index === 0 ? <Home className="mr-1 inline" size={12} /> : null}
                 {label}
               </Link>
             </BreadcrumbItem>
-            {index < crumbs.length - 1 && (
-              <BreadcrumbSeparator className="text-foreground-light" />
-            )}
+            {index < crumbs.length - 1 && <BreadcrumbSeparator className="text-foreground-light" />}
           </React.Fragment>
         ))}
       </BreadcrumbList>
@@ -162,7 +145,6 @@ function Breadcrumbs() {
 }
 
 export {
-  Breadcrumbs,
   Breadcrumb,
   BreadcrumbEllipsis,
   BreadcrumbItem,
@@ -170,4 +152,5 @@ export {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
+  Breadcrumbs,
 };

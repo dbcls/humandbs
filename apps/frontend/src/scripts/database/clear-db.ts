@@ -11,10 +11,7 @@ async function clearDatabase(tables?: string[]) {
   }
 
   if (process.env.DEBUG_DB_CLEAR === "true") {
-    console.log(
-      "process.env.HUMANDBS_POSTGRES_HOST",
-      process.env.HUMANDBS_POSTGRES_HOST,
-    );
+    console.log("process.env.HUMANDBS_POSTGRES_HOST", process.env.HUMANDBS_POSTGRES_HOST);
   }
 
   const db = drizzle(
@@ -50,9 +47,7 @@ async function clearDatabase(tables?: string[]) {
 
         for (const tablename of tableNames) {
           console.log(`🗑️  Clearing table: ${tablename}`);
-          await tx.execute(
-            sql.raw(`TRUNCATE TABLE "${tablename}" RESTART IDENTITY CASCADE;`),
-          );
+          await tx.execute(sql.raw(`TRUNCATE TABLE "${tablename}" RESTART IDENTITY CASCADE;`));
         }
 
         await tx.execute(sql`SET session_replication_role = DEFAULT;`);
@@ -85,9 +80,7 @@ if (import.meta.main) {
   if (tables) {
     console.log(`⚠️  WARNING: This will clear tables: ${tables.join(", ")}`);
   } else {
-    console.log(
-      "⚠️  WARNING: This will delete all data in the database but keep table structure!",
-    );
+    console.log("⚠️  WARNING: This will delete all data in the database but keep table structure!");
   }
   console.log("Press Ctrl+C within 5 seconds to cancel...");
 

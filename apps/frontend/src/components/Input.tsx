@@ -1,10 +1,11 @@
+import { cva } from "class-variance-authority";
+
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { cva } from "class-variance-authority";
 
 const variants = cva(
-  "bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-within:ring-2 focus-within:ring-secondary-light",
+  "flex items-center gap-1 rounded-full bg-primary p-1 text-base transition-colors focus-within:ring-2 focus-within:ring-secondary-light",
   {
     variants: {
       hasBeforeIcon: {
@@ -16,7 +17,7 @@ const variants = cva(
         false: "",
       },
       variant: {
-        form: "text-sm rounded-lg",
+        form: "rounded-lg text-sm",
         search: "text-sm",
       },
     },
@@ -39,6 +40,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div
         role="textbox"
+        tabIndex={0}
         className={cn(
           variants({
             hasBeforeIcon: !!beforeIcon,
@@ -49,15 +51,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       >
         {beforeIcon ? (
-          <div className="pointer-events-none flex items-center pl-2">
-            {beforeIcon}
-          </div>
+          <div className="pointer-events-none flex items-center pl-2">{beforeIcon}</div>
         ) : null}
 
         <input
           type={type}
           className={cn(
-            "file:text-foreground placeholder:text-muted-foreground block w-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+            "block w-full file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
 
             {
               "pl-2": !beforeIcon,
@@ -68,9 +68,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {afterIcon ? (
-          <div className="pointer-events-none flex items-center pr-2">
-            {afterIcon}
-          </div>
+          <div className="pointer-events-none flex items-center pr-2">{afterIcon}</div>
         ) : null}
       </div>
     );

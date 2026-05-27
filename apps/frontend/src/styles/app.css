@@ -347,6 +347,8 @@
 
   --color-ring: var(--color-secondary);
 
+  --color-visited: #6b21a8;
+
   --text-lg: 2.8rem;
   --text-base: 1.6rem;
   --text-sm: 1.4rem;
@@ -444,7 +446,7 @@
   }
 
   a {
-    @apply text-secondary hover:text-secondary-light underline visited:text-neutral-500;
+    @apply text-secondary hover:text-secondary-light visited:text-visited underline;
   }
 
   @font-face {
@@ -483,10 +485,30 @@
   }
 
   .custom-prose {
-    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:content-[''] prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
+
+    table {
+      @apply w-full table-auto;
+    }
+
+    thead tr {
+      @apply from-secondary-light to-secondary-lighter rounded bg-linear-to-r text-white;
+    }
+
+    thead th {
+      @apply p-2 text-white first:rounded-l last:rounded-r;
+    }
+
+    tbody tr {
+      @apply bg-white;
+    }
+
+    tbody td {
+      @apply border-foreground-light/50 border-b-2 p-2 align-top;
+    }
 
     a {
-      @apply text-secondary font-medium visited:text-neutral-400;
+      @apply text-secondary visited:text-visited font-medium;
     }
 
     h1,

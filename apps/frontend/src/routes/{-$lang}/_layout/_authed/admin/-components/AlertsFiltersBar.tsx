@@ -33,15 +33,13 @@ export function AlertsFiltersBar() {
       <DateRangeFilter
         from={search.activeFrom}
         to={search.activeTo}
-        onChange={({ activeFrom, activeTo }) =>
-          setFilters({ activeFrom, activeTo })
-        }
+        onChange={({ activeFrom, activeTo }) => setFilters({ activeFrom, activeTo })}
       />
       {hasActiveFilters ? (
         <Button
           variant="ghost"
           size="slim"
-          className="text-muted-foreground self-start text-xs"
+          className="self-start text-muted-foreground text-xs"
           onClick={handleClearAll}
         >
           <XIcon className="mr-1 size-3" />
@@ -61,15 +59,12 @@ function DateRangeFilter({
   to: string | undefined;
   onChange: (range: { activeFrom?: string; activeTo?: string }) => void;
 }) {
-  const value: DateStringRange | undefined =
-    from || to ? { from, to } : undefined;
+  const value: DateStringRange | undefined = from || to ? { from, to } : undefined;
 
   return (
     <DateRangePicker
       value={value}
-      onSelect={(range) =>
-        onChange({ activeFrom: range.from, activeTo: range.to })
-      }
+      onSelect={(range) => onChange({ activeFrom: range.from, activeTo: range.to })}
       onClear={() => onChange({ activeFrom: undefined, activeTo: undefined })}
     />
   );

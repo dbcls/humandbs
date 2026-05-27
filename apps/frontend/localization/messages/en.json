@@ -15,7 +15,10 @@
     "items": "items",
     "already-in-cart": "Already in cart",
     "add-to-cart": "Add to cart",
-    "add-all-to-cart": "Add all to cart"
+    "add-all-to-cart": "Add all to cart",
+    "add-all-datasets-to-cart": "Add all datasets to cart",
+    "read-more": "Read more",
+    "details": "Details"
   },
   "Footer": {
     "sitemap": "Sitemap"
@@ -424,6 +427,22 @@
     "itemsPerPage": "Items per page",
     "previous": "Previous",
     "next": "Next"
+  },
+  "MergeWizard": {
+    "field-status-conflict": "Values differ",
+    "field-status-can-fill": "Empty here, has value",
+    "field-status-same": "Already up to date",
+    "field-status-na": "Not in J-DS",
+    "field-decision-accepted": "Using J-DS value",
+    "field-decision-rejected": "Keeping current",
+    "field-decision-custom": "Custom value set",
+    "decision-label-accepted": "Using J-DS value",
+    "decision-label-rejected-conflict": "Keeping current",
+    "decision-label-rejected-fill": "Leaving empty",
+    "decision-label-custom": "Custom value",
+    "decision-label-pending": "No decision yet — will keep current on apply",
+    "will-overwrite": "Will overwrite fields",
+    "no-changes": "No fields will be overwritten"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",

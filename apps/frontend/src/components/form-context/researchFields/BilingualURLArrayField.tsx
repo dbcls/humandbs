@@ -1,32 +1,26 @@
 import { Trash2 } from "lucide-react";
+import type { z } from "zod";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { z } from "zod";
 
 import { useFieldContext } from "../FormContext";
 import { getFieldDefaultValue } from "../fields/useFieldModified";
-import { URLInputPair, type UrlItem } from "./URLInputPair";
+import type { UrlItem } from "./URLInputPair";
+import { URLInputPair } from "./URLInputPair";
 
 const urlArraySchema = ResearchDetailSchema.shape.summary.shape.url;
 
 type BilingualURLArray = z.infer<typeof urlArraySchema>;
 
-export default function BilingualURLArrayField({
-  label,
-}: {
-  label?: React.ReactNode;
-}) {
+export default function BilingualURLArrayField({ label }: { label?: React.ReactNode }) {
   const field = useFieldContext<BilingualURLArray>();
   const enItems = field.state.value?.en ?? [];
   const defaultValue = getFieldDefaultValue(field) as BilingualURLArray | undefined;
 
-  function updateItem(
-    lang: "en" | "ja",
-    i: number,
-    next: { text: string; url: string },
-  ) {
+  function updateItem(lang: "en" | "ja", i: number, next: { text: string; url: string }) {
     field.handleChange((prev) => {
       const copy = [...prev[lang]];
       copy[i] = next;
@@ -49,12 +43,8 @@ export default function BilingualURLArrayField({
 
       {enItems.length > 0 && (
         <div className="flex gap-2">
-          <div className="flex-1 text-xs font-medium text-gray-500 uppercase">
-            En
-          </div>
-          <div className="flex-1 text-xs font-medium text-gray-500 uppercase">
-            Ja
-          </div>
+          <div className="flex-1 font-medium text-gray-500 text-xs uppercase">En</div>
+          <div className="flex-1 font-medium text-gray-500 text-xs uppercase">Ja</div>
           <div className="w-8" />
         </div>
       )}
@@ -87,7 +77,7 @@ export default function BilingualURLArrayField({
               }))
             }
           >
-            <Trash2 className="text-danger size-4" />
+            <Trash2 className="size-4 text-danger" />
           </button>
         </div>
       ))}

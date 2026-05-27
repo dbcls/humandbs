@@ -1,13 +1,9 @@
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 
 type LocalizedEntry = string | { text: string; rawHtml?: string } | null;
 type MultilingualValue = Record<Locale, LocalizedEntry>;
-type PossiblyMultilingualValue =
-  | string
-  | string[]
-  | MultilingualValue
-  | null
-  | undefined;
+type PossiblyMultilingualValue = string | string[] | MultilingualValue | null | undefined;
 
 export function extractStringFromPossiblyMultilingualValue(
   value: PossiblyMultilingualValue,

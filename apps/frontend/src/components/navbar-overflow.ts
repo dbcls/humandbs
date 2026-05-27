@@ -1,4 +1,4 @@
-import type { ResolvedNavbarItem, NavPriority } from "@/config/site-navigation";
+import type { NavPriority, ResolvedNavbarItem } from "@/config/site-navigation";
 
 const PRIORITY_RANK: Record<NavPriority, number> = {
   important: 0,
@@ -64,15 +64,7 @@ export function getNavbarOverflowLayout({
 
   const shown = new Set(allIndices);
   for (const index of getNavbarOverflowDropOrder(items)) {
-    if (
-      fitsWithOverflow(
-        shown,
-        itemWidths,
-        containerWidth,
-        overflowTriggerWidth,
-        gap,
-      )
-    ) {
+    if (fitsWithOverflow(shown, itemWidths, containerWidth, overflowTriggerWidth, gap)) {
       break;
     }
 
@@ -95,13 +87,10 @@ function fitsWithOverflow(
   overflowTriggerWidth: number,
   gap: number,
 ) {
-  const visibleIndices = itemWidths
-    .map((_, index) => index)
-    .filter((index) => shown.has(index));
+  const visibleIndices = itemWidths.map((_, index) => index).filter((index) => shown.has(index));
 
   const visibleWidth = getItemsWidth(visibleIndices, itemWidths, gap);
-  const overflowWidth =
-    overflowTriggerWidth + (visibleIndices.length > 0 ? gap : 0);
+  const overflowWidth = overflowTriggerWidth + (visibleIndices.length > 0 ? gap : 0);
 
   return visibleWidth + overflowWidth <= containerWidth;
 }
@@ -111,9 +100,6 @@ function getItemsWidth(indices: number[], itemWidths: number[], gap: number) {
     return 0;
   }
 
-  const itemsWidth = indices.reduce(
-    (total, index) => total + itemWidths[index]!,
-    0,
-  );
+  const itemsWidth = indices.reduce((total, index) => total + itemWidths[index]!, 0);
   return itemsWidth + gap * (indices.length - 1);
 }

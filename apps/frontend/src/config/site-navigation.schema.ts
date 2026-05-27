@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import type {
-  NavigationItem,
-  SiteNavigationConfig,
-} from "@/config/site-navigation";
+import type { NavigationItem, SiteNavigationConfig } from "@/config/site-navigation";
 
 const localizedLabelValueSchema = z.string().trim().min(1);
 const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
@@ -51,9 +48,7 @@ function stripDocumentContentId(item: NavigationItem): NavigationItem {
   return rest;
 }
 
-export function normalizeSiteNavigationConfig(
-  config: SiteNavigationConfig,
-): SiteNavigationConfig {
+export function normalizeSiteNavigationConfig(config: SiteNavigationConfig): SiteNavigationConfig {
   const itemIdMap = new Map<string, string>();
   const normalizedItems = new Map<string, NavigationItem>();
 
@@ -75,9 +70,7 @@ export function normalizeSiteNavigationConfig(
     normalizedItems.set(item.id, item);
   }
 
-  const rewriteGroupRefs = (
-    groups: SiteNavigationConfig["zones"]["footer"]["groups"],
-  ) =>
+  const rewriteGroupRefs = (groups: SiteNavigationConfig["zones"]["footer"]["groups"]) =>
     groups.map((group) => ({
       ...group,
       items: group.items.map((ref) => ({
@@ -100,8 +93,8 @@ export function normalizeSiteNavigationConfig(
   };
 }
 
-export const siteNavigationConfigSchema =
-  siteNavigationConfigBaseSchema.superRefine((config, ctx) => {
+export const siteNavigationConfigSchema = siteNavigationConfigBaseSchema.superRefine(
+  (config, ctx) => {
     const itemIds = new Set(config.items.map((item) => item.id));
 
     // Item IDs must be unique
@@ -163,11 +156,7 @@ export const siteNavigationConfigSchema =
           });
         }
 
-        if (
-          zoneName !== "navbar" &&
-          group.parentGroupId &&
-          !groupIds.has(group.parentGroupId)
-        ) {
+        if (zoneName !== "navbar" && group.parentGroupId && !groupIds.has(group.parentGroupId)) {
           ctx.addIssue({
             code: "custom",
             message: `Unknown parentGroupId "${group.parentGroupId}" in group "${group.id}" in zone "${zoneName}".`,
@@ -234,19 +223,14 @@ export const siteNavigationConfigSchema =
         });
       }
     }
-  });
+  },
+);
 
-export type SiteNavigationConfigInput = z.input<
-  typeof siteNavigationConfigSchema
->;
-export type SiteNavigationConfigOutput = z.output<
-  typeof siteNavigationConfigSchema
->;
+export type SiteNavigationConfigInput = z.input<typeof siteNavigationConfigSchema>;
+export type SiteNavigationConfigOutput = z.output<typeof siteNavigationConfigSchema>;
 
 export function parseSiteNavigationConfig(data: unknown): SiteNavigationConfig {
-  const config = siteNavigationConfigBaseSchema.parse(
-    data,
-  ) as SiteNavigationConfig;
+  const config = siteNavigationConfigBaseSchema.parse(data) as SiteNavigationConfig;
   return siteNavigationConfigSchema.parse(
     normalizeSiteNavigationConfig(config),
   ) as SiteNavigationConfig;

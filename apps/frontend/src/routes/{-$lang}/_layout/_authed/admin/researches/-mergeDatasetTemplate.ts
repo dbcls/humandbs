@@ -1,6 +1,7 @@
-import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import type { DatasetFormValues } from "@/components/form-context/datasetFields/DatasetForm";
 import { experimentDataToEntries } from "@/components/form-context/datasetFields/ExperimentsArrayField";
+
+import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 function isEmpty(value: string | null | undefined): boolean {
   return value == null || value.trim() === "";
@@ -15,7 +16,8 @@ export function templateWouldOverwrite(
   if (!isEmpty(current.criteria) && incoming.criteria) return true;
   if (!isEmpty(current.typeOfData.ja) && incoming.typeOfData?.ja) return true;
   if (!isEmpty(current.typeOfData.en) && incoming.typeOfData?.en) return true;
-  if (current.experiments.length > 0 && incoming.experiments && incoming.experiments.length > 0) return true;
+  if (current.experiments.length > 0 && incoming.experiments && incoming.experiments.length > 0)
+    return true;
   return false;
 }
 

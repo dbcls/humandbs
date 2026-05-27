@@ -1,13 +1,22 @@
-import { useMemo, useRef, useState, useEffect } from "react";
-import * as d3 from "d3";
-import { useFrame } from "@react-three/fiber";
-import * as THREE from "three";
-import type { StatsSystem, SimNode, StatsSatellite, DebugParams } from "./types";
-import { hashString, capitalize } from "./utils";
 import { Billboard, Text } from "@react-three/drei";
-import AnimatedParticleLabel from "./AnimatedParticleLabel";
+import { useFrame } from "@react-three/fiber";
+import * as d3 from "d3";
+import * as THREE from "three";
 import { useTranslations } from "use-intl";
-import { INITIAL_MATERIAL_ROUGHNESS, MACRO_VIVID_PROBABILITY, MACRO_COLOR_L_VIVID, MACRO_COLOR_S_VIVID, MACRO_COLOR_L_NEUTRAL, MACRO_COLOR_S_NEUTRAL } from "./constants";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import AnimatedParticleLabel from "./AnimatedParticleLabel";
+import {
+  INITIAL_MATERIAL_ROUGHNESS,
+  MACRO_COLOR_L_NEUTRAL,
+  MACRO_COLOR_L_VIVID,
+  MACRO_COLOR_S_NEUTRAL,
+  MACRO_COLOR_S_VIVID,
+  MACRO_VIVID_PROBABILITY,
+} from "./constants";
+import type { DebugParams, SimNode, StatsSatellite, StatsSystem } from "./types";
+import { capitalize, hashString } from "./utils";
 
 export default function BlobCluster({
   system,
@@ -23,7 +32,7 @@ export default function BlobCluster({
   isHovered,
   onHover,
   isAnyHovered,
-  isDragging
+  isDragging,
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
@@ -59,12 +68,12 @@ export default function BlobCluster({
       phaseX: (hash % 100) / 10.0,
       phaseY: ((hash >> 2) % 100) / 10.0,
       phaseZ: ((hash >> 4) % 100) / 10.0,
-      freqX: 1.0 + ((hash % 50) / 100.0), // 1.0 to 1.5
-      freqY: 1.0 + (((hash >> 1) % 50) / 100.0),
-      freqZ: 1.0 + (((hash >> 3) % 50) / 100.0),
+      freqX: 1.0 + (hash % 50) / 100.0, // 1.0 to 1.5
+      freqY: 1.0 + ((hash >> 1) % 50) / 100.0,
+      freqZ: 1.0 + ((hash >> 3) % 50) / 100.0,
     };
   }, [system.facet]);
-  
+
   const satellites = useMemo(() => {
     const valid = system.satellites.filter((s) => s[mode] > 0);
     // Sort descending and apply the max item limit
@@ -80,22 +89,29 @@ export default function BlobCluster({
       return;
     }
 
-    const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
-    
+    const radiusScale = d3
+      .scalePow()
+      .exponent(1 / 3)
+      .domain([0, globalMaxCount])
+      .range([0, 50]);
+
     const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
-    
-    const layoutItems = sorted.map(sat => {
+
+    const layoutItems = sorted.map((sat) => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       const visualRadius = d3Radius * (particleScale / 260);
       return { sat, d3Radius, visualRadius };
     });
 
-    const rows: (typeof layoutItems[0])[][] = [[]];
+    const rows: (typeof layoutItems)[0][][] = [[]];
     let currentRowWidth = 0;
     const padding = particleScale * 0.05;
-    
+
     // Calculate total required area treating each particle + padding as a square bounding box
-    const totalArea = layoutItems.reduce((sum, item) => sum + Math.pow(item.visualRadius * 2 + padding, 2), 0);
+    const totalArea = layoutItems.reduce(
+      (sum, item) => sum + (item.visualRadius * 2 + padding) ** 2,
+      0,
+    );
     // Use natural 16:9 aspect ratio width. If very few items, lay them out in a single row.
     const maxRowWidth = layoutItems.length <= 10 ? 9999 : Math.sqrt(totalArea * 1.77) * 1.1;
 
@@ -109,17 +125,18 @@ export default function BlobCluster({
       currentRowWidth += diam + padding;
     }
 
-    const layoutResults = new Map<string, {x: number, y: number, d3Radius: number}>();
+    const layoutResults = new Map<string, { x: number; y: number; d3Radius: number }>();
     let yCursor = 0;
     let actualWidth = 0;
     for (const row of rows) {
-      const rowHeight = Math.max(...row.map(i => i.visualRadius * 2));
-      const rowWidth = row.reduce((sum, item) => sum + item.visualRadius * 2 + padding, 0) - padding;
+      const rowHeight = Math.max(...row.map((i) => i.visualRadius * 2));
+      const rowWidth =
+        row.reduce((sum, item) => sum + item.visualRadius * 2 + padding, 0) - padding;
       actualWidth = Math.max(actualWidth, rowWidth);
-      
+
       let xCursor = -rowWidth / 2;
       const rowY = yCursor - rowHeight / 2;
-      
+
       for (const item of row) {
         xCursor += item.visualRadius;
         layoutResults.set(item.sat.id, { x: xCursor, y: rowY, d3Radius: item.d3Radius });
@@ -127,10 +144,10 @@ export default function BlobCluster({
       }
       yCursor -= rowHeight + padding;
     }
-    
+
     const totalHeight = -yCursor - padding;
     const yOffset = totalHeight / 2;
-    
+
     gridDims.current = { width: actualWidth, height: totalHeight };
 
     nodesRef.current = satellites.map((sat) => {
@@ -138,13 +155,13 @@ export default function BlobCluster({
       const layout = layoutResults.get(sat.id)!;
       const { x: targetX, y: layoutY, d3Radius } = layout;
       // Perfectly center vertically. Camera will handle framing.
-      const targetY = layoutY + yOffset; 
+      const targetY = layoutY + yOffset;
       const hash = hashString(sat.value || sat.facet);
       // Give them a slight deterministic Z variation based on their hash to prevent specular flattening (bleaching)
-      const targetZ = ((hash % 100) / 100 - 0.5) * 40; 
-      
+      const targetZ = ((hash % 100) / 100 - 0.5) * 40;
+
       const hue = (hash % 360) / 360; // THREE.Color().setHSL takes 0-1 for Hue
-      const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
+      const isVivid = hash % 100 < MACRO_VIVID_PROBABILITY * 100;
       const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
       const saturation = isVivid ? MACRO_COLOR_S_VIVID : MACRO_COLOR_S_NEUTRAL;
       const baseColor = new THREE.Color().setHSL(hue, saturation, lightness);
@@ -182,7 +199,7 @@ export default function BlobCluster({
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-      document.body.style.cursor = 'auto';
+      document.body.style.cursor = "auto";
     };
   }, []);
 
@@ -226,7 +243,7 @@ export default function BlobCluster({
       hoverTimeoutRef.current = null;
     }
     onHover(true);
-    document.body.style.cursor = 'pointer';
+    document.body.style.cursor = "pointer";
   };
 
   const handlePointerLeave = (e: any) => {
@@ -235,7 +252,7 @@ export default function BlobCluster({
     hoverTimeoutRef.current = setTimeout(() => {
       onHover(false);
       setHoveredParticle(null);
-      document.body.style.cursor = 'auto';
+      document.body.style.cursor = "auto";
     }, 120);
   };
 
@@ -286,7 +303,7 @@ export default function BlobCluster({
     e.stopPropagation();
     const particleIndex = getParticleIndexFromPointer(e);
     setHoveredParticle(particleIndex);
-    document.body.style.cursor = particleIndex === null ? 'pointer' : 'pointer';
+    document.body.style.cursor = particleIndex === null ? "pointer" : "pointer";
   };
 
   const handleHitboxClick = (e: any) => {
@@ -302,20 +319,32 @@ export default function BlobCluster({
     const time = state.clock.elapsedTime;
     if (localGroupRef.current) {
       // Unfocused clusters retreat down and away so they disappear cleanly
-      const pushBackZ = (isAnyHovered && !isHovered) ? -1500 : 0;
-      const pushDownY = (isAnyHovered && !isHovered) ? -2000 : 0;
-      localGroupRef.current.position.z = THREE.MathUtils.lerp(localGroupRef.current.position.z, pushBackZ, 0.08);
-      localGroupRef.current.position.y = THREE.MathUtils.lerp(localGroupRef.current.position.y, pushDownY, 0.08);
-      
+      const pushBackZ = isAnyHovered && !isHovered ? -1500 : 0;
+      const pushDownY = isAnyHovered && !isHovered ? -2000 : 0;
+      localGroupRef.current.position.z = THREE.MathUtils.lerp(
+        localGroupRef.current.position.z,
+        pushBackZ,
+        0.08,
+      );
+      localGroupRef.current.position.y = THREE.MathUtils.lerp(
+        localGroupRef.current.position.y,
+        pushDownY,
+        0.08,
+      );
+
       dummy.scale.set(targetScale, targetScale, targetScale);
       localGroupRef.current.scale.lerp(dummy.scale, 0.08);
     }
 
     if (facetLabelRef.current) {
-      const targetLabelY = isHovered 
-        ? -(gridDims.current.height / 2) * targetScale - 80 
+      const targetLabelY = isHovered
+        ? -(gridDims.current.height / 2) * targetScale - 80
         : -(particleScale * 0.45) - 10;
-      facetLabelRef.current.position.y = THREE.MathUtils.lerp(facetLabelRef.current.position.y, targetLabelY, 0.08);
+      facetLabelRef.current.position.y = THREE.MathUtils.lerp(
+        facetLabelRef.current.position.y,
+        targetLabelY,
+        0.08,
+      );
     }
 
     if (hideForFocusedCluster) return;
@@ -325,16 +354,20 @@ export default function BlobCluster({
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      
+
       if (isHovered) {
         node.x = THREE.MathUtils.lerp(node.x || 0, node.targetX, 0.1);
         node.y = THREE.MathUtils.lerp(node.y || 0, node.targetY, 0.1);
         node.z = THREE.MathUtils.lerp(node.z || 0, node.targetZ, 0.1);
-        node.vx = 0; node.vy = 0; node.vz = 0;
+        node.vx = 0;
+        node.vy = 0;
+        node.vz = 0;
         continue;
       }
 
-      const pull = isActive ? (debugParams?.physicsForce ?? 0.1) : (debugParams?.physicsForce ?? 0.1) * 3;
+      const pull = isActive
+        ? (debugParams?.physicsForce ?? 0.1)
+        : (debugParams?.physicsForce ?? 0.1) * 3;
       node.vx = (node.vx || 0) + (0 - (node.x || 0)) * pull * dt;
       node.vy = (node.vy || 0) + (0 - (node.y || 0)) * pull * dt;
       node.vz = (node.vz || 0) + (0 - (node.z || 0)) * pull * dt;
@@ -344,107 +377,135 @@ export default function BlobCluster({
       const logCount = Math.log10(((node as any)[mode] as number) || 1) + 1;
       const speedScale = 1.5 / logCount;
       const offset = i * 0.13;
-      
+
       const jitterX = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
       const jitterY = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
       const jitterZ = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
 
-      node.vx += (Math.sin(time * 1.2 * facetDriftParams.freqX + offset + facetDriftParams.phaseX) * 0.4 + jitterX) * speedScale;
-      node.vy += (Math.cos(time * 1.1 * facetDriftParams.freqY + offset * 2.1 + facetDriftParams.phaseY) * 0.4 + jitterY) * speedScale;
-      node.vz += (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) * 0.4 + jitterZ) * speedScale;
+      node.vx +=
+        (Math.sin(time * 1.2 * facetDriftParams.freqX + offset + facetDriftParams.phaseX) * 0.4 +
+          jitterX) *
+        speedScale;
+      node.vy +=
+        (Math.cos(time * 1.1 * facetDriftParams.freqY + offset * 2.1 + facetDriftParams.phaseY) *
+          0.4 +
+          jitterY) *
+        speedScale;
+      node.vz +=
+        (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) *
+          0.4 +
+          jitterZ) *
+        speedScale;
 
       const visualRadius = node.d3Radius * (particleScale / 260);
       if (isActive) {
         for (let j = i + 1; j < nodes.length; j++) {
-        const other = nodes[j];
-        const dx = (node.x || 0) - (other.x || 0);
-        const dy = (node.y || 0) - (other.y || 0);
-        const dz = (node.z || 0) - (other.z || 0);
-        const distSq = dx*dx + dy*dy + dz*dz;
-        const dist = Math.sqrt(distSq) + 0.001;
-        const otherRadius = other.d3Radius * (particleScale / 260);
-        const minDist = visualRadius + otherRadius + 1.0;
+          const other = nodes[j];
+          const dx = (node.x || 0) - (other.x || 0);
+          const dy = (node.y || 0) - (other.y || 0);
+          const dz = (node.z || 0) - (other.z || 0);
+          const distSq = dx * dx + dy * dy + dz * dz;
+          const dist = Math.sqrt(distSq) + 0.001;
+          const otherRadius = other.d3Radius * (particleScale / 260);
+          const minDist = visualRadius + otherRadius + 1.0;
 
-        if (dist < minDist) {
-          const force = (minDist - dist) * 25.0 * dt;
-          // Add Z-scattering to prevent them from getting permanently flattened after layout
-          const adjustedDz = Math.abs(dz) < 1.0 ? (Math.random() - 0.5) * 5.0 : dz;
-          const adjDist = Math.sqrt(dx*dx + dy*dy + adjustedDz*adjustedDz) + 0.001;
-          const fx = (dx / adjDist) * force;
-          const fy = (dy / adjDist) * force;
-          const fz = (adjustedDz / adjDist) * force;
-          node.vx += fx; node.vy += fy; node.vz += fz;
-          other.vx = (other.vx || 0) - fx; 
-          other.vy = (other.vy || 0) - fy; 
-          other.vz = (other.vz || 0) - fz;
+          if (dist < minDist) {
+            const force = (minDist - dist) * 25.0 * dt;
+            // Add Z-scattering to prevent them from getting permanently flattened after layout
+            const adjustedDz = Math.abs(dz) < 1.0 ? (Math.random() - 0.5) * 5.0 : dz;
+            const adjDist = Math.sqrt(dx * dx + dy * dy + adjustedDz * adjustedDz) + 0.001;
+            const fx = (dx / adjDist) * force;
+            const fy = (dy / adjDist) * force;
+            const fz = (adjustedDz / adjDist) * force;
+            node.vx += fx;
+            node.vy += fy;
+            node.vz += fz;
+            other.vx = (other.vx || 0) - fx;
+            other.vy = (other.vy || 0) - fy;
+            other.vz = (other.vz || 0) - fz;
+          }
         }
-      }
       }
     }
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       if (!isHovered) {
-        node.vx = (node.vx || 0) * 0.85; 
-        node.vy = (node.vy || 0) * 0.85; 
+        node.vx = (node.vx || 0) * 0.85;
+        node.vy = (node.vy || 0) * 0.85;
         node.vz = (node.vz || 0) * 0.85;
         node.x = (node.x || 0) + node.vx * dt * 10;
         node.y = (node.y || 0) + node.vy * dt * 10;
         node.z = (node.z || 0) + node.vz * dt * 10;
 
         const bound = particleScale * 0.42;
-        if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
-        if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
-        if (node.y > bound) { node.y = bound; node.vy *= -0.5; }
-        if (node.y < -bound) { node.y = -bound; node.vy *= -0.5; }
-        if (node.z > bound) { node.z = bound; node.vz *= -0.5; }
-        if (node.z < -bound) { node.z = -bound; node.vz *= -0.5; }
+        if (node.x > bound) {
+          node.x = bound;
+          node.vx *= -0.5;
+        }
+        if (node.x < -bound) {
+          node.x = -bound;
+          node.vx *= -0.5;
+        }
+        if (node.y > bound) {
+          node.y = bound;
+          node.vy *= -0.5;
+        }
+        if (node.y < -bound) {
+          node.y = -bound;
+          node.vy *= -0.5;
+        }
+        if (node.z > bound) {
+          node.z = bound;
+          node.vz *= -0.5;
+        }
+        if (node.z < -bound) {
+          node.z = -bound;
+          node.vz *= -0.5;
+        }
       }
     }
 
     if (instancedMeshRef.current) {
-      let needsColorUpdate = !colorsInitializedRef.current;
+      const needsColorUpdate = !colorsInitializedRef.current;
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         const visualRadius = node.d3Radius * (particleScale / 260);
-        
+
         dummy.position.set(node.x || 0, node.y || 0, node.z || 0);
         dummy.scale.set(visualRadius, visualRadius, visualRadius);
         dummy.updateMatrix();
-        
+
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
         if (needsColorUpdate) {
           instancedMeshRef.current.setColorAt(i, node.baseColor);
         }
-        
+
         if (isHovered && labelRefs.current[i]) {
           const currentScale = localGroupRef.current?.scale.x ?? 1.0;
           labelRefs.current[i]!.position.set(
-            (node.x || 0) * currentScale, 
-            ((node.y || 0) - visualRadius) * currentScale - 8, 
-            (node.z || 0) * currentScale
+            (node.x || 0) * currentScale,
+            ((node.y || 0) - visualRadius) * currentScale - 8,
+            (node.z || 0) * currentScale,
           );
         }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
       if (needsColorUpdate) {
-        if (instancedMeshRef.current.instanceColor) instancedMeshRef.current.instanceColor.needsUpdate = true;
+        if (instancedMeshRef.current.instanceColor)
+          instancedMeshRef.current.instanceColor.needsUpdate = true;
         colorsInitializedRef.current = true;
       }
     }
   });
 
   return (
-    <group 
-      position={position} 
-      rotation={rotation}
-    >
-      
+    <group position={position} rotation={rotation}>
       {/* Hit box OUTSIDE of localGroupRef so it doesn't shrink during layout scaling.
           This prevents the object from slipping out from under the mouse. */}
-      <mesh 
+      <mesh
         ref={hitboxRef}
-        position={[0, 0, -100]} 
+        position={[0, 0, -100]}
         visible={!(isAnyHovered && !isHovered)}
         onPointerEnter={isAnyHovered && !isHovered ? undefined : handlePointerEnter}
         onPointerLeave={isAnyHovered && !isHovered ? undefined : handlePointerLeave}
@@ -458,7 +519,12 @@ export default function BlobCluster({
         onClick={handleHitboxClick}
       >
         {isHovered ? (
-          <planeGeometry args={[Math.max(300, gridDims.current.width * targetScale * 1.8), Math.max(300, gridDims.current.height * targetScale * 1.8)]} />
+          <planeGeometry
+            args={[
+              Math.max(300, gridDims.current.width * targetScale * 1.8),
+              Math.max(300, gridDims.current.height * targetScale * 1.8),
+            ]}
+          />
         ) : (
           <sphereGeometry args={[particleScale * 0.45, 16, 16]} />
         )}
@@ -466,22 +532,19 @@ export default function BlobCluster({
       </mesh>
 
       <group ref={localGroupRef}>
-        <instancedMesh
-          ref={instancedMeshRef}
-          args={[undefined, undefined, satellites.length]}
-        >
-          <sphereGeometry 
+        <instancedMesh ref={instancedMeshRef} args={[undefined, undefined, satellites.length]}>
+          <sphereGeometry
             args={[1, 16, 16]}
             onUpdate={(geo) => {
-              // CRITICAL: Three.js InstancedMesh raycaster uses the geometry's bounding sphere 
-              // for early frustum culling. Since instances are spread far beyond the base 
+              // CRITICAL: Three.js InstancedMesh raycaster uses the geometry's bounding sphere
+              // for early frustum culling. Since instances are spread far beyond the base
               // geometry's radius of 1, the raycaster incorrectly ignores particles far from the center!
               // Setting an infinite bounding sphere forces the raycaster to check all instances.
               geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
             }}
           />
-          <meshStandardMaterial 
-            color="#ffffff" 
+          <meshStandardMaterial
+            color="#ffffff"
             roughness={isHovered ? 0.8 : (debugParams?.roughness ?? INITIAL_MATERIAL_ROUGHNESS)}
             metalness={0.0}
             envMapIntensity={isHovered ? 0.05 : 0.2}
@@ -490,39 +553,51 @@ export default function BlobCluster({
       </group>
 
       {/* Labels OUTSIDE localGroupRef to keep font size perfectly constant regardless of dynamic scaling */}
-      {isHovered && satellites.slice(0, renderedLabelCount).map((sat, i) => {
-        // We render all labels, removed the 50 item cutoff limit as requested!
-        return (
-        <group key={sat.id} ref={el => { labelRefs.current[i] = el; }}>
-          <AnimatedParticleLabel
-            sat={sat}
-            mode={mode}
-            isDimmed={hoveredParticleIndex !== null && hoveredParticleIndex !== i}
-            debugParams={debugParams}
-          />
-        </group>
-      )})}
-        
-      <group 
-        ref={facetLabelRef} 
+      {isHovered &&
+        satellites.slice(0, renderedLabelCount).map((sat, i) => {
+          // We render all labels, removed the 50 item cutoff limit as requested!
+          return (
+            <group
+              key={sat.id}
+              ref={(el) => {
+                labelRefs.current[i] = el;
+              }}
+            >
+              <AnimatedParticleLabel
+                sat={sat}
+                mode={mode}
+                isDimmed={hoveredParticleIndex !== null && hoveredParticleIndex !== i}
+                debugParams={debugParams}
+              />
+            </group>
+          );
+        })}
+
+      <group
+        ref={facetLabelRef}
         visible={!(isAnyHovered && !isHovered)}
         position={[0, -(particleScale * 0.45) - 10, 0]}
       >
         <Billboard position={[0, 0, 0]} follow={true}>
-          <Text 
-            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.8 : 16} 
-            color={isActive ? "#1e293b" : "#94a3b8"} 
-            anchorX="center" 
+          <Text
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.8 : 16}
+            color={isActive ? "#1e293b" : "#94a3b8"}
+            anchorX="center"
             anchorY="middle"
           >
-            {tFilters.has(`${system.facet}.title` as any) ? tFilters(`${system.facet}.title` as any) : capitalize(system.facet)}
+            {tFilters.has(`${system.facet}.title` as any)
+              ? tFilters(`${system.facet}.title` as any)
+              : capitalize(system.facet)}
           </Text>
         </Billboard>
-        <Billboard position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 12) * 2.0) : -18, 0]} follow={true}>
-          <Text 
-            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.0 : 8} 
-            color={isActive ? "#64748b" : "#cbd5e1"} 
-            anchorX="center" 
+        <Billboard
+          position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 12) * 2.0) : -18, 0]}
+          follow={true}
+        >
+          <Text
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.0 : 8}
+            color={isActive ? "#64748b" : "#cbd5e1"}
+            anchorX="center"
             anchorY="middle"
           >
             {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} ${tCommon("items")}`}

@@ -1,8 +1,10 @@
-import type { CreateResearchRequest } from "@humandbs/backend/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
+
 import { useState } from "react";
+
+import type { CreateResearchRequest } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -14,18 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
-import {
-  $createResearch,
-  type CreateResearchResult,
-} from "@/serverFunctions/researches";
+import type { CreateResearchResult } from "@/serverFunctions/researches";
+import { $createResearch } from "@/serverFunctions/researches";
+
 import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
-import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
-import {
-  pickNewResearchMergeValues,
-  toResearchValuesForMerge,
-  type NewResearchMergeValues,
-} from "./-mergeJDSResearch";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
+import type { NewResearchMergeValues } from "./-jdsResearchValues";
+import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./-jdsResearchValues";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -61,8 +59,7 @@ export function NewResearchForm({
   const [relatedAccessions, setRelatedAccessions] = useState<string[]>([]);
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (body: CreateResearchRequest) =>
-      $createResearch({ data: body }),
+    mutationFn: (body: CreateResearchRequest) => $createResearch({ data: body }),
     onSuccess: (result: CreateResearchResult) => {
       if (!result.ok) {
         if (result.code === "HUMID_CONFLICT") {
@@ -101,9 +98,7 @@ export function NewResearchForm({
     onSubmit: async ({ value }) => {
       setError(null);
       const normalizedHumId =
-        value.humId == null || value.humId.trim() === ""
-          ? undefined
-          : value.humId.trim();
+        value.humId == null || value.humId.trim() === "" ? undefined : value.humId.trim();
       await mutateAsync({ ...value, humId: normalizedHumId });
     },
   });
@@ -112,10 +107,8 @@ export function NewResearchForm({
   function applyMergedJDSValues(values: NewResearchMergeValues, incoming: string[]) {
     setRelatedAccessions(incoming);
     if (values.title !== undefined) form.setFieldValue("title", values.title);
-    if (values.summary !== undefined)
-      form.setFieldValue("summary", values.summary);
-    if (values.dataProvider !== undefined)
-      form.setFieldValue("dataProvider", values.dataProvider);
+    if (values.summary !== undefined) form.setFieldValue("summary", values.summary);
+    if (values.dataProvider !== undefined) form.setFieldValue("dataProvider", values.dataProvider);
     if (values.researchProject !== undefined)
       form.setFieldValue("researchProject", values.researchProject);
     if (values.grant !== undefined) form.setFieldValue("grant", values.grant);
@@ -137,11 +130,7 @@ export function NewResearchForm({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {error ? (
-            <AdminStatusMessage className="mx-5 mt-5">
-              {error}
-            </AdminStatusMessage>
-          ) : null}
+          {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
             <MergeJDSResearchDialog
@@ -160,12 +149,7 @@ export function NewResearchForm({
             >
               Discard
             </Button>
-            <Button
-              type="submit"
-              variant="accent"
-              size={"lg"}
-              disabled={isPending}
-            >
+            <Button type="submit" variant="accent" size={"lg"} disabled={isPending}>
               {isPending ? "Creating…" : "Create"}
             </Button>
           </div>
@@ -193,14 +177,9 @@ export function NewResearchForm({
                   <div className="nested-form flex w-full flex-col gap-1">
                     {field.state.value?.map((_, i) => (
                       <div key={i} className="flex items-center gap-1">
-                        <form.AppField name={`uids[${i}]`}>
-                          {(f) => <f.TextField />}
-                        </form.AppField>
-                        <button
-                          type="button"
-                          onClick={() => field.removeValue(i)}
-                        >
-                          <Trash2 className="text-danger size-4" />
+                        <form.AppField name={`uids[${i}]`}>{(f) => <f.TextField />}</form.AppField>
+                        <button type="button" onClick={() => field.removeValue(i)}>
+                          <Trash2 className="size-4 text-danger" />
                         </button>
                       </div>
                     ))}
@@ -228,10 +207,7 @@ export function NewResearchForm({
             </form.AppField>
           </div>
 
-          <Tabs
-            defaultValue="title"
-            className="mt-4 flex min-h-0 flex-1 flex-col"
-          >
+          <Tabs defaultValue="title" className="mt-4 flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 overflow-x-auto px-5">
               <TabsList variant="line">
                 <TabsTrigger variant="line" value="title">

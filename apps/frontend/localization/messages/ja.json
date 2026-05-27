@@ -15,7 +15,10 @@
     "items": "件",
     "already-in-cart": "カートに追加済み",
     "add-to-cart": "カートに追加",
-    "add-all-to-cart": "全てカートに追加"
+    "add-all-to-cart": "全てカートに追加",
+    "add-all-datasets-to-cart": "すべてのデータセットをカートに追加",
+    "read-more": "もっと見る",
+    "details": "詳細"
   },
   "Footer": {
     "sitemap": "サイトマップ"
@@ -425,6 +428,22 @@
     "itemsPerPage": "1ページあたりのアイテム数",
     "previous": "前へ",
     "next": "次へ"
+  },
+  "MergeWizard": {
+    "field-status-conflict": "値が異なります",
+    "field-status-can-fill": "こちらは空、J-DSに値あり",
+    "field-status-same": "最新の状態",
+    "field-status-na": "J-DSにデータなし",
+    "field-decision-accepted": "J-DSの値を使用",
+    "field-decision-rejected": "現在の値を保持",
+    "field-decision-custom": "カスタム値を設定済み",
+    "decision-label-accepted": "J-DSの値を使用",
+    "decision-label-rejected-conflict": "現在の値を保持",
+    "decision-label-rejected-fill": "空のままにする",
+    "decision-label-custom": "カスタム値",
+    "decision-label-pending": "未決定 — 適用時は現在の値を保持",
+    "will-overwrite": "上書きされる値",
+    "no-changes": "変更はありません"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",

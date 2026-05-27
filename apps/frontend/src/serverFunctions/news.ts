@@ -1,10 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { and, asc, eq } from "drizzle-orm";
-
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
 import { newsTag, newsTranslation } from "@/db/schema";
 import {
@@ -14,8 +14,8 @@ import {
   newsTranslationUpdateSchema,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { newsItemRepository } from "@/repositories/newsItem";
 import type { NewsTag, PublishedTitlesFilters } from "@/repositories/newsItem";
+import { newsItemRepository } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   id: string;
@@ -73,12 +73,7 @@ export const $getPublishedNewsTitles = createServerFn({ method: "GET" })
     z
       .object({
         locale: z.string(),
-        limit: z
-          .number()
-          .min(1)
-          .max(100)
-          .optional()
-          .default(PUBLIC_NEWS_PAGE_SIZE),
+        limit: z.number().min(1).max(100).optional().default(PUBLIC_NEWS_PAGE_SIZE),
         offset: z.number().min(0).optional().default(0),
       })
       .merge(publicNewsTitlesFiltersSchema),
@@ -112,9 +107,7 @@ export function getPublishedNewsTitlesInfiniteQueryOptions({
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-      lastPage.length < PUBLIC_NEWS_PAGE_SIZE
-        ? undefined
-        : lastPageParam + PUBLIC_NEWS_PAGE_SIZE,
+      lastPage.length < PUBLIC_NEWS_PAGE_SIZE ? undefined : lastPageParam + PUBLIC_NEWS_PAGE_SIZE,
     staleTime: 1000 * 60 * 60 * 24,
   });
 }
@@ -143,10 +136,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
     const lang = data.lang;
 
     let result = await db.query.newsTranslation.findFirst({
-      where: and(
-        eq(newsTranslation.newsId, newsItemId),
-        eq(newsTranslation.lang, lang),
-      ),
+      where: and(eq(newsTranslation.newsId, newsItemId), eq(newsTranslation.lang, lang)),
       columns: {
         title: true,
         content: true,
@@ -231,9 +221,7 @@ export const $getNewsItems = createServerFn({ method: "GET" })
     });
   });
 
-export type NewsItemResponse = Awaited<
-  ReturnType<typeof $getNewsItems>
->[number];
+export type NewsItemResponse = Awaited<ReturnType<typeof $getNewsItems>>[number];
 
 /**
  * Get news item with tags, alerts & translations by its id.
@@ -295,9 +283,7 @@ export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-      lastPage.length < NEWS_ITEMS_PAGE_SIZE
-        ? undefined
-        : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
+      lastPage.length < NEWS_ITEMS_PAGE_SIZE ? undefined : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
     staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 }
@@ -332,20 +318,13 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
  */
 export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .inputValidator(
-    newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required(),
-  )
+  .inputValidator(newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
 
     const result = await db
       .delete(newsTranslation)
-      .where(
-        and(
-          eq(newsTranslation.newsId, data.newsId),
-          eq(newsTranslation.lang, data.lang),
-        ),
-      )
+      .where(and(eq(newsTranslation.newsId, data.newsId), eq(newsTranslation.lang, data.lang)))
       .returning();
 
     return result;
@@ -393,10 +372,7 @@ export const $createTag = createServerFn({ method: "POST" })
   .inputValidator(z.object({ name: z.string().min(1).trim() }))
   .handler(async ({ context, data }): Promise<NewsTag> => {
     context.checkPermission("news", "create");
-    const [created] = await db
-      .insert(newsTag)
-      .values({ name: data.name })
-      .returning();
+    const [created] = await db.insert(newsTag).values({ name: data.name }).returning();
     return created;
   });
 

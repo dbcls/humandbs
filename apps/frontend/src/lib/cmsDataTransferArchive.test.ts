@@ -1,15 +1,9 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  test,
-} from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
+
 import tar from "tar-stream";
 
 import * as schema from "@/db/schema";
@@ -22,9 +16,9 @@ import {
 } from "@/scripts/database/tests/test-db";
 
 import {
+  type CmsDataTransferArchiveManifest,
   createCmsDataTransferArchiveBuilder,
   createCmsDataTransferArchiveRestorer,
-  type CmsDataTransferArchiveManifest,
   inspectCmsDataTransferArchive,
 } from "./cmsDataTransferArchive";
 
@@ -102,10 +96,7 @@ async function seedAssetFixture() {
   tempAssetDir = await mkdtemp(path.join(tmpdir(), "cms-transfer-assets-"));
   await mkdir(path.join(tempAssetDir, "nested"), { recursive: true });
   await writeFile(path.join(tempAssetDir, "logo.txt"), "asset-root");
-  await writeFile(
-    path.join(tempAssetDir, "nested", "diagram.txt"),
-    "asset-nested",
-  );
+  await writeFile(path.join(tempAssetDir, "nested", "diagram.txt"), "asset-nested");
 }
 
 beforeAll(async () => {
@@ -158,9 +149,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(Object.hasOwn(files, "assets/logo.txt")).toBe(true);
     expect(Object.hasOwn(files, "assets/nested/diagram.txt")).toBe(true);
 
-    const manifest = JSON.parse(
-      files["manifest.json"] as string,
-    ) as CmsDataTransferArchiveManifest;
+    const manifest = JSON.parse(files["manifest.json"] as string) as CmsDataTransferArchiveManifest;
 
     expect(manifest.schemaVersion).toBe(1);
     expect(manifest.archiveFormat).toBe("tar.gz");
@@ -169,9 +158,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(manifest.counts.assets).toBe(2);
     expect(manifest.createdBy?.id).toBe(AUTHOR_ID);
 
-    const contentPayload = JSON.parse(
-      files["categories/content.json"] as string,
-    ) as {
+    const contentPayload = JSON.parse(files["categories/content.json"] as string) as {
       items: Array<{ id: string }>;
       translations: Array<{ contentId: string; lang: string; status: string }>;
     };
@@ -179,9 +166,10 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(contentPayload.items).toHaveLength(1);
     expect(contentPayload.items[0]?.id).toBe("faq");
     expect(contentPayload.translations).toHaveLength(2);
-    expect(
-      contentPayload.translations.map((item) => item.status).sort(),
-    ).toEqual(["draft", "published"]);
+    expect(contentPayload.translations.map((item) => item.status).sort()).toEqual([
+      "draft",
+      "published",
+    ]);
 
     expect(files["assets/logo.txt"]).toBe("asset-root");
     expect(files["assets/nested/diagram.txt"]).toBe("asset-nested");
@@ -232,13 +220,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
             pack.on("error", reject);
             pack.on("end", () => {
               const buffer = Buffer.concat(chunks);
-              resolve(
-                new Uint8Array(
-                  buffer.buffer,
-                  buffer.byteOffset,
-                  buffer.byteLength,
-                ),
-              );
+              resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
             });
           });
 
@@ -280,13 +262,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
           pack.on("error", reject);
           pack.on("end", () => {
             const buffer = Buffer.concat(chunks);
-            resolve(
-              new Uint8Array(
-                buffer.buffer,
-                buffer.byteOffset,
-                buffer.byteLength,
-              ),
-            );
+            resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
           });
         });
 
@@ -295,9 +271,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
 
           let entryValue = value;
           if (typeof entryValue !== "string") {
-            entryValue = Buffer.from(await (entryValue as Blob).arrayBuffer()).toString(
-              "utf8",
-            );
+            entryValue = Buffer.from(await (entryValue as Blob).arrayBuffer()).toString("utf8");
           }
           pack.entry({ name }, entryValue as string);
         }
@@ -325,9 +299,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
         lastModified: Date.now(),
         bytes,
       }),
-    ).rejects.toThrow(
-      'Archive is missing required file "categories/content.json".',
-    );
+    ).rejects.toThrow('Archive is missing required file "categories/content.json".');
   });
 
   test("restores selected categories and replaces the asset directory", async () => {

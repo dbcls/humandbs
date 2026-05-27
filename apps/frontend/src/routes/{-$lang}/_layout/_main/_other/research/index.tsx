@@ -1,40 +1,31 @@
-import type {
-  ResearchSearchBody,
-  ResearchSearchResponse,
-} from "@humandbs/backend/types";
-import { useQuery } from "@tanstack/react-query";
-import {
-  ClientOnly,
-  createFileRoute,
-  functionalUpdate,
-} from "@tanstack/react-router";
-import {
-  createColumnHelper,
-  type SortingState,
-  type Updater,
-} from "@tanstack/react-table";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import type { SortingState, Updater } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "use-intl";
 
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+
+import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
+
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { SearchCaption } from "@/components/SearchCaption";
-import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
+import type { SectionConfig } from "@/components/SearchPanel";
+import { SearchPanel } from "@/components/SearchPanel";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCartTableHeader } from "@/hooks/useCart";
+import { isCartableDatasetId, useCart, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
+import type { ResearchSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
@@ -43,9 +34,7 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/research/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
   errorComponent: DefaultCatchBoundary,
@@ -78,8 +67,7 @@ function RouteComponent() {
       { header: t("title"), value: (row) => row.title[lang] ?? "" },
       {
         header: t("datePublished"),
-        value: (row) =>
-          `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
+        value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
       },
       {
         header: t("dateModified"),
@@ -98,15 +86,14 @@ function RouteComponent() {
     ];
     return {
       headers: columns.map((c) => c.header),
-      rows: (researchesData?.data ?? []).map((row) =>
-        columns.map((c) => c.value(row)),
-      ),
+      rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
     };
   }, [researchesData, lang, t]);
 
   return (
     <FilterableCard
       className="flex flex-col"
+      captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
           filterButtonRef={filterButtonRef}
@@ -164,9 +151,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
     getResearchesQueryOptions({ ...filters, lang }),
   );
 
-  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(
-    getAllFacetsQueryOptions(),
-  );
+  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(getAllFacetsQueryOptions());
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
@@ -186,11 +171,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
     return [
       ...topLevel,
-      ...buildFacetSections(
-        filters.datasetFilters ?? {},
-        "datasetFilters",
-        allFacetsData?.data,
-      ),
+      ...buildFacetSections(filters.datasetFilters ?? {}, "datasetFilters", allFacetsData?.data),
     ];
   }, [filters, allFacetsData]);
 
@@ -199,7 +180,6 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       isFetching={isFacetsPending || isDataPending}
       facetCounts={searchResults?.facets}
-      //@ts-ignore TODO fix types
       onSetFilters={setFilters}
       sections={sections}
     />
@@ -207,9 +187,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -221,9 +207,9 @@ function useResearchesSearchQuery() {
   const search = Route.useSearch();
   const lang = useLocale();
   const searchParams = { ...search, lang };
-  const lastResolvedSearchRef = useRef<
-    Omit<ResearchSearchBody, "includeFacets"> | undefined
-  >(undefined);
+  const lastResolvedSearchRef = useRef<Omit<ResearchSearchBody, "includeFacets"> | undefined>(
+    undefined,
+  );
 
   const query = useQuery({
     ...getResearchesQueryOptions(searchParams),
@@ -232,22 +218,17 @@ function useResearchesSearchQuery() {
         ? (previousQuery.queryKey as readonly unknown[])[2]
         : undefined;
 
-      return isBackgroundTransition(previousSearch, searchParams)
-        ? previousData
-        : undefined;
+      return isBackgroundTransition(previousSearch, searchParams) ? previousData : undefined;
     },
   });
 
-  const transitionType = getSearchTransitionType(
-    lastResolvedSearchRef.current,
-    searchParams,
-  );
+  const transitionType = getSearchTransitionType(lastResolvedSearchRef.current, searchParams);
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
-      lastResolvedSearchRef.current = searchParams;
+      lastResolvedSearchRef.current = { ...search, lang };
     }
-  }, [query.isFetching, query.data, searchParams]);
+  }, [query.isFetching, query.data, search, lang]);
 
   return { ...query, transitionType };
 }
@@ -285,11 +266,7 @@ function getSearchTransitionType(
 }
 
 function omitSortParams(value: unknown) {
-  const {
-    sort: _sort,
-    order: _order,
-    ...rest
-  } = value as Record<string, unknown>;
+  const { sort: _sort, order: _order, ...rest } = value as Record<string, unknown>;
 
   return rest;
 }
@@ -308,10 +285,7 @@ function stableSerialize(value: unknown): string {
   if (value && typeof value === "object") {
     return `{${Object.entries(value)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, entryValue]) =>
-          `${JSON.stringify(key)}:${stableSerialize(entryValue)}`,
-      )
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
       .join(",")}}`;
   }
 
@@ -361,13 +335,12 @@ function TableWrapper() {
     isFetching && isPlaceholderData && transitionType === "sort"
       ? (search.sort ?? "humId")
       : undefined;
-  const isPaginating =
-    isFetching && isPlaceholderData && transitionType === "pagination";
+  const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!researchesData || (isFetching && !isPlaceholderData))
     return (
       <TableLoadingSpinner
-        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        className="min-h-full w-max min-w-full flex-1 text-sm"
         columns={columns}
         meta={{ t, lang }}
       />
@@ -375,41 +348,50 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       columns={columns}
       data={researchesData.data}
       sorting={sorting}
       onSortingChange={handleSortingChange}
       meta={{ t, lang, loadingSortColumnId, activeSort }}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }
 
 function PaginationWrapper() {
-  const {
-    data: researchesData,
-    isFetching,
-    isPlaceholderData,
-  } = useResearchesSearchQuery();
+  const { data: researchesData, isFetching, isPlaceholderData } = useResearchesSearchQuery();
 
-  if (!researchesData || (isFetching && !isPlaceholderData))
-    return <PaginationLoadingSkeleton />;
+  if (!researchesData || (isFetching && !isPlaceholderData)) return <PaginationLoadingSkeleton />;
 
-  return (
-    <Pagination className="pr-5" pagination={researchesData.meta.pagination} />
-  );
+  return <Pagination className="pr-5" pagination={researchesData.meta.pagination} />;
 }
 
-const columnHelper =
-  createColumnHelper<ResearchSearchResponse["data"][number]>();
+const columnHelper = createColumnHelper<ResearchSummary>();
 
 const columns = [
+  columnHelper.display({
+    id: "cart",
+    header: (ctx) => (
+      <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+        <ResearchCartHeaderButton tableResearches={ctx.table.options.data} />
+      </ClientOnly>
+    ),
+    cell: (ctx) => (
+      <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+        <AddToCartAllDatasetsButton
+          humId={ctx.row.original.humId}
+          tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+        />
+      </ClientOnly>
+    ),
+    maxSize: 1,
+    size: 1,
+  }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />,
 
     cell: function Cell(ctx) {
       return (
@@ -424,43 +406,37 @@ const columns = [
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => (
-      <>
-        <ClientOnly fallback={null}>
-          <AddToCartAllDatasetsButton
-            humId={ctx.row.original.humId}
-            tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
-          />
-        </ClientOnly>
-        <CollapsiblePreview
-          items={ctx.getValue().map((id) => ({
-            id,
-            content: (
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((id) => (
+            <li key={id} className="flex items-center gap-2">
+              <ClientOnly fallback={null}>
+                <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
+              </ClientOnly>
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
-            ),
-          }))}
-        />
-      </>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
-
     size: 15,
   }),
   columnHelper.accessor("title", {
     id: "title",
     header: (ctx) => ctx.table.options.meta?.t?.("title"),
     cell: function Cell(ctx) {
-      return ctx.renderValue()?.[ctx.table.options.meta?.lang!];
+      return (
+        <ModalCell maxHeight={96}>
+          <p className="text-sm">{ctx.renderValue()?.[ctx.table.options.meta?.lang!]}</p>
+        </ModalCell>
+      );
     },
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("datePublished")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("datePublished")} />,
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -483,12 +459,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("dateModified")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("dateModified")} />,
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -511,86 +482,144 @@ const columns = [
   columnHelper.accessor("methods", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => <p className="text-sm break-all">{ctx.renderValue()}</p>,
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
     header: (ctx) => ctx.table.options.meta?.t("platforms"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("targets", {
     id: "targets",
     header: (ctx) => ctx.table.options.meta?.t("targets"),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    // @ts-ignore TODO fix types
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
     header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
 ];
 
+/** Button to add all datasets of the research
+ * to cart
+ */
 function AddToCartAllDatasetsButton({
   tableDatasets,
   humId,
+  className,
 }: {
   humId: string;
   tableDatasets: { datasetId: string }[];
+  className?: string;
 }) {
   const t = useTranslations("common");
   const datasetsQO = getDatasetsOfResearchQueryOptions(humId);
 
-  const { data, refetch } = useQuery(datasetsQO);
+  const queryClient = useQueryClient();
+  const { data } = useQuery(datasetsQO);
+  const { addMany } = useCart();
 
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets:
       // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
       data?.data || tableDatasets,
   });
+  const hasCartableDatasets = tableDatasets.some((dataset) =>
+    isCartableDatasetId(dataset.datasetId),
+  );
 
   async function handleAddAllToCart() {
-    await refetch();
-    // data updates, so need to wait until next render, in order to `data?.data` to have values
-    Promise.resolve().then(() => {
+    if (!hasCartableDatasets) return;
+
+    if (allInCart) {
       handleClickCart();
-    });
+      return;
+    }
+
+    const result = await queryClient.ensureQueryData(datasetsQO);
+
+    if (result.data) {
+      addMany(result.data);
+    }
   }
 
   return (
     <AddToCartToggle
-      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleAddAllToCart}
-      className="text-sm font-normal"
-    >
-      <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
-    </AddToCartToggle>
+      disabled={!hasCartableDatasets}
+      className={cn("shrink-0", className)}
+      title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+      aria-label={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+    />
+  );
+}
+
+function ResearchCartHeaderButton({ tableResearches }: { tableResearches: ResearchSummary[] }) {
+  const t = useTranslations("common");
+  const allDatasets = useMemo(() => {
+    return tableResearches.flatMap((row) => row.datasetIds.map((id) => ({ datasetId: id })));
+  }, [tableResearches]);
+
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets: allDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
+      onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
+    />
   );
 }

@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+
+import { useEffect, useState } from "react";
+
 import { Input as SearchInput } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 function areStringArraysEqual(a: string[], b: string[]) {

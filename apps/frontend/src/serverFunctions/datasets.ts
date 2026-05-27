@@ -1,27 +1,31 @@
-import {
-  DatasetIdParamsSchema,
-  type DatasetCreateResponse,
-  type DatasetVersionsListResponse,
-  LangQuerySchema,
-  LangVersionQuerySchema,
-  type DatasetSearchResponse,
-  type DatasetDetailResponse,
-  type DatasetUpdateResponse,
-  DatasetSearchBodySchema,
-  type DatasetSearchBody,
-  type CreateDatasetForResearchRequest,
-  type UpdateDatasetRequest,
-  type LinkedDatasetsListResponse,
-} from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type {
+  CreateDatasetForResearchRequest,
+  DatasetCreateResponse,
+  DatasetDetailResponse,
+  DatasetSearchBody,
+  DatasetSearchResponse,
+  DatasetUpdateResponse,
+  DatasetVersionsListResponse,
+  LinkedDatasetsListResponse,
+  UpdateDatasetRequest,
+} from "@humandbs/backend/types";
+import {
+  DatasetIdParamsSchema,
+  DatasetSearchBodySchema,
+  LangQuerySchema,
+  LangVersionQuerySchema,
+} from "@humandbs/backend/types";
+
+import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
 import type { DeepOmit } from "@/utils/typeUtils";
-import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
@@ -61,16 +65,20 @@ export const $getDatasetsPaginated = createServerFn()
     return paginated;
   });
 
-export function getDatasetsPaginatedQueryOptions(
-  data: Omit<DatasetSearchBody, "includeFacets">,
-) {
+export function getDatasetsPaginatedQueryOptions(data: Omit<DatasetSearchBody, "includeFacets">) {
   return queryOptions({
     queryKey: ["datasets", "list", data],
-    queryFn: async ({ signal }) => {
-      return await $getDatasetsPaginated({
-        data: { ...data, includeFacets: true },
-        signal,
-      });
+    queryFn: async () => {
+      const signal = nextSearchSignal("dataset");
+
+      try {
+        return await $getDatasetsPaginated({
+          data: { ...data, includeFacets: true },
+          signal,
+        });
+      } finally {
+        clearSearchSignal("research", signal);
+      }
     },
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 60,
@@ -165,21 +173,14 @@ export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
  */
 export const $createDatasetForResearch = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: {
-      humId: string;
-      body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml">;
-    }) => data,
+    (data: { humId: string; body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml"> }) => data,
   )
   .handler<Promise<CreateDatasetForResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const created = await api.createDatasetForResearch(
-        data.humId,
-        data.body,
-        accessToken,
-      );
+      const created = await api.createDatasetForResearch(data.humId, data.body, accessToken);
       return { ok: true, data: created };
     } catch (error) {
       return mapApiError(error, "Failed to create dataset.");
@@ -193,19 +194,13 @@ export const $createDatasetForResearch = createServerFn({ method: "POST" })
  * it ignores the rawHtml but it is still required by the zod schema
  */
 export const $updateDataset = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { datasetId: string; body: UpdateDatasetRequest }) => data,
-  )
+  .inputValidator((data: { datasetId: string; body: UpdateDatasetRequest }) => data)
   .handler<Promise<UpdateDatasetResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const updated = await api.updateDataset(
-        data.datasetId,
-        data.body,
-        accessToken,
-      );
+      const updated = await api.updateDataset(data.datasetId, data.body, accessToken);
       return { ok: true, data: updated };
     } catch (error) {
       return mapApiError(error, "Failed to update dataset.");

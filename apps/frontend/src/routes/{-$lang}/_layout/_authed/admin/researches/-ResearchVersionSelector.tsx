@@ -1,5 +1,11 @@
-import { useState, Suspense } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
+import { Suspense, useState } from "react";
+
+import type { ResearchVersionDoc } from "@humandbs/backend/types";
+
+import { Tag } from "@/components/StatusTag";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,13 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
-import type { ResearchVersionDoc } from "@humandbs/backend/types";
-import { useSuspenseQuery } from "@tanstack/react-query";
 import type { Locale } from "@/config/i18n";
+import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
+
 import { NewVersionDialog } from "./-NewVersionDialog";
-import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/StatusTag";
 
 interface ResearchSelectorItemProps {
   compact?: boolean;
@@ -69,7 +72,7 @@ function VersionSelectorInner({
             <SelectItem
               key={v.version}
               value={v.version}
-              className="group focus:bg-secondary-light text-xs"
+              className="group text-xs focus:bg-secondary-light"
             >
               <ResearchSelectorItem item={{ v, draftVersion, latestVersion }} />
             </SelectItem>
@@ -112,11 +115,7 @@ export function ResearchVersionSelector(props: {
   onVersionChange: (version: string) => void;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="bg-muted h-7 w-40 animate-pulse rounded text-xs" />
-      }
-    >
+    <Suspense fallback={<div className="h-7 w-40 animate-pulse rounded bg-muted text-xs" />}>
       <VersionSelectorInner {...props} />
     </Suspense>
   );

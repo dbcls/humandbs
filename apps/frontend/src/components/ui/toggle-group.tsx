@@ -1,13 +1,12 @@
 import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
-import { type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+
 import * as React from "react";
 
 import { toggleVariants } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 
-const ToggleGroupContext = React.createContext<
-  VariantProps<typeof toggleVariants>
->({
+const ToggleGroupContext = React.createContext<VariantProps<typeof toggleVariants>>({
   size: "default",
   variant: "default",
 });
@@ -22,10 +21,7 @@ function ToggleGroup<T extends string>({
   children,
   onValueChange,
   ...props
-}: Omit<
-  React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
-  "onValueChange" | "value"
-> &
+}: Omit<React.ComponentProps<typeof ToggleGroupPrimitive.Root>, "onValueChange" | "value"> &
   VariantProps<typeof toggleVariants> & {
     value?: T;
     onValueChange?: (value: T) => void;
@@ -36,10 +32,9 @@ function ToggleGroup<T extends string>({
       data-variant={variant}
       data-size={size}
       className={cn(
-        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs data-[variant=pill]:gap-2",
+        "group/toggle-group flex w-fit items-center rounded-md data-[variant=pill]:gap-2 data-[variant=outline]:shadow-xs",
         {
-          "flex items-center rounded-full bg-white/90 p-1.5 backdrop-blur-sm":
-            variant === "pill",
+          "flex items-center rounded-full bg-white/90 p-1.5 backdrop-blur-sm": variant === "pill",
         },
         className,
       )}
@@ -70,7 +65,7 @@ function ToggleGroupItem({
       data-variant={context.variant || variant}
       data-size={context.size || size}
       className={cn(
-        "data-[state=off]:bg-foreground-light/20 min-w-0 shrink-0 cursor-pointer shadow-none first:rounded-l-md last:rounded-r-md focus:z-10 focus-visible:z-10 data-[state=on]:text-white data-[variant=outline]:border-l-0 data-[variant=outline]:first:border-l",
+        "min-w-0 shrink-0 cursor-pointer shadow-none first:rounded-l-md last:rounded-r-md focus:z-10 focus-visible:z-10 data-[variant=outline]:border-l-0 data-[state=off]:bg-foreground-light/20 data-[state=on]:text-white data-[variant=outline]:first:border-l",
         toggleVariants({
           variant: context.variant || variant,
           size: context.size || size,

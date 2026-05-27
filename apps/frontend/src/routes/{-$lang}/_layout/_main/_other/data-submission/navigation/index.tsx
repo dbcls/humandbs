@@ -1,15 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
-import { NavigationChart, Breadcrumbs } from "@/components/NavigationChart";
-import type {
-  FlowchartAnswers,
-  BreadcrumbItem,
-} from "@/components/NavigationChart";
+import type { BreadcrumbItem, FlowchartAnswers } from "@/components/NavigationChart";
+import { Breadcrumbs, NavigationChart } from "@/components/NavigationChart";
 import {
   getNavigationEntryPointQueryOptions,
   getNavigationFlowchartByIdQueryOptions,
@@ -19,10 +16,7 @@ import {
 // The entry point has no slug, so we use a fixed sentinel.
 const ENTRY_POINT_KEY = "entry-point";
 
-const answersSchema = z
-  .record(z.string(), z.record(z.string(), z.string()))
-  .optional()
-  .default({});
+const answersSchema = z.record(z.string(), z.record(z.string(), z.string())).optional().default({});
 
 const chainItemSchema = z.object({
   id: z.string(),
@@ -36,16 +30,12 @@ const navigationSearchSchema = z.object({
   chain: z.array(chainItemSchema).optional().default([]),
 });
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/navigation/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-submission/navigation/")({
   validateSearch: zodValidator(navigationSearchSchema),
   component: RouteComponent,
 
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(
-      getNavigationEntryPointQueryOptions(context.lang),
-    ),
+    context.queryClient.ensureQueryData(getNavigationEntryPointQueryOptions(context.lang)),
 });
 
 /**
@@ -72,9 +62,7 @@ function RouteComponent() {
   const currentLinkedFlowchartId = currentChainItem?.id ?? null;
 
   // Load entry point metadata
-  const { data: entryPointData } = useQuery(
-    getNavigationEntryPointQueryOptions(lang),
-  );
+  const { data: entryPointData } = useQuery(getNavigationEntryPointQueryOptions(lang));
 
   // Load metadata for every id in the chain (for breadcrumb names + caption)
   const chainQueries = useQueries({
@@ -128,10 +116,7 @@ function RouteComponent() {
           ...prev,
           // If the user re-answers a step in the entry point while on a linked
           // flowchart, pop back to the entry point since the path may change.
-          chain:
-            slug === ENTRY_POINT_KEY && (prev.chain?.length ?? 0) > 0
-              ? []
-              : prev.chain,
+          chain: slug === ENTRY_POINT_KEY && (prev.chain?.length ?? 0) > 0 ? [] : prev.chain,
           answers: { ...(prev.answers ?? {}), [slug]: newSlugAnswers },
         };
       },
@@ -172,15 +157,10 @@ function RouteComponent() {
     slug: item.slug,
     nameEn: item.nameEn,
     nameJa: item.nameJa,
-    onClick:
-      idx < allItems.length - 1
-        ? () => handleBreadcrumbClick(item.linkedDepth)
-        : undefined,
+    onClick: idx < allItems.length - 1 ? () => handleBreadcrumbClick(item.linkedDepth) : undefined,
   }));
 
-  const currentData = currentLinkedFlowchartId
-    ? chainQueries[chain.length - 1]?.data
-    : null;
+  const currentData = currentLinkedFlowchartId ? chainQueries[chain.length - 1]?.data : null;
 
   const caption = currentData
     ? lang === "ja"
@@ -193,12 +173,8 @@ function RouteComponent() {
       <Breadcrumbs items={breadcrumbs} locale={lang} />
       <NavigationChart
         entryPoint={!currentLinkedFlowchartId}
-        flowchartId={
-          currentLinkedFlowchartId ?? entryPointData?.id ?? undefined
-        }
-        answerKey={
-          currentLinkedFlowchartId ? currentLinkedFlowchartId : ENTRY_POINT_KEY
-        }
+        flowchartId={currentLinkedFlowchartId ?? entryPointData?.id ?? undefined}
+        answerKey={currentLinkedFlowchartId ? currentLinkedFlowchartId : ENTRY_POINT_KEY}
         initialStepId={currentChainItem?.stepId}
         locale={lang}
         answers={answers ?? {}}

@@ -1,22 +1,26 @@
 import { useStore } from "@tanstack/react-form";
-import { useEffect, useImperativeHandle, type Ref } from "react";
+import { useTranslations } from "use-intl";
 
+import type { Ref } from "react";
+import { useEffect, useImperativeHandle } from "react";
+
+import type { UpdateDatasetRequest } from "@humandbs/backend/types";
+
+import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
-import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { DatasetDoc, UpdateDatasetRequest } from "@humandbs/backend/types";
+import type { DatasetDoc } from "@/lib/types";
+import type { DeepOmit } from "@/utils/typeUtils";
 
+import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
+import type { ExperimentItem } from "./ExperimentsArrayField";
 import {
   ExperimentsArrayField,
-  experimentDataToEntries,
   entriesToExperimentData,
-  type ExperimentItem,
+  experimentDataToEntries,
 } from "./ExperimentsArrayField";
-import { useTranslations } from "use-intl";
-import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
-import type { DeepOmit } from "@/utils/typeUtils";
 
 const CRITERIA_OPTIONS = CriteriaCanonicalSchema.options;
 
@@ -33,12 +37,7 @@ export type DatasetFormValues = {
 export function datasetToFormValues(
   dataset: Pick<
     UpdateDatasetRequest,
-    | "humId"
-    | "humVersionId"
-    | "releaseDate"
-    | "criteria"
-    | "typeOfData"
-    | "experiments"
+    "humId" | "humVersionId" | "releaseDate" | "criteria" | "typeOfData" | "experiments"
   >,
 ): DatasetFormValues {
   return {
@@ -89,13 +88,7 @@ export function datasetFormValuesToPreviewDataset(
   },
 ): Pick<
   DatasetDoc,
-  | "criteria"
-  | "datasetId"
-  | "releaseDate"
-  | "typeOfData"
-  | "version"
-  | "experiments"
-  | "humId"
+  "criteria" | "datasetId" | "releaseDate" | "typeOfData" | "version" | "experiments" | "humId"
 > {
   return {
     criteria: values.criteria as DatasetDoc["criteria"],
@@ -170,24 +163,25 @@ export function DatasetForm({
     },
   });
 
-  useImperativeHandle(imperativeRef, () => ({
-    applyValues(values) {
-      if (values.releaseDate !== undefined) form.setFieldValue("releaseDate", values.releaseDate);
-      if (values.criteria !== undefined) form.setFieldValue("criteria", values.criteria);
-      if (values.typeOfData !== undefined) form.setFieldValue("typeOfData", values.typeOfData);
-      if (values.datasetId !== undefined) form.setFieldValue("datasetId", values.datasetId);
-      if (values.experiments !== undefined) form.setFieldValue("experiments", values.experiments);
-    },
-  }), [form]);
+  useImperativeHandle(
+    imperativeRef,
+    () => ({
+      applyValues(values) {
+        if (values.releaseDate !== undefined) form.setFieldValue("releaseDate", values.releaseDate);
+        if (values.criteria !== undefined) form.setFieldValue("criteria", values.criteria);
+        if (values.typeOfData !== undefined) form.setFieldValue("typeOfData", values.typeOfData);
+        if (values.datasetId !== undefined) form.setFieldValue("datasetId", values.datasetId);
+        if (values.experiments !== undefined) form.setFieldValue("experiments", values.experiments);
+      },
+    }),
+    [form],
+  );
 
   const t = useTranslations("Dataset");
 
   const values = useStore(form.store, (state) => state.values);
   const baseline = cleanValues ?? defaultValues;
-  const isModified = useStore(
-    form.store,
-    (state) => !deepEqual(state.values, baseline),
-  );
+  const isModified = useStore(form.store, (state) => !deepEqual(state.values, baseline));
 
   // Notify parent when dirty state changes
   useEffect(() => {
@@ -213,47 +207,34 @@ export function DatasetForm({
       className="flex flex-col gap-5"
     >
       {error && (
-        <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
+        <div className="rounded border border-red-200 bg-red-50 p-2 text-danger text-sm">
           {error}
         </div>
       )}
       {conflictError && (
-        <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+        <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 text-sm">
           <span>Someone else saved a newer version. Reload to continue.</span>
           {onReload && (
-            <button
-              type="button"
-              onClick={onReload}
-              className="underline hover:no-underline"
-            >
+            <button type="button" onClick={onReload} className="underline hover:no-underline">
               Reload
             </button>
           )}
         </div>
       )}
 
-      <fieldset
-        disabled={readOnly}
-        className="flex flex-col gap-5 disabled:opacity-60"
-      >
+      <fieldset disabled={readOnly} className="flex flex-col gap-5 disabled:opacity-60">
         {/* Read-only fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs text-gray-500">
-              {t("research-version")}
-            </Label>
-            <span className="font-mono text-sm">
-              {defaultValues.humVersionId || "—"}
-            </span>
+            <Label className="text-gray-500 text-xs">{t("research-version")}</Label>
+            <span className="font-mono text-sm">{defaultValues.humVersionId || "—"}</span>
           </div>
         </div>
 
         {/* Dataset ID (create only) */}
         {showDatasetIdField && (
           <form.AppField name="datasetId">
-            {(field) => (
-              <field.TextField type="col" label="Dataset ID (optional)" />
-            )}
+            {(field) => <field.TextField type="col" label="Dataset ID (optional)" />}
           </form.AppField>
         )}
 
@@ -287,10 +268,7 @@ export function DatasetForm({
             <Label>{t("experiments")}</Label>
             <ModifiedTag isModified={isExperimentsModified} />
           </div>
-          <ExperimentsArrayField
-            form={form}
-            initialItems={defaultValues.experiments}
-          />
+          <ExperimentsArrayField form={form} initialItems={defaultValues.experiments} />
         </div>
       </fieldset>
 

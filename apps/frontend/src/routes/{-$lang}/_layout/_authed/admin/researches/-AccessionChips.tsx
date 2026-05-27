@@ -1,5 +1,7 @@
 import { Check, RotateCcw, X } from "lucide-react";
-import React, { useState, useEffect } from "react";
+
+import type React from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -119,7 +121,7 @@ export function AccessionChips({
         Related accessions
         {accessions.length > 0 ? " — click to apply dataset template" : ""}
       </span>
-      <div className="focus-within:ring-ring flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1">
+      <div className="flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
         {accessions.map((accession) => {
           const state = chipStates[accession] ?? { status: "idle" };
           return (
@@ -149,11 +151,9 @@ export function AccessionChips({
               if (inputValue.trim()) addAccession(inputValue);
             }}
             placeholder="JGAD… or DRA…"
-            className="border-0 p-0 font-mono text-xs shadow-none focus-visible:ring-0"
+            className="p-0 font-mono text-xs shadow-none focus-visible:ring-0"
           />
-          {inputError && (
-            <span className="text-xs text-red-600">{inputError}</span>
-          )}
+          {inputError && <span className="text-red-600 text-xs">{inputError}</span>}
         </div>
       </div>
     </div>
@@ -177,13 +177,12 @@ function AccessionChip({
     <div className="flex flex-col items-start gap-0.5">
       <Badge
         className={cn(
-          "inline-flex cursor-pointer items-center gap-1 font-mono text-xs font-normal transition-colors",
+          "inline-flex cursor-pointer items-center gap-1 font-mono font-normal text-xs transition-colors",
           state.status === "idle" &&
             "border-gray-300 bg-gray-100 text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800",
           state.status === "loading" &&
             "cursor-wait border-gray-200 bg-gray-100 text-gray-500 opacity-70",
-          state.status === "done" &&
-            "border-green-300 bg-green-100 text-green-800",
+          state.status === "done" && "border-green-300 bg-green-100 text-green-800",
           state.status === "error" && "border-red-300 bg-red-100 text-red-800",
         )}
         onClick={isLoading ? undefined : onClick}
@@ -212,7 +211,7 @@ function AccessionChip({
         </button>
       </Badge>
       {state.status === "error" && (
-        <span className="px-1 text-xs text-red-600">{state.message}</span>
+        <span className="px-1 text-red-600 text-xs">{state.message}</span>
       )}
     </div>
   );

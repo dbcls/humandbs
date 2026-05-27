@@ -2,7 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { localeSchema, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
 import type {
   NavigationFlowchartData,
   NavigationFlowchartOption,
@@ -28,9 +29,7 @@ interface LegacyNavigationData {
   steps: LegacyStep[];
 }
 
-function legacyToFlowchartData(
-  legacy: LegacyNavigationData,
-): NavigationFlowchartData {
+function legacyToFlowchartData(legacy: LegacyNavigationData): NavigationFlowchartData {
   const steps: NavigationFlowchartStep[] = legacy.steps.map((s) => ({
     id: s.id,
     title: { en: s.title, ja: s.title },
@@ -43,9 +42,7 @@ function legacyToFlowchartData(
         ...(o.link && o.link !== "before-application"
           ? {
               link: o.link,
-              ...(o.linkText
-                ? { linkText: { en: o.linkText, ja: o.linkText } }
-                : {}),
+              ...(o.linkText ? { linkText: { en: o.linkText, ja: o.linkText } } : {}),
             }
           : {}),
       }),
@@ -54,13 +51,9 @@ function legacyToFlowchartData(
   return { steps };
 }
 
-async function getFallbackEntryPoint(
-  locale: Locale,
-): Promise<NavigationFlowchartData | null> {
+async function getFallbackEntryPoint(locale: Locale): Promise<NavigationFlowchartData | null> {
   try {
-    const file = Bun.file(
-      `./src/config/navigation/data-submission-${locale}.json`,
-    );
+    const file = Bun.file(`./src/config/navigation/data-submission-${locale}.json`);
     const legacy = (await file.json()) as LegacyNavigationData;
     return legacyToFlowchartData(legacy);
   } catch {
@@ -79,77 +72,63 @@ export interface NavigationFlowchartResponse {
 /** Fetches the single entry-point flowchart (isEntryPoint = true), with JSON fallback. */
 export const $getNavigationEntryPoint = createServerFn({ method: "GET" })
   .inputValidator(z.object({ locale: localeSchema }))
-  .handler(
-    async ({
-      data: { locale },
-    }): Promise<NavigationFlowchartResponse | null> => {
-      try {
-        const record = await navigationFlowchartRepository.getEntryPoint();
-        if (record) {
-          return {
-            id: record.id,
-            isEntryPoint: true,
-            nameEn: record.nameEn,
-            nameJa: record.nameJa,
-            data: record.config,
-          };
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load entry point flowchart from DB, using fallback.",
-          error,
-        );
+  .handler(async ({ data: { locale } }): Promise<NavigationFlowchartResponse | null> => {
+    try {
+      const record = await navigationFlowchartRepository.getEntryPoint();
+      if (record) {
+        return {
+          id: record.id,
+          isEntryPoint: true,
+          nameEn: record.nameEn,
+          nameJa: record.nameJa,
+          data: record.config,
+        };
       }
+    } catch (error) {
+      console.error("Failed to load entry point flowchart from DB, using fallback.", error);
+    }
 
-      const fallback = await getFallbackEntryPoint(locale);
-      if (!fallback) return null;
+    const fallback = await getFallbackEntryPoint(locale);
+    if (!fallback) return null;
 
-      return {
-        id: "entry-point",
-        isEntryPoint: true,
-        nameEn: "Data Submission Navigation",
-        nameJa: "データ登録ナビゲーション",
-        data: fallback,
-      };
-    },
-  );
+    return {
+      id: "entry-point",
+      isEntryPoint: true,
+      nameEn: "Data Submission Navigation",
+      nameJa: "データ登録ナビゲーション",
+      data: fallback,
+    };
+  });
 
 export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.string(), locale: localeSchema }))
-  .handler(
-    async ({
-      data: { id, locale },
-    }): Promise<NavigationFlowchartResponse | null> => {
-      try {
-        const record = await navigationFlowchartRepository.getById(id);
-        if (record && record.status === "published") {
-          return {
-            id: record.id,
-            isEntryPoint: record.isEntryPoint,
-            nameEn: record.nameEn,
-            nameJa: record.nameJa,
-            data: record.config,
-          };
-        }
-      } catch (error) {
-        console.error("Failed to load flowchart by id from DB.", error);
+  .handler(async ({ data: { id, locale } }): Promise<NavigationFlowchartResponse | null> => {
+    try {
+      const record = await navigationFlowchartRepository.getById(id);
+      if (record && record.status === "published") {
+        return {
+          id: record.id,
+          isEntryPoint: record.isEntryPoint,
+          nameEn: record.nameEn,
+          nameJa: record.nameJa,
+          data: record.config,
+        };
       }
-      return null;
-    },
-  );
+    } catch (error) {
+      console.error("Failed to load flowchart by id from DB.", error);
+    }
+    return null;
+  });
 
 export const $getNavigationFlowchartNames = createServerFn({ method: "GET" })
   .inputValidator(z.object({ ids: z.array(z.string()) }))
   .handler(
-    async ({
-      data: { ids },
-    }): Promise<Record<string, { nameEn: string; nameJa: string }>> => {
+    async ({ data: { ids } }): Promise<Record<string, { nameEn: string; nameJa: string }>> => {
       const result: Record<string, { nameEn: string; nameJa: string }> = {};
       for (const id of ids) {
         try {
           const record = await navigationFlowchartRepository.getById(id);
-          if (record)
-            result[id] = { nameEn: record.nameEn, nameJa: record.nameJa };
+          if (record) result[id] = { nameEn: record.nameEn, nameJa: record.nameJa };
         } catch {
           // skip
         }
@@ -175,10 +154,7 @@ export function getNavigationEntryPointQueryOptions(locale: Locale) {
   });
 }
 
-export function getNavigationFlowchartByIdQueryOptions(
-  id: string,
-  locale: Locale,
-) {
+export function getNavigationFlowchartByIdQueryOptions(id: string, locale: Locale) {
   return queryOptions({
     queryKey: ["navigation-flowchart", "id", id, locale],
     queryFn: () => $getNavigationFlowchartById({ data: { id, locale } }),

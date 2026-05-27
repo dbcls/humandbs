@@ -1,26 +1,23 @@
-import {
-  type DatasetDoc,
-  type ResearchDetailResponse,
-} from "@humandbs/backend/types";
-import { useRouteContext } from "@tanstack/react-router";
+import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMessages, useTranslations } from "use-intl";
 
+import type { ResearchDetailResponse } from "@humandbs/backend/types";
+
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
-import { Table } from "@/components/Table";
+import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
-import { ShoppingCartIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useCart, useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
-import { cn } from "@/lib/utils";
-import { AddToCartToggle } from "@/components/AddToCartToggle";
 
 export function VersionCard({
   versionData,
@@ -64,7 +61,7 @@ export function VersionCard({
     >
       <article>
         <ContentHeader>{t("researchOverview")}</ContentHeader>
-        <div className="columns-2 [&>p]:mb-4 [&>p>span]:mr-2 [&>p>span]:font-extrabold">
+        <div className="columns-2 [&>p>span]:mr-2 [&>p>span]:font-extrabold [&>p]:mb-4">
           <p>
             <span>{t("aims")}:</span>
             {versionData.summary.aims[lang]?.text}
@@ -83,7 +80,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("datasets")}</ContentHeader>
         {versionData?.datasets.length === 0 && (
-          <div className="bg-foreground-light/10 rounded-sm p-3"> No data</div>
+          <div className="rounded-sm bg-foreground-light/10 p-3"> No data</div>
         )}
         {versionData?.datasets.length > 0 && (
           <Table
@@ -99,13 +96,10 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("dataProvider")}</ContentHeader>
         <ul>
-          {versionData?.dataProvider.map((p, i) => {
+          {versionData?.dataProvider.map((p) => {
             return (
-              <dl key={i} className="columns-2">
-                <KeyValueCard
-                  title={t("representative")}
-                  value={p.name[lang]?.text ?? ""}
-                />
+              <dl key={`${p.name.ja?.text}-${p.name.en?.text}`} className="columns-2">
+                <KeyValueCard title={t("representative")} value={p.name[lang]?.text ?? ""} />
                 <KeyValueCard
                   title={t("organization")}
                   value={p.organization?.name[lang]?.text ?? ""}
@@ -114,15 +108,9 @@ export function VersionCard({
                   title={t("periodOfDataUse")}
                   value={`${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`}
                 />
-                <KeyValueCard
-                  title={t("researchTitle")}
-                  value={p.researchTitle?.[lang] ?? ""}
-                />
+                <KeyValueCard title={t("researchTitle")} value={p.researchTitle?.[lang] ?? ""} />
                 <KeyValueCard title="ORCID" value={p.orcid} />
-                <KeyValueCard
-                  title="Dataset IDs"
-                  value={p.datasetIds?.join(", ")}
-                />
+                <KeyValueCard title="Dataset IDs" value={p.datasetIds?.join(", ")} />
               </dl>
             );
           })}
@@ -157,38 +145,28 @@ const datasetColumnHelper =
 const datasetColumns = [
   datasetColumnHelper.display({
     id: "cart",
-    header: (ctx) => {
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: ctx.table.options.data,
-      });
-
-      return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart ? true : someInCart ? "indeterminate" : false}
-          onClick={handleClickCart}
+    header: (ctx) => (
+      <ClientOnly fallback={null}>
+        <ResearchDatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
+      </ClientOnly>
+    ),
+    cell: (ctx) => (
+      <ClientOnly fallback={null}>
+        <ResearchDatasetCartRowButton
+          datasetId={ctx.row.original.datasetId}
+          humId={ctx.row.original.humId}
         />
-      );
-    },
-    cell: (ctx) => {
-      const { handleClickCart, inCart } = useCartTableRow({
-        dataset: ctx.row.original,
-      });
-
-      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
-    },
+      </ClientOnly>
+    ),
 
     size: 1,
     maxSize: 1,
   }),
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
     cell: (ctx) => (
-      <Link
-        to="/{-$lang}/dataset/$datasetId"
-        params={{ datasetId: ctx.getValue() }}
-      >
+      <Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
       </Link>
     ),
@@ -197,28 +175,42 @@ const datasetColumns = [
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-ignore TODO fix types
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()), //<span className="text-sm">{ctx.getValue()}</span>,
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />, //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
   datasetColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
-    cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
 
     maxSize: 14,
   }),
 ];
 
-const publicationsColumnHelper =
-  createColumnHelper<
-    ResearchDetailResponse["data"]["relatedPublication"][number]
-  >();
+function ResearchDatasetsCartHeaderButton({
+  tableDatasets,
+}: {
+  tableDatasets: ResearchDetailResponse["data"]["datasets"];
+}) {
+  const t = useTranslations("common");
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets,
+  });
 
-function makePublicationColumns(
-  t: ReturnType<typeof useTranslations<"VersionCard">>,
-) {
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
+    />
+  );
+}
+
+const publicationsColumnHelper =
+  createColumnHelper<ResearchDetailResponse["data"]["relatedPublication"][number]>();
+
+function makePublicationColumns(t: ReturnType<typeof useTranslations<"VersionCard">>) {
   return [
     publicationsColumnHelper.accessor("title", {
       id: "title",
@@ -233,7 +225,7 @@ function makePublicationColumns(
       id: "DOI",
       header: "DOI",
       cell: (info) => (
-        <a href={info.getValue() ?? undefined} className="text-sm break-all">
+        <a href={info.getValue() ?? undefined} className="break-all text-sm">
           {info.renderValue()}
         </a>
       ),
@@ -257,23 +249,18 @@ function makePublicationColumns(
 }
 
 const dataUsedByColumnsHelper =
-  createColumnHelper<
-    ResearchDetailResponse["data"]["controlledAccessUser"][number]
-  >();
+  createColumnHelper<ResearchDetailResponse["data"]["controlledAccessUser"][number]>();
 
 const dataUsedByColumns = [
   dataUsedByColumnsHelper.accessor("name", {
     id: "name",
     header: (ctx) => ctx.table.options.meta?.messages?.Person.name,
-    cell: (ctx) =>
-      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+    cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
   dataUsedByColumnsHelper.accessor("organization.name", {
     id: "org.name",
     header: (ctx) => ctx.table.options.meta?.t("organization"),
-    cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
-        ?.text,
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
   dataUsedByColumnsHelper.accessor("periodOfDataUse", {
     id: "periodOfDataUse",

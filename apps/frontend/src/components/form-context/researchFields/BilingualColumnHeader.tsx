@@ -5,7 +5,7 @@
  */
 export function BilingualColumnHeader() {
   return (
-    <div className="flex gap-2 text-xs font-medium text-gray-400 uppercase">
+    <div className="flex gap-2 font-medium text-gray-400 text-xs uppercase">
       <span className="flex-1">En</span>
       <span className="flex-1">Ja</span>
     </div>

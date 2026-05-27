@@ -1,11 +1,13 @@
 import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
+
 import { forwardRef } from "react";
 
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  " cursor-pointer whitespace-nowrap flex text-foreground transition-colors items-center rounded font-semibold disabled:opacity-30 disabled:cursor-default",
+  "flex cursor-pointer items-center whitespace-nowrap rounded font-semibold text-foreground transition-colors disabled:cursor-default disabled:opacity-30",
   {
     variants: {
       size: {
@@ -18,20 +20,17 @@ export const buttonVariants = cva(
       },
       variant: {
         accent:
-          "bg-linear-to-r  text-white  from-accent to-accent-light hover:from-accent/80 hover:saturate-150 active:saturate-100 transition-[filter]",
+          "bg-linear-to-r from-accent to-accent-light text-white transition-[filter] hover:from-accent/80 hover:saturate-150 active:saturate-100",
         action:
-          " bg-linear-to-r text-white  from-secondary to-secondary-light transition-[filter] hover:saturate-150 active:saturate-100",
-        outline:
-          "border border-tetriary bg-transparent enabled:hover:bg-white/50",
+          "bg-linear-to-r from-secondary to-secondary-light text-white transition-[filter] hover:saturate-150 active:saturate-100",
+        outline: "border border-tetriary bg-transparent enabled:hover:bg-white/50",
         tableAction:
-          "bg-secondary-light text-white rounded-full transition-colors hover:bg-secondary",
+          "rounded-full bg-secondary-light text-white transition-colors hover:bg-secondary",
         plain: "bg-none",
         "cms-table-action":
-          "bg-none rounded-xs enabled:hover:bg-hover active:bg-foreground-light/30",
-        dashed:
-          "w-full rounded border border-dashed text-sm text-gray-500 hover:bg-gray-50",
-        toggle:
-          " bg-none rounded-md whitespace-normal w-full text-left enabled:hover:bg-hover",
+          "rounded-xs bg-none active:bg-foreground-light/30 enabled:hover:bg-hover",
+        dashed: "w-full rounded border border-dashed text-gray-500 text-sm hover:bg-gray-50",
+        toggle: "w-full whitespace-normal rounded-md bg-none text-left enabled:hover:bg-hover",
         ghost: "bg-none",
       },
     },
@@ -43,8 +42,7 @@ export const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
@@ -53,11 +51,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
+      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
     );
   },
 );

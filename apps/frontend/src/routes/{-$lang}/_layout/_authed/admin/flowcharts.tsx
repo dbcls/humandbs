@@ -13,7 +13,10 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useRef, useState, type Ref } from "react";
+import { useLocale } from "use-intl";
+
+import type { Ref } from "react";
+import { useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
@@ -21,12 +24,8 @@ import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { ListItem } from "@/components/ListItem";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
-import {
-  Breadcrumbs,
-  NavigationChartInner,
-  type BreadcrumbItem,
-  type FlowchartAnswers,
-} from "@/components/NavigationChart";
+import type { BreadcrumbItem, FlowchartAnswers } from "@/components/NavigationChart";
+import { Breadcrumbs, NavigationChartInner } from "@/components/NavigationChart";
 import { StatusTag } from "@/components/StatusTag";
 import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
@@ -59,14 +58,12 @@ import {
   getNavigationFlowchartsQueryOptions,
 } from "@/serverFunctions/navigationFlowchartAdmin";
 import useConfirmationStore from "@/stores/confirmationStore";
+
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
-import { useLocale } from "use-intl";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/flowcharts",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/flowcharts")({
   component: RouteComponent,
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(getNavigationFlowchartsQueryOptions()),
@@ -79,9 +76,7 @@ function RouteComponent() {
   const [mode, setMode] = useState<EditorMode>("select");
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
-  const { data: allFlowcharts = [] } = useQuery(
-    getNavigationFlowchartsQueryOptions(),
-  );
+  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
   const { mutateAsync: deleteFlowchart } = useMutation({
     mutationFn: (id: string) => $deleteNavigationFlowchart({ data: { id } }),
@@ -118,14 +113,9 @@ function RouteComponent() {
         if (!result.ok) {
           if (result.code === "HAS_DEPENDENTS") {
             const list = result.deps
-              .map(
-                (d) =>
-                  `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
-              )
+              .map((d) => `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`)
               .join("\n");
-            alert(
-              `Cannot delete — referenced by:\n${list}\n\nRemove references first.`,
-            );
+            alert(`Cannot delete — referenced by:\n${list}\n\nRemove references first.`);
           }
           return;
         }
@@ -192,30 +182,24 @@ function FlowchartList({
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const { data: flowcharts = [] } = useQuery(
-    getNavigationFlowchartsQueryOptions(),
-  );
+  const { data: flowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
   if (flowcharts.length === 0) {
-    return <p className="px-1 text-sm text-gray-400">No flowcharts yet.</p>;
+    return <p className="px-1 text-gray-400 text-sm">No flowcharts yet.</p>;
   }
 
   // Build grouped list: each entry point followed by directly linked flowcharts.
   // Flowcharts not reachable from any entry point appear at the end.
   const entryPoints = flowcharts.filter((fc) => fc.isEntryPoint);
   const byId = Object.fromEntries(flowcharts.map((fc) => [fc.id, fc]));
-  const referencedIds = new Set(
-    entryPoints.flatMap((ep) => ep.linkedFlowchartIds),
-  );
-  const orphans = flowcharts.filter(
-    (fc) => !fc.isEntryPoint && !referencedIds.has(fc.id),
-  );
+  const referencedIds = new Set(entryPoints.flatMap((ep) => ep.linkedFlowchartIds));
+  const orphans = flowcharts.filter((fc) => !fc.isEntryPoint && !referencedIds.has(fc.id));
 
   if (entryPoints.length === 0) {
     return (
       <NoItemsMessage>
-        No entry point flowchart found. Create a flowchart and set it as the
-        entry point to get started.
+        No entry point flowchart found. Create a flowchart and set it as the entry point to get
+        started.
       </NoItemsMessage>
     );
   }
@@ -224,10 +208,7 @@ function FlowchartList({
     <ul className="flex flex-col gap-0.5">
       {entryPoints.map((ep) => (
         <li key={ep.id} className="flex flex-col gap-0.5">
-          <ListItem
-            isActive={selectedId === ep.id}
-            onClick={() => onSelect(ep.id)}
-          >
+          <ListItem isActive={selectedId === ep.id} onClick={() => onSelect(ep.id)}>
             <Home className="size-3.5 shrink-0 text-blue-400 group-data-[active=true]:text-white/70" />
             <FlowchartListItemContent fc={ep} />
             <TrashButton
@@ -238,7 +219,7 @@ function FlowchartList({
             />
           </ListItem>
           {ep.linkedFlowchartIds.length > 0 && (
-            <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
+            <ul className="ml-3 flex flex-col gap-0.5 border-gray-200 border-l-2 pl-2">
               {ep.linkedFlowchartIds.map((linkedId) => {
                 const linked = byId[linkedId];
                 if (!linked) return null;
@@ -263,11 +244,7 @@ function FlowchartList({
         </li>
       ))}
       {orphans.map((fc) => (
-        <ListItem
-          key={fc.id}
-          isActive={selectedId === fc.id}
-          onClick={() => onSelect(fc.id)}
-        >
+        <ListItem key={fc.id} isActive={selectedId === fc.id} onClick={() => onSelect(fc.id)}>
           <FlowchartListItemContent fc={fc} subtitle="unlinked" />
           <TrashButton
             onClick={(e) => {
@@ -291,7 +268,7 @@ function FlowchartListItemContent({
   return (
     <div className="min-w-0 flex-1">
       {subtitle && (
-        <div className="text-foreground-light mb-1 truncate text-xs group-data-[active=true]:text-white/80">
+        <div className="mb-1 truncate text-foreground-light text-xs group-data-[active=true]:text-white/80">
           {subtitle}
         </div>
       )}
@@ -301,7 +278,7 @@ function FlowchartListItemContent({
           <StatusTag status={fc.status} />
         </li>
         <li className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm text-gray-500 group-data-[active=true]:text-white/70">
+          <span className="truncate text-gray-500 text-sm group-data-[active=true]:text-white/70">
             {fc.nameJa}
           </span>
         </li>
@@ -319,17 +296,11 @@ function FlowchartListItemContent({
  * optional slug. Leaving the slug blank creates a flowchart that can only be
  * reached via a linked option in another flowchart.
  */
-function CreateFlowchartPanel({
-  onCreated,
-}: {
-  onCreated: (id: string) => void;
-}) {
+function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }) {
   const queryClient = useQueryClient();
   const [nameEn, setNameEn] = useState("");
   const [nameJa, setNameJa] = useState("");
-  const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>(
-    {},
-  );
+  const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
   const { mutateAsync: create, isPending } = useMutation({
@@ -367,15 +338,14 @@ function CreateFlowchartPanel({
         {serverError && <AdminStatusMessage>{serverError}</AdminStatusMessage>}
 
         <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-gray-700">Name</h3>
+          <h3 className="font-medium text-gray-700 text-sm">Name</h3>
           <FieldRow label="EN">
             <input
               type="text"
               value={nameEn}
               onChange={(e) => {
                 setNameEn(e.target.value);
-                if (errors.nameEn)
-                  setErrors((p) => ({ ...p, nameEn: undefined }));
+                if (errors.nameEn) setErrors((p) => ({ ...p, nameEn: undefined }));
               }}
               placeholder="English name"
               className={cn(
@@ -391,8 +361,7 @@ function CreateFlowchartPanel({
               value={nameJa}
               onChange={(e) => {
                 setNameJa(e.target.value);
-                if (errors.nameJa)
-                  setErrors((p) => ({ ...p, nameJa: undefined }));
+                if (errors.nameJa) setErrors((p) => ({ ...p, nameJa: undefined }));
               }}
               placeholder="Japanese name"
               className={cn(
@@ -423,11 +392,7 @@ function CreateFlowchartPanel({
  * state, or the full `FlowchartEditor` once data is available.
  */
 function EditFlowchartPanel({ id }: { id: string }) {
-  const {
-    data: record,
-    isPending,
-    isError,
-  } = useQuery(getNavigationFlowchartByIdQueryOptions(id));
+  const { data: record, isPending, isError } = useQuery(getNavigationFlowchartByIdQueryOptions(id));
 
   if (isPending) {
     return (
@@ -444,9 +409,7 @@ function EditFlowchartPanel({ id }: { id: string }) {
   if (isError || !record) {
     return (
       <Card className="flex flex-1 flex-col gap-0">
-        <div className="p-5 text-sm text-red-600">
-          Failed to load flowchart.
-        </div>
+        <div className="p-5 text-red-600 text-sm">Failed to load flowchart.</div>
       </Card>
     );
   }
@@ -488,9 +451,7 @@ interface FlowchartMeta {
 function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
-  const { data: allFlowcharts = [] } = useQuery(
-    getNavigationFlowchartsQueryOptions(),
-  );
+  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
   const [meta, setMeta] = useState<FlowchartMeta>({
     nameEn: record.nameEn,
@@ -498,9 +459,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     isEntryPoint: record.isEntryPoint,
     status: record.status,
   });
-  const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(
-    record.config,
-  );
+  const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(record.config);
   const [revision, setRevision] = useState(record.revision);
   const [metaErrors, setMetaErrors] = useState<Partial<FlowchartMeta>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -518,10 +477,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const savedConfigRef = useRef<NavigationFlowchartConfig>(record.config);
 
   const { mutateAsync: saveFlowchart, isPending: isSaving } = useMutation({
-    mutationFn: (payload: {
-      meta: FlowchartMeta;
-      config: NavigationFlowchartConfig;
-    }) =>
+    mutationFn: (payload: { meta: FlowchartMeta; config: NavigationFlowchartConfig }) =>
       $saveNavigationFlowchartConfig({
         data: {
           id: record.id,
@@ -551,9 +507,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
         result[s.id] = "too-few-options";
       } else if (
         s.options.some(
-          (o) =>
-            (o.link && !isValidUrl(o.link)) ||
-            (o.linkEn && !isValidUrl(o.linkEn)),
+          (o) => (o.link && !isValidUrl(o.link)) || (o.linkEn && !isValidUrl(o.linkEn)),
         )
       ) {
         result[s.id] = "invalid-url";
@@ -574,7 +528,9 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
     const stepErrors = validateSteps(configDraft);
     if (Object.keys(stepErrors).length > 0) {
-      setError("Some steps have errors (too few options or invalid URLs). Check highlighted steps.");
+      setError(
+        "Some steps have errors (too few options or invalid URLs). Check highlighted steps.",
+      );
       return;
     }
 
@@ -603,9 +559,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
   async function handleSave() {
     const isPromotingToEntryPoint = meta.isEntryPoint && !record.isEntryPoint;
-    const existingEntryPoint = allFlowcharts.find(
-      (fc) => fc.isEntryPoint && fc.id !== record.id,
-    );
+    const existingEntryPoint = allFlowcharts.find((fc) => fc.isEntryPoint && fc.id !== record.id);
 
     if (isPromotingToEntryPoint && existingEntryPoint) {
       openConfirmation({
@@ -632,8 +586,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   const isDirty =
-    !deepEqual(meta, savedMetaRef.current) ||
-    !deepEqual(configDraft, savedConfigRef.current);
+    !deepEqual(meta, savedMetaRef.current) || !deepEqual(configDraft, savedConfigRef.current);
 
   const lang = useLocale();
   return (
@@ -642,7 +595,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
       caption={
         <>
           {record.nameEn}
-          <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+          <label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
             Preview
             <Switch
               checked={preview}
@@ -679,10 +632,8 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
                   }))
                 }
               />
-              <span className="text-xs text-gray-500">
-                {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED
-                  ? "Published"
-                  : "Draft"}
+              <span className="text-gray-500 text-xs">
+                {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -694,11 +645,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
               >
                 Reset
               </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={!isDirty || isSaving}
-              >
+              <Button type="button" onClick={handleSave} disabled={!isDirty || isSaving}>
                 {isSaving ? "Saving…" : "Save"}
               </Button>
             </div>
@@ -720,7 +667,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
             <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
               {/* Flowchart name */}
               <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-gray-700">Name</h3>
+                <h3 className="font-medium text-gray-700 text-sm">Name</h3>
                 <LocaleInlineEditor
                   value={{ en: meta.nameEn, ja: meta.nameJa }}
                   onChange={({ en, ja }) => {
@@ -731,32 +678,24 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
                       nameJa: undefined,
                     }));
                   }}
-                  className="text-sm font-medium"
+                  className="font-medium text-sm"
                   required
                 />
-                {metaErrors.nameEn && (
-                  <FieldError>{metaErrors.nameEn}</FieldError>
-                )}
-                {metaErrors.nameJa && (
-                  <FieldError>{metaErrors.nameJa}</FieldError>
-                )}
+                {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
+                {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
               </div>
 
               {/* Entry point */}
               <div className="flex items-center gap-3">
                 <Switch
                   checked={meta.isEntryPoint}
-                  onCheckedChange={(checked) =>
-                    setMeta((p) => ({ ...p, isEntryPoint: checked }))
-                  }
+                  onCheckedChange={(checked) => setMeta((p) => ({ ...p, isEntryPoint: checked }))}
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-700">
-                    Entry point
-                  </span>
-                  <p className="text-xs text-gray-400">
-                    The entry point flowchart is loaded on the public navigation
-                    page. Only one flowchart can be the entry point.
+                  <span className="font-medium text-gray-700 text-sm">Entry point</span>
+                  <p className="text-gray-400 text-xs">
+                    The entry point flowchart is loaded on the public navigation page. Only one
+                    flowchart can be the entry point.
                   </p>
                 </div>
               </div>
@@ -805,8 +744,7 @@ function FlowchartPreview({
   const [linkedStack, setLinkedStack] = useState<string[]>([]);
   const [answers, setAnswers] = useState<FlowchartAnswers>({});
 
-  const currentId =
-    linkedStack.length > 0 ? linkedStack[linkedStack.length - 1] : null;
+  const currentId = linkedStack.length > 0 ? linkedStack[linkedStack.length - 1] : null;
 
   // Fetch current linked flowchart if we've navigated into one
   const { data: linkedRecord } = useQuery({
@@ -826,8 +764,7 @@ function FlowchartPreview({
     linkedFlowchartNames[fc.id] = lang === "ja" ? fc.nameJa : fc.nameEn;
   }
   // Also include the current record itself in case it's referenced
-  linkedFlowchartNames[record.id] =
-    lang === "ja" ? record.nameJa : record.nameEn;
+  linkedFlowchartNames[record.id] = lang === "ja" ? record.nameJa : record.nameEn;
 
   // Build breadcrumb items. Index 0 is always the root record.
   const breadcrumbItems: BreadcrumbItem[] = [
@@ -897,9 +834,7 @@ function FlowchartPreview({
               onNavigateToFlowchart={handleNavigateToFlowchart}
             />
           ) : (
-            <div className="py-8 text-center text-sm text-gray-400">
-              Loading…
-            </div>
+            <div className="py-8 text-center text-gray-400 text-sm">Loading…</div>
           )}
         </div>
       </div>
@@ -951,10 +886,7 @@ function StepList({
     updateSteps(steps.filter((s) => s.id !== id));
   }
 
-  function handleUpdateStep(
-    id: string,
-    patch: Partial<NavigationFlowchartStep>,
-  ) {
+  function handleUpdateStep(id: string, patch: Partial<NavigationFlowchartStep>) {
     updateSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
@@ -965,7 +897,7 @@ function StepList({
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-medium text-gray-700">Steps</h3>
+      <h3 className="font-medium text-gray-700 text-sm">Steps</h3>
       <DragDropProvider
         onDragEnd={(event) => {
           if (!event.operation.target) return;
@@ -973,9 +905,7 @@ function StepList({
           const record: Record<string, string[]> = { steps: stepIds };
           const next = move(record, event);
           if (!next) return;
-          const newOrder = (next.steps as string[]).map((sid) =>
-            sid.replace("step-", ""),
-          );
+          const newOrder = (next.steps as string[]).map((sid) => sid.replace("step-", ""));
           const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
           updateSteps(newOrder.map((id) => byId[id]));
         }}
@@ -1059,14 +989,9 @@ function StepCard({
     onUpdate({ options: step.options.filter((o) => o.id !== optId) });
   }
 
-  function handleUpdateOption(
-    optId: string,
-    patch: Partial<NavigationFlowchartOption>,
-  ) {
+  function handleUpdateOption(optId: string, patch: Partial<NavigationFlowchartOption>) {
     onUpdate({
-      options: step.options.map((o) =>
-        o.id === optId ? { ...o, ...patch } : o,
-      ),
+      options: step.options.map((o) => (o.id === optId ? { ...o, ...patch } : o)),
     });
   }
 
@@ -1110,10 +1035,10 @@ function StepCard({
             value={step.title}
             onChange={(title) => onUpdate({ title })}
             placeholder="Step title"
-            className="text-sm font-medium"
+            className="font-medium text-sm"
           />
           {invalidReason && (
-            <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
+            <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-600 text-xs">
               {invalidReason === "invalid-url" ? "invalid URL" : "needs ≥2 options"}
             </span>
           )}
@@ -1122,11 +1047,7 @@ function StepCard({
           type="button"
           onClick={onDelete}
           disabled={!canDelete}
-          title={
-            canDelete
-              ? "Delete step"
-              : "Cannot delete — another option references this step"
-          }
+          title={canDelete ? "Delete step" : "Cannot delete — another option references this step"}
           className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Trash2 className="size-3.5" />
@@ -1134,31 +1055,27 @@ function StepCard({
       </div>
 
       {expanded && (
-        <div className="flex flex-col gap-4 border-t border-gray-100 px-3 py-3">
+        <div className="flex flex-col gap-4 border-gray-100 border-t px-3 py-3">
           {/* Body text */}
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-gray-500">Body text</span>
+            <span className="font-medium text-gray-500 text-xs">Body text</span>
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-1">
-                <span className="text-xs text-gray-400">EN</span>
+                <span className="text-gray-400 text-xs">EN</span>
                 <TextareaAutosize
                   minRows={3}
                   value={step.text.en}
-                  onChange={(e) =>
-                    onUpdate({ text: { ...step.text, en: e.target.value } })
-                  }
+                  onChange={(e) => onUpdate({ text: { ...step.text, en: e.target.value } })}
                   placeholder="English body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
               </div>
               <div className="flex flex-1 flex-col gap-1">
-                <span className="text-xs text-gray-400">JA</span>
+                <span className="text-gray-400 text-xs">JA</span>
                 <TextareaAutosize
                   minRows={3}
                   value={step.text.ja}
-                  onChange={(e) =>
-                    onUpdate({ text: { ...step.text, ja: e.target.value } })
-                  }
+                  onChange={(e) => onUpdate({ text: { ...step.text, ja: e.target.value } })}
                   placeholder="Japanese body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
@@ -1215,7 +1132,7 @@ function OptionList({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-gray-500">Options</span>
+      <span className="font-medium text-gray-500 text-xs">Options</span>
       <div className="overflow-x-auto pb-1">
         <DragDropProvider
           key={listKey}
@@ -1225,9 +1142,7 @@ function OptionList({
             const record: Record<string, string[]> = { opts: optIds };
             const next = move(record, event);
             if (!next) return;
-            const newOrder = (next.opts as string[]).map((oid) =>
-              oid.replace("opt-", ""),
-            );
+            const newOrder = (next.opts as string[]).map((oid) => oid.replace("opt-", ""));
             const byId = Object.fromEntries(options.map((o) => [o.id, o]));
             onReorder(newOrder.map((id) => byId[id]));
           }}
@@ -1376,14 +1291,14 @@ function OptionRow({
             value={option.description ?? { en: "", ja: "" }}
             onChange={(description) => onUpdate({ description })}
             placeholder="Sub-label (optional)"
-            className="min-w-0 flex-1 text-xs text-gray-400"
+            className="min-w-0 flex-1 text-gray-400 text-xs"
           />
         </div>
 
         <button
           type="button"
           onClick={onDelete}
-          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+          className="shrink-0 place-self-start rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
         >
           <Trash2 className="size-3" />
         </button>
@@ -1391,10 +1306,7 @@ function OptionRow({
 
       {/* Destination selector */}
       <div className="flex flex-col gap-1.5">
-        <Select
-          value={destType}
-          onValueChange={(v) => handleDestChange(v as DestType)}
-        >
+        <Select value={destType} onValueChange={(v) => handleDestChange(v as DestType)}>
           <SelectTrigger className="h-7 text-xs">
             <SelectValue placeholder="Destination…" />
           </SelectTrigger>
@@ -1437,7 +1349,7 @@ function OptionRow({
         {destType === "linked-flowchart" && (
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-col gap-0.5">
-              <span className="text-2xs font-medium text-gray-400 uppercase">Flowchart</span>
+              <span className="font-medium text-2xs text-gray-400 uppercase">Flowchart</span>
               <Select
                 value={option.linkedFlowchartId ?? ""}
                 onValueChange={(v) =>
@@ -1467,7 +1379,7 @@ function OptionRow({
             </div>
             {option.linkedFlowchartId && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-2xs font-medium text-gray-400 uppercase">Starting step</span>
+                <span className="font-medium text-2xs text-gray-400 uppercase">Starting step</span>
                 <LinkedFlowchartStepSelector
                   flowchartId={option.linkedFlowchartId}
                   value={option.linkedStepId}
@@ -1481,10 +1393,10 @@ function OptionRow({
         {destType === "external-link" && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-0.5">
-              <span className="text-2xs font-medium text-gray-400 uppercase">URL</span>
+              <span className="font-medium text-2xs text-gray-400 uppercase">URL</span>
               {(["ja", "en"] as const).map((locale) => (
                 <div key={locale} className="flex min-w-0 items-center gap-2">
-                  <span className="w-6 shrink-0 text-xs font-medium text-gray-400 uppercase">
+                  <span className="w-6 shrink-0 font-medium text-gray-400 text-xs uppercase">
                     {locale}
                   </span>
                   <input
@@ -1493,7 +1405,11 @@ function OptionRow({
                     onChange={(e) =>
                       onUpdate(
                         locale === "ja"
-                          ? { link: e.target.value, nextStep: undefined, linkedFlowchartId: undefined }
+                          ? {
+                              link: e.target.value,
+                              nextStep: undefined,
+                              linkedFlowchartId: undefined,
+                            }
                           : { linkEn: e.target.value },
                       )
                     }
@@ -1504,7 +1420,7 @@ function OptionRow({
               ))}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-2xs font-medium text-gray-400 uppercase">Label</span>
+              <span className="font-medium text-2xs text-gray-400 uppercase">Label</span>
               <LocaleInlineEditor
                 value={{
                   en: option.linkText?.en ?? "",
@@ -1561,18 +1477,10 @@ function LinkedFlowchartStepSelector({
   );
 }
 
-function FieldRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-6 shrink-0 text-xs font-medium text-gray-500 uppercase">
-        {label}
-      </span>
+      <span className="w-6 shrink-0 font-medium text-gray-500 text-xs uppercase">{label}</span>
       {children}
     </div>
   );
@@ -1580,7 +1488,7 @@ function FieldRow({
 
 function FieldError({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-1 text-xs text-red-600">
+    <div className="flex items-center gap-1 text-red-600 text-xs">
       <AlertCircle className="size-3 shrink-0" />
       {children}
     </div>

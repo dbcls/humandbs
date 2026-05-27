@@ -9,16 +9,8 @@ export const $$getOIDCConfig = createServerOnlyFn(async () => {
   const clientId = process.env.HUMANDBS_AUTH_CLIENT_ID!;
   // v6 discovery works with public clients too; no secret needed
   const options =
-    process.env.NODE_ENV === "development"
-      ? { execute: [oidc.allowInsecureRequests] }
-      : undefined;
-  _config = await oidc.discovery(
-    server,
-    clientId,
-    undefined,
-    undefined,
-    options,
-  );
+    process.env.NODE_ENV === "development" ? { execute: [oidc.allowInsecureRequests] } : undefined;
+  _config = await oidc.discovery(server, clientId, undefined, undefined, options);
   return _config;
 });
 

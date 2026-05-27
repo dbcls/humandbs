@@ -10,10 +10,7 @@ export function copyTableData({ headers, rows }: TableExportData): void {
   navigator.clipboard.writeText(lines);
 }
 
-export function downloadCsv(
-  { headers, rows }: TableExportData,
-  filename: string,
-): void {
+export function downloadCsv({ headers, rows }: TableExportData, filename: string): void {
   const escape = (value: string) => {
     if (/[,"\n]/.test(value)) {
       return `"${value.replace(/"/g, '""')}"`;
@@ -21,9 +18,7 @@ export function downloadCsv(
     return value;
   };
 
-  const lines = [headers, ...rows]
-    .map((row) => row.map(escape).join(","))
-    .join("\n");
+  const lines = [headers, ...rows].map((row) => row.map(escape).join(",")).join("\n");
 
   const blob = new Blob([lines], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
@@ -35,10 +30,7 @@ export function downloadCsv(
   URL.revokeObjectURL(link.href);
 }
 
-export function downloadExcel(
-  { headers, rows }: TableExportData,
-  filename: string,
-): void {
+export function downloadExcel({ headers, rows }: TableExportData, filename: string): void {
   const worksheet = utils.aoa_to_sheet([headers, ...rows]);
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "Sheet1");

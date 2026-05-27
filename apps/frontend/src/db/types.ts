@@ -1,14 +1,10 @@
-import {
-  createInsertSchema,
-  createSelectSchema,
-  createUpdateSchema,
-} from "drizzle-zod";
+import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import * as z from "zod";
 
 import { localeSchema } from "@/config/i18n";
+import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 
 import * as schema from "./schema";
-import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
@@ -16,12 +12,12 @@ export const documentSelectSchema = createSelectSchema(schema.document).omit({
   id: true,
   createdAt: true,
   hideTOC: true,
+  hideRevisions: true,
 });
 
-export const documentVersionSelectSchema = createSelectSchema(
-  schema.documentVersion,
-  { locale: localeSchema },
-);
+export const documentVersionSelectSchema = createSelectSchema(schema.documentVersion, {
+  locale: localeSchema,
+});
 
 export type DocumentSelect = z.infer<typeof documentSelectSchema>;
 
@@ -43,23 +39,18 @@ export const updateAlertSchema = createUpdateSchema(schema.alert).required({
 
 export type UpdateAlert = z.infer<typeof updateAlertSchema>;
 
-export const newsTranslationSelectSchema = createSelectSchema(
-  schema.newsTranslation,
-);
+export const newsTranslationSelectSchema = createSelectSchema(schema.newsTranslation);
 
-export const newsTranslationSelectWithDateStringSchema =
-  newsTranslationSelectSchema.transform((v) => ({
+export const newsTranslationSelectWithDateStringSchema = newsTranslationSelectSchema.transform(
+  (v) => ({
     ...v,
     updatedAt: v.updatedAt?.toLocaleDateString(),
-  }));
-
-export const newsTranslationUpdateSchema = createUpdateSchema(
-  schema.newsTranslation,
+  }),
 );
 
-export const newsTranslationInsertSchema = createInsertSchema(
-  schema.newsTranslation,
-);
+export const newsTranslationUpdateSchema = createUpdateSchema(schema.newsTranslation);
+
+export const newsTranslationInsertSchema = createInsertSchema(schema.newsTranslation);
 
 export const newsTranslationUpsertSchema = z.record(
   localeSchema,
@@ -89,24 +80,15 @@ export const newsItemCreateSchema = z.object({
 
 export type ContentItem = typeof schema.contentItem.$inferSelect;
 
-export const contentTranslationInsertSchema = createInsertSchema(
-  schema.contentTranslation,
-);
+export const contentTranslationInsertSchema = createInsertSchema(schema.contentTranslation);
 
-export const contentTranslationUpdateSchema = createUpdateSchema(
-  schema.contentTranslation,
-);
+export const contentTranslationUpdateSchema = createUpdateSchema(schema.contentTranslation);
 
-export type ContentTranslationSelect =
-  typeof schema.contentTranslation.$inferSelect;
+export type ContentTranslationSelect = typeof schema.contentTranslation.$inferSelect;
 
-export type ContentTranslationInsert = z.infer<
-  typeof contentTranslationInsertSchema
->;
+export type ContentTranslationInsert = z.infer<typeof contentTranslationInsertSchema>;
 
-export type ContentTranslationUpdate = z.infer<
-  typeof contentTranslationUpdateSchema
->;
+export type ContentTranslationUpdate = z.infer<typeof contentTranslationUpdateSchema>;
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
 

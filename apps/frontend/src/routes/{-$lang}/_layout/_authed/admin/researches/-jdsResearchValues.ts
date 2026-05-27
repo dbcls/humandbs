@@ -1,7 +1,5 @@
-import type {
-  CreateResearchRequest,
-  ResearchDetailResponse,
-} from "@humandbs/backend/types";
+import type { CreateResearchRequest, ResearchDetailResponse } from "@humandbs/backend/types";
+
 import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 type ResearchValues = ResearchDetailResponse["data"];
@@ -62,19 +60,10 @@ function isEmptyTextValue(value: { text?: string | null } | null | undefined) {
   return value == null || isEmptyString(value.text);
 }
 
-function mergeBilingualText(
-  current: BilingualText,
-  incoming: BilingualText,
-): BilingualText {
+function mergeBilingualText(current: BilingualText, incoming: BilingualText): BilingualText {
   return {
-    ja:
-      isEmptyString(current.ja) && !isEmptyString(incoming.ja)
-        ? incoming.ja
-        : current.ja,
-    en:
-      isEmptyString(current.en) && !isEmptyString(incoming.en)
-        ? incoming.en
-        : current.en,
+    ja: isEmptyString(current.ja) && !isEmptyString(incoming.ja) ? incoming.ja : current.ja,
+    en: isEmptyString(current.en) && !isEmptyString(incoming.en) ? incoming.en : current.en,
   };
 }
 
@@ -83,14 +72,8 @@ function mergeBilingualTextValue(
   incoming: SummaryTextValue,
 ): SummaryTextValue {
   return {
-    ja:
-      isEmptyTextValue(current.ja) && !isEmptyTextValue(incoming.ja)
-        ? incoming.ja
-        : current.ja,
-    en:
-      isEmptyTextValue(current.en) && !isEmptyTextValue(incoming.en)
-        ? incoming.en
-        : current.en,
+    ja: isEmptyTextValue(current.ja) && !isEmptyTextValue(incoming.ja) ? incoming.ja : current.ja,
+    en: isEmptyTextValue(current.en) && !isEmptyTextValue(incoming.en) ? incoming.en : current.en,
   };
 }
 
@@ -129,10 +112,7 @@ export function mergeEmptyResearchFields(
     },
   };
   const dataProvider = mergeArray(current.dataProvider ?? [], incoming.dataProvider ?? []);
-  const researchProject = mergeArray(
-    current.researchProject ?? [],
-    incoming.researchProject ?? [],
-  );
+  const researchProject = mergeArray(current.researchProject ?? [], incoming.researchProject ?? []);
   const grant = mergeArray(current.grant ?? [], incoming.grant ?? []);
   const relatedPublication = mergeArray(
     current.relatedPublication ?? [],
@@ -149,15 +129,16 @@ export function mergeEmptyResearchFields(
   };
 
   const changedFields = editableFields.filter((field) =>
-    didChange((current as Record<string, unknown>)[field], (values as Record<string, unknown>)[field]),
+    didChange(
+      (current as Record<string, unknown>)[field],
+      (values as Record<string, unknown>)[field],
+    ),
   );
 
   return { values, changedFields };
 }
 
-export function toResearchValuesForMerge(
-  value: CreateResearchRequest,
-): ResearchTemplateData {
+export function toResearchValuesForMerge(value: CreateResearchRequest): ResearchTemplateData {
   return {
     humId: value.humId ?? "",
     title: value.title ?? { ja: null, en: null },
@@ -184,10 +165,8 @@ export function pickNewResearchMergeValues(
     title: values.title,
     summary: values.summary as unknown as CreateResearchRequest["summary"],
     dataProvider: values.dataProvider as CreateResearchRequest["dataProvider"],
-    researchProject:
-      values.researchProject as CreateResearchRequest["researchProject"],
+    researchProject: values.researchProject as CreateResearchRequest["researchProject"],
     grant: values.grant as CreateResearchRequest["grant"],
-    relatedPublication:
-      values.relatedPublication as CreateResearchRequest["relatedPublication"],
+    relatedPublication: values.relatedPublication as CreateResearchRequest["relatedPublication"],
   };
 }

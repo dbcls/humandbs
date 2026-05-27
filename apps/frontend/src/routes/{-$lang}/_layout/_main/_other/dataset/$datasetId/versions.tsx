@@ -1,14 +1,13 @@
-import type { DatasetVersionItem } from "@humandbs/backend/types";
 import { createFileRoute } from "@tanstack/react-router";
+
+import type { DatasetVersionItem } from "@humandbs/backend/types";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { getDatasetVersionsQueryOptions } from "@/serverFunctions/datasets";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/dataset/$datasetId/versions",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$datasetId/versions")({
   component: RouteComponent,
   loader: async ({ params, context }) => {
     const { data } = await context.queryClient.ensureQueryData(
@@ -53,15 +52,13 @@ function DatasetVersionInfo({ version }: { version: DatasetVersionItem }) {
       <div className="flex justify-between gap-2">
         <h3 className="inline">
           <Route.Link
-            className="text-secondary font-semibold"
+            className="font-semibold text-secondary"
             to="../$version"
             params={{ version: version.version }}
           >
             {version.version}
           </Route.Link>
-          <span className="text-foreground-light text-2xs ml-3">
-            {version.releaseDate}
-          </span>
+          <span className="ml-3 text-2xs text-foreground-light">{version.releaseDate}</span>
         </h3>
         <span>{version.criteria}</span>
       </div>

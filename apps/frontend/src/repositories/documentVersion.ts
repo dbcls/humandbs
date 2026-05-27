@@ -1,13 +1,10 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
-import { i18n, type Locale } from "@/config/i18n";
-import { db } from "@/db/database";
-import {
-  document,
-  DOCUMENT_VERSION_STATUS,
-  documentVersion,
-  type DocVersionStatus,
-} from "@/db/schema";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
+import type { db } from "@/db/database";
+import type { DocVersionStatus } from "@/db/schema";
+import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
 
 interface BaseDoc {
@@ -28,12 +25,14 @@ export interface DocVersionListItemResponseRaw extends BaseDoc {
 export interface DocPublishedVersionResponseRaw extends BaseDoc {
   content: string | null;
   hideTOC: boolean;
+  hideRevisions: boolean;
   updatedAt: Date;
 }
 
 export interface DocAnyVersionResponseRaw extends BaseDoc {
   content: string | null;
   hideTOC: boolean;
+  hideRevisions: boolean;
   status: DocVersionStatus;
 }
 
@@ -54,14 +53,9 @@ interface DocumentVersionRepo {
     locale: Locale,
   ) => Promise<DocPublishedVersionResponseRaw | undefined>;
 
-  getVersionList: (
-    contentId: string,
-  ) => Promise<DocVersionListItemResponseRaw[]>;
+  getVersionList: (contentId: string) => Promise<DocVersionListItemResponseRaw[]>;
 
-  getVersion: (
-    contentId: string,
-    versionNumber: number,
-  ) => Promise<DocAnyVersionResponseRaw[]>;
+  getVersion: (contentId: string, versionNumber: number) => Promise<DocAnyVersionResponseRaw[]>;
 
   saveDraft: (
     contentId: string,
@@ -70,23 +64,11 @@ interface DocumentVersionRepo {
     data: { title?: string; content?: string },
   ) => Promise<unknown>;
 
-  publish: (
-    contentId: string,
-    versionNumber: number,
-    lang: Locale,
-  ) => Promise<unknown>;
+  publish: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
 
-  resetDraft: (
-    contentId: string,
-    versionNumber: number,
-    lang: Locale,
-  ) => Promise<unknown>;
+  resetDraft: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
 
-  unpublish: (
-    contentId: string,
-    versionNumber: number,
-    lang: Locale,
-  ) => Promise<unknown>;
+  unpublish: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
 
   delete: (contentId: string, versionNumber: number) => Promise<unknown>;
 
@@ -96,10 +78,7 @@ interface DocumentVersionRepo {
   ) => Promise<{ versionNumber: number }>;
 }
 
-async function resolveDocumentId(
-  database: typeof db,
-  contentId: string,
-): Promise<string> {
+async function resolveDocumentId(database: typeof db, contentId: string): Promise<string> {
   const doc = await database.query.document.findFirst({
     where: (table, { eq }) => eq(table.contentId, contentId),
     columns: { id: true },
@@ -108,9 +87,7 @@ async function resolveDocumentId(
   return doc.id;
 }
 
-export function createDocumentVersionRepository(
-  database: typeof db,
-): DocumentVersionRepo {
+export function createDocumentVersionRepository(database: typeof db): DocumentVersionRepo {
   return {
     getPublishedListForLocale: async (contentId, lang) => {
       const documentId = await resolveDocumentId(database, contentId);
@@ -142,7 +119,7 @@ export function createDocumentVersionRepository(
             eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             eq(table.locale, locale),
           ),
-        with: { document: { columns: { hideTOC: true } } },
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -154,14 +131,15 @@ export function createDocumentVersionRepository(
         orderBy: [desc(documentVersion.versionNumber)],
       });
       if (!row) return undefined;
-      return { ...row, contentId, hideTOC: row.document.hideTOC ?? true };
+      return {
+        ...row,
+        contentId,
+        hideTOC: row.document.hideTOC ?? true,
+        hideRevisions: row.document.hideRevisions ?? true,
+      };
     },
 
-    getPublishedForVersionNumberAndLocale: async (
-      contentId,
-      versionNumber,
-      locale,
-    ) => {
+    getPublishedForVersionNumberAndLocale: async (contentId, versionNumber, locale) => {
       const documentId = await resolveDocumentId(database, contentId);
       const row = await database.query.documentVersion.findFirst({
         where: (table, { and, eq }) =>
@@ -171,7 +149,7 @@ export function createDocumentVersionRepository(
             eq(table.locale, locale),
             eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
           ),
-        with: { document: { columns: { hideTOC: true } } },
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -183,7 +161,12 @@ export function createDocumentVersionRepository(
         },
       });
       if (!row) return undefined;
-      return { ...row, contentId, hideTOC: row.document.hideTOC ?? true };
+      return {
+        ...row,
+        contentId,
+        hideTOC: row.document.hideTOC ?? true,
+        hideRevisions: row.document.hideRevisions ?? true,
+      };
     },
 
     getVersionList: async (contentId) => {
@@ -205,11 +188,8 @@ export function createDocumentVersionRepository(
       const documentId = await resolveDocumentId(database, contentId);
       const rows = await database.query.documentVersion.findMany({
         where: (table, { and, eq }) =>
-          and(
-            eq(table.documentId, documentId),
-            eq(table.versionNumber, versionNumber),
-          ),
-        with: { document: { columns: { hideTOC: true } } },
+          and(eq(table.documentId, documentId), eq(table.versionNumber, versionNumber)),
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -223,6 +203,7 @@ export function createDocumentVersionRepository(
         ...r,
         contentId,
         hideTOC: r.document.hideTOC ?? true,
+        hideRevisions: r.document.hideRevisions ?? true,
       }));
     },
 
@@ -244,19 +225,13 @@ export function createDocumentVersionRepository(
             documentVersion.locale,
             documentVersion.status,
           ],
-          set: buildConflictUpdateColumns(documentVersion, [
-            "content",
-            "title",
-          ]),
+          set: buildConflictUpdateColumns(documentVersion, ["content", "title"]),
         });
     },
 
     publish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(
-          tx as unknown as typeof db,
-          contentId,
-        );
+        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
         const draft = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -292,10 +267,7 @@ export function createDocumentVersionRepository(
 
     resetDraft: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(
-          tx as unknown as typeof db,
-          contentId,
-        );
+        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -326,10 +298,7 @@ export function createDocumentVersionRepository(
 
     unpublish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(
-          tx as unknown as typeof db,
-          contentId,
-        );
+        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -376,10 +345,7 @@ export function createDocumentVersionRepository(
 
     createVersionFromPublished: (contentId, translatedBy) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(
-          tx as unknown as typeof db,
-          contentId,
-        );
+        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
 
         const latestVersion = await tx.query.documentVersion.findFirst({
           where: (table) => eq(table.documentId, documentId),
