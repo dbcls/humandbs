@@ -1,18 +1,19 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { evaluate } from "@tanstack/react-form";
 import { z } from "zod";
 
 import { useId, useRef } from "react";
@@ -21,7 +22,6 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { PublicationField } from "@/components/form-context/fields/PublicationField";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { Button } from "@/components/ui/button";
 
@@ -85,7 +85,7 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={i >= initialItems.length || !evaluate(item, initialItems[i])}
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);

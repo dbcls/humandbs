@@ -2,16 +2,15 @@ import { CollisionPriority } from "@dnd-kit/abstract";
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
+import { evaluate } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { Check, FileText, GripVertical, Link2, Plus, Trash2, X } from "lucide-react";
-import { useLocale } from "use-intl";
 
 import type { Ref } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +39,7 @@ import {
   mergeCommittedNavbarGroups,
 } from "@/config/site-navigation-admin";
 import type { DocumentsListItemResponse } from "@/serverFunctions/document";
-import { $getDocuments, getDocumentsQueryOptions } from "@/serverFunctions/document";
+import { getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $resetSiteNavigationConfig,
   $saveSiteNavigationConfig,
@@ -229,7 +228,7 @@ function RouteComponent() {
     );
   }
 
-  const isDirty = !deepEqual(
+  const isDirty = !evaluate(
     normalizeSiteNavigationConfig(draft),
     normalizeSiteNavigationConfig(data.config),
   );

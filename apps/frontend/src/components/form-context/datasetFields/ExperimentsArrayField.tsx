@@ -1,38 +1,37 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useStore } from "@tanstack/react-form";
+import { evaluate, useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
 
 import { useId, useRef } from "react";
 
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
-  deepEqual,
-  getFieldDefaultValue,
-  isFieldModified,
+    getFieldDefaultValue,
+    isFieldModified,
 } from "@/components/form-context/fields/useFieldModified";
 import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { Button } from "@/components/ui/button";
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -318,11 +317,11 @@ function ExperimentItemForm({
     form.store,
     (state: AnyForm) => state.values?.experiments?.[index]?.header?.ja?.text ?? "",
   );
-  const isHeaderEnModified = !deepEqual(
+  const isHeaderEnModified = !evaluate(
     currentEnText || null,
     initialItem?.header?.en?.text ?? null,
   );
-  const isHeaderJaModified = !deepEqual(
+  const isHeaderJaModified = !evaluate(
     currentJaText || null,
     initialItem?.header?.ja?.text ?? null,
   );
@@ -423,7 +422,7 @@ function ExperimentsSortableList({
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {items.map((item, i) => {
             const initialItem = initialItems[i];
-            const isModified = i >= initialItems.length || !deepEqual(item, initialItem);
+            const isModified = i >= initialItems.length || !evaluate(item, initialItem);
             return (
               <SortableItem
                 key={itemIds[i]}

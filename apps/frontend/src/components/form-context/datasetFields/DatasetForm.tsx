@@ -1,4 +1,4 @@
-import { useStore } from "@tanstack/react-form";
+import { evaluate, useStore } from "@tanstack/react-form";
 import { useTranslations } from "use-intl";
 
 import type { Ref } from "react";
@@ -8,7 +8,6 @@ import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { DatasetDoc } from "@/lib/types";
@@ -17,9 +16,9 @@ import type { DeepOmit } from "@/utils/typeUtils";
 import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
 import type { ExperimentItem } from "./ExperimentsArrayField";
 import {
-  ExperimentsArrayField,
-  entriesToExperimentData,
-  experimentDataToEntries,
+    ExperimentsArrayField,
+    entriesToExperimentData,
+    experimentDataToEntries,
 } from "./ExperimentsArrayField";
 
 const CRITERIA_OPTIONS = CriteriaCanonicalSchema.options;
@@ -183,7 +182,7 @@ export function DatasetForm({
 
   const values = useStore(form.store, (state) => state.values);
   const baseline = cleanValues ?? defaultValues;
-  const isModified = useStore(form.store, (state) => !deepEqual(state.values, baseline));
+  const isModified = useStore(form.store, (state) => !evaluate(state.values, baseline));
 
   // Notify parent when dirty state changes
   useEffect(() => {
@@ -196,7 +195,7 @@ export function DatasetForm({
 
   const isExperimentsModified = useStore(
     form.store,
-    (state) => !deepEqual(state.values.experiments, baseline.experiments),
+    (state) => !evaluate(state.values.experiments, baseline.experiments),
   );
 
   return (

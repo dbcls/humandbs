@@ -1,4 +1,4 @@
-import { useStore } from "@tanstack/react-form";
+import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
@@ -11,7 +11,6 @@ import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/t
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { DataProviderArrayField } from "@/components/form-context/researchFields/DataProviderArrayField";
 import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
@@ -416,7 +415,7 @@ export function ResearchDetails({
   const dirtyFields = Object.fromEntries(
     topLevelFields.map((field) => [
       field,
-      !deepEqual(
+      !evaluate(
         (formValues as Record<string, unknown>)[field],
         (defaultValues as Record<string, unknown>)[field],
       ),

@@ -1,4 +1,4 @@
-import { useStore } from "@tanstack/react-form";
+import { evaluate, getBy, useStore } from "@tanstack/react-form";
 import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { useTranslations } from "use-intl";
 
@@ -6,28 +6,23 @@ import { useState } from "react";
 
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import { TagInput } from "@/components/form-context/fields/TagInput";
-import { deepEqual, getByPath } from "@/components/form-context/fields/useFieldModified";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import { FACET_CATEGORY } from "@/config/facet-config";
 import POLICY_DEFAULTS from "@/config/policyDefaults.json";
 
 import type { NormalizedPolicy } from "../../../../../backend/src/crawler/types/common";
 import { PolicyCanonicalSchema } from "../../../../../backend/src/crawler/types/common";
-import type {
-  DiseaseInfo,
-  PlatformInfo,
-  SearchableExperimentFields,
-} from "../../../../../backend/src/crawler/types/structured";
+import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 import { SearchableExperimentFieldsSchema } from "../../../../../backend/src/crawler/types/structured";
 import type { FieldKind } from "./getFieldKind";
 import { getFieldKind } from "./getFieldKind";
@@ -47,7 +42,7 @@ function selectValueToNullable(v: string): string | null {
 }
 
 function modified(current: unknown, def: unknown) {
-  return !deepEqual(current, def);
+  return !evaluate(current, def);
 }
 
 function humanize(key: string): string {
@@ -688,7 +683,7 @@ export function SearchableFields({
     (state: any) => state.values?.experiments?.[experimentIndex]?.searchable,
   );
 
-  const defaultSearchable: SearchableExperimentFields | undefined = getByPath(
+  const defaultSearchable: SearchableExperimentFields | undefined = getBy(
     form.options.defaultValues,
     `experiments[${experimentIndex}].searchable`,
   ) as SearchableExperimentFields | undefined;

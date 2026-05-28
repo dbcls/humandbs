@@ -1,20 +1,21 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { evaluate } from "@tanstack/react-form";
 import { GripVertical, Trash2 } from "lucide-react";
 
 import { useId } from "react";
@@ -22,7 +23,6 @@ import { useId } from "react";
 import { Button } from "@/components/ui/button";
 
 import { ModifiedTag } from "./ModifiedTag";
-import { deepEqual } from "./useFieldModified";
 import { useStableSortableIds } from "./useStableSortableIds";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,7 +141,7 @@ export function ArrayField<T>({
               <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                 {items.map((_item: T, i: number) => {
                   const isItemModified = initialItems
-                    ? i >= initialItems.length || !deepEqual(_item, initialItems[i])
+                    ? i >= initialItems.length || !evaluate(_item, initialItems[i])
                     : false;
 
                   return (

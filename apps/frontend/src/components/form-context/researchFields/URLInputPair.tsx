@@ -1,3 +1,4 @@
+import { evaluate } from "@tanstack/react-form";
 import { z } from "zod";
 
 import { ResearchDetailSchema } from "@humandbs/backend/types";
@@ -7,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { useFieldContext } from "../FormContext";
 import { ResetFieldButton } from "../fields/ResetFieldButton";
-import { deepEqual, getFieldDefaultValue } from "../fields/useFieldModified";
+import { getFieldDefaultValue } from "../fields/useFieldModified";
 
 const urlSchema = z.object({
   ...ResearchDetailSchema.shape.summary.shape.url.shape.en.element.shape,
@@ -26,7 +27,7 @@ export function URLInputPair({
   onChange: (next: UrlItem) => void;
   onReset?: () => void;
 }) {
-  const modified = defaultValue !== undefined && !deepEqual(value, defaultValue);
+  const modified = defaultValue !== undefined && !evaluate(value, defaultValue);
 
   return (
     <div className="relative flex flex-col items-stretch gap-1">
