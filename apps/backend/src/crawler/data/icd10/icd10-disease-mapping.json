@@ -1204,8 +1204,8 @@
     "icd10": "J350"
   },
   "Chronic viral hepatitis B without delta-agent|B181": {
-    "label": "Chronic viral hepatitis B without delta-agent: immune-tolerant phase",
-    "icd10": "B1810"
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
   },
   "chronic viral hepatitis B|B18.0-B18.1": {
     "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
@@ -3688,12 +3688,12 @@
     "icd10": "I675"
   },
   "MSI-H colorectal cancer|": {
-    "label": "Malignant neoplasm: Colon, unspecified",
-    "icd10": "C189"
+    "label": "MSI-H colorectal cancer",
+    "icd10": "C18"
   },
   "MSI-H colorectal cancer|C18": {
-    "label": "Malignant neoplasm: Colon, unspecified",
-    "icd10": "C189"
+    "label": "MSI-H colorectal cancer",
+    "icd10": "C18"
   },
   "mucinous adenocarcinoma of ovary|": {
     "label": "Malignant neoplasm of ovary",
