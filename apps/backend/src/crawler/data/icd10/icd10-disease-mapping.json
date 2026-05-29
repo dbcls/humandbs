@@ -6186,5 +6186,281 @@
   "高血圧症|I10": {
     "label": "Essential (primary) hypertension",
     "icd10": "I10"
+  },
+  "schizophrenia|": {
+    "label": "Schizophrenia, unspecified",
+    "icd10": "F209"
+  },
+  "Asthma|": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "Type 1 diabetes mellitus|": {
+    "label": "Type 1 diabetes mellitus: Without complications",
+    "icd10": "E109"
+  },
+  "Sjögren's syndrome|": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "Fabry disease|": {
+    "label": "Other sphingolipidosis",
+    "icd10": "E752"
+  },
+  "intimal sarcoma with MDM2 amplification|": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "Gallbladder cancer|": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "Cholangiocarcinoma|": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  },
+  "unipolar disorder|": {
+    "label": "Depressive episode, unspecified",
+    "icd10": "F329"
+  },
+  "renal cell cancer|": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "sebaceous nevus|": {
+    "label": "Benign neoplasm: Skin of lower limb, including hip",
+    "icd10": "D237"
+  },
+  "Type 2 diabetes mellitus with diabetic nephropathy|": {
+    "label": "Type 2 diabetes mellitus: With renal complications",
+    "icd10": "E112"
+  },
+  "neuroblastoma|": {
+    "label": "Malignant neoplasm: Adrenal gland, unspecified",
+    "icd10": "C749"
+  },
+  "Neuroblastoma|": {
+    "label": "Malignant neoplasm: Adrenal gland, unspecified",
+    "icd10": "C749"
+  },
+  "Pleomorphic carcinoma of lung|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "hypersensitivity syndrome (drug eruption)|": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "Oligodendroglioma|": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Nonsyndromic hearing loss|": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "non-syndromic hearing loss|": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "Hereditary leiomyomatosis and renal cell cancer|": {
+    "label": "Other phakomatoses, not elsewhere classified",
+    "icd10": "Q858"
+  },
+  "Type 2 diabetes mellitus|": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "brain tumor|": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Astrocytoma|": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "neuromuscular degenerative disease|": {
+    "label": "Myoneural disorder, unspecified",
+    "icd10": "G709"
+  },
+  "Ovarian cancer|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "Ovarian clear cell adenocarcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "Serous adenocarcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "Endometrioid adenocarcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "diffuse-type gastric carcinoma|": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "gastric carcinoma|": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "Atypical polypoid adenomyoma|": {
+    "label": "Other benign neoplasm: Corpus uteri",
+    "icd10": "D261"
+  },
+  "endometrial cancer|": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "chronic hepatitis B|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B181"
+  },
+  "asymptomatic hepatitis B virus carrier|": {
+    "label": "Carrier of other infectious diseases",
+    "icd10": "Z228"
+  },
+  "ductal carcinoma in situ|D05.1": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "invasive ductal carcinoma|C50.9": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "invasive ductal carcinoma (IDC)|C50.9": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "cerebral aneurysm|I67.1": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "Cerebral aneurysm|I67.1": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "diffuse-type gastric carcinoma|C16.9": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "Oligodendroglioma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "KMT2A rearrangement-positive acute lymphoblastic leukemia|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "Mucus-producing solid-dominant adenocarcinoma of lung|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "Mucus-producing solid-dominant adenocarcinoma of lung|C34.3": {
+    "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+    "icd10": "C343"
+  },
+  "Malignant neoplasm of pleura|C45.0": {
+    "label": "Mesothelioma of pleura",
+    "icd10": "C450"
+  },
+  "Duodenal tumor|C17.0": {
+    "label": "Malignant neoplasm: Duodenum",
+    "icd10": "C170"
+  },
+  "Biliary tumor|C24.0": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  },
+  "Benign neoplasm of duodenum|D13.2": {
+    "label": "Benign neoplasm: Duodenum",
+    "icd10": "D132"
+  },
+  "Nonsyndromic hearing loss|H90.5": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "colorectal cancer with adenocarcinoma sequence background|D01.0": {
+    "label": "Carcinoma in situ: Colon",
+    "icd10": "D010"
+  },
+  "multiple system atrophy|G23.2": {
+    "label": "Multiple system atrophy, parkinsonian type [MSA-P]",
+    "icd10": "G232"
+  },
+  "non-syndromic hearing loss|H90.5": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "squamous cell carcinoma of lung|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "Rhabdomyosarcoma|C49.9": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "Pancreatoblastoma|C25.9": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "Astrocytoma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Pulmonary adenocarcinoma harboring EML4-ALK variant 3|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "Pulmonary adenocarcinoma harboring EML4-ALK variant 3|C34.3": {
+    "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+    "icd10": "C343"
+  },
+  "gastric-type cervical adenocarcinoma|C53.9": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "Diabetic kidney disease (Type 2 diabetes mellitus with kidney complications)|E14.2": {
+    "label": "Unspecified diabetes mellitus: With renal complications",
+    "icd10": "E142"
+  },
+  "Chronic kidney disease in diseases classified elsewhere|N08.3": {
+    "label": "Glomerular disorders in diabetes mellitus",
+    "icd10": "N083"
+  },
+  "Sicca syndrome [Sjögren]|M35.0": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "Malignant neoplasm of breast, unspecified|C50.9": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "HBOC with uterine carcinosarcoma|R79.8": {
+    "label": "Other specified abnormal findings of blood chemistry",
+    "icd10": "R798"
+  },
+  "testicular teratoma|C62.9": {
+    "label": "Malignant neoplasm: Testis, unspecified",
+    "icd10": "C629"
+  },
+  "HBV-positive hepatocellular carcinoma|B18.1": {
+    "label": "Chronic viral hepatitis B without delta-agent",
+    "icd10": "B181"
+  },
+  "Moyamoya disease|I67.5": {
+    "label": "Moyamoya disease",
+    "icd10": "I675"
+  },
+  "colorectal cancer|C18-20": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "Neoplasms|C00-D48": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
   }
 }
