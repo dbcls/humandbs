@@ -4,19 +4,19 @@ import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
-import { ModalCell } from "@/components/ModalCell";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { ModalCell } from "@/components/ModalCell";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
-import { useCart } from "@/hooks/useCart";
+import { useCartStore } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
-  loader: () => ({ crumb: "Cart" }),
+  loader: ({ context }) => ({ crumb: context.messages?.common["cart"] }),
 });
 
 const cartColumnsHelper = createColumnHelper<DatasetDoc>();
@@ -42,13 +42,7 @@ const cartDatasetColumns = [
         <ul className="space-y-4">
           {(ctx.getValue() ?? []).map((item, i) => (
             <li key={i}>
-              <span>
-                {
-                  item.header?.[
-                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                  ]?.text
-                }
-              </span>
+              <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}
         </ul>
@@ -63,13 +57,13 @@ const cartDatasetColumns = [
   cartColumnsHelper.display({
     id: "delete",
     cell: function Cell(ctx) {
-      const { remove } = useCart();
+      const remove = useCartStore((state) => state.remove);
 
       return (
         <Button
           variant={"plain"}
           onClick={() => {
-            remove(ctx.row.original);
+            remove([ctx.row.original.datasetId]);
           }}
         >
           <Trash2 className="size-5 text-danger" />
@@ -82,7 +76,7 @@ const cartDatasetColumns = [
 ];
 
 function RouteComponent() {
-  const { cart } = useCart();
+  const cart = useCartStore((state) => state.cartDatasets);
   const t = useTranslations("Dataset");
   const locale = useLocale();
 
@@ -109,11 +103,8 @@ function RouteComponent() {
             <Button className="mb-4 ml-auto" onClick={handleSubmit}>
               Copy Cart Contents
             </Button>
-            <Table
-              columns={cartDatasetColumns}
-              data={cart}
-              meta={{ t, lang: locale }}
-            />
+            <Table columns={cartDatasetColumns} data={cart} meta={{ t, lang: locale }} />
+            <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" theme="github-light" />
           </>
         )}
       </ClientOnly>

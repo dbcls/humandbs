@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-navigation";
 import { asLinkProps } from "@/config/site-navigation";
-import { useCart } from "@/hooks/useCart";
+import { useCartStore } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 
 import { LangSwitcher } from "./LanguageSwitcher";
@@ -392,11 +392,12 @@ function UserMenu() {
 }
 
 function ShoppingCartButton() {
-  const { cart } = useCart();
   const { user } = useRouteContext({ from: "__root__" });
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const navigate = useNavigate();
   const router = useRouter();
+
+  const datasetsInCart = useCartStore((state) => state.cartDatasets.length);
 
   function handleClick() {
     if (!user) {
@@ -421,9 +422,9 @@ function ShoppingCartButton() {
       size="icon"
       onClick={handleClick}
     >
-      {cart.length > 0 ? (
+      {datasetsInCart > 0 ? (
         <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-[10px] text-white leading-none">
-          {cart.length}
+          {datasetsInCart}
         </span>
       ) : null}
       <ShoppingCart className="size-6 text-secondary" />

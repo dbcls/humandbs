@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -21,7 +21,7 @@ import { SearchPanel } from "@/components/SearchPanel";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isCartableDatasetId, useCart, useCartTableHeader } from "@/hooks/useCart";
+import { isCartableDatasetId, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -564,39 +564,24 @@ function AddToCartAllDatasetsButton({
   const t = useTranslations("common");
   const datasetsQO = getDatasetsOfResearchQueryOptions(humId);
 
-  const queryClient = useQueryClient();
   const { data } = useQuery(datasetsQO);
-  const { addMany } = useCart();
 
-  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
     tableDatasets:
       // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
       data?.data || tableDatasets,
   });
+
   const hasCartableDatasets = tableDatasets.some((dataset) =>
     isCartableDatasetId(dataset.datasetId),
   );
 
-  async function handleAddAllToCart() {
-    if (!hasCartableDatasets) return;
-
-    if (allInCart) {
-      handleClickCart();
-      return;
-    }
-
-    const result = await queryClient.ensureQueryData(datasetsQO);
-
-    if (result.data) {
-      addMany(result.data);
-    }
-  }
+  if (!hasCartableDatasets) return null;
 
   return (
     <AddToCartToggle
       state={allInCart || (someInCart ? "indeterminate" : false)}
-      onClick={handleAddAllToCart}
-      disabled={!hasCartableDatasets}
+      onClick={handleToggleDatasets}
       className={cn("shrink-0", className)}
       title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
       aria-label={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
@@ -610,7 +595,7 @@ function ResearchCartHeaderButton({ tableResearches }: { tableResearches: Resear
     return tableResearches.flatMap((row) => row.datasetIds.map((id) => ({ datasetId: id })));
   }, [tableResearches]);
 
-  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
     tableDatasets: allDatasets,
   });
 
@@ -618,7 +603,7 @@ function ResearchCartHeaderButton({ tableResearches }: { tableResearches: Resear
     <AddToCartToggle
       variant={"header"}
       state={allInCart || (someInCart ? "indeterminate" : false)}
-      onClick={handleClickCart}
+      onClick={handleToggleDatasets}
       aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );

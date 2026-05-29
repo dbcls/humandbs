@@ -12,23 +12,6 @@ export function getFieldDefaultValue(field: any): unknown {
   return getBy(field.form.options.defaultValues, field.name);
 }
 
-// Treat null and undefined as equivalent (optional fields may be absent in
-// server responses but present as null in form state, or vice versa).
-function normalize(v: unknown): unknown {
-  return v == null || v === "" ? undefined : v;
-}
-
-  if (Object.is(na, nb)) return true;
-  if (na === undefined || nb === undefined) return false;
-  if (typeof na !== "object" || typeof nb !== "object") return false;
-
-
-  if (Array.isArray(nb)) return false;
-
-  const objA = na as Record<string, unknown>;
-  const objB = nb as Record<string, unknown>;
-
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFieldApi = any;
 

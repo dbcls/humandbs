@@ -1,7 +1,10 @@
 import { useTranslations } from "use-intl";
+import { useShallow } from "zustand/react/shallow";
+
+import { useCallback } from "react";
 
 import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { isCartableDatasetId, useCartTableRow } from "@/hooks/useCart";
+import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
 
 export function DatasetCartRowButton({
@@ -12,9 +15,25 @@ export function DatasetCartRowButton({
   className?: string;
 }) {
   const t = useTranslations("common");
-  const { handleClickCart, inCart } = useCartTableRow({
-    dataset,
-  });
+
+  const { add, remove, isInCart } = useCartStore(
+    useShallow((state) => ({
+      add: state.add,
+      isInCart: state.cartDatasets.some((d) => d.datasetId === dataset.datasetId),
+      remove: state.remove,
+    })),
+  );
+
+  const handleToggle = useCallback(
+    (dataset: DatasetDoc) => {
+      if (isInCart) {
+        remove([dataset.datasetId]);
+      } else {
+        add([dataset]);
+      }
+    },
+    [add, remove, isInCart],
+  );
 
   if (!isCartableDatasetId(dataset.datasetId)) {
     return <span className="inline-block w-9 shrink-0" aria-hidden="true" />;
@@ -22,10 +41,12 @@ export function DatasetCartRowButton({
 
   return (
     <AddToCartToggle
-      state={inCart}
-      onClick={handleClickCart}
+      state={isInCart}
+      onClick={() => {
+        handleToggle(dataset);
+      }}
       className={className}
-      aria-label={inCart ? t("already-in-cart") : t("add-to-cart")}
+      aria-label={isInCart ? t("already-in-cart") : t("add-to-cart")}
     />
   );
 }

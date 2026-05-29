@@ -5,14 +5,14 @@ import { evaluate } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-    AlertCircle,
-    ChevronDown,
-    ChevronRight,
-    GitBranch,
-    GripVertical,
-    Home,
-    Plus,
-    Trash2,
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  GripVertical,
+  Home,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useLocale } from "use-intl";
 
@@ -21,7 +21,6 @@ import { useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { ListItem } from "@/components/ListItem";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
@@ -31,32 +30,32 @@ import { StatusTag } from "@/components/StatusTag";
 import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import type {
-    NavigationFlowchartConfig,
-    NavigationFlowchartOption,
-    NavigationFlowchartStep,
+  NavigationFlowchartConfig,
+  NavigationFlowchartOption,
+  NavigationFlowchartStep,
 } from "@/config/navigation-flowchart";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import type {
-    NavigationFlowchartRecord,
-    NavigationFlowchartSummary,
+  NavigationFlowchartRecord,
+  NavigationFlowchartSummary,
 } from "@/repositories/navigationFlowchart";
 import {
-    $createNavigationFlowchart,
-    $deleteNavigationFlowchart,
-    $saveNavigationFlowchartConfig,
-    getNavigationFlowchartByIdQueryOptions,
-    getNavigationFlowchartsQueryOptions,
+  $createNavigationFlowchart,
+  $deleteNavigationFlowchart,
+  $saveNavigationFlowchartConfig,
+  getNavigationFlowchartByIdQueryOptions,
+  getNavigationFlowchartsQueryOptions,
 } from "@/serverFunctions/navigationFlowchartAdmin";
 import useConfirmationStore from "@/stores/confirmationStore";
 
@@ -583,13 +582,12 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   }
 
   const stepErrors = validateSteps(configDraft);
-  const invalidStepIds = Object.keys(stepErrors);
+
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   const isDirty =
-    !deepEqual(meta, savedMetaRef.current) || !evaluate(configDraft, savedConfigRef.current);
+    !evaluate(meta, savedMetaRef.current) || !evaluate(configDraft, savedConfigRef.current);
 
-  const lang = useLocale();
   return (
     <Card
       className="flex h-full flex-1 flex-col overflow-hidden"

@@ -14,16 +14,23 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other")({
   ),
 });
 
+function onlyHasLangParam(paramsObj: Record<string, string | number>) {
+  const keys = Object.keys(paramsObj);
+  return keys.length === 1 && keys[0] === "lang";
+}
+
 function RouteComponent() {
+  const matches = Route.useMatch();
+
   return (
     <div className="flex flex-col">
-      <div className="flex items-end justify-between pl-2 pr-0 -mb-[1px] z-20">
+      <div className="z-20 -mb-px flex items-end justify-between pr-0 pl-2">
         <div className="pb-1.5">
           <Breadcrumbs />
         </div>
-        <ResearchDatasetTabs />
+        {onlyHasLangParam(matches.params) ? <ResearchDatasetTabs /> : null}
       </div>
-      <div className="flex-1 z-10">
+      <div className="z-10 flex-1">
         <Outlet />
       </div>
     </div>

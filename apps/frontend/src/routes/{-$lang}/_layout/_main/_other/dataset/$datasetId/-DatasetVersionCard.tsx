@@ -1,5 +1,7 @@
-import { useLocation, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
+import { useShallow } from "zustand/react/shallow";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { CardWithCaption } from "@/components/Card";
@@ -11,7 +13,7 @@ import { Separator } from "@/components/Separator";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
-import { useCart } from "@/hooks/useCart";
+import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
 
@@ -57,29 +59,26 @@ export function DatasetVersionCard({
     },
   ];
 
-  const navigate = useNavigate();
-  const currentLocation = useLocation();
+  const { add, isInCart, remove } = useCartStore(
+    useShallow((state) => ({
+      add: state.add,
+      remove: state.remove,
+      isInCart: state.cartDatasets.some((item) => item.datasetId === versionData.datasetId),
+    })),
+  );
 
-  const { add, cart } = useCart();
-
-  const isInCart = cart.some((item) => item.datasetId === versionData.datasetId);
-
-  const handleAddToCart = () => {
-    if (!user) {
-      void navigate({
-        to: "/auth/login",
-        search: {
-          redirect: `${currentLocation.href}${currentLocation.searchStr ? "&" : "?"}addToCart=${versionData.datasetId}`,
-        },
-        reloadDocument: true,
-      });
-      return;
+  const handleToggleDataset = () => {
+    if (isInCart) {
+      remove([versionData.datasetId]);
+    } else {
+      add([versionData as DatasetDoc]);
     }
-    add(versionData as DatasetDoc);
   };
 
   const identifier =
     [versionData.datasetId, versionData.version].filter(Boolean).join(".") || "Preview";
+
+  const showAddToCartButton = isCartableDatasetId(versionData.datasetId);
 
   return (
     <CardWithCaption
@@ -103,19 +102,20 @@ export function DatasetVersionCard({
               ) : null
             }
             right={
-              showPublicActions ? (
+              showPublicActions && showAddToCartButton ? (
                 <div className="flex gap-5">
-                  <Button
-                    variant={"accent"}
-                    className="rounded-full"
-                    disabled={!!user && isInCart}
-                    onClick={handleAddToCart}
-                  >
-                    {user
-                      ? isInCart
-                        ? t("already-in-cart")
-                        : t("add-to-cart")
-                      : t("login-to-add")}
+                  <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
+                    {user ? (
+                      isInCart ? (
+                        <>
+                          <X className="size-5" /> {t("remove-from-cart")}
+                        </>
+                      ) : (
+                        t("add-to-cart")
+                      )
+                    ) : (
+                      t("login-to-add")
+                    )}
                   </Button>
                 </div>
               ) : null
