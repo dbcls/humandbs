@@ -43,8 +43,8 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
 
       {enItems.length > 0 && (
         <div className="flex gap-2">
-          <div className="flex-1 font-medium text-gray-500 text-xs uppercase">En</div>
-          <div className="flex-1 font-medium text-gray-500 text-xs uppercase">Ja</div>
+          <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
+          <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
           <div className="w-8" />
         </div>
       )}
@@ -84,8 +84,7 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
 
       <Button
         type="button"
-        variant="outline"
-        className="w-full border-dashed"
+        variant="dashed"
         onClick={() =>
           field.handleChange((prev) => ({
             en: [...(prev?.en ?? []), { text: "", url: "" }],

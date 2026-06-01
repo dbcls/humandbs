@@ -15,8 +15,12 @@ export function ResetFieldButton({
       type="button"
       variant="ghost"
       size="icon"
+      data-type="reset"
       onClick={onClick}
-      className={cn("absolute right-0 text-gray-400 hover:text-gray-600", className)}
+      className={cn(
+        "absolute right-0 text-form-icon-btn hover:text-form-icon-btn-hover",
+        className,
+      )}
       title="Reset to initial value"
     >
       <RotateCcw className="size-4" />

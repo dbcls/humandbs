@@ -10,20 +10,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { FACET_CATEGORY } from "@/config/facet-config";
 import POLICY_DEFAULTS from "@/config/policyDefaults.json";
+import { cn } from "@/lib/utils";
 
 import type { NormalizedPolicy } from "../../../../../backend/src/crawler/types/common";
 import { PolicyCanonicalSchema } from "../../../../../backend/src/crawler/types/common";
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 import { SearchableExperimentFieldsSchema } from "../../../../../backend/src/crawler/types/structured";
+import { ModifiedTag } from "../fields";
 import type { FieldKind } from "./getFieldKind";
 import { getFieldKind } from "./getFieldKind";
 import type { RendererProps } from "./searchableFieldsConfig";
@@ -66,7 +68,7 @@ function NullableSelect({
 }) {
   const isModified = modified(value, defaultValue);
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center data-[type=reset]:right-4">
       <Select
         value={nullableSelectValue(value)}
         onValueChange={(v) => onChange(selectValueToNullable(v))}
@@ -107,7 +109,7 @@ function NullableBoolSelect({
   const strVal = value === null || value === undefined ? NULL_VALUE : String(value);
   const isModified = modified(value, defaultValue);
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center **:data-[type=reset]:right-6">
       <Select
         value={strVal}
         onValueChange={(v) => {
@@ -214,9 +216,15 @@ function TagInputField({
   const isModified = modified(value, defaultValue);
   return (
     <div className="relative flex items-center gap-1">
-      <div className={`flex-1 ${isModified ? "rounded bg-yellow-50" : ""}`}>
-        <TagInput value={value} onChange={onChange} placeholder={placeholder} />
-      </div>
+      <TagInput
+        className="flex-1"
+        inputClassName={cn({ "modified-field": isModified })}
+        isModified={isModified}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+      />
+
       {isModified && (
         <ResetFieldButton className="relative right-auto" onClick={() => onChange(defaultValue)} />
       )}
@@ -268,87 +276,102 @@ function PoliciesField({
   }
 
   return (
-    <div className={`flex flex-col gap-2 rounded ${isModified ? "bg-yellow-50 p-1" : ""}`}>
+    <div
+      className={cn("flex flex-col gap-2 rounded border border-form-border px-2 py-1.5", {
+        "modified-field": isModified,
+      })}
+    >
       {value.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <div className="grid grid-cols-[140px_1fr_1fr_1fr_auto] px-1 text-gray-400 text-xs">
-            <span>Type</span>
-            <span>Name (En)</span>
-            <span>Name (Ja)</span>
-            <span>URL</span>
-            <span />
-          </div>
-          {value.map((policy, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[140px_1fr_1fr_1fr_auto] items-center gap-2 rounded border border-gray-100 bg-white px-2 py-1.5 text-xs"
-            >
-              <Select
-                value={policy.id}
-                onValueChange={(newId) => {
-                  const defaults = POLICY_DEFAULTS.find((p) => p.id === newId);
-                  updateItem(i, {
-                    id: newId as NormalizedPolicy["id"],
-                    name: {
-                      ja: defaults?.defaultNameJa ?? policy.name.ja,
-                      en: defaults?.defaultNameEn ?? policy.name.en,
-                    },
-                    url: defaults?.defaultUrl !== undefined ? defaults.defaultUrl : policy.url,
-                  });
-                }}
-                disabled={disabled}
-              >
-                <SelectTrigger className="h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {PolicyCanonicalSchema.options.map((id) => (
-                      <SelectItem
-                        key={id}
-                        value={id}
-                        disabled={usedIds.has(id) && id !== policy.id}
-                      >
-                        {id}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <Input
-                value={policy.name.en}
-                onChange={(e) => updateName(i, "en", e.target.value)}
-                placeholder="Name (En)"
-                className="h-7 text-xs"
-                disabled={disabled}
-              />
-              <Input
-                value={policy.name.ja}
-                onChange={(e) => updateName(i, "ja", e.target.value)}
-                placeholder="Name (Ja)"
-                className="h-7 text-xs"
-                disabled={disabled}
-              />
-              <Input
-                value={policy.url ?? ""}
-                onChange={(e) =>
-                  updateItem(i, { url: e.target.value === "" ? null : e.target.value })
-                }
-                placeholder="URL"
-                className="h-7 text-xs"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                onClick={() => onChange(value.filter((_, j) => j !== i))}
-                disabled={disabled}
-                className="text-gray-400 hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="border-form-divider border-b text-left text-form-sublabel">
+              <th className="w-36 pr-2 pb-2 font-medium">Type</th>
+              <th className="pr-2 pb-2 font-medium">Name (En)</th>
+              <th className="pr-2 pb-2 font-medium">Name (Ja)</th>
+              <th className="pr-2 pb-2 font-medium">URL</th>
+              <th className="w-6 pb-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {value.map((policy, i) => (
+              <tr key={i} className="border-form-divider border-b last:border-0">
+                <td className="py-1.5 pr-2 align-middle">
+                  <Select
+                    value={policy.id}
+                    onValueChange={(newId) => {
+                      const defaults = POLICY_DEFAULTS.find((p) => p.id === newId);
+                      updateItem(i, {
+                        id: newId as NormalizedPolicy["id"],
+                        name: {
+                          ja: defaults?.defaultNameJa ?? policy.name.ja,
+                          en: defaults?.defaultNameEn ?? policy.name.en,
+                        },
+                        url: defaults?.defaultUrl !== undefined ? defaults.defaultUrl : policy.url,
+                      });
+                    }}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {PolicyCanonicalSchema.options.map((id) => (
+                          <SelectItem
+                            key={id}
+                            value={id}
+                            disabled={usedIds.has(id) && id !== policy.id}
+                          >
+                            {id}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="py-1.5 pr-2 align-middle">
+                  <Input
+                    value={policy.name.en}
+                    onChange={(e) => updateName(i, "en", e.target.value)}
+                    placeholder="Name (En)"
+                    className="h-7 text-xs"
+                    disabled={disabled}
+                  />
+                </td>
+                <td className="py-1.5 pr-2 align-middle">
+                  <Input
+                    value={policy.name.ja}
+                    onChange={(e) => updateName(i, "ja", e.target.value)}
+                    placeholder="Name (Ja)"
+                    className="h-7 text-xs"
+                    disabled={disabled}
+                  />
+                </td>
+                <td className="py-1.5 pr-2 align-middle">
+                  <Input
+                    value={policy.url ?? ""}
+                    onChange={(e) =>
+                      updateItem(i, { url: e.target.value === "" ? null : e.target.value })
+                    }
+                    placeholder="URL"
+                    className="h-7 text-xs"
+                    disabled={disabled}
+                  />
+                </td>
+                <td className="py-1.5 align-middle">
+                  <button
+                    type="button"
+                    onClick={() => onChange(value.filter((_, j) => j !== i))}
+                    disabled={disabled}
+                    className="text-form-icon-btn hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
       <div className="flex items-center gap-1">
         {!disabled && availableIds.length > 0 && (
@@ -506,11 +529,15 @@ function ArrayOfObjectsField({
   }
 
   return (
-    <div className={`flex flex-col gap-1 rounded ${isModified ? "bg-yellow-50 p-1" : ""}`}>
+    <div
+      className={cn("flex flex-col gap-1 rounded border border-form-border px-2 py-1.5", {
+        "modified-field": isModified,
+      })}
+    >
       {value.length > 0 && (
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-gray-100 border-b text-left text-gray-400">
+            <tr className="border-form-divider border-b text-left text-form-sublabel">
               {subKeys.map((k) => (
                 <th key={k} className="pr-2 pb-1 font-medium capitalize">
                   {humanize(k)}
@@ -521,7 +548,7 @@ function ArrayOfObjectsField({
           </thead>
           <tbody>
             {value.map((row, i) => (
-              <tr key={i} className="border-gray-100 border-b last:border-0">
+              <tr key={i} className="border-form-divider border-b last:border-0">
                 {subKeys.map((k) => (
                   <td key={k} className="py-1 pr-2">
                     <FieldControl
@@ -539,7 +566,7 @@ function ArrayOfObjectsField({
                     type="button"
                     onClick={() => onChange(value.filter((_, j) => j !== i))}
                     disabled={disabled}
-                    className="text-gray-400 hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
+                    className="text-form-icon-btn hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -600,7 +627,7 @@ function ObjectField({
     >
       {Object.entries(shape).map(([key, kind]) => (
         <div key={key} className="flex flex-col gap-0.5">
-          <span className="text-gray-400 text-xs uppercase">{key}</span>
+          <span className="text-form-sublabel text-xs uppercase">{key}</span>
           <FieldControl
             fieldKey={key}
             kind={kind}
@@ -626,7 +653,7 @@ function ObjectField({
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[160px_1fr] items-start gap-2">
-      <Label className="justify-self-end pt-1.5 text-gray-500 text-xs">{label}</Label>
+      <Label className="justify-self-end text-form-label text-xs">{label}</Label>
       <div>{children}</div>
     </div>
   );
@@ -634,7 +661,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <p className="mt-3 border-gray-100 border-t pt-2 font-medium text-gray-400 text-xs uppercase tracking-wide">
+    <p className="border-form-divider py-3 font-medium text-form-sublabel text-xs uppercase tracking-wide">
       {title}
     </p>
   );
@@ -792,9 +819,9 @@ export function SearchableFields({
     if (!sectionFields || sectionFields.length === 0) return null;
     const sectionLabel = t.has(sectionKey as any) ? t(sectionKey as any) : humanize(sectionKey);
     return (
-      <div key={sectionKey}>
+      <div key={sectionKey} className="not-first:border-form-border not-first:border-t">
         <SectionHeader title={sectionLabel} />
-        {sectionFields.map(renderField)}
+        <section className="space-y-2">{sectionFields.map(renderField)}</section>
       </div>
     );
   }
@@ -806,7 +833,7 @@ export function SearchableFields({
       <button
         type="button"
         onClick={handleToggle}
-        className="flex items-center gap-1 text-gray-500 text-xs hover:text-gray-700"
+        className="flex items-center gap-1 text-form-label text-xs hover:text-form-value"
       >
         {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
         <span className="font-medium">Searchable fields</span>
@@ -815,15 +842,11 @@ export function SearchableFields({
             filled
           </span>
         )}
-        {isModified && (
-          <span className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-700">
-            modified
-          </span>
-        )}
+        <ModifiedTag isModified={isModified} />
       </button>
 
       {open && (
-        <div className="mt-1 flex flex-col gap-2 rounded border border-gray-200 bg-gray-50 p-3">
+        <div className="mt-1 flex flex-col gap-2 rounded border border-form-border p-3">
           {SECTION_ORDER.map(renderSection)}
           {unsectionedFields.map(renderField)}
         </div>

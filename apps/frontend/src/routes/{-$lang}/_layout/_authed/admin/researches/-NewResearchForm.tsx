@@ -21,9 +21,9 @@ import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
-import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
 import type { NewResearchMergeValues } from "./-jdsResearchValues";
 import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./-jdsResearchValues";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -177,10 +177,17 @@ export function NewResearchForm({
                   <div className="nested-form flex w-full flex-col gap-1">
                     {field.state.value?.map((_, i) => (
                       <div key={i} className="flex items-center gap-1">
-                        <form.AppField name={`uids[${i}]`}>{(f) => <f.TextField />}</form.AppField>
-                        <button type="button" onClick={() => field.removeValue(i)}>
+                        <form.AppField name={`uids[${i}]`}>
+                          {(f) => <f.TextField className="flex-1" />}
+                        </form.AppField>
+                        <Button
+                          size="icon"
+                          variant="plain"
+                          type="button"
+                          onClick={() => field.removeValue(i)}
+                        >
                           <Trash2 className="size-4 text-danger" />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                     <Button

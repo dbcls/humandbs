@@ -33,7 +33,7 @@ export const PersonField = withForm({
         <Input
           placeholder="Search by ORCID and apply..."
           disabled
-          className="bg-gray-50 text-gray-400"
+          className="bg-form-input-bg text-form-muted"
         />
 
         {/* Name + Title share a column header */}
@@ -75,7 +75,7 @@ export const PersonField = withForm({
         {/* Organization */}
         <fieldset className="flex flex-col gap-2">
           <Label className="font-medium text-sm">Organization</Label>
-          <div className="rounded border border-gray-300 p-3">
+          <div className="rounded border border-form-border p-3">
             <div className="flex flex-col gap-2">
               <BilingualTextValueField
                 form={form}

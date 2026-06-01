@@ -227,7 +227,7 @@ export function DatasetForm({
         {/* Read-only fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <Label className="text-gray-500 text-xs">{t("research-version")}</Label>
+            <Label className="text-form-label text-xs">{t("research-version")}</Label>
             <span className="font-mono text-sm">{defaultValues.humVersionId || "—"}</span>
           </div>
         </div>

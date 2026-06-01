@@ -5,12 +5,17 @@ import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface TagInputProps {
   value: string[];
   onChange: (value: string[]) => void;
   label?: string;
   placeholder?: string;
+  className?: string;
+  inputClassName?: string;
+  tagClassName?: string;
+  isModified?: boolean;
 }
 
 export function TagInput({
@@ -18,6 +23,10 @@ export function TagInput({
   onChange,
   label,
   placeholder = "Type and press comma or Enter",
+  className,
+  inputClassName,
+  tagClassName,
+  isModified,
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");
 
@@ -43,19 +52,33 @@ export function TagInput({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1", className)}>
       {label && <Label className="text-sm">{label}</Label>}
-      <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1 rounded focus-within:ring-1 focus-within:ring-ring",
+          {
+            "px-2 py-1.5": !!label,
+          },
+        )}
+      >
         {value.map((tag, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs"
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-full bg-form-tag-bg px-2 py-0.5 text-xs",
+              {
+                "border border-form-modified-text bg-form-modified-bg text-form-modified-text":
+                  isModified,
+              },
+              tagClassName,
+            )}
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(i)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-form-icon-btn hover:text-form-icon-btn-hover"
             >
               <X className="size-4" />
             </button>
@@ -69,7 +92,13 @@ export function TagInput({
             if (inputValue.trim()) addTag(inputValue);
           }}
           placeholder={value.length === 0 ? placeholder : ""}
-          className="min-w-[80px] flex-1 border-0 p-0 shadow-none focus-visible:ring-0"
+          className={cn(
+            "min-w-[80px] flex-1 border-0 px-2 py-1.5 text-xs shadow-none focus-visible:ring-0",
+            {
+              "bg-form-modified-bg": isModified,
+            },
+            inputClassName,
+          )}
         />
       </div>
     </div>

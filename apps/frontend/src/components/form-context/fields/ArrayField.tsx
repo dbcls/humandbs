@@ -73,7 +73,7 @@ function SortableItem({
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <button
           type="button"
-          className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          className="cursor-grab touch-none text-form-icon-btn hover:text-form-icon-btn-hover"
           {...attributes}
           {...listeners}
         >
@@ -83,7 +83,7 @@ function SortableItem({
           #{index + 1} {icon} {title}
         </span>
         <ModifiedTag isModified={isModified} />
-        <button type="button" onClick={onRemove} className="text-gray-400 hover:text-red-500">
+        <button type="button" onClick={onRemove} className="text-form-icon-btn hover:text-red-500">
           <Trash2 className="size-4" />
         </button>
       </div>

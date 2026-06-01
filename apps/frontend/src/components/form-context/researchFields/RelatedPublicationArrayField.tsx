@@ -98,10 +98,10 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               />
               {item?.datasetIds && item.datasetIds.length > 0 && (
                 <div className="mt-3 flex flex-col gap-1">
-                  <span className="font-medium text-gray-500 text-xs">Dataset IDs</span>
+                  <span className="font-medium text-form-label text-xs">Dataset IDs</span>
                   <div className="flex flex-wrap gap-1">
                     {item.datasetIds.map((id) => (
-                      <span key={id} className="font-mono text-gray-700 text-xs">
+                      <span key={id} className="font-mono text-form-value text-xs">
                         {id}
                       </span>
                     ))}

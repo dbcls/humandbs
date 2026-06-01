@@ -26,8 +26,8 @@ export const ResearchProjectField = withForm({
         <fieldset className="flex flex-col gap-1">
           <Label className="text-sm">URL</Label>
           <div className="flex gap-2">
-            <div className="flex-1 font-medium text-gray-500 text-xs uppercase">En</div>
-            <div className="flex-1 font-medium text-gray-500 text-xs uppercase">Ja</div>
+            <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
+            <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
           </div>
           <div className="flex gap-2">
             <div className="flex-1">

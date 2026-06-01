@@ -36,7 +36,7 @@ export default function BilingualTextField({
           {variant === "textarea" ? (
             <TextareaAutosize
               minRows={2}
-              className={cn(`flex-1 resize-none rounded-lg px-3 py-2 text-sm`, {
+              className={cn(`flex-1 resize-none rounded-lg bg-input px-3 py-2 text-sm`, {
                 "modified-field": isEnModified,
               })}
               value={field.state.value.en ?? ""}
@@ -47,7 +47,7 @@ export default function BilingualTextField({
             <Input
               type="text"
               variant="form"
-              className={`flex-1 ${isEnModified ? "modified-field" : ""}`}
+              className={cn("flex-1 bg-input", { "modified-field": isEnModified })}
               value={field.state.value.en ?? ""}
               onChange={(e) => field.handleChange((prev) => ({ ...prev, en: e.target.value }))}
               placeholder="En"
@@ -59,7 +59,7 @@ export default function BilingualTextField({
           {variant === "textarea" ? (
             <TextareaAutosize
               minRows={2}
-              className={cn(`flex-1 resize-none rounded-lg px-3 py-2 text-sm`, {
+              className={cn(`flex-1 resize-none rounded-lg bg-input px-3 py-2 text-sm`, {
                 "modified-field": isJaModified,
               })}
               value={field.state.value.ja ?? ""}
@@ -70,7 +70,7 @@ export default function BilingualTextField({
             <Input
               type="text"
               variant="form"
-              className={`flex-1 ${isJaModified ? "modified-field" : ""}`}
+              className={cn("flex-1 bg-input", { "modified-field": isJaModified })}
               value={field.state.value.ja ?? ""}
               onChange={(e) => field.setValue((prev) => ({ ...prev, ja: e.target.value }))}
               placeholder="Ja"

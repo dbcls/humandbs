@@ -209,96 +209,94 @@ export function AssetsBrowser({
 
   return (
     <section className="flex min-h-0 max-w-full flex-1 flex-col items-stretch gap-4">
-      <Card className="p-4" caption="Actions" captionSize="sm">
-        <div className="grid gap-4 md:grid-cols-2">
-          <form
-            className="space-y-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!newFolderName.trim()) return;
+      <div className="grid gap-4 md:grid-cols-2">
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!newFolderName.trim()) return;
 
-              createFolder({
-                data: {
-                  parentPath: selectedFolderPath,
-                  folderName: newFolderName,
-                },
-              });
-            }}
-          >
-            <div className="font-medium text-sm">
-              Create folder in <span className="text-secondary">{displayFolderPath}</span>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                value={newFolderName}
-                onChange={(event) => setNewFolderName(event.target.value)}
-                placeholder="Folder name"
-                variant="form"
-              />
-              <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
-                <FolderPlus className="mr-2 size-4" />
-                Create
-              </Button>
-            </div>
-          </form>
-
-          <form
-            className="space-y-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!uploadFile) return;
-
-              const formData = new FormData();
-              formData.set("file", uploadFile);
-              formData.set("folderPath", selectedFolderPath);
-
-              uploadAsset({ data: formData });
-            }}
-          >
-            <div className="font-medium text-sm">
-              Upload to <span className="text-secondary">{displayFolderPath}</span>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="file"
-                variant="form"
-                onChange={(event) => {
-                  setUploadFile(event.target.files?.[0] ?? null);
-                }}
-              />
-              <Button disabled={!uploadFile || isUploadingAsset} type="submit">
-                <FilePlus2 className="mr-2 size-4" />
-                Upload
-              </Button>
-            </div>
-          </form>
-        </div>
-
-        {!selectedFolderExists && selectedFolderPath ? (
-          <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
-            <div>
-              Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
-            </div>
-            <Button
-              disabled={isCreatingFolder}
-              variant="outline"
-              onClick={() =>
-                createFolder({
-                  data: {
-                    parentPath: getParentFolderPath(selectedFolderPath),
-                    folderName: getFolderBaseName(selectedFolderPath),
-                  },
-                })
-              }
-            >
+            createFolder({
+              data: {
+                parentPath: selectedFolderPath,
+                folderName: newFolderName,
+              },
+            });
+          }}
+        >
+          <div className="font-medium text-sm">
+            Create folder in <span className="text-secondary">{displayFolderPath}</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={newFolderName}
+              onChange={(event) => setNewFolderName(event.target.value)}
+              placeholder="Folder name"
+              variant="form"
+            />
+            <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
               <FolderPlus className="mr-2 size-4" />
-              Create this folder
+              Create
             </Button>
           </div>
-        ) : null}
-      </Card>
+        </form>
 
-      <div className="flex min-h-0 max-w-full flex-1 gap-4">
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!uploadFile) return;
+
+            const formData = new FormData();
+            formData.set("file", uploadFile);
+            formData.set("folderPath", selectedFolderPath);
+
+            uploadAsset({ data: formData });
+          }}
+        >
+          <div className="font-medium text-sm">
+            Upload to <span className="text-secondary">{displayFolderPath}</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="file"
+              variant="form"
+              onChange={(event) => {
+                setUploadFile(event.target.files?.[0] ?? null);
+              }}
+            />
+            <Button disabled={!uploadFile || isUploadingAsset} type="submit">
+              <FilePlus2 className="mr-2 size-4" />
+              Upload
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {!selectedFolderExists && selectedFolderPath ? (
+        <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
+          <div>
+            Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
+          </div>
+          <Button
+            disabled={isCreatingFolder}
+            variant="outline"
+            onClick={() =>
+              createFolder({
+                data: {
+                  parentPath: getParentFolderPath(selectedFolderPath),
+                  folderName: getFolderBaseName(selectedFolderPath),
+                },
+              })
+            }
+          >
+            <FolderPlus className="mr-2 size-4" />
+            Create this folder
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 max-w-full flex-1 gap-4 overflow-x-hidden">
         <div className="min-w-0 flex-1 overflow-x-auto">
           <div className="flex h-full min-h-0 flex-1 gap-3 overflow-x-auto">
             {columns.map((folder) => (
@@ -364,10 +362,9 @@ export function AssetsBrowser({
           </div>
         </div>
 
-        <Card
-          className="flex min-h-0 w-[300px] shrink-0 flex-col p-4 xl:w-[340px]"
-          caption="Details"
-        >
+        <div className="w-96">
+          <p className="font-semibold text-md text-secondary">Details</p>
+
           {selectedItem ? (
             selectedItem.type === "folder" ? (
               <div className="space-y-3 text-sm">
@@ -461,7 +458,7 @@ export function AssetsBrowser({
               Select a folder or file
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </section>
   );

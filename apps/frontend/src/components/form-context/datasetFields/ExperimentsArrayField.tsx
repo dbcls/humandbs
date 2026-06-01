@@ -153,14 +153,14 @@ function DataEntriesTable({
   return (
     <div className="flex w-full flex-col gap-2">
       <div className="flex items-center gap-1">
-        <span className="flex-1 font-medium text-gray-500 text-xs">Moldata entries</span>
+        <span className="flex-1 font-medium text-form-label text-xs">Moldata entries</span>
         {entries.length > 0 && (
           <Button
             type="button"
             variant={"ghost"}
             size={"icon"}
             onClick={handleDownload}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-form-icon-btn hover:text-form-icon-btn-hover"
             title="Download keys as JSON"
           >
             <Download className="size-4" />
@@ -171,7 +171,7 @@ function DataEntriesTable({
           variant={"ghost"}
           size={"icon"}
           onClick={() => fileInputRef.current?.click()}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-form-icon-btn hover:text-form-icon-btn-hover"
           title="Upload keys from JSON"
         >
           <Upload className="size-4" />
@@ -188,7 +188,7 @@ function DataEntriesTable({
       {entries.length > 0 && (
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-gray-100 border-b text-left text-gray-400">
+            <tr className="border-form-divider border-b text-left text-form-sublabel">
               <th className="w-48 pr-3 pb-2 font-medium">Key</th>
               <th className="pr-3 pb-2 font-medium">En</th>
               <th className="pr-3 pb-2 font-medium">Ja</th>
@@ -202,14 +202,14 @@ function DataEntriesTable({
               return (
                 <tr
                   key={`${experimentIndex}-${di}`}
-                  className="border-gray-100 border-b last:border-0"
+                  className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
                     {isKnown ? (
-                      <span className="font-medium text-gray-700">{entry.key}</span>
+                      <span className="font-medium text-form-value">{entry.key}</span>
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <span className="font-medium text-gray-700">{entry.key}</span>
+                        <span className="font-medium text-form-value">{entry.key}</span>
                         <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
                       </span>
                     )}
@@ -262,7 +262,7 @@ function DataEntriesTable({
                     <button
                       type="button"
                       onClick={() => dataField.removeValue(di)}
-                      className="text-gray-400 hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
+                      className="text-form-icon-btn hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -330,7 +330,7 @@ function ExperimentItemForm({
     <div className="flex flex-col items-start gap-3">
       {/* Header — bilingual, binding to .text subfields */}
       <Label className="flex w-full flex-col items-start gap-2">
-        <span className="font-medium text-gray-500 text-xs">Header</span>
+        <span className="font-medium text-form-label text-xs">Header</span>
         <div className="flex w-full gap-2">
           <form.AppField name={`experiments[${index}].header.en.text`}>
             {(f: AnyForm) => (

@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Copy, GripVertical, Trash2 } from "lucide-react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { Button } from "@/components/ui/button";
 
 export function SortableItem({
   id,
@@ -32,11 +33,11 @@ export function SortableItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded border border-gray-300 bg-white">
-      <div className="flex items-center gap-2 border-gray-400 border-b bg-gray-300 px-3 py-2">
+    <div ref={setNodeRef} style={style} className="rounded border border-form-border bg-white">
+      <div className="flex items-center gap-2 border-form-muted border-b bg-form-tag-bg px-3 py-2">
         <button
           type="button"
-          className="in-disabled:hidden cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          className="in-disabled:hidden cursor-grab touch-none text-form-icon-btn hover:text-form-icon-btn-hover"
           {...attributes}
           {...listeners}
         >
@@ -47,21 +48,25 @@ export function SortableItem({
         </span>
         <ModifiedTag isModified={isModified ?? false} />
         {onDuplicate && (
-          <button
+          <Button
+            variant={"cms-table-action"}
             type="button"
+            size={"slim"}
             onClick={onDuplicate}
-            className="in-disabled:hidden text-gray-400 hover:text-gray-600"
+            className="in-disabled:hidden text-2xs text-form-icon-btn"
           >
-            <Copy className="size-4" />
-          </button>
+            Duplicate <Copy className="size-4" />
+          </Button>
         )}
-        <button
+        <Button
           type="button"
+          variant={"plain"}
+          size="icon"
           onClick={onRemove}
-          className="in-disabled:hidden text-gray-400 hover:text-red-500"
+          className="in-disabled:hidden text-form-icon-btn hover:text-danger"
         >
           <Trash2 className="size-4" />
-        </button>
+        </Button>
       </div>
       <div className="p-3">{children}</div>
     </div>
