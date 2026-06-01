@@ -89,7 +89,13 @@ export function Navbar() {
         to="/{-$lang}"
         params={{ lang }}
       >
-        <img src={Logo} width={200} height={50} className="block w-40 md:w-80" />
+        <img
+          src={Logo}
+          width={200}
+          height={50}
+          alt="Human Data Logo"
+          className="block w-40 md:w-80"
+        />
         <div className="whitespace-nowrap text-center font-semibold text-xs">
           {tCommon("humandb")}
         </div>
@@ -158,6 +164,26 @@ function blurActiveElement() {
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   const navigate = useNavigate();
+  const wrapperRef = useRef<HTMLLIElement>(null);
+  const [alignRight, setAlignRight] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!item.children) return;
+
+    const check = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setAlignRight(rect.right > window.innerWidth / 2);
+    };
+
+    const observer = new ResizeObserver(check);
+    observer.observe(document.documentElement);
+    check();
+
+    return () => observer.disconnect();
+  }, [item.children]);
+
   const handleBlur = () => {
     blurActiveElement();
   };
@@ -171,13 +197,13 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
   };
 
   return (
-    <NavigationMenuItem>
+    <NavigationMenuItem ref={wrapperRef}>
       {item.children ? (
         <>
           <NavigationMenuTrigger className="text-sm" onClick={handleClick}>
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="z-10">
+          <NavigationMenuContent className={cn("z-10", alignRight && "right-0 left-auto")}>
             <ul className="w-max min-w-full max-w-[400px]">
               {item.children.map((child) => (
                 <li key={child.id}>
@@ -196,17 +222,13 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             </ul>
           </NavigationMenuContent>
         </>
-      ) : (
-        <>
-          {item.linkOptions ? (
-            <NavigationMenuLink asChild>
-              <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
-                {item.label}
-              </Link>
-            </NavigationMenuLink>
-          ) : null}
-        </>
-      )}
+      ) : item.linkOptions ? (
+        <NavigationMenuLink asChild>
+          <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
+            {item.label}
+          </Link>
+        </NavigationMenuLink>
+      ) : null}
     </NavigationMenuItem>
   );
 }
