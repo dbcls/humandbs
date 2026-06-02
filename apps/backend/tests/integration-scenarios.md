@@ -1382,6 +1382,66 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ---
 
+### IT-DATASET-BATCH-01: GET /dataset/batch で複数 Dataset を一括取得
+
+**endpoint**: `GET /dataset/batch?ids=<id2>,<id1>`
+
+**不変条件**:
+- `status === 200`
+- `data` の `datasetId` 列がリクエスト順（重複排除後）と一致する
+- `meta.batch.requested === 取得 ID 数`、`found === data.length`、`notFound === []`
+- item 単位の `_seq_no` / `_primary_term` は含まれない（読み取り用途）
+
+**回帰元**: `docs/api-guide.md § 8 検索アーキテクチャ > Bulk 取得` / `routes/dataset.ts § batchGetDatasetsRoute`
+
+**関連 unit テスト**: `tests/unit/api/routes/dataset/batch.test.ts`
+
+---
+
+### IT-DATASET-BATCH-02: GET /dataset/batch の部分成功と notFound
+
+**endpoint**: `GET /dataset/batch?ids=<realId>,__not_a_datasetId__`
+
+**不変条件**:
+- `status === 200`
+- 取得できた ID のみ `data` に入る（入力順保持）
+- `meta.batch.notFound` に欠落 ID が含まれる、`found + notFound.length === requested`
+
+**回帰元**: `docs/api-guide.md § 8 > Bulk 取得`（部分成功・notFound 集約）
+
+**関連 unit テスト**: `tests/unit/api/routes/dataset/batch.test.ts`
+
+---
+
+### IT-DATASET-BATCH-03: GET /dataset/batch の ids バリデーション
+
+**endpoint**: `GET /dataset/batch`（`ids` 空 / 未指定 / 101 件超）
+
+**不変条件**:
+- `ids=` (空) → `400`
+- `ids` 未指定 → `400`
+- 101 件超 → `400`
+
+**回帰元**: `types/query-params.ts § DatasetBatchQuerySchema`（min 1 / max 100）
+
+**関連 unit テスト**: `tests/unit/api/routes/dataset/batch.test.ts`
+
+---
+
+### IT-DATASET-BATCH-04: 親が draft の Dataset は public で notFound、admin で found
+
+**endpoint**: `GET /dataset/batch?ids=<draft-parent-datasetId>`
+
+**不変条件**:
+- public: `data` 空、`meta.batch.notFound` に当該 ID（存在とアクセス不可を区別しない）
+- admin: `data` に当該 ID、`found === 1`
+
+**回帰元**: `docs/architecture.md § レスポンスのフィールド制御 > Bulk 取得`（IT-DATASET-07 の batch 版）
+
+**関連 unit テスト**: `tests/unit/api/routes/dataset/batch.test.ts`
+
+---
+
 ## IT-RESEARCH-*: Research (CRUD + UIDs)
 
 `GET /research` (list、status フィルタの権限、value-based field control: status/uids/draftVersion)、`POST /research/new` (humId 自動採番、`op_type:create` 重複で 409、3 回リトライ)、`GET /research/{humId}` (バージョン解決、public 範囲)、`PUT /research/{humId}/update` (全置換、rawHtml null 上書き、楽観的ロック)、`POST /research/{humId}/delete` (論理削除＋紐づく Dataset 物理削除)、`PUT /research/{humId}/uids` (admin)。
@@ -1741,6 +1801,65 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **回帰元**: `routes/research/routes.ts § createResearchRoute § "All fields are optional"`
 
 **関連 unit テスト**: `tests/unit/api/types/request-schemas.test.ts` (CreateResearchRequestSchema default 検証)
+
+---
+
+### IT-RESEARCH-BATCH-01: GET /research/batch で複数 Research を一括取得
+
+**endpoint**: `GET /research/batch?ids=<humId2>,<humId1>`
+
+**不変条件**:
+- `status === 200`
+- `data` の `humId` 列がリクエスト順（重複排除後）と一致する
+- `meta.batch.requested === 取得 ID 数`、`found === data.length`、`notFound === []`
+
+**回帰元**: `docs/api-guide.md § 8 検索アーキテクチャ > Bulk 取得` / `routes/research/routes.ts § batchGetResearchRoute`
+
+**関連 unit テスト**: `tests/unit/api/routes/research/batch.test.ts`
+
+---
+
+### IT-RESEARCH-BATCH-02: GET /research/batch の部分成功と notFound
+
+**endpoint**: `GET /research/batch?ids=<realHumId>,__not_a_humId__`
+
+**不変条件**:
+- `status === 200`
+- 取得できた ID のみ `data` に入る（入力順保持）
+- `meta.batch.notFound` に欠落 ID が含まれる、`found + notFound.length === requested`
+
+**回帰元**: `docs/api-guide.md § 8 > Bulk 取得`（部分成功・notFound 集約）
+
+**関連 unit テスト**: `tests/unit/api/routes/research/batch.test.ts`
+
+---
+
+### IT-RESEARCH-BATCH-03: GET /research/batch の ids バリデーション
+
+**endpoint**: `GET /research/batch`（`ids` 空 / 未指定 / 101 件超）
+
+**不変条件**:
+- `ids=` (空) → `400`
+- `ids` 未指定 → `400`
+- 101 件超 → `400`
+
+**回帰元**: `types/query-params.ts § ResearchBatchQuerySchema`（min 1 / max 100）
+
+**関連 unit テスト**: `tests/unit/api/routes/research/batch.test.ts`
+
+---
+
+### IT-RESEARCH-BATCH-04: public batch は uids/draftVersion を伏せる (値ベース制御)
+
+**endpoint**: `GET /research/batch?ids=<published humIds>`（public）
+
+**不変条件**:
+- `status === 200`
+- 各 item の `status === "published"`、`uids === []`、`draftVersion === null`（詳細と同一の値ベース制御）
+
+**回帰元**: `docs/architecture.md § レスポンスのフィールド制御 > Bulk 取得`（`sanitizeResearchDetailForUser` を詳細と共有）
+
+**関連 unit テスト**: `tests/unit/api/routes/research/batch.test.ts`, `tests/unit/api/utils/version.test.ts`
 
 ---
 

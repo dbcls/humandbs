@@ -11,6 +11,13 @@ export const PAGINATION = {
   MAX_LIMIT: 100,
 } as const
 
+// === Batch Retrieval ===
+
+export const BATCH = {
+  /** Max number of IDs accepted per batch-get request (GET /dataset/batch, /research/batch). */
+  MAX_IDS: 100,
+} as const
+
 // === Cache TTL (in milliseconds) ===
 
 export const CACHE_TTL = {

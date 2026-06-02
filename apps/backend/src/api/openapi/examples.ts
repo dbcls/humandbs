@@ -27,6 +27,7 @@ import type {
   CreateDatasetForResearchRequest,
   CreateResearchRequest,
   CreateVersionRequest,
+  DatasetBatchResponse,
   DatasetCreateResponse,
   DatasetDetailResponse,
   DatasetSearchBody,
@@ -43,6 +44,7 @@ import type {
   IsAdminResponse,
   LinkedDatasetsListResponse,
   LinkedResearchesListResponse,
+  ResearchBatchResponse,
   ResearchDetailResponse,
   ResearchSearchBody,
   ResearchSearchResponse,
@@ -444,6 +446,15 @@ export const exampleResearchDetailResponse = {
   meta: META_WITH_LOCK,
 } satisfies ResearchDetailResponse
 
+/** Batch-get response: one humId retrieved, one not found/inaccessible. */
+export const exampleResearchBatchResponse = {
+  data: [RESEARCH_DETAIL_BODY],
+  meta: {
+    ...META_READ_ONLY,
+    batch: { requested: 2, found: 1, notFound: ["hum0002"] },
+  },
+} satisfies ResearchBatchResponse
+
 export const exampleResearchWithLockResponse = {
   data: RESEARCH_LOCK_BODY,
   meta: META_WITH_LOCK,
@@ -557,6 +568,15 @@ export const exampleDatasetDetailResponse = {
   data: DATASET_BODY_WITH_MERGED,
   meta: META_WITH_LOCK,
 } satisfies DatasetDetailResponse
+
+/** Batch-get response: one datasetId retrieved, one not found/inaccessible. */
+export const exampleDatasetBatchResponse = {
+  data: [DATASET_BODY_WITH_MERGED],
+  meta: {
+    ...META_READ_ONLY,
+    batch: { requested: 2, found: 1, notFound: ["JGAD000002"] },
+  },
+} satisfies DatasetBatchResponse
 
 export const exampleDatasetUpdateResponse = {
   data: DATASET_BODY,

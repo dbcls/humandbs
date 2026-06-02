@@ -3,7 +3,7 @@
  *
  * Provides version number parsing and version resolution logic.
  */
-import type { AuthUser } from "@/api/types"
+import type { AuthUser, ResearchDetail } from "@/api/types"
 
 /** Parse version number from version string (e.g., "v2" -> 2) */
 export const parseVersionNum = (v: string): number => {
@@ -23,6 +23,30 @@ export const isOwnerOrAdmin = (
   if (!authUser) return false
 
   return authUser.isAdmin || uids.includes(authUser.userId)
+}
+
+/**
+ * Apply value-based access control to a Research detail.
+ *
+ * Owner/admin sees the actual values; everyone else sees the published view
+ * (status forced to "published", uids cleared, draftVersion hidden). This is
+ * the single source of truth shared by the single-detail handler and the
+ * batch-get handler so the two never diverge.
+ */
+export const sanitizeResearchDetailForUser = (
+  detail: ResearchDetail,
+  authUser: AuthUser | null,
+): ResearchDetail => {
+  if (isOwnerOrAdmin(authUser, detail.uids)) {
+    return detail
+  }
+
+  return {
+    ...detail,
+    status: "published",
+    uids: [],
+    draftVersion: null,
+  }
 }
 
 /**

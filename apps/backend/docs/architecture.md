@@ -258,6 +258,10 @@ Research のレスポンスは「詳細 (`GET /research/{humId}`, `GET /research
 
 frontend は「一覧 → 詳細」の 2 段フェッチで運用する。一覧レスポンスは軽量に保ち、編集に必要なメタデータ（`uids` / `draftVersion` / 楽観的ロック値）は詳細でのみ提供する。
 
+#### Bulk 取得レスポンス: 詳細と同じ値ベース制御
+
+`GET /dataset/batch` / `GET /research/batch`（複数 ID を一括取得）は詳細と同じ item シェイプを返す。research の値ベース制御（`status` / `uids` / `draftVersion` の伏せ）も詳細と **同一ロジック**（`utils/version.ts § sanitizeResearchDetailForUser`）を共有し、単一詳細と batch でズレないようにしている。見つからない ID とアクセス不可 ID は区別せず `meta.batch.notFound` に集約し存在を秘匿する。一覧と同様、item 単位の `_seq_no` / `_primary_term` は含めない。
+
 ## バージョニング
 
 ### Research のバージョン

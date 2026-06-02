@@ -94,6 +94,32 @@ export const ResponseMetaWithPaginationSchema = BaseResponseMetaSchema.extend({
 })
 export type ResponseMetaWithPagination = z.infer<typeof ResponseMetaWithPaginationSchema>
 
+/**
+ * Batch summary for batch-get responses (GET /dataset/batch, /research/batch)
+ *
+ * `notFound` collects IDs that were either absent or not accessible to the
+ * caller — the two are deliberately not distinguished, to avoid leaking the
+ * existence of resources the user cannot access.
+ */
+export const BatchSummarySchema = z.object({
+  requested: z.number().int().nonnegative()
+    .describe("Number of unique IDs requested (after de-duplication)"),
+  found: z.number().int().nonnegative()
+    .describe("Number of IDs successfully retrieved"),
+  notFound: z.array(z.string())
+    .describe("IDs that were not found or not accessible (existence is not distinguished from access denial)"),
+})
+export type BatchSummary = z.infer<typeof BatchSummarySchema>
+
+/**
+ * Meta information for batch-get responses
+ * Contains a per-request batch summary instead of pagination
+ */
+export const ResponseMetaWithBatchSchema = BaseResponseMetaSchema.extend({
+  batch: BatchSummarySchema,
+})
+export type ResponseMetaWithBatch = z.infer<typeof ResponseMetaWithBatchSchema>
+
 // === Response Type Aliases ===
 
 /**
@@ -127,4 +153,12 @@ export interface SearchResponse<T, F = FacetsMap> {
   data: T[]
   meta: ResponseMetaWithPagination
   facets?: F
+}
+
+/**
+ * Batch-get response type
+ */
+export interface BatchResponse<T> {
+  data: T[]
+  meta: ResponseMetaWithBatch
 }
