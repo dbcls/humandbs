@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { ClientOnly } from "@tanstack/react-router";
 import {
   ChevronRight,
   CopyIcon,
@@ -6,7 +7,6 @@ import {
   FileText,
   Folder,
   FolderPlus,
-  ImageIcon,
   Trash2Icon,
 } from "lucide-react";
 
@@ -30,7 +30,6 @@ import {
   $uploadAsset,
   assetHierarchyQueryOptions,
 } from "@/serverFunctions/assets";
-import { $getLocationOrigin } from "@/utils/clientOnly";
 
 function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
   if (item.mimeType.startsWith("image/")) return true;
@@ -40,27 +39,6 @@ function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
 
 function getFolderSegments(path: string) {
   return path ? path.split("/") : [];
-}
-
-function getCurrentFolder(
-  root: AssetHierarchyFolder,
-  selectedFolderPath: string,
-): AssetHierarchyFolder {
-  const segments = getFolderSegments(selectedFolderPath);
-
-  let current = root;
-
-  for (const segment of segments) {
-    const next = current.children.find(
-      (item): item is AssetHierarchyFolder => item.type === "folder" && item.name === segment,
-    );
-
-    if (!next) break;
-
-    current = next;
-  }
-
-  return current;
 }
 
 function getFolderColumns(
@@ -428,13 +406,15 @@ export function AssetsBrowser({
                     </div>
                   </dl>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => copy(`${$getLocationOrigin() ?? ""}${selectedItem.url}`)}
-                    >
-                      <CopyIcon className="mr-2 size-4" />
-                      Copy URL
-                    </Button>
+                    <ClientOnly>
+                      <Button
+                        variant="outline"
+                        onClick={() => copy(`${window.location.origin}${selectedItem.url}`)}
+                      >
+                        <CopyIcon className="mr-2 size-4" />
+                        Copy URL
+                      </Button>
+                    </ClientOnly>
                     {canManageDeletes ? (
                       <Button
                         disabled={isDeletingAsset}

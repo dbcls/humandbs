@@ -3,13 +3,13 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { sql } from "drizzle-orm";
 
 import * as schema from "@/db/schema";
-
 import {
   createTestDatabase,
   createTestDb,
   dropTestDatabase,
   pushSchema,
-} from "../scripts/database/tests/test-db";
+} from "@/tests/fixtures/test-db";
+
 import { createAlertsRepository } from "./alert";
 
 const { db, pool } = createTestDb();

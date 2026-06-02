@@ -33,7 +33,7 @@ import type {
 import { ResearchSearchResponseSchema } from "@humandbs/backend/types";
 
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
-import type { DeepOmit } from "@/utils/typeUtils";
+import type { DeepOmit } from "@/utils/type-utils";
 
 import type { DsApplicationListResponse } from "../../../backend/src/api/types";
 import type {

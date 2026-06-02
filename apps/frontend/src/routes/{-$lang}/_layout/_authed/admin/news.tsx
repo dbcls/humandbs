@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useFilters } from "@/hooks/useFilters";
-import { newsAdminSearchParamsSchema } from "@/utils/queryParams";
+import { newsAdminSearchParamsSchema } from "@/utils/query-params";
 
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";

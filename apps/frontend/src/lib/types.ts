@@ -6,7 +6,7 @@ import type {
   ResearchSummary as ServerResearchSummary,
 } from "@humandbs/backend/types";
 
-import type { StripIndexSignature } from "@/utils/typeUtils";
+import type { StripIndexSignature } from "@/utils/type-utils";
 
 export type DatasetDoc = StripIndexSignature<ServerDatasetDoc>;
 

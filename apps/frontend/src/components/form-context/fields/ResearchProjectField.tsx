@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-import URLField from "../researchFields/URLInputPair";
+import URLField from "../research-fields/URLInputPair";
 import { BilingualTextValueField } from "./BilingualTextValueField";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

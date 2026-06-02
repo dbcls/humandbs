@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
 import type { ResearchTemplateData } from "../../../backend/src/api/types/templates";
-import { applyMergeDecisions } from "../routes/{-$lang}/_layout/_authed/admin/researches/-applyMergeDecisions";
-import { arrayCodecs } from "../routes/{-$lang}/_layout/_authed/admin/researches/-arrayCodecs/index";
-import { computeMergeFields } from "../routes/{-$lang}/_layout/_authed/admin/researches/-computeMergeFields";
+import { applyMergeDecisions } from "../routes/{-$lang}/_layout/_authed/admin/researches/-components/utils/applyMergeDecisions";
+import { arrayCodecs } from "../routes/{-$lang}/_layout/_authed/admin/researches/-components/utils/arrayCodecs/index";
+import { computeMergeFields } from "../routes/{-$lang}/_layout/_authed/admin/researches/-components/utils/computeMergeFields";
 
 const emptyResearch: ResearchTemplateData = {
   humId: "",

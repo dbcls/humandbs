@@ -21,16 +21,14 @@ import type { AssetHierarchyFile } from "@/serverFunctions/assets";
 import { buildAssetMarkdown } from "./content-area-asset-utils";
 import { useFieldContext } from "./FormContext";
 
-const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
+const MarkdownClientPreview = lazy(() => import("@/components/Markdown/MarkdownClientPreview"));
 
 export default function ContentAreaField({
   label,
   assetFolder,
-  isLoading,
 }: {
   label: React.ReactNode;
   assetFolder?: string;
-  isLoading?: boolean;
 }) {
   const field = useFieldContext<string>();
   const editorContainerRef = useRef<HTMLDivElement | null>(null);

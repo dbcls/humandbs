@@ -22,10 +22,10 @@ import {
 
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
-import { filterDefined } from "@/utils/filterDefined";
+import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
-import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
-import type { DeepOmit } from "@/utils/typeUtils";
+import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
+import type { DeepOmit } from "@/utils/type-utils";
 
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }

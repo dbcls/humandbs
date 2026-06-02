@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-import { BilingualColumnHeader } from "../researchFields/BilingualColumnHeader";
+import { BilingualColumnHeader } from "../research-fields/BilingualColumnHeader";
 import { BilingualTextValueField } from "./BilingualTextValueField";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

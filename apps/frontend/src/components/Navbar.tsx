@@ -18,11 +18,11 @@ import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-n
 import { asLinkProps } from "@/config/site-navigation";
 import { useCartStore } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
+import { getNavbarOverflowLayout } from "@/utils/navbar-overflow";
 
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
 import { MobileNav } from "./MobileNav";
-import { getNavbarOverflowLayout } from "./navbar-overflow";
 import { Search } from "./Search";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 

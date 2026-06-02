@@ -17,7 +17,7 @@ import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
-import { SearchCaption } from "@/components/SearchCaption";
+import { SearchCaption } from "@/components/Search/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -32,9 +32,9 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
-import { buildFacetSections } from "@/utils/buildFacetSections";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
-import { isCancelledError } from "@/utils/isCancelledError";
+import { buildFacetSections } from "@/utils/build-facet-sections";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
+import { isCancelledError } from "@/utils/is-cancelled-error";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,

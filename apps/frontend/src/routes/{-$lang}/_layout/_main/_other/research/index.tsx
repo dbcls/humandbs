@@ -15,7 +15,7 @@ import { FilterableCard } from "@/components/FilterableCard";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
-import { SearchCaption } from "@/components/SearchCaption";
+import { SearchCaption } from "@/components/Search/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
@@ -30,9 +30,9 @@ import { cn } from "@/lib/utils";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
-import { buildFacetSections } from "@/utils/buildFacetSections";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
-import { researchesSearchParamsSchema } from "@/utils/queryParams";
+import { buildFacetSections } from "@/utils/build-facet-sections";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
+import { researchesSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,

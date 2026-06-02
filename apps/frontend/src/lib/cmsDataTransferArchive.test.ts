@@ -13,7 +13,7 @@ import {
   createTestDb,
   dropTestDatabase,
   pushSchema,
-} from "@/scripts/database/tests/test-db";
+} from "@/tests/fixtures/test-db";
 
 import {
   type CmsDataTransferArchiveManifest,

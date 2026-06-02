@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { MarkdownResult } from "@/utils/markdown";
 import { renderMarkdown } from "@/utils/markdown";
 
-import { Markdown } from "../Merkdown";
+import { Markdown } from ".";
 
 /**
  * Markdown rendered on client side - for CMS

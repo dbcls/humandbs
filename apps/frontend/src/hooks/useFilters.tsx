@@ -2,7 +2,7 @@ import type { RegisteredRouter, RouteIds } from "@tanstack/react-router";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 // import { startTransition } from "react";
 
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
+import { cleanEmptyParams } from "@/utils/clean-empty-params";
 
 const preservedKeys = ["sort", "limit", "order"];
 

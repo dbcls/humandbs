@@ -1,4 +1,4 @@
-import { enumFromStringArray } from "@/utils/zod";
+import { enumFromStringArray } from "@/utils/zod-utils";
 
 import type en from "../../localization/messages/en.json";
 

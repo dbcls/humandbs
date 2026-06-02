@@ -7,13 +7,13 @@ import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorContent, ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FA_ICONS } from "@/lib/faIcons";
-import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
+import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
 
 import { NoSelectedItemMessage } from "../-components/NoSelectedItemMessage";
-import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
-import { NewResearchForm } from "./-NewResearchForm";
-import { ResearchDetails } from "./-ResearchDetails";
-import { ResearchesList } from "./-ResearchesList";
+import { NewResearchForm } from "./-components/NewResearchForm";
+import { ResearchDetails } from "./-components/ResearchDetails";
+import { ResearchesList } from "./-components/ResearchesList";
+import { DUMMY_HUM_ID, isDummyResearch } from "./-components/utils/dummyResearch";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/researches/")({
   validateSearch: authedResearchesListSearchParamsSchema,

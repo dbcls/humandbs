@@ -25,10 +25,10 @@ import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { throwSerializableApiError } from "@/utils/errors";
-import { filterDefined } from "@/utils/filterDefined";
+import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
-import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
-import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
+import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
+import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
 import type { DsApplicationListResponse } from "../../../backend/src/api/types";
 import type {
