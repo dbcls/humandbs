@@ -11,9 +11,9 @@ import { authHeaders, getApp, itWithEs, itWithNonAdminToken, setupIntegration, u
 
 beforeAll(setupIntegration)
 
-// `src/api/types/facets.ts § FacetsMapSchema` enumerates 20 keys (Dataset facet aggregations).
+// `src/api/types/facets.ts § FacetsMapSchema` enumerates 21 keys (Dataset facet aggregations).
 // Response keys must be a subset; `isTumor` / `hasPhenotypeData` were added once aligned with the
-// frontend `facet-config.ts` usage and the ES Dataset mapping.
+// frontend `facet-config.ts` usage and the ES Dataset mapping; `cohorts` was added in Phase 2.
 const SCHEMA_KEYS = new Set<string>([
   "criteria",
   "assayType",
@@ -23,6 +23,7 @@ const SCHEMA_KEYS = new Set<string>([
   "ageGroup",
   "tissues",
   "population",
+  "cohorts",
   "platform",
   "libraryKits",
   "readType",

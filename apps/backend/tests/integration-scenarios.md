@@ -231,7 +231,7 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 **endpoint**: `GET /stats`
 
 **不変条件**:
-- `Object.keys(data.facets)` は次のいずれかの key を **含む** (drift 耐性のため superset/subset で確認): `criteria`, `assayType`, `tissues`, `population`, `platform`, `fileTypes`, `healthStatus`, `subjectCountType`, `isTumor`, `cellLine`, `sex`, `ageGroup`, `libraryKits`, `readType`, `referenceGenome`, `processedDataTypes`, `hasPhenotypeData`, `disease`, `diseaseIcd10`, `policyId`
+- `Object.keys(data.facets)` は次のいずれかの key を **含む** (drift 耐性のため superset/subset で確認): `criteria`, `assayType`, `tissues`, `population`, `cohorts`, `platform`, `fileTypes`, `healthStatus`, `subjectCountType`, `isTumor`, `cellLine`, `sex`, `ageGroup`, `libraryKits`, `readType`, `referenceGenome`, `processedDataTypes`, `hasPhenotypeData`, `disease`, `diseaseIcd10`, `policyId`
 - `total_research` / `total_dataset` は facets に含まれない (extractStatsFacets で skip 済み)
 
 **回帰元**: `src/api/routes/stats.ts § buildStatsAggregations`
@@ -652,7 +652,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **不変条件**:
 - `status === 200`
 - body は `SingleReadOnlyResponse<FacetsMap>` 形式
-- `data` のキーは Dataset facet 18 種の subset または superset (`criteria`, `assayType`, ...)
+- `data` のキーは Dataset facet (`FacetsMapSchema` の 21 種、`cohorts` 含む) の subset または superset (`criteria`, `assayType`, ...)
 - 各値は `[{ value: string, count: number }, ...]` 形式
 - public ユーザーには published Dataset のみがカウント対象
 
