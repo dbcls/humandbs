@@ -213,6 +213,19 @@
     "SGDP",
     "global (1000 Genomes Project Phase3v5)"
   ],
+  "cohorts": [
+    "BioBank Japan",
+    "1000 Genomes Project",
+    "Tohoku Medical Megabank",
+    "Nagahama Cohort",
+    "Okinawa Biobank",
+    "Japan MG Registry",
+    "UK Biobank",
+    "FinnGen",
+    "HapMap",
+    "HGDP",
+    "SGDP"
+  ],
   "platform": [
     "Illumina||660W-Quad",
     "Illumina||Asian Screening Array",

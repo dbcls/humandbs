@@ -80,6 +80,13 @@ export const VariantCountsSchema = z.object({
   cnv: z.number().nullable(),
   sv: z.number().nullable(),
   total: z.number().nullable(),
+  // Chromosome-group breakdown (orthogonal to the snv/indel/cnv/sv type axis).
+  // Optional because the LLM extraction does not produce them; they are filled
+  // rule-based from the raw "Variant Number" text where available.
+  autosomes: z.number().nullable().optional()
+    .describe("Variant count on autosomes (chr1-22)"),
+  chrX: z.number().nullable().optional()
+    .describe("Variant count on chromosome X"),
 })
 export type VariantCounts = z.infer<typeof VariantCountsSchema>
 
@@ -106,6 +113,8 @@ export const SearchableExperimentFieldsSchema = z.object({
     .describe("Cell line names if applicable"),
   population: z.array(z.string())
     .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
+  cohorts: z.array(z.string())
+    .describe("Named study cohorts (e.g., 'BioBank Japan', '1000 Genomes Project', 'ToMMo'). Distinct from population ancestry."),
 
   // Demographics
   sex: SexSchema.nullable()

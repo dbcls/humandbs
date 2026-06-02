@@ -167,6 +167,7 @@ describe("hydrateExperiment", () => {
       isTumor: null,
       cellLine: [],
       population: [],
+      cohorts: [],
       sex: null,
       ageGroup: null,
       assayType: ["WGS"],

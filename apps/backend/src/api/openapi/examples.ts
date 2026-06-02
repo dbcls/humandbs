@@ -391,6 +391,7 @@ const SAMPLE_MERGED_SEARCHABLE = {
   isTumor: ["normal" as const],
   cellLine: [],
   population: ["Japanese"],
+  cohorts: ["BioBank Japan"],
   sex: ["male"],
   ageGroup: ["adult"],
   assayType: ["WGS"],

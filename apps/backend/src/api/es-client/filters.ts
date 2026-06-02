@@ -28,6 +28,7 @@ export const NESTED_TERMS_FILTERS: NestedTermsFilter[] = [
   { param: "assayType", field: "experiments.searchable.assayType" },
   { param: "tissues", field: "experiments.searchable.tissues" },
   { param: "population", field: "experiments.searchable.population" },
+  { param: "cohorts", field: "experiments.searchable.cohorts" },
   { param: "fileTypes", field: "experiments.searchable.fileTypes" },
   { param: "healthStatus", field: "experiments.searchable.healthStatus" },
   { param: "subjectCountType", field: "experiments.searchable.subjectCountType" },
@@ -67,6 +68,8 @@ export const NESTED_RANGE_FILTERS: NestedRangeFilter[] = [
   { minParam: "minVariantCnv", maxParam: "maxVariantCnv", field: "experiments.searchable.variantCounts.cnv" },
   { minParam: "minVariantSv", maxParam: "maxVariantSv", field: "experiments.searchable.variantCounts.sv" },
   { minParam: "minVariantTotal", maxParam: "maxVariantTotal", field: "experiments.searchable.variantCounts.total" },
+  { minParam: "minVariantAutosomes", maxParam: "maxVariantAutosomes", field: "experiments.searchable.variantCounts.autosomes" },
+  { minParam: "minVariantChrX", maxParam: "maxVariantChrX", field: "experiments.searchable.variantCounts.chrX" },
 ]
 
 // === POST Body to GET Query Mappings ===
@@ -92,6 +95,7 @@ export const ARRAY_FIELD_MAPPINGS: ArrayFieldMapping[] = [
   { from: "tissues", to: "tissues" },
   { from: "cellLine", to: "cellLine" },
   { from: "population", to: "population" },
+  { from: "cohorts", to: "cohorts" },
   { from: "sex", to: "sex" },
   { from: "ageGroup", to: "ageGroup" },
   { from: "assayType", to: "assayType" },
@@ -129,6 +133,8 @@ export const RANGE_FIELD_MAPPINGS: RangeFieldMapping[] = [
   { from: "variantCnv", minTo: "minVariantCnv", maxTo: "maxVariantCnv" },
   { from: "variantSv", minTo: "minVariantSv", maxTo: "maxVariantSv" },
   { from: "variantTotal", minTo: "minVariantTotal", maxTo: "maxVariantTotal" },
+  { from: "variantAutosomes", minTo: "minVariantAutosomes", maxTo: "maxVariantAutosomes" },
+  { from: "variantChrX", minTo: "minVariantChrX", maxTo: "maxVariantChrX" },
 ]
 
 // === Dataset Filter Parameters ===
@@ -143,6 +149,7 @@ export const DATASET_STRING_FILTER_PARAMS = [
   "disease",
   "tissues",
   "population",
+  "cohorts",
   "platform",
   "criteria",
   "fileTypes",
