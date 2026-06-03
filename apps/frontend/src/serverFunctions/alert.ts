@@ -1,13 +1,12 @@
-import { infiniteQueryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { Locale } from "@/config/i18n";
 import { localeSchema } from "@/config/i18n";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import type { AlertFilters, AlertRecord } from "@/repositories/alert";
 import { alertsRepository, createAlertSchema, updateAlertSchema } from "@/repositories/alert";
-
-import { $getAuthUser } from "./authUser";
 
 const alertFiltersSchema = z.object({
   q: z.string().optional(),
@@ -65,10 +64,8 @@ export const $createAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "create");
 
-    const { user } = await $getAuthUser();
-
     // user?.id should be defined because context.checkPermission here passed
-    const created = await alertsRepository.create(data, user?.id!);
+    const created = await alertsRepository.create(data, context.user?.id);
 
     return created;
   });
@@ -79,9 +76,7 @@ export const $updateAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "update");
 
-    const { user } = await $getAuthUser();
-
-    const updated = await alertsRepository.update(data, user?.id!);
+    const updated = await alertsRepository.update(data, context.user.id);
 
     return updated;
   });
@@ -107,3 +102,12 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return await alertsRepository.listActive({ lang: data.locale });
   });
+
+export function getActiveAlertsQueryOptions({ locale }: { locale: Locale }) {
+  return queryOptions({
+    queryKey: ["activeAlerts", locale],
+    queryFn: () => $getActiveAlerts({ data: { locale } }),
+    enabled: !!locale,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+}

@@ -13,7 +13,9 @@
     "research": "Research",
     "filters": "Filters",
     "items": "items",
+    "cart": "Cart",
     "already-in-cart": "Already in cart",
+    "remove-from-cart": "Remove from cart",
     "add-to-cart": "Add to cart",
     "add-all-to-cart": "Add all to cart",
     "add-all-datasets-to-cart": "Add all datasets to cart",
@@ -110,6 +112,7 @@
     "release-info": "Release info",
     "dataset-list": "Dataset list",
     "already-in-cart": "Already in cart",
+    "remove-from-cart": "Remove from cart",
     "add-to-cart": "Add to cart",
     "login-to-add": "Login and add to cart",
     "research": "Research",
@@ -124,7 +127,6 @@
     "Unrestricted-access": "Open (no restrictions)",
     "Controlled-access (Type I)": "Type I (restrictions apply)",
     "Controlled-access (Type II)": "Type II (restrictions apply)",
-
     "Analysis Methods": "Analysis Methods",
     "Antigen Activation": "Antigen Activation",
     "Bacteria Identification": "Bacteria Identification",
@@ -191,7 +193,8 @@
     "Virus Genome Construction": "Virus Genome Construction",
     "Washing": "Washing",
     "Participant Attributes": "Participant Attributes",
-    "Mobile Element Number": "Mobile Element Number"
+    "Mobile Element Number": "Mobile Element Number",
+    "data-unavailable": "Data unavailable"
   },
   "Person": {
     "name": "Name",
@@ -403,6 +406,15 @@
     },
     "variantTotal": {
       "title": "Total Variant Count"
+    },
+    "variantAutosomes": {
+      "title": "Autosomal Variant Count"
+    },
+    "variantChrX": {
+      "title": "Chr X Variant Count"
+    },
+    "cohorts": {
+      "title": "Cohort"
     },
     "humId": {
       "title": "Research ID"

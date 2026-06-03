@@ -1,0 +1,32 @@
+[
+  {
+    "id": "nbdc-policy",
+    "defaultNameEn": "NBDC Policy",
+    "defaultNameJa": "NBDCポリシー",
+    "defaultUrl": "https://humandbs.dbcls.jp/nbdc-policy"
+  },
+  {
+    "id": "company-limitation-policy",
+    "defaultNameEn": "Company Limitation Policy",
+    "defaultNameJa": "企業制限ポリシー",
+    "defaultUrl": null
+  },
+  {
+    "id": "cancer-research-policy",
+    "defaultNameEn": "Cancer Research Policy",
+    "defaultNameJa": "がん研究ポリシー",
+    "defaultUrl": null
+  },
+  {
+    "id": "familial-policy",
+    "defaultNameEn": "Familial Policy",
+    "defaultNameJa": "家族性ポリシー",
+    "defaultUrl": "https://humandbs.dbcls.jp/familial-policy"
+  },
+  {
+    "id": "custom-policy",
+    "defaultNameEn": "Custom Policy",
+    "defaultNameJa": "カスタムポリシー",
+    "defaultUrl": null
+  }
+]

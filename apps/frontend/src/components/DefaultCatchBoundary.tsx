@@ -1,7 +1,7 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { ErrorComponent, Link, rootRouteId, useMatch, useRouter } from "@tanstack/react-router";
 
-import { isCancelledError } from "@/utils/isCancelledError";
+import { isCancelledError } from "@/utils/is-cancelled-error";
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter();

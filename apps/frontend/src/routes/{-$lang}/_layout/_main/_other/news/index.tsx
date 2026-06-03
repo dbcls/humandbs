@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
-import { newsPublicSearchParamsSchema } from "@/utils/queryParams";
+import { newsPublicSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
   component: RouteComponent,

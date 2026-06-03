@@ -30,16 +30,6 @@ export const tabParamSchema = z.enum([
 
 export type TabType = z.infer<typeof tabParamSchema>;
 
-function getTabRoute(tabFromPath: string | undefined): TabType | null {
-  if (!tabFromPath) return null;
-
-  const afterAdminSegment = [...(/\/admin\/([^/]+)/i.exec(tabFromPath) || [])]?.[1];
-
-  if (tabParamSchema.safeParse(afterAdminSegment).success) return afterAdminSegment as TabType;
-
-  return null;
-}
-
 function stringifySearch(search: Record<string, string | number> | undefined | null) {
   if (!search) return "";
 

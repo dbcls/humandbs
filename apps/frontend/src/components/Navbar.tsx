@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/navigation-menu";
 import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-navigation";
 import { asLinkProps } from "@/config/site-navigation";
-import { useCart } from "@/hooks/useCart";
+import { useCartStore } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
+import { getNavbarOverflowLayout } from "@/utils/navbar-overflow";
 
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
 import { MobileNav } from "./MobileNav";
-import { getNavbarOverflowLayout } from "./navbar-overflow";
 import { Search } from "./Search";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
@@ -89,7 +89,13 @@ export function Navbar() {
         to="/{-$lang}"
         params={{ lang }}
       >
-        <img src={Logo} width={200} height={50} className="block w-40 md:w-80" />
+        <img
+          src={Logo}
+          width={200}
+          height={50}
+          alt="Human Data Logo"
+          className="block w-40 md:w-80"
+        />
         <div className="whitespace-nowrap text-center font-semibold text-xs">
           {tCommon("humandb")}
         </div>
@@ -158,6 +164,26 @@ function blurActiveElement() {
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   const navigate = useNavigate();
+  const wrapperRef = useRef<HTMLLIElement>(null);
+  const [alignRight, setAlignRight] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!item.children) return;
+
+    const check = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setAlignRight(rect.right > window.innerWidth / 2);
+    };
+
+    const observer = new ResizeObserver(check);
+    observer.observe(document.documentElement);
+    check();
+
+    return () => observer.disconnect();
+  }, [item.children]);
+
   const handleBlur = () => {
     blurActiveElement();
   };
@@ -171,13 +197,13 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
   };
 
   return (
-    <NavigationMenuItem>
+    <NavigationMenuItem ref={wrapperRef}>
       {item.children ? (
         <>
           <NavigationMenuTrigger className="text-sm" onClick={handleClick}>
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="z-10">
+          <NavigationMenuContent className={cn("z-10", alignRight && "right-0 left-auto")}>
             <ul className="w-max min-w-full max-w-[400px]">
               {item.children.map((child) => (
                 <li key={child.id}>
@@ -196,17 +222,13 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             </ul>
           </NavigationMenuContent>
         </>
-      ) : (
-        <>
-          {item.linkOptions ? (
-            <NavigationMenuLink asChild>
-              <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
-                {item.label}
-              </Link>
-            </NavigationMenuLink>
-          ) : null}
-        </>
-      )}
+      ) : item.linkOptions ? (
+        <NavigationMenuLink asChild>
+          <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
+            {item.label}
+          </Link>
+        </NavigationMenuLink>
+      ) : null}
     </NavigationMenuItem>
   );
 }
@@ -392,11 +414,12 @@ function UserMenu() {
 }
 
 function ShoppingCartButton() {
-  const { cart } = useCart();
   const { user } = useRouteContext({ from: "__root__" });
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const navigate = useNavigate();
   const router = useRouter();
+
+  const datasetsInCart = useCartStore((state) => state.cartDatasets.length);
 
   function handleClick() {
     if (!user) {
@@ -421,9 +444,9 @@ function ShoppingCartButton() {
       size="icon"
       onClick={handleClick}
     >
-      {cart.length > 0 ? (
+      {datasetsInCart > 0 ? (
         <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-[10px] text-white leading-none">
-          {cart.length}
+          {datasetsInCart}
         </span>
       ) : null}
       <ShoppingCart className="size-6 text-secondary" />

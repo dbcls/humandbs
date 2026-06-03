@@ -25,7 +25,11 @@ export default function TextField({
   const [isValid, errors] = useStore(field.store, (s) => [s.meta.isValid, s.meta.errors]);
 
   return (
-    <Label className="flex-1 flex-col items-stretch">
+    <Label
+      className={cn("flex-col items-stretch", {
+        "flex-1": !label,
+      })}
+    >
       <div
         className={cn("flex items-center gap-2", className, {
           "flex-col items-stretch": type === "col",
@@ -37,7 +41,7 @@ export default function TextField({
             value={field.state.value ?? ""}
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={() => field.handleBlur()}
-            className={isModified ? "modified-field" : undefined}
+            className={cn("flex-1", { "modified-field": isModified })}
           />
           {isModified && (
             <ResetFieldButton

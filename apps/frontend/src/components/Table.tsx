@@ -205,7 +205,7 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
           : "asc"
         : false;
   return (
-    <p className="flex items-center gap-2 text-white">
+    <div className="flex items-center gap-2 text-white">
       <span>{label}</span>
       {ctx.table.options.meta?.loadingSortColumnId === ctx.column.id ? (
         <div className="h-fit px-4 py-2">
@@ -237,7 +237,7 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
           </span>
         </Button>
       )}
-    </p>
+    </div>
   );
 }
 

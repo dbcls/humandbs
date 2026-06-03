@@ -36,7 +36,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 import type { DateStringRange } from "@/utils/dates";
 import { toDateString } from "@/utils/dates";
-import { alertsAdminSearchParamsSchema } from "@/utils/queryParams";
+import { alertsAdminSearchParamsSchema } from "@/utils/query-params";
 
 import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";

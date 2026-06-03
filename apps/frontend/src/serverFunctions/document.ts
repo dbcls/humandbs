@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
-import type { ContentId } from "@/config/content-config";
 import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
 import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
@@ -14,7 +13,7 @@ import { createDocumentVersionRepository } from "@/repositories/documentVersion"
 export interface DocumentsListItemResponse {
   id: string;
   createdAt: Date;
-  contentId: ContentId;
+  contentId: string;
   translations: {
     lang: (typeof i18n.locales)[number];
     statuses: {

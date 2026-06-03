@@ -54,6 +54,7 @@ export const DATASET_FACET_CONFIG: Record<keyof DatasetFilters, FacetConfig> = {
     options: IsTumorSchema.options,
     category: "experiment-overview",
   },
+  cohorts: { type: "checkbox", category: "experiment-overview" },
 
   // === Subjects (被験者) ===
   subjectCount: { type: "range", category: "subjects" },
@@ -78,6 +79,8 @@ export const DATASET_FACET_CONFIG: Record<keyof DatasetFilters, FacetConfig> = {
   variantCnv: { type: "range", category: "sequencing-quality" },
   variantSv: { type: "range", category: "sequencing-quality" },
   variantTotal: { type: "range", category: "sequencing-quality" },
+  variantAutosomes: { type: "range", category: "sequencing-quality" },
+  variantChrX: { type: "range", category: "sequencing-quality" },
   hasPhenotypeData: { type: "boolean", category: "sequencing-quality" },
 
   // === Data Format (データ形式) ===

@@ -6,7 +6,6 @@ import { Suspense, useCallback } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
-import { FA_ICONS } from "@/lib/faIcons";
 import {
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,

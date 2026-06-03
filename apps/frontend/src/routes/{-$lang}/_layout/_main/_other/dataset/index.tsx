@@ -32,9 +32,9 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
-import { buildFacetSections } from "@/utils/buildFacetSections";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
-import { isCancelledError } from "@/utils/isCancelledError";
+import { buildFacetSections } from "@/utils/build-facet-sections";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
+import { isCancelledError } from "@/utils/is-cancelled-error";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
@@ -377,14 +377,14 @@ export const datasetsColumns = [
   datasetsColumnHelper.display({
     id: "cart",
     header: (ctx) => (
-      <div className="w-full flex items-center justify-center">
+      <div className="flex w-full items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
         </ClientOnly>
       </div>
     ),
     cell: (ctx) => (
-      <div className="w-full flex items-center justify-center">
+      <div className="flex w-full items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetCartRowButton dataset={ctx.row.original} />
         </ClientOnly>
@@ -430,13 +430,7 @@ export const datasetsColumns = [
         <ul className="space-y-4">
           {ctx.getValue().map((item, i) => (
             <li key={i}>
-              <span>
-                {
-                  item.header?.[
-                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                  ]?.text
-                }
-              </span>
+              <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}
         </ul>
@@ -456,7 +450,7 @@ function DatasetsCartHeaderButton({
   tableDatasets: DatasetSearchResponse["data"];
 }) {
   const t = useTranslations("common");
-  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
     tableDatasets,
   });
 
@@ -464,7 +458,7 @@ function DatasetsCartHeaderButton({
     <AddToCartToggle
       variant={"header"}
       state={allInCart || (someInCart ? "indeterminate" : false)}
-      onClick={handleClickCart}
+      onClick={handleToggleDatasets}
       aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );

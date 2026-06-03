@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
 import { i18n } from "@/config/i18n";
-import { getNavConfig } from "@/config/navbar-config";
 import { RESERVED_SEGMENTS } from "@/config/routing-config";
+import { getNavbarItems } from "@/config/site-navigation";
 import { db } from "@/db/database";
 
 export type ValidationResponse =
@@ -31,7 +31,7 @@ export const $validateEntityId = createServerFn({ method: "GET" })
       return { success: false, errors: [{ errorCode: "RESERVED_SEGMENTS" }] };
     }
 
-    const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map((c) => c.id) as string[];
+    const reservedPathPrefixes = getNavbarItems(i18n.defaultLocale).map((c) => c.id) as string[];
 
     if (reservedPathPrefixes.includes(segments[0])) {
       return {

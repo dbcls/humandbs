@@ -1,36 +1,39 @@
-import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "use-intl";
+import { useShallow } from "zustand/react/shallow";
 
-import { isCartableDatasetId } from "@/hooks/useCart";
-import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
+import { useCallback } from "react";
 
-import { AddToCartToggle } from "./AddToCartToggle";
-import { DatasetCartRowButton } from "./DatasetCartRowButton";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 
-export function ResearchDatasetCartRowButton({
-  datasetId,
-  humId,
-}: {
-  datasetId: string;
-  humId: string;
-}) {
+export function ResearchDatasetCartRowButton({ datasetId }: { datasetId: string }) {
   const t = useTranslations("common");
-  const isCartable = isCartableDatasetId(datasetId);
 
-  const { data } = useQuery({
-    ...getDatasetsOfResearchQueryOptions(humId),
-    enabled: isCartable,
-  });
+  const { isInCart, add, remove } = useCartStore(
+    useShallow((state) => ({
+      isInCart: state.cartDatasets.includes(datasetId),
+      add: state.add,
+      remove: state.remove,
+    })),
+  );
 
-  if (!isCartable) {
+  const handleToggle = useCallback(() => {
+    if (isInCart) {
+      remove([datasetId]);
+    } else {
+      add([datasetId]);
+    }
+  }, [isInCart, add, remove, datasetId]);
+
+  if (!isCartableDatasetId(datasetId)) {
     return <span className="inline-block w-8 shrink-0" aria-hidden="true" />;
   }
 
-  const dataset = data?.data.find((item) => item.datasetId === datasetId);
-
-  if (!dataset) {
-    return <AddToCartToggle state={false} disabled aria-label={t("add-to-cart")} />;
-  }
-
-  return <DatasetCartRowButton dataset={dataset} />;
+  return (
+    <AddToCartToggle
+      state={isInCart}
+      onClick={handleToggle}
+      aria-label={isInCart ? t("already-in-cart") : t("add-to-cart")}
+    />
+  );
 }

@@ -152,10 +152,7 @@ const datasetColumns = [
     ),
     cell: (ctx) => (
       <ClientOnly fallback={null}>
-        <ResearchDatasetCartRowButton
-          datasetId={ctx.row.original.datasetId}
-          humId={ctx.row.original.humId}
-        />
+        <ResearchDatasetCartRowButton datasetId={ctx.row.original.datasetId} />
       </ClientOnly>
     ),
 
@@ -193,15 +190,14 @@ function ResearchDatasetsCartHeaderButton({
   tableDatasets: ResearchDetailResponse["data"]["datasets"];
 }) {
   const t = useTranslations("common");
-  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-    tableDatasets,
-  });
+
+  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({ tableDatasets });
 
   return (
     <AddToCartToggle
       variant={"header"}
       state={allInCart ? true : someInCart ? "indeterminate" : false}
-      onClick={handleClickCart}
+      onClick={handleToggleDatasets}
       aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );

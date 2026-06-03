@@ -1,6 +1,7 @@
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
+import { evaluate } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -20,7 +21,6 @@ import { useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { ListItem } from "@/components/ListItem";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
@@ -582,13 +582,12 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   }
 
   const stepErrors = validateSteps(configDraft);
-  const invalidStepIds = Object.keys(stepErrors);
+
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   const isDirty =
-    !deepEqual(meta, savedMetaRef.current) || !deepEqual(configDraft, savedConfigRef.current);
+    !evaluate(meta, savedMetaRef.current) || !evaluate(configDraft, savedConfigRef.current);
 
-  const lang = useLocale();
   return (
     <Card
       className="flex h-full flex-1 flex-col overflow-hidden"

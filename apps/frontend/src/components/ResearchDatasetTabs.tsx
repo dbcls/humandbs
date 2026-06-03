@@ -3,7 +3,7 @@ import { cva } from "class-variance-authority";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
+import { cleanEmptyParams } from "@/utils/clean-empty-params";
 
 const researchSorts = new Set([
   "humId",

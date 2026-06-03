@@ -12,7 +12,6 @@ import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { Label } from "@/components/ui/label";
-import type { ContentId } from "@/config/content-config";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
@@ -51,7 +50,7 @@ export function DocumentsList({
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const { mutateAsync: createDocument } = useMutation({
-    mutationFn: (contentId: ContentId) => $createDocument({ data: { contentId: contentId } }),
+    mutationFn: (contentId: string) => $createDocument({ data: { contentId: contentId } }),
 
     onMutate: async (contentId) => {
       await queryClient.cancelQueries(documentsListQO);
@@ -188,7 +187,7 @@ export function DocumentsList({
 
           return makeValidationErrorMessage(validationResult, tErrors);
         }}
-        onSubmit={(id) => createDocument(id as ContentId)}
+        onSubmit={(id) => createDocument(id)}
       />
 
       <InputDialog
