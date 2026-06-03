@@ -407,6 +407,15 @@
     "variantTotal": {
       "title": "Total Variant Count"
     },
+    "variantAutosomes": {
+      "title": "Autosomal Variant Count"
+    },
+    "variantChrX": {
+      "title": "Chr X Variant Count"
+    },
+    "cohorts": {
+      "title": "Cohort"
+    },
     "humId": {
       "title": "Research ID"
     },

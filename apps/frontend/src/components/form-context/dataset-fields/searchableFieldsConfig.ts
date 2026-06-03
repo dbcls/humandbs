@@ -33,10 +33,11 @@ export const searchableFieldsConfig: Partial<
   isTumor: { section: "subjects", order: 5 },
   cellLine: { section: "subjects", order: 6 },
   population: { section: "subjects", order: 7 },
+  cohorts: { section: "subjects", order: 8 },
 
   // Demographics (subjects category, after the sample fields)
-  sex: { section: "subjects", order: 8 },
-  ageGroup: { section: "subjects", order: 9 },
+  sex: { section: "subjects", order: 9 },
+  ageGroup: { section: "subjects", order: 10 },
 
   // Experimental method
   assayType: { section: "platform-method", order: 0 },

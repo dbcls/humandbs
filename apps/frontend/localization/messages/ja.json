@@ -408,6 +408,15 @@
     "variantTotal": {
       "title": "バリアント総数"
     },
+    "variantAutosomes": {
+      "title": "バリアント数（常染色体）"
+    },
+    "variantChrX": {
+      "title": "バリアント数（X染色体）"
+    },
+    "cohorts": {
+      "title": "コホート"
+    },
     "humId": {
       "title": "研究ID"
     },
