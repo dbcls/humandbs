@@ -127,7 +127,6 @@
     "Unrestricted-access": "非制限公開",
     "Controlled-access (Type I)": "制限公開（Type I）",
     "Controlled-access (Type II)": "制限公開（Type II）",
-
     "Analysis Methods": "解析方法",
     "Antigen Activation": "抗原賦活化方法",
     "Bacteria Identification": "腸内細菌叢のバクテリア同定方法",
@@ -194,7 +193,8 @@
     "Virus Genome Construction": "ウイルスゲノム構築方法",
     "Washing": "免染工程における洗浄",
     "Participant Attributes": "被験者属性",
-    "Mobile Element Number": "Mobile Element 数"
+    "Mobile Element Number": "Mobile Element 数",
+    "data-unavailable": "データを取得できませんでした"
   },
   "Person": {
     "name": "名前",

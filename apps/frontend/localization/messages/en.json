@@ -127,7 +127,6 @@
     "Unrestricted-access": "Open (no restrictions)",
     "Controlled-access (Type I)": "Type I (restrictions apply)",
     "Controlled-access (Type II)": "Type II (restrictions apply)",
-
     "Analysis Methods": "Analysis Methods",
     "Antigen Activation": "Antigen Activation",
     "Bacteria Identification": "Bacteria Identification",
@@ -194,7 +193,8 @@
     "Virus Genome Construction": "Virus Genome Construction",
     "Washing": "Washing",
     "Participant Attributes": "Participant Attributes",
-    "Mobile Element Number": "Mobile Element Number"
+    "Mobile Element Number": "Mobile Element Number",
+    "data-unavailable": "Data unavailable"
   },
   "Person": {
     "name": "Name",

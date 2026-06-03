@@ -27,13 +27,23 @@ const cartDatasetColumns = [
   cartColumnsHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
-    cell: (ctx) => (
-      <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
-        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-          {ctx.renderValue()}
-        </TextWithIcon>
-      </Route.Link>
-    ),
+    cell: (ctx) => {
+      const isStub = !ctx.row.original.criteria;
+      return (
+        <div className="flex flex-col gap-1">
+          <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
+            <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+              {ctx.renderValue()}
+            </TextWithIcon>
+          </Route.Link>
+          {isStub && (
+            <span className="text-warning text-xs">
+              {ctx.table.options.meta?.t("data-unavailable")}
+            </span>
+          )}
+        </div>
+      );
+    },
     maxSize: 10,
   }),
   cartColumnsHelper.accessor("experiments", {
@@ -100,7 +110,10 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
   }
 
   const cartIdSet = new Set(cartIds);
-  const datasets = ((data?.data ?? []) as DatasetDoc[]).filter((d) => cartIdSet.has(d.datasetId));
+  const found = ((data?.data ?? []) as DatasetDoc[]).filter((d) => cartIdSet.has(d.datasetId));
+  const notFoundInCart = (data?.meta.batch.notFound ?? []).filter((id) => cartIdSet.has(id));
+  const stubs = notFoundInCart.map((id) => ({ datasetId: id }) as DatasetDoc);
+  const datasets = [...found, ...stubs];
 
   return (
     <>
