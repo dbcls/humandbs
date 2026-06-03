@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { HTMLReactParserOptions } from "html-react-parser";
 import parse, { domToReact, Element } from "html-react-parser";
 
-import { Callout } from "@/components/Markdown/Callout";
+import { Callout } from "@/components/markdown/Callout";
 import { cn } from "@/lib/utils";
 import type { MarkdownResult } from "@/utils/markdown";
 

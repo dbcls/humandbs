@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
   $getDocumentBreadcrumbs,

@@ -21,7 +21,7 @@ import type { AssetHierarchyFile } from "@/serverFunctions/assets";
 import { buildAssetMarkdown } from "./content-area-asset-utils";
 import { useFieldContext } from "./FormContext";
 
-const MarkdownClientPreview = lazy(() => import("@/components/Markdown/MarkdownClientPreview"));
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 export default function ContentAreaField({
   label,

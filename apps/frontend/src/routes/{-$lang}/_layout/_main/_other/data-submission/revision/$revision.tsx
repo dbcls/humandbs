@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { $getPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
 

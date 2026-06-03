@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 import { renderMarkdown } from "@/utils/markdown";
 

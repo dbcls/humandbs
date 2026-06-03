@@ -54,7 +54,7 @@ import { waitUntilNoMutations } from "@/utils/mutations";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
-const MarkdownClientPreview = lazy(() => import("@/components/Markdown/MarkdownClientPreview"));
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 interface FormMeta {
   submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;
