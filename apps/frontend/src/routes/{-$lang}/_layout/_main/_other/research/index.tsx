@@ -411,7 +411,7 @@ const columns = [
           {ctx.getValue().map((id) => (
             <li key={id} className="flex items-center gap-2">
               <ClientOnly fallback={null}>
-                <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
+                <ResearchDatasetCartRowButton datasetId={id} />
               </ClientOnly>
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>

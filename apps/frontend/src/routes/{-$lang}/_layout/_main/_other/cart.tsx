@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
@@ -13,6 +14,7 @@ import { i18n } from "@/config/i18n";
 import { useCartStore } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
+import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
@@ -75,37 +77,52 @@ const cartDatasetColumns = [
   }),
 ];
 
-function RouteComponent() {
-  const cart = useCartStore((state) => state.cartDatasets);
+function CartContents({ cartIds }: { cartIds: string[] }) {
   const t = useTranslations("Dataset");
   const locale = useLocale();
 
+  const { data, isPending } = useQuery(getBatchedDatasetsQueryOptions(cartIds, locale));
+
   const payload = {
     language_type: locale === "ja" ? 1 : 2,
-    components: cart.map((item) => ({
+    components: cartIds.map((id) => ({
       key: "use_dataset_request",
-      value: item.datasetId,
+      value: id,
     })),
   };
 
   function handleSubmit() {
-    console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
+
+  if (isPending) {
+    return <p className="text-center text-gray-400">Loading...</p>;
+  }
+
+  const cartIdSet = new Set(cartIds);
+  const datasets = ((data?.data ?? []) as DatasetDoc[]).filter((d) => cartIdSet.has(d.datasetId));
+
+  return (
+    <>
+      <Button className="mb-4 ml-auto" onClick={handleSubmit}>
+        Copy Cart Contents
+      </Button>
+      <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
+      <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />
+    </>
+  );
+}
+
+function RouteComponent() {
+  const cartIds = useCartStore((state) => state.cartDatasets);
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">
       <ClientOnly fallback={<p className="text-center text-gray-400">Loading...</p>}>
-        {cart.length === 0 ? (
+        {cartIds.length === 0 ? (
           <p className="text-center text-gray-400">Cart is empty</p>
         ) : (
-          <>
-            <Button className="mb-4 ml-auto" onClick={handleSubmit}>
-              Copy Cart Contents
-            </Button>
-            <Table columns={cartDatasetColumns} data={cart} meta={{ t, lang: locale }} />
-            <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" theme="github-light" />
-          </>
+          <CartContents cartIds={cartIds} />
         )}
       </ClientOnly>
     </CardWithCaption>

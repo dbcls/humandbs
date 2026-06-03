@@ -20,12 +20,15 @@ import {
   LangVersionQuerySchema,
 } from "@humandbs/backend/types";
 
+import type { Locale } from "@/config/i18n";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 import type { DeepOmit } from "@/utils/type-utils";
+
+import { makeChunks, mergeBatchResults } from "../utils/batch-utils";
 
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
@@ -162,6 +165,35 @@ export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
     queryKey: ["dataset", "versions", query],
     queryFn: () => $getDatasetVersions({ data: query }),
     staleTime: 1000 * 60 * 60,
+  });
+}
+
+const BatchDatasetsQuerySchema = z.object({
+  ids: z.array(z.string()),
+  lang: LangQuerySchema.shape.lang,
+});
+
+/**
+ * Gets list of datasets for the Cart.
+ * API is up to 100 ids, so it splits into several requasts if more that 100 ids
+ */
+export const $getBatchDatasets = createServerFn()
+  .inputValidator(BatchDatasetsQuerySchema)
+  .handler(async ({ data }) => {
+    const chunks = makeChunks(data.ids);
+    const results = await Promise.all(
+      chunks.map((chunk) => api.getBatchDatasets({ ids: chunk, lang: data.lang })),
+    );
+    return mergeBatchResults(results);
+  });
+
+export function getBatchedDatasetsQueryOptions(ids: string[], lang: Locale) {
+  return queryOptions({
+    queryKey: ["datasets", "batch", { ids, lang }],
+    queryFn: () => $getBatchDatasets({ data: { ids, lang } }),
+    staleTime: 1000 * 60 * 60,
+    placeholderData: keepPreviousData,
+    enabled: ids.length > 0,
   });
 }
 

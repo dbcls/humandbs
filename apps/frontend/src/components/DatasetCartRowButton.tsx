@@ -19,7 +19,7 @@ export function DatasetCartRowButton({
   const { add, remove, isInCart } = useCartStore(
     useShallow((state) => ({
       add: state.add,
-      isInCart: state.cartDatasets.some((d) => d.datasetId === dataset.datasetId),
+      isInCart: state.cartDatasets.includes(dataset.datasetId),
       remove: state.remove,
     })),
   );
@@ -29,7 +29,7 @@ export function DatasetCartRowButton({
       if (isInCart) {
         remove([dataset.datasetId]);
       } else {
-        add([dataset]);
+        add([dataset.datasetId]);
       }
     },
     [add, remove, isInCart],

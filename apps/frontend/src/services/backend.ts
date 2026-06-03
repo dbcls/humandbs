@@ -32,10 +32,14 @@ import type {
 } from "@humandbs/backend/types";
 import { ResearchSearchResponseSchema } from "@humandbs/backend/types";
 
+import type { Locale } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import type { DeepOmit } from "@/utils/type-utils";
 
-import type { DsApplicationListResponse } from "../../../backend/src/api/types";
+import type {
+  DatasetBatchResponse,
+  DsApplicationListResponse,
+} from "../../../backend/src/api/types";
 import type {
   DatasetTemplateResponse,
   ResearchTemplateResponse,
@@ -75,10 +79,19 @@ async function request<T>(
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) {
-        url.searchParams.set(
-          key,
-          typeof value === "object" ? JSON.stringify(value) : String(value),
-        );
+        let serialized = "";
+
+        if (typeof value === "object") {
+          if (Array.isArray(value)) {
+            serialized = value.join(",");
+          } else {
+            serialized = JSON.stringify(value);
+          }
+        } else {
+          serialized = String(value);
+        }
+
+        url.searchParams.set(key, serialized);
       }
     }
   }
@@ -166,6 +179,13 @@ interface APIService {
     params: DatasetIdParams;
     search: LangQuery;
   }): Promise<DatasetVersionsListResponse>;
+  getBatchDatasets(
+    query: {
+      ids: string[];
+      lang: Locale;
+    },
+    accessToken?: string,
+  ): Promise<DatasetBatchResponse>;
   searchResearches(
     query: ResearchSearchBody,
     accessToken?: string,
@@ -275,6 +295,14 @@ const api: APIService = {
     return get<DatasetVersionsListResponse>(
       `/dataset/${query.params.datasetId}/versions`,
       query.search as Record<string, unknown>,
+    );
+  },
+
+  getBatchDatasets(query, accessToken) {
+    return get<DatasetBatchResponse>(
+      `/dataset/batch`,
+      { ids: query.ids, lang: query.lang },
+      accessToken ? authHeader(accessToken) : undefined,
     );
   },
 
