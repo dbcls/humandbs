@@ -14,19 +14,33 @@ export type NavPriority = "important" | "medium" | "optional";
  */
 export type NavigationItemType = "document" | "link";
 
-export interface NavigationItem {
+// export interface NavigationItem {
+//   id: string; // UUID
+//   type: NavigationItemType;
+//   // For type === "document": stable UUID from document.id — never changes on rename
+//   documentId?: string;
+//   // For type === "document": denormalized path — kept for the default config and fallback
+//   contentId?: string;
+//   // For type === "link": the internal URL path
+//   url?: string;
+//   // For type === "link": required display label per locale
+//   // For type === "document": optional override label (falls back to published title)
+//   label?: Record<string, string>;
+// }
+
+export type NavigationItem<T extends "document" | "link" = "document" | "link"> = {
   id: string; // UUID
-  type: NavigationItemType;
-  // For type === "document": stable UUID from document.id — never changes on rename
-  documentId?: string;
-  // For type === "document": denormalized path — kept for the default config and fallback
-  contentId?: string;
-  // For type === "link": the internal URL path
-  url?: string;
-  // For type === "link": required display label per locale
-  // For type === "document": optional override label (falls back to published title)
-  label?: Record<string, string>;
-}
+} & (T extends "document"
+  ? {
+      type: "document";
+      documentId?: string;
+      contentId?: string;
+    }
+  : {
+      type: "link";
+      url: string;
+      label: Record<string, string>;
+    });
 
 export interface NavigationGroupItem {
   id: string; // references NavigationItem.id
@@ -626,24 +640,21 @@ function resolveItemLabel(
   resolveDocumentLabel?: DocumentLabelResolver,
   resolveDocumentPath?: DocumentPathResolver,
 ): string {
-  // Explicit label override on the item takes priority
-  if (item.label) {
-    return item.label[lang] ?? item.label["en"] ?? item.url ?? item.id;
+  if (item.type === "link") {
+    return item.label[lang] ?? item.label.ja ?? item.url ?? item.id;
   }
   // Document items: try DB-resolved title first, then registry default
-  if (item.type === "document") {
-    const contentId = resolveItemContentId(item, resolveDocumentPath);
-    if (contentId) {
-      const dbLabel = resolveDocumentLabel?.(contentId, lang);
-      if (dbLabel) return dbLabel;
-      const reg = navigationRegistry.get(contentId);
-      if (reg) {
-        return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? contentId;
-      }
-      return contentId;
+  const contentId = resolveItemContentId(item, resolveDocumentPath);
+  if (contentId) {
+    const dbLabel = resolveDocumentLabel?.(contentId, lang);
+    if (dbLabel) return dbLabel;
+    const reg = navigationRegistry.get(contentId);
+    if (reg) {
+      return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? contentId;
     }
+    return contentId;
   }
-  return item.url ?? item.id;
+  return item.id;
 }
 
 function resolveItemLinkOptions(
@@ -658,9 +669,10 @@ function resolveItemLinkOptions(
       if (reg) return reg.getLinkOptions(lang);
       return { to: "/{-$lang}/$", params: { lang, _splat: contentId } };
     }
+    return { to: "/", params: { lang } };
   }
   // Link type — use the url directly
-  const url = item.url ?? "/";
+  const url = item.url;
   return { to: `/{-$lang}${url}`, params: { lang } };
 }
 
