@@ -6,6 +6,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
+import { BATCH } from "@/api/constants"
 import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
   exampleApproveResearchResponse,
@@ -15,6 +16,7 @@ import {
   exampleDatasetCreateResponse,
   exampleLinkedDatasetsListResponse,
   exampleRejectResearchResponse,
+  exampleResearchBatchResponse,
   exampleResearchDetailResponse,
   exampleResearchSearchResponse,
   exampleResearchVersionsListResponse,
@@ -37,6 +39,8 @@ import {
   LangQuerySchema,
   LangVersionQuerySchema,
   LinkedDatasetsListResponseSchema,
+  ResearchBatchQuerySchema,
+  ResearchBatchResponseSchema,
   ResearchDetailResponseSchema,
   ResearchListingQuerySchema,
   ResearchSearchResponseSchema,
@@ -116,6 +120,39 @@ export const createResearchRoute = createRoute({
     400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
+    500: ErrorSpec500,
+  },
+})
+
+// Registered before getResearchRoute so the static "/batch" path takes
+// precedence over the dynamic "/{humId}" segment.
+export const batchGetResearchRoute = createRoute({
+  method: "get",
+  path: "/batch",
+  tags: ["Research"],
+  operationId: "batchGetResearch",
+  summary: "Batch Get Research",
+  security: SECURITY_OPTIONAL_AUTH,
+  description: `Retrieve multiple Research entries in one request by their humIds.
+
+Pass a comma-separated \`ids\` query parameter (e.g. \`?ids=hum0001,hum0002\`).
+
+**Behavior:**
+- Returns the **latest version** of each Research (use GET /research/{humId}/versions/{version} for a specific version).
+- **Partial success:** retrievable Research entries are returned in \`data\` (de-duplicated, in requested order). IDs that are absent or not accessible to the caller are listed in \`meta.batch.notFound\` (their existence is not distinguished from access denial).
+- Per-ID authorization is applied (same visibility rules as GET /research/{humId}). Non-owners see the published view (status/uids/draftVersion are masked).
+- At most ${BATCH.MAX_IDS} IDs per request; an empty \`ids\` is rejected with 400.`,
+  request: {
+    query: ResearchBatchQuerySchema,
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": { schema: ResearchBatchResponseSchema, example: exampleResearchBatchResponse },
+      },
+      description: "Batch of research (partial success; missing/inaccessible IDs listed in meta.batch.notFound)",
+    },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })

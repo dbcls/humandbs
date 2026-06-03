@@ -20,19 +20,23 @@ import {
   updateResearchUids,
 } from "@/api/es-client/research"
 import { searchResearches } from "@/api/es-client/search"
+import { uniq } from "@/api/es-client/utils"
 import {
+  batchResponse,
   createdResponse,
   searchResponse,
   singleResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
+import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { EditableResearchStatusSchema } from "@/api/types/workflow"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
-import { isOwnerOrAdmin } from "@/api/utils/version"
+import { sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import {
   listResearchRoute,
+  batchGetResearchRoute,
   createResearchRoute,
   getResearchRoute,
   updateResearchRoute,
@@ -70,6 +74,38 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const pagination = createPagination(result.pagination.total, result.pagination.page, result.pagination.limit)
 
     return searchResponse(c, result.data, pagination, result.facets)
+  })
+
+  // GET /research/batch
+  // Registered before GET /research/{humId} so "batch" is matched as a static
+  // path, not captured by the dynamic {humId} segment.
+  router.openapi(batchGetResearchRoute, async (c) => {
+    const { ids, includeRawHtml } = c.req.valid("query")
+    const authUser = c.get("authUser")
+
+    const uniqIds = uniq(ids)
+    // getResearchDetail applies per-ID authorization and version resolution,
+    // returning null for absent or inaccessible Research (existence is hidden).
+    const details = await Promise.all(uniqIds.map((id) => getResearchDetail(id, {}, authUser)))
+
+    const data: ResearchDetail[] = []
+    const notFound: string[] = []
+    uniqIds.forEach((id, i) => {
+      const detail = details[i]
+      if (!detail) {
+        notFound.push(id)
+        return
+      }
+      // Match the detail endpoint: value-based masking, then strip rawHtml.
+      const sanitized = sanitizeResearchDetailForUser(detail, authUser)
+      data.push(maybeStripRawHtml(sanitized, includeRawHtml))
+    })
+
+    return batchResponse(c, data, {
+      requested: uniqIds.length,
+      found: data.length,
+      notFound,
+    })
   })
 
   // POST /research/new
@@ -124,15 +160,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const primaryTerm = lock?.primaryTerm ?? 1
 
     // Value-based access control: owner/admin sees actual values, others see sanitized values
-    const isOwner = isOwnerOrAdmin(authUser, detail.uids)
-    const responseData = isOwner
-      ? detail
-      : {
-        ...detail,
-        status: "published" as const,
-        uids: [],
-        draftVersion: null,
-      }
+    const responseData = sanitizeResearchDetailForUser(detail, authUser)
 
     const strippedDetail = maybeStripRawHtml(responseData, query.includeRawHtml ?? false)
 

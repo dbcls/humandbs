@@ -533,6 +533,7 @@ const createSearchableWithPolicies = (
   isTumor: null,
   cellLine: [],
   population: [],
+  cohorts: [],
   sex: null,
   ageGroup: null,
   assayType: [],

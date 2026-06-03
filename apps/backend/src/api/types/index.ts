@@ -17,6 +17,8 @@ export {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
+  BatchSummarySchema,
+  ResponseMetaWithBatchSchema,
 } from "./response"
 export type {
   Pagination,
@@ -24,10 +26,13 @@ export type {
   ResponseMetaReadOnly,
   ResponseMetaWithLock,
   ResponseMetaWithPagination,
+  BatchSummary,
+  ResponseMetaWithBatch,
   SingleReadOnlyResponse,
   SingleResponse,
   ListResponse,
   SearchResponse,
+  BatchResponse,
 } from "./response"
 
 // === Common ===
@@ -159,6 +164,8 @@ export {
   ResearchSearchQuerySchema,
   DatasetListingQuerySchema,
   DatasetSearchQuerySchema,
+  DatasetBatchQuerySchema,
+  ResearchBatchQuerySchema,
   FacetFilterQuerySchema,
   ResearchSummarySchema,
 } from "./query-params"
@@ -169,6 +176,8 @@ export type {
   ResearchSearchQuery,
   DatasetListingQuery,
   DatasetSearchQuery,
+  DatasetBatchQuery,
+  ResearchBatchQuery,
   FacetFilterQuery,
   ResearchSummary,
 } from "./query-params"
@@ -221,12 +230,14 @@ export {
   createSingleReadOnlyResponseSchema,
   createListResponseSchema,
   createSearchResponseSchema,
+  createBatchResponseSchema,
   // Response schemas for /research routes
   WorkflowDataSchema,
   WorkflowResponseSchema,
   UidsDataSchema,
   UidsResponseSchema,
   ResearchDetailResponseSchema,
+  ResearchBatchResponseSchema,
   ResearchWithLockResponseSchema,
   ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
@@ -237,6 +248,7 @@ export {
   // Response schemas for /dataset routes
   DatasetSearchResponseSchema,
   DatasetDetailResponseSchema,
+  DatasetBatchResponseSchema,
   DatasetUpdateResponseSchema,
   DatasetVersionsListResponseSchema,
   DatasetVersionDetailResponseSchema,
@@ -270,6 +282,7 @@ export type {
   UidsData,
   UidsResponse,
   ResearchDetailResponse,
+  ResearchBatchResponse,
   ResearchWithLockResponse,
   ResearchSearchResponse,
   ResearchVersionsListResponse,
@@ -280,6 +293,7 @@ export type {
   // Response types for /dataset routes
   DatasetSearchResponse,
   DatasetDetailResponse,
+  DatasetBatchResponse,
   DatasetUpdateResponse,
   DatasetVersionsListResponse,
   DatasetVersionDetailResponse,

@@ -11,7 +11,7 @@ import { beforeAll, describe, expect } from "bun:test"
 
 import { esClient, ES_INDEX } from "@/api/es-client"
 import { generateNextHumId } from "@/api/es-client/research"
-import type { EsResearch, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
+import type { BatchResponse, EsResearch, ResearchDetail, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
   approveResearch,
@@ -265,6 +265,79 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // includeRawHtml absent: the property must be stripped from the response.
     expect("rawHtml" in aimsJaWith).toBe(true)
     expect("rawHtml" in aimsJaWithout).toBe(false)
+  })
+
+  itWithEs("IT-RESEARCH-BATCH-01: GET /research/batch returns research in requested order with empty notFound", async () => {
+    // IT-RESEARCH-BATCH-01
+    const app = getApp()
+    const listRes = await app.request(url("/research?limit=3"))
+    const list = (await listRes.json()) as SearchResponse<ResearchSummary>
+    if (list.data.length < 2) {
+      console.log("  SKIP IT-RESEARCH-BATCH-01: need >=2 Research in ES")
+      return
+    }
+    const ids = list.data.slice(0, 2).map(r => r.humId)
+    const requested = [ids[1], ids[0]]
+    const res = await app.request(url(`/research/batch?ids=${requested.join(",")}`))
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as BatchResponse<ResearchDetail>
+    expect(json.data.map(r => r.humId)).toEqual(requested)
+    expect(json.meta.batch.requested).toBe(2)
+    expect(json.meta.batch.found).toBe(2)
+    expect(json.meta.batch.notFound).toEqual([])
+  })
+
+  itWithEs("IT-RESEARCH-BATCH-02: GET /research/batch partial success lists unknown ids in notFound", async () => {
+    // IT-RESEARCH-BATCH-02
+    const app = getApp()
+    const listRes = await app.request(url("/research?limit=1"))
+    const list = (await listRes.json()) as SearchResponse<ResearchSummary>
+    if (list.data.length === 0) {
+      console.log("  SKIP IT-RESEARCH-BATCH-02: no Research in ES")
+      return
+    }
+    const realId = list.data[0].humId
+    const res = await app.request(url(`/research/batch?ids=${realId},__not_a_humId__`))
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as BatchResponse<ResearchDetail>
+    expect(json.data.map(r => r.humId)).toEqual([realId])
+    expect(json.meta.batch.requested).toBe(2)
+    expect(json.meta.batch.found).toBe(1)
+    expect(json.meta.batch.notFound).toContain("__not_a_humId__")
+  })
+
+  itWithEs("IT-RESEARCH-BATCH-03: GET /research/batch rejects empty/missing/over-limit ids", async () => {
+    // IT-RESEARCH-BATCH-03
+    const app = getApp()
+    const empty = await app.request(url("/research/batch?ids="))
+    expect(empty.status).toBe(400)
+    const missing = await app.request(url("/research/batch"))
+    expect(missing.status).toBe(400)
+    const overLimit = Array.from({ length: 101 }, (_v, i) => `hum${String(i).padStart(4, "0")}`).join(",")
+    const over = await app.request(url(`/research/batch?ids=${overLimit}`))
+    expect(over.status).toBe(400)
+  })
+
+  itWithEs("IT-RESEARCH-BATCH-04: public batch never exposes uids/draftVersion (masked view)", async () => {
+    // IT-RESEARCH-BATCH-04
+    // Public scope only ever sees published Research; the handler's value-based
+    // masking guarantees uids is empty and draftVersion is null for every item.
+    const app = getApp()
+    const listRes = await app.request(url("/research?limit=3"))
+    const list = (await listRes.json()) as SearchResponse<ResearchSummary>
+    if (list.data.length === 0) {
+      console.log("  SKIP IT-RESEARCH-BATCH-04: no Research in ES")
+      return
+    }
+    const ids = list.data.map(r => r.humId)
+    const res = await app.request(url(`/research/batch?ids=${ids.join(",")}`))
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as BatchResponse<ResearchDetail>
+    for (const item of json.data) {
+      expect(item.status).toBe("published")
+      expect(item.uids).toEqual([])
+      expect(item.draftVersion).toBeNull()
+    }
   })
 
   itWithAdminToken("IT-RESEARCH-loadResearchAndAuthorize-non-draft-404-for-unknown: admin gets 404 on unknown humId", async (token) => {

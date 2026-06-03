@@ -114,6 +114,7 @@ const buildStatsAggregations = (): Record<string, estypes.AggregationsAggregatio
   assayType: statsNestedAgg("experiments.searchable.assayType"),
   tissues: statsNestedAgg("experiments.searchable.tissues"),
   population: statsNestedAgg("experiments.searchable.population"),
+  cohorts: statsNestedAgg("experiments.searchable.cohorts"),
   platform: statsPlatformAgg(),
   fileTypes: statsNestedAgg("experiments.searchable.fileTypes"),
   healthStatus: statsNestedAgg("experiments.searchable.healthStatus", 10),

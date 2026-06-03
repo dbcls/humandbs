@@ -50,6 +50,7 @@ export const datasetSchema = {
       isTumor: f.keyword(),
       cellLine: f.keyword(),
       population: f.keyword(),
+      cohorts: f.keyword(),
 
       // Demographics
       sex: f.keyword(),
@@ -80,6 +81,8 @@ export const datasetSchema = {
         cnv: f.long(),
         sv: f.long(),
         total: f.long(),
+        autosomes: f.long(),
+        chrX: f.long(),
       }),
       hasPhenotypeData: f.boolean(),
 

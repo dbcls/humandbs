@@ -292,6 +292,7 @@ const buildFacetAggregations = (
   assayType: nestedFacetAgg("experiments.searchable.assayType", countField),
   tissues: nestedFacetAgg("experiments.searchable.tissues", countField),
   population: nestedFacetAgg("experiments.searchable.population", countField),
+  cohorts: nestedFacetAgg("experiments.searchable.cohorts", countField),
   platform: platformFacetAgg(countField),
   fileTypes: nestedFacetAgg("experiments.searchable.fileTypes", countField),
   healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", countField, 10),

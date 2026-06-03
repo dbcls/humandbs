@@ -10,7 +10,7 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import type { EsDataset, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
+import type { BatchResponse, EsDataset, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
   approveResearch,
@@ -291,6 +291,102 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     expect(filtered.status).toBe(200)
     const filteredJson = (await filtered.json()) as SearchResponse<EsDataset>
     for (const d of filteredJson.data) expect(d.humId).toBe(humId)
+  })
+
+  itWithEs("IT-DATASET-BATCH-01: GET /dataset/batch returns datasets in requested order with empty notFound", async () => {
+    // IT-DATASET-BATCH-01
+    const app = getApp()
+    const listRes = await app.request(url("/dataset?limit=3"))
+    const list = (await listRes.json()) as SearchResponse<EsDataset>
+    if (list.data.length < 2) {
+      console.log("  SKIP IT-DATASET-BATCH-01: need >=2 datasets in ES")
+      return
+    }
+    const ids = list.data.slice(0, 2).map(d => d.datasetId)
+    // Reverse the listing order to assert the response preserves the requested order.
+    const requested = [ids[1], ids[0]]
+    const res = await app.request(url(`/dataset/batch?ids=${requested.join(",")}`))
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as BatchResponse<EsDataset & { _seq_no?: number; _primary_term?: number }>
+    expect(json.data.map(d => d.datasetId)).toEqual(requested)
+    expect(json.meta.batch.requested).toBe(2)
+    expect(json.meta.batch.found).toBe(2)
+    expect(json.meta.batch.notFound).toEqual([])
+    // Batch is read-oriented: per-item optimistic-lock fields must NOT leak.
+    for (const item of json.data) {
+      expect(item._seq_no).toBeUndefined()
+      expect(item._primary_term).toBeUndefined()
+    }
+  })
+
+  itWithEs("IT-DATASET-BATCH-02: GET /dataset/batch partial success lists unknown ids in notFound", async () => {
+    // IT-DATASET-BATCH-02
+    const app = getApp()
+    const listRes = await app.request(url("/dataset?limit=1"))
+    const list = (await listRes.json()) as SearchResponse<EsDataset>
+    if (list.data.length === 0) {
+      console.log("  SKIP IT-DATASET-BATCH-02: no Dataset in ES")
+      return
+    }
+    const realId = list.data[0].datasetId
+    const res = await app.request(url(`/dataset/batch?ids=${realId},__not_a_datasetId__`))
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as BatchResponse<EsDataset>
+    expect(json.data.map(d => d.datasetId)).toEqual([realId])
+    expect(json.meta.batch.requested).toBe(2)
+    expect(json.meta.batch.found).toBe(1)
+    expect(json.meta.batch.notFound).toContain("__not_a_datasetId__")
+  })
+
+  itWithEs("IT-DATASET-BATCH-03: GET /dataset/batch rejects empty/missing/over-limit ids", async () => {
+    // IT-DATASET-BATCH-03
+    const app = getApp()
+    const empty = await app.request(url("/dataset/batch?ids="))
+    expect(empty.status).toBe(400)
+    const missing = await app.request(url("/dataset/batch"))
+    expect(missing.status).toBe(400)
+    const overLimit = Array.from({ length: 101 }, (_v, i) => `JGAD${String(i).padStart(6, "0")}`).join(",")
+    const over = await app.request(url(`/dataset/batch?ids=${overLimit}`))
+    expect(over.status).toBe(400)
+  })
+
+  itWithAdminToken("IT-DATASET-BATCH-04: draft-parent dataset is notFound for public, found for admin", async (token) => {
+    // IT-DATASET-BATCH-04
+    // Mirrors IT-DATASET-07 in batch form: missing and access-denied collapse to notFound.
+    const app = getApp()
+    const draftRes = await app.request(url("/research?status=draft&limit=20"), { headers: authHeaders(token) })
+    const drafts = (await draftRes.json()) as SearchResponse<ResearchSummary>
+    const draftWithNullLatest = drafts.data.find((r) => r.latestVersion === null)
+    if (!draftWithNullLatest) {
+      console.log("  SKIP IT-DATASET-BATCH-04: no draft Research with latestVersion=null")
+      return
+    }
+    const linkedRes = await app.request(
+      url(`/research/${draftWithNullLatest.humId}/dataset`),
+      { headers: authHeaders(token) },
+    )
+    if (linkedRes.status !== 200) {
+      console.log(`  SKIP IT-DATASET-BATCH-04: linked dataset endpoint not 200 (status=${linkedRes.status})`)
+      return
+    }
+    const linked = (await linkedRes.json()) as SearchResponse<EsDataset>
+    if (linked.data.length === 0) {
+      console.log("  SKIP IT-DATASET-BATCH-04: draft Research has no Dataset")
+      return
+    }
+    const datasetId = linked.data[0].datasetId
+
+    const publicRes = await app.request(url(`/dataset/batch?ids=${datasetId}`))
+    expect(publicRes.status).toBe(200)
+    const publicJson = (await publicRes.json()) as BatchResponse<EsDataset>
+    expect(publicJson.data).toHaveLength(0)
+    expect(publicJson.meta.batch.notFound).toContain(datasetId)
+
+    const adminRes = await app.request(url(`/dataset/batch?ids=${datasetId}`), { headers: authHeaders(token) })
+    expect(adminRes.status).toBe(200)
+    const adminJson = (await adminRes.json()) as BatchResponse<EsDataset>
+    expect(adminJson.data.map(d => d.datasetId)).toContain(datasetId)
+    expect(adminJson.meta.batch.found).toBe(1)
   })
 
   // IT-DATASET-08: 親 Research が draft かつ latestVersion!=null は現実装の状態遷移経路上に出現しない

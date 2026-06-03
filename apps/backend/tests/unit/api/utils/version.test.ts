@@ -6,9 +6,10 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
-import { isOwnerOrAdmin, parseVersionNum, resolveVersionForUser } from "@/api/utils/version"
+import type { ResearchDetail } from "@/api/types"
+import { isOwnerOrAdmin, parseVersionNum, resolveVersionForUser, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
-import { createMockAuthUser } from "../helpers/mock-es"
+import { createMockAuthUser, createMockResearchDoc } from "../helpers/mock-es"
 
 describe("parseVersionNum", () => {
   it.each([
@@ -196,5 +197,78 @@ describe("isOwnerOrAdmin (edge cases)", () => {
   it("admin with empty uids -> true", () => {
     const admin = createMockAuthUser({ isAdmin: true, userId: "admin-1" })
     expect(isOwnerOrAdmin(admin, [])).toBe(true)
+  })
+})
+
+// === sanitizeResearchDetailForUser ===
+
+describe("sanitizeResearchDetailForUser", () => {
+  // Draft-state detail with real owner-only fields populated, so masking is observable.
+  const makeDetail = (overrides: Partial<ResearchDetail> = {}): ResearchDetail => {
+    const { versionIds: _versionIds, ...base } = createMockResearchDoc({
+      status: "draft",
+      uids: ["owner-id"],
+      latestVersion: "v1",
+      draftVersion: "v2",
+    })
+    return {
+      ...base,
+      humVersionId: "hum0001-v2",
+      version: "v2",
+      versionReleaseDate: "2024-02-01",
+      releaseNote: { ja: { text: "note", rawHtml: null }, en: { text: "note", rawHtml: null } },
+      datasets: [],
+      ...overrides,
+    }
+  }
+
+  const ownerUser = createMockAuthUser({ userId: "owner-id" })
+  const otherUser = createMockAuthUser({ userId: "other-id" })
+  const adminUser = createMockAuthUser({ userId: "admin-id", isAdmin: true })
+
+  it("owner sees actual values unchanged", () => {
+    const detail = makeDetail()
+    const result = sanitizeResearchDetailForUser(detail, ownerUser)
+
+    expect(result.status).toBe("draft")
+    expect(result.uids).toEqual(["owner-id"])
+    expect(result.draftVersion).toBe("v2")
+  })
+
+  it("admin sees actual values unchanged even when not in uids", () => {
+    const detail = makeDetail()
+    const result = sanitizeResearchDetailForUser(detail, adminUser)
+
+    expect(result.status).toBe("draft")
+    expect(result.uids).toEqual(["owner-id"])
+    expect(result.draftVersion).toBe("v2")
+  })
+
+  it("non-owner authenticated user gets masked status/uids/draftVersion", () => {
+    const detail = makeDetail()
+    const result = sanitizeResearchDetailForUser(detail, otherUser)
+
+    expect(result.status).toBe("published")
+    expect(result.uids).toEqual([])
+    expect(result.draftVersion).toBeNull()
+  })
+
+  it("public (null authUser) gets masked status/uids/draftVersion", () => {
+    const detail = makeDetail()
+    const result = sanitizeResearchDetailForUser(detail, null)
+
+    expect(result.status).toBe("published")
+    expect(result.uids).toEqual([])
+    expect(result.draftVersion).toBeNull()
+  })
+
+  it("does not mutate the input detail when masking", () => {
+    const detail = makeDetail()
+    sanitizeResearchDetailForUser(detail, null)
+
+    // Original object is left untouched (handler relies on this).
+    expect(detail.status).toBe("draft")
+    expect(detail.uids).toEqual(["owner-id"])
+    expect(detail.draftVersion).toBe("v2")
   })
 })

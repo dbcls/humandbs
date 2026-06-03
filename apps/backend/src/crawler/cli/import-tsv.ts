@@ -646,6 +646,7 @@ export const importExperimentTsv = (): void => {
           isTumor: parseIsTumorOrNull(row.searchable_isTumor),
           cellLine: parseJsonField<string[]>(row.searchable_cellLine, []),
           population: parseJsonField<string[]>(row.searchable_population, []),
+          cohorts: parseJsonField<string[]>(row.searchable_cohorts, []),
           sex: (row.searchable_sex as Sex) || null,
           ageGroup: (row.searchable_ageGroup as AgeGroup) || null,
           assayType: parseJsonField<string[]>(row.searchable_assayType, []),

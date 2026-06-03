@@ -8,4 +8,5 @@ export {
   singleReadOnlyResponse,
   listResponse,
   searchResponse,
+  batchResponse,
 } from "@/api/helpers/response"

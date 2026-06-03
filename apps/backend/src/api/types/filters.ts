@@ -108,6 +108,10 @@ export const DatasetFiltersSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Population groups (facet selection)"),
+  cohorts: z
+    .array(z.string())
+    .optional()
+    .describe("Named study cohorts (facet selection, e.g., 'BioBank Japan')"),
   sex: z
     .array(z.enum(["male", "female", "mixed"]))
     .optional()
@@ -177,6 +181,12 @@ export const DatasetFiltersSchema = z.object({
   variantSv: RangeFilterSchema.optional().describe("SV variant count range"),
   variantTotal: RangeFilterSchema.optional().describe(
     "Total variant count range",
+  ),
+  variantAutosomes: RangeFilterSchema.optional().describe(
+    "Autosomal (chr1-22) variant count range",
+  ),
+  variantChrX: RangeFilterSchema.optional().describe(
+    "Chromosome X variant count range",
   ),
 })
 export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>

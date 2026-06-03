@@ -9,6 +9,8 @@ import type { Context } from "hono"
 
 import { getRequestId } from "@/api/middleware/request-id"
 import type {
+  BatchResponse,
+  BatchSummary,
   Pagination,
   SingleReadOnlyResponse,
   SingleResponse,
@@ -167,4 +169,33 @@ export function searchResponse<T, F = Record<string, { value: string; count: num
     response.facets = facets
   }
   return c.json(response, status)
+}
+
+/**
+ * Create response for batch-get results (200 OK)
+ *
+ * Used for:
+ * - GET /dataset/batch
+ * - GET /research/batch
+ *
+ * Returns the resources that were retrieved (in caller-requested, de-duplicated
+ * order) plus a batch summary listing IDs that were not found or not accessible.
+ *
+ * @param c - Hono context
+ * @param data - Array of retrieved resources, in input order
+ * @param batch - Batch summary (requested / found / notFound)
+ */
+export function batchResponse<T>(
+  c: Context,
+  data: T[],
+  batch: BatchSummary,
+) {
+  const response: BatchResponse<T> = {
+    data,
+    meta: {
+      ...createBaseMeta(c),
+      batch,
+    },
+  }
+  return c.json(response, 200 as const)
 }

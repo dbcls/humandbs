@@ -99,4 +99,26 @@ describe("Smoke: /research", () => {
     expect(Array.isArray(body.data)).toBe(true)
     expectBaseMeta(body.meta)
   })
+
+  // === Batch ===
+
+  itWithResearch("GET /research/batch?ids={humId} -> 200, batch shape", async (humId) => {
+    const { status, body } = await fetchJson(`/research/batch?ids=${humId}`)
+
+    expect(status).toBe(200)
+    expect(Array.isArray(body.data)).toBe(true)
+    expectBaseMeta(body.meta)
+    const batch = (body.meta as { batch?: { requested?: number; found?: number; notFound?: unknown } }).batch
+    expect(batch?.requested).toBe(1)
+    expect(batch?.found).toBe(1)
+    expect(Array.isArray(batch?.notFound)).toBe(true)
+    const items = body.data as Record<string, unknown>[]
+    expect(items[0].humId).toBe(humId)
+  })
+
+  itLive("GET /research/batch without ids -> 400", async () => {
+    const { status } = await fetchJson("/research/batch")
+
+    expect(status).toBe(400)
+  })
 })
