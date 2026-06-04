@@ -429,11 +429,11 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     for (const r of search.json.data) expect(r.status).not.toBe("deleted")
   })
 
-  // IT-SEARCH-13 (compound query like "hum0001 cancer"), IT-SEARCH-23 (disease partial),
-  // IT-SEARCH-24 (icd10 prefix), IT-SEARCH-25 (fuzziness boundaries) require known test corpus
-  // tokens to assert "must hit / must not hit". They are covered in unit
-  // (`tests/unit/api/es-client/query-builders.test.ts`); here we additionally rely on
-  // staging-side smoke (`tests/api-manual-testing.md`).
+  // IT-SEARCH-13 (mixed ID + word extraction), IT-SEARCH-23 (disease partial),
+  // IT-SEARCH-24 (icd10 prefix), IT-SEARCH-25 (full-text semantics: non-fuzzy / trailing
+  // prefix / symbol phrase) require known test corpus tokens to assert "must hit / must
+  // not hit". They are covered in unit (`tests/unit/api/es-client/query-builders.test.ts`);
+  // here we additionally rely on staging-side smoke (`tests/api-manual-testing.md`).
 
   // `typeOfData` の mapping を keyword から text+kw に変えた結果、トークン単位の全文検索が効くようになったことを
   // 実 ES で確認する。バグが残っていたら typeOfData は keyword 全体一致でしか引けないため、
@@ -541,14 +541,14 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
       const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
       return tokens.length > 0 ? tokens[0] : null
     }
-    let target: { datasetId: string; token: string } | null = null
+    let target: { datasetId: string; humId: string; token: string } | null = null
     for (const d of list.data) {
       for (const exp of d.experiments ?? []) {
         const s = exp.searchable
         const value = s?.tissues?.[0] ?? s?.diseases?.[0]?.label ?? s?.population?.[0] ?? null
         const token = pickToken(value)
         if (token) {
-          target = { datasetId: d.datasetId, token }
+          target = { datasetId: d.datasetId, humId: d.humId, token }
           break
         }
       }
@@ -558,8 +558,11 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
       console.log("  SKIP IT-SEARCH-34: no Dataset with a usable facet token")
       return
     }
+    // Narrow to the target's parent humId so a common facet token (e.g. a tissue
+    // shared by many datasets) cannot push the target out of the result page.
+    // The token still has to hit via all_text — that is what this asserts.
     const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
-      page: 1, limit: 100, lang: "en", query: target.token,
+      page: 1, limit: 100, lang: "en", humId: target.humId, query: target.token,
     })
     expect(status).toBe(200)
     expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
@@ -600,5 +603,37 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     })
     expect(status).toBe(200)
     expect(json.data.some((r) => r.humId === target.humId)).toBe(true)
+  })
+
+  // mixed ID + word query: the ID token is extracted as a humId filter and the
+  // remaining word is AND-matched in the body. Every result stays within the
+  // humId and the source dataset (which carries the word in typeOfData) is present.
+  itWithEs("IT-SEARCH-36: POST /dataset/search query '<humId> <token>' narrows to that humId AND matches the word", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 3)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; humId: string; token: string } | null = null
+    for (const d of list.data) {
+      const token = pickToken(d.typeOfData?.en) ?? pickToken(d.typeOfData?.ja)
+      if (token) {
+        target = { datasetId: d.datasetId, humId: d.humId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-36: no Dataset with a usable typeOfData token")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", query: `${target.humId} ${target.token}`,
+    })
+    expect(status).toBe(200)
+    // ID token → humId filter: every result stays within the parent study.
+    for (const d of json.data) expect(d.humId).toBe(target.humId)
+    // word token → all_text match: the source dataset is present.
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
   })
 })

@@ -133,7 +133,9 @@ services:
     init: true
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.6
+    build:
+      context: docker/elasticsearch
+    image: humandbs-elasticsearch:8.17.6-kuromoji
     container_name: humandbs-${HUMANDBS_ENV}-elasticsearch
     environment:
       - TZ=${HUMANDBS_TZ}

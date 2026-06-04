@@ -4,12 +4,15 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
+import { classifyIdToken } from "@/api/es-client/id-patterns"
 import {
-  buildDatasetMultiMatchQuery,
+  buildDatasetQueryClauses,
   buildDatasetSortSpec,
   buildResearchDateRangeFilters,
-  buildResearchMultiMatchQuery,
+  buildResearchQueryClauses,
   buildResearchSortSpec,
+  classifyFreeTextQuery,
+  hasFreeTextQuery,
   resolveDatasetSort,
   resolveResearchSort,
   versionSortSpec,
@@ -273,276 +276,263 @@ describe("buildResearchSortSpec", () => {
   })
 })
 
-// === buildDatasetMultiMatchQuery ===
+// === Free-text query parsing & clause building ===
 
-interface IdMatchPart {
-  value: string
-  case_insensitive?: boolean
-  boost?: number
-}
+const dump = (v: unknown): string => JSON.stringify(v)
 
-interface ShouldClause {
-  match?: Record<string, { query: string; fuzziness: string }>
-  multi_match?: { query: string; fields: string[]; type: string; fuzziness: string }
-  term?: Record<string, IdMatchPart>
-  prefix?: Record<string, IdMatchPart>
-}
-
-interface BoolShouldQuery {
+interface IdFieldClause {
   bool: {
-    should: ShouldClause[]
-    minimum_should_match: number
+    should: {
+      term?: Record<string, { boost: number }>
+      prefix?: Record<string, { boost: number }>
+    }[]
   }
 }
 
-describe("buildDatasetMultiMatchQuery", () => {
-  it("returns bool.should with an all_text match, typeOfData multi_match, and term/prefix for humId and datasetId", () => {
-    const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
-
-    expect(result.bool.minimum_should_match).toBe(1)
-    // all_text catch-all covers typeOfData / experiments.header / targets / facet values.
-    expect(result.bool.should).toContainEqual({
-      match: {
-        all_text: {
-          query: "cancer",
-          fuzziness: "AUTO:5,12",
-        },
-      },
-    })
-    // typeOfData keeps a dedicated boost on top of the catch-all.
-    expect(result.bool.should).toContainEqual({
-      multi_match: {
-        query: "cancer",
-        fields: [
-          "typeOfData.ja^2",
-          "typeOfData.en^2",
-        ],
-        type: "best_fields",
-        fuzziness: "AUTO:5,12",
-      },
-    })
-    expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
-    expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "cancer", case_insensitive: true, boost: 5 } } })
-    expect(result.bool.should).toContainEqual({ term: { datasetId: { value: "cancer", case_insensitive: true, boost: 10 } } })
-    expect(result.bool.should).toContainEqual({ prefix: { datasetId: { value: "cancer", case_insensitive: true, boost: 5 } } })
+describe("classifyIdToken", () => {
+  it("classifies research humId tokens", () => {
+    expect(classifyIdToken("hum0001")).toBe("humId")
+    expect(classifyIdToken("HUM0001")).toBe("humId")
+    expect(classifyIdToken("hum000")).toBe("humId")
   })
 
-  it("keeps the typeOfData multi_match limited to top-level boosted fields", () => {
-    const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
-    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-
-    // The whole-document coverage now comes from all_text, not from listing
-    // nested fields inside this multi_match.
-    expect(mm?.fields).toEqual(["typeOfData.ja^2", "typeOfData.en^2"])
+  it("classifies every datasetId namespace observed in the corpus", () => {
+    const datasetIds = [
+      "JGAD000001",
+      "DRA000908",
+      "E-GEAD-1051",
+      "MTBKS213",
+      "PRJDB10452",
+      "hum0013.v1.freq.v1",
+      "hum0009v1.CpG.v1",
+    ]
+    for (const id of datasetIds) expect(classifyIdToken(id)).toBe("datasetId")
   })
 
-  it("the all_text match carries the same fuzziness as the typeOfData multi_match", () => {
-    const result = buildDatasetMultiMatchQuery("AR-V7") as BoolShouldQuery
-    const allText = result.bool.should.find(c => c.match)?.match?.all_text
-    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-
-    expect(allText?.fuzziness).toBe("AUTO:5,12")
-    expect(allText?.fuzziness).toBe(mm?.fuzziness)
-    expect(allText?.query).toBe("AR-V7")
-  })
-
-  it("uses case_insensitive: true on every id match clause", () => {
-    const result = buildDatasetMultiMatchQuery("hum0001") as BoolShouldQuery
-    const idClauses = result.bool.should.filter(c => c.term ?? c.prefix)
-
-    expect(idClauses.length).toBe(4)
-    for (const c of idClauses) {
-      const inner = c.term ?? c.prefix
-      const field = Object.values(inner!)[0]
-
-      expect(field.case_insensitive).toBe(true)
+  it("does NOT classify gene / assembly names as IDs (they stay text)", () => {
+    for (const t of ["BRCA1", "HIF-1", "TP53", "GRCh38", "cancer", "RNA-seq", "p53"]) {
+      expect(classifyIdToken(t)).toBeNull()
     }
   })
 
-  it("term boost is greater than prefix boost for both id fields", () => {
-    const result = buildDatasetMultiMatchQuery("anything") as BoolShouldQuery
-    for (const field of ["humId", "datasetId"] as const) {
-      const term = result.bool.should.find(c => c.term?.[field])?.term?.[field]
-      const prefix = result.bool.should.find(c => c.prefix?.[field])?.prefix?.[field]
+  it("keeps a bare humId and the dotted NBDC datasetId disjoint", () => {
+    expect(classifyIdToken("hum0013")).toBe("humId")
+    expect(classifyIdToken("hum0013.v1.freq.v1")).toBe("datasetId")
+  })
+})
 
-      expect(term?.boost ?? 0).toBeGreaterThan(prefix?.boost ?? 0)
+describe("classifyFreeTextQuery", () => {
+  it("routes a single humId to an ID token with no text part", () => {
+    const p = classifyFreeTextQuery("hum0003")
+    expect(p.idTokens).toEqual([{ field: "humId", value: "hum0003" }])
+    expect(p.bareWords).toEqual([])
+    expect(p.phraseTokens).toEqual([])
+  })
+
+  it("routes symbol-bearing datasetIds to ID tokens, not phrases (eval order)", () => {
+    for (const id of ["E-GEAD-1051", "hum0013.v1.freq.v1", "JGAD000001"]) {
+      const p = classifyFreeTextQuery(id)
+      expect(p.idTokens).toEqual([{ field: "datasetId", value: id }])
+      expect(p.phraseTokens).toEqual([])
     }
   })
 
-  // PBT: query string flows into the all_text match, multi_match and id clauses
-  it("PBT: query string is preserved in all_text match, multi_match and id clauses", () => {
-    fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
-          const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-          const allText = result.bool.should.find(c => c.match)?.match?.all_text
+  it("splits a mixed ID + word query into a filter and text", () => {
+    const p = classifyFreeTextQuery("JGAD000001 RNA-seq")
+    expect(p.idTokens).toEqual([{ field: "datasetId", value: "JGAD000001" }])
+    expect(p.phraseTokens).toEqual(["RNA-seq"])
+    expect(p.bareWords).toEqual([])
+  })
 
-          return allText?.query === q
-            && mm?.query === q
-            && result.bool.should.some(c => c.term?.humId?.value === q)
-            && result.bool.should.some(c => c.term?.datasetId?.value === q)
-        },
-      ),
+  it("keeps bare multi-word as bareWords with the last eligible for prefix", () => {
+    const p = classifyFreeTextQuery("lung cancer")
+    expect(p.bareWords).toEqual(["lung", "cancer"])
+    expect(p.idTokens).toEqual([])
+    expect(p.lastIsBare).toBe(true)
+  })
+
+  it("treats a symbol-bearing non-ID word as a phrase token (gene name)", () => {
+    const p = classifyFreeTextQuery("HIF-1")
+    expect(p.phraseTokens).toEqual(["HIF-1"])
+    expect(p.bareWords).toEqual([])
+    expect(p.idTokens).toEqual([])
+  })
+
+  it("keeps a quoted run as one phrase token and disables the trailing prefix", () => {
+    const p = classifyFreeTextQuery("cancer \"whole genome\"")
+    expect(p.bareWords).toEqual(["cancer"])
+    expect(p.phraseTokens).toEqual(["whole genome"])
+    expect(p.lastIsBare).toBe(false)
+  })
+
+  it("yields an empty parse (no clauses) for blank input", () => {
+    for (const q of ["", "   ", "\t"]) {
+      expect(hasFreeTextQuery(classifyFreeTextQuery(q))).toBe(false)
+    }
+  })
+})
+
+describe("buildDatasetQueryClauses", () => {
+  it("ID query uses term/prefix on the id field and never all_text", () => {
+    const s = dump(buildDatasetQueryClauses(classifyFreeTextQuery("hum0003")))
+    expect(s).toContain("\"humId\"")
+    expect(s).toContain("hum0003")
+    expect(s).not.toContain("all_text")
+    expect(s).not.toContain("fuzziness")
+  })
+
+  it("ID clause keeps term boost above prefix boost", () => {
+    const clauses = buildDatasetQueryClauses(classifyFreeTextQuery("JGAD000001")) as unknown as IdFieldClause[]
+    const should = clauses[0].bool.should
+    const term = should.find(c => c.term)?.term?.datasetId.boost ?? 0
+    const prefix = should.find(c => c.prefix)?.prefix?.datasetId.boost ?? 0
+    expect(term).toBeGreaterThan(prefix)
+  })
+
+  it("text query is AND over all_text with no fuzziness", () => {
+    const s = dump(buildDatasetQueryClauses(classifyFreeTextQuery("lung cancer")))
+    expect(s).toContain("all_text")
+    expect(s).toContain("\"operator\":\"and\"")
+    expect(s).not.toContain("fuzziness")
+  })
+
+  it("appends match_phrase_prefix for the trailing bare word (>= 2 chars)", () => {
+    expect(dump(buildDatasetQueryClauses(classifyFreeTextQuery("lung canc")))).toContain("phrase_prefix")
+  })
+
+  it("does not append a trailing prefix for a 1-char last word", () => {
+    expect(dump(buildDatasetQueryClauses(classifyFreeTextQuery("cancer a")))).not.toContain("phrase_prefix")
+  })
+
+  it("does not append a trailing prefix when the last token is quoted", () => {
+    expect(dump(buildDatasetQueryClauses(classifyFreeTextQuery("\"whole genome\"")))).not.toContain("phrase_prefix")
+  })
+
+  it("phrases a symbol word (no split, no prefix)", () => {
+    const s = dump(buildDatasetQueryClauses(classifyFreeTextQuery("HIF-1")))
+    expect(s).toContain("\"type\":\"phrase\"")
+    expect(s).not.toContain("phrase_prefix")
+  })
+
+  it("mixed ID + word keeps both the datasetId filter and the text clause", () => {
+    const s = dump(buildDatasetQueryClauses(classifyFreeTextQuery("JGAD000001 RNA-seq")))
+    expect(s).toContain("JGAD000001")
+    expect(s).toContain("RNA-seq")
+  })
+
+  it("returns no clauses for an empty query", () => {
+    expect(buildDatasetQueryClauses(classifyFreeTextQuery(""))).toEqual([])
+  })
+})
+
+describe("buildResearchQueryClauses", () => {
+  it("humId query filters by humId, never all_text, never datasetId", () => {
+    const s = dump(buildResearchQueryClauses(classifyFreeTextQuery("hum0001"), []))
+    expect(s).toContain("hum0001")
+    expect(s).not.toContain("all_text")
+    expect(s).not.toContain("datasetId")
+  })
+
+  it("datasetId query narrows by resolved parent humIds (no all_text)", () => {
+    const s = dump(buildResearchQueryClauses(classifyFreeTextQuery("JGAD000002"), ["hum0001"]))
+    expect(s).toContain("hum0001")
+    expect(s).not.toContain("all_text")
+  })
+
+  it("a datasetId resolving to zero parents narrows to nothing (not match-all)", () => {
+    const s = dump(buildResearchQueryClauses(classifyFreeTextQuery("JGAD999999"), []))
+    expect(s).toContain("\"terms\":{\"humId\":[]}")
+  })
+
+  it("mixed ID + word keeps the humId filter AND the text clause", () => {
+    const s = dump(buildResearchQueryClauses(classifyFreeTextQuery("hum0001 cancer"), []))
+    expect(s).toContain("hum0001")
+    expect(s).toContain("all_text")
+    expect(s).toContain("\"operator\":\"and\"")
+  })
+
+  it("never emits a datasetId field clause (Research has no datasetId)", () => {
+    expect(dump(buildResearchQueryClauses(classifyFreeTextQuery("cancer genomics"), []))).not.toContain("datasetId")
+  })
+
+  it("returns no clauses for an empty query", () => {
+    expect(buildResearchQueryClauses(classifyFreeTextQuery(""), [])).toEqual([])
+  })
+})
+
+describe("free-text query invariants (PBT)", () => {
+  const idArb = fc.constantFrom(
+    "hum0001", "JGAD000001", "DRA000908", "E-GEAD-1051", "MTBKS213", "PRJDB10452", "hum0013.v1.freq.v1",
+  )
+
+  // ID route guarantees a body string never pulls in an ID query (the reason
+  // fuzziness was dropped).
+  it("PBT: an ID-shaped query never produces an all_text clause", () => {
+    fc.assert(
+      fc.property(idArb, (id) => {
+        const parsed = classifyFreeTextQuery(id)
+        const d = dump(buildDatasetQueryClauses(parsed))
+        const r = dump(buildResearchQueryClauses(parsed, ["hum0001"]))
+
+        return !d.includes("all_text") && !r.includes("all_text")
+      }),
     )
   })
 
-  // PBT: term.boost > prefix.boost invariant for any query
-  it("PBT: term.humId.boost > prefix.humId.boost for any query", () => {
+  it("PBT: no clause ever carries fuzziness", () => {
     fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
-          const term = result.bool.should.find(c => c.term?.humId)?.term?.humId.boost ?? 0
-          const prefix = result.bool.should.find(c => c.prefix?.humId)?.prefix?.humId.boost ?? 0
+      fc.property(fc.string({ minLength: 1 }), (q) => {
+        const parsed = classifyFreeTextQuery(q)
+        const d = dump(buildDatasetQueryClauses(parsed))
+        const r = dump(buildResearchQueryClauses(parsed, []))
 
-          return term > prefix
-        },
-      ),
+        return !d.includes("fuzziness") && !r.includes("fuzziness")
+      }),
     )
   })
 
-  // PBT: minimum_should_match is always 1
-  it("PBT: minimum_should_match is always 1", () => {
+  // A gene symbol with a separator must be phrased, never AND-split into tokens
+  // that inflate hit counts.
+  it("PBT: a symbol-bearing non-ID word is phrased, never AND-split", () => {
+    const geneArb = fc.tuple(
+      fc.constantFrom("BRCA", "HIF", "TP", "CD", "IL", "FOXP", "EGFR", "KRAS"),
+      fc.integer({ min: 1, max: 99 }),
+    ).map(([sym, n]) => `${sym}-${n}`)
     fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+      fc.property(geneArb, (gene) => {
+        const parsed = classifyFreeTextQuery(gene)
 
-          return result.bool.minimum_should_match === 1
-        },
-      ),
+        return classifyIdToken(gene) === null
+          && parsed.phraseTokens.includes(gene)
+          && parsed.bareWords.length === 0
+      }),
     )
   })
 
-  // PBT: hostile / boundary inputs must still produce a structurally-valid
-  // ES query (no object injection, no missing should clause).
-  it("PBT: ES reserved chars / unicode / huge / null-byte inputs remain literal in the query", () => {
+  // Hostile / boundary inputs must build a structurally-valid clause array without
+  // throwing or injecting.
+  it("PBT: hostile / boundary inputs build a clause array without throwing", () => {
     const reserved = fc.constantFrom(
       "+", "-", "=", "&", "|", ">", "<", "!", "(", ")", "{", "}", "[", "]",
       "^", "\"", "~", "*", "?", ":", "\\", "/",
     )
     const hostile = fc.oneof(
-      // ES reserved characters in arbitrary combinations
       fc.array(reserved, { minLength: 1, maxLength: 32 }).map(a => a.join("")),
-      // Newlines + tabs
       fc.constantFrom("\n", "\r\n", "\t", " \t\n "),
-      // Emoji / surrogate pair
       fc.constantFrom("🌸", "👩‍🔬", "𝕏"),
-      // Long input (1024+ chars)
       fc.string({ minLength: 1024, maxLength: 2048 }),
-      // Null byte
       fc.constantFrom("\0", "abc\0def"),
-      // Pure whitespace
       fc.constantFrom("   ", "\t\t", "  \t  "),
     )
     fc.assert(
       fc.property(hostile, (q) => {
-        const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
-        const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-        const allText = result.bool.should.find(c => c.match)?.match?.all_text
-        return allText?.query === q
-          && typeof allText.query === "string"
-          && mm?.query === q
-          && result.bool.should.some(c => c.term?.humId?.value === q)
+        const parsed = classifyFreeTextQuery(q)
+        const d = buildDatasetQueryClauses(parsed)
+        const r = buildResearchQueryClauses(parsed, [])
+
+        return Array.isArray(d) && Array.isArray(r)
       }),
       { numRuns: 80 },
-    )
-  })
-})
-
-// === buildResearchMultiMatchQuery ===
-
-describe("buildResearchMultiMatchQuery", () => {
-  it("returns bool.should with an all_text match, title multi_match plus term/prefix for humId only", () => {
-    const result = buildResearchMultiMatchQuery("genomics") as BoolShouldQuery
-
-    expect(result.bool.minimum_should_match).toBe(1)
-    // all_text catch-all covers title / summary / nested provider, grant, publication text.
-    expect(result.bool.should).toContainEqual({
-      match: {
-        all_text: {
-          query: "genomics",
-          fuzziness: "AUTO:5,12",
-        },
-      },
-    })
-    // title keeps a dedicated boost on top of the catch-all.
-    expect(result.bool.should).toContainEqual({
-      multi_match: {
-        query: "genomics",
-        fields: [
-          "title.ja^2",
-          "title.en^2",
-        ],
-        type: "best_fields",
-        fuzziness: "AUTO:5,12",
-      },
-    })
-    expect(result.bool.should).toContainEqual({ term: { humId: { value: "genomics", case_insensitive: true, boost: 10 } } })
-    expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "genomics", case_insensitive: true, boost: 5 } } })
-  })
-
-  it("does not include datasetId clauses (Research domain only)", () => {
-    const result = buildResearchMultiMatchQuery("hum0001")
-
-    expect(JSON.stringify(result)).not.toContain("datasetId")
-  })
-
-  it("term boost is greater than prefix boost for humId", () => {
-    const result = buildResearchMultiMatchQuery("anything") as BoolShouldQuery
-    const term = result.bool.should.find(c => c.term?.humId)?.term?.humId
-    const prefix = result.bool.should.find(c => c.prefix?.humId)?.prefix?.humId
-
-    expect(term?.boost ?? 0).toBeGreaterThan(prefix?.boost ?? 0)
-  })
-
-  // PBT: query string flows into the all_text match, multi_match and term.humId.value
-  it("PBT: query string is preserved in all_text match, multi_match and humId clauses", () => {
-    fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildResearchMultiMatchQuery(q) as BoolShouldQuery
-          const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-          const allText = result.bool.should.find(c => c.match)?.match?.all_text
-
-          return allText?.query === q
-            && mm?.query === q
-            && result.bool.should.some(c => c.term?.humId?.value === q)
-        },
-      ),
-    )
-  })
-
-  // PBT: Research result never contains datasetId
-  it("PBT: never contains datasetId field for any query", () => {
-    fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildResearchMultiMatchQuery(q)
-
-          return !JSON.stringify(result).includes("datasetId")
-        },
-      ),
-    )
-  })
-
-  // PBT: minimum_should_match is always 1
-  it("PBT: minimum_should_match is always 1", () => {
-    fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        (q) => {
-          const result = buildResearchMultiMatchQuery(q) as BoolShouldQuery
-
-          return result.bool.minimum_should_match === 1
-        },
-      ),
     )
   })
 })

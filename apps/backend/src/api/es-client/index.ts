@@ -95,8 +95,11 @@ export {
 export {
   buildDatasetSortSpec,
   buildResearchSortSpec,
-  buildDatasetMultiMatchQuery,
-  buildResearchMultiMatchQuery,
+  classifyFreeTextQuery,
+  hasFreeTextQuery,
+  buildDatasetQueryClauses,
+  buildResearchQueryClauses,
+  datasetIdTokens,
   buildResearchDateRangeFilters,
 } from "@/api/es-client/query-builders"
 

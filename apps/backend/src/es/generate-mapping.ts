@@ -6,6 +6,8 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
+import { INDEX_ANALYSIS_SETTINGS } from "./analysis"
+
 type MappingProperty = estypes.MappingProperty
 type PropertyName = estypes.PropertyName
 
@@ -186,9 +188,18 @@ function generateProperties(
 }
 
 /**
- * ES mapping structure
+ * ES index body: analysis settings + mappings.
+ *
+ * `settings.analysis` carries the kuromoji default analyzer (see analysis.ts);
+ * it travels with the mapping so every index-creation site (load-mappings,
+ * bootstrap-it-index minimal seed) applies the same analyzer without extra
+ * wiring. The `--from-production` reindex path forwards the live analysis
+ * instead.
  */
 export interface EsMapping {
+  settings: {
+    analysis: typeof INDEX_ANALYSIS_SETTINGS
+  }
   mappings: {
     dynamic: false | "strict"
     properties: Record<PropertyName, MappingProperty>
@@ -196,10 +207,13 @@ export interface EsMapping {
 }
 
 /**
- * Generate full ES mapping from schema
+ * Generate full ES index body (settings + mappings) from schema
  */
 export function generateMapping(schema: Record<string, FieldDef>): EsMapping {
   return {
+    settings: {
+      analysis: INDEX_ANALYSIS_SETTINGS,
+    },
     mappings: {
       dynamic: false,
       properties: generateProperties(schema),

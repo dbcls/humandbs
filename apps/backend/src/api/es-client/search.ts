@@ -22,11 +22,14 @@ import {
 } from "@/api/es-client/helpers"
 import type { FacetCountField } from "@/api/es-client/helpers"
 import {
-  buildDatasetMultiMatchQuery,
+  buildDatasetQueryClauses,
   buildDatasetSortSpec,
   buildResearchDateRangeFilters,
-  buildResearchMultiMatchQuery,
+  buildResearchQueryClauses,
   buildResearchSortSpec,
+  classifyFreeTextQuery,
+  datasetIdTokens,
+  hasFreeTextQuery,
   resolveDatasetSort,
   resolveResearchSort,
   versionSortSpec,
@@ -506,9 +509,14 @@ export const searchDatasets = async (
   const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
   const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
+  // Classify the free-text query once: ID tokens → exact lookup, natural language
+  // → all_text. `hasTextQuery` (not `!!q`) drives the sort default so a
+  // whitespace-only query falls back to datasetId order.
+  const parsed = classifyFreeTextQuery(q ?? "")
+  const hasTextQuery = hasFreeTextQuery(parsed)
   // Resolve sort default here so GET and POST search paths share the same
   // "query → relevance, otherwise datasetId" rule (docs/api-guide.md).
-  const resolvedSort = resolveDatasetSort(sort, !!q)
+  const resolvedSort = resolveDatasetSort(sort, hasTextQuery)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -540,13 +548,11 @@ export const searchDatasets = async (
 
   must.push(...buildDatasetFilterClauses(params))
 
-  // Full-text search
-  if (q) {
-    must.push(buildDatasetMultiMatchQuery(q))
-  }
+  // Full-text search (ID exact-lookup + natural-language AND match)
+  must.push(...buildDatasetQueryClauses(parsed))
 
   // Sort configuration
-  const sortSpec = buildDatasetSortSpec(resolvedSort, order, !!q)
+  const sortSpec = buildDatasetSortSpec(resolvedSort, order, hasTextQuery)
 
   interface Aggs {
     uniq_ids: estypes.AggregationsCardinalityAggregate
@@ -665,9 +671,11 @@ export const searchResearches = async (
     includeFacets, status: requestedStatus,
   } = params
   const from = (page - 1) * limit
+  const parsed = classifyFreeTextQuery(q ?? "")
+  const hasTextQuery = hasFreeTextQuery(parsed)
   // Resolve sort default here so GET and POST paths share the same
   // "query → relevance, otherwise humId" rule (docs/api-guide.md).
-  const resolvedSort = resolveResearchSort(sort, !!q)
+  const resolvedSort = resolveResearchSort(sort, hasTextQuery)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -723,17 +731,17 @@ export const searchResearches = async (
     must.push({ terms: { humId: humIdFilter } })
   }
 
-  // Full-text search
-  // multi_match (title/summary/humId) と、Dataset index で datasetId マッチから引いた humId 集合を
-  // OR 合流する。これで "JGAD000002" を入れても親 Research (hum0001) がヒットする。
-  if (q) {
-    const datasetHumIds = await getHumIdsByDatasetIdQuery(q)
-    const qShould: estypes.QueryDslQueryContainer[] = [buildResearchMultiMatchQuery(q)]
-    if (datasetHumIds.length > 0) {
-      qShould.push({ terms: { humId: datasetHumIds } })
-    }
-    must.push({ bool: { should: qShould, minimum_should_match: 1 } })
+  // Full-text search. datasetId tokens cannot match Research directly, so resolve
+  // them to parent humIds via the Dataset index (this is how "JGAD000002" returns
+  // its parent Research hum0001). Only ID-route datasetId tokens trigger the
+  // lookup — a plain text query does not.
+  const dsIdTokens = datasetIdTokens(parsed)
+  let datasetParentHumIds: string[] = []
+  if (dsIdTokens.length > 0) {
+    const resolved = await Promise.all(dsIdTokens.map(getHumIdsByDatasetIdQuery))
+    datasetParentHumIds = [...new Set(resolved.flat())]
   }
+  must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds))
 
   // Date range filters
   must.push(...buildResearchDateRangeFilters({
@@ -741,7 +749,7 @@ export const searchResearches = async (
   }))
 
   // Sort configuration
-  const sortSpec = buildResearchSortSpec(resolvedSort, order, lang, !!q)
+  const sortSpec = buildResearchSortSpec(resolvedSort, order, lang, hasTextQuery)
 
   interface ResearchAggs {
     all_humIds?: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
