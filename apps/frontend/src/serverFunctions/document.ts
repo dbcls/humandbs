@@ -33,6 +33,9 @@ export const $getDocuments = createServerFn({
     }),
   )
   .handler(async ({ data }) => {
+
+
+
     const documents = await db.query.document.findMany({
       where: data.q
         ? (table) =>

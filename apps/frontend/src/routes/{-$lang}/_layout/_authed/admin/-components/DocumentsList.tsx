@@ -36,7 +36,7 @@ export function DocumentsList({
   onSelectDoc,
   selectedContentId,
 }: {
-  onSelectDoc: (id: string) => void;
+  onSelectDoc: (id: string | undefined) => void;
   selectedContentId: string | undefined;
 }) {
   const { q } = routeApi.useSearch();
@@ -138,6 +138,7 @@ export function DocumentsList({
       description: `Are you sure you want to delete document ${contentId}?`,
       actionLabel: "Delete",
       onAction: () => {
+        onSelectDoc(undefined);
         deleteDocument(contentId);
       },
     });

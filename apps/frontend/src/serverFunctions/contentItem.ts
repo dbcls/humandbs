@@ -1,19 +1,26 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, exists, like, or } from "drizzle-orm";
+import { notFound } from "@tanstack/router-core";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import type { Locale } from "@/config/i18n";
-import { i18n, localeSchema } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
-import type { DocVersionStatus } from "@/db/schema";
-import { contentItem, contentTranslation, DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import type { ContentTranslationSelect, DocumentVersionStatus, User } from "@/db/types";
+import { contentItem, DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import type { ContentTranslationSelect, DocumentVersionStatus } from "@/db/types";
 import { contentTranslationInsertSchema, statusSchema } from "@/db/types";
-import { buildConflictUpdateColumns } from "@/db/utils";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import type {
+  ContentItemRaw,
+  ContentItemSearchQuery,
+  ContentItemsListItemRaw,
+} from "@/repositories/contentItem";
+import { createContentRepo } from "@/repositories/contentItem";
 
-export function getContentsListQueryOptions(params?: { q?: string }) {
+const contentRepo = createContentRepo(db);
+
+export function getContentsListQueryOptions(params?: ContentItemSearchQuery) {
   return queryOptions({
     queryKey: ["contents", params],
     queryFn: () => $getContentItems({ data: params ?? {} }),
@@ -30,14 +37,6 @@ export function getContentQueryOptions(id: string) {
   });
 }
 
-export interface ContentItemsListItem {
-  id: string;
-  translations: {
-    lang: Locale;
-    statuses: Partial<Record<DocVersionStatus, string>>;
-  }[];
-}
-
 const $getContentItems = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
@@ -45,146 +44,24 @@ const $getContentItems = createServerFn({ method: "GET" })
     }),
   )
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ context, data }): Promise<ContentItemsListItem[]> => {
+  .handler(async ({ context, data }): Promise<ContentItemsListItemRaw[]> => {
     context.checkPermission("contents", "list");
 
-    const contentItems = await db.query.contentItem.findMany({
-      where: data.q
-        ? (table) =>
-            exists(
-              db
-                .select({ _: contentTranslation.contentId })
-                .from(contentTranslation)
-                .where(
-                  and(
-                    eq(contentTranslation.contentId, table.id),
-                    or(
-                      like(contentTranslation.title, `%${data.q}%`),
-                      like(contentTranslation.content, `%${data.q}%`),
-                    ),
-                  ),
-                ),
-            )
-        : undefined,
-      with: {
-        translations: {
-          columns: {
-            title: true,
-            lang: true,
-            status: true,
-          },
-        },
-      },
-      columns: {
-        createdAt: false,
-        publishedAt: false,
-        authorId: false,
-      },
-    });
-
-    return contentItems.map((item) => {
-      const translations = item.translations.reduce<
-        {
-          lang: Locale;
-          statuses: Partial<Record<DocVersionStatus, string>>;
-        }[]
-      >((acc, curr) => {
-        const existingLang = acc.find((l) => l.lang === curr.lang);
-
-        if (existingLang) {
-          existingLang.statuses[curr.status] = curr.title;
-          acc.sort((a, b) => a.lang.localeCompare(b.lang));
-        } else {
-          acc.push({
-            lang: curr.lang as Locale,
-            statuses: { [curr.status]: curr.title },
-          });
-        }
-
-        return acc;
-      }, []);
-
-      return {
-        id: item.id,
-        translations,
-      };
-    });
+    return await contentRepo.getItems(data);
   });
 
 export type ContentTranslationResponse = Omit<ContentTranslationSelect, "lang" | "contentId">;
 
-export interface ContentItemResponse {
-  author?: Pick<User, "name" | "email">;
-  hideTOC: boolean;
-  translations: Partial<
-    Record<Locale, Partial<Record<DocumentVersionStatus, ContentTranslationResponse>>>
-  >;
-}
-
 export const $getContentItem = createServerFn({ method: "GET" })
   .inputValidator(z.string())
-  .handler(async ({ data }): Promise<ContentItemResponse> => {
-    const contentId = data;
-    const content = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-      with: {
-        author: {
-          columns: {
-            name: true,
-            email: true,
-          },
-        },
-        translations: {
-          columns: {
-            title: true,
-            content: true,
-            lang: true,
-            updatedAt: true,
-            status: true,
-          },
-        },
-      },
-      columns: {
-        authorId: false,
-        hideTOC: true,
-        id: true,
-        createdAt: false,
-        publishedAt: false,
-      },
-    });
+  .handler(async ({ data }): Promise<ContentItemRaw> => {
+    const item = await contentRepo.getItem(data);
 
-    const translations =
-      content?.translations.reduce(
-        (acc, curr) => {
-          const { title, content, updatedAt, status } = curr;
-          const locale = curr.lang as Locale;
-          if (!acc[locale]) acc[locale] = {};
-
-          acc[locale][status] = {
-            title,
-            content,
-            updatedAt,
-            status,
-          };
-          return acc;
-        },
-        {} as ContentItemResponse["translations"],
-      ) || ({} as ContentItemResponse["translations"]);
-
-    const presentLocales = Object.keys(translations) as Locale[];
-
-    // copy published content into draft if no draft present
-    for (const locale of presentLocales) {
-      if (!translations[locale]?.draft && translations[locale]?.published) {
-        translations[locale].draft = { ...translations[locale].published };
-      }
+    if (!item) {
+      throw notFound();
     }
 
-    return {
-      author: content?.author,
-      hideTOC: content?.hideTOC ?? true,
-      translations,
-    };
+    return item;
   });
 
 /** Update hideTOC flag for a content item */
@@ -194,7 +71,7 @@ export const $updateContentItemHideTOC = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("contents", "update");
 
-    await db.update(contentItem).set({ hideTOC: data.hideTOC }).where(eq(contentItem.id, data.id));
+    await contentRepo.updateItemHideTOC(data.id, data.hideTOC);
   });
 
 export function getContentTranslationQueryOptions(data: {
@@ -230,46 +107,41 @@ export type GetContentItemTranslationParams = z.infer<typeof getContentItemTrans
 export const $getContentItemTranslation = createServerFn({
   method: "GET",
 })
+  .middleware([hasPermissionMiddleware])
   .inputValidator(getContentItemTranslationParamsSchema)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    context.checkPermission("contents", "view");
+
     const { id, lang, status } = data;
-    const translation = await db.query.contentTranslation.findFirst({
-      where: (table, { and, eq }) =>
-        and(eq(table.contentId, id), eq(table.lang, lang), eq(table.status, status)),
-      with: {
-        contentItem: {
-          columns: {
-            hideTOC: true,
-          },
-        },
-      },
-      columns: {
-        title: true,
-        content: true,
-        lang: true,
-      },
-    });
 
-    if (!translation) {
-      throw new Error(
-        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`,
-      );
-    }
+    const translation = await contentRepo.getItemTranslation(id, lang, status);
 
-    const { contentItem, ...rest } = translation;
+    return translation;
+  });
 
-    return { ...rest, hideTOC: translation.contentItem.hideTOC };
+export const $getPublishedContentItemTranslation = createServerFn()
+  .inputValidator(
+    z.object({
+      id: z.string(),
+      lang: localeSchema,
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { id, lang } = data;
+
+    const translation = await contentRepo.getItemTranslation(
+      id,
+      lang,
+      DOCUMENT_VERSION_STATUS.PUBLISHED,
+    );
+
+    return translation;
   });
 
 export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
   .inputValidator(z.string())
   .handler(async ({ data }) => {
-    const contentId = data;
-    const content = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-    });
-
-    return !!content;
+    return await contentRepo.isExists(data);
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })
@@ -282,34 +154,7 @@ export const $createContentItem = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("contents", "create");
 
-    const id = data.id;
-
-    const user = context.user;
-
-    const newContentItem = await db.transaction(async (tx) => {
-      const newContentItem = await tx
-        .insert(contentItem)
-        .values({
-          id,
-          authorId: user.id,
-        })
-        .returning();
-
-      // add empty contents
-      for (const locale of i18n.locales) {
-        await tx.insert(contentTranslation).values({
-          contentId: newContentItem[0].id,
-          lang: locale,
-          status: DOCUMENT_VERSION_STATUS.DRAFT,
-          title: "",
-          content: "",
-        });
-      }
-
-      return newContentItem;
-    });
-
-    return newContentItem[0];
+    return await contentRepo.create(data.id, context.user.id);
   });
 
 export const $deleteContentItem = createServerFn({ method: "POST" })
@@ -361,22 +206,10 @@ export const $saveContentItemTranslationDraft = createServerFn({
 })
   .middleware([hasPermissionMiddleware])
   .inputValidator(upsertContentItemTranslationDraftSchema)
-  .handler(async ({ data }) => {
-    const result = await db
-      .insert(contentTranslation)
-      .values({
-        lang: data.lang,
-        contentId: data.id,
-        status: DOCUMENT_VERSION_STATUS.DRAFT,
-        content: data.translation.content,
-        title: data.translation.title,
-      })
-      .onConflictDoUpdate({
-        target: [contentTranslation.contentId, contentTranslation.lang, contentTranslation.status],
-        set: buildConflictUpdateColumns(contentTranslation, ["content", "title"]),
-      })
-      .returning();
-    return result;
+  .handler(async ({ data, context }) => {
+    context.checkPermission("contents", "update");
+
+    return await contentRepo.saveTranslationDraft(data.id, data.lang, data.translation);
   });
 
 export type SelectContentItemParams = z.infer<typeof selectContentItemSchema>;
@@ -389,39 +222,12 @@ export type PublishContentItemResponse = ContentTranslationSelect & {
 export const $publishContentItemDraftTranslation = createServerFn({
   method: "POST",
 })
+  .middleware([hasPermissionMiddleware])
   .inputValidator(selectContentItemSchema)
-  .handler(async ({ data }): Promise<PublishContentItemResponse> => {
-    const draftTranslation = await db.query.contentTranslation.findFirst({
-      where: (table, { and, eq }) =>
-        and(
-          eq(table.contentId, data.id),
-          eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-        ),
-    });
+  .handler(async ({ data, context }): Promise<PublishContentItemResponse> => {
+    context.checkPermission("contents", "update");
 
-    if (!draftTranslation) {
-      throw new Error("Draft translation not found");
-    }
-
-    // Create or update the published version while keeping the draft
-    const [result] = await db
-      .insert(contentTranslation)
-      .values({
-        contentId: data.id,
-        lang: data.lang,
-        status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-        title: draftTranslation.title,
-        content: draftTranslation.content,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [contentTranslation.contentId, contentTranslation.lang, contentTranslation.status],
-        set: buildConflictUpdateColumns(contentTranslation, ["title", "content", "updatedAt"]),
-      })
-      .returning();
-
-    return result as PublishContentItemResponse;
+    return await contentRepo.publishTranslationDraft(data.id, data.lang);
   });
 
 // Unpublish - delete published
@@ -433,18 +239,7 @@ export const $unpublishContentItemTranslation = createServerFn({
   .handler(async ({ context, data }) => {
     context.checkPermission("contents", "update");
 
-    const [result] = await db
-      .delete(contentTranslation)
-      .where(
-        and(
-          eq(contentTranslation.contentId, data.id),
-          eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-        ),
-      )
-      .returning();
-
-    return result;
+    await contentRepo.unpublishTranslation(data.id, data.lang);
   });
 
 // reset draft to currently available published translation. if no translasion is published, throw an error
@@ -456,34 +251,5 @@ export const $resetContentItemTranslationDraft = createServerFn({
   .handler(async ({ data, context }) => {
     context.checkPermission("contents", "update");
 
-    const publishedTranslation = await db.query.contentTranslation.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.contentId, data.id),
-          eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-        ),
-    });
-
-    if (!publishedTranslation) {
-      throw new Error("No published translation found");
-    }
-
-    const [result] = await db
-      .update(contentTranslation)
-      .set({
-        content: publishedTranslation.content,
-        title: publishedTranslation.title,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(contentTranslation.contentId, data.id),
-          eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT),
-        ),
-      )
-      .returning();
-
-    return result;
+    return await contentRepo.resetDraft(data.id, data.lang);
   });

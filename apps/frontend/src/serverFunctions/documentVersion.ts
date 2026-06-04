@@ -15,7 +15,7 @@ import type {
 } from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
-import { $getContentItemTranslation } from "./contentItem";
+import { $getContentItemTranslation, $getPublishedContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
@@ -326,8 +326,8 @@ export const $getLatestDocumentOrContent = createServerFn()
     }
 
     try {
-      const content = await $getContentItemTranslation({
-        data: { id, lang, status: "published" },
+      const content = await $getPublishedContentItemTranslation({
+        data: { id, lang },
       });
       return content;
     } catch {

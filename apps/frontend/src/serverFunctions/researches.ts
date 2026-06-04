@@ -320,7 +320,6 @@ export const $listResearches = createServerFn()
         accessToken ?? undefined,
       );
     } else {
-      console.log("searching by text query ", q);
       return api.searchResearches(
         {
           query: q,
