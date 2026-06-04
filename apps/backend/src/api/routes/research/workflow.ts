@@ -3,7 +3,7 @@
  *
  * Handlers for status transition operations (submit, approve, reject, unpublish).
  */
-import type { OpenAPIHono, RouteConfig } from "@hono/zod-openapi"
+import type { OpenAPIHono } from "@hono/zod-openapi"
 import type { Context } from "hono"
 
 import { ConflictError } from "@/api/errors"
@@ -18,9 +18,6 @@ import {
   rejectRoute,
   unpublishRoute,
 } from "./routes"
-
-/** Research document with optimistic locking fields (set by middleware) */
-type ResearchWithSeqNo = EsResearch & { seqNo: number; primaryTerm: number }
 
 /**
  * Compute version updates (latestVersion/draftVersion) for a status transition
@@ -67,7 +64,7 @@ const createStatusTransitionHandler = (
 ) => {
   return async (c: Context) => {
     // Research is preloaded by middleware
-    const research = c.get("research") as ResearchWithSeqNo
+    const research = c.get("research")
     const { humId, seqNo, primaryTerm, status } = research
 
     // Validate transition
@@ -102,28 +99,28 @@ export function registerWorkflowHandlers(router: OpenAPIHono): void {
   // POST /research/{humId}/submit
   // Middleware: loadResearchAndAuthorize({ requireOwnership: true })
   router.openapi(
-    submitRoute as RouteConfig,
+    submitRoute,
     createStatusTransitionHandler("submit", "review"),
   )
 
   // POST /research/{humId}/approve
   // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
-    approveRoute as RouteConfig,
+    approveRoute,
     createStatusTransitionHandler("approve", "published"),
   )
 
   // POST /research/{humId}/reject
   // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
-    rejectRoute as RouteConfig,
+    rejectRoute,
     createStatusTransitionHandler("reject", "draft"),
   )
 
   // POST /research/{humId}/unpublish
   // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
-    unpublishRoute as RouteConfig,
+    unpublishRoute,
     createStatusTransitionHandler("unpublish", "draft"),
   )
 }

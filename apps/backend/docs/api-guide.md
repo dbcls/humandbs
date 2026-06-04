@@ -221,28 +221,37 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 
 ### フリーテキスト検索の挙動
 
-`query` パラメータは本文フィールドと ID フィールドを横断検索する。
+`query` パラメータはドキュメント全体（本文 + facet 値）と ID フィールドを横断検索する。
 
 | 入力例 | ヒット経路 |
 |---|---|
 | `hum0001` | `humId` の完全一致 |
 | `hum000` | `humId` の前方一致 |
 | `JGAD000002` | Dataset index を引き、親 `humId` 経由で Research をヒット |
-| `cancer` | 本文（`title`, `summary.aims.text`, etc.）の全文検索 |
-| `hum0001 cancer` | ID 節は完全一致しないので空振り、本文側で `cancer` がヒット |
+| `cancer` | `all_text`（ドキュメント全体の catch-all）の全文検索 |
+| `skin` | Dataset の facet 値（`tissues` 等）にも `all_text` 経由でヒット |
+| `hum0001 cancer` | ID 節は完全一致しないので空振り、`all_text` 側で `cancer` がヒット |
 
 ID マッチは大文字小文字を区別しない。完全一致は `boost` でスコア最上位に並ぶ。
 
-検索対象フィールド:
+#### catch-all field (`all_text`)
 
-- **Research**: `title`, `summary.aims.text`, `summary.methods.text`, `summary.targets.text` (本文、いずれも text) / `humId` (ID) / `datasetId` 経由
-- **Dataset**: `typeOfData` (top-level text、`.ja` / `.en` に `^2` の boost) / `experiments.searchable.targets` (nested text、ES のルールにより `nested` クエリで包んで叩く) / `humId`, `datasetId` (ID)
+各 index は root に `all_text`（text 型）を持ち、自然文テキストと facet keyword を `copy_to` で集約する。フリーテキスト検索はこの `all_text` への単一 `match` でドキュメント全体（nested 配下を含む）を横断する。加えて `title`（Research）/ `typeOfData`（Dataset）は個別フィールドにも boost 付きでマッチさせ、スコア上位に並べる（ハイブリッド構成、`apps/backend/src/api/es-client/query-builders.ts § buildResearchMultiMatchQuery` / `§ buildDatasetMultiMatchQuery`）。
 
-`typeOfData` と `experiments.searchable.targets` は両方とも text 型なので standard analyzer でトークナイズされ、`query=NGS` のような部分トークンでも `"NGS (Next-Generation Sequencing) ..."` のような値にヒットする。後者は `experiments` が nested 型なので multi_match では取れず、独立した `nested { path: "experiments" }` 句として組み立てている (`apps/backend/src/api/es-client/query-builders.ts § buildDatasetMultiMatchQuery`)。
+`all_text` に集約する値:
+
+- **Research**: `title`, `summary.aims/methods/targets` の本文に加え、nested 配下の `dataProvider.name`, `researchProject.name`, `grant.title`, `grant.agency.name`, `relatedPublication.title`, `controlledAccessUser.name` 等の自然文テキスト
+- **Dataset**: `typeOfData`, `experiments.header`, `experiments.searchable.targets` の本文に加え、facet 値 keyword（`criteria`, `diseases.label`, `tissues`, `population`, `cohorts`, `assayType`, `platforms.vendor/model`, `sex`, `ageGroup`, `fileTypes` 等）
+
+`all_text` に含めないもの: ID / コード（`humId`, `datasetId`, `doi`, `icd10`, policy id）、数値・boolean フィールド、URL。ID は専用の term / prefix 経路で扱う。
+
+**取りこぼし**: `experiments.data`（実験メタデータ本文）は `flattened` 型で、Elasticsearch の仕様上 `copy_to` のソースにできないため `all_text` には含まれない。
+
+`all_text` は standard analyzer でトークナイズされ、`query=NGS` のような部分トークンでも `"NGS (Next-Generation Sequencing) ..."` のような値にヒットする。`all_text` は `copy_to` のターゲット（index 時のみ書き込まれる write-time フィールド）なので `_source` には現れず、Zod schema にも含まれない。
 
 ### 全文検索の fuzziness
 
-全文検索（`multi_match`）には Elasticsearch の `fuzziness: "AUTO:5,12"` を設定:
+全文検索（`all_text` への `match` と `title` / `typeOfData` の `multi_match`）には Elasticsearch の `fuzziness: "AUTO:5,12"` を設定:
 
 | トークン長 | 許容 Levenshtein 距離 |
 |---|---|

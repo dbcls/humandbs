@@ -4,10 +4,16 @@
  * Single source of truth: Zod schemas from @/crawler/types
  * ES mapping is generated using explicit field definitions.
  */
-import { f, generateMapping } from "./generate-mapping"
+import { CATCH_ALL_FIELD as C, f, generateMapping } from "./generate-mapping"
 
 /**
  * Dataset schema definition
+ *
+ * Text fields and facet-value keywords carry `copy_to: all_text` so free-word
+ * search hits the whole document via a single `match` on `all_text`.
+ * Excluded from the catch-all: IDs / codes (datasetId, icd10, policy id),
+ * numeric / boolean fields, and `experiments.data` (a `flattened` field, which
+ * Elasticsearch does not allow as a `copy_to` source — see api-guide.md).
  */
 export const datasetSchema = {
   // Identifiers
@@ -16,63 +22,66 @@ export const datasetSchema = {
   humId: f.keyword(),
   humVersionId: f.keyword(),
 
+  // Catch-all full-text field (copy_to target; not present in _source)
+  all_text: f.text(),
+
   // Dates
   versionReleaseDate: f.date(),
   releaseDate: f.date(),
 
   // Classification
-  criteria: f.keyword(),
-  typeOfData: f.bilingualTextKw(),
+  criteria: f.keyword(C),
+  typeOfData: f.bilingualTextKw(C),
 
   // Experiments (nested for independent querying)
   experiments: f.nested({
     // Header with bilingual text+rawHtml
-    header: f.bilingualTextValueKw(),
+    header: f.bilingualTextValueKw(C),
 
-    // Dynamic key-value data
+    // Dynamic key-value data (flattened cannot be a copy_to source)
     data: f.flattened(),
 
     // Searchable fields (LLM-extracted + rule-based)
     searchable: f.object({
       // Subject/sample info
       subjectCount: f.integer(),
-      subjectCountType: f.keyword(),
-      healthStatus: f.keyword(),
+      subjectCountType: f.keyword(C),
+      healthStatus: f.keyword(C),
 
       // Disease info (nested for label/icd10 relationship)
       diseases: f.nested({
-        label: f.keyword(),
+        label: f.keyword(C),
         icd10: f.keyword(),
       }),
 
       // Biological sample info
-      tissues: f.keyword(),
-      isTumor: f.keyword(),
-      cellLine: f.keyword(),
-      population: f.keyword(),
-      cohorts: f.keyword(),
+      tissues: f.keyword(C),
+      isTumor: f.keyword(C),
+      cellLine: f.keyword(C),
+      population: f.keyword(C),
+      cohorts: f.keyword(C),
 
       // Demographics
-      sex: f.keyword(),
-      ageGroup: f.keyword(),
+      sex: f.keyword(C),
+      ageGroup: f.keyword(C),
 
       // Experimental method
-      assayType: f.keyword(),
-      libraryKits: f.keyword(),
+      assayType: f.keyword(C),
+      libraryKits: f.keyword(C),
 
       // Platform (nested for vendor/model relationship)
       // Facet aggregation is done via nested aggregation in API
       platforms: f.nested({
-        vendor: f.keyword(),
-        model: f.keyword(),
+        vendor: f.keyword(C),
+        model: f.keyword(C),
       }),
-      readType: f.keyword(),
+      readType: f.keyword(C),
       readLength: f.integer(),
 
       // Sequencing quality
       sequencingDepth: f.float(),
       targetCoverage: f.float(),
-      referenceGenome: f.keyword(),
+      referenceGenome: f.keyword(C),
 
       // Variant data
       variantCounts: f.object({
@@ -87,17 +96,17 @@ export const datasetSchema = {
       hasPhenotypeData: f.boolean(),
 
       // Target region (free text with keyword for sorting)
-      targets: f.textKw(),
+      targets: f.textKw(C),
 
       // Data info
-      fileTypes: f.keyword(),
-      processedDataTypes: f.keyword(),
+      fileTypes: f.keyword(C),
+      processedDataTypes: f.keyword(C),
       dataVolumeGb: f.float(),
 
       // Policies (nested for id/name relationship)
       policies: f.nested({
         id: f.keyword(),
-        name: f.bilingualKeyword(),
+        name: f.bilingualKeyword(C),
         url: f.keyword(),
       }),
     }),

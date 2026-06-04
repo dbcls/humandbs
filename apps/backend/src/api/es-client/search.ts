@@ -488,7 +488,7 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
     }
   }
 
-  return facets as FacetsMap
+  return facets
 }
 
 // === Dataset Search ===
@@ -589,7 +589,7 @@ export const searchDatasets = async (
     .map(src => EsDatasetSchema.parse(src))
 
   const total = esTotal(res.aggregations?.uniq_ids?.value ?? 0)
-  const facets = includeFacets ? extractFacets(res.aggregations as unknown as Record<string, unknown>) : undefined
+  const facets = includeFacets ? extractFacets(res.aggregations) : undefined
 
   return {
     data: hits,
@@ -879,7 +879,7 @@ export const searchResearches = async (
       aggs: buildFacetAggregations("humId"),
     })
 
-    facets = extractFacets(facetRes.aggregations as unknown as Record<string, unknown>)
+    facets = extractFacets(facetRes.aggregations)
   }
 
   return {

@@ -1134,6 +1134,30 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/auth.test.ts`
 
+### IT-SEARCH-34: facet 値 (tissue / disease label) のフリーワード検索が all_text 経由でヒット
+
+**endpoint**: `POST /dataset/search` (`query=<facet 値の 1 トークン>`)
+
+**不変条件**:
+- Dataset の `experiments.searchable` の facet 値 (tissues / diseases.label / population) を `query` に入れると、`copy_to` で集約された `all_text` 経由で該当 Dataset が `data[].datasetId` に含まれる
+- facet keyword は元々 free word の対象外。`all_text` catch-all により横断検索される
+
+**回帰元**: `docs/api-guide.md § catch-all field (all_text)` / `es/dataset-schema.ts` / `es-client/query-builders.ts § buildDatasetMultiMatchQuery`
+
+**関連 unit テスト**: `tests/unit/es/schema-consistency.test.ts`、`tests/unit/api/es-client/query-builders.test.ts`
+
+### IT-SEARCH-35: nested text (grant / publication title) のフリーワード検索が all_text 経由でヒット
+
+**endpoint**: `POST /research/search` (`query=<nested text の 1 トークン>`)
+
+**不変条件**:
+- Research の nested 配下の自然文テキスト (grant.title / relatedPublication.title) を `query` に入れると、`copy_to` で集約された `all_text` 経由で親 Research が `data[].humId` に含まれる
+- これらの nested text は元々 free word の対象外。`all_text` catch-all により横断検索される
+
+**回帰元**: `docs/api-guide.md § catch-all field (all_text)` / `es/research-schema.ts` / `es-client/query-builders.ts § buildResearchMultiMatchQuery`
+
+**関連 unit テスト**: `tests/unit/es/schema-consistency.test.ts`、`tests/unit/api/es-client/query-builders.test.ts`
+
 ---
 
 ## IT-DATASET-*: Dataset

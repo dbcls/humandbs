@@ -59,7 +59,7 @@ export const mapJgadToDatasetTemplate = async (
     criteria: "Controlled-access (Type II)",
     typeOfData: {
       ja: null,
-      en: formatTypeOfDataEn(entry.properties as JgadProperties),
+      en: formatTypeOfDataEn(entry.properties),
     },
     experiments: [],
     warnings: [],

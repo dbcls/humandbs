@@ -24,7 +24,20 @@ interface DatasetSummary {
   datasetId: string
   humId: string
   typeOfData?: { ja: string | null; en: string | null } | null
-  experiments?: { searchable?: { targets?: string | null } }[]
+  experiments?: {
+    searchable?: {
+      targets?: string | null
+      tissues?: string[]
+      population?: string[]
+      diseases?: { label: string }[]
+    }
+  }[]
+}
+
+interface ResearchDetail {
+  humId: string
+  grant?: { title?: { ja?: string | null; en?: string | null } }[]
+  relatedPublication?: { title?: { ja?: string | null; en?: string | null } }[]
 }
 
 const fetchJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -516,5 +529,76 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     expect(status).toBe(200)
     expect(json.meta.pagination.total).toBeLessThanOrEqual(baseline.json.meta.pagination.total)
     expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // catch-all (all_text): facet 値 (tissue / disease label / population) を query に入れると、
+  // copy_to で all_text に集約されているため該当 Dataset がヒットする。
+  // facet keyword は元々 free word の対象外だったので、all_text 化前は 0 ヒットになる。
+  itWithEs("IT-SEARCH-34: POST /dataset/search query is a facet value (tissue / disease) -> dataset is in results via all_text", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; token: string } | null = null
+    for (const d of list.data) {
+      for (const exp of d.experiments ?? []) {
+        const s = exp.searchable
+        const value = s?.tissues?.[0] ?? s?.diseases?.[0]?.label ?? s?.population?.[0] ?? null
+        const token = pickToken(value)
+        if (token) {
+          target = { datasetId: d.datasetId, token }
+          break
+        }
+      }
+      if (target) break
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-34: no Dataset with a usable facet token")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // catch-all (all_text): nested 配下の自然文テキスト (grant.title / relatedPublication.title) を
+  // query に入れると、copy_to で all_text に集約されているため親 Research がヒットする。
+  // これらの nested text は元々 free word の対象外だったので、all_text 化前は 0 ヒットになる。
+  itWithEs("IT-SEARCH-35: POST /research/search query is a token from nested text (grant / publication) -> research is in results via all_text", async () => {
+    const list = await fetchJson<SearchResponse<ResearchSummary>>("/research?limit=15")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 3)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { humId: string; token: string } | null = null
+    for (const r of list.data) {
+      const detail = await fetchJson<{ data: ResearchDetail }>(`/research/${r.humId}?lang=en`)
+      const d = detail.data
+      const candidates = [
+        d.grant?.[0]?.title?.en,
+        d.grant?.[0]?.title?.ja,
+        d.relatedPublication?.[0]?.title?.en,
+        d.relatedPublication?.[0]?.title?.ja,
+      ]
+      const token = candidates.map(pickToken).find((t): t is string => t !== null) ?? null
+      if (token) {
+        target = { humId: r.humId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-35: no Research with a usable nested-text token")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<ResearchSummary>>("/research/search", {
+      page: 1, limit: 100, lang: "en", query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((r) => r.humId === target.humId)).toBe(true)
   })
 })

@@ -17,6 +17,7 @@ import type {
   ResearchSearchQuery,
 } from "@/api/types"
 import type { LangType } from "@/api/types/common"
+import { CATCH_ALL_FIELD } from "@/es/generate-mapping"
 
 type QueryContainer = estypes.QueryDslQueryContainer
 
@@ -119,7 +120,17 @@ export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
   bool: {
     minimum_should_match: 1,
     should: [
-      // typeOfData は top-level text なので multi_match で直接叩く。
+      // all_text は copy_to で typeOfData / experiments.header / targets / facet 値を
+      // 集約した catch-all。1 つの match で document 全体を全文検索する。
+      {
+        match: {
+          [CATCH_ALL_FIELD]: {
+            query: q,
+            fuzziness: FULL_TEXT_FUZZINESS,
+          },
+        },
+      },
+      // typeOfData は all_text にも含まれるが、boost を効かせて上位に並べるため個別に残す。
       {
         multi_match: {
           query: q,
@@ -131,20 +142,6 @@ export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
           fuzziness: FULL_TEXT_FUZZINESS,
         },
       },
-      // experiments.searchable.targets は nested 配下なので nested クエリで包む必要がある。
-      {
-        nested: {
-          path: "experiments",
-          query: {
-            match: {
-              "experiments.searchable.targets": {
-                query: q,
-                fuzziness: FULL_TEXT_FUZZINESS,
-              },
-            },
-          },
-        },
-      },
       ...buildIdMatchClauses(["humId", "datasetId"], q),
     ],
   },
@@ -154,18 +151,23 @@ export const buildResearchMultiMatchQuery = (q: string): QueryContainer => ({
   bool: {
     minimum_should_match: 1,
     should: [
+      // all_text は copy_to で title / summary / nested の provider・grant・publication 等を
+      // 集約した catch-all。1 つの match で document 全体を全文検索する。
+      {
+        match: {
+          [CATCH_ALL_FIELD]: {
+            query: q,
+            fuzziness: FULL_TEXT_FUZZINESS,
+          },
+        },
+      },
+      // title は all_text にも含まれるが、boost を効かせて上位に並べるため個別に残す。
       {
         multi_match: {
           query: q,
           fields: [
             "title.ja^2",
             "title.en^2",
-            "summary.aims.ja.text",
-            "summary.aims.en.text",
-            "summary.methods.ja.text",
-            "summary.methods.en.text",
-            "summary.targets.ja.text",
-            "summary.targets.en.text",
           ],
           type: "best_fields",
           fuzziness: FULL_TEXT_FUZZINESS,
@@ -220,7 +222,7 @@ export const convertDatasetFiltersToQuery = (
   // Boolean fields
   if (filters.hasPhenotypeData !== undefined) query.hasPhenotypeData = filters.hasPhenotypeData
 
-  return query as Partial<DatasetSearchQuery>
+  return query
 }
 
 /**

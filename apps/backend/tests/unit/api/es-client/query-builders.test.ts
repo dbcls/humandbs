@@ -281,20 +281,11 @@ interface IdMatchPart {
   boost?: number
 }
 
-interface NestedMatchClause {
-  nested: {
-    path: string
-    query: {
-      match: Record<string, { query: string; fuzziness: string }>
-    }
-  }
-}
-
 interface ShouldClause {
+  match?: Record<string, { query: string; fuzziness: string }>
   multi_match?: { query: string; fields: string[]; type: string; fuzziness: string }
   term?: Record<string, IdMatchPart>
   prefix?: Record<string, IdMatchPart>
-  nested?: NestedMatchClause["nested"]
 }
 
 interface BoolShouldQuery {
@@ -305,11 +296,20 @@ interface BoolShouldQuery {
 }
 
 describe("buildDatasetMultiMatchQuery", () => {
-  it("returns bool.should with typeOfData multi_match, nested targets match, and term/prefix for humId and datasetId", () => {
+  it("returns bool.should with an all_text match, typeOfData multi_match, and term/prefix for humId and datasetId", () => {
     const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
 
     expect(result.bool.minimum_should_match).toBe(1)
-    // typeOfData は top-level text として multi_match で叩く。
+    // all_text catch-all covers typeOfData / experiments.header / targets / facet values.
+    expect(result.bool.should).toContainEqual({
+      match: {
+        all_text: {
+          query: "cancer",
+          fuzziness: "AUTO:5,12",
+        },
+      },
+    })
+    // typeOfData keeps a dedicated boost on top of the catch-all.
     expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "cancer",
@@ -321,44 +321,29 @@ describe("buildDatasetMultiMatchQuery", () => {
         fuzziness: "AUTO:5,12",
       },
     })
-    // experiments.searchable.targets は nested 配下なので nested クエリで包む。
-    expect(result.bool.should).toContainEqual({
-      nested: {
-        path: "experiments",
-        query: {
-          match: {
-            "experiments.searchable.targets": {
-              query: "cancer",
-              fuzziness: "AUTO:5,12",
-            },
-          },
-        },
-      },
-    })
     expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "cancer", case_insensitive: true, boost: 5 } } })
     expect(result.bool.should).toContainEqual({ term: { datasetId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { datasetId: { value: "cancer", case_insensitive: true, boost: 5 } } })
   })
 
-  it("does not include nested fields inside the top-level multi_match (nested fields require a nested wrapper)", () => {
+  it("keeps the typeOfData multi_match limited to top-level boosted fields", () => {
     const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
     const mm = result.bool.should.find(c => c.multi_match)?.multi_match
 
-    expect(mm?.fields).not.toContain("experiments.searchable.targets")
-    // top-level fields only
+    // The whole-document coverage now comes from all_text, not from listing
+    // nested fields inside this multi_match.
     expect(mm?.fields).toEqual(["typeOfData.ja^2", "typeOfData.en^2"])
   })
 
-  it("nested targets clause carries the same fuzziness as the top-level multi_match", () => {
+  it("the all_text match carries the same fuzziness as the typeOfData multi_match", () => {
     const result = buildDatasetMultiMatchQuery("AR-V7") as BoolShouldQuery
-    const nested = result.bool.should.find(c => c.nested)?.nested
+    const allText = result.bool.should.find(c => c.match)?.match?.all_text
     const mm = result.bool.should.find(c => c.multi_match)?.multi_match
 
-    const targetsMatch = nested?.query.match["experiments.searchable.targets"]
-    expect(targetsMatch?.fuzziness).toBe("AUTO:5,12")
-    expect(targetsMatch?.fuzziness).toBe(mm?.fuzziness)
-    expect(targetsMatch?.query).toBe("AR-V7")
+    expect(allText?.fuzziness).toBe("AUTO:5,12")
+    expect(allText?.fuzziness).toBe(mm?.fuzziness)
+    expect(allText?.query).toBe("AR-V7")
   })
 
   it("uses case_insensitive: true on every id match clause", () => {
@@ -384,16 +369,18 @@ describe("buildDatasetMultiMatchQuery", () => {
     }
   })
 
-  // PBT: query string flows into multi_match.query and into id match clauses
-  it("PBT: query string is preserved in multi_match and id clauses", () => {
+  // PBT: query string flows into the all_text match, multi_match and id clauses
+  it("PBT: query string is preserved in all_text match, multi_match and id clauses", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         (q) => {
           const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
           const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+          const allText = result.bool.should.find(c => c.match)?.match?.all_text
 
-          return mm?.query === q
+          return allText?.query === q
+            && mm?.query === q
             && result.bool.should.some(c => c.term?.humId?.value === q)
             && result.bool.should.some(c => c.term?.datasetId?.value === q)
         },
@@ -456,8 +443,10 @@ describe("buildDatasetMultiMatchQuery", () => {
       fc.property(hostile, (q) => {
         const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
         const mm = result.bool.should.find(c => c.multi_match)?.multi_match
-        return mm?.query === q
-          && typeof mm.query === "string"
+        const allText = result.bool.should.find(c => c.match)?.match?.all_text
+        return allText?.query === q
+          && typeof allText.query === "string"
+          && mm?.query === q
           && result.bool.should.some(c => c.term?.humId?.value === q)
       }),
       { numRuns: 80 },
@@ -468,22 +457,26 @@ describe("buildDatasetMultiMatchQuery", () => {
 // === buildResearchMultiMatchQuery ===
 
 describe("buildResearchMultiMatchQuery", () => {
-  it("returns bool.should with multi_match plus term/prefix for humId only", () => {
+  it("returns bool.should with an all_text match, title multi_match plus term/prefix for humId only", () => {
     const result = buildResearchMultiMatchQuery("genomics") as BoolShouldQuery
 
     expect(result.bool.minimum_should_match).toBe(1)
+    // all_text catch-all covers title / summary / nested provider, grant, publication text.
+    expect(result.bool.should).toContainEqual({
+      match: {
+        all_text: {
+          query: "genomics",
+          fuzziness: "AUTO:5,12",
+        },
+      },
+    })
+    // title keeps a dedicated boost on top of the catch-all.
     expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "genomics",
         fields: [
           "title.ja^2",
           "title.en^2",
-          "summary.aims.ja.text",
-          "summary.aims.en.text",
-          "summary.methods.ja.text",
-          "summary.methods.en.text",
-          "summary.targets.ja.text",
-          "summary.targets.en.text",
         ],
         type: "best_fields",
         fuzziness: "AUTO:5,12",
@@ -507,16 +500,18 @@ describe("buildResearchMultiMatchQuery", () => {
     expect(term?.boost ?? 0).toBeGreaterThan(prefix?.boost ?? 0)
   })
 
-  // PBT: query string flows into multi_match.query and term.humId.value
-  it("PBT: query string is preserved in multi_match and humId clauses", () => {
+  // PBT: query string flows into the all_text match, multi_match and term.humId.value
+  it("PBT: query string is preserved in all_text match, multi_match and humId clauses", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         (q) => {
           const result = buildResearchMultiMatchQuery(q) as BoolShouldQuery
           const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+          const allText = result.bool.should.find(c => c.match)?.match?.all_text
 
-          return mm?.query === q
+          return allText?.query === q
+            && mm?.query === q
             && result.bool.should.some(c => c.term?.humId?.value === q)
         },
       ),

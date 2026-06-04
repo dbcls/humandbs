@@ -113,7 +113,7 @@ describe("SearchBody pagination & boundary", () => {
   })
 
   it("strips unexpected fields silently (zod default behaviour)", () => {
-    const parsed = ResearchSearchBodySchema.parse({ futureField: 1, somethingElse: "x" } as unknown as object)
+    const parsed = ResearchSearchBodySchema.parse({ futureField: 1, somethingElse: "x" })
     // strip semantics: unknown keys do not survive the parse.
     expect((parsed as Record<string, unknown>).futureField).toBeUndefined()
     expect((parsed as Record<string, unknown>).somethingElse).toBeUndefined()

@@ -39,6 +39,23 @@ function getZodFieldNames(schema: { shape: Record<string, unknown> }): string[] 
   return Object.keys(schema.shape)
 }
 
+/**
+ * Walk a generated mapping to the leaf property at the given path,
+ * descending through object/nested `properties` wrappers.
+ */
+function leafProperty(
+  properties: Record<string, unknown>,
+  path: string[],
+): Record<string, unknown> {
+  let node = properties[path[0]] as Record<string, unknown>
+  for (let i = 1; i < path.length; i++) {
+    const children = node.properties as Record<string, unknown>
+    node = children[path[i]] as Record<string, unknown>
+  }
+
+  return node
+}
+
 describe("es/schema-consistency", () => {
   // ===========================================================================
   // Schema definition validation
@@ -142,8 +159,10 @@ describe("es/schema-consistency", () => {
         expect(esSchemaFields).toContain(field)
       }
 
-      // Check that all ES schema fields exist in Zod
+      // Check that all ES schema fields exist in Zod.
+      // all_text is a write-time catch-all (copy_to target) absent from _source / Zod.
       for (const field of esSchemaFields) {
+        if (field === "all_text") continue
         expect(zodFields).toContain(field)
       }
     })
@@ -159,8 +178,10 @@ describe("es/schema-consistency", () => {
         expect(esSchemaFields).toContain(field)
       }
 
-      // Check that all ES schema fields exist in Zod
+      // Check that all ES schema fields exist in Zod.
+      // all_text is a write-time catch-all (copy_to target) absent from _source / Zod.
       for (const field of esSchemaFields) {
+        if (field === "all_text") continue
         expect(zodFields).toContain(field)
       }
     })
@@ -311,6 +332,42 @@ describe("es/schema-consistency", () => {
         { type: string }
       >
       expect(rvProps.versionReleaseDate.type).toBe("date")
+    })
+  })
+
+  // ===========================================================================
+  // Catch-all field (all_text) — copy_to wiring
+  // ===========================================================================
+  describe("catch-all all_text field", () => {
+    it("exposes a root all_text text field on both indices", () => {
+      expect(researchMapping.mappings.properties.all_text).toEqual({ type: "text" })
+      expect(datasetMapping.mappings.properties.all_text).toEqual({ type: "text" })
+    })
+
+    it("copies research text fields into all_text, including nested ones", () => {
+      const props = researchMapping.mappings.properties
+      expect(leafProperty(props, ["title", "ja"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["summary", "aims", "ja", "text"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["grant", "title", "ja"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["dataProvider", "name", "ja", "text"]).copy_to).toBe("all_text")
+    })
+
+    it("copies dataset text and facet fields into all_text, including nested ones", () => {
+      const props = datasetMapping.mappings.properties
+      expect(leafProperty(props, ["typeOfData", "ja"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["experiments", "searchable", "targets"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["experiments", "searchable", "tissues"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["experiments", "searchable", "diseases", "label"]).copy_to).toBe("all_text")
+      expect(leafProperty(props, ["criteria"]).copy_to).toBe("all_text")
+    })
+
+    it("excludes IDs, codes and flattened data from all_text", () => {
+      const props = datasetMapping.mappings.properties
+      expect(leafProperty(props, ["datasetId"]).copy_to).toBeUndefined()
+      expect(leafProperty(props, ["experiments", "searchable", "diseases", "icd10"]).copy_to).toBeUndefined()
+      const data = leafProperty(props, ["experiments", "data"])
+      expect(data.type).toBe("flattened")
+      expect(data.copy_to).toBeUndefined()
     })
   })
 })

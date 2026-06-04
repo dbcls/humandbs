@@ -62,9 +62,9 @@ export const idDataset = (datasetId: string, version: string): string =>
  */
 export const transformResearch = (doc: Record<string, unknown>): Record<string, unknown> => ({
   ...doc,
-  status: (doc.status as string | undefined) ?? "published",
-  uids: (doc.uids as string[] | undefined) ?? [],
-  draftVersion: (doc.draftVersion as string | null | undefined) ?? null,
+  status: doc.status ?? "published",
+  uids: doc.uids ?? [],
+  draftVersion: doc.draftVersion ?? null,
 })
 
 /**
