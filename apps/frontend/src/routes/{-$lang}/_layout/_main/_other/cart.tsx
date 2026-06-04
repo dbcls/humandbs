@@ -18,7 +18,7 @@ import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
-  loader: ({ context }) => ({ crumb: context.messages?.common["cart"] }),
+  loader: ({ context }) => ({ crumb: context.messages?.common?.["cart"] }),
 });
 
 const cartColumnsHelper = createColumnHelper<DatasetDoc>();
@@ -52,8 +52,8 @@ const cartDatasetColumns = [
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
-          {(ctx.getValue() ?? []).map((item, i) => (
-            <li key={i}>
+          {(ctx.getValue() ?? []).map((item) => (
+            <li key={`${item.header.en?.text}-${item.header.ja?.text}`}>
               <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}

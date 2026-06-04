@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
   $getDocumentBreadcrumbs,
@@ -192,7 +192,7 @@ function RouteComponent() {
   return (
     <MarkdownWithTOC
       title={title}
-      markdownResult={contentHtml!}
+      markdownResult={contentHtml}
       hideTOC={hideTOC}
       previousVersions={previousVersions}
       revisionsBasePath={revisionsBasePath}

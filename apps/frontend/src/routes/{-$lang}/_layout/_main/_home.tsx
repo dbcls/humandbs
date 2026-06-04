@@ -70,7 +70,7 @@ function RouteComponent() {
                 }}
               />
               <div className="ga-3 col-start-2 flex gap-4 text-xs">
-                {searchSamples[lang]?.map((sample, i) => (
+                {searchSamples[lang]?.map((sample) => (
                   <Button
                     onClick={() => {
                       navigate({
@@ -79,7 +79,7 @@ function RouteComponent() {
                       });
                     }}
                     variant={"tableAction"}
-                    key={i}
+                    key={sample.query}
                   >
                     {sample.query}
                   </Button>
@@ -93,7 +93,7 @@ function RouteComponent() {
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-submission" });
                 }}
-                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
                 <Upload className="h-10 w-10 shrink-0" />
                 <span>{t("data-submission-button")}</span>
@@ -101,7 +101,7 @@ function RouteComponent() {
 
               <Button
                 variant={"action"}
-                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-use" });
                 }}

@@ -135,6 +135,8 @@ export const $getPublishedContentItemTranslation = createServerFn()
       DOCUMENT_VERSION_STATUS.PUBLISHED,
     );
 
+    if (!translation) throw notFound();
+
     return translation;
   });
 

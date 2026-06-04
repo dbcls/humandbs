@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
+import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
@@ -32,7 +33,13 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/build-facet-sections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
-import { researchesSearchParamsSchema } from "@/utils/query-params";
+
+const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
+  lang: true,
+  includeFacets: true,
+}).extend({
+  sort: ResearchSearchBodySchema.shape.sort.default("dateModified"),
+});
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
@@ -429,10 +436,79 @@ const columns = [
     cell: function Cell(ctx) {
       return (
         <ModalCell maxHeight={96}>
-          <p className="text-sm">{ctx.renderValue()?.[ctx.table.options.meta?.lang!]}</p>
+          <p className="text-sm">{ctx.renderValue()?.[ctx.table.options.meta!.lang]}</p>
         </ModalCell>
       );
     },
+  }),
+
+  columnHelper.accessor("methods", {
+    id: "methods",
+    header: (ctx) => ctx.table.options.meta?.t("methods"),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
+      </ModalCell>
+    ),
+  }),
+  columnHelper.accessor("typeOfData", {
+    id: "typeOfData",
+    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
+    cell: (ctx) => (
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item) => (
+            <li key={item}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
+    ),
+  }),
+  columnHelper.accessor("platforms", {
+    id: "platforms",
+    header: (ctx) => ctx.table.options.meta?.t("platforms"),
+    cell: (ctx) => (
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item) => (
+            <li key={item}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
+    ),
+  }),
+  columnHelper.accessor("targets", {
+    id: "targets",
+    header: (ctx) => ctx.table.options.meta?.t("targets"),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
+      </ModalCell>
+    ),
+  }),
+  columnHelper.accessor("criteria", {
+    id: "criteria",
+    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
+  }),
+  columnHelper.accessor("dataProvider", {
+    id: "dataProvider",
+    header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
+    cell: (ctx) => (
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item) => (
+            <li key={item}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
@@ -477,74 +553,6 @@ const columns = [
           <span className="text-sm">({ctx.getValue().version})</span>
         </Route.Link>
       </div>
-    ),
-  }),
-  columnHelper.accessor("methods", {
-    id: "methods",
-    header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => (
-      <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
-      </ModalCell>
-    ),
-  }),
-  columnHelper.accessor("typeOfData", {
-    id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
-    cell: (ctx) => (
-      <ModalCell>
-        <ul className="space-y-4">
-          {ctx.renderValue()?.map((item, i) => (
-            <li key={i}>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
-    ),
-  }),
-  columnHelper.accessor("platforms", {
-    id: "platforms",
-    header: (ctx) => ctx.table.options.meta?.t("platforms"),
-    cell: (ctx) => (
-      <ModalCell>
-        <ul className="space-y-4">
-          {ctx.renderValue()?.map((item, i) => (
-            <li key={i}>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
-    ),
-  }),
-  columnHelper.accessor("targets", {
-    id: "targets",
-    header: (ctx) => ctx.table.options.meta?.t("targets"),
-    cell: (ctx) => (
-      <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
-      </ModalCell>
-    ),
-  }),
-  columnHelper.accessor("criteria", {
-    id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
-  }),
-  columnHelper.accessor("dataProvider", {
-    id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
-    cell: (ctx) => (
-      <ModalCell>
-        <ul className="space-y-4">
-          {ctx.renderValue()?.map((item, i) => (
-            <li key={i}>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
     ),
   }),
 ];

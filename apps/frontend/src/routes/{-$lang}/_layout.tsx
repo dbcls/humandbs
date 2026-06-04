@@ -12,7 +12,7 @@ const langSchemaWithDefault = localeSchema.default(i18n.defaultLocale);
 
 export const Route = createFileRoute("/{-$lang}/_layout")({
   component: RouteComponent,
-  beforeLoad: async ({ params, location, context }) => {
+  beforeLoad: async ({ params, location }) => {
     const parseLang = langSchemaWithDefault.safeParse(params.lang);
 
     if (!parseLang.success) {
