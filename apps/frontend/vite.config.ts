@@ -60,6 +60,9 @@ export default defineConfig(async () => {
     define: {
       APP_VERSION: JSON.stringify(`v${packageJson.version}`),
       APP_VERSION_HASH: JSON.stringify(commitHash),
+      PUBLIC_FILES_SUBDIR: JSON.stringify(
+        process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
+      ),
     },
   };
 });
