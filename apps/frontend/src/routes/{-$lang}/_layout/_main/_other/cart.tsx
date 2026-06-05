@@ -94,7 +94,6 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
   const { data, isPending } = useQuery(getBatchedDatasetsQueryOptions(cartIds, locale));
 
   const payload = {
-    language_type: locale === "ja" ? 1 : 2,
     components: cartIds.map((id) => ({
       key: "use_dataset_request",
       value: id,
