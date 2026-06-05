@@ -426,35 +426,12 @@ function UserMenu() {
 }
 
 function ShoppingCartButton() {
-  const { user } = useRouteContext({ from: "__root__" });
-  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const navigate = useNavigate();
-  const router = useRouter();
-
   const datasetsInCart = useCartStore((state) => state.cartDatasets.length);
 
-  function handleClick() {
-    if (!user) {
-      const cartHref = router.buildLocation({
-        to: "/{-$lang}/cart",
-        params: { lang },
-      }).href;
-      void navigate({
-        to: "/auth/login",
-        search: { redirect: cartHref },
-        reloadDocument: true,
-      });
-    } else {
-      void navigate({ to: "/{-$lang}/cart", params: { lang } });
-    }
-  }
-
   return (
-    <Button
-      variant={"plain"}
+    <Link
       className="relative flex size-10 items-center justify-center rounded-full p-0"
-      size="icon"
-      onClick={handleClick}
+      to={"/{-$lang}/cart"}
     >
       {datasetsInCart > 0 ? (
         <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-[10px] text-white leading-none">
@@ -462,6 +439,6 @@ function ShoppingCartButton() {
         </span>
       ) : null}
       <ShoppingCart className="size-6 text-secondary" />
-    </Button>
+    </Link>
   );
 }
