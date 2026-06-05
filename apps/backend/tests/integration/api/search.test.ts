@@ -23,6 +23,7 @@ interface ResearchSummary {
 interface DatasetSummary {
   datasetId: string
   humId: string
+  versionReleaseDate?: string
   typeOfData?: { ja: string | null; en: string | null } | null
   experiments?: {
     searchable?: {
@@ -635,5 +636,34 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     for (const d of json.data) expect(d.humId).toBe(target.humId)
     // word token → all_text match: the source dataset is present.
     expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // versionReleaseDate (Modification date) sort: orders the dataset list by each
+  // dataset's latest-version release date. collapse keeps the latest version per
+  // datasetId and the outer sort orders groups by that version's versionReleaseDate,
+  // so the returned items' versionReleaseDate is monotonic. Missing values sort last
+  // and are dropped before comparison.
+  itWithEs("IT-SEARCH-37: GET /dataset?sort=versionReleaseDate orders datasets by modification date", async () => {
+    const app = getApp()
+    const ascRes = await app.request(url("/dataset?sort=versionReleaseDate&order=asc&limit=20"))
+    expect(ascRes.status).toBe(200)
+    const asc = ((await ascRes.json()) as SearchResponse<DatasetSummary>).data
+      .map((d) => d.versionReleaseDate).filter((v): v is string => !!v)
+    for (let i = 1; i < asc.length; i++) expect(asc[i - 1] <= asc[i]).toBe(true)
+
+    const descRes = await app.request(url("/dataset?sort=versionReleaseDate&order=desc&limit=20"))
+    expect(descRes.status).toBe(200)
+    const desc = ((await descRes.json()) as SearchResponse<DatasetSummary>).data
+      .map((d) => d.versionReleaseDate).filter((v): v is string => !!v)
+    for (let i = 1; i < desc.length; i++) expect(desc[i - 1] >= desc[i]).toBe(true)
+  })
+
+  itWithEs("IT-SEARCH-38: POST /dataset/search sort=versionReleaseDate orders datasets by modification date", async () => {
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 20, sort: "versionReleaseDate", order: "desc",
+    })
+    expect(status).toBe(200)
+    const dates = json.data.map((d) => d.versionReleaseDate).filter((v): v is string => !!v)
+    for (let i = 1; i < dates.length; i++) expect(dates[i - 1] >= dates[i]).toBe(true)
   })
 })

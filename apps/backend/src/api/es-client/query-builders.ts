@@ -40,7 +40,7 @@ export const versionSortSpec = (order: "asc" | "desc"): estypes.SortCombinations
 // share these resolvers instead of fighting Zod defaults.
 
 export type ResearchSortField = "humId" | "title" | "releaseDate" | "datePublished" | "dateModified" | "relevance"
-export type DatasetSortField = "datasetId" | "releaseDate" | "relevance"
+export type DatasetSortField = "datasetId" | "releaseDate" | "versionReleaseDate" | "relevance"
 
 export const resolveResearchSort = (
   sort: ResearchSortField | undefined,
@@ -55,7 +55,7 @@ export const resolveDatasetSort = (
 // === Sort Spec Builders ===
 
 export const buildDatasetSortSpec = (
-  sort: "datasetId" | "releaseDate" | "relevance",
+  sort: DatasetSortField,
   order: "asc" | "desc",
   hasQuery: boolean,
 ): estypes.Sort => {
@@ -64,6 +64,9 @@ export const buildDatasetSortSpec = (
   }
   if (sort === "releaseDate") {
     return [{ releaseDate: { order, missing: "_last" } }, { datasetId: { order: "asc" } }]
+  }
+  if (sort === "versionReleaseDate") {
+    return [{ versionReleaseDate: { order, missing: "_last" } }, { datasetId: { order: "asc" } }]
   }
 
   return [{ datasetId: { order } }]

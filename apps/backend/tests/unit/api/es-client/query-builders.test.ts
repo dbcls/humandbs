@@ -127,6 +127,24 @@ describe("buildDatasetSortSpec", () => {
     ])
   })
 
+  it("sorts by versionReleaseDate with missing _last and datasetId tiebreaker", () => {
+    const result = buildDatasetSortSpec("versionReleaseDate", "asc", false)
+
+    expect(result).toEqual([
+      { versionReleaseDate: { order: "asc", missing: "_last" } },
+      { datasetId: { order: "asc" } },
+    ])
+  })
+
+  it("sorts by versionReleaseDate desc", () => {
+    const result = buildDatasetSortSpec("versionReleaseDate", "desc", true)
+
+    expect(result).toEqual([
+      { versionReleaseDate: { order: "desc", missing: "_last" } },
+      { datasetId: { order: "asc" } },
+    ])
+  })
+
   it("sorts by datasetId with specified order", () => {
     const result = buildDatasetSortSpec("datasetId", "desc", false)
 
@@ -137,7 +155,7 @@ describe("buildDatasetSortSpec", () => {
   it("always returns a non-empty array", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom("datasetId" as const, "releaseDate" as const, "relevance" as const),
+        fc.constantFrom("datasetId" as const, "releaseDate" as const, "versionReleaseDate" as const, "relevance" as const),
         fc.constantFrom("asc" as const, "desc" as const),
         fc.boolean(),
         (sort, order, hasQuery) => {
@@ -153,7 +171,7 @@ describe("buildDatasetSortSpec", () => {
   it("never contains _score when hasQuery is false", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom("datasetId" as const, "releaseDate" as const, "relevance" as const),
+        fc.constantFrom("datasetId" as const, "releaseDate" as const, "versionReleaseDate" as const, "relevance" as const),
         fc.constantFrom("asc" as const, "desc" as const),
         (sort, order) => {
           const result = buildDatasetSortSpec(sort, order, false)

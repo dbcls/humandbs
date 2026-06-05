@@ -1173,6 +1173,32 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
+### IT-SEARCH-37: GET /dataset の versionReleaseDate (更新日付) sort
+
+**endpoint**: `GET /dataset?sort=versionReleaseDate&order={asc,desc}&limit=20`
+
+**不変条件**:
+- `status === 200`
+- 返る item の `versionReleaseDate` (ISO 日付文字列) が指定 order で単調 (asc は非減少 / desc は非増加)。値の無いものは末尾扱いで比較から除外
+- collapse で datasetId ごとに最新版が残り、外側 sort は group をその最新版の `versionReleaseDate` で並べるため、返却 item 列の `versionReleaseDate` も整列する
+
+**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es-client/search.ts § searchDatasets`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
+
+### IT-SEARCH-38: POST /dataset/search の versionReleaseDate (更新日付) sort
+
+**endpoint**: `POST /dataset/search` body: `{ sort: "versionReleaseDate", order: "desc" }`
+
+**不変条件**:
+- `status === 200`
+- 返る item の `versionReleaseDate` が降順 (値の無いものは末尾扱いで除外)
+- listing (IT-SEARCH-37) と同じ `searchDatasets` を経由するため挙動は一致する
+
+**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es-client/search.ts § searchDatasets`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
+
 ---
 
 ## IT-DATASET-*: Dataset

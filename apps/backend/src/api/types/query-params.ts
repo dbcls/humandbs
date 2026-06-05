@@ -30,8 +30,8 @@ export { PaginationQuerySchema } from "./query-schemas"
 
 export const RESEARCH_LISTING_SORT = ["humId", "title", "releaseDate"] as const
 export const RESEARCH_SEARCH_SORT = ["humId", "title", "releaseDate", "datePublished", "dateModified", "relevance"] as const
-export const DATASET_LISTING_SORT = ["datasetId", "releaseDate"] as const
-export const DATASET_SEARCH_SORT = ["datasetId", "releaseDate", "relevance"] as const
+export const DATASET_LISTING_SORT = ["datasetId", "releaseDate", "versionReleaseDate"] as const
+export const DATASET_SEARCH_SORT = ["datasetId", "releaseDate", "versionReleaseDate", "relevance"] as const
 export const SORT_ORDER = ["asc", "desc"] as const
 
 // === Common Query Schemas ===
