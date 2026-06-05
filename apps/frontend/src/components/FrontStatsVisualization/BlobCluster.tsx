@@ -97,7 +97,7 @@ export default function BlobCluster({
 
     const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
 
-    const baseFontSize = debugParams?.particleLabelFontSize ?? 12;
+    const baseFontSize = debugParams?.particleLabelFontSize ?? 16; // Fallback to 16 if not provided
     const layoutItems = sorted.map((sat) => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       const visualRadius = d3Radius * (particleScale / 260);
@@ -146,10 +146,15 @@ export default function BlobCluster({
       let xCursor = -rowWidth / 2;
       const rowY = yCursor - rowHeight / 2;
 
+      // Bottom alignment: Align the bottom edge of all particles in this row
+      // so that their text labels sit perfectly on a single straight horizontal line.
+      const labelAreaHeight = baseFontSize * 1.85 + 8;
+      const bottomY = rowY - rowHeight / 2 + labelAreaHeight;
+
       for (const item of row) {
         const cellCenterX = xCursor + item.cellWidth / 2;
-        // Position particle at the top of the cell to leave room for the label below it.
-        const particleY = rowY + (rowHeight / 2) - (item.visualRadius + 4);
+        // Position particle such that its bottom edge sits on bottomY
+        const particleY = bottomY + item.visualRadius;
         
         layoutResults.set(item.sat.id, { x: cellCenterX, y: particleY, d3Radius: item.d3Radius });
         xCursor += item.cellWidth;
@@ -494,14 +499,13 @@ export default function BlobCluster({
           instancedMeshRef.current.setColorAt(i, node.baseColor);
         }
 
-          // Adjust label position to avoid overlap with nearby particles/labels
-          // Since the grid layout algorithm already allocates custom cellWidth and cellHeight for text,
-          // we only need a minor vertical stagger for absolute safety against multi-line text differences.
+          // Adjust label position to place it directly below the bottom edge of the particle.
+          // Since the grid layout algorithm is already bottom-aligned and allocates custom cellWidth/cellHeight,
+          // aligning the labels perfectly in a single row without vertical stagger ensures maximum visual alignment.
           if (isHovered && labelRefs.current[i]) {
             const currentScale = localGroupRef.current?.scale.x ?? 1.0;
             const baseX = (node.x || 0) * currentScale;
-            const staggerY = (i % 2 === 0 ? 0 : -4) * currentScale;
-            const baseY = ((node.y || 0) - visualRadius) * currentScale - 8 + staggerY;
+            const baseY = ((node.y || 0) - visualRadius) * currentScale - 8;
             labelRefs.current[i]!.position.set(
               baseX,
               baseY,
@@ -599,7 +603,7 @@ export default function BlobCluster({
       >
         <Billboard position={[0, 0, 0]} follow={true}>
           <Text
-            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.8 : 16}
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 16) * 1.8 : 16}
             color={isActive ? "#1e293b" : "#94a3b8"}
             anchorX="center"
             anchorY="middle"
@@ -610,11 +614,11 @@ export default function BlobCluster({
           </Text>
         </Billboard>
         <Billboard
-          position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 12) * 2.0) : -18, 0]}
+          position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 16) * 2.0) : -18, 0]}
           follow={true}
         >
           <Text
-            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.0 : 8}
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 16) * 1.0 : 8}
             color={isActive ? "#64748b" : "#cbd5e1"}
             anchorX="center"
             anchorY="middle"
