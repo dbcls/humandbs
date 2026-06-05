@@ -1,3 +1,4 @@
+import { notFound } from "@tanstack/router-core";
 import { and, desc, eq } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
@@ -6,7 +7,6 @@ import type { db } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { notFound } from "@tanstack/router-core";
 
 interface BaseDoc {
   contentId: string;
@@ -84,7 +84,7 @@ async function resolveDocumentId(database: typeof db, contentId: string): Promis
     where: (table, { eq }) => eq(table.contentId, contentId),
     columns: { id: true },
   });
-  if (!doc) throw notFound()
+  if (!doc) throw notFound();
   return doc.id;
 }
 

@@ -1,0 +1,4 @@
+# Refuse packages published within the last 7 days (604800 seconds)
+# as a cooldown against short-lived supply-chain attacks on npm.
+[install]
+minimumReleaseAge = 604800

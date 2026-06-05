@@ -9,6 +9,7 @@ export function ListItem({ isActive = false, children, className, ...rest }: Lis
   return (
     <div
       data-active={isActive}
+      data-testid="list-item"
       className={cn(
         "group flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm transition-colors",
         "data-[active=true]:bg-secondary-light data-[active=true]:text-white",

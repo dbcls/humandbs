@@ -264,7 +264,7 @@ function ListItems({
     return <NoItemsMessage>No documents found</NoItemsMessage>;
   }
   return (
-    <ul className="overflow-y-auto">
+    <ul className="overflow-y-auto" data-testid="documents-list-ul">
       {groupedDocs.map(([topSegment, docs], groupIndex) => (
         <li key={topSegment}>
           {docs.map((doc, level) => {

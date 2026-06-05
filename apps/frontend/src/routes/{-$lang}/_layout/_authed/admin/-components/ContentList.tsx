@@ -163,7 +163,7 @@ function ItemsList({
   }
 
   return (
-    <ul className="overflow-y-auto">
+    <ul className="overflow-y-auto" data-testid="content-list-ul">
       {contents.map((content, index) => {
         const isActive = content.id === selectedContentId;
 

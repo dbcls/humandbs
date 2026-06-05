@@ -104,19 +104,22 @@ export const createContentRepo = (db: DB): ContentItemRepo => ({
     const contentItems = await db.query.contentItem.findMany({
       where: data.q
         ? (table) =>
-            exists(
-              db
-                .select({ _: contentTranslation.contentId })
-                .from(contentTranslation)
-                .where(
-                  and(
-                    eq(contentTranslation.contentId, table.id),
-                    or(
-                      like(contentTranslation.title, `%${data.q}%`),
-                      like(contentTranslation.content, `%${data.q}%`),
+            or(
+              like(table.id, `%${data.q}%`),
+              exists(
+                db
+                  .select({ _: contentTranslation.contentId })
+                  .from(contentTranslation)
+                  .where(
+                    and(
+                      eq(contentTranslation.contentId, table.id),
+                      or(
+                        like(contentTranslation.title, `%${data.q}%`),
+                        like(contentTranslation.content, `%${data.q}%`),
+                      ),
                     ),
                   ),
-                ),
+              ),
             )
         : undefined,
       with: {

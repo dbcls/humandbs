@@ -1,0 +1,18 @@
+{
+  "name": "e2e",
+  "module": "index.ts",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/bun": "latest",
+    "dotenv": "^17.4.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bunx playwright test",
+    "codegen": "bunx playwright codegen --target=ts http://localhost:8080/"
+  }
+}

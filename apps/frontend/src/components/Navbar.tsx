@@ -1,4 +1,10 @@
-import { ClientOnly, useNavigate, useRouteContext, useRouter } from "@tanstack/react-router";
+import {
+  ClientOnly,
+  useHydrated,
+  useNavigate,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import { LucideLogIn, LucideLogOut, MoreVertical, ShoppingCart } from "lucide-react";
 import { useTranslations } from "use-intl";
 
@@ -345,6 +351,8 @@ function UserMenu() {
   const navigate = useNavigate();
   const router = useRouter();
 
+  const isHydrated = useHydrated();
+
   async function login() {
     const mypageHref = router.buildLocation({
       to: "/{-$lang}/admin",
@@ -364,6 +372,9 @@ function UserMenu() {
         size={"icon"}
         variant={"action"}
         onClick={login}
+        data-testid="login-btn"
+        aria-label="Log in"
+        disabled={!isHydrated}
       >
         <LucideLogIn className="size-6" />
       </Button>
@@ -383,6 +394,7 @@ function UserMenu() {
         <Button
           size={"icon"}
           variant={"outline"}
+          aria-label="User menu"
           className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         >
           <span className="font-bold text-xs">{userInitials}</span>

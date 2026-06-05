@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, gte, ilike, isNull, lte, or } from "drizzle-orm";
+import { and, eq, exists, gte, ilike, isNull, lte, or } from "drizzle-orm";
 import z from "zod";
 
 import type { Locale } from "@/config/i18n";
