@@ -97,55 +97,67 @@ export default function BlobCluster({
 
     const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
 
+    const baseFontSize = debugParams?.particleLabelFontSize ?? 12;
     const layoutItems = sorted.map((sat) => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       const visualRadius = d3Radius * (particleScale / 260);
-      return { sat, d3Radius, visualRadius };
+      
+      // Estimate the text label width (character count * approx letter width)
+      const textLen = (sat.value || "").length;
+      const estimatedTextWidth = textLen * baseFontSize * 0.65 + 16;
+      
+      // Enforce cell boundaries so neighbors don't overlap. Add a 4px padding on each side.
+      const cellWidth = Math.max(visualRadius * 2, estimatedTextWidth) + 8;
+      
+      // Enforce cell height: particle diameter + vertical space for 2 lines of text
+      const cellHeight = visualRadius * 2 + baseFontSize * 1.85 + 12;
+      
+      return { sat, d3Radius, visualRadius, cellWidth, cellHeight };
     });
 
     const rows: (typeof layoutItems)[0][][] = [[]];
     let currentRowWidth = 0;
-    const padding = particleScale * 0.05;
 
-    // Calculate total required area treating each particle + padding as a square bounding box
+    // Calculate total required area based on cell dimensions
     const totalArea = layoutItems.reduce(
-      (sum, item) => sum + (item.visualRadius * 2 + padding) ** 2,
+      (sum, item) => sum + (item.cellWidth * item.cellHeight),
       0,
     );
     // Use natural 16:9 aspect ratio width. If very few items, lay them out in a single row.
-    const maxRowWidth = layoutItems.length <= 10 ? 9999 : Math.sqrt(totalArea * 1.77) * 1.1;
+    const maxRowWidth = layoutItems.length <= 10 ? 9999 : Math.sqrt(totalArea * 1.77) * 1.15;
 
     for (const item of layoutItems) {
-      const diam = item.visualRadius * 2;
-      if (currentRowWidth + diam + padding > maxRowWidth && rows[rows.length - 1].length > 0) {
+      if (currentRowWidth + item.cellWidth > maxRowWidth && rows[rows.length - 1].length > 0) {
         rows.push([]);
         currentRowWidth = 0;
       }
       rows[rows.length - 1].push(item);
-      currentRowWidth += diam + padding;
+      currentRowWidth += item.cellWidth;
     }
 
     const layoutResults = new Map<string, { x: number; y: number; d3Radius: number }>();
     let yCursor = 0;
     let actualWidth = 0;
     for (const row of rows) {
-      const rowHeight = Math.max(...row.map((i) => i.visualRadius * 2));
-      const rowWidth =
-        row.reduce((sum, item) => sum + item.visualRadius * 2 + padding, 0) - padding;
+      const rowHeight = Math.max(...row.map((i) => i.cellHeight));
+      const rowWidth = row.reduce((sum, item) => sum + item.cellWidth, 0);
       actualWidth = Math.max(actualWidth, rowWidth);
 
       let xCursor = -rowWidth / 2;
       const rowY = yCursor - rowHeight / 2;
 
       for (const item of row) {
-        xCursor += item.visualRadius;
-        layoutResults.set(item.sat.id, { x: xCursor, y: rowY, d3Radius: item.d3Radius });
-        xCursor += item.visualRadius + padding;
+        const cellCenterX = xCursor + item.cellWidth / 2;
+        // Position particle at the top of the cell to leave room for the label below it.
+        const particleY = rowY + (rowHeight / 2) - (item.visualRadius + 4);
+        
+        layoutResults.set(item.sat.id, { x: cellCenterX, y: particleY, d3Radius: item.d3Radius });
+        xCursor += item.cellWidth;
       }
-      yCursor -= rowHeight + padding;
+      yCursor -= rowHeight;
     }
 
-    const totalHeight = -yCursor - padding;
+    const totalHeight = -yCursor;
     const yOffset = totalHeight / 2;
 
     gridDims.current = { width: actualWidth, height: totalHeight };
@@ -184,7 +196,7 @@ export default function BlobCluster({
     });
 
     colorsInitializedRef.current = false;
-  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale]);
+  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale, debugParams]);
 
   const localGroupRef = useRef<THREE.Group>(null);
   const facetLabelRef = useRef<THREE.Group>(null);
@@ -286,7 +298,8 @@ export default function BlobCluster({
       const dx = pointerLocal.x - (node.x || 0) * currentScale;
       const dy = pointerLocal.y - (node.y || 0) * currentScale;
       const distanceSq = dx * dx + dy * dy;
-      const hitRadius = Math.max(visualRadius * 1.25, 18);
+      
+      const hitRadius = visualRadius + 4;
       const hitRadiusSq = hitRadius * hitRadius;
 
       if (distanceSq <= hitRadiusSq && distanceSq < closestDistanceSq) {
@@ -303,7 +316,7 @@ export default function BlobCluster({
     e.stopPropagation();
     const particleIndex = getParticleIndexFromPointer(e);
     setHoveredParticle(particleIndex);
-    document.body.style.cursor = particleIndex === null ? "pointer" : "pointer";
+    document.body.style.cursor = "pointer";
   };
 
   const handleHitboxClick = (e: any) => {
@@ -481,14 +494,20 @@ export default function BlobCluster({
           instancedMeshRef.current.setColorAt(i, node.baseColor);
         }
 
-        if (isHovered && labelRefs.current[i]) {
-          const currentScale = localGroupRef.current?.scale.x ?? 1.0;
-          labelRefs.current[i]!.position.set(
-            (node.x || 0) * currentScale,
-            ((node.y || 0) - visualRadius) * currentScale - 8,
-            (node.z || 0) * currentScale,
-          );
-        }
+          // Adjust label position to avoid overlap with nearby particles/labels
+          // Since the grid layout algorithm already allocates custom cellWidth and cellHeight for text,
+          // we only need a minor vertical stagger for absolute safety against multi-line text differences.
+          if (isHovered && labelRefs.current[i]) {
+            const currentScale = localGroupRef.current?.scale.x ?? 1.0;
+            const baseX = (node.x || 0) * currentScale;
+            const staggerY = (i % 2 === 0 ? 0 : -4) * currentScale;
+            const baseY = ((node.y || 0) - visualRadius) * currentScale - 8 + staggerY;
+            labelRefs.current[i]!.position.set(
+              baseX,
+              baseY,
+              (node.z || 0) * currentScale,
+            );
+          }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
       if (needsColorUpdate) {
@@ -505,7 +524,7 @@ export default function BlobCluster({
           This prevents the object from slipping out from under the mouse. */}
       <mesh
         ref={hitboxRef}
-        position={[0, 0, -100]}
+        position={[0, 0, 0]} // Aligned perfectly on Z=0 with particles to eliminate perspective distortion
         visible={!(isAnyHovered && !isHovered)}
         onPointerEnter={isAnyHovered && !isHovered ? undefined : handlePointerEnter}
         onPointerLeave={isAnyHovered && !isHovered ? undefined : handlePointerLeave}
@@ -521,8 +540,8 @@ export default function BlobCluster({
         {isHovered ? (
           <planeGeometry
             args={[
-              Math.max(300, gridDims.current.width * targetScale * 1.8),
-              Math.max(300, gridDims.current.height * targetScale * 1.8),
+              Math.max(250, gridDims.current.width * targetScale * 1.3), // 30% safety cushion on width
+              Math.max(250, gridDims.current.height * targetScale * 1.5), // 50% safety cushion on height (prevents top/bottom escape)
             ]}
           />
         ) : (
