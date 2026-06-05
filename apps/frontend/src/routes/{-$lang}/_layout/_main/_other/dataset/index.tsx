@@ -35,13 +35,7 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { isCancelledError } from "@/utils/isCancelledError";
-
-const datasetListQuerySchema = DatasetSearchBodySchema.omit({
-  lang: true,
-  includeFacets: true,
-}).extend({
-  sort: DatasetSearchBodySchema.shape.sort.default("relevance"),
-});
+import { datasetListQuerySchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
   component: RouteComponent,

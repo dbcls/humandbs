@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
 import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
+import type { ResearchesSearchParams, DatasetListQueryParams } from "@/utils/queryParams";
 
 const researchSorts = new Set([
   "humId",
@@ -92,7 +93,7 @@ export function ResearchDatasetTabs() {
       {/* 研究タブ */}
       <Link
         to="/{-$lang}/research"
-        search={switchSearch.research as any}
+        search={switchSearch.research as ResearchesSearchParams}
         ref={researchRef}
         className={cn(
           "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
@@ -108,7 +109,7 @@ export function ResearchDatasetTabs() {
       {/* データセットタブ */}
       <Link
         to="/{-$lang}/dataset"
-        search={switchSearch.dataset as any}
+        search={switchSearch.dataset as DatasetListQueryParams}
         ref={datasetRef}
         className={cn(
           "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
