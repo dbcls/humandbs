@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Trash2 } from "lucide-react";
+import { LucideNavigation, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
@@ -90,6 +90,7 @@ const cartDatasetColumns = [
 function CartContents({ cartIds }: { cartIds: string[] }) {
   const t = useTranslations("Dataset");
   const locale = useLocale();
+  const navigate = Route.useNavigate()
 
   const { data, isPending } = useQuery(getBatchedDatasetsQueryOptions(cartIds, locale));
 
@@ -104,6 +105,10 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
 
+  function handleNavigate() {
+    navigate(, {
+  }
+
   if (isPending) {
     return <p className="text-center text-gray-400">Loading...</p>;
   }
@@ -116,9 +121,13 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
 
   return (
     <>
-      <Button className="mb-4 ml-auto" onClick={handleSubmit}>
-        Copy Cart Contents
-      </Button>
+      <div className="mb-4 flex items-center justify-end gap-4">
+        <Button onClick={handleSubmit}>Copy Cart Contents</Button>
+        <Button variant={"action"} onClick={handleSubmit}>
+          <LucideNavigation className="mr-1 size-6" />
+          <span>Navigate to application form</span>
+        </Button>
+      </div>
       <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
       <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />
     </>
