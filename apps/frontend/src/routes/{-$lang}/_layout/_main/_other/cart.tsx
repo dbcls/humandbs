@@ -106,7 +106,9 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
   }
 
   function handleNavigate() {
-    navigate(, {
+    navigate({
+      to: "/{-$lang}/data-use",
+    });
   }
 
   if (isPending) {
