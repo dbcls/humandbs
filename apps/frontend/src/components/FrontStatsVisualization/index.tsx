@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { SkeletonLoading } from "@/components/Skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -24,9 +24,28 @@ export default function FrontStatsVisualization() {
   const navigate = useNavigate();
   const tCommon = useTranslations("common");
 
+  const researchRef = useRef<HTMLButtonElement>(null);
+  const datasetRef = useRef<HTMLButtonElement>(null);
+  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted || !stats) return;
+    // Delay slightly to ensure browser has rendered layout for correct offsetWidth
+    const timer = setTimeout(() => {
+      const activeEl = mode === "research" ? researchRef.current : datasetRef.current;
+      if (activeEl) {
+        setSliderStyle({
+          left: activeEl.offsetLeft,
+          width: activeEl.offsetWidth,
+        });
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [mode, isMounted, stats]);
 
   if (!isMounted || loading) {
     return (
@@ -82,9 +101,14 @@ export default function FrontStatsVisualization() {
         type="single"
         value={mode}
         onValueChange={setMode}
-        className="absolute top-6 z-10 flex items-center rounded-full bg-white/90 p-1.5 backdrop-blur-sm"
+        className="absolute top-6 z-10 flex items-center rounded-full bg-white p-2 gap-2"
       >
-        <ToggleGroupItem value="research" variant="pill" className="px-8 data-[state=on]:bg-accent">
+        <ToggleGroupItem
+          value="research"
+          variant="pill"
+          ref={researchRef}
+          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:bg-transparent! data-[state=off]:bg-transparent!"
+        >
           {tCommon("research")}
           <span className="ml-2 font-normal text-xs opacity-80">
             {stats.researchTotal.toLocaleString()}
@@ -93,13 +117,21 @@ export default function FrontStatsVisualization() {
         <ToggleGroupItem
           value="dataset"
           variant="pill"
-          className="px-8 data-[state=on]:bg-secondary"
+          ref={datasetRef}
+          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:bg-transparent! data-[state=off]:bg-transparent!"
         >
           {tCommon("dataset")}
           <span className="ml-2 font-normal text-xs opacity-80">
             {stats.datasetTotal.toLocaleString()}
           </span>
         </ToggleGroupItem>
+        <div
+          className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out"
+          style={{
+            left: `${sliderStyle.left}px`,
+            width: `${sliderStyle.width}px`,
+          }}
+        />
       </ToggleGroup>
 
       <div className="absolute inset-0">
