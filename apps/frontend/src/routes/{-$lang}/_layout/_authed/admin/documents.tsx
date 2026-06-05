@@ -77,18 +77,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents"
 });
 
 function RouteComponent() {
-
-  
   const { selectedId, selectedVer } = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const setSelectedContentId = useCallback(
-    (contentId: string | undefined) => {
-
-      navigate({ search: { selectedId: contentId }});
-    },
-    [navigate],
-  );
+  const setSelectedContentId = (contentId: string | undefined) => {
+    navigate({ search: (prev) => ({ ...prev, selectedId: contentId }) });
+  };
 
   const onSelectVersion = useCallback(
     (versionNumber: number) => {

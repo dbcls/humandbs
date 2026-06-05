@@ -41,7 +41,9 @@ export default function TextField({
             value={field.state.value ?? ""}
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={() => field.handleBlur()}
-            className={cn("flex-1", { "modified-field": isModified })}
+            className={cn("group-disabled/fieldset:disabled-text-field flex-1", {
+              "modified-field": isModified,
+            })}
           />
           {isModified && (
             <ResetFieldButton

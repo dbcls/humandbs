@@ -34,7 +34,7 @@ export function SortableItem({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded border border-form-border bg-white">
-      <div className="flex items-center gap-2 border-form-muted border-b bg-form-tag-bg px-3 py-2">
+      <div className="flex items-center gap-2 border-form-muted bg-form-sublabel/30 px-3 py-2">
         <button
           type="button"
           className="in-disabled:hidden cursor-grab touch-none text-form-icon-btn hover:text-form-icon-btn-hover"
