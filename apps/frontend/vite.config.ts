@@ -63,6 +63,10 @@ export default defineConfig(async () => {
       PUBLIC_FILES_SUBDIR: JSON.stringify(
         process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
       ),
+      DU_APPLICATION_URL: JSON.stringify(
+        process.env.HUMANBDS_FRONTEND_DU_APPLICATION_URL ??
+          "https://ts-humandbs.ddbj.nig.ac.jp/ndbc/application/import_form",
+      ),
     },
   };
 });
