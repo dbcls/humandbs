@@ -67,12 +67,12 @@ const tab = cva(
     variants: {
       active: {
         true: [
-          "z-10 h-[30px] bg-white text-secondary",
+          "z-10 h-[30px] bg-white text-secondary visited:text-[#1a5fbd]",
           "border-b border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]",
           "before:border-b before:border-b-white before:bg-white",
         ],
         false: [
-          "z-0 h-[29px] -translate-y-px bg-gray-100/90 text-muted-foreground",
+          "z-0 h-[29px] -translate-y-px bg-gray-100/90 text-muted-foreground visited:text-[#6b7280]",
           "border-b border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]",
           "hover:bg-gray-50 hover:before:bg-gray-50",
           "before:border-b before:border-b-gray-200 before:bg-gray-100/90",
@@ -107,7 +107,12 @@ export function ResearchDatasetTabs() {
         search={switchSearch.research}
         className={tab({ active: currentPlace === "research" })}
       >
-        <span className={cn("inline-block", { "translate-y-px": currentPlace === "research" })}>
+        <span
+          className={cn(
+            "inline-block",
+            currentPlace === "research" ? "translate-y-px" : "translate-y-[2px]",
+          )}
+        >
           {tCommon("research")}
         </span>
       </Link>
@@ -118,7 +123,12 @@ export function ResearchDatasetTabs() {
         search={switchSearch.dataset}
         className={cn("-ml-1.5", tab({ active: currentPlace === "dataset" }))}
       >
-        <span className={cn("inline-block", { "translate-y-px": currentPlace === "dataset" })}>
+        <span
+          className={cn(
+            "inline-block",
+            currentPlace === "dataset" ? "translate-y-px" : "translate-y-[2px]",
+          )}
+        >
           {tCommon("dataset")}
         </span>
       </Link>
