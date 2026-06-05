@@ -139,7 +139,8 @@ export function ResearchDatasetTabs() {
       </Link>
 
       <div
-        className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out"
+        className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out pointer-events-none"
+        aria-hidden="true"
         style={{
           left: `${sliderStyle.left}px`,
           width: `${sliderStyle.width}px`,

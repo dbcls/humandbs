@@ -117,7 +117,9 @@ export default function FrontStatsVisualization() {
       <ToggleGroup
         type="single"
         value={mode}
-        onValueChange={setMode}
+        onValueChange={(val) => {
+          if (val) setMode(val as "research" | "dataset");
+        }}
         className="absolute top-6 z-10 flex items-center rounded-full bg-white p-2 gap-2"
       >
         <ToggleGroupItem
@@ -143,7 +145,8 @@ export default function FrontStatsVisualization() {
           </span>
         </ToggleGroupItem>
         <div
-          className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out"
+          className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out pointer-events-none"
+          aria-hidden="true"
           style={{
             left: `${sliderStyle.left}px`,
             width: `${sliderStyle.width}px`,
