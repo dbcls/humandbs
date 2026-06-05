@@ -73,7 +73,7 @@ export function ResearchDatasetTabs() {
   const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const updateSlider = () => {
       const activeEl = currentPlace === "research" ? researchRef.current : datasetRef.current;
       if (activeEl) {
         setSliderStyle({
@@ -81,8 +81,24 @@ export function ResearchDatasetTabs() {
           width: activeEl.offsetWidth,
         });
       }
-    }, 50);
-    return () => clearTimeout(timer);
+    };
+
+    const timer = setTimeout(updateSlider, 50);
+
+    const observers: ResizeObserver[] = [];
+    const elements = [researchRef.current, datasetRef.current].filter(Boolean) as HTMLElement[];
+    if (elements.length > 0) {
+      const observer = new ResizeObserver(() => {
+        requestAnimationFrame(updateSlider);
+      });
+      elements.forEach((el) => observer.observe(el));
+      observers.push(observer);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observers.forEach((obs) => obs.disconnect());
+    };
   }, [currentPlace]);
 
   return (

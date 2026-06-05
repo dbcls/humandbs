@@ -34,8 +34,8 @@ export default function FrontStatsVisualization() {
 
   useEffect(() => {
     if (!isMounted || !stats) return;
-    // Delay slightly to ensure browser has rendered layout for correct offsetWidth
-    const timer = setTimeout(() => {
+    
+    const updateSlider = () => {
       const activeEl = mode === "research" ? researchRef.current : datasetRef.current;
       if (activeEl) {
         setSliderStyle({
@@ -43,8 +43,25 @@ export default function FrontStatsVisualization() {
           width: activeEl.offsetWidth,
         });
       }
-    }, 50);
-    return () => clearTimeout(timer);
+    };
+
+    // Delay slightly to ensure browser has rendered layout for correct offsetWidth
+    const timer = setTimeout(updateSlider, 50);
+
+    const observers: ResizeObserver[] = [];
+    const elements = [researchRef.current, datasetRef.current].filter(Boolean) as HTMLElement[];
+    if (elements.length > 0) {
+      const observer = new ResizeObserver(() => {
+        requestAnimationFrame(updateSlider);
+      });
+      elements.forEach((el) => observer.observe(el));
+      observers.push(observer);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observers.forEach((obs) => obs.disconnect());
+    };
   }, [mode, isMounted, stats]);
 
   if (!isMounted || loading) {
@@ -107,7 +124,7 @@ export default function FrontStatsVisualization() {
           value="research"
           variant="pill"
           ref={researchRef}
-          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:bg-transparent! data-[state=off]:bg-transparent!"
+          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent"
         >
           {tCommon("research")}
           <span className="ml-2 font-normal text-xs opacity-80">
@@ -118,7 +135,7 @@ export default function FrontStatsVisualization() {
           value="dataset"
           variant="pill"
           ref={datasetRef}
-          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:bg-transparent! data-[state=off]:bg-transparent!"
+          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent"
         >
           {tCommon("dataset")}
           <span className="ml-2 font-normal text-xs opacity-80">

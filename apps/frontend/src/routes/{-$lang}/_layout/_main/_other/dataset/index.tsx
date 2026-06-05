@@ -8,7 +8,6 @@ import { useLocale, useTranslations } from "use-intl";
 import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
-import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
