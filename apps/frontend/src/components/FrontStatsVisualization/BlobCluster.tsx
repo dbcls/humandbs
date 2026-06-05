@@ -201,7 +201,7 @@ export default function BlobCluster({
     });
 
     colorsInitializedRef.current = false;
-  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale, debugParams]);
+  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale, debugParams?.particleLabelFontSize]);
 
   const localGroupRef = useRef<THREE.Group>(null);
   const facetLabelRef = useRef<THREE.Group>(null);
@@ -304,7 +304,7 @@ export default function BlobCluster({
       const dy = pointerLocal.y - (node.y || 0) * currentScale;
       const distanceSq = dx * dx + dy * dy;
       
-      const hitRadius = visualRadius + 4;
+      const hitRadius = Math.max(visualRadius + 4, 18);
       const hitRadiusSq = hitRadius * hitRadius;
 
       if (distanceSq <= hitRadiusSq && distanceSq < closestDistanceSq) {
