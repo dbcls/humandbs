@@ -6,6 +6,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
+import { BATCH } from "@/api/constants"
 import { ConflictError, NotFoundError, ValidationError } from "@/api/errors"
 import {
   deleteDataset,
@@ -17,8 +18,10 @@ import {
 } from "@/api/es-client/dataset"
 import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
+import { uniq } from "@/api/es-client/utils"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
+  batchResponse,
   listResponse,
   searchResponse,
   singleReadOnlyResponse,
@@ -28,6 +31,7 @@ import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
 import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
+  exampleDatasetBatchResponse,
   exampleDatasetDetailResponse,
   exampleDatasetSearchResponse,
   exampleDatasetUpdateResponse,
@@ -45,6 +49,8 @@ import {
   ErrorSpec500,
 } from "@/api/routes/errors"
 import {
+  DatasetBatchQuerySchema,
+  DatasetBatchResponseSchema,
   DatasetDetailResponseSchema,
   DatasetIdParamsSchema,
   DatasetListingQuerySchema,
@@ -58,6 +64,7 @@ import {
   LinkedResearchesListResponseSchema,
   UpdateDatasetRequestSchema,
 } from "@/api/types"
+import type { DatasetDocWithMerged } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
@@ -86,6 +93,39 @@ const listDatasetsRoute = createRoute({
     200: {
       content: { "application/json": { schema: DatasetSearchResponseSchema, example: exampleDatasetSearchResponse } },
       description: "List of datasets with optional facets",
+    },
+    400: ErrorSpec400,
+    500: ErrorSpec500,
+  },
+})
+
+// Registered before getDatasetRoute so the static "/batch" path takes
+// precedence over the dynamic "/{datasetId}" segment.
+const batchGetDatasetsRoute = createRoute({
+  method: "get",
+  path: "/batch",
+  tags: ["Dataset"],
+  operationId: "batchGetDatasets",
+  summary: "Batch Get Datasets",
+  security: SECURITY_OPTIONAL_AUTH,
+  description: `Retrieve multiple Datasets in one request by their datasetIds.
+
+Pass a comma-separated \`ids\` query parameter (e.g. \`?ids=JGAD000001,JGAD000002\`).
+
+**Behavior:**
+- Returns the **latest version** of each Dataset (use GET /dataset/{datasetId}/versions/{version} for a specific version).
+- **Partial success:** retrievable Datasets are returned in \`data\` (de-duplicated, in requested order). IDs that are absent or not accessible to the caller are listed in \`meta.batch.notFound\` (their existence is not distinguished from access denial).
+- Per-ID authorization is applied (same visibility rules as GET /dataset/{datasetId}).
+- At most ${BATCH.MAX_IDS} IDs per request; an empty \`ids\` is rejected with 400.
+
+Response items include the \`mergedSearchable\` field, matching the Dataset detail endpoint.`,
+  request: {
+    query: DatasetBatchQuerySchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: DatasetBatchResponseSchema, example: exampleDatasetBatchResponse } },
+      description: "Batch of datasets (partial success; missing/inaccessible IDs listed in meta.batch.notFound)",
     },
     400: ErrorSpec400,
     500: ErrorSpec500,
@@ -310,6 +350,37 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
   const pagination = createPagination(result.pagination.total, result.pagination.page, result.pagination.limit)
 
   return searchResponse(c, strippedData, pagination, result.facets)
+})
+
+// GET /dataset/batch
+// Registered before GET /dataset/{datasetId} so "batch" is matched as a static
+// path, not captured by the dynamic {datasetId} segment.
+datasetRouter.openapi(batchGetDatasetsRoute, async (c) => {
+  const { ids, includeRawHtml } = c.req.valid("query")
+  const authUser = c.get("authUser")
+
+  const uniqIds = uniq(ids)
+  // getDataset applies per-ID authorization and version resolution, returning
+  // null for absent or inaccessible Datasets (existence is hidden).
+  const datasets = await Promise.all(uniqIds.map((id) => getDataset(id, {}, authUser)))
+
+  const data: DatasetDocWithMerged[] = []
+  const notFound: string[] = []
+  uniqIds.forEach((id, i) => {
+    const dataset = datasets[i]
+    if (dataset === null) {
+      notFound.push(id)
+      return
+    }
+    // Match the detail endpoint: add mergedSearchable, then strip rawHtml.
+    data.push(maybeStripRawHtml(addMergedSearchable(dataset), includeRawHtml))
+  })
+
+  return batchResponse(c, data, {
+    requested: uniqIds.length,
+    found: data.length,
+    notFound,
+  })
 })
 
 // GET /dataset/{datasetId}

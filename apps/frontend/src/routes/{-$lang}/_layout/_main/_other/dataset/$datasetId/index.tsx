@@ -23,7 +23,5 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$da
 function RouteComponent() {
   const { data } = Route.useLoaderData();
 
-  // useAutoAddToCart(data);
-
   return <DatasetVersionCard versionData={data} />;
 }

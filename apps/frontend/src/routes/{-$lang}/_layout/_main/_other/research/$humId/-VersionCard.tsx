@@ -152,10 +152,7 @@ const datasetColumns = [
     ),
     cell: (ctx) => (
       <ClientOnly fallback={null}>
-        <ResearchDatasetCartRowButton
-          datasetId={ctx.row.original.datasetId}
-          humId={ctx.row.original.humId}
-        />
+        <ResearchDatasetCartRowButton datasetId={ctx.row.original.datasetId} />
       </ClientOnly>
     ),
 

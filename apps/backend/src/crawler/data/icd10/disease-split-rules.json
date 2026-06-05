@@ -1,28 +1,510 @@
 {
   "大腸・直腸がん(C189, C20)": [
-    { "label": "大腸がん", "icd10": "C189" },
-    { "label": "直腸がん", "icd10": "C20" }
+    {
+      "label": "大腸がん",
+      "icd10": "C189"
+    },
+    {
+      "label": "直腸がん",
+      "icd10": "C20"
+    }
   ],
   "心不全(I509, I500)": [
-    { "label": "心不全", "icd10": "I509" },
-    { "label": "心不全", "icd10": "I500" }
+    {
+      "label": "心不全",
+      "icd10": "I509"
+    },
+    {
+      "label": "心不全",
+      "icd10": "I500"
+    }
   ],
   "胆嚢・胆管がん(C23, C240)": [
-    { "label": "胆嚢がん", "icd10": "C23" },
-    { "label": "胆管がん", "icd10": "C240" }
+    {
+      "label": "胆嚢がん",
+      "icd10": "C23"
+    },
+    {
+      "label": "胆管がん",
+      "icd10": "C240"
+    }
   ],
   "肺線維症(J849, J841)": [
-    { "label": "肺線維症", "icd10": "J849" },
-    { "label": "肺線維症", "icd10": "J841" }
+    {
+      "label": "肺線維症",
+      "icd10": "J849"
+    },
+    {
+      "label": "肺線維症",
+      "icd10": "J841"
+    }
   ],
   "虚血性心疾患(I200, I209, I219)": [
-    { "label": "虚血性心疾患", "icd10": "I200" },
-    { "label": "虚血性心疾患", "icd10": "I209" },
-    { "label": "虚血性心疾患", "icd10": "I219" }
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I200"
+    },
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I209"
+    },
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I219"
+    }
   ],
   "虚血性心疾患(I200、I209、I219)": [
-    { "label": "虚血性心疾患", "icd10": "I200" },
-    { "label": "虚血性心疾患", "icd10": "I209" },
-    { "label": "虚血性心疾患", "icd10": "I219" }
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I200"
+    },
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I209"
+    },
+    {
+      "label": "虚血性心疾患",
+      "icd10": "I219"
+    }
+  ],
+  "Heart failure(I509, I500)": [
+    {
+      "label": "Heart failure, unspecified",
+      "icd10": "I509"
+    },
+    {
+      "label": "Congestive heart failure",
+      "icd10": "I500"
+    }
+  ],
+  "Pulmonary fibrosis(J849, J841)": [
+    {
+      "label": "Interstitial pulmonary disease, unspecified",
+      "icd10": "J849"
+    },
+    {
+      "label": "Other interstitial pulmonary diseases with fibrosis",
+      "icd10": "J841"
+    }
+  ],
+  "Gallbladder and bile duct cancer(C23, C240)": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Extrahepatic bile duct",
+      "icd10": "C240"
+    }
+  ],
+  "Colorectal cancer(C189, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "MSI-H colorectal cancer(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Colorectal cancer with liver metastasis(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Colorectal cancer without liver metastasis(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Biliary tract cancer(C23, C24, C78)": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Biliary tract, unspecified",
+      "icd10": "C249"
+    },
+    {
+      "label": "Secondary malignant neoplasm of lung",
+      "icd10": "C780"
+    }
+  ],
+  "Stomach cancer(C16, C78)": [
+    {
+      "label": "Malignant neoplasm: Stomach, unspecified",
+      "icd10": "C169"
+    },
+    {
+      "label": "Secondary malignant neoplasm of lung",
+      "icd10": "C780"
+    }
+  ],
+  "Ischemic heart disease(I200, I209, I219)": [
+    {
+      "label": "Unstable angina",
+      "icd10": "I200"
+    },
+    {
+      "label": "Angina pectoris, unspecified",
+      "icd10": "I209"
+    },
+    {
+      "label": "Acute myocardial infarction, unspecified",
+      "icd10": "I219"
+    }
+  ],
+  "Gallbladder/bile duct cancer(C23, C240)": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Extrahepatic bile duct",
+      "icd10": "C240"
+    }
+  ],
+  "Colorectal and rectal cancer(C189, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Colorectal cancer(C189,C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Colorectal/rectal cancer(C189, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "colorectal cancer with liver metastasis(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "colorectal cancer without liver metastasis(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Gallbladder/bile duct cancer(C23,C240)": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Extrahepatic bile duct",
+      "icd10": "C240"
+    }
+  ],
+  "Heart failure(I509,I500)": [
+    {
+      "label": "Heart failure, unspecified",
+      "icd10": "I509"
+    },
+    {
+      "label": "Congestive heart failure",
+      "icd10": "I500"
+    }
+  ],
+  "Pulmonary fibrosis(J849,J841)": [
+    {
+      "label": "Interstitial pulmonary disease, unspecified",
+      "icd10": "J849"
+    },
+    {
+      "label": "Other interstitial pulmonary diseases with fibrosis",
+      "icd10": "J841"
+    }
+  ],
+  "Gallbladder and bile duct cancer(C23,C240)": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Extrahepatic bile duct",
+      "icd10": "C240"
+    }
+  ],
+  "Heart failure(I500,I509)": [
+    {
+      "label": "Congestive heart failure",
+      "icd10": "I500"
+    },
+    {
+      "label": "Heart failure, unspecified",
+      "icd10": "I509"
+    }
+  ],
+  "Pulmonary fibrosis(J841,J849)": [
+    {
+      "label": "Other interstitial pulmonary diseases with fibrosis",
+      "icd10": "J841"
+    },
+    {
+      "label": "Interstitial pulmonary disease, unspecified",
+      "icd10": "J849"
+    }
+  ],
+  "Colorectal cancer(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "Ischemic heart disease(I200,I209,I219)": [
+    {
+      "label": "Unstable angina",
+      "icd10": "I200"
+    },
+    {
+      "label": "Angina pectoris, unspecified",
+      "icd10": "I209"
+    },
+    {
+      "label": "Acute myocardial infarction, unspecified",
+      "icd10": "I219"
+    }
+  ],
+  "Myositis(M339, M332)": [
+    {
+      "label": "Dermatopolymyositis, unspecified",
+      "icd10": "M339"
+    },
+    {
+      "label": "Polymyositis",
+      "icd10": "M332"
+    }
+  ],
+  "colorectal cancer(C18, C19, C20)": [
+    {
+      "label": "Malignant neoplasm: Colon, unspecified",
+      "icd10": "C189"
+    },
+    {
+      "label": "Malignant neoplasm of rectosigmoid junction",
+      "icd10": "C19"
+    },
+    {
+      "label": "Malignant neoplasm of rectum",
+      "icd10": "C20"
+    }
+  ],
+  "mucus-producing solid-dominant adenocarcinoma of lung(C34.1, C34.3)": [
+    {
+      "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+      "icd10": "C341"
+    },
+    {
+      "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+      "icd10": "C343"
+    }
+  ],
+  "pulmonary adenocarcinoma harboring EML4-ALK variant 3(C34.1, C34.3)": [
+    {
+      "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+      "icd10": "C341"
+    },
+    {
+      "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+      "icd10": "C343"
+    }
+  ],
+  "angina pectoris(I20.0, I20.1, I20.8, I20.9)": [
+    {
+      "label": "Unstable angina",
+      "icd10": "I200"
+    },
+    {
+      "label": "Angina pectoris with documented spasm",
+      "icd10": "I201"
+    },
+    {
+      "label": "Other forms of angina pectoris",
+      "icd10": "I208"
+    },
+    {
+      "label": "Angina pectoris, unspecified",
+      "icd10": "I209"
+    }
+  ],
+  "dyslipidemia(E78.0-5, E78.8-9)": [
+    {
+      "label": "Pure hypercholesterolaemia",
+      "icd10": "E780"
+    },
+    {
+      "label": "Pure hyperglyceridaemia",
+      "icd10": "E781"
+    },
+    {
+      "label": "Mixed hyperlipidaemia",
+      "icd10": "E782"
+    },
+    {
+      "label": "Hyperchylomicronaemia",
+      "icd10": "E783"
+    },
+    {
+      "label": "Other hyperlipidaemia",
+      "icd10": "E784"
+    },
+    {
+      "label": "Hyperlipidaemia, unspecified",
+      "icd10": "E785"
+    },
+    {
+      "label": "Other disorders of lipoprotein metabolism",
+      "icd10": "E788"
+    },
+    {
+      "label": "Disorder of lipoprotein metabolism, unspecified",
+      "icd10": "E789"
+    }
+  ],
+  "biliary tract cancer(C22, C23, C24)": [
+    {
+      "label": "Malignant neoplasm: Liver, unspecified",
+      "icd10": "C229"
+    },
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Biliary tract, unspecified",
+      "icd10": "C249"
+    }
+  ],
+  "lymphoma(C81, C82, C83, C84, C85, C86, C88, C91)": [
+    {
+      "label": "Hodgkin lymphoma, unspecified",
+      "icd10": "C819"
+    },
+    {
+      "label": "Follicular lymphoma, unspecified",
+      "icd10": "C829"
+    },
+    {
+      "label": "Non-follicular (diffuse) lymphoma, unspecified",
+      "icd10": "C839"
+    },
+    {
+      "label": "Mature T/NK-cell lymphoma, unspecified",
+      "icd10": "C849"
+    },
+    {
+      "label": "Non-Hodgkin lymphoma, unspecified",
+      "icd10": "C859"
+    },
+    {
+      "label": "Malignant immunoproliferative disease, unspecified",
+      "icd10": "C889"
+    },
+    {
+      "label": "Lymphoid leukaemia, unspecified",
+      "icd10": "C919"
+    }
+  ],
+  "Lung adenocarcinoma(C34.1, C34.2, C34.3)": [
+    {
+      "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+      "icd10": "C341"
+    },
+    {
+      "label": "Malignant neoplasm: Middle lobe, bronchus or lung",
+      "icd10": "C342"
+    },
+    {
+      "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+      "icd10": "C343"
+    }
+  ],
+  "Gallbladder cancer and Cholangiocarcinoma": [
+    {
+      "label": "Malignant neoplasm of gallbladder",
+      "icd10": "C23"
+    },
+    {
+      "label": "Malignant neoplasm: Extrahepatic bile duct",
+      "icd10": "C240"
+    }
   ]
 }

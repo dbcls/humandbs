@@ -11,6 +11,8 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
+import { BATCH } from "../constants"
+
 import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
 import {
   PaginationQuerySchema,
@@ -69,6 +71,48 @@ export const LangQuerySchema = z.object({
     ),
 })
 export type LangQuery = z.infer<typeof LangQuerySchema>
+
+// === Batch Get Query (GET /dataset/batch, GET /research/batch) ===
+
+/**
+ * Parse the `ids` query parameter into a string array.
+ *
+ * Accepts a comma-separated value (`?ids=a,b,c`) and is also tolerant of
+ * repeated parameters (`?ids=a&ids=b`). Blank entries and surrounding
+ * whitespace are dropped. Follows the `z.preprocess` idiom used by
+ * `booleanFromString` (common.ts).
+ */
+const BatchIdsSchema = z.preprocess(
+  (v) => {
+    const raw = Array.isArray(v) ? v : typeof v === "string" ? [v] : null
+    if (raw === null) return v
+    return raw
+      .flatMap((s) => (typeof s === "string" ? s.split(",") : []))
+      .map((s) => s.trim())
+      .filter(Boolean)
+  },
+  z.array(z.string().min(1)).min(1).max(BATCH.MAX_IDS),
+).describe(
+  `Comma-separated resource IDs (e.g. 'JGAD000001,JGAD000002'). At least 1, at most ${BATCH.MAX_IDS}.`,
+)
+
+/**
+ * Dataset batch-get query (GET /dataset/batch).
+ * `ids` are datasetIds; the latest version of each is returned.
+ */
+export const DatasetBatchQuerySchema = LangQuerySchema.extend({
+  ids: BatchIdsSchema,
+})
+export type DatasetBatchQuery = z.infer<typeof DatasetBatchQuerySchema>
+
+/**
+ * Research batch-get query (GET /research/batch).
+ * `ids` are humIds; the latest version of each is returned.
+ */
+export const ResearchBatchQuerySchema = LangQuerySchema.extend({
+  ids: BatchIdsSchema,
+})
+export type ResearchBatchQuery = z.infer<typeof ResearchBatchQuerySchema>
 
 // === Research Listing Query (GET /research) ===
 

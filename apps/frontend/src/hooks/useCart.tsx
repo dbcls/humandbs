@@ -4,23 +4,16 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useCallback } from "react";
 
-import type { DatasetDoc } from "@/lib/types";
-
-export type CartItem = DatasetDoc;
-
-// const DRA_RREGEX = /^DRA\d+./useCart
-// const HUM_REGEX = /^hum\d+\..+$/i;
 const JGAD_REGEX = /^JGAD\d+$/i;
-/**
- * validates whether the datasetId is belongs to restricted-access or unrestricted-access dataset by its ID
- */
+const CART_LIMIT = 100;
+
 export function isCartableDatasetId(datasetId: string) {
   return JGAD_REGEX.test(datasetId);
 }
 
 type CartDatasetStore = {
-  cartDatasets: CartItem[];
-  add: (datasets: CartItem[]) => void;
+  cartDatasets: string[];
+  add: (datasetIds: string[]) => void;
   remove: (datasetIds: string[]) => void;
 };
 
@@ -28,52 +21,42 @@ export const useCartStore = create<CartDatasetStore>()(
   persist(
     (set) => ({
       cartDatasets: [],
-      add: (datasets) => {
+      add: (datasetIds) => {
         set((state) => {
-          const newDatasets = [...state.cartDatasets];
-          const cartableDatasets = datasets.filter((ds) => isCartableDatasetId(ds.datasetId));
+          const toAdd = datasetIds
+            .filter(isCartableDatasetId)
+            .filter((id) => !state.cartDatasets.includes(id));
 
-          cartableDatasets.forEach((dataset) => {
-            if (!newDatasets.some((d) => d.datasetId === dataset.datasetId)) {
-              newDatasets.push(dataset);
-            }
-          });
-          return { cartDatasets: newDatasets };
+          const next = [...state.cartDatasets, ...toAdd];
+          return { cartDatasets: next.slice(0, CART_LIMIT) };
         });
       },
       remove: (datasetIds) => {
         set((state) => ({
-          cartDatasets: state.cartDatasets.filter((d) => !datasetIds.includes(d.datasetId)),
+          cartDatasets: state.cartDatasets.filter((id) => !datasetIds.includes(id)),
         }));
       },
     }),
     {
-      name: "cart-storage", // name of the item in the storage (must be unique)
-      storage: createJSONStorage(() => sessionStorage), // (optional) by default, 'localStorage' is used
+      name: "cart-storage",
+      storage: createJSONStorage(() => sessionStorage),
     },
   ),
 );
 
-/**
- * Custom hook to toggle all datasets in given array.
- * useful for table header's "add to cart" button.
- * Only re-renders when allInCart or someInCart changes for this specific set.
- */
 export function useCartTableHeader({
   tableDatasets,
 }: {
-  tableDatasets: (CartItem | { datasetId: string })[];
+  tableDatasets: { datasetId: string }[];
 }) {
-  const cartableDatasets = tableDatasets.filter((ds) => isCartableDatasetId(ds.datasetId));
+  const cartableIds = tableDatasets
+    .map((ds) => ds.datasetId)
+    .filter(isCartableDatasetId);
 
   const { allInCart, someInCart, add, remove } = useCartStore(
     useShallow((state) => ({
-      allInCart: cartableDatasets.every((ds) =>
-        state.cartDatasets.some((d) => d.datasetId === ds.datasetId),
-      ),
-      someInCart: cartableDatasets.some((ds) =>
-        state.cartDatasets.some((d) => d.datasetId === ds.datasetId),
-      ),
+      allInCart: cartableIds.every((id) => state.cartDatasets.includes(id)),
+      someInCart: cartableIds.some((id) => state.cartDatasets.includes(id)),
       add: state.add,
       remove: state.remove,
     })),
@@ -81,11 +64,11 @@ export function useCartTableHeader({
 
   const handleToggleDatasets = useCallback(() => {
     if (allInCart) {
-      remove(cartableDatasets.map((ds) => ds.datasetId));
+      remove(cartableIds);
     } else {
-      add(cartableDatasets as CartItem[]);
+      add(cartableIds);
     }
-  }, [allInCart, add, remove, cartableDatasets]);
+  }, [allInCart, add, remove, cartableIds]);
 
   return { allInCart, someInCart, handleToggleDatasets };
 }

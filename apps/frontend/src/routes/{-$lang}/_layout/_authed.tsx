@@ -98,6 +98,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
       });
     }
   },
+  ssr: false,
 
   component: RouteComponent,
 });

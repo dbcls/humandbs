@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
-import type { ResearchesSearchParams, DatasetListQueryParams } from "@/utils/queryParams";
+import { cleanEmptyParams } from "@/utils/clean-empty-params";
+import type { ResearchesSearchParams, DatasetListQueryParams } from "@/utils/query-params";
 
 const researchSorts = new Set([
   "humId",

@@ -98,4 +98,26 @@ describe("Smoke: /dataset", () => {
 
     expect([200, 404]).toContain(status)
   })
+
+  // === Batch ===
+
+  itWithDataset("GET /dataset/batch?ids={datasetId} -> 200, batch shape", async (datasetId) => {
+    const { status, body } = await fetchJson(`/dataset/batch?ids=${datasetId}`)
+
+    expect(status).toBe(200)
+    expect(Array.isArray(body.data)).toBe(true)
+    expectBaseMeta(body.meta)
+    const batch = (body.meta as { batch?: { requested?: number; found?: number; notFound?: unknown } }).batch
+    expect(batch?.requested).toBe(1)
+    expect(batch?.found).toBe(1)
+    expect(Array.isArray(batch?.notFound)).toBe(true)
+    const items = body.data as Record<string, unknown>[]
+    expect(items[0].datasetId).toBe(datasetId)
+  })
+
+  itLive("GET /dataset/batch without ids -> 400", async () => {
+    const { status } = await fetchJson("/dataset/batch")
+
+    expect(status).toBe(400)
+  })
 })

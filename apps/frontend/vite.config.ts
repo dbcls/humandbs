@@ -60,6 +60,13 @@ export default defineConfig(async () => {
     define: {
       APP_VERSION: JSON.stringify(`v${packageJson.version}`),
       APP_VERSION_HASH: JSON.stringify(commitHash),
+      PUBLIC_FILES_SUBDIR: JSON.stringify(
+        process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
+      ),
+      DU_APPLICATION_URL: JSON.stringify(
+        process.env.HUMANBDS_FRONTEND_DU_APPLICATION_UR ??
+          "https://ts-humandbs.ddbj.nig.ac.jp/ndbc/application/import_form",
+      ),
     },
   };
 });

@@ -77,6 +77,8 @@ export const DatasetFilterQuerySchema = z.object({
     .describe("Filter by tissue type (comma-separated for OR)"),
   population: z.string().optional()
     .describe("Filter by population (comma-separated for OR)"),
+  cohorts: z.string().optional()
+    .describe("Filter by named study cohort (comma-separated for OR)"),
   platform: z.string().optional()
     .describe("Filter by sequencing platform (comma-separated for OR)"),
   fileTypes: z.string().optional()
@@ -151,4 +153,12 @@ export const DatasetFilterQuerySchema = z.object({
     .describe("Minimum total variant count"),
   maxVariantTotal: z.coerce.number().int().min(0).optional()
     .describe("Maximum total variant count"),
+  minVariantAutosomes: z.coerce.number().int().min(0).optional()
+    .describe("Minimum autosomal (chr1-22) variant count"),
+  maxVariantAutosomes: z.coerce.number().int().min(0).optional()
+    .describe("Maximum autosomal (chr1-22) variant count"),
+  minVariantChrX: z.coerce.number().int().min(0).optional()
+    .describe("Minimum chromosome X variant count"),
+  maxVariantChrX: z.coerce.number().int().min(0).optional()
+    .describe("Maximum chromosome X variant count"),
 })

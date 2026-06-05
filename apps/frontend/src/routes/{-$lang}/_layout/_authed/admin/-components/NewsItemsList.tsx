@@ -27,15 +27,16 @@ const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
 
 export function NewsItemsList({
   selectedNewsItemId,
-  onSelectNewsItem,
+  onSelectNewsItemId,
 }: {
   selectedNewsItemId: string | undefined;
-  onSelectNewsItem: (itemId: string | undefined) => void;
+  onSelectNewsItemId: (itemId: string | undefined) => void;
 }) {
   const { user } = useRouteContext({ from: "__root__" });
   const queryClient = useQueryClient();
 
   const { q, publishedFrom, publishedTo, tagIds } = routeApi.useSearch();
+
   const listQO = newsItemsInfiniteQueryOptions({
     titleOrContent: q,
     publishedFrom,
@@ -47,14 +48,12 @@ export function NewsItemsList({
 
   /** Add draft dummy to query cache */
   function handleClickAdd() {
-    const existingData = queryClient.getQueryData<InfiniteData<NewsItemResponse[], number>>(
-      listQO.queryKey,
-    );
+    const existingData = queryClient.getQueryData(listQO.queryKey);
     const cacheHasDraft =
       existingData?.pages.some((page) => page.some((item) => isDraftNewsItem(item.id))) ?? false;
 
     if (cacheHasDraft) {
-      onSelectNewsItem(DRAFT_NEWS_ID);
+      onSelectNewsItemId(DRAFT_NEWS_ID);
       return;
     }
     const draft = createDraftNewsItem({
@@ -62,7 +61,7 @@ export function NewsItemsList({
       email: user?.email ?? "",
     });
 
-    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(listQO.queryKey, (prev) => {
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -70,7 +69,7 @@ export function NewsItemsList({
       };
     });
 
-    onSelectNewsItem(DRAFT_NEWS_ID);
+    onSelectNewsItemId(DRAFT_NEWS_ID);
   }
 
   return (
@@ -86,7 +85,7 @@ export function NewsItemsList({
           <Suspense fallback={<SkeletonLoadingPanelItems />}>
             <ListItems
               selectedNewsItemId={selectedNewsItemId}
-              onSelectNewsItem={onSelectNewsItem}
+              onSelectNewsItemId={onSelectNewsItemId}
             />
           </Suspense>
         </ErrorResetBoundary>
@@ -97,10 +96,10 @@ export function NewsItemsList({
 
 function ListItems({
   selectedNewsItemId,
-  onSelectNewsItem,
+  onSelectNewsItemId,
 }: {
   selectedNewsItemId: string | undefined;
-  onSelectNewsItem: (itemId: string | undefined) => void;
+  onSelectNewsItemId: (itemId: string | undefined) => void;
 }) {
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
@@ -160,14 +159,14 @@ function ListItems({
   }
 
   function handleDiscardDraft() {
-    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(listQO.queryKey, (prev) => {
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         pages: prev.pages.map((page) => page.filter((i) => !isDraftNewsItem(i.id))),
       };
     });
-    onSelectNewsItem(undefined);
+    onSelectNewsItemId(undefined);
   }
 
   function handleClickDelete(item: NewsItemResponse) {
@@ -196,7 +195,7 @@ function ListItems({
           return (
             <li key={item.id}>
               <ListItem
-                onClick={() => onSelectNewsItem(item.id)}
+                onClick={() => onSelectNewsItemId(item.id)}
                 isActive={isActive}
                 className={cn("mb-2", {
                   "border border-dashed": isDraft,

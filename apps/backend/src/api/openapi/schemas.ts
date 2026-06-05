@@ -31,6 +31,7 @@ import {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
+  ResponseMetaWithBatchSchema,
 } from "@/api/types/response"
 import {
   DatasetTemplateDataSchema,
@@ -162,6 +163,7 @@ export const registerOpenAPISchemas = (app: OpenAPIHono): void => {
   r.register("ResponseMetaReadOnly", ResponseMetaReadOnlySchema)
   r.register("ResponseMetaWithLock", ResponseMetaWithLockSchema)
   r.register("ResponseMetaWithPagination", ResponseMetaWithPaginationSchema)
+  r.register("ResponseMetaWithBatch", ResponseMetaWithBatchSchema)
 
   // --- Errors (RFC 7807) ---
   r.register("ProblemDetails", ProblemDetailsSchema)

@@ -63,7 +63,7 @@ export function DatasetVersionCard({
     useShallow((state) => ({
       add: state.add,
       remove: state.remove,
-      isInCart: state.cartDatasets.some((item) => item.datasetId === versionData.datasetId),
+      isInCart: state.cartDatasets.includes(versionData.datasetId),
     })),
   );
 
@@ -71,7 +71,7 @@ export function DatasetVersionCard({
     if (isInCart) {
       remove([versionData.datasetId]);
     } else {
-      add([versionData as DatasetDoc]);
+      add([versionData.datasetId]);
     }
   };
 
@@ -136,8 +136,8 @@ export function DatasetVersionCard({
           ))}
         </dl>
         <ContentHeader>{t("experiments")}</ContentHeader>
-        {versionData.experiments.map((e, i) => (
-          <Experiment key={i} experiment={e} />
+        {versionData.experiments.map((e) => (
+          <Experiment key={`${e.header.en?.text}-${e.header.ja?.text}`} experiment={e} />
         ))}
       </section>
     </CardWithCaption>

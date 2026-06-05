@@ -258,6 +258,7 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
       isTumor: null,
       cellLine: [],
       population: [],
+      cohorts: [],
       sex: null,
       ageGroup: null,
       assayType: ["WGS"],

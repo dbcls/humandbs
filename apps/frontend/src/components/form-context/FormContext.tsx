@@ -4,9 +4,9 @@ import { lazy } from "react";
 
 import CheckboxField from "./CheckboxField";
 import LocaleSwitchField from "./LocaleSwitchField";
-import BilingualTextField from "./researchFields/BilingualTextField";
-import BilingualTextValueField from "./researchFields/BilingualTextValueField";
-import BilingualURLArrayField from "./researchFields/BilingualURLArrayField";
+import BilingualTextField from "./research-fields/BilingualTextField";
+import BilingualTextValueField from "./research-fields/BilingualTextValueField";
+import BilingualURLArrayField from "./research-fields/BilingualURLArrayField";
 import SelectField from "./SelectField";
 import SwitchField from "./SwitchField";
 import TextAreaField from "./TextAreaField";

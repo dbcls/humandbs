@@ -97,6 +97,8 @@ export const MergedSearchableSchema = z.object({
     .describe("Cell line names if applicable"),
   population: z.array(z.string())
     .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
+  cohorts: z.array(z.string())
+    .describe("Named study cohorts (e.g., 'BioBank Japan', '1000 Genomes Project')"),
 
   // Demographics
   sex: z.array(z.string())

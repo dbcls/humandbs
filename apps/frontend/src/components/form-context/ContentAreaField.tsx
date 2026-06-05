@@ -26,11 +26,9 @@ const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownC
 export default function ContentAreaField({
   label,
   assetFolder,
-  isLoading,
 }: {
   label: React.ReactNode;
   assetFolder?: string;
-  isLoading?: boolean;
 }) {
   const field = useFieldContext<string>();
   const editorContainerRef = useRef<HTMLDivElement | null>(null);

@@ -1,8 +1,12 @@
 /// <reference types="vite/client" />
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+  Scripts,
+  useHydrated,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-
-import * as React from "react";
 
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
@@ -83,12 +87,17 @@ export const Route = createRootRouteWithContext<Context>()({
 function RootDocument() {
   const { lang, session } = Route.useRouteContext();
 
+  const isHydrated = useHydrated();
+
   return (
     <html lang={lang}>
       <head>
         <HeadContent />
       </head>
-      <body className="main-bg relative flex h-screen flex-col bg-primary-translucent font-family-sans text-foreground">
+      <body
+        data-testhydrated={isHydrated}
+        className="main-bg relative flex h-screen flex-col bg-primary-translucent font-family-sans text-foreground"
+      >
         <Outlet />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />

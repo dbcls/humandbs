@@ -41,6 +41,7 @@ import {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
+  ResponseMetaWithBatchSchema,
 } from "./response"
 import {
   DatasetDocWithMergedSchema,
@@ -468,6 +469,17 @@ export const createSearchResponseSchema = <T extends z.ZodType>(
     facets: FacetsMapSchema.optional(),
   })
 
+/**
+ * Create batch-get response schema (data array + batch summary in meta)
+ */
+export const createBatchResponseSchema = <T extends z.ZodType>(
+  itemSchema: T,
+) =>
+  z.object({
+    data: z.array(itemSchema),
+    meta: ResponseMetaWithBatchSchema,
+  })
+
 // Re-export schemas for route definitions
 export { ResearchSchema, ResearchVersionSchema }
 
@@ -533,6 +545,17 @@ export type ResearchSearchResponse = z.infer<
 >
 
 /**
+ * Research batch-get response (GET /research/batch)
+ * Item schema matches the single-detail view (`ResearchDetailSchema`); lock
+ * fields are not surfaced (batch is read-oriented, re-fetch detail to edit).
+ */
+export const ResearchBatchResponseSchema =
+  createBatchResponseSchema(ResearchDetailSchema)
+export type ResearchBatchResponse = z.infer<
+  typeof ResearchBatchResponseSchema
+>
+
+/**
  * Research versions list response (GET /research/{humId}/versions)
  */
 export const ResearchVersionsListResponseSchema =
@@ -587,6 +610,15 @@ export type DatasetSearchResponse = z.infer<typeof DatasetSearchResponseSchema>
 export const DatasetDetailResponseSchema =
   createSingleResponseSchema(DatasetDocWithMergedSchema)
 export type DatasetDetailResponse = z.infer<typeof DatasetDetailResponseSchema>
+
+/**
+ * Dataset batch-get response (GET /dataset/batch)
+ * Item schema matches the single-detail view (`DatasetDocWithMergedSchema`);
+ * lock fields are not surfaced (batch is read-oriented, re-fetch detail to edit).
+ */
+export const DatasetBatchResponseSchema =
+  createBatchResponseSchema(DatasetDocWithMergedSchema)
+export type DatasetBatchResponse = z.infer<typeof DatasetBatchResponseSchema>
 
 /**
  * Dataset update response (PUT /dataset/{datasetId}/update)

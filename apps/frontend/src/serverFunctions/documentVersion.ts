@@ -10,12 +10,12 @@ import type { DocumentVersionStatus } from "@/db/types";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import type {
-  DocAnyVersionResponseRaw,
-  DocVersionListItemResponseRaw,
+    DocAnyVersionResponseRaw,
+    DocVersionListItemResponseRaw,
 } from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
-import { $getContentItemTranslation } from "./contentItem";
+import { $getPublishedContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
@@ -326,8 +326,8 @@ export const $getLatestDocumentOrContent = createServerFn()
     }
 
     try {
-      const content = await $getContentItemTranslation({
-        data: { id, lang, status: "published" },
+      const content = await $getPublishedContentItemTranslation({
+        data: { id, lang },
       });
       return content;
     } catch {

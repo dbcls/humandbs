@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Trash2 } from "lucide-react";
+import { LucideNavigation, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
@@ -13,10 +14,11 @@ import { i18n } from "@/config/i18n";
 import { useCartStore } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
+import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
-  loader: ({ context }) => ({ crumb: context.messages?.common["cart"] }),
+  loader: ({ context }) => ({ crumb: context.messages?.common?.["cart"] }),
 });
 
 const cartColumnsHelper = createColumnHelper<DatasetDoc>();
@@ -25,13 +27,23 @@ const cartDatasetColumns = [
   cartColumnsHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
-    cell: (ctx) => (
-      <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
-        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-          {ctx.renderValue()}
-        </TextWithIcon>
-      </Route.Link>
-    ),
+    cell: (ctx) => {
+      const isStub = !ctx.row.original.criteria;
+      return (
+        <div className="flex flex-col gap-1">
+          <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
+            <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+              {ctx.renderValue()}
+            </TextWithIcon>
+          </Route.Link>
+          {isStub && (
+            <span className="text-warning text-xs">
+              {ctx.table.options.meta?.t("data-unavailable")}
+            </span>
+          )}
+        </div>
+      );
+    },
     maxSize: 10,
   }),
   cartColumnsHelper.accessor("experiments", {
@@ -40,8 +52,8 @@ const cartDatasetColumns = [
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
-          {(ctx.getValue() ?? []).map((item, i) => (
-            <li key={i}>
+          {(ctx.getValue() ?? []).map((item) => (
+            <li key={`${item.header.en?.text}-${item.header.ja?.text}`}>
               <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}
@@ -75,37 +87,63 @@ const cartDatasetColumns = [
   }),
 ];
 
-function RouteComponent() {
-  const cart = useCartStore((state) => state.cartDatasets);
+function CartContents({ cartIds }: { cartIds: string[] }) {
   const t = useTranslations("Dataset");
   const locale = useLocale();
+  const navigate = Route.useNavigate()
+
+  const { data, isPending } = useQuery(getBatchedDatasetsQueryOptions(cartIds, locale));
 
   const payload = {
-    language_type: locale === "ja" ? 1 : 2,
-    components: cart.map((item) => ({
+    components: cartIds.map((id) => ({
       key: "use_dataset_request",
-      value: item.datasetId,
+      value: id,
     })),
   };
 
   function handleSubmit() {
-    console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
+
+  function handleNavigate() {
+    navigate(, {
+  }
+
+  if (isPending) {
+    return <p className="text-center text-gray-400">Loading...</p>;
+  }
+
+  const cartIdSet = new Set(cartIds);
+  const found = ((data?.data ?? []) as DatasetDoc[]).filter((d) => cartIdSet.has(d.datasetId));
+  const notFoundInCart = (data?.meta.batch.notFound ?? []).filter((id) => cartIdSet.has(id));
+  const stubs = notFoundInCart.map((id) => ({ datasetId: id }) as DatasetDoc);
+  const datasets = [...found, ...stubs];
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-end gap-4">
+        <Button onClick={handleSubmit}>Copy Cart Contents</Button>
+        <Button variant={"action"} onClick={handleSubmit}>
+          <LucideNavigation className="mr-1 size-6" />
+          <span>Navigate to application form</span>
+        </Button>
+      </div>
+      <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
+      <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />
+    </>
+  );
+}
+
+function RouteComponent() {
+  const cartIds = useCartStore((state) => state.cartDatasets);
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">
       <ClientOnly fallback={<p className="text-center text-gray-400">Loading...</p>}>
-        {cart.length === 0 ? (
+        {cartIds.length === 0 ? (
           <p className="text-center text-gray-400">Cart is empty</p>
         ) : (
-          <>
-            <Button className="mb-4 ml-auto" onClick={handleSubmit}>
-              Copy Cart Contents
-            </Button>
-            <Table columns={cartDatasetColumns} data={cart} meta={{ t, lang: locale }} />
-            <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" theme="github-light" />
-          </>
+          <CartContents cartIds={cartIds} />
         )}
       </ClientOnly>
     </CardWithCaption>

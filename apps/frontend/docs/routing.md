@@ -10,4 +10,4 @@ Tries to match route in the following order:
 3. `/<documentId>/revision/<N>` - Revision N of [Document](./documents.md) with documentId
 4. `/<documentId>/revision` - list of revisions od the document `<documentId>`
 5. `/<documentId>` - latest revision of the document `/<documentId>` with list of previous revisions
-6. `<contentId>` - [content item](./content-items.md)
+6. `<contentId>` - [Content item](./content-items.md)

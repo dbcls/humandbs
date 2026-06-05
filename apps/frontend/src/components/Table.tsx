@@ -60,6 +60,8 @@ function Table<T extends Record<string, unknown>>({
   isDimmed?: boolean;
   stickyColumnCount?: 0 | 1 | 2;
 }) {
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+
   const t = useTranslations("common");
   const [localSorting, setLocalSorting] = useState<SortingState>([]);
   const isControlledSorting = sorting !== undefined && onSortingChange !== undefined;
@@ -76,9 +78,11 @@ function Table<T extends Record<string, unknown>>({
     meta,
     state: {
       sorting: isControlledSorting ? sorting : localSorting,
+      columnOrder: columnOrder,
     },
     onSortingChange: isControlledSorting ? onSortingChange : setLocalSorting,
     manualSorting: isControlledSorting,
+    onColumnOrderChange: setColumnOrder,
   });
 
   return (
@@ -97,7 +101,7 @@ function Table<T extends Record<string, unknown>>({
                       "max-w-[300px] p-2 first-of-type:rounded-l last-of-type:rounded-r",
                       {
                         "sticky left-0 z-40 px-1.5 py-2": isSticky && index === 0,
-                        "w-12 min-w-[3rem] max-w-[3rem]": isSticky && index === 0 && isCartColumn,
+                        "w-12 min-w-12 max-w-12": isSticky && index === 0 && isCartColumn,
                         "sticky left-12 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]":
                           isSticky && index === 1,
                         "bg-secondary-light":
@@ -144,7 +148,7 @@ function Table<T extends Record<string, unknown>>({
                     "max-w-[300px] border-foreground-light/50 border-b-2 p-2 align-top",
                     {
                       "sticky left-0 z-20 bg-inherit px-1.5 py-2": isSticky && index === 0,
-                      "w-12 min-w-[3rem] max-w-[3rem]": isSticky && index === 0 && isCartColumn,
+                      "w-12 min-w-12 max-w-12": isSticky && index === 0 && isCartColumn,
                       "sticky left-12 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]":
                         isSticky && index === 1,
                     },

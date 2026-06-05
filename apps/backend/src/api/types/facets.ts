@@ -18,6 +18,7 @@ export const DATASET_FACET_NAMES = [
   "ageGroup",
   "tissues",
   "population",
+  "cohorts",
   "platform",
   "libraryKits",
   "readType",
@@ -65,7 +66,7 @@ export const FacetValueSchema = z.object({
 export type FacetValue = z.infer<typeof FacetValueSchema>
 
 /**
- * Facets map (explicit object with all 20 facet fields)
+ * Facets map (explicit object with all 21 facet fields)
  */
 const facetField = z.array(FacetValueSchema).optional()
 export const FacetsMapSchema = z.object({
@@ -77,6 +78,7 @@ export const FacetsMapSchema = z.object({
   ageGroup: facetField,
   tissues: facetField,
   population: facetField,
+  cohorts: facetField,
   platform: facetField,
   libraryKits: facetField,
   readType: facetField,

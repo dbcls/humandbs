@@ -22,6 +22,7 @@ const DOCUMENTED_FACETS = new Set([
   "assayType",
   "tissues",
   "population",
+  "cohorts",
   "platform",
   "fileTypes",
   "healthStatus",
@@ -85,7 +86,7 @@ describe("IT-STATS-*: stats endpoint", () => {
     }
   })
 
-  itWithEs("IT-STATS-04: facet keys are a subset of the documented 18 facets and exclude total_* aliases", async () => {
+  itWithEs("IT-STATS-04: facet keys are a subset of the documented facet set and exclude total_* aliases", async () => {
     // IT-STATS-04
     const app = getApp()
     const res = await app.request(url("/stats"))

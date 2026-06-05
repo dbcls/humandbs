@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { Markdown } from "@/components/Merkdown";
+import { Markdown } from "@/components/markdown";
 import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
 

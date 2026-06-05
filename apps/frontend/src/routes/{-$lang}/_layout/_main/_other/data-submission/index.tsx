@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
-import { Markdown } from "@/components/Merkdown";
-import { PreviousVersionsList } from "@/components/PreviousVersionsList";
+import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { Button } from "@/components/ui/button";
 import {
   $getLatestPublishedDocumentVersion,

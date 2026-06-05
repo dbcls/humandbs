@@ -150,6 +150,7 @@ export const createEmptySearchableFields = (): SearchableExperimentFields => ({
   isTumor: null,
   cellLine: [],
   population: [],
+  cohorts: [],
   sex: null,
   ageGroup: null,
   assayType: [],
@@ -212,10 +213,12 @@ export const parseSearchableFields = (jsonStr: string): SearchableExperimentFiel
   try {
     const parsed: unknown = JSON.parse(jsonStr)
     const llmFields = SearchableExperimentFieldsSchema.parse(parsed)
-    // Add empty policies array (will be populated by rule-based extraction)
+    // Add fields not produced by the LLM: policies (rule-based) and cohorts
+    // (rule-based, filled by a later normalization step). Empty here.
     return {
       ...llmFields,
       policies: [],
+      cohorts: [],
     }
   } catch (error) {
     logger.error("Failed to parse LLM response", { error: getErrorMessage(error), preview: jsonStr.slice(0, 200) })

@@ -31,10 +31,10 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
-import { buildFacetSections } from "@/utils/buildFacetSections";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
-import { isCancelledError } from "@/utils/isCancelledError";
-import { datasetListQuerySchema } from "@/utils/queryParams";
+import { buildFacetSections } from "@/utils/build-facet-sections";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
+import { isCancelledError } from "@/utils/is-cancelled-error";
+import { datasetListQuerySchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
   component: RouteComponent,
@@ -399,15 +399,6 @@ export const datasetsColumns = [
     maxSize: 10,
   }),
 
-  datasetsColumnHelper.accessor("releaseDate", {
-    id: "releaseDate",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
-  }),
-
-  datasetsColumnHelper.accessor("versionReleaseDate", {
-    id: "versionReleaseDate",
-    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
-  }),
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => {
@@ -421,8 +412,8 @@ export const datasetsColumns = [
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
-          {ctx.getValue().map((item, i) => (
-            <li key={i}>
+          {ctx.getValue().map((item) => (
+            <li key={`${item.header.ja?.text}-${item.header.en?.text}`}>
               <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}
@@ -434,6 +425,15 @@ export const datasetsColumns = [
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
+  }),
+  datasetsColumnHelper.accessor("releaseDate", {
+    id: "releaseDate",
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
+  }),
+
+  datasetsColumnHelper.accessor("versionReleaseDate", {
+    id: "versionReleaseDate",
+    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
   }),
 ];
 
