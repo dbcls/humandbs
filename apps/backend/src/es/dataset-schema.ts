@@ -28,6 +28,13 @@ export const datasetSchema = {
   // Dates
   versionReleaseDate: f.date(),
   releaseDate: f.date(),
+  // Dataset-level last-modified date: the max versionReleaseDate across all
+  // versions of this datasetId, denormalized onto every version doc so it is
+  // version-invariant. `collapse` keeps one version per datasetId; a
+  // version-invariant date lets the listing sort the same in both directions
+  // (a version-variant field would order asc groups by the oldest version while
+  // the listing displays the latest one). Mirrors Research's `dateModified`.
+  dateModified: f.date(),
 
   // Classification
   criteria: f.keyword(C),

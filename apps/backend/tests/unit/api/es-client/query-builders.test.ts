@@ -127,20 +127,20 @@ describe("buildDatasetSortSpec", () => {
     ])
   })
 
-  it("sorts by versionReleaseDate with missing _last and datasetId tiebreaker", () => {
-    const result = buildDatasetSortSpec("versionReleaseDate", "asc", false)
+  it("sorts by dateModified with missing _last and datasetId tiebreaker", () => {
+    const result = buildDatasetSortSpec("dateModified", "asc", false)
 
     expect(result).toEqual([
-      { versionReleaseDate: { order: "asc", missing: "_last" } },
+      { dateModified: { order: "asc", missing: "_last" } },
       { datasetId: { order: "asc" } },
     ])
   })
 
-  it("sorts by versionReleaseDate desc", () => {
-    const result = buildDatasetSortSpec("versionReleaseDate", "desc", true)
+  it("sorts by dateModified desc", () => {
+    const result = buildDatasetSortSpec("dateModified", "desc", true)
 
     expect(result).toEqual([
-      { versionReleaseDate: { order: "desc", missing: "_last" } },
+      { dateModified: { order: "desc", missing: "_last" } },
       { datasetId: { order: "asc" } },
     ])
   })
@@ -155,7 +155,7 @@ describe("buildDatasetSortSpec", () => {
   it("always returns a non-empty array", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom("datasetId" as const, "releaseDate" as const, "versionReleaseDate" as const, "relevance" as const),
+        fc.constantFrom("datasetId" as const, "releaseDate" as const, "dateModified" as const, "relevance" as const),
         fc.constantFrom("asc" as const, "desc" as const),
         fc.boolean(),
         (sort, order, hasQuery) => {
@@ -171,7 +171,7 @@ describe("buildDatasetSortSpec", () => {
   it("never contains _score when hasQuery is false", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom("datasetId" as const, "releaseDate" as const, "versionReleaseDate" as const, "relevance" as const),
+        fc.constantFrom("datasetId" as const, "releaseDate" as const, "dateModified" as const, "relevance" as const),
         fc.constantFrom("asc" as const, "desc" as const),
         (sort, order) => {
           const result = buildDatasetSortSpec(sort, order, false)

@@ -34,6 +34,17 @@ Dataset 自体は status フィールドを持たない。親 Research の可視
 
 **重要**: Dataset の作成・更新・削除は、親 Research が **draft 状態の場合のみ** 可能。
 
+### Dataset 一覧の collapse と日付 sort
+
+Dataset index は **1 (datasetId, version) = 1 doc**。一覧 (`GET /dataset` / `POST /dataset/search` → `searchDatasets`) は `collapse: { field: "datasetId" }` で datasetId ごとに畳み込み、**表示は inner_hits の最新 version** から組み立てる。Elasticsearch の collapse は「外側 sort で先頭に来た doc を group の代表」にするため、**version 可変なフィールドで sort すると asc で破綻する**（asc の代表が最古 version になり、group がその最古日付で並ぶ一方、表示は最新 version の日付になり不整合）。
+
+このため、sort 可能な日付は **version 不変** であること:
+
+- `releaseDate`: 初回公開日。全 version で同一（元から version 不変）。
+- `dateModified`: その datasetId の `max(versionReleaseDate)`（= 最新版の release 日付）を全 version doc に denormalize した値。ingest (`es/load-docs.ts § makeDatasetDateModifiedTransform`) で付与し、live の作成・更新・削除経路 (`es-client/dataset.ts § syncDatasetDateModified`) で datasetId 単位に再同期して version 不変を保つ。Research の `dateModified`（1 humId = 1 doc なので collapse 不要）と同じ役割。
+
+version 可変の `versionReleaseDate` は表示専用で、一覧の sort 値には使わない。
+
 ## 認証・認可
 
 ### OIDC 設定

@@ -1173,26 +1173,26 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
-### IT-SEARCH-37: GET /dataset の versionReleaseDate (更新日付) sort
+### IT-SEARCH-37: GET /dataset の dateModified (更新日付) sort
 
-**endpoint**: `GET /dataset?sort=versionReleaseDate&order={asc,desc}&limit=20`
-
-**不変条件**:
-- `status === 200`
-- 返る item の `versionReleaseDate` (ISO 日付文字列) が指定 order で単調 (asc は非減少 / desc は非増加)。値の無いものは末尾扱いで比較から除外
-- collapse で datasetId ごとに最新版が残り、外側 sort は group をその最新版の `versionReleaseDate` で並べるため、返却 item 列の `versionReleaseDate` も整列する
-
-**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es-client/search.ts § searchDatasets`
-
-**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
-
-### IT-SEARCH-38: POST /dataset/search の versionReleaseDate (更新日付) sort
-
-**endpoint**: `POST /dataset/search` body: `{ sort: "versionReleaseDate", order: "desc" }`
+**endpoint**: `GET /dataset?sort=dateModified&order={asc,desc}&limit=20`
 
 **不変条件**:
 - `status === 200`
-- 返る item の `versionReleaseDate` が降順 (値の無いものは末尾扱いで除外)
+- 返る item の `dateModified` (ISO 日付文字列) が指定 order で単調 (asc は非減少 / desc は非増加)。値の無いものは末尾扱いで比較から除外
+- `dateModified` は datasetId ごとの `max(versionReleaseDate)` を全 version doc に denormalize した version 不変フィールド。collapse の代表がどの version でも group の並び順 = 表示 (最新版) の値となるため、**asc / desc の両方**で整列する (version 可変の `versionReleaseDate` を直接 sort すると asc で崩れる)
+
+**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es/dataset-schema.ts § dateModified` / `es/load-docs.ts § makeDatasetDateModifiedTransform`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`、`tests/unit/es/load-docs.test.ts`
+
+### IT-SEARCH-38: POST /dataset/search の dateModified (更新日付) sort
+
+**endpoint**: `POST /dataset/search` body: `{ sort: "dateModified", order: "desc" }`
+
+**不変条件**:
+- `status === 200`
+- 返る item の `dateModified` が降順 (値の無いものは末尾扱いで除外)
 - listing (IT-SEARCH-37) と同じ `searchDatasets` を経由するため挙動は一致する
 
 **回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es-client/search.ts § searchDatasets`

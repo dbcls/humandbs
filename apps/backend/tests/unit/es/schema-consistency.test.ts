@@ -103,6 +103,7 @@ describe("es/schema-consistency", () => {
         "humVersionId",
         "versionReleaseDate",
         "releaseDate",
+        "dateModified",
         "criteria",
         "typeOfData",
         "experiments",

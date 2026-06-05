@@ -197,6 +197,37 @@ const getNextDatasetVersion = async (datasetId: string): Promise<string> => {
 }
 
 /**
+ * Recompute a dataset's version-invariant `dateModified` (the max
+ * versionReleaseDate across its versions) and write it onto every version doc,
+ * so the collapsed listing sort stays consistent (see `es/dataset-schema.ts`).
+ * Returns the value written, or null when the datasetId has no documents left.
+ */
+export const syncDatasetDateModified = async (datasetId: string): Promise<string | null> => {
+  const res = await esClient.search<EsDataset>({
+    index: ES_INDEX.dataset,
+    size: 1,
+    query: { term: { datasetId } },
+    sort: [{ versionReleaseDate: { order: "desc" } }],
+    _source: ["versionReleaseDate"],
+  })
+  const maxDate = res.hits.hits[0]?._source?.versionReleaseDate ?? null
+  if (maxDate === null) return null
+
+  await esClient.updateByQuery({
+    index: ES_INDEX.dataset,
+    refresh: true,
+    conflicts: "proceed",
+    query: { term: { datasetId } },
+    script: {
+      source: "ctx._source.dateModified = params.d",
+      params: { d: maxDate },
+    },
+  })
+
+  return maxDate
+}
+
+/**
  * Create a new Dataset
  * Authenticated user (parent Research owner) can create
  *
@@ -216,11 +247,13 @@ export const createDataset = async (
   // Get the next version number
   const version = await getNextDatasetVersion(datasetId)
 
-  // Create Dataset document
+  // Create Dataset document. A brand-new datasetId has a single version, so its
+  // dateModified equals this version's releaseDate.
   const datasetDoc: EsDataset = {
     datasetId,
     version,
     versionReleaseDate: now,
+    dateModified: now,
     humId: params.humId,
     humVersionId: params.humVersionId,
     releaseDate: params.releaseDate,
@@ -408,7 +441,10 @@ const bumpDatasetVersion = async (
     throw new Error(`Failed to update parent ResearchVersion references: ${error}`)
   }
 
-  return EsDatasetSchema.parse(newDoc)
+  // A new version became the latest; keep dateModified version-invariant across
+  // all docs of this datasetId so the listing sort stays consistent.
+  const maxDate = await syncDatasetDateModified(datasetId)
+  return EsDatasetSchema.parse({ ...newDoc, dateModified: maxDate ?? newDoc.dateModified })
 }
 
 // === Dataset Deletion ===
@@ -444,6 +480,10 @@ export const deleteDataset = async (
       id: esId,
       refresh: "wait_for",
     }, { ignore: [404] })
+
+    // Removing a version can change the max versionReleaseDate; resync the
+    // remaining docs' dateModified so the listing sort stays correct.
+    await syncDatasetDateModified(datasetId)
 
     return true
   } else {
