@@ -1,0 +1,5 @@
+<task_instruction>Please read the provided web page and check whether the page indicates that the researcher is affiliated with the organization.
+The researcher's name in English is "{researcher_name_en}" and in Japanese is "{researcher_name_jp}".
+The organization name in English is "{organization_name_en}" and in Japanese is "{organization_name_jp}".
+<web_page_url>{url}</web_page_url>
+<web_page_content>{page_content}</web_page_content>
