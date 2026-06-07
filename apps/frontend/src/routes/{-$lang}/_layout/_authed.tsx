@@ -4,6 +4,7 @@ import {
   Bell,
   Cuboid,
   Files,
+  FileSpreadsheet,
   GitBranch,
   LibraryBig,
   Newspaper,
@@ -18,6 +19,7 @@ import { useCan } from "@/hooks/useCan";
 
 export const tabParamSchema = z.enum([
   "data-transfer",
+  "ai-assistant",
   "news",
   "alerts",
   "documents",
@@ -210,6 +212,15 @@ function NavPanel() {
             </span>
           }
           tab="researches"
+        />
+        <PanelItem
+          title={
+            <span>
+              <FileSpreadsheet className="mr-2 inline size-5 align-middle leading-normal" />
+              AI Assistant
+            </span>
+          }
+          tab="ai-assistant"
         />
       </section>
     </CollapsibleCard>

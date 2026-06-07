@@ -432,6 +432,19 @@ export function getResearchQueryOptions(query: z.infer<typeof ResearchQuerySchem
   });
 }
 
+export type AssistantApplicationTask = {
+  task_id: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  status?: string | null;
+  application_type?: string | null;
+};
+
+export type AssistantApplicationsListResponse = {
+  tasks: AssistantApplicationTask[];
+  count: number;
+};
+
 const ResearchEditQuerySchema = z.object({
   ...HumIdParamsSchema.shape,
   ...LangVersionQuerySchema.shape,
@@ -449,6 +462,35 @@ export const $getResearchForEdit = createServerFn()
       accessToken: accessToken ?? undefined,
     });
   });
+
+export const $listAssistantApplications = createServerFn({ method: "GET" }).handler<
+  Promise<AssistantApplicationsListResponse>
+>(async () => {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+    ?.env;
+  const baseUrl = env?.HUMANDBS_ASSISTANT_API_BASE_URL?.replace(/\/$/, "") ?? "http://assistant-api:8000/api";
+  const response = await fetch(`${baseUrl}/applications`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch assistant applications: ${response.status}`);
+  }
+
+  return (await response.json()) as AssistantApplicationsListResponse;
+});
+
+export function getAssistantApplicationsQueryOptions() {
+  return queryOptions({
+    queryKey: ["assistant", "applications"],
+    queryFn: () => $listAssistantApplications(),
+    staleTime: 1000 * 30,
+    placeholderData: keepPreviousData,
+  });
+}
 
 const ListDsApplicationsInputSchema = z.object({
   page: z.number().int().min(1).default(1),
