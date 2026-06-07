@@ -466,6 +466,9 @@ export const $getResearchForEdit = createServerFn()
 export const $listAssistantApplications = createServerFn({ method: "GET" }).handler<
   Promise<AssistantApplicationsListResponse>
 >(async () => {
+  const accessToken = $$getJWT();
+  if (!accessToken) throw new Error("Unauthorized");
+
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
     ?.env;
   const baseUrl = env?.HUMANDBS_ASSISTANT_API_BASE_URL?.replace(/\/$/, "") ?? "http://assistant-api:8000/api";
@@ -473,11 +476,12 @@ export const $listAssistantApplications = createServerFn({ method: "GET" }).hand
     method: "GET",
     headers: {
       Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch assistant applications: ${response.status}`);
+    throw new Error(`Failed to fetch assistant applications: ${response.status} ${JSON.stringify(await response.json())}`);
   }
 
   return (await response.json()) as AssistantApplicationsListResponse;
