@@ -21,7 +21,11 @@
     "add-all-to-cart": "Add all to cart",
     "add-all-datasets-to-cart": "Add all datasets to cart",
     "read-more": "Read more",
-    "details": "Details"
+    "details": "Details",
+    "sort": "Sort",
+    "sort-asc": "Ascending",
+    "sort-desc": "Descending",
+    "sort-by": "{order}, by {field}"
   },
   "Cart": {
     "naviagte-to-application-form": "Navigate to application form"

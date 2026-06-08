@@ -7,15 +7,8 @@ import { cn } from "@/lib/utils";
 import { cleanEmptyParams } from "@/utils/clean-empty-params";
 import type { DatasetListQueryParams, ResearchesSearchParams } from "@/utils/query-params";
 
-const researchSorts = new Set([
-  "humId",
-  "title",
-  "releaseDate",
-  "datePublished",
-  "dateModified",
-  "relevance",
-]);
-const datasetSorts = new Set(["datasetId", "releaseDate", "relevance"]);
+const researchSorts = new Set(["humId", "datePublished", "dateModified"]);
+const datasetSorts = new Set(["datasetId", "releaseDate"]);
 
 function isStringInSet(value: unknown, set: Set<string>): value is string {
   return typeof value === "string" && set.has(value);

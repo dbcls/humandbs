@@ -19,6 +19,7 @@ export function SearchCaption({
   onCsv,
   onExcel,
   filterButtonRef,
+  sortControl,
 }: {
   title: string;
   filtersCount: number | undefined;
@@ -31,6 +32,7 @@ export function SearchCaption({
   onCsv?: () => void;
   onExcel?: () => void;
   filterButtonRef?: React.Ref<HTMLButtonElement>;
+  sortControl?: React.ReactNode;
 }) {
   const t = useTranslations("common");
   const [inputValue, setInputValue] = useState<string>(committedQuery);
@@ -64,6 +66,7 @@ export function SearchCaption({
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        {sortControl}
         <div className="flex gap-1">
           <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCopy}>
             {t("copy")}

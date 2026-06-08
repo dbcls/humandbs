@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import type { SortingState, Updater } from "@tanstack/react-table";
-import { createColumnHelper, functionalUpdate } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useLocale, useTranslations } from "use-intl";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useEffect, useMemo, useRef } from "react";
 
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
 
@@ -20,8 +19,9 @@ import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
+import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
@@ -106,6 +106,7 @@ function RouteComponent() {
           filtersCount={filtersCount}
           isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
+          sortControl={<DatasetSortSelect />}
           onCopy={() => {
             copyTableData(exportData);
           }}
@@ -289,45 +290,60 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function TableWrapper() {
-  const search = Route.useSearch();
+const DATASET_SORT_OPTIONS = [
+  { sort: "datasetId", order: "asc" },
+  { sort: "datasetId", order: "desc" },
+  { sort: "releaseDate", order: "desc" },
+  { sort: "releaseDate", order: "asc" },
+] as const;
 
-  const lang = useLocale();
-
+function DatasetSortSelect() {
+  const t = useTranslations("common");
+  const tD = useTranslations("Dataset");
   const { filters, setFilters } = useFilters(Route.id);
 
-  const t = useTranslations("Dataset");
+  const fieldLabels: Record<string, string> = {
+    datasetId: tD("datasetId"),
+    releaseDate: tD("releaseDate"),
+  };
 
-  const sorting = useMemo((): SortingState => {
-    if (!filters.sort) return [];
-    return [{ id: filters.sort, desc: filters.order === "desc" }];
-  }, [filters.sort, filters.order]);
-  const activeSort = sorting[0];
+  const currentSort = filters.sort ?? "datasetId";
+  const currentOrder = filters.order ?? "asc";
+  const value = `${currentSort}:${currentOrder}`;
 
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const sortingState: SortingState = [
-        { id: filters.sort ?? "datasetId", desc: filters.order === "desc" },
-      ];
-
-      const newState = functionalUpdate(updater, sortingState);
-
-      startTransition(() => {
-        setFilters({
-          sort: newState[0]?.id,
-          order: newState[0]?.desc ? "desc" : "asc",
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => {
+        const [sort, order] = v.split(":");
+        startTransition(() => {
+          setFilters({ sort: sort as typeof currentSort, order: order as "asc" | "desc" });
         });
-      });
-    },
-    [setFilters, filters],
+      }}
+    >
+      <SelectTrigger size="sm" className="w-auto gap-2 text-sm">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {DATASET_SORT_OPTIONS.map(({ sort, order }) => (
+          <SelectItem key={`${sort}:${order}`} value={`${sort}:${order}`}>
+            {t("sort-by", {
+              order: order === "asc" ? t("sort-asc") : t("sort-desc"),
+              field: fieldLabels[sort],
+            })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
+}
+
+function TableWrapper() {
+  const lang = useLocale();
+  const t = useTranslations("Dataset");
 
   const { data, isFetching, isPlaceholderData, transitionType } = useDatasetsSearchQuery();
 
-  const loadingSortColumnId =
-    isFetching && isPlaceholderData && transitionType === "sort"
-      ? (search.sort ?? "datasetId")
-      : undefined;
   const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!data || (isFetching && !isPlaceholderData)) {
@@ -343,9 +359,7 @@ function TableWrapper() {
   return (
     <Table
       className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
-      onSortingChange={handleSortingChange}
-      sorting={sorting}
-      meta={{ t, lang, loadingSortColumnId, activeSort }}
+      meta={{ t, lang }}
       columns={datasetsColumns}
       data={data.data}
       isDimmed={isPaginating}
@@ -388,7 +402,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
+    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
@@ -428,7 +442,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
+    header: (ctx) => ctx.table.options.meta?.t?.("releaseDate"),
   }),
 
   datasetsColumnHelper.accessor("versionReleaseDate", {

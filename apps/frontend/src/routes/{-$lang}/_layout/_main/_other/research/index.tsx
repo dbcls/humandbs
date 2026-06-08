@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-router";
-import type { SortingState, Updater } from "@tanstack/react-table";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "use-intl";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useEffect, useMemo, useRef } from "react";
 
 import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
@@ -19,8 +18,9 @@ import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRo
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
-import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
+import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isCartableDatasetId, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
@@ -113,6 +113,7 @@ function RouteComponent() {
           filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
+          sortControl={<ResearchSortSelect />}
           onCopy={() => {
             copyTableData(exportData);
           }}
@@ -299,37 +300,60 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function TableWrapper() {
-  const search = Route.useSearch();
+const RESEARCH_SORT_OPTIONS = [
+  { sort: "dateModified", order: "desc" },
+  { sort: "dateModified", order: "asc" },
+  { sort: "datePublished", order: "desc" },
+  { sort: "datePublished", order: "asc" },
+  { sort: "humId", order: "asc" },
+  { sort: "humId", order: "desc" },
+] as const;
 
-  const lang = useLocale();
-
-  const t = useTranslations("Research");
-
-  const sorting = useMemo((): SortingState => {
-    if (!search.sort) return [];
-    return [{ id: search.sort, desc: search.order === "desc" }];
-  }, [search.sort, search.order]);
-  const activeSort = sorting[0];
-
+function ResearchSortSelect() {
+  const t = useTranslations("common");
+  const tR = useTranslations("Research");
   const { filters, setFilters } = useFilters(Route.id);
 
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const sortingState: SortingState = [
-        { id: filters.sort ?? "humId", desc: filters.order === "desc" },
-      ];
-      const newState = functionalUpdate(updater, sortingState);
+  const fieldLabels: Record<string, string> = {
+    dateModified: tR("dateModified"),
+    datePublished: tR("datePublished"),
+    humId: tR("humId"),
+  };
 
-      startTransition(() => {
-        setFilters({
-          sort: newState[0]?.id,
-          order: newState[0]?.desc ? "desc" : "asc",
+  const currentSort = filters.sort ?? "dateModified";
+  const currentOrder = filters.order ?? "desc";
+  const value = `${currentSort}:${currentOrder}`;
+
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => {
+        const [sort, order] = v.split(":");
+        startTransition(() => {
+          setFilters({ sort: sort as typeof currentSort, order: order as "asc" | "desc" });
         });
-      });
-    },
-    [setFilters, filters],
+      }}
+    >
+      <SelectTrigger size="sm" className="w-auto gap-2 text-sm">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {RESEARCH_SORT_OPTIONS.map(({ sort, order }) => (
+          <SelectItem key={`${sort}:${order}`} value={`${sort}:${order}`}>
+            {t("sort-by", {
+              order: order === "asc" ? t("sort-asc") : t("sort-desc"),
+              field: fieldLabels[sort],
+            })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
+}
+
+function TableWrapper() {
+  const lang = useLocale();
+  const t = useTranslations("Research");
 
   const {
     data: researchesData,
@@ -338,10 +362,6 @@ function TableWrapper() {
     transitionType,
   } = useResearchesSearchQuery();
 
-  const loadingSortColumnId =
-    isFetching && isPlaceholderData && transitionType === "sort"
-      ? (search.sort ?? "humId")
-      : undefined;
   const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!researchesData || (isFetching && !isPlaceholderData))
@@ -358,9 +378,7 @@ function TableWrapper() {
       className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       columns={columns}
       data={researchesData.data}
-      sorting={sorting}
-      onSortingChange={handleSortingChange}
-      meta={{ t, lang, loadingSortColumnId, activeSort }}
+      meta={{ t, lang }}
       isDimmed={isPaginating}
       stickyColumnCount={2}
     />
@@ -398,7 +416,7 @@ const columns = [
   }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />,
+    header: (ctx) => ctx.table.options.meta?.t("research-id"),
 
     cell: function Cell(ctx) {
       return (
@@ -512,7 +530,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("datePublished")} />,
+    header: (ctx) => ctx.table.options.meta?.t?.("datePublished"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -535,7 +553,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("dateModified")} />,
+    header: (ctx) => ctx.table.options.meta?.t?.("dateModified"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
