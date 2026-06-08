@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { LucideNavigation, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
+
+import { useRef, useState } from "react";
 
 import { CardWithCaption } from "@/components/Card";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { Link } from "@/components/Link";
 import { ModalCell } from "@/components/ModalCell";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCartStore } from "@/hooks/useCart";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
 import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
@@ -89,8 +93,17 @@ const cartDatasetColumns = [
 
 function CartContents({ cartIds }: { cartIds: string[] }) {
   const t = useTranslations("Dataset");
+
+  const tCommon = useTranslations("common");
+
+  const tCart = useTranslations("Cart");
+
   const locale = useLocale();
-  const navigate = Route.useNavigate()
+
+  const [, copy] = useCopyToClipboard();
+
+  const [copied, setCopied] = useState(false);
+  const copyLabelTimerRef = useRef<Timer>(null);
 
   const { data, isPending } = useQuery(getBatchedDatasetsQueryOptions(cartIds, locale));
 
@@ -101,12 +114,14 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
     })),
   };
 
-  function handleSubmit() {
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-  }
+  function handleClickCopy() {
+    if (copyLabelTimerRef.current) {
+      clearTimeout(copyLabelTimerRef.current);
+    }
 
-  function handleNavigate() {
-    navigate(, {
+    setCopied(true);
+    copyLabelTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    copy(JSON.stringify(payload, null, 2));
   }
 
   if (isPending) {
@@ -122,11 +137,13 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
   return (
     <>
       <div className="mb-4 flex items-center justify-end gap-4">
-        <Button onClick={handleSubmit}>Copy Cart Contents</Button>
-        <Button variant={"action"} onClick={handleSubmit}>
-          <LucideNavigation className="mr-1 size-6" />
-          <span>Navigate to application form</span>
+        <Button onClick={handleClickCopy}>
+          <Copy className="mr-2 inline size-6" /> {copied ? tCommon("copied") : tCommon("copy")}
         </Button>
+        <Link href={DU_APPLICATION_URL} className="block">
+          {tCart("naviagte-to-application-form")}
+          <ExternalLink className="ml-2 inline size-6" />
+        </Link>
       </div>
       <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
       <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />

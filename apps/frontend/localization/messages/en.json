@@ -5,6 +5,7 @@
     "previous-versions": "Previous versions of {documentName}:",
     "search": "Search",
     "copy": "Copy",
+    "copied": "Copied",
     "more": "{count} more",
     "collapse": "Collapse",
     "no-data": "No data",
@@ -21,6 +22,9 @@
     "add-all-datasets-to-cart": "Add all datasets to cart",
     "read-more": "Read more",
     "details": "Details"
+  },
+  "Cart": {
+    "naviagte-to-application-form": "Navigate to application form"
   },
   "Footer": {
     "sitemap": "Sitemap"
