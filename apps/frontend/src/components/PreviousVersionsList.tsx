@@ -30,7 +30,7 @@ export function PreviousVersionsList({
               to="/{-$lang}/$"
               params={{
                 lang,
-                _splat: `${revisionsBasePath}/revision/${version.versionNumber}`,
+                _splat: `${revisionsBasePath}/version/${version.versionNumber}`,
               }}
               className="text-secondary"
             >

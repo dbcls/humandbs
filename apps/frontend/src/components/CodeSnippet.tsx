@@ -1,5 +1,6 @@
 import { Copy } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
+import { useTranslations } from "use-intl";
 
 import { useRef, useState } from "react";
 
@@ -19,20 +20,20 @@ export function CodeSnippet({
 }) {
   const [, copy] = useCopyToClipboard();
 
+  const tCommon = useTranslations("common");
+
+  const [copied, setCopied] = useState(false);
+
   const timerRef = useRef<Timer | null>(null);
 
-  const [copyLabel, setCopyLabel] = useState("Copy");
-
   function handleClickCopy() {
-    copy(code);
-    setCopyLabel("Copied!");
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    timerRef.current = setTimeout(() => {
-      setCopyLabel("Copy");
-      timerRef.current = null;
-    }, 2000);
+
+    setCopied(true);
+    timerRef.current = setTimeout(() => setCopied(false), 2000);
+    copy(code);
   }
 
   return (
@@ -47,7 +48,7 @@ export function CodeSnippet({
         className="absolute top-2 right-2 align-middle opacity-0 transition-opacity hover:opacity-70 active:opacity-80 group-hover:opacity-50"
       >
         <Copy className="mr-2 size-5" />
-        <span>{copyLabel}</span>
+        <span>{copied ? tCommon("copied") : tCommon("copy")}</span>
       </Button>
       <div className="max-h-96 overflow-auto p-2">
         <Highlight theme={themes.vsLight} code={code} language={lang}>

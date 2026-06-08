@@ -8,7 +8,6 @@ import { useLocale, useTranslations } from "use-intl";
 import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
-import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
@@ -35,13 +34,7 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/build-facet-sections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
 import { isCancelledError } from "@/utils/is-cancelled-error";
-
-const datasetListQuerySchema = DatasetSearchBodySchema.omit({
-  lang: true,
-  includeFacets: true,
-}).extend({
-  sort: DatasetSearchBodySchema.shape.sort.default("releaseDate"),
-});
+import { datasetListQuerySchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
   component: RouteComponent,

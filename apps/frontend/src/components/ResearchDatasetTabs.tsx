@@ -1,9 +1,10 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { cva } from "class-variance-authority";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
 import { cleanEmptyParams } from "@/utils/clean-empty-params";
+import type { ResearchesSearchParams, DatasetListQueryParams } from "@/utils/query-params";
 
 const researchSorts = new Set([
   "humId",
@@ -96,16 +97,56 @@ export function ResearchDatasetTabs() {
   const currentPlace: "research" | "dataset" = isResearch ? "research" : "dataset";
   const switchSearch = getTableSwitchSearch(location.search as Record<string, unknown>);
 
+  const researchRef = useRef<HTMLAnchorElement>(null);
+  const datasetRef = useRef<HTMLAnchorElement>(null);
+  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const updateSlider = () => {
+      const activeEl = currentPlace === "research" ? researchRef.current : datasetRef.current;
+      if (activeEl) {
+        setSliderStyle({
+          left: activeEl.offsetLeft,
+          width: activeEl.offsetWidth,
+        });
+      }
+    };
+
+    const timer = setTimeout(updateSlider, 50);
+
+    const observers: ResizeObserver[] = [];
+    const elements = [researchRef.current, datasetRef.current].filter(Boolean) as HTMLElement[];
+    if (elements.length > 0) {
+      const observer = new ResizeObserver(() => {
+        requestAnimationFrame(updateSlider);
+      });
+      elements.forEach((el) => observer.observe(el));
+      observers.push(observer);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observers.forEach((obs) => obs.disconnect());
+    };
+  }, [currentPlace]);
+
   return (
     <nav
       aria-label={`${tCommon("research")} / ${tCommon("dataset")}`}
-      className="-mt-[5px] -mr-px flex items-end pl-6"
+      className="relative flex rounded-full bg-white p-2 gap-2 border border-gray-100"
     >
       {/* 研究タブ */}
       <Link
         to="/{-$lang}/research"
-        search={switchSearch.research}
-        className={tab({ active: currentPlace === "research" })}
+        search={switchSearch.research as ResearchesSearchParams}
+        ref={researchRef}
+        className={cn(
+          "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
+          {
+            "text-white": currentPlace === "research",
+            "bg-transparent hover:text-foreground": currentPlace !== "research",
+          },
+        )}
       >
         <span
           className={cn(
@@ -120,8 +161,15 @@ export function ResearchDatasetTabs() {
       {/* データセットタブ */}
       <Link
         to="/{-$lang}/dataset"
-        search={switchSearch.dataset}
-        className={cn("-ml-1.5", tab({ active: currentPlace === "dataset" }))}
+        search={switchSearch.dataset as DatasetListQueryParams}
+        ref={datasetRef}
+        className={cn(
+          "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
+          {
+            "text-white": currentPlace === "dataset",
+            "bg-transparent hover:text-foreground": currentPlace !== "dataset",
+          },
+        )}
       >
         <span
           className={cn(
@@ -132,6 +180,15 @@ export function ResearchDatasetTabs() {
           {tCommon("dataset")}
         </span>
       </Link>
+
+      <div
+        className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out pointer-events-none"
+        aria-hidden="true"
+        style={{
+          left: `${sliderStyle.left}px`,
+          width: `${sliderStyle.width}px`,
+        }}
+      />
     </nav>
   );
 }

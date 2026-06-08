@@ -1,7 +1,24 @@
 import { z } from "zod";
 
-import { ResearchListingQuerySchema, ResearchSearchBodySchema } from "@humandbs/backend/types";
+import { ResearchListingQuerySchema, ResearchSearchBodySchema, DatasetSearchBodySchema } from "@humandbs/backend/types";
 
+export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
+  lang: true,
+  includeFacets: true,
+}).extend({
+  sort: ResearchSearchBodySchema.shape.sort.default("dateModified"),
+});
+
+export type ResearchesSearchParams = z.infer<typeof researchesSearchParamsSchema>;
+
+export const datasetListQuerySchema = DatasetSearchBodySchema.omit({
+  lang: true,
+  includeFacets: true,
+}).extend({
+  sort: DatasetSearchBodySchema.shape.sort.default("releaseDate"),
+});
+
+export type DatasetListQueryParams = z.infer<typeof datasetListQuerySchema>;
 /** Filter params for the authed researches list page search params,
  *  where text could be humId of free-text query
  * lang not needed because use context

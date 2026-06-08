@@ -36,19 +36,22 @@ export const $getDocuments = createServerFn({
     const documents = await db.query.document.findMany({
       where: data.q
         ? (table) =>
-            exists(
-              db
-                .select({ _: documentVersion.documentId })
-                .from(documentVersion)
-                .where(
-                  and(
-                    eq(documentVersion.documentId, table.id),
-                    or(
-                      like(documentVersion.title, `%${data.q}%`),
-                      like(documentVersion.content, `%${data.q}%`),
+            or(
+              like(table.contentId, `%${data.q}%`),
+              exists(
+                db
+                  .select({ _: documentVersion.documentId })
+                  .from(documentVersion)
+                  .where(
+                    and(
+                      eq(documentVersion.documentId, table.id),
+                      or(
+                        like(documentVersion.title, `%${data.q}%`),
+                        like(documentVersion.content, `%${data.q}%`),
+                      ),
                     ),
                   ),
-                ),
+              ),
             )
         : undefined,
     });
