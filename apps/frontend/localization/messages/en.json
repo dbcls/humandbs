@@ -25,7 +25,7 @@
     "sort": "Sort",
     "sort-asc": "Ascending",
     "sort-desc": "Descending",
-    "sort-by": "{order}, by {field}"
+    "sort-by": "by {field}"
   },
   "Cart": {
     "naviagte-to-application-form": "Navigate to application form"

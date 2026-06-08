@@ -25,7 +25,7 @@
     "sort": "並び替え",
     "sort-asc": "昇順",
     "sort-desc": "降順",
-    "sort-by": "{field}・{order}"
+    "sort-by": "{field}"
   },
   "Cart": {
     "naviagte-to-application-form": "申請フォームへ"

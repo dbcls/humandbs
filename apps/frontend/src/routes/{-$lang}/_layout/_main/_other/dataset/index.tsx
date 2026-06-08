@@ -19,9 +19,9 @@ import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { SortDropdown } from "@/components/SortDropDown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
@@ -309,32 +309,26 @@ function DatasetSortSelect() {
 
   const currentSort = filters.sort ?? "datasetId";
   const currentOrder = filters.order ?? "asc";
-  const value = `${currentSort}:${currentOrder}`;
+  // const value = `${currentSort}:${currentOrder}`;
+
+  const sortOptions = DATASET_SORT_OPTIONS.map(({ sort, order }) => ({
+    label: t("sort-by", {
+      field: fieldLabels[sort],
+    }),
+    value: `${sort}:${order}`,
+    order,
+  }));
 
   return (
-    <Select
-      value={value}
-      onValueChange={(v) => {
-        const [sort, order] = v.split(":");
+    <SortDropdown
+      options={sortOptions}
+      value={`${currentSort}:${currentOrder}`}
+      onSelect={(newSort) => {
         startTransition(() => {
-          setFilters({ sort: sort as typeof currentSort, order: order as "asc" | "desc" });
+          setFilters(newSort);
         });
       }}
-    >
-      <SelectTrigger size="sm" className="w-auto gap-2 text-sm">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {DATASET_SORT_OPTIONS.map(({ sort, order }) => (
-          <SelectItem key={`${sort}:${order}`} value={`${sort}:${order}`}>
-            {t("sort-by", {
-              order: order === "asc" ? t("sort-asc") : t("sort-desc"),
-              field: fieldLabels[sort],
-            })}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    />
   );
 }
 

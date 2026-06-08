@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { ResearchListingQuerySchema, ResearchSearchBodySchema, DatasetSearchBodySchema } from "@humandbs/backend/types";
+import {
+  DatasetSearchBodySchema,
+  ResearchListingQuerySchema,
+  ResearchSearchBodySchema,
+} from "@humandbs/backend/types";
 
 export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   lang: true,
@@ -37,6 +41,8 @@ export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema
   .extend(
     z.object({
       q: z.string().optional(),
+      sort: z.string().default("humId"),
+      order: z.string().default("desc"),
     }).shape,
   );
 
