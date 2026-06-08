@@ -1,10 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
+
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { cleanEmptyParams } from "@/utils/clean-empty-params";
-import type { ResearchesSearchParams, DatasetListQueryParams } from "@/utils/query-params";
+import type { DatasetListQueryParams, ResearchesSearchParams } from "@/utils/query-params";
 
 const researchSorts = new Set([
   "humId",
@@ -55,35 +56,6 @@ function getTableSwitchSearch(currentSearch: Record<string, unknown>) {
   };
 }
 
-const tab = cva(
-  [
-    "relative flex cursor-pointer select-none items-end px-8 pb-1",
-    "rounded-tr-md font-bold text-sm no-underline",
-    "border-gray-200 border-t border-r",
-    "before:absolute before:-top-px before:bottom-0 before:-left-[14px] before:w-[14px]",
-    "before:border-gray-200 before:border-t before:border-l",
-    "before:origin-bottom-right before:skew-x-[-25deg] before:rounded-tl-md",
-  ],
-  {
-    variants: {
-      active: {
-        true: [
-          "z-10 h-[30px] bg-white text-secondary visited:text-secondary",
-          "border-b border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]",
-          "before:border-b before:border-b-white before:bg-white",
-        ],
-        false: [
-          "z-0 h-[29px] -translate-y-px bg-gray-100/90 text-muted-foreground visited:text-secondary",
-          "border-b border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]",
-          "hover:bg-gray-50 hover:before:bg-gray-50",
-          "before:border-b before:border-b-gray-200 before:bg-gray-100/90",
-          "before:shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]",
-        ],
-      },
-    },
-  },
-);
-
 export function ResearchDatasetTabs() {
   const tCommon = useTranslations("common");
   const location = useLocation();
@@ -91,8 +63,6 @@ export function ResearchDatasetTabs() {
   const pathname = location.pathname;
   const isResearch = pathname.includes("/research");
   const isDataset = pathname.includes("/dataset");
-
-  if (!isResearch && !isDataset) return null;
 
   const currentPlace: "research" | "dataset" = isResearch ? "research" : "dataset";
   const switchSearch = getTableSwitchSearch(location.search as Record<string, unknown>);
@@ -120,20 +90,26 @@ export function ResearchDatasetTabs() {
       const observer = new ResizeObserver(() => {
         requestAnimationFrame(updateSlider);
       });
-      elements.forEach((el) => observer.observe(el));
+      elements.forEach((el) => {
+        observer.observe(el);
+      });
       observers.push(observer);
     }
 
     return () => {
       clearTimeout(timer);
-      observers.forEach((obs) => obs.disconnect());
+      observers.forEach((obs) => {
+        obs.disconnect();
+      });
     };
   }, [currentPlace]);
+
+  if (!isResearch && !isDataset) return null;
 
   return (
     <nav
       aria-label={`${tCommon("research")} / ${tCommon("dataset")}`}
-      className="relative flex rounded-full bg-white p-2 gap-2 border border-gray-100"
+      className="relative flex gap-2 rounded-full border border-gray-100 bg-white p-2"
     >
       {/* 研究タブ */}
       <Link
@@ -141,7 +117,7 @@ export function ResearchDatasetTabs() {
         search={switchSearch.research as ResearchesSearchParams}
         ref={researchRef}
         className={cn(
-          "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
+          "z-10 flex h-10 cursor-pointer items-center justify-center rounded-full px-8 text-center font-bold text-foreground-light text-sm uppercase no-underline transition-all duration-200",
           {
             "text-white": currentPlace === "research",
             "bg-transparent hover:text-foreground": currentPlace !== "research",
@@ -164,7 +140,7 @@ export function ResearchDatasetTabs() {
         search={switchSearch.dataset as DatasetListQueryParams}
         ref={datasetRef}
         className={cn(
-          "z-10 h-10 px-8 cursor-pointer rounded-full text-center flex items-center justify-center font-bold text-sm text-foreground-light uppercase transition-all duration-200 no-underline",
+          "z-10 flex h-10 cursor-pointer items-center justify-center rounded-full px-8 text-center font-bold text-foreground-light text-sm uppercase no-underline transition-all duration-200",
           {
             "text-white": currentPlace === "dataset",
             "bg-transparent hover:text-foreground": currentPlace !== "dataset",
@@ -182,7 +158,7 @@ export function ResearchDatasetTabs() {
       </Link>
 
       <div
-        className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out pointer-events-none"
+        className="pointer-events-none absolute top-2 z-0 h-10 rounded-full bg-secondary transition-all duration-300 ease-out"
         aria-hidden="true"
         style={{
           left: `${sliderStyle.left}px`,
