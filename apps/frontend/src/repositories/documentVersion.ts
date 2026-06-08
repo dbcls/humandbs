@@ -1,5 +1,5 @@
 import { notFound } from "@tanstack/router-core";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
@@ -181,6 +181,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
           locale: true,
           status: true,
         },
+        orderBy: (table, { desc }) => desc(table.versionNumber),
       });
       return rows.map((r) => ({ ...r, contentId }));
     },

@@ -71,6 +71,20 @@ bun run db:seed-news -- --overwrite
 
 Each JSON entry becomes a `newsItem` with a single `newsTranslation`.
 
+### `seed-guideline-versions.ts`
+
+Seeds historical versions of the four guideline documents from `misc-pages.json`. Must run after `seed-documents.ts`.
+
+```bash
+bun run db:seed-guideline-versions
+bun run db:seed-guideline-versions -- --overwrite
+```
+
+- Inserts historical versions (v1…vN) for `guidelines/data-sharing-guidelines`, `guidelines/security-guidelines-for-dbcenters`, `guidelines/security-guidelines-for-submitters`, and `guidelines/security-guidelines-for-users`
+- Source slugs contain dirty data (mismatched version numbers, EN/JA split across different slug names); the mapping is hardcoded in the script
+- Pre-existing versions already in the DB (e.g. seeded from disk by `seed-documents.ts`) are renumbered upward to sit above the historical versions — their content is not changed
+- Skips existing rows by default; use `--overwrite` to update title/content in place
+
 ### `seed-content.ts`
 
 Seeds misc pages (policies, old guidelines, etc.) exported from the old Joomla site into `content_item` / `content_translation` tables.
@@ -172,6 +186,7 @@ bun run db:push
 
 ```bash
 bun run db:seed-documents
+bun run db:seed-guideline-versions
 bun run db:seed-files
 bun run db:seed-navigation
 bun run db:seed-news
