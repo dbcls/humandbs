@@ -62,7 +62,10 @@ export function AdminListItem({
             if (!displayTitle) return null;
 
             return (
-              <li key={translation.lang} className="flex min-w-0 items-center gap-2 text-xs">
+              <li
+                key={translation.lang}
+                className="flex min-w-0 items-center justify-between gap-2 text-xs"
+              >
                 <span className="truncate text-sm">{displayTitle}</span>
                 {hasChangedDraft && !hideUnpublishedDot ? <UnpublishedDot /> : null}
               </li>

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { and, eq, max } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -155,9 +155,20 @@ async function seedGuidelineVersions(overwrite = false) {
     // Collect all unique parent document contentIds
     const parentContentIds = new Set(Object.values(SLUG_TO_VERSION).map((v) => v.documentContentId));
 
+    // Build a content fingerprint for each document: the contentHtml of the first historical page.
+    // Used to detect whether historical versions have already been seeded (idempotency check).
+    const fingerprintByContentId = new Map<string, string>();
+    for (const [slug, pages] of bySlug) {
+      const { documentContentId } = SLUG_TO_VERSION[slug]!;
+      if (!fingerprintByContentId.has(documentContentId) && pages.length > 0) {
+        fingerprintByContentId.set(documentContentId, pages[0]!.contentHtml);
+      }
+    }
+
     // For each parent document: resolve its UUID, then renumber existing versions if needed
     const docUuidByContentId = new Map<string, string>();
     const versionOffsets = new Map<string, number>(); // contentId -> offset to add to historical versionNumber
+    const skipInsert = new Set<string>(); // contentIds whose historical versions are already seeded
 
     for (const contentId of parentContentIds) {
       const [existing] = await db
@@ -173,43 +184,55 @@ async function seedGuidelineVersions(overwrite = false) {
       }
 
       docUuidByContentId.set(contentId, existing.id);
-
-      // Find the current max version number in DB
-      const [{ maxVer }] = await db
-        .select({ maxVer: max(schema.documentVersion.versionNumber) })
-        .from(schema.documentVersion)
-        .where(eq(schema.documentVersion.documentId, existing.id))
-        .execute();
-
-      const currentMax = maxVer ?? 0;
       const historicalMax = MAX_HISTORICAL_VERSION[contentId]!;
 
-      if (currentMax === 0) {
+      // Check if historical versions are already seeded by looking for the fingerprint content.
+      const fingerprint = fingerprintByContentId.get(contentId);
+      const [alreadySeeded] = fingerprint
+        ? await db
+            .select({ versionNumber: schema.documentVersion.versionNumber })
+            .from(schema.documentVersion)
+            .where(
+              and(
+                eq(schema.documentVersion.documentId, existing.id),
+                eq(schema.documentVersion.content, fingerprint),
+              ),
+            )
+            .limit(1)
+            .execute()
+        : [undefined];
+
+      if (alreadySeeded) {
+        skipInsert.add(contentId);
+        console.log(`  ${contentId}: already seeded (found fingerprint at v${alreadySeeded.versionNumber}), skipping`);
+        continue;
+      }
+
+      // Check whether any versions exist at all
+      const existingVersions = await db
+        .select({
+          documentId: schema.documentVersion.documentId,
+          versionNumber: schema.documentVersion.versionNumber,
+          locale: schema.documentVersion.locale,
+          status: schema.documentVersion.status,
+        })
+        .from(schema.documentVersion)
+        .where(eq(schema.documentVersion.documentId, existing.id))
+        .orderBy(schema.documentVersion.versionNumber)
+        .execute();
+
+      if (existingVersions.length === 0) {
         versionOffsets.set(contentId, 0);
         console.log(`  ${contentId}: no existing versions, inserting historical v1–v${historicalMax}`);
       } else {
-        // Pre-existing versions need to be renumbered to sit above the historical ones.
-        // offset = historicalMax (existing versions shift up by this amount)
+        // Renumber pre-existing versions upward to make room for historical ones.
         const offset = historicalMax;
         versionOffsets.set(contentId, offset);
         console.log(
-          `  ${contentId}: existing versions (max=${currentMax}) will be renumbered +${offset}`,
+          `  ${contentId}: renumbering ${existingVersions.length} existing version(s) +${offset}`,
         );
 
-        // Renumber existing versions in descending order to avoid PK conflicts
-        const existingVersions = await db
-          .select({
-            documentId: schema.documentVersion.documentId,
-            versionNumber: schema.documentVersion.versionNumber,
-            locale: schema.documentVersion.locale,
-            status: schema.documentVersion.status,
-          })
-          .from(schema.documentVersion)
-          .where(eq(schema.documentVersion.documentId, existing.id))
-          .orderBy(schema.documentVersion.versionNumber)
-          .execute();
-
-        // Update from highest to lowest to avoid collisions on the composite PK
+        // Update from highest to lowest to avoid composite PK collisions
         for (const v of [...existingVersions].reverse()) {
           await db
             .update(schema.documentVersion)
@@ -224,8 +247,6 @@ async function seedGuidelineVersions(overwrite = false) {
             )
             .execute();
         }
-
-        console.log(`  Renumbered ${existingVersions.length} existing version row(s) for ${contentId}`);
       }
     }
 
@@ -235,8 +256,9 @@ async function seedGuidelineVersions(overwrite = false) {
 
     for (const [slug, pages] of bySlug) {
       const { documentContentId, versionNumber } = SLUG_TO_VERSION[slug]!;
+      if (skipInsert.has(documentContentId)) continue;
       const docUuid = docUuidByContentId.get(documentContentId)!;
-      const offset = versionOffsets.get(documentContentId)!;
+      const offset = versionOffsets.get(documentContentId) ?? 0;
       const finalVersionNumber = versionNumber + offset;
 
       for (const page of pages) {
