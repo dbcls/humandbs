@@ -59,7 +59,7 @@ const tab = cva(
     "relative flex cursor-pointer select-none items-end px-8 pb-1",
     "rounded-tr-md font-bold text-sm no-underline",
     "border-gray-200 border-t border-r",
-    "before:absolute before:-top-px before:bottom-0 before:left-[-14px] before:w-[14px]",
+    "before:absolute before:-top-px before:bottom-0 before:-left-[14px] before:w-[14px]",
     "before:border-gray-200 before:border-t before:border-l",
     "before:origin-bottom-right before:skew-x-[-25deg] before:rounded-tl-md",
   ],
@@ -67,12 +67,12 @@ const tab = cva(
     variants: {
       active: {
         true: [
-          "z-10 h-[30px] bg-white text-secondary visited:text-[#1a5fbd]",
+          "z-10 h-[30px] bg-white text-secondary visited:text-secondary",
           "border-b border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]",
           "before:border-b before:border-b-white before:bg-white",
         ],
         false: [
-          "z-0 h-[29px] -translate-y-px bg-gray-100/90 text-muted-foreground visited:text-[#6b7280]",
+          "z-0 h-[29px] -translate-y-px bg-gray-100/90 text-muted-foreground visited:text-secondary",
           "border-b border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]",
           "hover:bg-gray-50 hover:before:bg-gray-50",
           "before:border-b before:border-b-gray-200 before:bg-gray-100/90",
