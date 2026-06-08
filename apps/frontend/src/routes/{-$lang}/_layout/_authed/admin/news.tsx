@@ -1,8 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useState } from "react";
-
-import { useFilters } from "@/hooks/useFilters";
 import { newsAdminSearchParamsSchema } from "@/utils/query-params";
 
 import { NewsItemContent } from "./-components/NewsItemContent";
@@ -14,31 +11,23 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/news")({
 });
 
 function RouteComponent() {
-  const { selectedId: urlSelectedId } = Route.useSearch();
-  const { setFilters } = useFilters(Route.id);
+  const { selectedId } = Route.useSearch();
 
-  // selectedId leads the URL: set synchronously on click for instant highlight
-  // and skeleton, then the URL catches up asynchronously via setFilters.
-  // When the URL changes externally (browser back/forward), sync back to it.
-  const [selectedId, setSelectedId] = useState<string | undefined>(urlSelectedId);
-  if (selectedId !== urlSelectedId && urlSelectedId !== undefined) {
-    setSelectedId(urlSelectedId);
-  }
+  const navigate = Route.useNavigate();
 
-  function handleSelectNewsItem(id: string | undefined) {
-    setSelectedId(id);
-    setFilters({ selectedId: id });
-  }
+  const setSelectedId = (id: string | undefined) => {
+    navigate({ search: (prev) => ({ ...prev, selectedId: id }) });
+  };
 
   return (
     <>
-      <NewsItemsList selectedNewsItemId={selectedId} onSelectNewsItem={handleSelectNewsItem} />
+      <NewsItemsList selectedNewsItemId={selectedId} onSelectNewsItemId={setSelectedId} />
 
       {selectedId ? (
         <NewsItemContent
           key={selectedId}
           selectedNewsItemId={selectedId}
-          onSelectNewsItemId={handleSelectNewsItem}
+          onSelectNewsItemId={setSelectedId}
         />
       ) : null}
     </>

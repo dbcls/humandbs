@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Pen } from "lucide-react";
 import { z } from "zod";
 
-import { Suspense, useCallback } from "react";
+import { Suspense } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { getContentQueryOptions } from "@/serverFunctions/contentItem";
@@ -33,12 +33,9 @@ function RouteComponent() {
 
   const navigate = Route.useNavigate();
 
-  const setSelectedId = useCallback(
-    (contentId: string | undefined) => {
-      navigate({ search: { selectedId: contentId } });
-    },
-    [navigate],
-  );
+  const setSelectedId = (contentId: string | undefined) => {
+    navigate({ search: (prev) => ({ ...prev, selectedId: contentId }) });
+  };
 
   return (
     <>

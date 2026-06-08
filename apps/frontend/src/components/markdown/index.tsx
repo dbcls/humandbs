@@ -29,10 +29,8 @@ export function Markdown({ contentHtml, className, title }: MarkdownProps) {
       if (domNode instanceof Element) {
         // Customize rendering of specific elements
         if (domNode.name === "a") {
-          // Handle links
           const href = domNode.attribs.href;
-          if (href?.startsWith("/")) {
-            // Internal link - use your router's Link component
+          if (href?.startsWith("/") && !href.startsWith(`/${PUBLIC_FILES_SUBDIR}/`)) {
             return (
               <Link to={href}>
                 {domToReact(

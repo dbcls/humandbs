@@ -561,7 +561,7 @@ export function ResearchDetails({
                     {(field) => (
                       <fieldset
                         disabled={!isViewingDraft || !canUpdate}
-                        className="flex flex-col gap-2"
+                        className="group/fieldset flex flex-col gap-2"
                       >
                         <Label>User IDs (uids)</Label>
                         <div className="nested-form flex w-full flex-col gap-1">
@@ -618,7 +618,7 @@ export function ResearchDetails({
                 </div>
                 <fieldset
                   disabled={!isViewingDraft || !canUpdate}
-                  className="px-5 pt-5 pb-5 disabled:opacity-60"
+                  className="group/fieldset px-5 pt-5 pb-5"
                 >
                   <TabsContent value="title">
                     <form.AppField name="title">

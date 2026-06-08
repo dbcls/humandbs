@@ -431,3 +431,7 @@
     }
   }
 }
+
+@utility disabled-text-field {
+  @apply text-form-value border-form-border bg-form-input-bg rounded border p-3 text-sm select-text disabled:opacity-100;
+}

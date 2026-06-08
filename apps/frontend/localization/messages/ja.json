@@ -5,6 +5,7 @@
     "previous-versions": "{documentName}の改定",
     "search": "検索",
     "copy": "コピー",
+    "copied": "コピーしました",
     "more": "他{count}件",
     "collapse": "折りたたむ",
     "no-data": "データなし",
@@ -20,7 +21,14 @@
     "add-all-to-cart": "全てカートに追加",
     "add-all-datasets-to-cart": "すべてのデータセットをカートに追加",
     "read-more": "もっと見る",
-    "details": "詳細"
+    "details": "詳細",
+    "sort": "並び替え",
+    "sort-asc": "昇順",
+    "sort-desc": "降順",
+    "sort-by": "{field}"
+  },
+  "Cart": {
+    "naviagte-to-application-form": "申請フォームへ"
   },
   "Footer": {
     "sitemap": "サイトマップ"

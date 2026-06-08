@@ -2,7 +2,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
   $getDocumentBreadcrumbs,
@@ -24,12 +25,13 @@ const humIdWithVersion = z
   });
 
 // Matches "<docId>/revision/<N>" where N is a positive integer
-const revisionVersionPattern = /^(.+)\/revision\/(\d+)$/;
+const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
 // Matches "<docId>/revision"
-const revisionListPattern = /^(.+)\/revision$/;
+const revisionListPattern = /^(.+)\/version$/;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
+  notFoundComponent: () => <NotFound />,
   params: z.object({
     _splat: z.string(),
   }),
@@ -68,7 +70,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       const docId = revisionVersionMatch[1];
       const versionNumber = Number(revisionVersionMatch[2]);
       if (!Number.isInteger(versionNumber) || versionNumber < 1) {
-        throw new Error("Invalid revision number");
+        throw new Error("Invalid version number");
       }
       const [data, docCrumbs] = await Promise.all([
         $getPublishedDocumentVersion({
@@ -87,10 +89,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         title: data.title,
         crumbs: [
           ...docCrumbs,
-          { label: "Revisions", href: `/${docId}/revision` },
+          { label: "Versions", href: `/${docId}/version` },
           {
             label: String(versionNumber),
-            href: `/${docId}/revision/${versionNumber}`,
+            href: `/${docId}/version/${versionNumber}`,
           },
         ],
         hideTOC: false,
@@ -115,7 +117,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         kind: "revisionList" as const,
         contentHtml: null,
         title: null,
-        crumbs: [...docCrumbs, { label: "Revisions", href: `/${docId}/revision` }],
+        crumbs: [...docCrumbs, { label: "Versions", href: `/${docId}/version` }],
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,
@@ -168,7 +170,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   },
   errorComponent: ({ error }) => (
     <div>
-      <h3>Page not found</h3>
+      <h3>Error:</h3>
       {error.message}
     </div>
   ),
@@ -192,7 +194,7 @@ function RouteComponent() {
   return (
     <MarkdownWithTOC
       title={title}
-      markdownResult={contentHtml!}
+      markdownResult={contentHtml}
       hideTOC={hideTOC}
       previousVersions={previousVersions}
       revisionsBasePath={revisionsBasePath}

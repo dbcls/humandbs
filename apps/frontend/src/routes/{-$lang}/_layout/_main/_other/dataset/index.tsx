@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import type { SortingState, Updater } from "@tanstack/react-table";
-import { createColumnHelper, functionalUpdate } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useLocale, useTranslations } from "use-intl";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useEffect, useMemo, useRef } from "react";
 
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
-import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
@@ -21,7 +19,8 @@ import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
+import { SortDropdown } from "@/components/SortDropDown";
+import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
@@ -35,13 +34,7 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/build-facet-sections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
 import { isCancelledError } from "@/utils/is-cancelled-error";
-
-const datasetListQuerySchema = DatasetSearchBodySchema.omit({
-  lang: true,
-  includeFacets: true,
-}).extend({
-  sort: DatasetSearchBodySchema.shape.sort.default("relevance"),
-});
+import { datasetListQuerySchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
   component: RouteComponent,
@@ -113,6 +106,7 @@ function RouteComponent() {
           filtersCount={filtersCount}
           isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
+          sortControl={<DatasetSortSelect />}
           onCopy={() => {
             copyTableData(exportData);
           }}
@@ -296,45 +290,54 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function TableWrapper() {
-  const search = Route.useSearch();
+const DATASET_SORT_OPTIONS = [
+  { sort: "datasetId", order: "asc" },
+  { sort: "datasetId", order: "desc" },
+  { sort: "releaseDate", order: "desc" },
+  { sort: "releaseDate", order: "asc" },
+] as const;
 
-  const lang = useLocale();
-
+function DatasetSortSelect() {
+  const t = useTranslations("common");
+  const tD = useTranslations("Dataset");
   const { filters, setFilters } = useFilters(Route.id);
 
-  const t = useTranslations("Dataset");
+  const fieldLabels: Record<string, string> = {
+    datasetId: tD("datasetId"),
+    releaseDate: tD("releaseDate"),
+  };
 
-  const sorting = useMemo((): SortingState => {
-    if (!filters.sort) return [];
-    return [{ id: filters.sort, desc: filters.order === "desc" }];
-  }, [filters.sort, filters.order]);
-  const activeSort = sorting[0];
+  const currentSort = filters.sort ?? "datasetId";
+  const currentOrder = filters.order ?? "asc";
+  // const value = `${currentSort}:${currentOrder}`;
 
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const sortingState: SortingState = [
-        { id: filters.sort ?? "datasetId", desc: filters.order === "desc" },
-      ];
+  const sortOptions = DATASET_SORT_OPTIONS.map(({ sort, order }) => ({
+    label: t("sort-by", {
+      field: fieldLabels[sort],
+    }),
+    value: `${sort}:${order}`,
+    order,
+  }));
 
-      const newState = functionalUpdate(updater, sortingState);
-
-      startTransition(() => {
-        setFilters({
-          sort: newState[0]?.id,
-          order: newState[0]?.desc ? "desc" : "asc",
+  return (
+    <SortDropdown
+      options={sortOptions}
+      value={`${currentSort}:${currentOrder}`}
+      onSelect={(newSort) => {
+        startTransition(() => {
+          setFilters(newSort);
         });
-      });
-    },
-    [setFilters, filters],
+      }}
+    />
   );
+}
+
+function TableWrapper() {
+  const lang = useLocale();
+  const t = useTranslations("Dataset");
 
   const { data, isFetching, isPlaceholderData, transitionType } = useDatasetsSearchQuery();
 
-  const loadingSortColumnId =
-    isFetching && isPlaceholderData && transitionType === "sort"
-      ? (search.sort ?? "datasetId")
-      : undefined;
   const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!data || (isFetching && !isPlaceholderData)) {
@@ -350,9 +353,7 @@ function TableWrapper() {
   return (
     <Table
       className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
-      onSortingChange={handleSortingChange}
-      sorting={sorting}
-      meta={{ t, lang, loadingSortColumnId, activeSort }}
+      meta={{ t, lang }}
       columns={datasetsColumns}
       data={data.data}
       isDimmed={isPaginating}
@@ -395,7 +396,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
+    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
@@ -406,15 +407,6 @@ export const datasetsColumns = [
     maxSize: 10,
   }),
 
-  datasetsColumnHelper.accessor("releaseDate", {
-    id: "releaseDate",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
-  }),
-
-  datasetsColumnHelper.accessor("versionReleaseDate", {
-    id: "versionReleaseDate",
-    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
-  }),
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => {
@@ -428,8 +420,8 @@ export const datasetsColumns = [
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
-          {ctx.getValue().map((item, i) => (
-            <li key={i}>
+          {ctx.getValue().map((item) => (
+            <li key={`${item.header.ja?.text}-${item.header.en?.text}`}>
               <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
             </li>
           ))}
@@ -441,6 +433,15 @@ export const datasetsColumns = [
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
+  }),
+  datasetsColumnHelper.accessor("releaseDate", {
+    id: "releaseDate",
+    header: (ctx) => ctx.table.options.meta?.t?.("releaseDate"),
+  }),
+
+  datasetsColumnHelper.accessor("versionReleaseDate", {
+    id: "versionReleaseDate",
+    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
   }),
 ];
 

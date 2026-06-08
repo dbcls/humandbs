@@ -8,14 +8,15 @@ export function NotFound({ children }: { children?: any }) {
       </div>
       <p className="flex flex-wrap items-center gap-2">
         <button
+          type="button"
           onClick={() => window.history.back()}
-          className="rounded-sm bg-emerald-500 px-2 py-1 font-black text-sm text-white uppercase"
+          className="rounded-sm bg-secondary px-2 py-1 font-black text-sm text-white uppercase"
         >
           Go back
         </button>
         <Link
-          to="/"
-          className="rounded-sm bg-cyan-600 px-2 py-1 font-black text-sm text-white uppercase"
+          to="/{-$lang}"
+          className="rounded-sm bg-accent-light px-2 py-1 font-black text-sm text-white uppercase"
         >
           Start Over
         </Link>

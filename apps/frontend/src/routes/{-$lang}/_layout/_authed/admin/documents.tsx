@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { FilesIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -6,6 +6,7 @@ import { Suspense, useCallback } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { getDocumentQueryOptions } from "@/serverFunctions/document";
 import {
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
@@ -22,25 +23,55 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents"
     selectedVer: z.number().optional(),
     q: z.string().optional(),
   }),
+
   component: RouteComponent,
   loaderDeps: ({ search }) => ({
     selectedId: search.selectedId,
     selectedVer: search.selectedVer,
   }),
-  loader: ({ deps, context }) => {
-    context.queryClient.ensureQueryData(
+  loader: async ({ deps, context }) => {
+    if (!deps.selectedId) {
+      return;
+    }
+
+    const document = await context.queryClient.ensureQueryData(
+      getDocumentQueryOptions(deps.selectedId),
+    );
+
+    if (!document) {
+      throw redirect({
+        to: Route.to,
+        search: (prev) => ({
+          ...prev,
+          selectedId: undefined,
+          selectedVer: undefined,
+        }),
+      });
+    }
+
+    await context.queryClient.ensureQueryData(
       getDocumentVersionListQueryOptions({
-        contentId: deps.selectedId ?? null,
+        contentId: deps.selectedId,
       }),
     );
 
-    if (deps.selectedId && deps.selectedVer) {
-      context.queryClient.ensureQueryData(
-        getDocumentVersionQueryOptions({
-          contentId: deps.selectedId,
-          versionNumber: deps.selectedVer,
-        }),
-      );
+    if (deps.selectedVer) {
+      try {
+        await context.queryClient.ensureQueryData(
+          getDocumentVersionQueryOptions({
+            contentId: deps.selectedId,
+            versionNumber: deps.selectedVer,
+          }),
+        );
+      } catch {
+        throw redirect({
+          to: Route.to,
+          search: (prev) => ({
+            ...prev,
+            selectedVer: undefined,
+          }),
+        });
+      }
     }
   },
 });
@@ -49,12 +80,9 @@ function RouteComponent() {
   const { selectedId, selectedVer } = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const setSelectedContentId = useCallback(
-    (contentId: string) => {
-      navigate({ search: { selectedId: contentId } });
-    },
-    [navigate],
-  );
+  const setSelectedContentId = (contentId: string | undefined) => {
+    navigate({ search: (prev) => ({ ...prev, selectedId: contentId }) });
+  };
 
   const onSelectVersion = useCallback(
     (versionNumber: number) => {

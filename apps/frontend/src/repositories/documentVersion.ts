@@ -1,4 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
+import { notFound } from "@tanstack/router-core";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
@@ -83,7 +84,7 @@ async function resolveDocumentId(database: typeof db, contentId: string): Promis
     where: (table, { eq }) => eq(table.contentId, contentId),
     columns: { id: true },
   });
-  if (!doc) throw new Error(`Document not found: ${contentId}`);
+  if (!doc) throw notFound();
   return doc.id;
 }
 
@@ -180,6 +181,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
           locale: true,
           status: true,
         },
+        orderBy: (table, { desc }) => desc(table.versionNumber),
       });
       return rows.map((r) => ({ ...r, contentId }));
     },

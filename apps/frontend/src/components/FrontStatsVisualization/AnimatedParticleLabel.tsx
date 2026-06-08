@@ -60,7 +60,7 @@ export default function AnimatedParticleLabel({
     }
   });
 
-  const baseFontSize = debugParams?.particleLabelFontSize ?? 12;
+  const baseFontSize = debugParams?.particleLabelFontSize ?? 16; // Fallback to 16 if not provided
 
   return (
     <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>

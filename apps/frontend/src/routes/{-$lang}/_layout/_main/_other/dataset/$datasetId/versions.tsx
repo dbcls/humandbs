@@ -36,8 +36,8 @@ function RouteComponent() {
       }
     >
       <ul>
-        {data.map((ver, i) => (
-          <li key={i}>
+        {data.map((ver) => (
+          <li key={ver.version}>
             <DatasetVersionInfo version={ver} />
           </li>
         ))}

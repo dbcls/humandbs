@@ -5,7 +5,7 @@ import { $getPublishedDocumentVersion } from "@/serverFunctions/documentVersion"
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/revision/$revision",
+  "/{-$lang}/_layout/_main/_other/data-submission/revision/$version",
 )({
   component: RouteComponent,
 

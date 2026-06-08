@@ -14,3 +14,5 @@ const pool = new Pool({
 });
 
 export const db = drizzle(pool, { schema });
+
+export type DB = typeof db;

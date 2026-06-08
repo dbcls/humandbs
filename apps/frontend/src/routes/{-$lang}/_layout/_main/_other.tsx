@@ -24,8 +24,8 @@ function RouteComponent() {
 
   return (
     <div className="flex flex-col">
-      <div className="z-20 -mb-px flex items-end justify-between pr-0 pl-2">
-        <div className="pb-1.5">
+      <div className="z-20 mb-4 flex items-center justify-between pr-0 pl-2">
+        <div>
           <Breadcrumbs />
         </div>
         {onlyHasLangParam(matches.params) ? <ResearchDatasetTabs /> : null}

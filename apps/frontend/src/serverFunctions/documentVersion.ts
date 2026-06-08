@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import type { Locale } from "use-intl";
 import { z } from "zod";
 
@@ -15,7 +16,7 @@ import type {
 } from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
-import { $getContentItemTranslation } from "./contentItem";
+import { $getPublishedContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
@@ -326,12 +327,12 @@ export const $getLatestDocumentOrContent = createServerFn()
     }
 
     try {
-      const content = await $getContentItemTranslation({
-        data: { id, lang, status: "published" },
+      const content = await $getPublishedContentItemTranslation({
+        data: { id, lang },
       });
       return content;
     } catch {
-      throw new Error("Page not found");
+      throw notFound();
     }
   });
 
