@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { Card } from "@/components/Card";
 import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
   $getDocumentBreadcrumbs,
@@ -30,6 +31,7 @@ const revisionListPattern = /^(.+)\/version$/;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
+  notFoundComponent: () => <NotFound />,
   params: z.object({
     _splat: z.string(),
   }),
@@ -168,7 +170,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   },
   errorComponent: ({ error }) => (
     <div>
-      <h3>Page not found</h3>
+      <h3>Error:</h3>
       {error.message}
     </div>
   ),

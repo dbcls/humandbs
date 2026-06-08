@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import type { Locale } from "use-intl";
 import { z } from "zod";
 
@@ -10,8 +11,8 @@ import type { DocumentVersionStatus } from "@/db/types";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import type {
-    DocAnyVersionResponseRaw,
-    DocVersionListItemResponseRaw,
+  DocAnyVersionResponseRaw,
+  DocVersionListItemResponseRaw,
 } from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
@@ -331,7 +332,7 @@ export const $getLatestDocumentOrContent = createServerFn()
       });
       return content;
     } catch {
-      throw new Error("Page not found");
+      throw notFound();
     }
   });
 
