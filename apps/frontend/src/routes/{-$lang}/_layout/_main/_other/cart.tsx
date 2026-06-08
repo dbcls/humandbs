@@ -99,6 +99,7 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
   const tCart = useTranslations("Cart");
 
   const locale = useLocale();
+  const navigate = Route.useNavigate()
 
   const [, copy] = useCopyToClipboard();
 
@@ -122,6 +123,12 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
     setCopied(true);
     copyLabelTimerRef.current = setTimeout(() => setCopied(false), 2000);
     copy(JSON.stringify(payload, null, 2));
+  }
+
+  function handleNavigate() {
+    navigate({
+      to: "/{-$lang}/data-use",
+    });
   }
 
   if (isPending) {
