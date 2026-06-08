@@ -5,6 +5,7 @@
     "previous-versions": "{documentName}の改定",
     "search": "検索",
     "copy": "コピー",
+    "copied": "コピーしました",
     "more": "他{count}件",
     "collapse": "折りたたむ",
     "no-data": "データなし",
@@ -21,6 +22,9 @@
     "add-all-datasets-to-cart": "すべてのデータセットをカートに追加",
     "read-more": "もっと見る",
     "details": "詳細"
+  },
+  "Cart": {
+    "naviagte-to-application-form": "申請フォームへ"
   },
   "Footer": {
     "sitemap": "サイトマップ"
