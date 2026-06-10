@@ -270,7 +270,7 @@ async function seedDocuments(overwrite = false) {
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           title: title ?? documentId,
           content: contentWithoutTitle,
-          translatedBy: authorId,
+          authorId: authorId,
         };
 
         const query = db.insert(schema.documentVersion).values(values);
@@ -287,7 +287,7 @@ async function seedDocuments(overwrite = false) {
               set: {
                 title: values.title,
                 content: values.content,
-                translatedBy: values.translatedBy,
+                authorId: values.authorId,
                 updatedAt: new Date(),
               },
             })

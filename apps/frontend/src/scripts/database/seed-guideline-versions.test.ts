@@ -168,7 +168,7 @@ describe("seedGuidelineVersions", () => {
       status: DOCUMENT_VERSION_STATUS.PUBLISHED,
       title: "Current EN",
       content: "<p>current</p>",
-      translatedBy: "system",
+      authorId: "system",
     });
 
     await seedGuidelineVersions(false, db, PAGES);
@@ -194,7 +194,7 @@ describe("seedGuidelineVersions", () => {
       status: DOCUMENT_VERSION_STATUS.DRAFT,
       title: "Draft EN",
       content: "<p>draft</p>",
-      translatedBy: "system",
+      authorId: "system",
     });
 
     await seedGuidelineVersions(false, db, PAGES);
@@ -223,7 +223,7 @@ describe("seedGuidelineVersions", () => {
         status: DOCUMENT_VERSION_STATUS.PUBLISHED,
         title: "Published EN",
         content: "<p>published</p>",
-        translatedBy: "system",
+        authorId: "system",
       },
       {
         documentId: docId,
@@ -232,7 +232,7 @@ describe("seedGuidelineVersions", () => {
         status: DOCUMENT_VERSION_STATUS.DRAFT,
         title: "Draft EN",
         content: "<p>draft</p>",
-        translatedBy: "system",
+        authorId: "system",
       },
     ]);
 

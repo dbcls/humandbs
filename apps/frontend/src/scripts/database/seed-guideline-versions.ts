@@ -133,7 +133,8 @@ export async function seedGuidelineVersions(
 ) {
   console.log("Starting guideline version seed...");
 
-  let pool: Pool | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pool: any;
   let db: Db;
 
   if (injectedDb) {
@@ -294,7 +295,7 @@ export async function seedGuidelineVersions(
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           title: page.title,
           content: page.contentHtml,
-          translatedBy: authorId,
+          authorId: authorId,
           ...(createdAt && { createdAt }),
           ...(updatedAt && { updatedAt }),
         };
@@ -313,7 +314,7 @@ export async function seedGuidelineVersions(
               set: {
                 title: values.title,
                 content: values.content,
-                translatedBy: values.translatedBy,
+                authorId: values.authorId,
                 createdAt: createdAt ?? new Date(),
                 updatedAt: updatedAt ?? new Date(),
               },

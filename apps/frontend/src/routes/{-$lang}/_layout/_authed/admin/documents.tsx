@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { FilesIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -6,11 +7,8 @@ import { Suspense, useCallback } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
-import { getDocumentQueryOptions } from "@/serverFunctions/document";
-import {
-  getDocumentVersionListQueryOptions,
-  getDocumentVersionQueryOptions,
-} from "@/serverFunctions/documentVersion";
+import { getDocumentQueryOptions, getDocumentsQueryOptions } from "@/serverFunctions/document";
+import { getDocumentVersionQueryOptions } from "@/serverFunctions/documentVersion";
 
 import { DocumentsList } from "./-components/DocumentsList";
 import { DocumentVersion } from "./-components/DocumentVersion";
@@ -49,12 +47,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents"
       });
     }
 
-    await context.queryClient.ensureQueryData(
-      getDocumentVersionListQueryOptions({
-        contentId: deps.selectedId,
-      }),
-    );
-
     if (deps.selectedVer) {
       try {
         await context.queryClient.ensureQueryData(
@@ -77,11 +69,14 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents"
 });
 
 function RouteComponent() {
-  const { selectedId, selectedVer } = Route.useSearch();
+  const { selectedId, selectedVer, q } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const queryClient = useQueryClient();
 
   const setSelectedContentId = (contentId: string | undefined) => {
-    navigate({ search: (prev) => ({ ...prev, selectedId: contentId }) });
+    const documents = queryClient.getQueryData(getDocumentsQueryOptions({ q }).queryKey);
+    const latestVersionNumber = documents?.find((d) => d.contentId === contentId)?.latestVersionNumber ?? undefined;
+    navigate({ search: (prev) => ({ ...prev, selectedId: contentId, selectedVer: latestVersionNumber }) });
   };
 
   const onSelectVersion = useCallback(

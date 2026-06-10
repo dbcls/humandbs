@@ -113,7 +113,7 @@ const documentVersionArchiveRowSchema = z.object({
   locale: localeSchema,
   title: z.string().nullable(),
   content: z.string().nullable(),
-  translatedBy: z.string().nullable(),
+  authorId: z.string().nullable(),
   createdAt: timestampStringSchema,
   updatedAt: timestampStringSchema,
 });
@@ -1005,7 +1005,7 @@ export function createCmsDataTransferArchiveRestorer({
                 locale: version.locale,
                 title: version.title,
                 content: version.content,
-                translatedBy: mapRestoredUserId(effectiveUserId, version.translatedBy),
+                authorId: mapRestoredUserId(effectiveUserId, version.authorId),
                 createdAt: new Date(version.createdAt),
                 updatedAt: new Date(version.updatedAt),
               })),
