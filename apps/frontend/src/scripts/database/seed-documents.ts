@@ -216,6 +216,7 @@ async function seedDocuments(overwrite = false) {
 
     console.log("\nSeeding documents...");
     let createdCount = 0;
+    let skippedCount = 0;
 
     for (const [documentId, localeMap] of documents) {
       // Ensure document record exists
@@ -291,17 +292,23 @@ async function seedDocuments(overwrite = false) {
               },
             })
             .execute();
+          createdCount++;
         } else {
-          await query.onConflictDoNothing().execute();
+          const result = await query.onConflictDoNothing().execute();
+          if ((result.rowCount ?? 0) > 0) {
+            createdCount++;
+          } else {
+            skippedCount++;
+          }
         }
 
         console.log(`Seeded ${locale}/${documentId} v${versionNumber}`);
-        createdCount++;
       }
     }
 
     console.log(`\nSeeding complete!`);
-    console.log(`  Upserted: ${createdCount} version(s)`);
+    console.log(`  Inserted: ${createdCount} version(s)`);
+    console.log(`  Skipped:  ${skippedCount} (already exist; use --overwrite to replace)`);
   } catch (error) {
     console.error("Seeding failed:", error);
     throw error;
