@@ -241,6 +241,17 @@
     "Controlled-access (Type II)": "制限公開（Type II）",
     "researchTitle": "プロジェクト/研究グループ名",
     "relatedPublication": "関連論文",
+    "grant": {
+      "self": "助成金情報",
+      "title": "科研費・助成金名",
+      "agency": "助成機関",
+      "id": "研究課題番号"
+    },
+    "researchProject": {
+      "self": "研究プロジェクト情報",
+      "name": "研究プロジェクト名",
+      "URL": "URL"
+    },
     "periodOfDataUse": "データ利用期間",
     "publicationTitle": "タイトル",
     "publicationDatasets": "データセット",

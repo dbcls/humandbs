@@ -242,6 +242,17 @@
     "researchTitle": "Research title",
     "relatedPublication": "Related publications",
     "periodOfDataUse": "Period of data use",
+    "grant": {
+      "self": "Grants",
+      "title": "Name",
+      "agency": "Title",
+      "id": "Project number"
+    },
+    "researchProject": {
+      "self": "Research projects",
+      "name": "Name",
+      "URL": "URL"
+    },
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
     "platforms": "Platforms",

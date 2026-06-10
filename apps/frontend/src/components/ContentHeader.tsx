@@ -19,8 +19,9 @@ const contentHeaderVariants = cva("font-semibold text-secondary", {
 
 type ContentHeaderProps = {
   children: React.ReactNode;
+  className?: string;
 } & VariantProps<typeof contentHeaderVariants>;
 
-export function ContentHeader({ children, variant }: ContentHeaderProps) {
-  return <h2 className={cn("", contentHeaderVariants({ variant }))}>{children}</h2>;
+export function ContentHeader({ children, variant, className }: ContentHeaderProps) {
+  return <h2 className={cn("", contentHeaderVariants({ variant }), className)}>{children}</h2>;
 }
