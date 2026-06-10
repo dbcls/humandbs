@@ -18,7 +18,7 @@ import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRo
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
-import { SortDropdown } from "@/components/SortDropDown";
+import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
