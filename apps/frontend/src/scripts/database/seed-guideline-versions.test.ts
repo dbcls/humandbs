@@ -26,8 +26,8 @@ const PAGES = [
     contentHtml: "<p>v1 ja</p>",
     contentText: "v1 ja",
     originalUrl: "",
-    releaseDate: "2010-01-01",
-    modifiedDate: "2010-01-01",
+    releaseDate: "2010-03-15",
+    modifiedDate: "2011-06-20",
   },
   {
     path: "data-sharing-guidelines-v1",
@@ -36,8 +36,8 @@ const PAGES = [
     contentHtml: "<p>v1 en</p>",
     contentText: "v1 en",
     originalUrl: "",
-    releaseDate: "2010-01-01",
-    modifiedDate: "2010-01-01",
+    releaseDate: "2010-03-15",
+    modifiedDate: "2011-06-20",
   },
   {
     path: "data-sharing-guidelines-v2",
@@ -46,8 +46,8 @@ const PAGES = [
     contentHtml: "<p>v2 ja</p>",
     contentText: "v2 ja",
     originalUrl: "",
-    releaseDate: "2012-01-01",
-    modifiedDate: "2012-01-01",
+    releaseDate: "2012-09-01",
+    modifiedDate: "2013-12-31",
   },
 ];
 
@@ -111,6 +111,34 @@ describe("seedGuidelineVersions", () => {
 
     const versions = await db.select().from(schema.documentVersion).execute();
     expect(versions.every((v) => v.status === DOCUMENT_VERSION_STATUS.PUBLISHED)).toBe(true);
+  });
+
+  test("sets createdAt=releaseDate and updatedAt=modifiedDate from json", async () => {
+    await insertUser();
+    const docId = await insertDocument();
+
+    await seedGuidelineVersions(false, db, PAGES);
+
+    const versions = await versionsFor(docId);
+    const v1ja = versions.find((v) => v.versionNumber === 1 && v.locale === "ja")!;
+    const v2ja = versions.find((v) => v.versionNumber === 2 && v.locale === "ja")!;
+
+    expect(v1ja.createdAt).toEqual(new Date("2010-03-15"));
+    expect(v1ja.updatedAt).toEqual(new Date("2011-06-20"));
+    expect(v2ja.createdAt).toEqual(new Date("2012-09-01"));
+    expect(v2ja.updatedAt).toEqual(new Date("2013-12-31"));
+  });
+
+  test("falls back createdAt to releaseDate when modifiedDate is null", async () => {
+    await insertUser();
+    const docId = await insertDocument();
+
+    const pages = [{ ...PAGES[0]!, modifiedDate: null }];
+    await seedGuidelineVersions(false, db, pages);
+
+    const [v1ja] = await versionsFor(docId);
+    expect(v1ja!.createdAt).toEqual(new Date("2010-03-15"));
+    expect(v1ja!.updatedAt).toEqual(new Date("2010-03-15"));
   });
 
   test("skips re-seeding when fingerprint already present (idempotency)", async () => {
@@ -271,7 +299,7 @@ describe("seedGuidelineVersions", () => {
 
     const updatedPages = PAGES.map((p) =>
       p.path === "data-sharing-guidelines-v1" && p.lang === "ja"
-        ? { ...p, contentHtml: "<p>updated ja</p>" }
+        ? { ...p, contentHtml: "<p>updated ja</p>", releaseDate: "2015-01-01", modifiedDate: "2016-06-15" }
         : p,
     );
 
@@ -281,10 +309,11 @@ describe("seedGuidelineVersions", () => {
       .select()
       .from(schema.documentVersion)
       .where(eq(schema.documentVersion.documentId, docId))
-      // versionNumber=1, locale=ja, status=published
       .execute()
       .then((rows) => rows.filter((r) => r.versionNumber === 1 && r.locale === "ja"));
 
     expect(v1ja?.content).toBe("<p>updated ja</p>");
+    expect(v1ja?.createdAt).toEqual(new Date("2015-01-01"));
+    expect(v1ja?.updatedAt).toEqual(new Date("2016-06-15"));
   });
 });

@@ -285,6 +285,8 @@ export async function seedGuidelineVersions(
       const finalVersionNumber = versionNumber + offset;
 
       for (const page of pages) {
+        const createdAt = page.releaseDate ? new Date(page.releaseDate) : undefined;
+        const updatedAt = page.modifiedDate ? new Date(page.modifiedDate) : createdAt;
         const values = {
           documentId: docUuid,
           versionNumber: finalVersionNumber,
@@ -293,6 +295,8 @@ export async function seedGuidelineVersions(
           title: page.title,
           content: page.contentHtml,
           translatedBy: authorId,
+          ...(createdAt && { createdAt }),
+          ...(updatedAt && { updatedAt }),
         };
 
         const query = db.insert(schema.documentVersion).values(values);
@@ -310,7 +314,8 @@ export async function seedGuidelineVersions(
                 title: values.title,
                 content: values.content,
                 translatedBy: values.translatedBy,
-                updatedAt: new Date(),
+                createdAt: createdAt ?? new Date(),
+                updatedAt: updatedAt ?? new Date(),
               },
             })
             .execute();
