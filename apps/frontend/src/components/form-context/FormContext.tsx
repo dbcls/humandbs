@@ -19,6 +19,7 @@ export const { fieldContext, formContext, useFieldContext, useFormContext } =
 const ContentAreaField = lazy(() => import("./ContentAreaField"));
 const DateField = lazy(() => import("./DateField"));
 const DateRangeField = lazy(() => import("./DateRangeField"));
+const DateTimeField = lazy(() => import("./DateTimeField"));
 
 export const { useAppForm, withForm, withFieldGroup } = createFormHook({
   fieldContext,
@@ -31,6 +32,7 @@ export const { useAppForm, withForm, withFieldGroup } = createFormHook({
     CheckboxField,
     DateField,
     DateRangeField,
+    DateTimeField,
     SwitchField,
     LocaleSwitchField,
     SelectField,

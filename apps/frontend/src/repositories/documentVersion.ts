@@ -35,6 +35,9 @@ export interface DocAnyVersionResponseRaw extends BaseDoc {
   hideTOC: boolean;
   hideRevisions: boolean;
   status: DocVersionStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  author: { name: string | null; email: string } | null;
 }
 
 interface DocumentVersionRepo {
@@ -75,7 +78,7 @@ interface DocumentVersionRepo {
 
   createVersionFromPublished: (
     contentId: string,
-    translatedBy?: string,
+    authorId?: string,
   ) => Promise<{ versionNumber: number }>;
 }
 
@@ -191,7 +194,10 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
       const rows = await database.query.documentVersion.findMany({
         where: (table, { and, eq }) =>
           and(eq(table.documentId, documentId), eq(table.versionNumber, versionNumber)),
-        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
+        with: {
+          document: { columns: { hideTOC: true, hideRevisions: true } },
+          author: { columns: { name: true, email: true } },
+        },
         columns: {
           title: true,
           content: true,
@@ -199,6 +205,8 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
           status: true,
           locale: true,
           versionNumber: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
       return rows.map((r) => ({
@@ -206,6 +214,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         contentId,
         hideTOC: r.document.hideTOC ?? true,
         hideRevisions: r.document.hideRevisions ?? true,
+        author: r.author ?? null,
       }));
     },
 
@@ -345,7 +354,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         );
     },
 
-    createVersionFromPublished: (contentId, translatedBy) =>
+    createVersionFromPublished: (contentId, authorId) =>
       database.transaction(async (tx) => {
         const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
 
@@ -396,7 +405,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
               locale: pv.locale,
               title: pv.title,
               content: pv.content,
-              translatedBy,
+              authorId,
             })),
           );
         } else {
@@ -407,7 +416,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
             locale: i18n.defaultLocale as Locale,
             title: null,
             content: null,
-            translatedBy,
+            authorId,
           });
         }
 

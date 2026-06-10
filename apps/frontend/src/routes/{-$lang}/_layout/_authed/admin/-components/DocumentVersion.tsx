@@ -6,6 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
@@ -52,6 +53,7 @@ import {
 import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { MarkdownFileActions } from "./MarkdownFileActions";
+import { TitleValue } from "./TitleValue";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
@@ -155,6 +157,7 @@ function DocumentVersionContent({
   contentId: string;
   versionNumber: number;
 }) {
+  const t = useTranslations("common");
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
     versionNumber,
@@ -254,7 +257,29 @@ function DocumentVersionContent({
         </TabsList>
 
         {i18n.locales.map((loc) => (
-          <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col">
+          <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col gap-3 pt-4">
+            <div className="flex gap-6">
+              <TitleValue
+                title={t("created-at")}
+                value={
+                  selectedVersionContent.translations[loc]?.createdAt.toLocaleDateString() ?? "N/A"
+                }
+              />
+              <TitleValue
+                title={t("updated-at")}
+                value={
+                  selectedVersionContent.translations[loc]?.updatedAt.toLocaleDateString() ?? "N/A"
+                }
+              />
+              <TitleValue
+                title={t("author")}
+                value={
+                  selectedVersionContent.translations[loc]?.author?.name ??
+                  selectedVersionContent.translations[loc]?.author?.email ??
+                  "N/A"
+                }
+              />
+            </div>
             <Tabs
               className="flex min-h-0 flex-1 flex-col"
               defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
@@ -514,16 +539,16 @@ function useDocumentVersionForm({
               const publishedTitle = value.translations?.[value.lang]?.published?.title ?? "";
               const publishedContent = value.translations?.[value.lang]?.published?.content ?? "";
 
-              const newTranslations = {
-                ...value.translations,
-                [value.lang]: {
-                  ...value.translations[value.lang],
-                  draft: {
-                    title: publishedTitle,
-                    content: publishedContent,
-                  },
-                },
-              };
+              const existingLang = value.translations[value.lang];
+              const newTranslations = existingLang
+                ? {
+                    ...value.translations,
+                    [value.lang]: {
+                      ...existingLang,
+                      draft: { title: publishedTitle, content: publishedContent },
+                    },
+                  }
+                : value.translations;
               setBaselineTranslations(newTranslations);
               formApi.reset({ ...value, translations: newTranslations });
             })
@@ -547,16 +572,16 @@ function useDocumentVersionForm({
 
           publishDraft({ locale: value.lang })
             .then(() => {
-              const newTranslations = {
-                ...value.translations,
-                [value.lang]: {
-                  ...value.translations[value.lang],
-                  published: {
-                    title: title ?? "",
-                    content: content ?? "",
-                  },
-                },
-              };
+              const existing = value.translations[value.lang];
+              const newTranslations = existing
+                ? {
+                    ...value.translations,
+                    [value.lang]: {
+                      ...existing,
+                      published: { title: title ?? "", content: content ?? "" },
+                    },
+                  }
+                : value.translations;
               setBaselineTranslations(newTranslations);
               formApi.reset({ ...value, translations: newTranslations });
             })
@@ -597,10 +622,13 @@ function useDocumentVersionForm({
             .then((results) => {
               const newTranslations = { ...value.translations };
               for (const { loc, locTitle, locContent } of results) {
-                newTranslations[loc] = {
-                  ...newTranslations[loc],
-                  published: { title: locTitle, content: locContent },
-                };
+                const existing = newTranslations[loc];
+                if (existing) {
+                  newTranslations[loc] = {
+                    ...existing,
+                    published: { title: locTitle, content: locContent },
+                  };
+                }
               }
               setBaselineTranslations(newTranslations);
               formApi.reset({ ...value, translations: newTranslations });
@@ -624,7 +652,7 @@ function useDocVersionsList(contentId: string, version?: number) {
   const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
   const { data: versions } = useSuspenseQuery(docVersionsListQO);
 
-  const selectedVersionNumber = version ?? versions.at(-1)?.versionNumber;
+  const selectedVersionNumber = version ?? versions.at(0)?.versionNumber;
 
   return {
     versions,

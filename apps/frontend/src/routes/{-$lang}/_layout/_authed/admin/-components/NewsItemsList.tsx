@@ -1,4 +1,3 @@
-import type { InfiniteData } from "@tanstack/react-query";
 import { useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
@@ -6,6 +5,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
+import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import type { NewsItemResponse } from "@/serverFunctions/news";
 import { $deleteNewsItem, newsItemsInfiniteQueryOptions } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { toLocaleDateTimeString } from "@/utils/dates";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
@@ -203,7 +204,13 @@ function ListItems({
               >
                 <AdminListItem
                   id={item.id}
-                  header={isDraft ? "New news item" : item.publishedAt || "No date"}
+                  header={
+                    isDraft
+                      ? "New news item"
+                      : item.publishedAt
+                        ? toLocaleDateTimeString(item.publishedAt)
+                        : "No date"
+                  }
                   translations={Object.entries(item.translations ?? {}).map(([lang, tr]) => ({
                     lang,
                     statuses: {

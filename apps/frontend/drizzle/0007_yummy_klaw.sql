@@ -1,0 +1,1 @@
+ALTER TABLE "news_item" ALTER COLUMN "published_at" SET DATA TYPE timestamp with time zone USING published_at::timestamptz;

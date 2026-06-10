@@ -108,11 +108,21 @@ export function groupDocumentVersions(
 
 // === GET VERSION
 
+export interface DocVersionTranslationMeta {
+  createdAt: Date;
+  updatedAt: Date;
+  author: { name: string | null; email: string } | null;
+}
+
 export interface DocVersionResponse {
   contentId: string;
   versionNumber: number;
   translations: Partial<
-    Record<Locale, Partial<Record<DocVersionStatus, { title: string; content: string }>>>
+    Record<
+      Locale,
+      DocVersionTranslationMeta &
+        Partial<Record<DocVersionStatus, { title: string; content: string }>>
+    >
   >;
 }
 
@@ -179,6 +189,9 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
     let translation = result.translations[verStatusLang.locale];
     if (!translation) {
       translation = {
+        createdAt: verStatusLang.createdAt,
+        updatedAt: verStatusLang.updatedAt,
+        author: verStatusLang.author,
         [verStatusLang.status]: {
           title: verStatusLang.title ?? "",
           content: verStatusLang.content ?? "",
@@ -189,6 +202,10 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
         title: verStatusLang.title ?? "",
         content: verStatusLang.content ?? "",
       };
+      // keep the most recent updatedAt across statuses for this locale
+      if (verStatusLang.updatedAt > translation.updatedAt) {
+        translation.updatedAt = verStatusLang.updatedAt;
+      }
     }
 
     // copy published content in draft

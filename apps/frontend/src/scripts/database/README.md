@@ -14,7 +14,7 @@ bun run db:seed-documents
 
 - Reads from `../seed-data/documents/{locale}/{document}/`
 - Supports EN/JP locales, document versioning, and Type I/II security levels
-- Only seeds document IDs listed in `CONTENT_IDS` config
+- Seeds all documents found under `seed-data/documents/{locale}/` — any directory containing a `content.md` becomes a document
 - Does not modify site navigation; run `bun run db:seed-navigation` separately if nav should be rebuilt
 
 **Expected directory structure:**

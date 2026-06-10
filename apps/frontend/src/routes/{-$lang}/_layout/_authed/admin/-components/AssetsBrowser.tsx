@@ -7,15 +7,24 @@ import {
   FileText,
   Folder,
   FolderPlus,
-  Trash2Icon,
+  LucideMoreVertical,
+  Trash2,
 } from "lucide-react";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
-import { Input } from "@/components/Input";
+import { InputDialog } from "@/components/InputDialog";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import type {
@@ -27,9 +36,12 @@ import {
   $createAssetFolder,
   $deleteAssetByPath,
   $deleteAssetFolder,
+  $renameAsset,
+  $renameAssetFolder,
   $uploadAsset,
   assetHierarchyQueryOptions,
 } from "@/serverFunctions/assets";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
   if (item.mimeType.startsWith("image/")) return true;
@@ -94,9 +106,19 @@ export function AssetsBrowser({
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
   const [selectedFolderPath, setSelectedFolderPath] = useState(initialFolderPath);
   const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [creatingFolderIn, setCreatingFolderIn] = useState<{
+    path: string;
+    existingNames: string[];
+  } | null>(null);
+  const [uploadingToFolder, setUploadingToFolder] = useState<string | null>(null);
+  const [renamingItem, setRenamingItem] = useState<{
+    item: AssetHierarchyItem;
+    siblings: AssetHierarchyItem[];
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastColumnRef = useRef<HTMLDivElement>(null);
   const [, copy] = useCopyToClipboard();
+  const { openConfirmation } = useConfirmationStore();
 
   const invalidateHierarchy = async () => {
     await queryClient.invalidateQueries(assetHierarchyQueryOptions());
@@ -105,7 +127,7 @@ export function AssetsBrowser({
   const { mutate: createFolder, isPending: isCreatingFolder } = useMutation({
     mutationFn: $createAssetFolder,
     onSuccess: async () => {
-      setNewFolderName("");
+      setCreatingFolderIn(null);
       await invalidateHierarchy();
     },
   });
@@ -134,17 +156,16 @@ export function AssetsBrowser({
         }
       }
 
-      setUploadFile(null);
       await invalidateHierarchy();
     },
   });
 
-  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation({
+  const { mutate: deleteAssetByPath } = useMutation({
     mutationFn: $deleteAssetByPath,
     onSuccess: invalidateHierarchy,
   });
 
-  const { mutate: deleteFolder, isPending: isDeletingFolder } = useMutation({
+  const { mutate: deleteFolder } = useMutation({
     mutationFn: $deleteAssetFolder,
     onSuccess: async () => {
       setSelectedItemPath(null);
@@ -153,6 +174,25 @@ export function AssetsBrowser({
         parentSegments.pop();
         return parentSegments.join("/");
       });
+      await invalidateHierarchy();
+    },
+  });
+
+  const { mutate: renameAsset, isPending: isRenamingAsset } = useMutation({
+    mutationFn: $renameAsset,
+    onSuccess: async (result) => {
+      setRenamingItem(null);
+      setSelectedItemPath(result.path);
+      await invalidateHierarchy();
+    },
+  });
+
+  const { mutate: renameFolder, isPending: isRenamingFolder } = useMutation({
+    mutationFn: $renameAssetFolder,
+    onSuccess: async (result) => {
+      setRenamingItem(null);
+      setSelectedItemPath(result.path);
+      setSelectedFolderPath(result.path);
       await invalidateHierarchy();
     },
   });
@@ -169,9 +209,7 @@ export function AssetsBrowser({
   const selectedItem =
     currentFolder.children.find((item) => item.path === selectedItemPath) ?? null;
 
-  const canManageDeletes = mode === "manage";
-
-  const displayFolderPath = selectedFolderPath || "files";
+  const canManage = mode === "manage";
 
   function handleSelectItem(item: AssetHierarchyItem) {
     setSelectedItemPath(item.path);
@@ -179,80 +217,117 @@ export function AssetsBrowser({
     if (item.type === "folder") {
       setSelectedFolderPath(item.path);
       onSelectedFileChange?.(null);
+      requestAnimationFrame(() => {
+        lastColumnRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "end",
+        });
+      });
       return;
     }
 
     onSelectedFileChange?.(item);
   }
 
+  async function handleRenameSubmit(newName: string) {
+    if (!renamingItem) return;
+    const { item } = renamingItem;
+    if (item.type === "folder") {
+      renameFolder({ data: { folderPath: item.path, newName } });
+    } else {
+      renameAsset({ data: { assetPath: item.path, newName } });
+    }
+  }
+
+  function handleDeleteItem(item: AssetHierarchyItem) {
+    const isFolder = item.type === "folder";
+    const isNonEmpty = isFolder && (item as AssetHierarchyFolder).children.length > 0;
+    openConfirmation({
+      title: isFolder ? "Delete folder" : "Delete file",
+      description: isNonEmpty
+        ? `"${item.name}" is not empty. All its contents will be permanently deleted. Are you sure?`
+        : `Are you sure you want to delete "${item.name}"?`,
+      actionLabel: "Delete",
+      onAction: () => {
+        if (isFolder) {
+          deleteFolder({ data: { folderPath: item.path } });
+        } else {
+          deleteAssetByPath({ data: { assetPath: item.path } });
+        }
+      },
+    });
+  }
+
+  function handleUploadClick(folderPath: string) {
+    setUploadingToFolder(folderPath);
+    fileInputRef.current?.click();
+  }
+
+  function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || uploadingToFolder === null) return;
+
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("folderPath", uploadingToFolder);
+    uploadAsset({ data: formData });
+
+    event.target.value = "";
+    setUploadingToFolder(null);
+  }
+
   return (
-    <section className="flex min-h-0 max-w-full flex-1 flex-col items-stretch gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <form
-          className="space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!newFolderName.trim()) return;
+    <section className="flex min-h-0 max-w-full flex-1 flex-col items-stretch gap-4 overflow-y-auto">
+      {/* Hidden file input shared across all folder upload buttons */}
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
 
-            createFolder({
-              data: {
-                parentPath: selectedFolderPath,
-                folderName: newFolderName,
-              },
-            });
-          }}
-        >
-          <div className="font-medium text-sm">
-            Create folder in <span className="text-secondary">{displayFolderPath}</span>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={newFolderName}
-              onChange={(event) => setNewFolderName(event.target.value)}
-              placeholder="Folder name"
-              variant="form"
-            />
-            <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
-              <FolderPlus className="mr-2 size-4" />
-              Create
-            </Button>
-          </div>
-        </form>
+      <InputDialog
+        title={`Rename ${renamingItem?.item.type === "folder" ? "folder" : "file"}`}
+        description={renamingItem ? `Current name: ${renamingItem.item.name}` : undefined}
+        label="New name"
+        trigger={<span />}
+        initialValue={renamingItem?.item.name ?? ""}
+        open={renamingItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenamingItem(null);
+        }}
+        validateAsync={async (value) => {
+          if (!value.trim()) return "Name is required";
+          if (!renamingItem) return undefined;
+          const isDuplicate = renamingItem.siblings.some(
+            (s) => s.path !== renamingItem.item.path && s.name === value.trim(),
+          );
+          if (isDuplicate) {
+            return `A ${renamingItem.item.type === "folder" ? "folder" : "file"} named "${value.trim()}" already exists here.`;
+          }
+          return undefined;
+        }}
+        onSubmit={handleRenameSubmit}
+      />
 
-        <form
-          className="space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!uploadFile) return;
-
-            const formData = new FormData();
-            formData.set("file", uploadFile);
-            formData.set("folderPath", selectedFolderPath);
-
-            uploadAsset({ data: formData });
-          }}
-        >
-          <div className="font-medium text-sm">
-            Upload to <span className="text-secondary">{displayFolderPath}</span>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              type="file"
-              variant="form"
-              onChange={(event) => {
-                setUploadFile(event.target.files?.[0] ?? null);
-              }}
-            />
-            <Button disabled={!uploadFile || isUploadingAsset} type="submit">
-              <FilePlus2 className="mr-2 size-4" />
-              Upload
-            </Button>
-          </div>
-        </form>
-      </div>
+      <InputDialog
+        title="Create folder"
+        label="Folder name"
+        trigger={<span />}
+        open={creatingFolderIn !== null}
+        onOpenChange={(open) => {
+          if (!open) setCreatingFolderIn(null);
+        }}
+        validateAsync={async (value) => {
+          if (!value.trim()) return "Name is required";
+          if (creatingFolderIn?.existingNames.includes(value.trim())) {
+            return `A folder or file named "${value.trim()}" already exists here.`;
+          }
+          return undefined;
+        }}
+        onSubmit={async (folderName) => {
+          createFolder({ data: { parentPath: creatingFolderIn?.path ?? "", folderName } });
+        }}
+      />
 
       {!selectedFolderExists && selectedFolderPath ? (
-        <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
+        <div className="flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
           <div>
             Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
           </div>
@@ -276,66 +351,139 @@ export function AssetsBrowser({
 
       <div className="flex min-h-0 max-w-full flex-1 gap-4 overflow-x-hidden">
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex h-full min-h-0 flex-1 gap-3 overflow-x-auto">
-            {columns.map((folder) => (
-              <Card
+          <div className="flex max-h-full items-stretch gap-3">
+            {columns.map((folder, index) => (
+              <div
                 key={folder.path || "__root__"}
-                className="flex min-h-0 w-[260px] shrink-0 flex-col p-3"
-                caption={folder.path || "files"}
-                captionSize="sm"
+                ref={index === columns.length - 1 ? lastColumnRef : null}
+                className="flex max-h-full flex-col"
               >
-                <div className="min-h-0 overflow-y-auto">
-                  <ul className="space-y-1">
-                    {folder.children.length === 0 ? (
-                      <li className="rounded-sm border border-dashed p-3 text-gray-500 text-sm">
-                        Empty folder
-                      </li>
-                    ) : (
-                      folder.children.map((item) => {
-                        const isActive = item.path === selectedItemPath;
+                <Card
+                  className="flex max-h-full min-h-0 w-[260px] flex-1 shrink-0 flex-col p-3"
+                  caption={folder.path || "files"}
+                  captionSize="sm"
+                  containerClassName="flex flex-col flex-1 overflow-y-auto"
+                >
+                  <div className="min-h-0">
+                    <ul className="space-y-1">
+                      {folder.children.length === 0 ? (
+                        <li className="rounded-sm border border-dashed p-3 text-gray-500 text-sm">
+                          Empty folder
+                        </li>
+                      ) : (
+                        folder.children.map((item) => {
+                          const isActive = item.path === selectedItemPath;
 
-                        return (
-                          <li key={item.path}>
-                            <Button
-                              variant="plain"
+                          return (
+                            <li
+                              key={item.path}
                               className={cn(
-                                "flex w-full items-center justify-start gap-2 rounded-sm px-3 py-2 text-left",
+                                "flex items-center rounded-sm",
                                 isActive ? "bg-secondary-light text-white" : "hover:bg-hover",
                               )}
-                              onClick={() => {
-                                handleSelectItem(item);
-                              }}
                             >
-                              {item.type === "folder" ? (
-                                <>
-                                  <Folder className="size-4 shrink-0" />
-                                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                                  <ChevronRight className="size-4 shrink-0" />
-                                </>
-                              ) : (
-                                <>
-                                  {isImageFile(item) ? (
-                                    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border bg-primary">
-                                      <img
-                                        src={item.url}
-                                        alt={item.name}
-                                        className="size-full object-cover"
-                                      />
-                                    </span>
-                                  ) : (
-                                    <FileText className="size-4 shrink-0" />
-                                  )}
-                                  <span className="min-w-0 truncate">{item.name}</span>
-                                </>
+                              <Button
+                                variant="plain"
+                                className="flex min-w-0 flex-1 items-center justify-start gap-2 px-3 py-2 text-left"
+                                onClick={() => handleSelectItem(item)}
+                              >
+                                {item.type === "folder" ? (
+                                  <>
+                                    <Folder className="size-4 shrink-0" />
+                                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                                    <ChevronRight className="size-4 shrink-0" />
+                                  </>
+                                ) : (
+                                  <>
+                                    {isImageFile(item) ? (
+                                      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border bg-primary">
+                                        <img
+                                          src={item.url}
+                                          alt={item.name}
+                                          className="size-full object-cover"
+                                        />
+                                      </span>
+                                    ) : (
+                                      <FileText className="size-4 shrink-0" />
+                                    )}
+                                    <span className="min-w-0 truncate">{item.name}</span>
+                                  </>
+                                )}
+                              </Button>
+                              {canManage && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <LucideMoreVertical className="size-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuItem
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                          setRenamingItem({ item, siblings: folder.children });
+                                        }}
+                                      >
+                                        <Label>Rename</Label>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                          handleDeleteItem(item);
+                                        }}
+                                      >
+                                        <Label>
+                                          <Trash2 />
+                                          Delete
+                                        </Label>
+                                      </DropdownMenuItem>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
-                            </Button>
-                          </li>
-                        );
-                      })
+                            </li>
+                          );
+                        })
+                      )}
+                    </ul>
+
+                    {canManage && (
+                      <div className="mt-2 flex gap-1 border-t pt-2">
+                        <Button
+                          variant="ghost"
+                          size="slim"
+                          className="flex-1 text-xs"
+                          onClick={() =>
+                            setCreatingFolderIn({
+                              path: folder.path,
+                              existingNames: folder.children.map((c) => c.name),
+                            })
+                          }
+                        >
+                          <FolderPlus className="mr-1 size-3" />
+                          Create folder...
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="slim"
+                          className="flex-1 text-xs"
+                          disabled={isUploadingAsset}
+                          onClick={() => handleUploadClick(folder.path)}
+                        >
+                          <FilePlus2 className="mr-1 size-3" />
+                          Upload file...
+                        </Button>
+                      </div>
                     )}
-                  </ul>
-                </div>
-              </Card>
+                  </div>
+                </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -360,14 +508,6 @@ export function AssetsBrowser({
                     <dd>{selectedItem.children.length}</dd>
                   </div>
                 </dl>
-                <Button
-                  disabled={selectedItem.children.length > 0 || isDeletingFolder}
-                  variant="outline"
-                  onClick={() => deleteFolder({ data: { folderPath: selectedItem.path } })}
-                >
-                  <Trash2Icon className="mr-2 size-4" />
-                  Delete empty folder
-                </Button>
               </div>
             ) : (
               <div className="space-y-4 text-sm">
@@ -405,31 +545,15 @@ export function AssetsBrowser({
                       <dd>{Intl.NumberFormat().format(selectedItem.size)} bytes</dd>
                     </div>
                   </dl>
-                  <div className="flex gap-2">
-                    <ClientOnly>
-                      <Button
-                        variant="outline"
-                        onClick={() => copy(`${window.location.origin}${selectedItem.url}`)}
-                      >
-                        <CopyIcon className="mr-2 size-4" />
-                        Copy URL
-                      </Button>
-                    </ClientOnly>
-                    {canManageDeletes ? (
-                      <Button
-                        disabled={isDeletingAsset}
-                        variant="outline"
-                        onClick={() =>
-                          deleteAssetByPath({
-                            data: { assetPath: selectedItem.path },
-                          })
-                        }
-                      >
-                        <Trash2Icon className="mr-2 size-4" />
-                        Delete file
-                      </Button>
-                    ) : null}
-                  </div>
+                  <ClientOnly>
+                    <Button
+                      variant="outline"
+                      onClick={() => copy(`${window.location.origin}${selectedItem.url}`)}
+                    >
+                      <CopyIcon className="mr-2 size-4" />
+                      Copy URL
+                    </Button>
+                  </ClientOnly>
                 </div>
               </div>
             )

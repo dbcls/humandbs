@@ -5,7 +5,7 @@ import type { MarkdownResult } from "@/utils/markdown";
 
 import { Card } from "../Card";
 import { PreviousVersionsList } from "../PreviousVersionsList";
-import { Markdown } from ".";
+import { Markdown } from "./index";
 import { TOC } from "./TOC";
 
 export function MarkdownWithTOC({

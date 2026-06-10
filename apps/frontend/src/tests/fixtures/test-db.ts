@@ -39,7 +39,7 @@ export async function createTestDatabase(): Promise<void> {
 
 export async function pushSchema(): Promise<void> {
   execSync("bunx drizzle-kit push --force", {
-    cwd: new URL("../../../../", import.meta.url).pathname,
+    cwd: new URL("../../../", import.meta.url).pathname,
     env: {
       ...process.env,
       HUMANDBS_POSTGRES_DB: TEST_DB,

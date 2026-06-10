@@ -43,6 +43,20 @@
       "when": 1779852836432,
       "tag": "0005_last_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781064708559,
+      "tag": "0006_colossal_mandarin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781082944106,
+      "tag": "0007_yummy_klaw",
+      "breakpoints": true
     }
   ]
 }

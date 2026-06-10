@@ -14,6 +14,7 @@ export interface DocumentsListItemResponse {
   id: string;
   createdAt: Date;
   contentId: string;
+  latestVersionNumber: number | null;
   translations: {
     lang: (typeof i18n.locales)[number];
     statuses: {
@@ -58,47 +59,55 @@ export const $getDocuments = createServerFn({
 
     const documentsWithTitles = await Promise.all(
       documents.map(async (doc) => {
-        const translations = await Promise.all(
-          i18n.locales.map(async (locale) => {
-            const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
-              db.query.documentVersion.findFirst({
-                where: (table, { and, eq }) =>
-                  and(
-                    eq(table.documentId, doc.id),
-                    eq(table.locale, locale),
-                    eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                  ),
-                orderBy: (table, { desc }) => desc(table.versionNumber),
-                columns: {
-                  title: true,
-                },
-              }),
-              db.query.documentVersion.findFirst({
-                where: (table, { and, eq }) =>
-                  and(
-                    eq(table.documentId, doc.id),
-                    eq(table.locale, locale),
-                    eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                  ),
-                orderBy: (table, { desc }) => desc(table.versionNumber),
-                columns: {
-                  title: true,
-                },
-              }),
-            ]);
+        const [translations, latestVersion] = await Promise.all([
+          Promise.all(
+            i18n.locales.map(async (locale) => {
+              const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
+                db.query.documentVersion.findFirst({
+                  where: (table, { and, eq }) =>
+                    and(
+                      eq(table.documentId, doc.id),
+                      eq(table.locale, locale),
+                      eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                    ),
+                  orderBy: (table, { desc }) => desc(table.versionNumber),
+                  columns: {
+                    title: true,
+                  },
+                }),
+                db.query.documentVersion.findFirst({
+                  where: (table, { and, eq }) =>
+                    and(
+                      eq(table.documentId, doc.id),
+                      eq(table.locale, locale),
+                      eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                    ),
+                  orderBy: (table, { desc }) => desc(table.versionNumber),
+                  columns: {
+                    title: true,
+                  },
+                }),
+              ]);
 
-            return {
-              lang: locale,
-              statuses: {
-                published: latestPublishedVersion?.title ?? undefined,
-                draft: latestDraftVersion?.title ?? undefined,
-              },
-            };
+              return {
+                lang: locale,
+                statuses: {
+                  published: latestPublishedVersion?.title ?? undefined,
+                  draft: latestDraftVersion?.title ?? undefined,
+                },
+              };
+            }),
+          ),
+          db.query.documentVersion.findFirst({
+            where: (table, { eq }) => eq(table.documentId, doc.id),
+            orderBy: (table, { desc }) => desc(table.versionNumber),
+            columns: { versionNumber: true },
           }),
-        );
+        ]);
 
         return {
           ...doc,
+          latestVersionNumber: latestVersion?.versionNumber ?? null,
           translations: translations.filter(
             (translation) => translation.statuses.published || translation.statuses.draft,
           ),

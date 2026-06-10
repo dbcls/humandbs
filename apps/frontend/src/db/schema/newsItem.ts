@@ -7,7 +7,7 @@ import { newsItemTag } from "./newsTag";
 export const newsItem = pgTable("news_item", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  publishedAt: text("published_at"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
   authorId: text("author_id")
     .notNull()
     .references(() => user.id),

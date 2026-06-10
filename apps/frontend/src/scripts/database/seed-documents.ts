@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -216,6 +216,7 @@ async function seedDocuments(overwrite = false) {
 
     console.log("\nSeeding documents...");
     let createdCount = 0;
+    let skippedCount = 0;
 
     for (const [documentId, localeMap] of documents) {
       // Ensure document record exists
@@ -269,7 +270,7 @@ async function seedDocuments(overwrite = false) {
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           title: title ?? documentId,
           content: contentWithoutTitle,
-          translatedBy: authorId,
+          authorId: authorId,
         };
 
         const query = db.insert(schema.documentVersion).values(values);
@@ -286,22 +287,28 @@ async function seedDocuments(overwrite = false) {
               set: {
                 title: values.title,
                 content: values.content,
-                translatedBy: values.translatedBy,
+                authorId: values.authorId,
                 updatedAt: new Date(),
               },
             })
             .execute();
+          createdCount++;
         } else {
-          await query.onConflictDoNothing().execute();
+          const result = await query.onConflictDoNothing().execute();
+          if ((result.rowCount ?? 0) > 0) {
+            createdCount++;
+          } else {
+            skippedCount++;
+          }
         }
 
         console.log(`Seeded ${locale}/${documentId} v${versionNumber}`);
-        createdCount++;
       }
     }
 
     console.log(`\nSeeding complete!`);
-    console.log(`  Upserted: ${createdCount} version(s)`);
+    console.log(`  Inserted: ${createdCount} version(s)`);
+    console.log(`  Skipped:  ${skippedCount} (already exist; use --overwrite to replace)`);
   } catch (error) {
     console.error("Seeding failed:", error);
     throw error;

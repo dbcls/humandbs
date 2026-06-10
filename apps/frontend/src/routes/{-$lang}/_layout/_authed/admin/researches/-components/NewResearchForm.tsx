@@ -95,6 +95,7 @@ export function NewResearchForm({
 
   const form = useAppForm({
     defaultValues,
+
     onSubmit: async ({ value }) => {
       setError(null);
       const normalizedHumId =
@@ -155,19 +156,14 @@ export function NewResearchForm({
           </div>
 
           <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
-            <form.AppField name="humId">
-              {(field) => (
-                <div className="flex flex-col gap-1">
-                  <field.TextField type="col" label="Research ID (humId)" />
-                  {field.state.meta.errors.length > 0 && (
-                    <em role="alert" className="text-danger text-xs">
-                      {field.state.meta.errors.map((e, i) => (
-                        <p key={i}>{String(e)}</p>
-                      ))}
-                    </em>
-                  )}
-                </div>
-              )}
+            <form.AppField
+              name="humId"
+              validators={{
+                onChange: ({ value }) =>
+                  !value || value.trim() === "" ? "Research ID is required" : undefined,
+              }}
+            >
+              {(field) => <field.TextField type="col" label="Research ID (humId)*" />}
             </form.AppField>
 
             <form.AppField name="uids" mode="array">

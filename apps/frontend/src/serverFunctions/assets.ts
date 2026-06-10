@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, readdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { write } from "bun";
 
@@ -241,9 +241,53 @@ export const $deleteAssetFolder = createServerFn({ method: "POST" })
     context.checkPermission("assets", "delete");
 
     const folderPath = normalizeRelativeAssetPath(data.folderPath);
-    await rm(getAbsoluteAssetPath(folderPath), { recursive: false });
+    await rm(getAbsoluteAssetPath(folderPath), { recursive: true });
 
     return { path: folderPath };
+  });
+
+export const $renameAsset = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    z.object({
+      assetPath: assetPathSchema,
+      newName: z.string().trim().min(1),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    context.checkPermission("assets", "move");
+
+    const assetPath = normalizeRelativeAssetPath(data.assetPath);
+    const newName = path.posix.basename(data.newName.trim());
+    const parentDir = path.posix.dirname(assetPath);
+    const newRelativePath = parentDir === "." ? newName : path.posix.join(parentDir, newName);
+    const normalizedNewPath = normalizeRelativeAssetPath(newRelativePath);
+
+    await rename(getAbsoluteAssetPath(assetPath), getAbsoluteAssetPath(normalizedNewPath));
+
+    return { path: normalizedNewPath };
+  });
+
+export const $renameAssetFolder = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    z.object({
+      folderPath: assetPathSchema,
+      newName: z.string().trim().min(1),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    context.checkPermission("assets", "move");
+
+    const folderPath = normalizeRelativeAssetPath(data.folderPath);
+    const newName = path.posix.basename(data.newName.trim());
+    const parentDir = path.posix.dirname(folderPath);
+    const newRelativePath = parentDir === "." ? newName : path.posix.join(parentDir, newName);
+    const normalizedNewPath = normalizeRelativeAssetPath(newRelativePath);
+
+    await rename(getAbsoluteAssetPath(folderPath), getAbsoluteAssetPath(normalizedNewPath));
+
+    return { path: normalizedNewPath };
   });
 
 export function assetHierarchyQueryOptions() {

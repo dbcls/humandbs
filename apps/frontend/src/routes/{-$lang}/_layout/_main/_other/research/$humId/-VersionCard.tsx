@@ -118,11 +118,30 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
+        <ContentHeader>{t("researchProject.self")}</ContentHeader>
+        <Table
+          className="mt-4 text-sm"
+          columns={researchProjectsColumns}
+          data={versionData.researchProject}
+          meta={tableMeta}
+        />
+      </section>
+      <section>
+        <ContentHeader>{t("grant.self")}</ContentHeader>
+        <Table
+          className="mt-4 text-sm"
+          columns={grantsColumns}
+          data={versionData.grant}
+          meta={tableMeta}
+        />
+      </section>
+      <Separator className="-mx-4" />
+      <section>
         <ContentHeader>{t("relatedPublication")}</ContentHeader>
         <Table
           columns={makePublicationColumns(t)}
           data={versionData?.relatedPublication || []}
-          className="mt-4"
+          className="mt-4 text-sm"
           meta={tableMeta}
         />
       </section>
@@ -130,6 +149,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("controlledAccessUser")}</ContentHeader>
         <Table
+          className="mt-4 text-sm"
           columns={dataUsedByColumns}
           data={versionData?.controlledAccessUser || []}
           meta={tableMeta}
@@ -267,5 +287,60 @@ const dataUsedByColumns = [
 
       return `${v.startDate} — ${v.endDate || ""}`;
     },
+  }),
+];
+
+const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
+
+const grantsColumns = [
+  grantsColumnsHelper.accessor("title", {
+    id: "grantTitle",
+    header: (ctx) => ctx.table.options.meta?.t("grant.title"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+  }),
+  grantsColumnsHelper.accessor("agency.name", {
+    id: "grantAgency",
+    header: (ctx) => ctx.table.options.meta?.t("grant.agency"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+  }),
+  grantsColumnsHelper.accessor("id", {
+    id: "grantId",
+    header: (ctx) => ctx.table.options.meta?.t("grant.id"),
+    cell: (ctx) => (
+      <ul className="flex items-center gap-2">
+        {ctx.getValue()?.map((id) => (
+          <li className="rounded-full bg-form-tag-bg px-2 py-1" key={id}>
+            {id}
+          </li>
+        )) ?? null}
+      </ul>
+    ),
+  }),
+];
+
+const researchProjectsColumnsHelper =
+  createColumnHelper<ResearchDetailResponse["data"]["researchProject"][number]>();
+
+const researchProjectsColumns = [
+  researchProjectsColumnsHelper.accessor("name", {
+    id: "researchProjectTitle",
+    header: (ctx) => ctx.table.options.meta?.t("researchProject.name"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ?? "",
+  }),
+  researchProjectsColumnsHelper.accessor("url", {
+    id: "researchProjectId",
+    header: (ctx) => ctx.table.options.meta?.t("researchProject.URL"),
+    cell: (ctx) => (
+      <a
+        href={
+          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ?? undefined
+        }
+        className="break-all text-sm"
+      >
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ||
+          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ||
+          "URL"}
+      </a>
+    ),
   }),
 ];

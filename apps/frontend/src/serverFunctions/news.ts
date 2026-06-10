@@ -14,14 +14,14 @@ import {
   newsTranslationUpdateSchema,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import type { NewsTag, PublishedTitlesFilters } from "@/repositories/newsItem";
+import type { NewsTag } from "@/repositories/newsItem";
 import { newsItemRepository } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   id: string;
   locale: Locale;
   title: string;
-  publishedAt: string | null;
+  publishedAt: Date | null;
 }
 
 /**
@@ -61,8 +61,8 @@ export function getNewsTitlesQueryOptions({
 
 const publicNewsTitlesFiltersSchema = z.object({
   titleOrContent: z.string().optional(),
-  publishedFrom: z.string().optional(),
-  publishedTo: z.string().optional(),
+  publishedFrom: z.coerce.date().optional(),
+  publishedTo: z.coerce.date().optional(),
   tagIds: z.array(z.string()).optional(),
 });
 
@@ -92,12 +92,19 @@ export const $getPublishedNewsTitles = createServerFn({ method: "GET" })
     });
   });
 
+export interface PublicNewsTitlesFilters {
+  titleOrContent?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  tagIds?: string[];
+}
+
 export function getPublishedNewsTitlesInfiniteQueryOptions({
   locale,
   filters,
 }: {
   locale: Locale;
-  filters: PublishedTitlesFilters;
+  filters: PublicNewsTitlesFilters;
 }) {
   return infiniteQueryOptions({
     queryKey: ["news", "published", locale, filters],
@@ -192,8 +199,8 @@ export function getNewsTranslationQueryOptions({
 
 const newsItemFiltersSchema = z.object({
   titleOrContent: z.string().optional(),
-  publishedFrom: z.string().optional(),
-  publishedTo: z.string().optional(),
+  publishedFrom: z.coerce.date().optional(),
+  publishedTo: z.coerce.date().optional(),
   tagIds: z.array(z.string()).optional(),
 });
 
@@ -269,6 +276,7 @@ export interface NewsItemsFilters {
   publishedTo?: string;
   tagIds?: string[];
 }
+
 
 export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
   return infiniteQueryOptions({

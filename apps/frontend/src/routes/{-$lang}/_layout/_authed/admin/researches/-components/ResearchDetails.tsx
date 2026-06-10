@@ -48,6 +48,16 @@ import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { TabContentLayout } from "./TabContentLayout";
 import type { MergeResearchResult } from "./utils/jdsResearchValues";
 
+const topLevelFields = [
+  "title",
+  "summary",
+  "dataProvider",
+  "researchProject",
+  "grant",
+  "relatedPublication",
+  "controlledAccessUser",
+] as const;
+
 export function ResearchDetails({
   humId,
   lang,
@@ -399,16 +409,6 @@ export function ResearchDetails({
   // getResearchDetail always spreads the full research doc (incl. draftVersion)
   // regardless of which version was requested.
   const isViewingDraft = selectedVersion === researchValues.draftVersion;
-
-  const topLevelFields = [
-    "title",
-    "summary",
-    "dataProvider",
-    "researchProject",
-    "grant",
-    "relatedPublication",
-    "controlledAccessUser",
-  ] as const;
 
   // Per-tab dirty state: a tab is dirty if the field value differs from initial
   const formValues = useStore(form.store, (state) => state.values);

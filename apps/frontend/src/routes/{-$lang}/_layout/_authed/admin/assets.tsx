@@ -14,7 +14,11 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/assets")({
 
 function RouteComponent() {
   return (
-    <Card className="flex h-full min-w-0 flex-1 flex-col" caption="Assets">
+    <Card
+      className="flex h-full min-w-0 flex-1 flex-col"
+      containerClassName="flex-1 flex flex-col"
+      caption="Assets"
+    >
       <Suspense fallback={<AssetsBrowserFallback />}>
         <AssetsBrowser />
       </Suspense>

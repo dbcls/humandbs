@@ -1,8 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
-import { MarkdownWithTOC } from "@/components/Markdown/MarkdownWithTOC";
+import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
@@ -80,7 +80,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           data: { contentId: docId, locale: context.lang },
         }),
       ]);
-      if (!data) throw new Error("Revision not found");
+      if (!data) {
+        throw notFound();
+      }
+
       const contentHtml = await renderMarkdown(data.content ?? "");
 
       return {

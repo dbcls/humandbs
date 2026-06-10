@@ -97,7 +97,7 @@ Restore does not import historical revision rows for `Header & Footer` or `Flowc
 
 Restore writes new revision rows for those categories in the target environment.
 
-For user-linked fields such as `authorId`, `updatedBy`, and `translatedBy`, restore uses the restoring admin user where needed so foreign-key inserts succeed in the target environment.
+For user-linked fields such as `authorId` and `updatedBy`, restore uses the restoring admin user where needed so foreign-key inserts succeed in the target environment.
 
 After a successful restore, frontend queries are invalidated so CMS pages reload current data.
 

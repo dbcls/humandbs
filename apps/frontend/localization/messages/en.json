@@ -25,7 +25,11 @@
     "sort": "Sort",
     "sort-asc": "Ascending",
     "sort-desc": "Descending",
-    "sort-by": "by {field}"
+    "sort-by": "by {field}",
+    "created-at": "Created at",
+    "updated-at": "Updated-at",
+    "published-at": "Published at",
+    "author": "Author"
   },
   "Cart": {
     "naviagte-to-application-form": "Navigate to application form"
@@ -238,6 +242,17 @@
     "researchTitle": "Research title",
     "relatedPublication": "Related publications",
     "periodOfDataUse": "Period of data use",
+    "grant": {
+      "self": "Grants",
+      "title": "Name",
+      "agency": "Title",
+      "id": "Project number"
+    },
+    "researchProject": {
+      "self": "Research projects",
+      "name": "Name",
+      "URL": "URL"
+    },
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
     "platforms": "Platforms",

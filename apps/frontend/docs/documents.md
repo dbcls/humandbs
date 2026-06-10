@@ -32,7 +32,7 @@ erDiagram
         enum status PK
         text name "title"
         text content
-        text translated_by FK
+        text author_id FK
         timestamp created_at
         timestamp updated_at
     }
@@ -42,5 +42,5 @@ erDiagram
     }
 
     document ||--o{ document_version : has_versions
-    user ||--o{ document_version : translated_by
+    user ||--o{ document_version : author
 ```

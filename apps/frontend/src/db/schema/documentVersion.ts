@@ -30,7 +30,7 @@ export const documentVersion = pgTable(
     locale: text("locale").notNull().$type<Locale>(),
     title: text("name"),
     content: text("content"),
-    translatedBy: text("translated_by").references(() => user.id),
+    authorId: text("author_id").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -49,7 +49,7 @@ export const documentVersionRelations = relations(documentVersion, ({ one }) => 
     references: [document.id],
   }),
   author: one(user, {
-    fields: [documentVersion.translatedBy],
+    fields: [documentVersion.authorId],
     references: [user.id],
   }),
 }));

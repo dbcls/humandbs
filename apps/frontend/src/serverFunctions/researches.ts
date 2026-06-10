@@ -363,7 +363,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
           ...data,
           page: pageParam,
           limit: 20,
-          order: data.order ?? "asc",
+          order: data.order ?? "desc",
         },
       }),
     initialPageParam: 1,

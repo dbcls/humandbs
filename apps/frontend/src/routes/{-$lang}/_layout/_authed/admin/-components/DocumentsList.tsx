@@ -64,6 +64,7 @@ export function DocumentsList({
             contentId,
             id: "optimistic-id-" + contentId,
             createdAt: new Date(),
+            latestVersionNumber: null,
             translations: [],
           };
 

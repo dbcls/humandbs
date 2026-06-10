@@ -22,7 +22,7 @@ interface ConfirmationActions {
   closeConfirmation: () => void;
 }
 
-const useConfirmationStore = create<ConfirmationState & ConfirmationActions>((set) => ({
+const closedState = {
   open: false,
   title: null,
   description: null,
@@ -30,8 +30,12 @@ const useConfirmationStore = create<ConfirmationState & ConfirmationActions>((se
   actionLabel: null,
   onAction: () => {},
   onCancel: () => {},
+};
+
+const useConfirmationStore = create<ConfirmationState & ConfirmationActions>((set) => ({
+  ...closedState,
   openConfirmation: (data) => {
-    set((state) => ({
+    set({
       open: true,
       title: data.title,
       description: data.description,
@@ -39,24 +43,16 @@ const useConfirmationStore = create<ConfirmationState & ConfirmationActions>((se
       actionLabel: data.actionLabel,
       onAction: () => {
         data.onAction();
-        state.closeConfirmation();
+        set(closedState);
       },
       onCancel: () => {
         data.onCancel?.();
-        state.closeConfirmation();
+        set(closedState);
       },
-    }));
+    });
   },
   closeConfirmation: () => {
-    set(() => ({
-      open: false,
-      title: null,
-      description: null,
-      cancelLabel: null,
-      actionLabel: null,
-      onAction: () => {},
-      onCancel: () => {},
-    }));
+    set(closedState);
   },
 }));
 
