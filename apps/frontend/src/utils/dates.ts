@@ -3,6 +3,17 @@ export interface DateStringRange {
   to?: string | undefined;
 }
 
+export function toLocaleDateTimeString(date: Date | string | undefined | null): string | undefined {
+  if (!date) return undefined;
+  const d = typeof date === "string" ? new Date(date) : date;
+  const yyyy = d.getUTCFullYear();
+  const mm = `${d.getUTCMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getUTCDate()}`.padStart(2, "0");
+  const h = `${d.getUTCHours()}`.padStart(2, "0");
+  const min = `${d.getUTCMinutes()}`.padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${h}:${min}`;
+}
+
 export interface DateRange {
   from: Date | undefined;
   to?: Date | undefined;

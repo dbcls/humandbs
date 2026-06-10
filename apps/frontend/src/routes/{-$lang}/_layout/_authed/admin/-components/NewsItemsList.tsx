@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { Suspense, useEffect, useRef } from "react";
 
 import { Card } from "@/components/Card";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 import type { NewsItemResponse } from "@/serverFunctions/news";
 import { $deleteNewsItem, newsItemsInfiniteQueryOptions } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { toLocaleDateTimeString } from "@/utils/dates";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
@@ -72,7 +74,7 @@ export function NewsItemsList({
   }
 
   return (
-    <Card title={"News"}>
+    <CollapsibleCard title={"News"}>
       <div>
         <NewsFiltersBar />
         <AddNewButton className="mb-5" onClick={handleClickAdd} disabled={hasDraft} />
@@ -89,7 +91,7 @@ export function NewsItemsList({
           </Suspense>
         </ErrorResetBoundary>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -202,7 +204,13 @@ function ListItems({
               >
                 <AdminListItem
                   id={item.id}
-                  header={isDraft ? "New news item" : item.publishedAt || "No date"}
+                  header={
+                    isDraft
+                      ? "New news item"
+                      : item.publishedAt
+                        ? toLocaleDateTimeString(item.publishedAt)
+                        : "No date"
+                  }
                   translations={Object.entries(item.translations ?? {}).map(([lang, tr]) => ({
                     lang,
                     statuses: {

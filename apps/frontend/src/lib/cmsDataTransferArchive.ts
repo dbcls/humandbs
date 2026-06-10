@@ -1033,7 +1033,7 @@ export function createCmsDataTransferArchiveRestorer({
               payload.items.map((item) => ({
                 id: item.id,
                 createdAt: new Date(item.createdAt),
-                publishedAt: item.publishedAt,
+                publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
                 authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
               })),
             );

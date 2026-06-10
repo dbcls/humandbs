@@ -41,7 +41,7 @@ function RouteComponent() {
             <h1>{title}</h1>
             {publishedAt && (
               <span className="text-foreground-light text-xs">
-                {new Date(publishedAt).toLocaleDateString(lang)}
+                {publishedAt.toLocaleString(lang)}
               </span>
             )}
           </div>

@@ -73,7 +73,7 @@ export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
 export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
 
 export const newsItemCreateSchema = z.object({
-  publishedAt: z.string().optional().nullable(),
+  publishedAt: z.date().optional().nullable(),
   translations: newsTranslationUpsertSchema,
   tags: z.array(z.string()).optional().default([]),
 });

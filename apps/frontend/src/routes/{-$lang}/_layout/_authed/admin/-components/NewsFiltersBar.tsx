@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { XIcon } from "lucide-react";
 
-import { DateRangePicker } from "@/components/DatePicker";
+import { DateTimeRangePicker } from "@/components/DatePicker";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { TagPill } from "@/components/TagPill";
 import { Button } from "@/components/ui/button";
@@ -97,7 +97,7 @@ function DateRangeFilter({
   const value: DateStringRange | undefined = from || to ? { from, to } : undefined;
 
   return (
-    <DateRangePicker
+    <DateTimeRangePicker
       value={value}
       onSelect={(range) => onChange({ publishedFrom: range.from, publishedTo: range.to })}
       onClear={() => onChange({ publishedFrom: undefined, publishedTo: undefined })}

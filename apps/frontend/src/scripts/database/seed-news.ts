@@ -132,7 +132,7 @@ async function seedNews(overwrite = false) {
         .insert(schema.newsItem)
         .values({
           authorId,
-          publishedAt: page.publishedAt,
+          publishedAt: page.publishedAt ? new Date(page.publishedAt) : null,
         })
         .returning({ id: schema.newsItem.id })
         .execute();

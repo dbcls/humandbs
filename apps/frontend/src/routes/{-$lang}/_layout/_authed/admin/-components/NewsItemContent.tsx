@@ -46,7 +46,7 @@ import { TitleValue } from "./TitleValue";
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
   locale: Locale;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   tags: string[];
 }
 
@@ -366,7 +366,7 @@ function NewsItemForm({
         <form.AppField name="publishedAt">
           {(field) => (
             <Suspense fallback={<div>Loading...</div>}>
-              <field.DateField label={t("published-at")} />
+              <field.DateTimeField label={t("published-at")} />
             </Suspense>
           )}
         </form.AppField>

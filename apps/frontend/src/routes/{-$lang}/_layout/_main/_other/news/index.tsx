@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/Card";
-import { DateRangePicker } from "@/components/DatePicker";
+import { DateTimeRangePicker } from "@/components/DatePicker";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,7 +84,7 @@ function RouteComponent() {
           onChange={(q) => setFilters({ q })}
           placeholder="Search by title or content…"
         />
-        <DateRangePicker
+        <DateTimeRangePicker
           value={
             search.publishedFrom || search.publishedTo
               ? { from: search.publishedFrom, to: search.publishedTo }
@@ -124,7 +124,7 @@ function RouteComponent() {
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-xs opacity-70">
-                    {item.publishedAt ?? "No date"}
+                    {item.publishedAt ? item.publishedAt.toLocaleString() : "No date"}
                   </span>
                 </div>
 

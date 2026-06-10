@@ -4,19 +4,18 @@ import type { Locale } from "@/config/i18n";
 import { db } from "@/db/database";
 import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
-import { toDateString } from "@/utils/dates";
 
 export interface NewsTitleItem {
   id: string;
   locale: Locale;
   title: string;
-  publishedAt: string | null;
+  publishedAt: Date | null;
 }
 
 export interface PublishedTitlesFilters {
   titleOrContent?: string;
-  publishedFrom?: string;
-  publishedTo?: string;
+  publishedFrom?: Date;
+  publishedTo?: Date;
   tagIds?: string[];
 }
 
@@ -40,7 +39,7 @@ export interface NewsTag {
 export interface NewsItemRecord {
   id: string;
   createdAt: Date;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   author: NewsItemAuthor;
   translations: Partial<Record<Locale, NewsItemTranslation>>;
   tags: NewsTag[];
@@ -48,22 +47,22 @@ export interface NewsItemRecord {
 
 export interface NewsItemCreateInput {
   authorId: string;
-  publishedAt?: string | null;
+  publishedAt?: Date | null;
   translations: NewsTranslationUpsert;
   tags?: string[];
 }
 
 export interface NewsItemUpdateInput {
   id: string;
-  publishedAt?: string | null;
+  publishedAt?: Date | null;
   translations: NewsTranslationUpsert;
   tags?: string[];
 }
 
 export interface NewsItemFilters {
   titleOrContent?: string;
-  publishedFrom?: string;
-  publishedTo?: string;
+  publishedFrom?: Date;
+  publishedTo?: Date;
   tagIds?: string[];
 }
 
@@ -147,9 +146,7 @@ async function syncTags(
 export function createNewsItemRepository(database: typeof db): NewsItemRepository {
   return {
     async listPublishedTitles({ limit = 5, offset = 0, locale, filters = {} }) {
-      const nowStr = toDateString(new Date())!;
-
-      const conditions = [eq(newsTranslation.lang, locale), lte(newsItem.publishedAt, nowStr)];
+      const conditions = [eq(newsTranslation.lang, locale), lte(newsItem.publishedAt, new Date())];
 
       if (filters.publishedFrom) {
         conditions.push(gte(newsItem.publishedAt, filters.publishedFrom));
