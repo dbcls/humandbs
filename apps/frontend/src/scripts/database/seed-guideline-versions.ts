@@ -126,18 +126,38 @@ async function resolveAuthorId(db: Db): Promise<string> {
   return ensureSystemUser(db);
 }
 
-async function seedGuidelineVersions(overwrite = false) {
+export async function seedGuidelineVersions(
+  overwrite = false,
+  injectedDb?: Db,
+  injectedPages?: MiscPageContent[],
+) {
   console.log("Starting guideline version seed...");
 
-  const { default: raw } = (await import(MISC_JSON_PATH, {
-    with: { type: "json" },
-  })) as { default: MiscPagesOutput };
+  let pool: Pool | undefined;
+  let db: Db;
 
-  console.log(`Loaded ${raw.pages.length} pages from misc-pages.json`);
+  if (injectedDb) {
+    db = injectedDb;
+  } else {
+    pool = new Pool({ connectionString: buildDatabaseUrl() });
+    db = drizzle(pool, { schema });
+  }
+
+  let pages: MiscPageContent[];
+  if (injectedPages) {
+    pages = injectedPages;
+  } else {
+    const { default: raw } = (await import(MISC_JSON_PATH, {
+      with: { type: "json" },
+    })) as { default: MiscPagesOutput };
+    pages = raw.pages;
+  }
+
+  console.log(`Loaded ${pages.length} pages`);
 
   // Group relevant pages by slug
   const bySlug = new Map<string, MiscPageContent[]>();
-  for (const page of raw.pages) {
+  for (const page of pages) {
     if (!(page.path in SLUG_TO_VERSION)) continue;
     if (!bySlug.has(page.path)) bySlug.set(page.path, []);
     bySlug.get(page.path)!.push(page);
@@ -145,15 +165,14 @@ async function seedGuidelineVersions(overwrite = false) {
 
   console.log(`Found ${bySlug.size} relevant slugs`);
 
-  const pool = new Pool({ connectionString: buildDatabaseUrl() });
-  const db = drizzle(pool, { schema });
-
   try {
     const authorId = await resolveAuthorId(db);
     console.log(`Using author ID: ${authorId}`);
 
-    // Collect all unique parent document contentIds
-    const parentContentIds = new Set(Object.values(SLUG_TO_VERSION).map((v) => v.documentContentId));
+    // Collect unique parent document contentIds referenced by the pages being processed
+    const parentContentIds = new Set(
+      [...bySlug.keys()].map((slug) => SLUG_TO_VERSION[slug]!.documentContentId),
+    );
 
     // Build a content fingerprint for each document: the contentHtml of the first historical page.
     // Used to detect whether historical versions have already been seeded (idempotency check).
@@ -202,7 +221,7 @@ async function seedGuidelineVersions(overwrite = false) {
             .execute()
         : [undefined];
 
-      if (alreadySeeded) {
+      if (alreadySeeded && !overwrite) {
         skipInsert.add(contentId);
         console.log(`  ${contentId}: already seeded (found fingerprint at v${alreadySeeded.versionNumber}), skipping`);
         continue;
@@ -224,10 +243,14 @@ async function seedGuidelineVersions(overwrite = false) {
       if (existingVersions.length === 0) {
         versionOffsets.set(contentId, 0);
         console.log(`  ${contentId}: no existing versions, inserting historical v1–v${historicalMax}`);
+      } else if (alreadySeeded && overwrite) {
+        // Already seeded — overwrite in place without renumbering
+        versionOffsets.set(contentId, 0);
+        console.log(`  ${contentId}: already seeded, overwriting in place`);
       } else {
         // Renumber pre-existing versions upward to make room for historical ones.
         const offset = historicalMax;
-        versionOffsets.set(contentId, offset);
+        versionOffsets.set(contentId, 0);
         console.log(
           `  ${contentId}: renumbering ${existingVersions.length} existing version(s) +${offset}`,
         );
@@ -311,7 +334,7 @@ async function seedGuidelineVersions(overwrite = false) {
     console.log(`  Inserted: ${inserted}`);
     console.log(`  Skipped:  ${skipped} (already exist; use --overwrite to replace)`);
   } finally {
-    await pool.end();
+    await pool?.end();
   }
 }
 
