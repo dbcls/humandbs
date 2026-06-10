@@ -8,7 +8,7 @@ services:
       - POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
       - POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
     ports:
-      - 5432:5432
+      - ${HUMANDBS_POSTGRES_BIND_PORT:-5432}:5432
     volumes:
       - cms-pgdata:/var/lib/postgresql/data:U
     networks:
