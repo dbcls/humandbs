@@ -17,6 +17,7 @@
 *.log
 apps/**/node_modules
 packages/**/node_modules
+apps/frontend/e2e/**
 apps/backend/crawler-results*
 apps/backend/jga-shinsei/dumps
 apps/backend/jga-shinsei/json-data

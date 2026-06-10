@@ -9,6 +9,7 @@
   },
   "workspaces": [
     "apps/*",
+    "!apps/frontend/e2e/*",
     "packages/*"
   ]
 }
