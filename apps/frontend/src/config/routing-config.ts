@@ -5,12 +5,10 @@ export const RESERVED_SEGMENTS = [
   "data-use",
   "data-submission",
   "navigation",
-  "revision",
+  "version",
   "news",
   "dataset",
   "research",
-  "dataset",
-  "versions",
   "home",
 ];
 

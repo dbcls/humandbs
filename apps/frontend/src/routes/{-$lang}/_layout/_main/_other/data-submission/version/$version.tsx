@@ -5,7 +5,7 @@ import { $getPublishedDocumentVersion } from "@/serverFunctions/documentVersion"
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/revision/$version",
+  "/{-$lang}/_layout/_main/_other/data-submission/version/$version",
 )({
   component: RouteComponent,
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute(
       data: {
         contentId: "guidelines",
         locale: context.lang,
-        versionNumber: Number(params.revision),
+        versionNumber: Number(params.version),
       },
     });
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute(
     return {
       contentHtml,
       title: data?.title ?? null,
-      crumb: `Revision ${params.revision}`,
+      crumb: `Revision ${params.version}`,
     };
   },
 });
