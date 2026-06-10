@@ -37,6 +37,7 @@ const mockEsIndex = mock<(..._args: unknown[]) => Promise<unknown>>(async () => 
 const mockEsUpdate = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
 const mockEsDelete = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
 const mockEsDeleteByQuery = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
+const mockEsUpdateByQuery = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
 
 void mock.module("@/api/es-client/client", () => ({
   ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
@@ -47,6 +48,7 @@ void mock.module("@/api/es-client/client", () => ({
     update: mockEsUpdate,
     delete: mockEsDelete,
     deleteByQuery: mockEsDeleteByQuery,
+    updateByQuery: mockEsUpdateByQuery,
   },
   isConflictError: (e: unknown) => Boolean(e && typeof e === "object" && "meta" in e && (e as { meta?: { statusCode?: number } }).meta?.statusCode === 409),
   isDocumentExistsError: (e: unknown) => {
@@ -106,6 +108,7 @@ beforeEach(() => {
   mockEsUpdate.mockReset()
   mockEsDelete.mockReset()
   mockEsDeleteByQuery.mockReset()
+  mockEsUpdateByQuery.mockReset()
   mockGetResearchDoc.mockReset()
   mockLinkDataset.mockReset()
   mockUnlinkDataset.mockReset()
@@ -345,6 +348,8 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     })
     // esClient.update: rewire parent.draftVersion ResearchVersion.datasets
     mockEsUpdate.mockResolvedValueOnce({})
+    // syncDatasetDateModified: search the max versionReleaseDate, then update_by_query
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: { versionReleaseDate: "2024-09-01" } }] } })
 
     const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
 
@@ -427,6 +432,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
         mockEsSearch.mockReset()
         mockEsIndex.mockReset()
         mockEsUpdate.mockReset()
+        mockEsUpdateByQuery.mockReset()
         mockGetResearchDoc.mockReset()
         mockGetResearchVersionWithSeqNo.mockReset()
 
@@ -451,6 +457,8 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
           primaryTerm: 3,
         })
         mockEsUpdate.mockResolvedValueOnce({})
+        // syncDatasetDateModified after the bump
+        mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: { versionReleaseDate: "2024-09-01" } }] } })
 
         const result = await dataset.updateDataset("JGAD000001", "v1", {}, 5, 2)
 
@@ -473,6 +481,8 @@ describe("deleteDataset (IT-DATASET-16)", () => {
     })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({ status: "published", latestVersion: "v1" }))
     mockEsDelete.mockResolvedValue({})
+    // syncDatasetDateModified resyncs remaining docs after the version is removed
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: { versionReleaseDate: "2024-09-01" } }] } })
 
     const ok = await dataset.deleteDataset("JGAD000001", "v2")
     expect(ok).toBe(true)

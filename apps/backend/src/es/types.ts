@@ -139,6 +139,12 @@ export const EsDatasetSchema = CrawlerDatasetSchema.extend({
   originalMetadata: z.record(z.string(), z.any()).nullable().optional()
     .describe("Original metadata preserved from the data source (for debugging/audit)")
     .openapi({ type: "object" }),
+  // Dataset-level last-modified date (max versionReleaseDate across versions),
+  // populated at ingest and kept version-invariant; used for the listing sort.
+  // Optional so reads of docs indexed before this field existed do not fail
+  // validation during the migration window (the sort treats it as `_last`).
+  dateModified: z.string().optional()
+    .describe("ISO 8601 date of this dataset's most recent version release"),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 

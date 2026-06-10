@@ -15,8 +15,10 @@ export const escapeForTsv = (value: unknown): string => {
   } else if (typeof value === "string") {
     str = value
   } else {
-    // number, boolean, bigint, symbol, function - all safely stringifiable
-    str = String(value as string | number | boolean | bigint | symbol)
+    // number, boolean, bigint, symbol - all safely stringifiable
+    const primitive: number | boolean | bigint | symbol =
+      value as number | boolean | bigint | symbol
+    str = String(primitive)
   }
 
   return str

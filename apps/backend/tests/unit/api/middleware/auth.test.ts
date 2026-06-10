@@ -37,7 +37,7 @@ const mockJwtVerify = mock(async (..._args: unknown[]): Promise<{ payload: unkno
 
 const mockCreateRemoteJWKSet = mock((..._args: unknown[]) => {
   // Returns an opaque key resolver. Identity doesn't matter; jwtVerify is mocked.
-  return ((async () => { throw new Error("should be intercepted by mockJwtVerify") }) as unknown)
+  return (async () => { throw new Error("should be intercepted by mockJwtVerify") })
 })
 
 void mock.module("jose", () => ({
@@ -110,7 +110,7 @@ beforeEach(() => {
   mockJwtVerify.mockReset()
   mockCreateRemoteJWKSet.mockReset()
   mockCreateRemoteJWKSet.mockImplementation((..._args: unknown[]) => {
-    return ((async () => { throw new Error("should be intercepted by mockJwtVerify") }) as unknown)
+    return (async () => { throw new Error("should be intercepted by mockJwtVerify") })
   })
   mockReadFile.mockReset()
   setAdminUidsFileMissing()
@@ -169,7 +169,7 @@ describe("api/middleware/auth", () => {
 
     it("returns 401 when JWT is expired (IT-AUTH-04)", async () => {
       mockJwtVerify.mockImplementation(async () => {
-        throw new joseActual.errors.JWTExpired("exp", { exp: 1, iat: 0 } as unknown as joseActual.JWTPayload)
+        throw new joseActual.errors.JWTExpired("exp", { exp: 1, iat: 0 })
       })
       const app = getTestApp()
       const res = await app.request("/admin/is-admin", { headers: bearerHeaders() })
@@ -180,7 +180,7 @@ describe("api/middleware/auth", () => {
       mockJwtVerify.mockImplementation(async () => {
         throw new joseActual.errors.JWTClaimValidationFailed(
           "unexpected \"iss\" claim value",
-          { sub: REGULAR_USER_ID } as unknown as joseActual.JWTPayload,
+          { sub: REGULAR_USER_ID },
           "iss",
           "check_failed",
         )
@@ -194,7 +194,7 @@ describe("api/middleware/auth", () => {
       mockJwtVerify.mockImplementation(async () => {
         throw new joseActual.errors.JWTClaimValidationFailed(
           "unexpected \"aud\" claim value",
-          { sub: REGULAR_USER_ID } as unknown as joseActual.JWTPayload,
+          { sub: REGULAR_USER_ID },
           "aud",
           "check_failed",
         )

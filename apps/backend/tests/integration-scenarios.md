@@ -754,7 +754,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ## IT-SEARCH-*: 検索
 
-`POST /research/search` / `POST /dataset/search`、`GET /research` / `GET /dataset` (リスト)、`includeFacets`、`query` の fulltext + ID 完全一致/前方一致、`datasetId` 経由の親 Research ヒット、case-insensitive、fuzziness、`filters` ネスト、`datasetFilters` (research search のみ)、Range フィルタ、Boolean フィルタ、disease / diseaseIcd10、ページネーション境界、sort/order。
+`POST /research/search` / `POST /dataset/search`、`GET /research` / `GET /dataset` (リスト)、`includeFacets`、`query` の fulltext (AND / 記号フレーズ / 末尾前方一致) + ID 完全一致/前方一致 + mixed ID 抽出、`datasetId` 経由の親 Research ヒット、case-insensitive、`filters` ネスト、`datasetFilters` (research search のみ)、Range フィルタ、Boolean フィルタ、disease / diseaseIcd10、ページネーション境界、sort/order。
 
 ### IT-SEARCH-01: GET /research 一覧の正常応答
 
@@ -911,15 +911,16 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/search.test.ts`
 
-### IT-SEARCH-13: query 複合 (`hum0001 cancer`) は本文ヒット優先
+### IT-SEARCH-13: query 複合 (`<humId> <token>`) は ID 抽出 + 本文 AND
 
-**endpoint**: `POST /research/search` body: `{ query: "hum0001 cancer" }`
+**endpoint**: `POST /research/search` body: `{ query: "<existing humId> <body token>" }`
 
 **不変条件**:
-- ID 完全一致経路は空振り、本文 `cancer` でヒット
-- `data` の humId は `hum0001` に限らない
+- ID トークンは filter に抽出され、本文トークンは `all_text` 全文一致に回る (mixed query)
+- `data` の humId はすべて入力 humId に一致 (ID 絞り込み AND 本文一致)
+- ヒットは本文トークンを含む文書のみ (AND セマンティクス)
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索 / 全文一致のセマンティクス`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -1058,17 +1059,17 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/filters.test.ts`
 
-### IT-SEARCH-25: 全文検索の fuzziness 境界
+### IT-SEARCH-25: 全文一致のセマンティクス (非 fuzzy / 末尾前方一致 / 記号フレーズ)
 
-**endpoint**: `POST /dataset/search` body: `{ query: "<token>" }` で typo を 1, 2 文字入れる
+**endpoint**: `POST /dataset/search` body: `{ query: "<token>" }` (corpus から採った本文/typeOfData の 1 トークン)
 
 **不変条件 (parametrize)**:
-- 4 文字以内の typo: ヒットしない (fuzziness=0)
-- 5-11 文字で typo 1: ヒット (例: "canser" → cancer)
-- 5-11 文字で typo 2: ヒットしない
-- 12 文字以上で typo 2: ヒット
+- typo を 1 文字入れた語: **ヒットしない** (fuzziness 廃止 = 完全トークン一致)
+- 末尾を途中で切った語 (例 `cancer` → `canc`、2 文字以上): `match_phrase_prefix` で **ヒットする** (打ちかけ入力)
+- 1 文字だけの末尾語: 前方一致は付かない (≥2 文字ガード)
+- 記号を含む語 (例 `HIF-1`、ID パターン非該当): `match_phrase` 扱いで、analyzer 分割による無関係文書へのヒット増を起こさない
 
-**回帰元**: `docs/api-guide.md § 全文検索の fuzziness`
+**回帰元**: `docs/api-guide.md § 全文一致のセマンティクス`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -1092,7 +1093,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **不変条件**:
 - 2 つの結果の `humId` 集合が一致
 
-**回帰元**: `docs/api-guide.md § 全文検索の fuzziness` + ES standard analyzer
+**回帰元**: `docs/api-guide.md § 全文一致のセマンティクス` + kuromoji analyzer の lowercase
 
 **関連 unit テスト**: なし
 
@@ -1133,6 +1134,70 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **回帰元**: `architecture.md § deleted 状態` / `es-client/auth.ts § buildStatusFilter`
 
 **関連 unit テスト**: `tests/unit/api/es-client/auth.test.ts`
+
+### IT-SEARCH-34: facet 値 (tissue / disease label) のフリーワード検索が all_text 経由でヒット
+
+**endpoint**: `POST /dataset/search` (`query=<facet 値の 1 トークン>` + 対象 Dataset の親 `humId` filter)
+
+**不変条件**:
+- Dataset の `experiments.searchable` の facet 値 (tissues / diseases.label / population) を `query` に入れると、`copy_to` で集約された `all_text` 経由で該当 Dataset が `data[].datasetId` に含まれる
+- facet keyword は元々 free word の対象外。`all_text` catch-all により横断検索される
+- common token が大量の Dataset に当たっても結果ページに対象が確実に入るよう、対象 Dataset の親 `humId` で絞り込んでから検証する (top-N 在席への依存を排除。IT-SEARCH-31 と同型)
+
+**回帰元**: `docs/api-guide.md § catch-all field (all_text)` / `es/dataset-schema.ts` / `es-client/query-builders.ts`
+
+**関連 unit テスト**: `tests/unit/es/schema-consistency.test.ts`、`tests/unit/api/es-client/query-builders.test.ts`
+
+### IT-SEARCH-35: nested text (grant / publication title) のフリーワード検索が all_text 経由でヒット
+
+**endpoint**: `POST /research/search` (`query=<nested text の 1 トークン>`)
+
+**不変条件**:
+- Research の nested 配下の自然文テキスト (grant.title / relatedPublication.title) を `query` に入れると、`copy_to` で集約された `all_text` 経由で親 Research が `data[].humId` に含まれる
+- これらの nested text は元々 free word の対象外。`all_text` catch-all により横断検索される
+
+**回帰元**: `docs/api-guide.md § catch-all field (all_text)` / `es/research-schema.ts` / `es-client/query-builders.ts`
+
+**関連 unit テスト**: `tests/unit/es/schema-consistency.test.ts`、`tests/unit/api/es-client/query-builders.test.ts`
+
+### IT-SEARCH-36: mixed ID + word query は ID を filter 抽出し残語を本文 AND する
+
+**endpoint**: `POST /dataset/search` body: `{ query: "<humId> <typeOfData の 1 トークン>" }`
+
+**不変条件**:
+- ID トークン (`<humId>`) は humId filter に抽出され、残りの語は `all_text` の全文一致に回る
+- 返る Dataset はすべて `humId === <入力 humId>` (ID 絞り込み)
+- 語を含む元 Dataset (`typeOfData` 由来トークン) が `data[].datasetId` に含まれる (AND 一致)
+
+**回帰元**: `docs/api-guide.md § フリーテキスト検索 / 全文一致のセマンティクス`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
+
+### IT-SEARCH-37: GET /dataset の dateModified (更新日付) sort
+
+**endpoint**: `GET /dataset?sort=dateModified&order={asc,desc}&limit=20`
+
+**不変条件**:
+- `status === 200`
+- 返る item の `dateModified` (ISO 日付文字列) が指定 order で単調 (asc は非減少 / desc は非増加)。値の無いものは末尾扱いで比較から除外
+- `dateModified` は datasetId ごとの `max(versionReleaseDate)` を全 version doc に denormalize した version 不変フィールド。collapse の代表がどの version でも group の並び順 = 表示 (最新版) の値となるため、**asc / desc の両方**で整列する (version 可変の `versionReleaseDate` を直接 sort すると asc で崩れる)
+
+**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es/dataset-schema.ts § dateModified` / `es/load-docs.ts § makeDatasetDateModifiedTransform`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`、`tests/unit/es/load-docs.test.ts`
+
+### IT-SEARCH-38: POST /dataset/search の dateModified (更新日付) sort
+
+**endpoint**: `POST /dataset/search` body: `{ sort: "dateModified", order: "desc" }`
+
+**不変条件**:
+- `status === 200`
+- 返る item の `dateModified` が降順 (値の無いものは末尾扱いで除外)
+- listing (IT-SEARCH-37) と同じ `searchDatasets` を経由するため挙動は一致する
+
+**回帰元**: `es-client/query-builders.ts § buildDatasetSortSpec` / `es-client/search.ts § searchDatasets`
+
+**関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
 ---
 

@@ -6,6 +6,7 @@ import {
   idResearchVersion,
   idDataset,
   transformResearch,
+  makeDatasetDateModifiedTransform,
 } from "@/es/load-docs"
 
 describe("es/load-docs.ts", () => {
@@ -139,6 +140,63 @@ describe("es/load-docs.ts", () => {
       const doc = { humId: "hum0001" }
       const original = { ...doc }
       transformResearch(doc)
+      expect(doc).toEqual(original)
+    })
+  })
+
+  // ===========================================================================
+  // makeDatasetDateModifiedTransform
+  // ===========================================================================
+  describe("makeDatasetDateModifiedTransform", () => {
+    const raw = (docs: { datasetId: string; version: string; versionReleaseDate?: string }[]) =>
+      docs.map((data, i) => ({ fileName: `${data.datasetId}-${data.version}-${i}.json`, data }))
+
+    it("stamps the max versionReleaseDate across a datasetId onto every version doc", () => {
+      const docs = [
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2018-04-04" },
+        { datasetId: "JGAD000001", version: "v2", versionReleaseDate: "2025-05-09" },
+        { datasetId: "JGAD000001", version: "v3", versionReleaseDate: "2020-08-17" },
+      ]
+      const transform = makeDatasetDateModifiedTransform(raw(docs))
+      for (const d of docs) {
+        // Every version doc gets the same (max) value -> version-invariant.
+        expect(transform(d).dateModified).toBe("2025-05-09")
+      }
+    })
+
+    it("keeps datasetIds independent", () => {
+      const transform = makeDatasetDateModifiedTransform(raw([
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-01-01" },
+        { datasetId: "JGAD000002", version: "v1", versionReleaseDate: "2024-12-31" },
+      ]))
+      expect(transform({ datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-01-01" }).dateModified).toBe("2020-01-01")
+      expect(transform({ datasetId: "JGAD000002", version: "v1", versionReleaseDate: "2024-12-31" }).dateModified).toBe("2024-12-31")
+    })
+
+    it("falls back to the doc's own versionReleaseDate for an unknown datasetId", () => {
+      const transform = makeDatasetDateModifiedTransform(raw([
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-01-01" },
+      ]))
+      expect(transform({ datasetId: "JGAD999999", version: "v1", versionReleaseDate: "2019-06-06" }).dateModified).toBe("2019-06-06")
+    })
+
+    it("treats a missing versionReleaseDate as empty so a present date wins", () => {
+      const transform = makeDatasetDateModifiedTransform(raw([
+        { datasetId: "JGAD000001", version: "v1" },
+        { datasetId: "JGAD000001", version: "v2", versionReleaseDate: "2022-02-02" },
+      ]))
+      expect(transform({ datasetId: "JGAD000001", version: "v1" }).dateModified).toBe("2022-02-02")
+    })
+
+    it("preserves all other fields and does not mutate the input", () => {
+      const transform = makeDatasetDateModifiedTransform(raw([
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-01-01" },
+      ]))
+      const doc = { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-01-01", humId: "hum0001" }
+      const original = { ...doc }
+      const result = transform(doc)
+      expect(result.humId).toBe("hum0001")
+      expect(result.versionReleaseDate).toBe("2020-01-01")
       expect(doc).toEqual(original)
     })
   })

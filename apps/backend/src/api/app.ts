@@ -205,7 +205,7 @@ export const createApp = () => {
     }
 
     // Default to 500 Internal Server Error
-    logger.error("Unhandled error", { requestId, error: String(err), stack: (err as Error).stack })
+    logger.error("Unhandled error", { requestId, error: String(err), stack: err.stack })
     const problemDetails = createProblemDetails(
       500,
       "INTERNAL_ERROR",

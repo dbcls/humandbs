@@ -2,9 +2,9 @@
  * Search es-client tests (Research search via Dataset-side resolution)
  *
  * Covers:
- * - IT-SEARCH-12: a free-text query that matches a Dataset ID resolves to its
- *   parent Research via a secondary Dataset-index query, and the resulting
- *   humIds are OR-merged into the main Research query.
+ * - IT-SEARCH-12: a datasetId query resolves to its parent Research via a
+ *   secondary Dataset-index query, and the resulting humIds become a `terms
+ *   humId` filter on the main Research query (ID route — no all_text).
  * - Public visibility filter is applied when authUser is null (latestVersion
  *   exists AND status != "deleted")
  * - Empty result short-circuit when Dataset filters yield no humIds
@@ -89,7 +89,7 @@ beforeEach(() => {
 })
 
 describe("searchResearches: full-text query via Dataset-side resolution (IT-SEARCH-12)", () => {
-  it("issues a secondary Dataset-index search and OR-merges its humIds into the Research query", async () => {
+  it("resolves a datasetId query to its parent humIds and filters the Research query by them", async () => {
     // Call 1: dataset-index resolution returns hum0001 as the owning Research
     mockEsSearch.mockImplementationOnce(async () => ({
       aggregations: { humIds: { buckets: [{ key: "hum0001", doc_count: 1 }] } },
@@ -111,17 +111,13 @@ describe("searchResearches: full-text query via Dataset-side resolution (IT-SEAR
     expect(searchCalls[0].index).toBe("dataset")
     expect(searchCalls[1].index).toBe("research")
 
-    // Verify the resolved humIds were merged into the research must.bool.should
-    const researchQuery = searchCalls[1].query as { bool?: { must?: { bool?: { should?: unknown[] } }[] } }
-    const mustClauses = researchQuery.bool?.must ?? []
-    const qClause = mustClauses.find((m): m is { bool: { should: unknown[] } } =>
-      typeof m === "object" && m !== null && "bool" in m && Array.isArray((m as { bool: { should?: unknown[] } }).bool?.should),
-    )
-    expect(qClause).toBeDefined()
-    const shouldList = (qClause as { bool: { should: { terms?: { humId: string[] } }[] } }).bool.should
-    const termsClause = shouldList.find(s => typeof s === "object" && s !== null && "terms" in s)
+    // The resolved parent humIds become a `terms humId` must clause on the Research
+    // query (ID route: a datasetId never searches all_text).
+    const researchQuery = searchCalls[1].query as { bool: { must: { terms?: { humId: string[] } }[] } }
+    const termsClause = researchQuery.bool.must.find(m => typeof m === "object" && m !== null && "terms" in m)
     expect(termsClause).toBeDefined()
     expect((termsClause as { terms: { humId: string[] } }).terms.humId).toContain("hum0001")
+    expect(JSON.stringify(researchQuery)).not.toContain("all_text")
   })
 
   it("dataset-index resolution is case-insensitive on both term and prefix (matching the implementation)", async () => {
@@ -139,22 +135,20 @@ describe("searchResearches: full-text query via Dataset-side resolution (IT-SEAR
     expect(prefixClause?.prefix?.datasetId.case_insensitive).toBe(true)
   })
 
-  it("merges multi_match AND dataset-id humIds even when both have non-empty matches", async () => {
-    mockEsSearch.mockImplementationOnce(async () => ({
-      aggregations: { humIds: { buckets: [{ key: "hum0002", doc_count: 1 }] } },
-    }))
+  it("a humId + word query filters by humId AND matches the word, with no dataset-side resolution", async () => {
     mockEsSearch.mockImplementationOnce(async () => ({
       hits: { total: { value: 0 }, hits: [] },
     }))
 
     await searchResearches({ ...baseQuery, q: "hum0001 cancer" }, null)
 
-    const researchQuery = searchCalls[1].query as { bool: { must: unknown[] } }
-    const qClause = (researchQuery.bool.must as { bool?: { should?: unknown[] } }[])
-      .find(m => typeof m === "object" && m !== null && "bool" in m && Array.isArray(m.bool?.should))
-    const shouldList = (qClause as { bool: { should: unknown[] } }).bool.should
-    // At least two clauses: multi_match + terms (humId from dataset resolution)
-    expect(shouldList.length).toBeGreaterThanOrEqual(2)
+    // No datasetId token → no secondary Dataset-index query is issued.
+    expect(searchCalls.every(c => c.index !== "dataset")).toBe(true)
+    const s = JSON.stringify(searchCalls[0].query)
+    // humId filter (ID extraction) AND the body word matched via all_text (operator:and).
+    expect(s).toContain("hum0001")
+    expect(s).toContain("all_text")
+    expect(s).toContain("\"operator\":\"and\"")
   })
 })
 

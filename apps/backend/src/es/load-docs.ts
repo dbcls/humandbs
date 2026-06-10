@@ -62,10 +62,34 @@ export const idDataset = (datasetId: string, version: string): string =>
  */
 export const transformResearch = (doc: Record<string, unknown>): Record<string, unknown> => ({
   ...doc,
-  status: (doc.status as string | undefined) ?? "published",
-  uids: (doc.uids as string[] | undefined) ?? [],
-  draftVersion: (doc.draftVersion as string | null | undefined) ?? null,
+  status: doc.status ?? "published",
+  uids: doc.uids ?? [],
+  draftVersion: doc.draftVersion ?? null,
 })
+
+/**
+ * Build a Dataset transform that stamps `dateModified` (the max
+ * versionReleaseDate across a datasetId's versions) onto every version doc.
+ * Denormalizing this version-invariant date lets the collapsed dataset listing
+ * sort consistently in both directions — see `es/dataset-schema.ts`.
+ */
+export const makeDatasetDateModifiedTransform = (
+  rawDocs: { fileName: string; data: unknown }[],
+): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
+  const maxByDatasetId = new Map<string, string>()
+  for (const { data } of rawDocs) {
+    const d = data as { datasetId?: string; versionReleaseDate?: string }
+    if (!d?.datasetId) continue
+    const date = d.versionReleaseDate ?? ""
+    const cur = maxByDatasetId.get(d.datasetId)
+    if (cur === undefined || date > cur) maxByDatasetId.set(d.datasetId, date)
+  }
+
+  return (doc) => ({
+    ...doc,
+    dateModified: maxByDatasetId.get(doc.datasetId as string) ?? (doc.versionReleaseDate ?? ""),
+  })
+}
 
 /**
  * Find crawler-results directory by searching up from current file
@@ -250,7 +274,13 @@ const main = async () => {
   await bulkIndex("researchVersion", researchVersionRaw, ResearchVersionSchema, (d) =>
     idResearchVersion(d.humId, d.version),
   )
-  await bulkIndex("dataset", datasetRaw, EsDatasetSchema, (d) => idDataset(d.datasetId, d.version))
+  await bulkIndex(
+    "dataset",
+    datasetRaw,
+    EsDatasetSchema,
+    (d) => idDataset(d.datasetId, d.version),
+    makeDatasetDateModifiedTransform(datasetRaw),
+  )
 
   console.log("\nDone!")
 }

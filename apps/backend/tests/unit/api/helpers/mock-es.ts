@@ -68,7 +68,7 @@ const buildResearchPreset = (preset: ResearchPreset): EsResearch => {
           ...baseResearchDoc.summary,
           aims: { ja: null, en: null },
           methods: { ja: null, en: null },
-        } as EsResearch["summary"],
+        },
         latestVersion: null,
         draftVersion: "v1",
         status: "draft",

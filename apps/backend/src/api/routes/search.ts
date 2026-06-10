@@ -67,7 +67,7 @@ const postResearchSearchRoute = createRoute({
   security: SECURITY_OPTIONAL_AUTH,
   description: `Search Research resources with advanced filters and facets.
 
-**Full-text search targets:** title, summary.aims, summary.methods, summary.targets
+**Full-text search:** the whole document is searched via the \`all_text\` catch-all field — title, summary, and nested provider / grant / publication text. \`title\` additionally gets a relevance boost.
 
 **ID match:**
 - \`humId\`: exact and prefix match (e.g., \`hum0001\`, \`hum000\`)
@@ -106,7 +106,7 @@ const postDatasetSearchRoute = createRoute({
   security: SECURITY_OPTIONAL_AUTH,
   description: `Search Dataset resources with advanced filters and facets.
 
-**Full-text search targets:** typeOfData, experiments.searchable.targets
+**Full-text search:** the whole document is searched via the \`all_text\` catch-all field — typeOfData, experiments.header, targets, and facet values (disease / tissue / platform, etc.). \`experiments.data\` (flattened) is excluded. \`typeOfData\` additionally gets a relevance boost.
 
 **ID match:** \`humId\` and \`datasetId\` accept both exact and prefix match (e.g., \`JGAD000001\`, \`JGAD00\`).
 

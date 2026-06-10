@@ -360,4 +360,59 @@ describe("es/generate-mapping.ts", () => {
       expect(dataProvider.properties.email).toEqual({ type: "keyword" })
     })
   })
+
+  // ===========================================================================
+  // copy_to (catch-all field) support
+  // ===========================================================================
+  describe("copy_to support", () => {
+    it("carries copyTo on text / text_keyword / keyword field definitions", () => {
+      expect(f.text("all_text")).toEqual({ type: "text", copyTo: "all_text" })
+      expect(f.textKw("all_text")).toEqual({ type: "text_keyword", copyTo: "all_text" })
+      expect(f.keyword("all_text")).toEqual({ type: "keyword", copyTo: "all_text" })
+    })
+
+    it("omits copyTo from the field definition when no target is given", () => {
+      expect(f.text()).toEqual({ type: "text" })
+      expect(f.textKw()).toEqual({ type: "text_keyword" })
+      expect(f.keyword()).toEqual({ type: "keyword" })
+    })
+
+    it("forwards copyTo to both languages' leaf in bilingualTextValue, leaving rawHtml uncopied", () => {
+      const schema = f.bilingualTextValue("all_text").schema!
+      expect(schema.ja.schema!.text).toEqual({ type: "text", copyTo: "all_text" })
+      expect(schema.en.schema!.text).toEqual({ type: "text", copyTo: "all_text" })
+      expect(schema.ja.schema!.rawHtml).toEqual({ type: "noindex" })
+    })
+
+    it("forwards copyTo to both languages' leaf in bilingualTextKw and bilingualKeyword", () => {
+      const textKwSchema = f.bilingualTextKw("all_text").schema!
+      expect(textKwSchema.ja).toEqual({ type: "text_keyword", copyTo: "all_text" })
+      expect(textKwSchema.en).toEqual({ type: "text_keyword", copyTo: "all_text" })
+
+      const keywordSchema = f.bilingualKeyword("all_text").schema!
+      expect(keywordSchema.ja).toEqual({ type: "keyword", copyTo: "all_text" })
+      expect(keywordSchema.en).toEqual({ type: "keyword", copyTo: "all_text" })
+    })
+
+    it("emits copy_to in the generated mapping for text, text_keyword and keyword", () => {
+      const mapping = generateMapping({
+        content: f.text("all_text"),
+        title: f.textKw("all_text"),
+        tag: f.keyword("all_text"),
+      })
+      expect(mapping.mappings.properties.content).toEqual({ type: "text", copy_to: "all_text" })
+      expect(mapping.mappings.properties.title).toEqual({
+        type: "text",
+        fields: { kw: { type: "keyword" } },
+        copy_to: "all_text",
+      })
+      expect(mapping.mappings.properties.tag).toEqual({ type: "keyword", copy_to: "all_text" })
+    })
+
+    it("omits copy_to from the generated mapping when no target is given", () => {
+      const mapping = generateMapping({ content: f.text(), tag: f.keyword() })
+      expect(mapping.mappings.properties.content).toEqual({ type: "text" })
+      expect(mapping.mappings.properties.tag).toEqual({ type: "keyword" })
+    })
+  })
 })

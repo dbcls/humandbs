@@ -185,6 +185,16 @@ export async function seedGuidelineVersions(
       }
     }
 
+    // Build a content fingerprint for each document: the contentHtml of the first historical page.
+    // Used to detect whether historical versions have already been seeded (idempotency check).
+    const fingerprintByContentId = new Map<string, string>();
+    for (const [slug, pages] of bySlug) {
+      const { documentContentId } = SLUG_TO_VERSION[slug]!;
+      if (!fingerprintByContentId.has(documentContentId) && pages.length > 0) {
+        fingerprintByContentId.set(documentContentId, pages[0]!.contentHtml);
+      }
+    }
+
     // For each parent document: resolve its UUID, then renumber existing versions if needed
     const docUuidByContentId = new Map<string, string>();
     const versionOffsets = new Map<string, number>(); // contentId -> offset to add to historical versionNumber
@@ -222,7 +232,7 @@ export async function seedGuidelineVersions(
             .execute()
         : [undefined];
 
-      if (alreadySeeded && !overwrite) {
+      if (alreadySeeded) {
         skipInsert.add(contentId);
         console.log(`  ${contentId}: already seeded (found fingerprint at v${alreadySeeded.versionNumber}), skipping`);
         continue;

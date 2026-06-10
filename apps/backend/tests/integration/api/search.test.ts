@@ -23,8 +23,22 @@ interface ResearchSummary {
 interface DatasetSummary {
   datasetId: string
   humId: string
+  dateModified?: string
   typeOfData?: { ja: string | null; en: string | null } | null
-  experiments?: { searchable?: { targets?: string | null } }[]
+  experiments?: {
+    searchable?: {
+      targets?: string | null
+      tissues?: string[]
+      population?: string[]
+      diseases?: { label: string }[]
+    }
+  }[]
+}
+
+interface ResearchDetail {
+  humId: string
+  grant?: { title?: { ja?: string | null; en?: string | null } }[]
+  relatedPublication?: { title?: { ja?: string | null; en?: string | null } }[]
 }
 
 const fetchJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -416,11 +430,11 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     for (const r of search.json.data) expect(r.status).not.toBe("deleted")
   })
 
-  // IT-SEARCH-13 (compound query like "hum0001 cancer"), IT-SEARCH-23 (disease partial),
-  // IT-SEARCH-24 (icd10 prefix), IT-SEARCH-25 (fuzziness boundaries) require known test corpus
-  // tokens to assert "must hit / must not hit". They are covered in unit
-  // (`tests/unit/api/es-client/query-builders.test.ts`); here we additionally rely on
-  // staging-side smoke (`tests/api-manual-testing.md`).
+  // IT-SEARCH-13 (mixed ID + word extraction), IT-SEARCH-23 (disease partial),
+  // IT-SEARCH-24 (icd10 prefix), IT-SEARCH-25 (full-text semantics: non-fuzzy / trailing
+  // prefix / symbol phrase) require known test corpus tokens to assert "must hit / must
+  // not hit". They are covered in unit (`tests/unit/api/es-client/query-builders.test.ts`);
+  // here we additionally rely on staging-side smoke (`tests/api-manual-testing.md`).
 
   // `typeOfData` の mapping を keyword から text+kw に変えた結果、トークン単位の全文検索が効くようになったことを
   // 実 ES で確認する。バグが残っていたら typeOfData は keyword 全体一致でしか引けないため、
@@ -516,5 +530,141 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     expect(status).toBe(200)
     expect(json.meta.pagination.total).toBeLessThanOrEqual(baseline.json.meta.pagination.total)
     expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // catch-all (all_text): facet 値 (tissue / disease label / population) を query に入れると、
+  // copy_to で all_text に集約されているため該当 Dataset がヒットする。
+  // facet keyword は元々 free word の対象外だったので、all_text 化前は 0 ヒットになる。
+  itWithEs("IT-SEARCH-34: POST /dataset/search query is a facet value (tissue / disease) -> dataset is in results via all_text", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; humId: string; token: string } | null = null
+    for (const d of list.data) {
+      for (const exp of d.experiments ?? []) {
+        const s = exp.searchable
+        const value = s?.tissues?.[0] ?? s?.diseases?.[0]?.label ?? s?.population?.[0] ?? null
+        const token = pickToken(value)
+        if (token) {
+          target = { datasetId: d.datasetId, humId: d.humId, token }
+          break
+        }
+      }
+      if (target) break
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-34: no Dataset with a usable facet token")
+      return
+    }
+    // Narrow to the target's parent humId so a common facet token (e.g. a tissue
+    // shared by many datasets) cannot push the target out of the result page.
+    // The token still has to hit via all_text — that is what this asserts.
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", humId: target.humId, query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // catch-all (all_text): nested 配下の自然文テキスト (grant.title / relatedPublication.title) を
+  // query に入れると、copy_to で all_text に集約されているため親 Research がヒットする。
+  // これらの nested text は元々 free word の対象外だったので、all_text 化前は 0 ヒットになる。
+  itWithEs("IT-SEARCH-35: POST /research/search query is a token from nested text (grant / publication) -> research is in results via all_text", async () => {
+    const list = await fetchJson<SearchResponse<ResearchSummary>>("/research?limit=15")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 3)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { humId: string; token: string } | null = null
+    for (const r of list.data) {
+      const detail = await fetchJson<{ data: ResearchDetail }>(`/research/${r.humId}?lang=en`)
+      const d = detail.data
+      const candidates = [
+        d.grant?.[0]?.title?.en,
+        d.grant?.[0]?.title?.ja,
+        d.relatedPublication?.[0]?.title?.en,
+        d.relatedPublication?.[0]?.title?.ja,
+      ]
+      const token = candidates.map(pickToken).find((t): t is string => t !== null) ?? null
+      if (token) {
+        target = { humId: r.humId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-35: no Research with a usable nested-text token")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<ResearchSummary>>("/research/search", {
+      page: 1, limit: 100, lang: "en", query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((r) => r.humId === target.humId)).toBe(true)
+  })
+
+  // mixed ID + word query: the ID token is extracted as a humId filter and the
+  // remaining word is AND-matched in the body. Every result stays within the
+  // humId and the source dataset (which carries the word in typeOfData) is present.
+  itWithEs("IT-SEARCH-36: POST /dataset/search query '<humId> <token>' narrows to that humId AND matches the word", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 3)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; humId: string; token: string } | null = null
+    for (const d of list.data) {
+      const token = pickToken(d.typeOfData?.en) ?? pickToken(d.typeOfData?.ja)
+      if (token) {
+        target = { datasetId: d.datasetId, humId: d.humId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-36: no Dataset with a usable typeOfData token")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", query: `${target.humId} ${target.token}`,
+    })
+    expect(status).toBe(200)
+    // ID token → humId filter: every result stays within the parent study.
+    for (const d of json.data) expect(d.humId).toBe(target.humId)
+    // word token → all_text match: the source dataset is present.
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // dateModified (Modification date) sort: orders the dataset list by each
+  // dataset's latest-version release date. dateModified is denormalized as the
+  // max versionReleaseDate across a datasetId's versions, so it is the same on
+  // every version doc; collapse can pick any version as the group representative
+  // and the order still matches the displayed (latest) value in BOTH directions.
+  // Missing values sort last and are dropped before comparison.
+  itWithEs("IT-SEARCH-37: GET /dataset?sort=dateModified orders datasets by modification date", async () => {
+    const app = getApp()
+    const ascRes = await app.request(url("/dataset?sort=dateModified&order=asc&limit=20"))
+    expect(ascRes.status).toBe(200)
+    const asc = ((await ascRes.json()) as SearchResponse<DatasetSummary>).data
+      .map((d) => d.dateModified).filter((v): v is string => !!v)
+    for (let i = 1; i < asc.length; i++) expect(asc[i - 1] <= asc[i]).toBe(true)
+
+    const descRes = await app.request(url("/dataset?sort=dateModified&order=desc&limit=20"))
+    expect(descRes.status).toBe(200)
+    const desc = ((await descRes.json()) as SearchResponse<DatasetSummary>).data
+      .map((d) => d.dateModified).filter((v): v is string => !!v)
+    for (let i = 1; i < desc.length; i++) expect(desc[i - 1] >= desc[i]).toBe(true)
+  })
+
+  itWithEs("IT-SEARCH-38: POST /dataset/search sort=dateModified orders datasets by modification date", async () => {
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 20, sort: "dateModified", order: "desc",
+    })
+    expect(status).toBe(200)
+    const dates = json.data.map((d) => d.dateModified).filter((v): v is string => !!v)
+    for (let i = 1; i < dates.length; i++) expect(dates[i - 1] >= dates[i]).toBe(true)
   })
 })

@@ -39,6 +39,16 @@ ES mapping (JSON)
 
 ES マッピングでは配列を明示的に区別しない。`keyword` フィールドに配列を格納すると、ES が自動的に配列として処理する。配列かどうかは `src/crawler/types/structured.ts` の Zod スキーマを参照すること。
 
+### catch-all field (`all_text`)
+
+`research` / `dataset` の各 index は root に `all_text`（text 型）を持つ。自然文テキストと facet keyword は helper に catch-all 名を渡して（`generate-mapping.ts` の `CATCH_ALL_FIELD = "all_text"`、`f.text(C)` / `f.bilingualTextValue(C)` 等）`copy_to: all_text` を付与し、index 時に値を `all_text` へミラーする。フリーテキスト検索はこの単一フィールドへの `match` でドキュメント全体（nested 配下を含む）を全文検索する（`api/es-client/query-builders.ts`）。
+
+- `dynamic: false` のため `all_text` 自身も明示宣言が必要（`*-schema.ts` の root に `all_text: f.text()`）
+- `all_text` を含む全 text フィールドは index 既定 analyzer（kuromoji 形態素解析。`src/es/analysis.ts` の `INDEX_ANALYSIS_SETTINGS`、index 作成時に `settings.analysis` として付与）でトークナイズされる。日本語は語境界で分割、英語は小文字化される。analyzer は field 作成時に固定されるため、変更時は index 再作成 + 全再 ingest が必要
+- `all_text` は `copy_to` のターゲットで `_source` には現れない write-time フィールド。Zod schema にも持たないため、`schema-consistency` テストでは Zod 比較から除外する
+- 集約対象は自然文テキスト全般 + facet keyword。ID / コード / 数値 / boolean / URL は除外（ID は term / prefix 経路で扱う）
+- `experiments.data`（`flattened`）は ES 仕様上 `copy_to` のソースにできず、`all_text` に含まれない
+
 ## 型の変換フロー
 
 データは Crawler → ES → API → Frontend の 4 層を通過し、各層で型が変換される。
