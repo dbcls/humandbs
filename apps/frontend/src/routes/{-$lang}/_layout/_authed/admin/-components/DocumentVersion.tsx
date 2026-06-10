@@ -6,6 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
@@ -156,6 +157,7 @@ function DocumentVersionContent({
   contentId: string;
   versionNumber: number;
 }) {
+  const t = useTranslations("common");
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
     versionNumber,
@@ -255,21 +257,26 @@ function DocumentVersionContent({
         </TabsList>
 
         {i18n.locales.map((loc) => (
-          <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col gap-3">
+          <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col gap-3 pt-4">
             <div className="flex gap-6">
               <TitleValue
-                title="Created at:"
-                value={selectedVersionContent.translations[loc]?.createdAt.toLocaleDateString()}
+                title={t("created-at")}
+                value={
+                  selectedVersionContent.translations[loc]?.createdAt.toLocaleDateString() ?? "N/A"
+                }
               />
               <TitleValue
-                title="Updated at:"
-                value={selectedVersionContent.translations[loc]?.updatedAt.toLocaleDateString()}
+                title={t("updated-at")}
+                value={
+                  selectedVersionContent.translations[loc]?.updatedAt.toLocaleDateString() ?? "N/A"
+                }
               />
               <TitleValue
-                title="Author:"
+                title={t("author")}
                 value={
                   selectedVersionContent.translations[loc]?.author?.name ??
-                  selectedVersionContent.translations[loc]?.author?.email
+                  selectedVersionContent.translations[loc]?.author?.email ??
+                  "N/A"
                 }
               />
             </div>

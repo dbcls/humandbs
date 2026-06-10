@@ -25,7 +25,11 @@
     "sort": "並び替え",
     "sort-asc": "昇順",
     "sort-desc": "降順",
-    "sort-by": "{field}"
+    "sort-by": "{field}",
+    "created-at": "作成日時",
+    "updated-at": "更新日時",
+    "published-at": "公開日時",
+    "author": "作成者"
   },
   "Cart": {
     "naviagte-to-application-form": "申請フォームへ"

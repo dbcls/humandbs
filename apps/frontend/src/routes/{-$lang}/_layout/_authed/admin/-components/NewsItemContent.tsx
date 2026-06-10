@@ -2,7 +2,7 @@ import { useStore, uuid } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import type { Locale } from "use-intl";
-import { useLocale } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { Suspense, useState } from "react";
 
@@ -159,6 +159,7 @@ function NewsItemForm({
   className?: string;
   onSelectNewsItemId: (id: string) => void;
 }) {
+  const t = useTranslations("common");
   const { user } = useRouteContext({ from: "__root__" });
   const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
 
@@ -365,21 +366,21 @@ function NewsItemForm({
         <form.AppField name="publishedAt">
           {(field) => (
             <Suspense fallback={<div>Loading...</div>}>
-              <field.DateField label="Published At" />
+              <field.DateField label={t("published-at")} />
             </Suspense>
           )}
         </form.AppField>
 
         {mode === "update" && (
           <>
-            <TitleValue title="Created at:" value={toDateString(newsItem.createdAt)} />
+            <TitleValue title={t("created-at")} value={toDateString(newsItem.createdAt)} />
             <TitleValue
-              title="Updated at:"
+              title={t("updated-at")}
               value={toDateString(
                 newsItem.translations[form.state.values.locale]?.updatedAt ?? undefined,
               )}
             />
-            <TitleValue title="Author:" value={newsItem.author.name ?? undefined} />
+            <TitleValue title={t("author")} value={newsItem.author.name ?? undefined} />
           </>
         )}
       </div>
