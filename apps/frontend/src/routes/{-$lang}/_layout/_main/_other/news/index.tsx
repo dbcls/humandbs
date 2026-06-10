@@ -75,7 +75,7 @@ function RouteComponent() {
     <Card
       caption={t("all-news")}
       className="flex w-full flex-1 flex-col"
-      containerClassName="gap-2 flex grow-1 shrink-1 basis-0 flex-col"
+      containerClassName="gap-2 flex flex-col"
     >
       <div className="mb-3 flex items-center gap-2">
         <FilterSearchInput
@@ -115,7 +115,7 @@ function RouteComponent() {
         </div>
       ) : (
         <ul
-          className={cn("flex-1 overflow-y-auto", {
+          className={cn("max-h-[50ch] flex-1 overflow-y-auto", {
             "opacity-60 transition-opacity": isFetching && !isFetchingNextPage,
           })}
         >

@@ -1,4 +1,3 @@
-import type { InfiniteData } from "@tanstack/react-query";
 import { useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
@@ -6,7 +5,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
-import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { Card } from "@/components/Card";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
@@ -73,7 +72,7 @@ export function NewsItemsList({
   }
 
   return (
-    <CollapsibleCard title={"News"}>
+    <Card title={"News"}>
       <div>
         <NewsFiltersBar />
         <AddNewButton className="mb-5" onClick={handleClickAdd} disabled={hasDraft} />
@@ -90,7 +89,7 @@ export function NewsItemsList({
           </Suspense>
         </ErrorResetBoundary>
       </div>
-    </CollapsibleCard>
+    </Card>
   );
 }
 
