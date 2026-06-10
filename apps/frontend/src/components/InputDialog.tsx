@@ -19,6 +19,7 @@ interface InputDialogProps {
   description?: React.ReactNode;
   label: string;
   trigger: React.ReactNode;
+  initialValue?: string;
   /** Standard schema (e.g. Zod) for on-submit validation */
   submitSchema?: StandardSchemaV1<string>;
   /** Async validation (debounced). Return an error string or undefined. */
@@ -37,6 +38,7 @@ export function InputDialog({
   description,
   label,
   trigger,
+  initialValue = "",
   submitSchema,
   validateAsync,
   validateAsyncDebounceMs = 500,
@@ -50,7 +52,7 @@ export function InputDialog({
   const open = isControlled ? openProp : openInternal;
 
   const form = useAppForm({
-    defaultValues: { value: "" },
+    defaultValues: { value: initialValue },
     onSubmit: async ({ value }) => {
       const trimmed = value.value.trim();
       const transformed = transformValue ? transformValue(trimmed) : trimmed;
@@ -60,7 +62,7 @@ export function InputDialog({
   });
 
   function handleOpenChange(next: boolean) {
-    if (!next) form.reset();
+    if (!next) form.reset({ value: initialValue });
     if (isControlled) {
       onOpenChange?.(next);
     } else {

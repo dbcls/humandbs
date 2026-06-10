@@ -41,7 +41,7 @@ export interface Permissions {
   };
   assets: {
     dataType: { path: string };
-    action: "view" | "list" | "create" | "delete";
+    action: "view" | "list" | "create" | "delete" | "move";
   };
   news: {
     dataType: NewsItem;
@@ -91,6 +91,7 @@ const ROLES = {
       create: true,
       delete: true,
       list: true,
+      move: true,
     },
     news: {
       view: true,
