@@ -15,6 +15,7 @@ import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRo
 import { Separator } from "@/components/Separator";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -24,7 +25,7 @@ export function VersionCard({
   lang: langOverride,
 }: {
   versionData: ResearchDetailResponse["data"];
-  lang?: "ja" | "en";
+  lang?: Locale;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const t = useTranslations("Research");
@@ -48,7 +49,7 @@ export function VersionCard({
           badge={
             <Link
               to="/{-$lang}/research/$humId/versions"
-              className="text-white no-underline"
+              className="text-white no-underline visited:text-white"
               params={{ humId: versionData.humId }}
             >
               {t("releaseInfo")}
