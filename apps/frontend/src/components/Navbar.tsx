@@ -253,9 +253,7 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
             {items.map((item, index) => (
               <Fragment key={item.id}>
-                {index > 0 && (
-                  <li className="-mx-4 my-2 h-px bg-primary-translucent" role="separator" />
-                )}
+                {index > 0 && <li className="-mx-4 my-2 h-px bg-primary-translucent" />}
                 <OverflowMenuItem item={item} />
               </Fragment>
             ))}
@@ -434,7 +432,7 @@ function ShoppingCartButton() {
       to={"/{-$lang}/cart"}
     >
       {datasetsInCart > 0 ? (
-        <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-[10px] text-white leading-none">
+        <span className="absolute top-0 right-0 w-fit min-w-4 rounded-full bg-accent p-0.5 text-center text-2xs text-white leading-none">
           {datasetsInCart}
         </span>
       ) : null}
