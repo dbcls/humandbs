@@ -298,6 +298,7 @@ export async function seedGuidelineVersions(
           authorId: authorId,
           ...(createdAt && { createdAt }),
           ...(updatedAt && { updatedAt }),
+          ...(createdAt && { publishedAt: createdAt }),
         };
 
         const query = db.insert(schema.documentVersion).values(values);
@@ -317,6 +318,7 @@ export async function seedGuidelineVersions(
                 authorId: values.authorId,
                 createdAt: createdAt ?? new Date(),
                 updatedAt: updatedAt ?? new Date(),
+                publishedAt: createdAt ?? new Date(),
               },
             })
             .execute();

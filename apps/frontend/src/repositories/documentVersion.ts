@@ -254,12 +254,14 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         });
         if (!draft) throw new Error("Draft not found");
 
+        const now = new Date();
         return tx
           .insert(documentVersion)
           .values({
             ...draft,
             status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-            updatedAt: new Date(),
+            updatedAt: now,
+            publishedAt: now,
           })
           .onConflictDoUpdate({
             target: [
@@ -271,7 +273,8 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
             set: {
               title: draft.title,
               content: draft.content,
-              updatedAt: new Date(),
+              updatedAt: now,
+              publishedAt: now,
             },
           });
       }),
@@ -327,6 +330,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
             ...published,
             status: DOCUMENT_VERSION_STATUS.DRAFT,
             updatedAt: new Date(),
+            publishedAt: published.publishedAt,
           })
           .onConflictDoNothing();
 

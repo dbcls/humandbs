@@ -98,6 +98,22 @@ bun run db:seed-content -- --overwrite
 - Skips existing items by `contentId`; use `--overwrite` to update in place
 - Exports `seedContent(pages, overwrite?, db?)` for use in tests
 
+### `migrate-content-items-to-documents.ts`
+
+Migrates all `content_item` records into `document` / `document_version` tables. Run after `seed-content.ts`.
+
+```bash
+bun run src/scripts/database/migrate-content-items-to-documents.ts
+bun run src/scripts/database/migrate-content-items-to-documents.ts --overwrite
+```
+
+- Each content item becomes a `document` with `hideFromNav: true` (excluded from the header/footer nav item picker)
+- Each translation (published and draft) becomes a `document_version` at `versionNumber: 1`, preserving the original status
+- `hideTOC` is carried over from the content item
+- `publishedAt` is set from `contentItem.publishedAt` for published translations
+- Guideline version archives (`data-sharing-guidelines-v1`, etc.) and revision changelogs (`guideline-revision*`) are skipped — handled by `seed-guideline-versions.ts`
+- Skips items where a document with the same `contentId` already exists; use `--overwrite` to update in place
+
 ### `reset-db.ts`
 
 Drops all tables entirely.

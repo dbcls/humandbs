@@ -33,6 +33,7 @@ export const documentVersion = pgTable(
     authorId: text("author_id").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    publishedAt: timestamp("published_at"),
   },
   (table) => [
     primaryKey({

@@ -116,6 +116,7 @@ const documentVersionArchiveRowSchema = z.object({
   authorId: z.string().nullable(),
   createdAt: timestampStringSchema,
   updatedAt: timestampStringSchema,
+  publishedAt: nullableTimestampStringSchema.optional(),
 });
 
 const documentsPayloadSchema = z.object({
@@ -1008,6 +1009,7 @@ export function createCmsDataTransferArchiveRestorer({
                 authorId: mapRestoredUserId(effectiveUserId, version.authorId),
                 createdAt: new Date(version.createdAt),
                 updatedAt: new Date(version.updatedAt),
+                publishedAt: version.publishedAt ? new Date(version.publishedAt) : null,
               })),
             );
           }

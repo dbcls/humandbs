@@ -1,0 +1,1 @@
+ALTER TABLE "document_version" ADD COLUMN "published_at" timestamp;
