@@ -228,6 +228,10 @@ export function DocumentsList({
   );
 }
 
+function sortDocumentsByPath(documents: DocumentsListItemResponse[]): DocumentsListItemResponse[] {
+  return documents.to;
+}
+
 function ListItems({
   selectedContentId,
   onSelectDoc,
@@ -243,6 +247,7 @@ function ListItems({
   const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
 
+  console.log("documents", documents);
   const groupedDocs = useMemo(() => {
     const groups = new Map<string, DocumentsListItemResponse[]>();
     for (const doc of documents) {

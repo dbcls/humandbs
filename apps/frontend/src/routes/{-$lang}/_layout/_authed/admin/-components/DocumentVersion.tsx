@@ -136,6 +136,9 @@ export function DocumentVersion({
           <Suspense>
             <ShowRevisionsCheckbox contentId={contentId} />
           </Suspense>
+          <Suspense>
+            <ShowInNavCheckbox contentId={contentId} />
+          </Suspense>
         </span>
       }
     >
@@ -492,6 +495,14 @@ function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
       </Label>
     </div>
   );
+}
+
+function ShowInNavCheckbox({ contentId }: { contentId: string }) {
+  const queryClient = useQueryClient();
+  const docQO = getDocumentQueryOptions(contentId);
+  const { data: doc } = useSuspenseQuery(docQO);
+
+  return <></>;
 }
 
 function useDocumentVersionForm({

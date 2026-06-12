@@ -1,5 +1,5 @@
 import { notFound } from "@tanstack/router-core";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
@@ -34,6 +34,7 @@ export interface DocAnyVersionResponseRaw extends BaseDoc {
   content: string | null;
   hideTOC: boolean;
   hideRevisions: boolean;
+  hideFromNav: boolean;
   status: DocVersionStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -66,6 +67,7 @@ interface DocumentVersionRepo {
     versionNumber: number,
     lang: Locale,
     data: { title?: string; content?: string },
+    userId?: string,
   ) => Promise<unknown>;
 
   publish: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
@@ -195,7 +197,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         where: (table, { and, eq }) =>
           and(eq(table.documentId, documentId), eq(table.versionNumber, versionNumber)),
         with: {
-          document: { columns: { hideTOC: true, hideRevisions: true } },
+          document: { columns: { hideTOC: true, hideRevisions: true, hideFromNav: true } },
           author: { columns: { name: true, email: true } },
         },
         columns: {
@@ -214,11 +216,14 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         contentId,
         hideTOC: r.document.hideTOC ?? true,
         hideRevisions: r.document.hideRevisions ?? true,
-        author: r.author ?? null,
+        hideFromNav: r.document.hideFromNav ?? true,
+        author: r.author
+          ? { ...r.author, name: r.author.name ?? "Unknown", email: r.author.email ?? "" }
+          : { name: "Unknown", email: "" },
       }));
     },
 
-    saveDraft: async (contentId, versionNumber, lang, data) => {
+    saveDraft: async (contentId, versionNumber, lang, data, userId) => {
       const documentId = await resolveDocumentId(database, contentId);
       return database
         .insert(documentVersion)
@@ -227,6 +232,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
           locale: lang,
+          updatedBy: userId,
           ...data,
         })
         .onConflictDoUpdate({

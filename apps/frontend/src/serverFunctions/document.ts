@@ -1,14 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { i18n } from "@/config/i18n";
+import type { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
-import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { createDocumentVersionRepository } from "@/repositories/documentVersion";
+import { createDocumentRepository } from "@/repositories/document";
+
+const documentRepo = createDocumentRepository(db);
 
 export interface DocumentsListItemResponse {
   id: string;
@@ -24,98 +24,20 @@ export interface DocumentsListItemResponse {
   }[];
 }
 
-/** List all documents */
+/** List all documents, ordered by segments */
 export const $getDocuments = createServerFn({
   method: "GET",
 })
+  .middleware([hasPermissionMiddleware])
   .inputValidator(
     z.object({
       q: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
-    const documents = await db.query.document.findMany({
-      where: data.q
-        ? (table) =>
-            or(
-              like(table.contentId, `%${data.q}%`),
-              exists(
-                db
-                  .select({ _: documentVersion.documentId })
-                  .from(documentVersion)
-                  .where(
-                    and(
-                      eq(documentVersion.documentId, table.id),
-                      or(
-                        like(documentVersion.title, `%${data.q}%`),
-                        like(documentVersion.content, `%${data.q}%`),
-                      ),
-                    ),
-                  ),
-              ),
-            )
-        : undefined,
-    });
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documents", "list");
 
-    const documentsWithTitles = await Promise.all(
-      documents.map(async (doc) => {
-        const [translations, latestVersion] = await Promise.all([
-          Promise.all(
-            i18n.locales.map(async (locale) => {
-              const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
-                db.query.documentVersion.findFirst({
-                  where: (table, { and, eq }) =>
-                    and(
-                      eq(table.documentId, doc.id),
-                      eq(table.locale, locale),
-                      eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                    ),
-                  orderBy: (table, { desc }) => desc(table.versionNumber),
-                  columns: {
-                    title: true,
-                  },
-                }),
-                db.query.documentVersion.findFirst({
-                  where: (table, { and, eq }) =>
-                    and(
-                      eq(table.documentId, doc.id),
-                      eq(table.locale, locale),
-                      eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                    ),
-                  orderBy: (table, { desc }) => desc(table.versionNumber),
-                  columns: {
-                    title: true,
-                  },
-                }),
-              ]);
-
-              return {
-                lang: locale,
-                statuses: {
-                  published: latestPublishedVersion?.title ?? undefined,
-                  draft: latestDraftVersion?.title ?? undefined,
-                },
-              };
-            }),
-          ),
-          db.query.documentVersion.findFirst({
-            where: (table, { eq }) => eq(table.documentId, doc.id),
-            orderBy: (table, { desc }) => desc(table.versionNumber),
-            columns: { versionNumber: true },
-          }),
-        ]);
-
-        return {
-          ...doc,
-          latestVersionNumber: latestVersion?.versionNumber ?? null,
-          translations: translations.filter(
-            (translation) => translation.statuses.published || translation.statuses.draft,
-          ),
-        };
-      }),
-    );
-
-    return documentsWithTitles as DocumentsListItemResponse[];
+    return await documentRepo.get(data.q);
   });
 
 export function getDocumentsQueryOptions(params?: { q?: string }) {
@@ -129,35 +51,24 @@ export function getDocumentsQueryOptions(params?: { q?: string }) {
 /**
  * Create new document with given contentId (must be unique)
  */
-const documentVersionRepo = createDocumentVersionRepository(db);
 
 export const $createDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(insertDocumentSchema)
-  .handler(async ({ context, data }) => {
+  .handler(({ context, data }) => {
     context.checkPermission("documents", "create");
 
-    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
-
-    const doc = await db.insert(document).values(data).returning();
-
-    await documentVersionRepo.createVersionFromPublished(data.contentId, userId);
-
-    return doc;
+    return documentRepo.create(data.contentId, context.user.id);
   });
 
 /** Get a single document by contentId */
 export const $getDocument = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(documentSelectSchema)
-  .handler(async ({ context, data }) => {
+  .handler(({ context, data }) => {
     context.checkPermission("documents", "view");
 
-    const doc = await db.query.document.findFirst({
-      where: eq(document.contentId, data.contentId),
-    });
-
-    return doc ?? null;
+    return documentRepo.getByContentId(data.contentId);
   });
 
 export function getDocumentQueryOptions(contentId: string) {
@@ -175,10 +86,7 @@ export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await db
-      .update(document)
-      .set({ hideTOC: data.hideTOC })
-      .where(eq(document.contentId, data.contentId));
+    await documentRepo.updateSettings(data.contentId, { hideTOC: data.hideTOC });
   });
 
 /** Update hideRevisions flag for a document */
@@ -188,10 +96,7 @@ export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await db
-      .update(document)
-      .set({ hideRevisions: data.hideRevisions })
-      .where(eq(document.contentId, data.contentId));
+    await documentRepo.updateSettings(data.contentId, { hideRevisions: data.hideRevisions });
   });
 
 /**
@@ -200,12 +105,10 @@ export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
 export const $deleteDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(documentSelectSchema)
-  .handler(async ({ context, data }) => {
+  .handler(({ context, data }) => {
     context.checkPermission("documents", "delete");
 
-    const doc = await db.delete(document).where(eq(document.contentId, data.contentId)).returning();
-
-    return doc;
+    return documentRepo.delete(data.contentId);
   });
 
 /**
@@ -218,8 +121,5 @@ export const $changeIdOfDocument = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await db
-      .update(document)
-      .set({ contentId: data.newId })
-      .where(eq(document.contentId, data.oldId));
+    await documentRepo.changeContentId(data.oldId, data.newId);
   });
