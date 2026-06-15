@@ -2,7 +2,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import type { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
@@ -10,19 +9,19 @@ import { createDocumentRepository } from "@/repositories/document";
 
 const documentRepo = createDocumentRepository(db);
 
-export interface DocumentsListItemResponse {
-  id: string;
-  createdAt: Date;
-  contentId: string;
-  latestVersionNumber: number | null;
-  translations: {
-    lang: (typeof i18n.locales)[number];
-    statuses: {
-      published?: string;
-      draft?: string;
-    };
-  }[];
-}
+// export interface DocumentsListItemResponse {
+//   id: string;
+//   createdAt: Date;
+//   contentId: string;
+//   latestVersionNumber: number | null;
+//   translations: {
+//     lang: (typeof i18n.locales)[number];
+//     statuses: {
+//       published?: string;
+//       draft?: string;
+//     };
+//   }[];
+// }
 
 /** List all documents, ordered by segments */
 export const $getDocuments = createServerFn({
@@ -37,7 +36,7 @@ export const $getDocuments = createServerFn({
   .handler(async ({ data, context }) => {
     context.checkPermission("documents", "list");
 
-    return await documentRepo.get(data.q);
+    return await documentRepo.getList(data.q);
   });
 
 export function getDocumentsQueryOptions(params?: { q?: string }) {
@@ -51,7 +50,6 @@ export function getDocumentsQueryOptions(params?: { q?: string }) {
 /**
  * Create new document with given contentId (must be unique)
  */
-
 export const $createDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(insertDocumentSchema)
@@ -113,7 +111,6 @@ export const $deleteDocument = createServerFn({ method: "POST" })
 
 /**
  * Change Id of document
- *
  */
 export const $changeIdOfDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])

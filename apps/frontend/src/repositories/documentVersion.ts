@@ -76,8 +76,14 @@ interface DocumentVersionRepo {
 
   unpublish: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
 
+  /**
+   * Deletes a document version. Does not automatically renumbers. Not used currently.
+   */
   delete: (contentId: string, versionNumber: number) => Promise<unknown>;
 
+  /**
+   * Creates a new version. Copies content of lase published version and creates new version with incremented versionNumber
+   */
   createVersionFromPublished: (
     contentId: string,
     authorId?: string,
@@ -354,6 +360,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
 
     delete: async (contentId, versionNumber) => {
       const documentId = await resolveDocumentId(database, contentId);
+
       return database
         .delete(documentVersion)
         .where(

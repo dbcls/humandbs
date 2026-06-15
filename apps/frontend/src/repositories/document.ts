@@ -3,9 +3,8 @@ import type { Locale } from "use-intl";
 
 import { i18n } from "@/config/i18n";
 import type { DB } from "@/db/database";
-import type { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import type { DOCUMENT_VERSION_STATUS, Document } from "@/db/schema";
 import { document, documentVersion } from "@/db/schema";
-import type { DocumentSelect } from "@/db/types";
 import { filterDefined } from "@/utils/filter-defined";
 
 /**
@@ -14,7 +13,6 @@ import { filterDefined } from "@/utils/filter-defined";
  */
 export interface DocumentsListItemResponse {
   id: string;
-
   contentId: string;
   /** Latest version number, even if there are only drafts in that version */
   latestVersionNumber: number | null;
@@ -50,16 +48,15 @@ interface DocumentRepo {
    * Get document list based on query string. Default sort: child segments come after parent:
    *  `e`, `a`, `a/b`, `a/c/d`, `f` ...
    */
-  get: (q: string | undefined) => Promise<DocumentsListItemResponse[]>;
+  getList: (q: string | undefined) => Promise<DocumentsListItemResponse[]>;
 
   /**
    * Get document by contentId
    */
-  getByContentId: (contentId: string) => Promise<DocumentSelect | undefined>;
+  getByContentId: (contentId: string) => Promise<Document | undefined>;
 
   /**
    * Create new document with path (contentId). Draft versions are automatically appended
-   *
    */
   create: (id: string, userId: string) => Promise<DocumentsListItemResponse>;
 
@@ -79,7 +76,7 @@ interface DocumentRepo {
   /**
    * Delete document
    */
-  delete: (contentId: string) => Promise<typeof document.$inferSelect>;
+  delete: (contentId: string) => Promise<Document>;
 }
 
 export function createDocumentRepository(db: DB): DocumentRepo {
@@ -93,7 +90,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       .from(document)
       .where(
         or(
-          sql`${p} IS NULL`,
+          sql`${p}::text IS NULL`,
           or(
             ilike(document.contentId, likePattern),
             exists(
@@ -193,7 +190,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       });
     },
 
-    get: async (q) => {
+    getList: async (q) => {
       const rawResult = await searchStatement.execute({ q: q?.trim() ?? null });
 
       return sortDocumentsByPath(groupDocumentVersions(rawResult));
@@ -230,7 +227,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
   };
 }
 
-interface RawDocumentsListItem {
+export interface RawDocumentsListItem {
   id: string;
   contentId: string;
   latestVersionNumber: number | null;
@@ -246,7 +243,24 @@ export function groupDocumentVersions(
   const byId = rawDocuments.reduce(
     (acc, curr) => {
       if (acc[curr.id]) {
-        acc[curr.id].translations.push(mapTranslation(curr));
+        const translation = mapTranslation(curr);
+
+        const existingTranslation = acc[curr.id].translations.find((t) => t.lang === curr.lang);
+
+        // if already has this locale, that means there are both draft and published. leave only published, with hasUnpublishedChanges=true
+        if (existingTranslation) {
+          acc[curr.id].translations = acc[curr.id].translations
+            .filter((t) => t.lang !== translation.lang)
+            .concat({
+              lang: translation.lang,
+              title:
+                translation.status === "published" ? translation.title : existingTranslation.title,
+              status: "published",
+              hasUnpublishedChanges: true,
+            });
+        } else {
+          acc[curr.id].translations.push(mapTranslation(curr));
+        }
       } else {
         acc[curr.id] = {
           id: curr.id,
@@ -263,7 +277,7 @@ export function groupDocumentVersions(
   return Object.values(byId);
 }
 
-function mapTranslation(row: RawDocumentsListItem): DocumentListItemTranslation {
+export function mapTranslation(row: RawDocumentsListItem): DocumentListItemTranslation {
   if (row.status === "draft") {
     return {
       status: row.status,
