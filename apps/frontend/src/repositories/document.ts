@@ -21,11 +21,12 @@ export interface DocumentsListItemResponse {
    * If both published and draft present, shows published title. If draft content is different, hasUnpublishedChanges=true.
    * If only published present - show published title, hasUnpublishedChanges=false
    * If only draft  present - show draft title
+   * Sorted so that i18n.defaultLocale comes first
    */
   translations: DocumentListItemTranslation[];
 }
 
-type DocumentListItemTranslation =
+export type DocumentListItemTranslation =
   | {
       status: typeof DOCUMENT_VERSION_STATUS.DRAFT;
       lang: Locale;
@@ -193,7 +194,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
     getList: async (q) => {
       const rawResult = await searchStatement.execute({ q: q?.trim() ?? null });
 
-      return sortDocumentsByPath(groupDocumentVersions(rawResult));
+      return sortDocumentsByPath(sortTranslations(groupDocumentVersions(rawResult)));
     },
     getByContentId: async (contentId) => {
       const doc = await db.query.document.findFirst({
@@ -275,6 +276,22 @@ export function groupDocumentVersions(
   );
 
   return Object.values(byId);
+}
+
+/**
+ * Sorts tramnslartions in each document `translations` arraym so i18n.defaultLocale comes first
+ */
+export function sortTranslations(
+  documents: DocumentsListItemResponse[],
+): DocumentsListItemResponse[] {
+  return documents.map((doc) => ({
+    ...doc,
+    translations: doc.translations.sort((a, b) => {
+      if (a.lang === i18n.defaultLocale) return -1;
+      if (b.lang === i18n.defaultLocale) return 1;
+      return 0;
+    }),
+  }));
 }
 
 export function mapTranslation(row: RawDocumentsListItem): DocumentListItemTranslation {

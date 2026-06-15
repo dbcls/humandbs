@@ -2,6 +2,8 @@ import { LucideMoreVertical } from "lucide-react";
 
 import type { ReactNode } from "react";
 
+import type { RESEARCH_STATUS } from "@humandbs/backend/types";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,17 +12,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { Locale } from "@/config/i18n";
+import { cn } from "@/lib/utils";
+import type { DocumentListItemTranslation } from "@/repositories/document";
 
 import { UnpublishedDot } from "./UnpublishedDot";
 
-interface AdminListItemTranslation {
-  lang: string;
-  statuses: {
-    published?: string;
-    draft?: string;
-    review?: string;
-  };
-}
+type AdminListItemTranslation =
+  | DocumentListItemTranslation
+  | {
+      status: Exclude<(typeof RESEARCH_STATUS)[number], "published" | "draft">;
+      lang: Locale;
+      title: string | undefined;
+    };
 
 export interface AdminListItemMenuItem {
   label: ReactNode;
@@ -52,22 +56,23 @@ export function AdminListItem({
 
         <ul className="space-y-0.5">
           {translations.map((translation) => {
-            const publishedTitle = translation.statuses.published;
-            const draftTitle = translation.statuses.draft;
-            const reviewTitle = translation.statuses.review;
-            const displayTitle = publishedTitle || draftTitle || reviewTitle;
-
-            const hasChangedDraft = !!draftTitle && draftTitle !== publishedTitle;
-
-            if (!displayTitle) return null;
-
             return (
               <li
                 key={translation.lang}
                 className="flex min-w-0 items-center justify-between gap-2 text-xs"
               >
-                <span className="truncate text-sm">{displayTitle}</span>
-                {hasChangedDraft && !hideUnpublishedDot ? <UnpublishedDot /> : null}
+                <span
+                  className={cn("truncate text-sm", {
+                    "text-gray-400 italic": translation.status === "draft",
+                  })}
+                >
+                  {translation.title}
+                </span>
+                {translation.status === "published" &&
+                translation.hasUnpublishedChanges &&
+                !hideUnpublishedDot ? (
+                  <UnpublishedDot />
+                ) : null}
               </li>
             );
           })}
@@ -84,7 +89,7 @@ export function AdminListItem({
             <DropdownMenuGroup>
               {menuItems.map((item, index) => (
                 <DropdownMenuItem
-                  key={index}
+                  key={`${item.label}`}
                   variant={item.variant}
                   onClick={(e) => {
                     e.stopPropagation();
