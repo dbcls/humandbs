@@ -124,6 +124,9 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       .groupBy(documentVersion.documentId),
   );
 
+  /**
+   * Premared search statement
+   */
   const searchStatement = db
     .with(matched, latest)
     .select({

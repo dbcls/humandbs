@@ -32,15 +32,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
+import type { DocumentVersionsResponse } from "@/repositories/documentVersion";
 import {
   $updateDocumentHideRevisions,
   $updateDocumentHideTOC,
   getDocumentQueryOptions,
 } from "@/serverFunctions/document";
-import type {
-  DocVersionListItemResponse,
-  DocVersionResponse,
-} from "@/serverFunctions/documentVersion";
+import type { DocVersionResponse } from "@/serverFunctions/documentVersion";
 import {
   $createDocumentVersion,
   $publishDocumentVersionDraft,
@@ -672,7 +670,7 @@ function useDocVersionsList(contentId: string, version?: number) {
 }
 
 interface DocumentVersionSelectorProps {
-  items: DocVersionListItemResponse[];
+  items: DocumentVersionsResponse[];
   onSelect: (versionNumber: number) => void;
   versionNumber: number | undefined;
   contentId: string;
@@ -740,7 +738,7 @@ function DocumentVersionSelectorItem({
   item,
   compact,
 }: {
-  item: DocVersionListItemResponse;
+  item: DocumentVersionsResponse;
   compact?: boolean;
 }) {
   return (
@@ -749,19 +747,13 @@ function DocumentVersionSelectorItem({
       {!compact && (
         <ul className="space-y-2">
           {item.translations.map((tr) => (
-            <li key={tr.locale} className="flex items-start gap-1">
-              <Tag tag={tr.locale} className="group-focus:border-white group-focus:text-white" />
-              <ul className="flex flex-col items-start gap-0.5">
-                {tr.statuses.map((st) => (
-                  <li key={st.status} className="flex items-start gap-2">
-                    <StatusTag
-                      status={st.status}
-                      className="group-focus:border-white group-focus:text-white"
-                    />
-                    <span className="max-w-48 truncate">{st.title || "(no title)"}</span>
-                  </li>
-                ))}
-              </ul>
+            <li key={tr.lang} className="flex items-start gap-2">
+              <StatusTag
+                status={tr.status}
+                className="group-focus:border-white group-focus:text-white"
+              />
+              <span className="max-w-48 truncate">{tr.title || "(no title)"}</span>
+              {tr.status === "published" && tr.hasUnpublishedChanges ? <UnpublishedDot /> : null}
             </li>
           ))}
         </ul>
@@ -1009,38 +1001,27 @@ function useUnpublishVersion(contentId: string, versionNumber: number) {
 
       await queryClient.cancelQueries(docVersionsListQO);
       const previousList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const draftTitle = previousVersion?.translations[data.locale]?.draft?.title;
 
-      queryClient.setQueryData(
-        docVersionsListQO.queryKey,
-        (old: DocVersionListItemResponse[] | undefined) => {
-          if (!old) return old;
-          return old.map((item) => {
-            if (item.versionNumber !== versionNumber) return item;
-            return {
-              ...item,
-              translations: item.translations.map((t) => {
-                if (t.locale !== data.locale) return t;
-                const withoutPublished = t.statuses.filter((s) => s.status !== "published");
-                const hasDraft = withoutPublished.some((s) => s.status === "draft");
-                const publishedEntry = t.statuses.find((s) => s.status === "published");
-                return {
-                  ...t,
-                  statuses:
-                    hasDraft || !publishedEntry
-                      ? withoutPublished
-                      : [
-                          ...withoutPublished,
-                          {
-                            status: "draft" as const,
-                            title: publishedEntry.title,
-                          },
-                        ],
-                };
-              }),
-            };
-          });
-        },
-      );
+      queryClient.setQueryData(docVersionsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((item) => {
+          if (item.versionNumber !== versionNumber) return item;
+          return {
+            ...item,
+            translations: item.translations.map((t) => {
+              if (t.lang !== data.locale) return t;
+              if (t.status === "draft") return t;
+
+              return {
+                status: "draft" as const,
+                lang: t.lang,
+                title: draftTitle ?? t.title,
+              };
+            }),
+          };
+        });
+      });
 
       return { previousVersion, previousList };
     },

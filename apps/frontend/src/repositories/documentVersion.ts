@@ -1,5 +1,6 @@
 import { notFound } from "@tanstack/router-core";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, exists, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
@@ -7,6 +8,9 @@ import type { DB } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
+
+import type { DocumentListItemTranslation, RawDocumentsListItem } from "./document";
+import { groupDocumentVersions, sortTranslations } from "./document";
 
 interface BaseDoc {
   contentId: string;
@@ -19,8 +23,10 @@ export interface DocPublishedVersionListItemResponse extends BaseDoc {
   createdAt: Date;
 }
 
-export interface DocVersionListItemResponseRaw extends BaseDoc {
-  status: DocVersionStatus;
+export interface DocumentVersionsResponse {
+  contentId: string;
+  versionNumber: number;
+  translations: DocumentListItemTranslation[];
 }
 
 export interface DocPublishedVersionResponseRaw extends BaseDoc {
@@ -58,7 +64,7 @@ interface DocumentVersionRepo {
     locale: Locale,
   ) => Promise<DocPublishedVersionResponseRaw | undefined>;
 
-  getVersionList: (contentId: string) => Promise<DocVersionListItemResponseRaw[]>;
+  getVersionList: (contentId: string) => Promise<DocumentVersionsResponse[]>;
 
   getVersion: (contentId: string, versionNumber: number) => Promise<DocAnyVersionResponseRaw[]>;
 
@@ -183,18 +189,61 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
 
     getVersionList: async (contentId) => {
       const documentId = await resolveDocumentId(database, contentId);
-      const rows = await database.query.documentVersion.findMany({
-        where: (table, { eq }) => eq(table.documentId, documentId),
-        columns: {
-          title: true,
-          versionNumber: true,
-          documentId: true,
-          locale: true,
-          status: true,
-        },
-        orderBy: (table, { desc }) => desc(table.versionNumber),
+      const draft = alias(documentVersion, "draft");
+
+      const rows = await database
+        .select({
+          documentId: documentVersion.documentId,
+          versionNumber: documentVersion.versionNumber,
+          lang: documentVersion.locale,
+          status: documentVersion.status,
+          title: documentVersion.title,
+          hasUnpublishedChanges: sql<boolean>`${and(
+            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+            exists(
+              database
+                .select({ _: sql`1` })
+                .from(draft)
+                .where(
+                  and(
+                    eq(draft.documentId, documentVersion.documentId),
+                    eq(draft.versionNumber, documentVersion.versionNumber),
+                    eq(draft.locale, documentVersion.locale),
+                    eq(draft.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                    or(
+                      sql`${draft.title} IS DISTINCT FROM ${documentVersion.title}`,
+                      sql`${draft.content} IS DISTINCT FROM ${documentVersion.content}`,
+                    ),
+                  ),
+                ),
+            ),
+          )}`.as("hasUnpublishedChanges"),
+        })
+        .from(documentVersion)
+        .where(eq(documentVersion.documentId, documentId))
+        .orderBy(desc(documentVersion.versionNumber));
+
+      const rawRows: RawDocumentsListItem[] = rows.map((row) => ({
+        id: `${row.documentId}:${row.versionNumber}`,
+        contentId,
+        latestVersionNumber: row.versionNumber,
+        lang: row.lang,
+        status: row.status,
+        title: row.title,
+        hasUnpublishedChanges: row.hasUnpublishedChanges,
+      }));
+
+      return sortTranslations(groupDocumentVersions(rawRows)).map((version) => {
+        if (version.latestVersionNumber === null) {
+          throw new Error("Document version list row is missing a version number");
+        }
+
+        return {
+          contentId: version.contentId,
+          versionNumber: version.latestVersionNumber,
+          translations: version.translations,
+        };
       });
-      return rows.map((r) => ({ ...r, contentId }));
     },
 
     getVersion: async (contentId, versionNumber) => {

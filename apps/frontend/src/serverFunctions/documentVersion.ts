@@ -7,12 +7,11 @@ import { z } from "zod";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
-import type { DocumentVersionStatus } from "@/db/types";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import type {
   DocAnyVersionResponseRaw,
-  DocVersionListItemResponseRaw,
+  DocumentVersionsResponse,
 } from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
@@ -23,15 +22,6 @@ const documentVersionRepo = createDocumentVersionRepository(db);
 // === For CMS ===
 
 // === LIST VERSIONS
-
-export interface DocVersionListItemResponse {
-  versionNumber: number;
-  contentId: string;
-  translations: {
-    locale: Locale;
-    statuses: { status: DocumentVersionStatus; title: string }[];
-  }[];
-}
 
 const docVersionsRequestSchema = documentSelectSchema;
 /**
@@ -47,9 +37,7 @@ export const $getDocumentVersionList = createServerFn({
 
     const { contentId } = data;
 
-    const versions = await documentVersionRepo.getVersionList(contentId);
-
-    return groupDocumentVersions(versions);
+    return await documentVersionRepo.getVersionList(contentId);
   });
 
 export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: string | null }) =>
@@ -62,49 +50,6 @@ export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: s
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId,
   });
-
-export function groupDocumentVersions(
-  rawVersions: DocVersionListItemResponseRaw[],
-): DocVersionListItemResponse[] {
-  const groupedVersions: DocVersionListItemResponse[] = [];
-
-  for (const version of rawVersions) {
-    const existingVersion = groupedVersions.find(
-      (v) => v.contentId === version.contentId && v.versionNumber === version.versionNumber,
-    );
-
-    if (existingVersion) {
-      const existingTranslation = existingVersion.translations.find(
-        (t) => t.locale === version.locale,
-      );
-
-      if (existingTranslation) {
-        existingTranslation.statuses.push({
-          status: version.status,
-          title: version.title ?? "",
-        });
-      } else {
-        existingVersion.translations.push({
-          locale: version.locale,
-          statuses: [{ status: version.status, title: version.title ?? "" }],
-        });
-      }
-    } else {
-      groupedVersions.push({
-        versionNumber: version.versionNumber,
-        contentId: version.contentId,
-        translations: [
-          {
-            locale: version.locale,
-            statuses: [{ status: version.status, title: version.title ?? "" }],
-          },
-        ],
-      });
-    }
-  }
-
-  return groupedVersions;
-}
 
 // === GET VERSION
 

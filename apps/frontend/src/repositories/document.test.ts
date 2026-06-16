@@ -227,4 +227,39 @@ describe("documentRepository db actions", () => {
 
     expect(doc1?.latestVersionNumber).toEqual(2);
   });
+
+  test("version list groups translations per version using document list semantics", async () => {
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+
+    // before - have ver1 - both published and draft, both hasUnpublishedChanges
+    const versionList = await versionsRepo.getVersionList(DOC_1_CONTENTID);
+
+    expect(versionList.map((version) => version.versionNumber)).toEqual([2, 1]);
+    expect(versionList[0]?.translations).toEqual([
+      {
+        status: "draft",
+        lang: "ja",
+        title: "Document 1 ja",
+      },
+      {
+        status: "draft",
+        lang: "en",
+        title: "Document 1",
+      },
+    ]);
+    expect(versionList[1]?.translations).toEqual([
+      {
+        status: "published",
+        lang: "ja",
+        title: "Document 1 ja",
+        hasUnpublishedChanges: true,
+      },
+      {
+        status: "published",
+        lang: "en",
+        title: "Document 1",
+        hasUnpublishedChanges: true,
+      },
+    ]);
+  });
 });
