@@ -6,10 +6,14 @@ export const DOC_1_ID = "123e4567-e89b-12d3-a456-426614174000";
 export const DOC_2_ID = "123e4567-e89b-12d3-a456-426614174001";
 export const DOC_3_ID = "123e4567-e89b-12d3-a456-426614174002";
 
+export const DOC_1_CONTENTID = "document1";
+export const DOC_2_CONTENTID = "document2";
+export const DOC_3_CONTENTID = "document3";
+
 export const mockDocuments: Document[] = [
   {
     id: DOC_1_ID,
-    contentId: "document1",
+    contentId: DOC_1_CONTENTID,
     hideFromNav: false,
     hideRevisions: false,
     hideTOC: false,
@@ -17,7 +21,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: DOC_2_ID,
-    contentId: "document2",
+    contentId: DOC_2_CONTENTID,
     hideFromNav: true,
     hideRevisions: true,
     hideTOC: true,
@@ -25,7 +29,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: DOC_3_ID,
-    contentId: "document3",
+    contentId: DOC_3_CONTENTID,
     hideFromNav: false,
     hideRevisions: true,
     hideTOC: false,

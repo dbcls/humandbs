@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
-import type { db } from "@/db/database";
+import type { DB } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
@@ -90,7 +90,7 @@ interface DocumentVersionRepo {
   ) => Promise<{ versionNumber: number }>;
 }
 
-async function resolveDocumentId(database: typeof db, contentId: string): Promise<string> {
+async function resolveDocumentId(database: DB, contentId: string): Promise<string> {
   const doc = await database.query.document.findFirst({
     where: (table, { eq }) => eq(table.contentId, contentId),
     columns: { id: true },
@@ -99,7 +99,7 @@ async function resolveDocumentId(database: typeof db, contentId: string): Promis
   return doc.id;
 }
 
-export function createDocumentVersionRepository(database: typeof db): DocumentVersionRepo {
+export function createDocumentVersionRepository(database: DB): DocumentVersionRepo {
   return {
     getPublishedListForLocale: async (contentId, lang) => {
       const documentId = await resolveDocumentId(database, contentId);
@@ -254,7 +254,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
 
     publish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
+        const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
         const draft = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -293,7 +293,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
 
     resetDraft: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
+        const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -324,7 +324,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
 
     unpublish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
+        const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -373,7 +373,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
 
     createVersionFromPublished: (contentId, authorId) =>
       database.transaction(async (tx) => {
-        const documentId = await resolveDocumentId(tx as unknown as typeof db, contentId);
+        const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
 
         const latestVersion = await tx.query.documentVersion.findFirst({
           where: (table) => eq(table.documentId, documentId),

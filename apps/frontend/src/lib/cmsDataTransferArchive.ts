@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +11,7 @@ import { z } from "zod";
 import { localeSchema } from "@/config/i18n";
 import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
 import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import {
   alert,
@@ -51,7 +53,7 @@ export interface RestoreCmsDataTransferArchiveParams {
 
 type ArchiveFileInput = Record<string, string | Blob | ArrayBufferView | ArrayBufferLike>;
 
-type Database = typeof db;
+type Database = DB;
 
 const looseObjectSchema = z.record(z.string(), z.unknown());
 const archiveCreatedBySchema = z
@@ -270,7 +272,7 @@ async function collectAssetFiles(
   files: ArchiveFileInput;
   count: number;
 }> {
-  let entries;
+  let entries: Dirent[];
 
   try {
     entries = await readdir(directory, { withFileTypes: true });

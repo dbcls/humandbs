@@ -248,8 +248,16 @@ export function groupDocumentVersions(
 
         const existingTranslation = acc[curr.id].translations.find((t) => t.lang === curr.lang);
 
-        // if already has this locale, that means there are both draft and published. leave only published, with hasUnpublishedChanges=true
+        // If both draft and published exist, leave only the published row and preserve
+        // the SQL-computed diff result from whichever row order the database returns.
         if (existingTranslation) {
+          const hasUnpublishedChanges =
+            translation.status === "published"
+              ? translation.hasUnpublishedChanges
+              : "hasUnpublishedChanges" in existingTranslation
+                ? existingTranslation.hasUnpublishedChanges
+                : true;
+
           acc[curr.id].translations = acc[curr.id].translations
             .filter((t) => t.lang !== translation.lang)
             .concat({
@@ -257,7 +265,7 @@ export function groupDocumentVersions(
               title:
                 translation.status === "published" ? translation.title : existingTranslation.title,
               status: "published",
-              hasUnpublishedChanges: true,
+              hasUnpublishedChanges,
             });
         } else {
           acc[curr.id].translations.push(mapTranslation(curr));

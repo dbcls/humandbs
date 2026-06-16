@@ -47,6 +47,7 @@ export function AdminListItem({
   menuItems?: AdminListItemMenuItem[];
   hideUnpublishedDot?: boolean;
 }) {
+  console.log("translations", translations);
   return (
     <>
       <div className="min-w-0 flex-1">

@@ -3,21 +3,15 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { eq } from "drizzle-orm";
 
 import * as schema from "@/db/schema";
-import {
-  clearTables,
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
+import { clearTables, createTestDb } from "@/tests/fixtures/test-db";
 
 import { seedContent } from "./seed-content";
 
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
   await db.insert(schema.user).values({
     id: "system",
     name: "System",
@@ -27,8 +21,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 afterEach(async () => {

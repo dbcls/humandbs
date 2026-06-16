@@ -1,19 +1,15 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import {
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
+import { createTestDb } from "@/tests/fixtures/test-db";
 
 import { seedGuidelineVersions } from "./seed-guideline-versions";
 
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 
 // Minimal fixture: one document with 2 historical versions (v1 ja/en, v2 ja/en)
 const DOC_CONTENT_ID = "guidelines/data-sharing-guidelines";
@@ -61,7 +57,10 @@ async function insertDocument(contentId = DOC_CONTENT_ID): Promise<string> {
 }
 
 async function insertUser(id = "system"): Promise<void> {
-  await db.insert(schema.user).values({ id, name: "System", email: "system@seed.local", role: "admin" }).execute();
+  await db
+    .insert(schema.user)
+    .values({ id, name: "System", email: "system@seed.local", role: "admin" })
+    .execute();
 }
 
 async function versionsFor(docId: string) {
@@ -74,19 +73,15 @@ async function versionsFor(docId: string) {
 }
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 afterEach(async () => {
-  await db.execute(sql`SET session_replication_role = replica`);
-  await db.execute(sql`TRUNCATE TABLE document_version, document, "user" RESTART IDENTITY CASCADE`);
-  await db.execute(sql`SET session_replication_role = DEFAULT`);
+  await testDb.clearTables(["document_version", "document", '"user"']);
 });
 
 describe("seedGuidelineVersions", () => {
@@ -299,7 +294,12 @@ describe("seedGuidelineVersions", () => {
 
     const updatedPages = PAGES.map((p) =>
       p.path === "data-sharing-guidelines-v1" && p.lang === "ja"
-        ? { ...p, contentHtml: "<p>updated ja</p>", releaseDate: "2015-01-01", modifiedDate: "2016-06-15" }
+        ? {
+            ...p,
+            contentHtml: "<p>updated ja</p>",
+            releaseDate: "2015-01-01",
+            modifiedDate: "2016-06-15",
+          }
         : p,
     );
 

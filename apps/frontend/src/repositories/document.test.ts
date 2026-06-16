@@ -3,19 +3,16 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { i18n } from "@/config/i18n";
 import * as schema from "@/db/schema";
 import {
+  DOC_1_CONTENTID,
   DOC_1_ID,
+  DOC_2_CONTENTID,
   DOC_2_ID,
   DOC_3_ID,
   mockDocuments,
   mockDocumentVersions,
 } from "@/tests/fixtures/documents";
-import {
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
-import { AUTHOR_ID_1, mockUsers } from "@/tests/fixtures/users";
+import { createTestDb } from "@/tests/fixtures/test-db";
+import { AUTHOR_ID_1, AUTHOR_ID_2, mockUsers } from "@/tests/fixtures/users";
 
 import {
   createDocumentRepository,
@@ -27,21 +24,20 @@ import { createDocumentVersionRepository } from "./documentVersion";
 /**
  * Documents repo test
  */
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 
 const repo = createDocumentRepository(db);
 const versionsRepo = createDocumentVersionRepository(db);
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
 
   await db.insert(schema.user).values(mockUsers);
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 describe("group document's versions", () => {
@@ -132,8 +128,6 @@ describe("documentRepository db actions", () => {
   test("fetches list of all documents", async () => {
     const docList = await repo.getList(undefined);
 
-    console.log("docList", JSON.stringify(docList, null, 2));
-
     expect(docList).toBeArrayOfSize(3);
     expect(docList.find((d) => d.id === DOC_1_ID)?.latestVersionNumber).toEqual(1);
     expect(docList.find((d) => d.id === DOC_2_ID)?.latestVersionNumber).toEqual(1);
@@ -143,19 +137,19 @@ describe("documentRepository db actions", () => {
   test("translations array have version translations", async () => {
     const docList = await repo.getList(undefined);
 
-    const doc = docList.find((d) => d.contentId === "document2")!;
+    const doc = docList.find((d) => d.contentId === DOC_2_CONTENTID)!;
 
     expect(doc.translations).toEqual([
       {
         status: "published",
-        lang: "en",
-        title: "Document 2",
+        lang: "ja",
+        title: "Document 2 ja",
         hasUnpublishedChanges: true,
       },
       {
         status: "published",
-        lang: "ja",
-        title: "Document 2 ja",
+        lang: "en",
+        title: "Document 2",
         hasUnpublishedChanges: true,
       },
     ]);
@@ -163,11 +157,11 @@ describe("documentRepository db actions", () => {
 
   test("hasUnpublishedChanges is false if only draft exists for locale", async () => {
     // add new version with only draft
-    await versionsRepo.createVersionFromPublished("document1", AUTHOR_ID_1);
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
 
     const docList = await repo.getList(undefined);
 
-    const doc1 = docList.find((d) => d.contentId === "document1");
+    const doc1 = docList.find((d) => d.contentId === DOC_1_CONTENTID);
 
     expect(doc1?.translations).toBeArrayOfSize(2);
     expect(doc1?.translations.map((d) => d.lang)).toEqual(["ja", "en"]);
@@ -178,6 +172,38 @@ describe("documentRepository db actions", () => {
     expect(doc1?.translations.find((t) => t.lang === i18n.defaultLocale)).not.toHaveProperty(
       "hasUnpublishedChanges",
     );
+  });
+
+  test("hasUnpublishedChanges is false if draft & published have same title & content", async () => {
+    // add new version with same title & content as published
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+
+    await db.insert(schema.documentVersion).values({
+      documentId: DOC_1_ID,
+      content: "Lorem ipsum 1 ja",
+      title: "Document 1 ja",
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+      updatedAt: new Date("2024-01-02T00:00:00Z"),
+      publishedAt: new Date("2024-01-03T00:00:00Z"),
+      publishedBy: AUTHOR_ID_1,
+      updatedBy: AUTHOR_ID_2,
+      versionNumber: 2,
+      status: "published",
+      locale: "ja",
+      authorId: AUTHOR_ID_1,
+    });
+
+    const doc1Versions = await db.query.documentVersion.findMany({
+      where: (t, { eq }) => eq(t.documentId, DOC_1_ID),
+    });
+
+    const docList = await repo.getList(undefined);
+
+    const doc1 = docList.find((d) => d.contentId === "document1");
+
+    expect(doc1?.translations).toBeArrayOfSize(2);
+    expect(doc1?.translations.find((t) => t.lang === "ja")?.status).toBe("published");
+    expect(doc1?.translations.find((t) => t.lang === "ja")?.hasUnpublishedChanges).toBe(false);
   });
 
   test("correctly reads latestVersion after appending", async () => {

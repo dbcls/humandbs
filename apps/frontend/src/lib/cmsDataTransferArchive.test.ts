@@ -7,13 +7,7 @@ import { gunzipSync } from "node:zlib";
 import tar from "tar-stream";
 
 import * as schema from "@/db/schema";
-import {
-  clearTables,
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
+import { clearTables, createTestDb } from "@/tests/fixtures/test-db";
 
 import {
   type CmsDataTransferArchiveManifest,
@@ -22,7 +16,8 @@ import {
   inspectCmsDataTransferArchive,
 } from "./cmsDataTransferArchive";
 
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 
 const AUTHOR_ID = "cms-transfer-test-user";
 
@@ -100,13 +95,11 @@ async function seedAssetFixture() {
 }
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 afterEach(async () => {

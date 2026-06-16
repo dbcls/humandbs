@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import type { DB } from "@/db/database";
 import * as schema from "@/db/schema";
 
 import { buildDatabaseUrl } from "./utils";
@@ -47,7 +48,7 @@ const EXCLUDED_CONTENT_IDS = new Set([
   "guideline-revision7",
 ]);
 
-type Db = ReturnType<typeof drizzle<typeof schema>>;
+type Db = DB;
 
 export type MigrateResult = {
   migrated: number;
@@ -170,11 +171,7 @@ export async function migrateContentItemsToDocuments(
             })
             .execute();
         } else {
-          await db
-            .insert(schema.documentVersion)
-            .values(values)
-            .onConflictDoNothing()
-            .execute();
+          await db.insert(schema.documentVersion).values(values).onConflictDoNothing().execute();
         }
 
         console.log(`  [${translation.lang}] ${item.id} → document v1`);

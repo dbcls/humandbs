@@ -1,6 +1,7 @@
 import { and, desc, eq, exists, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
@@ -133,7 +134,7 @@ function mapTranslations(
 }
 
 async function syncTags(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Parameters<Parameters<DB["transaction"]>[0]>[0],
   itemId: string,
   tagIds: string[],
 ) {
@@ -143,7 +144,7 @@ async function syncTags(
   }
 }
 
-export function createNewsItemRepository(database: typeof db): NewsItemRepository {
+export function createNewsItemRepository(database: DB): NewsItemRepository {
   return {
     async listPublishedTitles({ limit = 5, offset = 0, locale, filters = {} }) {
       const conditions = [eq(newsTranslation.lang, locale), lte(newsItem.publishedAt, new Date())];

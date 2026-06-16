@@ -1,18 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import * as schema from "@/db/schema";
-import {
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
+import { createTestDb } from "@/tests/fixtures/test-db";
 
 import { migrateContentItemsToDocuments } from "./migrate-content-items-to-documents";
 
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 
 async function insertUser(id = "system"): Promise<void> {
   await db
@@ -27,7 +23,12 @@ async function insertContentItem(
 ): Promise<void> {
   await db
     .insert(schema.contentItem)
-    .values({ id, authorId: "system", publishedAt: opts.publishedAt ?? null, hideTOC: opts.hideTOC ?? true })
+    .values({
+      id,
+      authorId: "system",
+      publishedAt: opts.publishedAt ?? null,
+      hideTOC: opts.hideTOC ?? true,
+    })
     .execute();
 }
 
@@ -55,21 +56,21 @@ async function insertTranslation(
 }
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 afterEach(async () => {
-  await db.execute(sql`SET session_replication_role = replica`);
-  await db.execute(
-    sql`TRUNCATE TABLE document_version, document, content_translation, content_item, "user" RESTART IDENTITY CASCADE`,
-  );
-  await db.execute(sql`SET session_replication_role = DEFAULT`);
+  await testDb.clearTables([
+    "document_version",
+    "document",
+    "content_translation",
+    "content_item",
+    '"user"',
+  ]);
 });
 
 describe("migrateContentItemsToDocuments", () => {
@@ -118,7 +119,10 @@ describe("migrateContentItemsToDocuments", () => {
     await insertUser();
     await insertContentItem("acknowledgement");
     await insertTranslation("acknowledgement", "ja", { title: "謝辞", content: "<p>ja</p>" });
-    await insertTranslation("acknowledgement", "en", { title: "Acknowledgement", content: "<p>en</p>" });
+    await insertTranslation("acknowledgement", "en", {
+      title: "Acknowledgement",
+      content: "<p>en</p>",
+    });
 
     await migrateContentItemsToDocuments(false, db);
 

@@ -9,13 +9,13 @@ import type {
 } from "@/config/site-navigation";
 import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import { normalizeSiteNavigationConfig } from "@/config/site-navigation.schema";
-import type { db } from "@/db/database";
+import type { DB } from "@/db/database";
 import { document } from "@/db/schema";
 
 const NAVBAR_GROUP_NAMESPACE = "62ca65af-a081-4daf-8db6-a491d694c7a6";
 const FOOTER_GROUP_NAMESPACE = "f6456547-d0b8-4b1f-9830-c80caefb7631";
 
-type DbLike = typeof db;
+type DbLike = DB;
 
 type TemplateGroup = {
   label: Record<string, string>;

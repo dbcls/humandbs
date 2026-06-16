@@ -146,9 +146,7 @@ bun run db:clear -- --tables=news_item,news_translation
 bun test ./src/scripts/database/tests
 ```
 
-Tests run against a `humandbs_test` database in the existing dev Postgres container. The test setup creates the database, applies the current schema via `drizzle-kit push`, and drops it after all tests complete. `clearTables()` truncates data between tests.
-
-The dev Postgres container must be running and `HUMANDBS_POSTGRES_*` env vars must be set.
+Tests run against an in-memory PGlite database. The test fixture creates a fresh PGlite-backed Drizzle instance per test file, bootstraps the current test schema, and `clearTables()` truncates data between tests.
 
 ## Environment Variables
 

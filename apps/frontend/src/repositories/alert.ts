@@ -3,6 +3,7 @@ import z from "zod";
 
 import type { Locale } from "@/config/i18n";
 import { localeSchema } from "@/config/i18n";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { alert, alertTranslation, user } from "@/db/schema";
 
@@ -150,7 +151,7 @@ function mapAlertRows(
   return [...grouped.values()];
 }
 
-export function createAlertsRepository(database: typeof db): AlertsRepository {
+export function createAlertsRepository(database: DB): AlertsRepository {
   return {
     listActive: async ({ lang }) => {
       const now = new Date().toISOString().slice(0, 10);
