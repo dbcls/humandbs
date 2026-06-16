@@ -167,29 +167,26 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       return await db.transaction(async (tx) => {
         const [newDoc] = await tx.insert(document).values({ contentId: newContentId }).returning();
 
-        const [newVersion] = await tx
-          .insert(documentVersion)
-          .values({
+        await tx.insert(documentVersion).values(
+          i18n.locales.map((locale) => ({
             documentId: newDoc.id,
-            status: "draft",
-            locale: i18n.defaultLocale,
+            status: "draft" as const,
+            locale,
             authorId: userId,
             versionNumber: 1,
-          })
-          .returning();
+          })),
+        );
 
         return {
           id: newDoc.id,
           contentId: newContentId,
-          latestVersionNumber: newVersion.versionNumber,
-          translations: [
-            {
-              status: "draft",
-              lang: newVersion.locale,
-              title: newVersion.title ?? undefined,
-              hasUnpublishedChanges: false,
-            },
-          ],
+          latestVersionNumber: 1,
+          translations: i18n.locales.map((locale) => ({
+            status: "draft" as const,
+            lang: locale,
+            title: undefined,
+            hasUnpublishedChanges: false,
+          })),
         };
       });
     },

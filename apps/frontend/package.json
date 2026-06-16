@@ -113,6 +113,8 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/eslint-plugin-query": "^5.100.10",
     "@tanstack/eslint-plugin-router": "^1.161.6",
+    "@tanstack/react-devtools": "^0.10.5",
+    "@tanstack/react-form-devtools": "^0.2.29",
     "@types/d3": "^7.4.3",
     "@types/node": "^22.5.4",
     "@types/pg": "^8.16.0",

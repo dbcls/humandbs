@@ -71,6 +71,13 @@
       "when": 1781170292971,
       "tag": "0009_thin_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781578443469,
+      "tag": "0010_lonely_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

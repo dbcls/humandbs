@@ -8,6 +8,7 @@ import type { DB } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
+import type { DocVersionResponse } from "@/serverFunctions/documentVersion";
 
 import type { DocumentListItemTranslation, RawDocumentsListItem } from "./document";
 import { groupDocumentVersions, sortTranslations } from "./document";
@@ -66,7 +67,7 @@ interface DocumentVersionRepo {
 
   getVersionList: (contentId: string) => Promise<DocumentVersionsResponse[]>;
 
-  getVersion: (contentId: string, versionNumber: number) => Promise<DocAnyVersionResponseRaw[]>;
+  getVersion: (contentId: string, versionNumber: number) => Promise<DocVersionResponse>;
 
   saveDraft: (
     contentId: string,
@@ -74,7 +75,11 @@ interface DocumentVersionRepo {
     lang: Locale,
     data: { title?: string; content?: string },
     userId?: string,
-  ) => Promise<unknown>;
+  ) => Promise<{
+    createdAt: Date;
+    updatedAt: Date;
+    author: { name: string | null; email: string } | null;
+  }>;
 
   publish: (contentId: string, versionNumber: number, lang: Locale) => Promise<unknown>;
 
@@ -103,6 +108,20 @@ async function resolveDocumentId(database: DB, contentId: string): Promise<strin
   });
   if (!doc) throw notFound();
   return doc.id;
+}
+
+async function resolveExistingUserId(
+  database: DB,
+  userId: string | undefined,
+): Promise<string | undefined> {
+  if (!userId) return undefined;
+
+  const existingUser = await database.query.user.findFirst({
+    where: (table, { eq }) => eq(table.id, userId),
+    columns: { id: true },
+  });
+
+  return existingUser?.id;
 }
 
 export function createDocumentVersionRepository(database: DB): DocumentVersionRepo {
@@ -266,7 +285,8 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           updatedAt: true,
         },
       });
-      return rows.map((r) => ({
+
+      const flatened = rows.map((r) => ({
         ...r,
         contentId,
         hideTOC: r.document.hideTOC ?? true,
@@ -276,18 +296,26 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           ? { ...r.author, name: r.author.name ?? "Unknown", email: r.author.email ?? "" }
           : { name: "Unknown", email: "" },
       }));
+
+      const grouped = groupDocVersion(flatened);
+
+      return grouped;
     },
 
     saveDraft: async (contentId, versionNumber, lang, data, userId) => {
       const documentId = await resolveDocumentId(database, contentId);
-      return database
+      const existingUserId = await resolveExistingUserId(database, userId);
+      const conflictUpdateColumns = existingUserId
+        ? (["content", "title", "updatedAt", "updatedBy"] as const)
+        : (["content", "title", "updatedAt"] as const);
+      const [result] = await database
         .insert(documentVersion)
         .values({
           documentId,
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
           locale: lang,
-          updatedBy: userId,
+          ...(existingUserId ? { updatedBy: existingUserId } : {}),
           ...data,
         })
         .onConflictDoUpdate({
@@ -297,8 +325,26 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             documentVersion.locale,
             documentVersion.status,
           ],
-          set: buildConflictUpdateColumns(documentVersion, ["content", "title"]),
+          set: buildConflictUpdateColumns(documentVersion, [...conflictUpdateColumns]),
+        })
+        .returning({
+          createdAt: documentVersion.createdAt,
+          updatedAt: documentVersion.updatedAt,
+          updatedBy: documentVersion.updatedBy,
         });
+
+      let author: { name: string | null; email: string } | null = null;
+      if (result.updatedBy) {
+        const authorRow = await database.query.user.findFirst({
+          where: (table, { eq }) => eq(table.id, result.updatedBy!),
+          columns: { name: true, email: true },
+        });
+        if (authorRow?.email) {
+          author = { name: authorRow.name ?? null, email: authorRow.email };
+        }
+      }
+
+      return { createdAt: result.createdAt, updatedAt: result.updatedAt, author };
     },
 
     publish: (contentId, versionNumber, locale) =>
@@ -489,4 +535,60 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         return { versionNumber: newVersionNumber };
       }),
   };
+}
+
+/**
+ *
+ * @param rawVersion raw version return
+ * @returns grouped result
+ */
+export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVersionResponse {
+  if (rawVersion.length === 0) {
+    return {
+      contentId: "",
+      versionNumber: 0,
+      translations: {},
+    };
+  }
+
+  const result: DocVersionResponse = {
+    contentId: rawVersion[0].contentId,
+    versionNumber: rawVersion[0].versionNumber,
+    translations: {},
+  };
+
+  for (const verStatusLang of rawVersion) {
+    let translation = result.translations[verStatusLang.locale];
+    if (!translation) {
+      translation = {
+        createdAt: verStatusLang.createdAt,
+        updatedAt: verStatusLang.updatedAt,
+        author: verStatusLang.author,
+        [verStatusLang.status]: {
+          title: verStatusLang.title ?? "",
+          content: verStatusLang.content ?? "",
+        },
+      };
+    } else {
+      translation[verStatusLang.status] = {
+        title: verStatusLang.title ?? "",
+        content: verStatusLang.content ?? "",
+      };
+      // keep the most recent updatedAt across statuses for this locale
+      if (verStatusLang.updatedAt > translation.updatedAt) {
+        translation.updatedAt = verStatusLang.updatedAt;
+      }
+    }
+
+    // copy published content in draft
+    if (!translation.draft) {
+      translation.draft = {
+        content: translation.published?.content ?? "",
+        title: translation.published?.title ?? "",
+      };
+    }
+
+    result.translations[verStatusLang.locale] = translation;
+  }
+  return result;
 }

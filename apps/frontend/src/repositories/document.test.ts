@@ -228,6 +228,25 @@ describe("documentRepository db actions", () => {
     expect(doc1?.latestVersionNumber).toEqual(2);
   });
 
+  test("creates draft rows for all locales when creating a new document", async () => {
+    const result = await repo.create("new-doc-all-locales", AUTHOR_ID_1);
+
+    const rows = await db.query.documentVersion.findMany({
+      where: (t, { eq }) => eq(t.documentId, result.id),
+    });
+
+    expect(rows).toBeArrayOfSize(i18n.locales.length);
+    for (const locale of i18n.locales) {
+      const row = rows.find((r) => r.locale === locale);
+      expect(row).toBeDefined();
+      expect(row?.status).toBe("draft");
+      expect(row?.versionNumber).toBe(1);
+    }
+
+    expect(result.translations).toBeArrayOfSize(i18n.locales.length);
+    expect(result.translations.every((t) => t.status === "draft")).toBeTrue();
+  });
+
   test("version list groups translations per version using document list semantics", async () => {
     await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
 

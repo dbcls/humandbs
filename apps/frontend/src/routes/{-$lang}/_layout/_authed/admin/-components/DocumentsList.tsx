@@ -243,7 +243,6 @@ function ListItems({
   const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
 
-  console.log("documents", documents);
   const groupedDocs = useMemo(() => {
     const groups = new Map<string, DocumentsListItemResponse[]>();
     for (const doc of documents) {
