@@ -16,7 +16,7 @@ const dateStr = (v: unknown): string | null => {
 const runQuery = async <T>(sql: string, mapFn: (r: Record<string, unknown>) => T): Promise<T[]> => {
   const rows = await jgaSql.begin(async (tx) => {
     await tx.unsafe(`SET search_path TO ${JGA_DB_SCHEMA}, public`)
-    await tx.unsafe("SET statement_timeout TO '300s'")
+    await tx.unsafe("SET statement_timeout TO 0")
     return await tx.unsafe(sql)
   })
   return (rows as Record<string, unknown>[]).map(mapFn)

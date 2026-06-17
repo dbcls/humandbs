@@ -23,14 +23,21 @@ const main = async () => {
   console.log("")
 
   console.log("[1/5] Extracting from jgadb...")
-  const [coreRaw, peopleRaw, jgadRaw, duPhaseRaw, jgadHumIdRaw] = await Promise.all([
-    extractCore(),
-    extractPeople(),
-    extractJgad(),
-    extractDuPhase(),
-    extractJgadHumId(),
-  ])
-  console.log(`  core: ${coreRaw.length}, people: ${peopleRaw.length}, jgad: ${jgadRaw.length}, du-phase: ${duPhaseRaw.length}, jgad-hum: ${jgadHumIdRaw.length}`)
+  console.log("  extracting core...")
+  const coreRaw = await extractCore()
+  console.log(`  core: ${coreRaw.length}`)
+  console.log("  extracting people...")
+  const peopleRaw = await extractPeople()
+  console.log(`  people: ${peopleRaw.length}`)
+  console.log("  extracting jgad...")
+  const jgadRaw = await extractJgad()
+  console.log(`  jgad: ${jgadRaw.length}`)
+  console.log("  extracting du-phase...")
+  const duPhaseRaw = await extractDuPhase()
+  console.log(`  du-phase: ${duPhaseRaw.length}`)
+  console.log("  extracting jgad-humid...")
+  const jgadHumIdRaw = await extractJgadHumId()
+  console.log(`  jgad-hum: ${jgadHumIdRaw.length}`)
 
   console.log("[2/5] Building occurrences...")
   const occs = buildOccurrences(coreRaw, peopleRaw)
