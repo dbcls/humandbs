@@ -21,7 +21,7 @@ import { UnpublishedDot } from "./UnpublishedDot";
 type AdminListItemTranslation =
   | DocumentListItemTranslation
   | {
-      status: Exclude<(typeof RESEARCH_STATUS)[number], "published" | "draft">;
+      status: (typeof RESEARCH_STATUS)[number];
       lang: Locale;
       title: string | undefined;
     };
@@ -69,6 +69,7 @@ export function AdminListItem({
                   {translation.title}
                 </span>
                 {translation.status === "published" &&
+                "hasUnpublishedChanges" in translation &&
                 translation.hasUnpublishedChanges &&
                 !hideUnpublishedDot ? (
                   <UnpublishedDot />
