@@ -764,7 +764,9 @@ const JGA_STATUS_HISTORY_ENTRY = {
 
 /** J-DS application body (`DsApplicationTransformedSchema`). */
 const DS_APPLICATION_BODY = {
-  jdsId: JDS_ID,
+  jdsId: `${JDS_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jsubIds: ["JSUB000001"],
   humIds: [HUM_ID],
   jgaIds: ["JGAS000001"],
@@ -807,14 +809,15 @@ const DS_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }
 
 /** J-DU application body (`DuApplicationTransformedSchema`). */
 const DU_APPLICATION_BODY = {
-  jduId: JDU_ID,
+  jduId: `${JDU_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jgadIds: [DATASET_ID],
   jgasIds: ["JGAS000001"],
   humIds: [HUM_ID],
@@ -878,7 +881,6 @@ const DU_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }

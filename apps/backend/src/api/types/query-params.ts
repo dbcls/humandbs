@@ -251,3 +251,17 @@ export const ResearchSummarySchema = z.object({
     .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
+
+// === JGA Shinsei List Query ===
+
+export const JgaShinseiDsListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DS\d+$/).optional()
+    .describe("Filter by master DS ID (e.g., 'J-DS002494'). Returns all versions of this master."),
+})
+export type JgaShinseiDsListQuery = z.infer<typeof JgaShinseiDsListQuerySchema>
+
+export const JgaShinseiDuListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DU\d+$/).optional()
+    .describe("Filter by master DU ID (e.g., 'J-DU006498'). Returns all versions of this master."),
+})
+export type JgaShinseiDuListQuery = z.infer<typeof JgaShinseiDuListQuerySchema>

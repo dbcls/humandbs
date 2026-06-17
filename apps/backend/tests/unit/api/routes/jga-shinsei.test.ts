@@ -71,15 +71,22 @@ void mock.module("@/api/middleware/auth", () => ({
 interface ListResult { hits: unknown[]; total: number }
 
 const mockListDs = mock(async (..._args: unknown[]): Promise<ListResult> => ({ hits: [], total: 0 }))
-const mockGetDs = mock(async (jdsId: string): Promise<unknown> => ({ jdsId }))
+const mockGetDs = mock(async (applIdStr: string): Promise<unknown> => ({ applIdStr }))
+const mockGetDsByMaster = mock(async (dsDuId: string): Promise<unknown> => ({ dsDuId }))
 const mockListDu = mock(async (..._args: unknown[]): Promise<ListResult> => ({ hits: [], total: 0 }))
-const mockGetDu = mock(async (jduId: string): Promise<unknown> => ({ jduId }))
+const mockGetDu = mock(async (applIdStr: string): Promise<unknown> => ({ applIdStr }))
 
 void mock.module("@/api/db-client/jga-shinsei", () => ({
   listDsApplications: mockListDs,
   getDsApplication: mockGetDs,
+  getDsApplicationByMasterId: mockGetDsByMaster,
   listDuApplications: mockListDu,
   getDuApplication: mockGetDu,
+  parseApplIdStr: (s: string) => {
+    const m = s.match(/^(J-D[SU]\d+)-(\d{3})$/)
+    if (!m) throw new Error(`Invalid applIdStr: ${s}`)
+    return { dsDuId: m[1], applVersion: parseInt(m[2], 10) }
+  },
 }))
 
 const { getTestApp } = await import("../helpers")
@@ -105,9 +112,9 @@ describe("api/routes/jga-shinsei", () => {
   describe("authentication required (IT-JGA-01)", () => {
     it.each([
       ["GET /jga-shinsei/ds", "/jga-shinsei/ds"],
-      ["GET /jga-shinsei/ds/{jdsId}", "/jga-shinsei/ds/J-DS000001"],
+      ["GET /jga-shinsei/ds/{jdsApplId}", "/jga-shinsei/ds/J-DS000001-001"],
       ["GET /jga-shinsei/du", "/jga-shinsei/du"],
-      ["GET /jga-shinsei/du/{jduId}", "/jga-shinsei/du/J-DU000001"],
+      ["GET /jga-shinsei/du/{jduApplId}", "/jga-shinsei/du/J-DU000001-001"],
     ])("%s returns 401 without Authorization", async (_label, path) => {
       const app = getTestApp()
       const res = await app.request(path)
@@ -129,9 +136,9 @@ describe("api/routes/jga-shinsei", () => {
   describe("admin only (IT-JGA-02)", () => {
     it.each([
       ["GET /jga-shinsei/ds", "/jga-shinsei/ds"],
-      ["GET /jga-shinsei/ds/{jdsId}", "/jga-shinsei/ds/J-DS000001"],
+      ["GET /jga-shinsei/ds/{jdsApplId}", "/jga-shinsei/ds/J-DS000001-001"],
       ["GET /jga-shinsei/du", "/jga-shinsei/du"],
-      ["GET /jga-shinsei/du/{jduId}", "/jga-shinsei/du/J-DU000001"],
+      ["GET /jga-shinsei/du/{jduApplId}", "/jga-shinsei/du/J-DU000001-001"],
     ])("%s returns 403 for non-admin authenticated", async (_label, path) => {
       const app = getTestApp()
       const res = await app.request(path, { headers: userAuth() })
@@ -154,12 +161,13 @@ describe("api/routes/jga-shinsei", () => {
     it.each([
       "invalid-id",
       "J-DS", // missing digits
-      "JDS000001", // missing hyphen
-      "J-DU000001", // wrong prefix for /ds/
-      "j-ds000001", // wrong case
-    ])("rejects malformed jdsId=%s with 400", async (jdsId) => {
+      "JDS000001-001", // missing hyphen
+      "J-DU000001-001", // wrong prefix for /ds/
+      "j-ds000001-001", // wrong case
+      "J-DS000001", // missing version suffix
+    ])("rejects malformed jdsApplId=%s with 400", async (jdsApplId) => {
       const app = getTestApp()
-      const res = await app.request(`/jga-shinsei/ds/${encodeURIComponent(jdsId)}`, {
+      const res = await app.request(`/jga-shinsei/ds/${encodeURIComponent(jdsApplId)}`, {
         headers: adminAuth(),
       })
       expect(res.status).toBe(400)
@@ -172,11 +180,12 @@ describe("api/routes/jga-shinsei", () => {
     it.each([
       "invalid-id",
       "J-DU",
-      "JDU000001",
-      "J-DS000001",
-    ])("rejects malformed jduId=%s with 400", async (jduId) => {
+      "JDU000001-001",
+      "J-DS000001-001",
+      "J-DU000001", // missing version suffix
+    ])("rejects malformed jduApplId=%s with 400", async (jduApplId) => {
       const app = getTestApp()
-      const res = await app.request(`/jga-shinsei/du/${encodeURIComponent(jduId)}`, {
+      const res = await app.request(`/jga-shinsei/du/${encodeURIComponent(jduApplId)}`, {
         headers: adminAuth(),
       })
       expect(res.status).toBe(400)
@@ -185,18 +194,18 @@ describe("api/routes/jga-shinsei", () => {
       expect(mockGetDu).not.toHaveBeenCalled()
     })
 
-    it("accepts well-formed jdsId and reaches the DB layer", async () => {
+    it("accepts well-formed jdsApplId and reaches the DB layer", async () => {
       const app = getTestApp()
-      await app.request("/jga-shinsei/ds/J-DS000123", { headers: adminAuth() })
+      await app.request("/jga-shinsei/ds/J-DS000123-001", { headers: adminAuth() })
       expect(mockGetDs).toHaveBeenCalledTimes(1)
-      expect(mockGetDs.mock.calls[0]?.[0]).toBe("J-DS000123")
+      expect(mockGetDs.mock.calls[0]?.[0]).toBe("J-DS000123-001")
     })
 
-    it("accepts well-formed jduId and reaches the DB layer", async () => {
+    it("accepts well-formed jduApplId and reaches the DB layer", async () => {
       const app = getTestApp()
-      await app.request("/jga-shinsei/du/J-DU000456", { headers: adminAuth() })
+      await app.request("/jga-shinsei/du/J-DU000456-001", { headers: adminAuth() })
       expect(mockGetDu).toHaveBeenCalledTimes(1)
-      expect(mockGetDu.mock.calls[0]?.[0]).toBe("J-DU000456")
+      expect(mockGetDu.mock.calls[0]?.[0]).toBe("J-DU000456-001")
     })
   })
 
@@ -220,14 +229,14 @@ describe("api/routes/jga-shinsei", () => {
       const res = await app.request("/jga-shinsei/ds?page=1&limit=1", { headers: adminAuth() })
       expect(res.status).toBe(200)
       expect(mockListDs).toHaveBeenCalledTimes(1)
-      expect(mockListDs.mock.calls[0]).toEqual([1, 1])
+      expect(mockListDs.mock.calls[0]).toEqual([1, 1, undefined])
     })
 
     it("accepts page=1 limit=100 (upper boundary)", async () => {
       const app = getTestApp()
       const res = await app.request("/jga-shinsei/ds?page=1&limit=100", { headers: adminAuth() })
       expect(res.status).toBe(200)
-      expect(mockListDs.mock.calls[0]).toEqual([1, 100])
+      expect(mockListDs.mock.calls[0]).toEqual([1, 100, undefined])
     })
   })
 })

@@ -51,3 +51,17 @@ export const JduIdParamsSchema = z.object({
     .describe("DU application ID (e.g., 'J-DU006498')"),
 })
 export type JduIdParams = z.infer<typeof JduIdParamsSchema>
+
+export const JdsApplIdParamsSchema = z.object({
+  jdsApplId: z.string()
+    .regex(/^J-DS\d+-\d{3}$/)
+    .describe("DS application version ID (e.g., 'J-DS002494-001')"),
+})
+export type JdsApplIdParams = z.infer<typeof JdsApplIdParamsSchema>
+
+export const JduApplIdParamsSchema = z.object({
+  jduApplId: z.string()
+    .regex(/^J-DU\d+-\d{3}$/)
+    .describe("DU application version ID (e.g., 'J-DU006498-001')"),
+})
+export type JduApplIdParams = z.infer<typeof JduApplIdParamsSchema>

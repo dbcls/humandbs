@@ -13,7 +13,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
-import { getDsApplication } from "@/api/db-client/jga-shinsei"
+import { getDsApplicationByMasterId } from "@/api/db-client/jga-shinsei"
 import { NotFoundError } from "@/api/errors"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
@@ -122,8 +122,8 @@ templatesRouter.use("*", requireAdmin)
 templatesRouter.openapi(getResearchTemplateRoute, async (c) => {
   const { jdsId } = c.req.valid("param")
   const requestId = getRequestId(c)
-  // getDsApplication throws NotFoundError if J-DS is not in the JGA-Shinsei DB
-  const jds = await getDsApplication(jdsId)
+  // getDsApplicationByMasterId returns the latest version of the J-DS application
+  const jds = await getDsApplicationByMasterId(jdsId)
   const data = await mapDsApplicationToResearchTemplate(jds, requestId)
   return singleReadOnlyResponse(c, data)
 })

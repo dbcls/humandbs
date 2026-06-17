@@ -9,7 +9,7 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import { fetchDsRaw, listIds } from "@/api/db-client/jga-shinsei"
+import { fetchDsRaw, listVersions } from "@/api/db-client/jga-shinsei"
 import type { SingleReadOnlyResponse } from "@/api/types"
 
 import {
@@ -90,16 +90,15 @@ describe("IT-TEMPLATE-*: template endpoints", () => {
   // === Success paths ===
 
   itWithJgaAdmin("IT-TEMPLATE-07: GET /templates/research/{existing jdsId} returns the draft payload", async (token) => {
-    // Probe an existing J-DS via the same list endpoint used by IT-JGA-03.
-    // listIds returns "raw" J-DS IDs; we then verify the row actually exists in
-    // the DB before requesting the template (some J-DS IDs in listIds may not
-    // have a usable nbdc_application row).
-    const ids = await listIds("J-DS", 1, 5)
+    // Probe an existing J-DS via listVersions (returns appl_ids).
+    // We then fetchDsRaw to verify the row exists and extract the master-level
+    // jds_id (e.g. "J-DS002494") which the /templates/research/ route expects.
+    const versions = await listVersions("J-DS", 1, 5)
     let existingJdsId: string | null = null
-    for (const candidate of ids.ids) {
-      const raws = await fetchDsRaw([candidate])
+    for (const applId of versions.applIds) {
+      const raws = await fetchDsRaw([applId])
       if (raws.length > 0) {
-        existingJdsId = candidate
+        existingJdsId = raws[0].jds_id
         break
       }
     }
