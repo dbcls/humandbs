@@ -1,5 +1,5 @@
 import type { ResearchTemplateData } from "../../../../../../../../../../backend/src/api/types/templates";
-import type { EditableResearchValues } from "./jdsResearchValues";
+import type { EditableResearchValues } from "./researchValues";
 
 export type FieldStatus = "conflict" | "can-fill" | "same" | "na";
 export type FieldDataType =

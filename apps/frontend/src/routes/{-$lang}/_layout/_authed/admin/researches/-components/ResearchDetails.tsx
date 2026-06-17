@@ -42,11 +42,11 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { DatasetCreateView } from "./DatasetCreateView";
 import { DatasetEditView } from "./DatasetEditView";
-import { MergeJDSResearchDialog } from "./MergeJDSResearch/index";
+import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { TabContentLayout } from "./TabContentLayout";
-import type { MergeResearchResult } from "./utils/jdsResearchValues";
+import type { MergeResearchResult } from "./utils/researchValues";
 
 const topLevelFields = [
   "title",
@@ -375,7 +375,7 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedJDSValues(
+  function applyMergedValues(
     values: MergeResearchResult["values"],
     relatedAccessions: string[],
   ) {
@@ -507,11 +507,12 @@ export function ResearchDetails({
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              <MergeJDSResearchDialog
+              <MergeResearchDialog
                 className="mr-auto"
                 currentValues={formValues}
+                currentHumId={humId}
                 disabled={!isViewingDraft || !canUpdate}
-                onMerge={applyMergedJDSValues}
+                onMerge={applyMergedValues}
               />
 
               {canDelete && (

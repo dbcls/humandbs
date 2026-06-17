@@ -113,7 +113,7 @@ function InlineScalarEditor({
             onClick={() => setText(toText(field.incomingValue))}
             className="rounded bg-gray-100 px-2 py-0.5 text-gray-700 text-xs hover:bg-gray-200"
           >
-            From J-DS
+            From source
           </button>
         )}
         {hasCurrent && (
@@ -325,7 +325,7 @@ export function CompareArea({
           )}
         </button>
 
-        {/* Value from J-DS */}
+        {/* Incoming value */}
         <button
           type="button"
           disabled={!isActionable}
@@ -339,7 +339,7 @@ export function CompareArea({
           )}
         >
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-gray-500 text-xs">Value from J-DS</div>
+            <div className="font-semibold text-gray-500 text-xs">Incoming value</div>
             {isActionable && (
               <span
                 className={cn(

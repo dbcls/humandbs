@@ -20,10 +20,10 @@ import type { CreateResearchResult } from "@/serverFunctions/researches";
 import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
-import { MergeJDSResearchDialog } from "./MergeJDSResearch/index";
+import { MergeResearchDialog } from "./MergeResearch/index";
 import { DUMMY_HUM_ID } from "./utils/dummyResearch";
-import type { NewResearchMergeValues } from "./utils/jdsResearchValues";
-import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/jdsResearchValues";
+import type { NewResearchMergeValues } from "./utils/researchValues";
+import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -105,7 +105,7 @@ export function NewResearchForm({
   });
   const formValues = useStore(form.store, (state) => state.values);
 
-  function applyMergedJDSValues(values: NewResearchMergeValues, incoming: string[]) {
+  function applyMergedValues(values: NewResearchMergeValues, incoming: string[]) {
     setRelatedAccessions(incoming);
     if (values.title !== undefined) form.setFieldValue("title", values.title);
     if (values.summary !== undefined) form.setFieldValue("summary", values.summary);
@@ -134,11 +134,11 @@ export function NewResearchForm({
           {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
-            <MergeJDSResearchDialog
+            <MergeResearchDialog
               className="mr-auto"
               currentValues={toResearchValuesForMerge(formValues)}
               onMerge={(values, relatedAccessions) =>
-                applyMergedJDSValues(pickNewResearchMergeValues(values), relatedAccessions)
+                applyMergedValues(pickNewResearchMergeValues(values), relatedAccessions)
               }
             />
             <Button
