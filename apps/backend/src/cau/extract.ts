@@ -13,11 +13,17 @@ const dateStr = (v: unknown): string | null => {
   return s ? s.substring(0, 10) : null
 }
 
-const setSchema = () => jgaSql.unsafe(`SET search_path TO ${JGA_DB_SCHEMA}, public`)
+const runQuery = async <T>(sql: string, mapFn: (r: Record<string, unknown>) => T): Promise<T[]> => {
+  const rows = await jgaSql.begin(async (tx) => {
+    await tx.unsafe(`SET search_path TO ${JGA_DB_SCHEMA}, public`)
+    await tx.unsafe("SET statement_timeout TO '300s'")
+    return await tx.unsafe(sql)
+  })
+  return (rows as Record<string, unknown>[]).map(mapFn)
+}
 
-export const extractCore = async (): Promise<RawCore[]> => {
-  await setSchema()
-  const rows = await jgaSql.unsafe(`
+export const extractCore = async (): Promise<RawCore[]> =>
+  runQuery(`
     WITH du AS (
       SELECT na.appl_id, na.ds_du_id AS jdu_id, na.appl_version, m.account_group
       FROM nbdc_application na
@@ -53,8 +59,7 @@ export const extractCore = async (): Promise<RawCore[]> => {
     LEFT JOIN st ON st.appl_id=du.appl_id
     LEFT JOIN ev ON ev.appl_id=du.appl_id
     ORDER BY du.jdu_id, du.appl_version, du.appl_id
-  `)
-  return rows.map(r => ({
+  `, r => ({
     jduId: str(r.jdu_id),
     applId: str(r.appl_id),
     applVersion: str(r.appl_version),
@@ -69,11 +74,9 @@ export const extractCore = async (): Promise<RawCore[]> => {
     piFirstJa: str(r.pi_first_ja),
     piInstEn: str(r.pi_inst_en),
   }))
-}
 
-export const extractPeople = async (): Promise<RawPerson[]> => {
-  await setSchema()
-  const rows = await jgaSql.unsafe(`
+export const extractPeople = async (): Promise<RawPerson[]> =>
+  runQuery(`
     WITH du AS (
       SELECT na.appl_id FROM nbdc_application na
       JOIN nbdc_application_master m ON m.ds_du_id=na.ds_du_id AND m.data_type=2
@@ -113,8 +116,7 @@ export const extractPeople = async (): Promise<RawPerson[]> => {
       max(value) FILTER (WHERE key='collaborator_name'),
       max(value) FILTER (WHERE key IN ('member_orcid','collaborator_orcid')), '') <> ''
     ORDER BY appl_id, role, idx
-  `)
-  return rows.map(r => ({
+  `, r => ({
     applId: str(r.appl_id),
     role: str(r.role) as "member" | "collaborator",
     idx: Number(r.idx),
@@ -127,11 +129,9 @@ export const extractPeople = async (): Promise<RawPerson[]> => {
     institution: str(r.institution),
     nameFull: str(r.name_full),
   }))
-}
 
-export const extractJgad = async (): Promise<RawJgad[]> => {
-  await setSchema()
-  const rows = await jgaSql.unsafe(`
+export const extractJgad = async (): Promise<RawJgad[]> =>
+  runQuery(`
     WITH du AS (
       SELECT na.appl_id FROM nbdc_application na
       JOIN nbdc_application_master m ON m.ds_du_id=na.ds_du_id AND m.data_type=2
@@ -156,16 +156,13 @@ export const extractJgad = async (): Promise<RawJgad[]> => {
     SELECT DISTINCT appl_id, jgad
     FROM (SELECT * FROM up UNION ALL SELECT * FROM ev) z
     ORDER BY appl_id, jgad
-  `)
-  return rows.map(r => ({
+  `, r => ({
     applId: str(r.appl_id),
     jgad: str(r.jgad),
   }))
-}
 
-export const extractDuPhase = async (): Promise<RawDuPhase[]> => {
-  await setSchema()
-  const rows = await jgaSql.unsafe(`
+export const extractDuPhase = async (): Promise<RawDuPhase[]> =>
+  runQuery(`
     WITH du AS (SELECT DISTINCT ds_du_id FROM nbdc_application_master WHERE data_type=2),
     apprtrans AS (
       SELECT h.ds_du_id, min(h.history_date)::date AS approved_at
@@ -187,19 +184,16 @@ export const extractDuPhase = async (): Promise<RawDuPhase[]> => {
     LEFT JOIN nbdc_use_period up ON up.ds_du_id=du.ds_du_id
     LEFT JOIN endtrans et ON et.ds_du_id=du.ds_du_id
     ORDER BY du.ds_du_id
-  `)
-  return rows.map(r => ({
+  `, r => ({
     dsDuId: str(r.ds_du_id),
     phaseType: str(r.phase_type),
     approvedAt: dateStr(r.approved_at),
     expireDate: dateStr(r.expire_date),
     endedDate: dateStr(r.ended_date),
   }))
-}
 
-export const extractJgadHumId = async (): Promise<RawJgadHumId[]> => {
-  await setSchema()
-  const rows = await jgaSql.unsafe(`
+export const extractJgadHumId = async (): Promise<RawJgadHumId[]> =>
+  runQuery(`
     SELECT DISTINCT jgad, hum_id FROM (
       SELECT a.accession AS jgad, na.hum_id
       FROM nbdc_application na
@@ -234,9 +228,7 @@ export const extractJgadHumId = async (): Promise<RawJgadHumId[]> => {
         AND cas.accession_status = 2098186
     ) combined
     ORDER BY jgad
-  `)
-  return rows.map(r => ({
+  `, r => ({
     jgad: str(r.jgad),
     humId: str(r.hum_id),
   }))
-}
