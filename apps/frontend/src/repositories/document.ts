@@ -7,6 +7,8 @@ import type { DOCUMENT_VERSION_STATUS, Document } from "@/db/schema";
 import { document, documentVersion } from "@/db/schema";
 import { filterDefined } from "@/utils/filter-defined";
 
+import { sortTranslationsByLocale } from "./utils";
+
 /**
  * List item of the documents list.
  *
@@ -294,11 +296,7 @@ export function sortTranslations(
 ): DocumentsListItemResponse[] {
   return documents.map((doc) => ({
     ...doc,
-    translations: doc.translations.sort((a, b) => {
-      if (a.lang === i18n.defaultLocale) return -1;
-      if (b.lang === i18n.defaultLocale) return 1;
-      return 0;
-    }),
+    translations: sortTranslationsByLocale(doc.translations),
   }));
 }
 

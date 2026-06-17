@@ -218,10 +218,10 @@ describe("alertsRepository.list", () => {
 
     const results = await repo.list();
     expect(results).toHaveLength(2);
-    expect(results.map((alert) => alert.translations.en?.content).sort()).toEqual([
-      "Alert one",
-      "Alert two",
-    ]);
+
+    expect(
+      results.map((alert) => alert.translations?.find((t) => t.lang === "en")?.content).sort(),
+    ).toEqual(["Alert one", "Alert two"]);
   });
 
   test("groups translations under one alert id", async () => {
@@ -237,8 +237,12 @@ describe("alertsRepository.list", () => {
 
     const results = await repo.list();
     expect(results).toHaveLength(1);
-    expect(results[0]?.translations.en?.content).toBe("Maintenance scheduled");
-    expect(results[0]?.translations.ja?.content).toBe("メンテナンスの予定");
+    expect(results[0]?.translations.find((t) => t.lang === "en")?.content).toBe(
+      "Maintenance scheduled",
+    );
+    expect(results[0]?.translations.find((t) => t.lang === "ja")?.content).toBe(
+      "メンテナンスの予定",
+    );
     expect(results[0]?.author.name).toBe("Test User");
     expect(results[0]?.updatedBy.name).toBe("Test User");
   });

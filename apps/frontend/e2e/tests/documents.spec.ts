@@ -99,10 +99,13 @@ test.describe("Admin documents CMS", () => {
 
     await detailsTitle.fill("draft ja title");
 
-    const draftJaItemTitle = documentsPage.documentsList
+    const draftJaItemTitleContainer = documentsPage.documentsList
       .locator("li")
       .filter({ hasText: newDocPath })
-      .getByText("draft ja title");
+      .locator("ul > li")
+      .first();
+
+    const draftJaItemTitle = draftJaItemTitleContainer.locator("span").first();
 
     await expect(draftJaItemTitle).toBeVisible();
     await expect(draftJaItemTitle).toHaveCSS("font-style", "italic");
@@ -126,10 +129,13 @@ test.describe("Admin documents CMS", () => {
 
     await detailsEnTitleInput.fill("draft en title");
 
-    const draftEnItemTitle = documentsPage.documentsList
+    const draftEnItemTitleContainer = documentsPage.documentsList
       .locator("li")
       .filter({ hasText: newDocPath })
-      .getByText("draft en title");
+      .locator("ul > li")
+      .last();
+
+    const draftEnItemTitle = draftEnItemTitleContainer.locator("span").first();
 
     await expect(draftEnItemTitle).toBeVisible();
     await expect(draftEnItemTitle).toHaveCSS("font-style", "italic");
@@ -147,19 +153,9 @@ test.describe("Admin documents CMS", () => {
     await expect(draftJaItemTitle).not.toHaveCSS("font-style", "italic");
     await expect(draftEnItemTitle).not.toHaveCSS("font-style", "italic");
 
-    const jaItemUnpublishedDot = documentsPage.documentsList
-      .locator("li")
-      .filter({ hasText: newDocPath })
-      .locator("ul > li")
-      .filter({ hasText: "draft ja title" })
-      .locator("span.rounded-full");
+    const jaItemUnpublishedDot = draftJaItemTitleContainer.locator("span.rounded-full");
 
-    const enItemUnpublishedDot = documentsPage.documentsList
-      .locator("li")
-      .filter({ hasText: newDocPath })
-      .locator("ul > li")
-      .filter({ hasText: "draft en title" })
-      .locator("span.rounded-full");
+    const enItemUnpublishedDot = draftEnItemTitleContainer.locator("span.rounded-full");
 
     await expect(jaItemUnpublishedDot).not.toBeVisible();
     await expect(enItemUnpublishedDot).not.toBeVisible();
@@ -191,7 +187,7 @@ test.describe("Admin documents CMS", () => {
     await publishBtn.click();
     await expect(publishBtn).toBeDisabled({ timeout: 5000 });
 
-    // expect the title in the item to be updated
+    // expect the title in the item to be updated to newly published
 
     await expect(jaItemUnpublishedDot).not.toBeVisible({ timeout: 50000 });
     await expect(enItemUnpublishedDot).not.toBeVisible({ timeout: 50000 });

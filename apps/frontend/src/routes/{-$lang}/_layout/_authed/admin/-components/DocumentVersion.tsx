@@ -788,6 +788,8 @@ function useSaveDraft(contentId: string, versionNumber: number) {
       const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
       const prevDocList = queryClient.getQueryData(docListQO.queryKey);
 
+      const isLatestVersion = prevList?.at(0)?.versionNumber === versionNumber;
+
       // Optimistically update document version
       queryClient.setQueryData(docVersionQO.queryKey, (old) => {
         if (!old) {
@@ -835,32 +837,34 @@ function useSaveDraft(contentId: string, versionNumber: number) {
         data.content !== prevVersion?.translations[data.locale]?.published?.content,
       );
 
-      queryClient.setQueryData(docListQO.queryKey, (old) => {
-        if (!old) return old;
+      if (isLatestVersion) {
+        queryClient.setQueryData(docListQO.queryKey, (old) => {
+          if (!old) return old;
 
-        return old.map((doc) => {
-          if (doc.contentId !== contentId) return doc;
-          console.log("previous translations", doc.translations);
+          return old.map((doc) => {
+            if (doc.contentId !== contentId) return doc;
+            console.log("previous translations", doc.translations);
 
-          return {
-            ...doc,
-            translations: doc.translations.map((tr) => {
-              if (tr.lang !== data.locale) return tr;
+            return {
+              ...doc,
+              translations: doc.translations.map((tr) => {
+                if (tr.lang !== data.locale) return tr;
 
-              console.log("mapping translation prev", tr);
-              // if there is published, update its hasUnpublishedChanges
-              if (tr.status === "published") {
-                const res = { ...tr, hasUnpublishedChanges };
-                console.log("mapping translations, change", { from: tr, to: res });
-                return res;
-              } else {
-                // if only draft present, update the draft title
-                return { ...tr, ...data };
-              }
-            }),
-          };
+                console.log("mapping translation prev", tr);
+                // if there is published, update its hasUnpublishedChanges
+                if (tr.status === "published") {
+                  const res = { ...tr, hasUnpublishedChanges };
+                  console.log("mapping translations, change", { from: tr, to: res });
+                  return res;
+                } else {
+                  // if only draft present, update the draft title
+                  return { ...tr, ...data };
+                }
+              }),
+            };
+          });
         });
-      });
+      }
 
       queryClient.setQueryData(docVersionsListQO.queryKey, (old) => {
         if (!old) return old;
@@ -992,26 +996,34 @@ function usePublishDraft(contentId: string, versionNumber: number) {
         });
       });
 
-      await queryClient.cancelQueries(docListQO);
-      const prevDocList = queryClient.getQueryData(docListQO.queryKey);
+      const versionsList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const isLatestVersion = versionsList?.at(0)?.versionNumber === versionNumber;
 
-      queryClient.setQueryData(docListQO.queryKey, (old) => {
-        if (!old) return old;
-        return old.map((doc) => {
-          if (doc.contentId !== contentId) return doc;
-          return {
-            ...doc,
-            translations: doc.translations.map((tr) => {
-              if (tr.lang !== data.locale) return tr;
-              return {
-                ...tr,
-                status: "published" as const,
-                hasUnpublishedChanges: false,
-              };
-            }),
-          };
+      let prevDocList;
+
+      if (isLatestVersion) {
+        await queryClient.cancelQueries(docListQO);
+        prevDocList = queryClient.getQueryData(docListQO.queryKey);
+
+        queryClient.setQueryData(docListQO.queryKey, (old) => {
+          if (!old) return old;
+          return old.map((doc) => {
+            if (doc.contentId !== contentId) return doc;
+            return {
+              ...doc,
+              translations: doc.translations.map((tr) => {
+                if (tr.lang !== data.locale) return tr;
+                return {
+                  ...tr,
+                  title: draftTitle ?? tr.title,
+                  status: "published" as const,
+                  hasUnpublishedChanges: false,
+                };
+              }),
+            };
+          });
         });
-      });
+      }
 
       return { previousVersion, previousList, prevDocList };
     },
@@ -1029,6 +1041,7 @@ function usePublishDraft(contentId: string, versionNumber: number) {
     onSettled: async () => {
       await queryClient.invalidateQueries(docVersionQO);
       await queryClient.invalidateQueries(docVersionsListQO);
+      await queryClient.invalidateQueries(docListQO);
     },
   });
 }

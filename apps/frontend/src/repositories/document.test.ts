@@ -193,10 +193,6 @@ describe("documentRepository db actions", () => {
       authorId: AUTHOR_ID_1,
     });
 
-    const doc1Versions = await db.query.documentVersion.findMany({
-      where: (t, { eq }) => eq(t.documentId, DOC_1_ID),
-    });
-
     const docList = await repo.getList(undefined);
 
     const doc1 = docList.find((d) => d.contentId === "document1");

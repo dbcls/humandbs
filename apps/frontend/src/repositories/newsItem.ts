@@ -6,6 +6,9 @@ import { db } from "@/db/database";
 import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
 
+import type { DocumentListItemTranslation } from "./document";
+import { sortTranslationsByLocale } from "./utils";
+
 export interface NewsTitleItem {
   id: string;
   locale: Locale;
@@ -46,6 +49,15 @@ export interface NewsItemRecord {
   tags: NewsTag[];
 }
 
+export interface NewsListItemRecord {
+  id: string;
+  createdAt: Date;
+  publishedAt: Date | null;
+  author: NewsItemAuthor;
+  translations: DocumentListItemTranslation[];
+  tags: NewsTag[];
+}
+
 export interface NewsItemCreateInput {
   authorId: string;
   publishedAt?: Date | null;
@@ -76,7 +88,7 @@ export interface NewsItemRepository {
     limit?: number;
     offset?: number;
     filters?: NewsItemFilters;
-  }) => Promise<NewsItemRecord[]>;
+  }) => Promise<NewsListItemRecord[]>;
 
   /**
    * Public
@@ -131,6 +143,17 @@ function mapTranslations(
     };
     return acc;
   }, {});
+}
+
+function mapListTranslations(translations: NewsTranslationSelect[]): DocumentListItemTranslation[] {
+  return sortTranslationsByLocale(
+    translations.map((t) => ({
+      status: "published" as const,
+      lang: t.lang as Locale,
+      title: t.title,
+      hasUnpublishedChanges: false,
+    })),
+  );
 }
 
 async function syncTags(
@@ -229,7 +252,7 @@ export function createNewsItemRepository(database: DB): NewsItemRepository {
         },
         columns: { authorId: false },
         orderBy: (table, { desc }) => [desc(table.createdAt)],
-        where: (table, { and, or, exists, notExists }) => {
+        where: (table, { and, or, exists }) => {
           const conditions = [];
 
           if (filters.titleOrContent) {
@@ -281,9 +304,8 @@ export function createNewsItemRepository(database: DB): NewsItemRepository {
 
       return news.map((item) => ({
         ...item,
-
         tags: mapTags(item.tags),
-        translations: mapTranslations(item.translations),
+        translations: mapListTranslations(item.translations),
       }));
     },
 
