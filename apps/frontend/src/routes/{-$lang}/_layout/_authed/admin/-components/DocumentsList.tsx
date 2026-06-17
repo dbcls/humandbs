@@ -65,6 +65,7 @@ export function DocumentsList({
             id: `optimistic-id-${contentId}`,
 
             latestVersionNumber: null,
+            hideFromNav: true,
             translations: [],
           };
 

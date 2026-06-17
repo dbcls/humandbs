@@ -246,6 +246,8 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         id: `${row.documentId}:${row.versionNumber}`,
         contentId,
         latestVersionNumber: row.versionNumber,
+        // hideFromNav is a document-level flag, irrelevant for version listing
+        hideFromNav: true,
         lang: row.lang,
         status: row.status,
         title: row.title,

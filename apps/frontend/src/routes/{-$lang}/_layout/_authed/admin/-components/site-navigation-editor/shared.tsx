@@ -6,20 +6,19 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { Locale } from "@/config/i18n";
 import type { NavigationItem } from "@/config/site-navigation";
 import { cn } from "@/lib/utils";
-import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import type { DocumentsListItemResponse } from "@/repositories/document";
 
 export function getDocumentLabel(doc: DocumentsListItemResponse, lang?: Locale): string {
   if (lang) {
     const currentTranslation = doc.translations.find((t) => t.lang === lang);
-    if (currentTranslation?.statuses.published) return currentTranslation.statuses.published;
-    if (currentTranslation?.statuses.draft) return currentTranslation.statuses.draft;
+    if (currentTranslation?.title) return currentTranslation.title;
   }
 
   for (const t of doc.translations) {
-    if (t.statuses.published) return t.statuses.published;
+    if (t.status === "published" && t.title) return t.title;
   }
   for (const t of doc.translations) {
-    if (t.statuses.draft) return t.statuses.draft;
+    if (t.status === "draft" && t.title) return t.title;
   }
 
   return doc.contentId;

@@ -97,6 +97,16 @@ export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
     await documentRepo.updateSettings(data.contentId, { hideRevisions: data.hideRevisions });
   });
 
+/** Update hideFromNav flag for a document */
+export const $updateDocumentHideFromNav = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ contentId: z.string(), hideFromNav: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await documentRepo.updateSettings(data.contentId, { hideFromNav: data.hideFromNav });
+  });
+
 /**
  * Delete document by contentId
  */

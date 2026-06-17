@@ -36,6 +36,7 @@ import type { DocVersionStatus } from "@/db/schema/documentVersion";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
 import type { DocumentVersionsResponse } from "@/repositories/documentVersion";
 import {
+  $updateDocumentHideFromNav,
   $updateDocumentHideRevisions,
   $updateDocumentHideTOC,
   getDocumentQueryOptions,
@@ -509,7 +510,41 @@ function ShowInNavCheckbox({ contentId }: { contentId: string }) {
   const docQO = getDocumentQueryOptions(contentId);
   const { data: doc } = useSuspenseQuery(docQO);
 
-  return <></>;
+  const { mutate: updateHideFromNav, isPending } = useMutation({
+    mutationFn: (hideFromNav: boolean) =>
+      $updateDocumentHideFromNav({ data: { contentId, hideFromNav } }),
+    onMutate: async (hideFromNav) => {
+      await queryClient.cancelQueries(docQO);
+      const prev = queryClient.getQueryData(docQO.queryKey);
+      queryClient.setQueryData(docQO.queryKey, (old: typeof doc | undefined) =>
+        old ? { ...old, hideFromNav } : old,
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(docQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(docQO);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-in-nav"
+        checked={!(doc?.hideFromNav ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideFromNav(!checked)}
+      />
+      <Label htmlFor="show-in-nav" className="cursor-pointer font-normal">
+        Show in nav config
+      </Label>
+    </div>
+  );
 }
 
 function useDocumentVersionForm({

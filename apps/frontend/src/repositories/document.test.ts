@@ -50,6 +50,7 @@ describe("group document's versions", () => {
         status: "draft",
         title: "hello en draft",
         latestVersionNumber: 1,
+        hideFromNav: false,
         hasUnpublishedChanges: true,
       },
       {
@@ -59,6 +60,7 @@ describe("group document's versions", () => {
         status: "published",
         title: "hello en published",
         latestVersionNumber: 1,
+        hideFromNav: false,
         hasUnpublishedChanges: true,
       },
     ];
@@ -84,6 +86,7 @@ describe("group document's versions", () => {
         status: "draft",
         title: "hello en draft",
         latestVersionNumber: 1,
+        hideFromNav: false,
         hasUnpublishedChanges: false,
       },
       {
@@ -93,6 +96,7 @@ describe("group document's versions", () => {
         status: "published",
         title: "hello ja published",
         latestVersionNumber: 1,
+        hideFromNav: false,
         hasUnpublishedChanges: false,
       },
     ];
@@ -132,6 +136,14 @@ describe("documentRepository db actions", () => {
     expect(docList.find((d) => d.id === DOC_1_ID)?.latestVersionNumber).toEqual(1);
     expect(docList.find((d) => d.id === DOC_2_ID)?.latestVersionNumber).toEqual(1);
     expect(docList.find((d) => d.id === DOC_3_ID)?.latestVersionNumber).toBeNull();
+  });
+
+  test("exposes hideFromNav flag for each document", async () => {
+    const docList = await repo.getList(undefined);
+
+    expect(docList.find((d) => d.id === DOC_1_ID)?.hideFromNav).toBe(false);
+    expect(docList.find((d) => d.id === DOC_2_ID)?.hideFromNav).toBe(true);
+    expect(docList.find((d) => d.id === DOC_3_ID)?.hideFromNav).toBe(false);
   });
 
   test("translations array have version translations", async () => {

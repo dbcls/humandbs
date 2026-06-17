@@ -19,6 +19,9 @@ export interface DocumentsListItemResponse {
   /** Latest version number, even if there are only drafts in that version */
   latestVersionNumber: number | null;
 
+  /** When true, the document is hidden from the navbar/footer config editors */
+  hideFromNav: boolean;
+
   /** Latest version's translations, max N-element array, where N=number of locales supported
    * If both published and draft present, shows published title. If draft content is different, hasUnpublishedChanges=true.
    * If only published present - show published title, hasUnpublishedChanges=false
@@ -135,6 +138,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       id: document.id,
       contentId: document.contentId,
       latestVersionNumber: latest.max,
+      hideFromNav: document.hideFromNav,
       lang: documentVersion.locale,
       status: documentVersion.status,
       title: documentVersion.title,
@@ -183,6 +187,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
           id: newDoc.id,
           contentId: newContentId,
           latestVersionNumber: 1,
+          hideFromNav: newDoc.hideFromNav ?? true,
           translations: i18n.locales.map((locale) => ({
             status: "draft" as const,
             lang: locale,
@@ -234,6 +239,7 @@ export interface RawDocumentsListItem {
   id: string;
   contentId: string;
   latestVersionNumber: number | null;
+  hideFromNav: boolean | null;
   lang: "ja" | "en" | null;
   status: "draft" | "published" | null;
   title: string | null;
@@ -277,6 +283,7 @@ export function groupDocumentVersions(
           id: curr.id,
           contentId: curr.contentId,
           latestVersionNumber: curr.latestVersionNumber,
+          hideFromNav: curr.hideFromNav ?? true,
           translations: [mapTranslation(curr)],
         };
       }
