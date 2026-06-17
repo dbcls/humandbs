@@ -336,7 +336,6 @@ export const updateResearch = async (
     if (updates.researchProject !== undefined) hydratedDoc.researchProject = updates.researchProject.map(hydrateResearchProject)
     if (updates.grant !== undefined) hydratedDoc.grant = updates.grant
     if (updates.relatedPublication !== undefined) hydratedDoc.relatedPublication = updates.relatedPublication
-    if (updates.controlledAccessUser !== undefined) hydratedDoc.controlledAccessUser = updates.controlledAccessUser.map(hydratePerson)
 
     await esClient.update({
       index: ES_INDEX.research,

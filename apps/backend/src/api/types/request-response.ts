@@ -104,7 +104,7 @@ export const ApiDatasetSchema = z.object({
 // === API-specific Person / Publication schemas ===
 // Person/Publication sub-fields are selectively included based on context:
 // - dataProvider: omit datasetIds, researchTitle, periodOfDataUse (no real data)
-// - controlledAccessUser: all fields included
+// - controlledAccessUser: read-only (written by generate-cau batch, not via API)
 // - relatedPublication: all fields included
 
 /** relatedPublication: datasetIds で論文とデータセットを紐付ける */
@@ -116,9 +116,6 @@ const ApiDataProviderPersonRequestSchema = PersonRequestSchema.omit({
   researchTitle: true,
   periodOfDataUse: true,
 })
-
-/** controlledAccessUser (request 用): rawHtml を含まない */
-const ApiControlledAccessUserPersonRequestSchema = PersonRequestSchema
 
 // === Research API ===
 
@@ -197,10 +194,6 @@ export const UpdateResearchRequestSchema = z.object({
     .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
-  controlledAccessUser: z
-    .array(ApiControlledAccessUserPersonRequestSchema)
-    .optional()
-    .describe("Users with controlled access to the data"),
   _seq_no: z
     .number()
     .describe(

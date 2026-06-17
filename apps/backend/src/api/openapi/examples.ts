@@ -187,17 +187,6 @@ const CONTROLLED_ACCESS_USER_RESPONSE = {
   periodOfDataUse: { startDate: "2025-04-01", endDate: "2027-03-31" },
 }
 
-/** controlledAccessUser entry (request-shaped). */
-const CONTROLLED_ACCESS_USER_REQUEST = {
-  ...DATA_PROVIDER_REQUEST,
-  name: bilingualTextRequest("佐藤 次郎", "Sato Jiro"),
-  email: "sato@example.org",
-  orcid: "0000-0002-3456-7890",
-  datasetIds: [DATASET_ID],
-  researchTitle: BILINGUAL_TITLE,
-  periodOfDataUse: { startDate: "2025-04-01", endDate: "2027-03-31" },
-}
-
 const RESEARCH_PROJECT_RESPONSE = {
   name: bilingualText(
     "AMED 脳とこころの研究推進プログラム",
@@ -332,7 +321,6 @@ export const exampleUpdateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
-  controlledAccessUser: [CONTROLLED_ACCESS_USER_REQUEST],
   _seq_no: 12,
   _primary_term: 1,
 } satisfies UpdateResearchRequest

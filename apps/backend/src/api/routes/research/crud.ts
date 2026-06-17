@@ -187,7 +187,6 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
-      controlledAccessUser: body.controlledAccessUser,
     }, seqNo, primaryTerm)
 
     if (!updated) {

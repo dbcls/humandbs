@@ -3,9 +3,10 @@
  *
  * Verifies field inclusion/exclusion rules for nested schemas:
  * - relatedPublication: datasetIds accepted
- * - controlledAccessUser: datasetIds, researchTitle accepted
  * - dataProvider: datasetIds, researchTitle, periodOfDataUse rejected
  * - rawHtml: stripped from all create/update request schemas
+ *
+ * Note: controlledAccessUser is read-only (written by generate-cau batch).
  */
 import { describe, expect, it } from "bun:test"
 
@@ -88,31 +89,8 @@ describe("relatedPublication schema", () => {
   })
 })
 
-describe("controlledAccessUser schema", () => {
-  it("accepts datasetIds and researchTitle", () => {
-    const result = UpdateResearchRequestSchema.safeParse({
-      controlledAccessUser: [
-        {
-          ...validPerson,
-          datasetIds: ["JGAD000001"],
-          researchTitle: bilingualText,
-          periodOfDataUse: { startDate: "2025-01-01", endDate: "2026-12-31" },
-        },
-      ],
-      _seq_no: 1,
-      _primary_term: 1,
-    })
-
-    expect(result.success).toBe(true)
-    if (result.success) {
-      const cau = result.data.controlledAccessUser?.[0]
-      expect(cau?.datasetIds).toEqual(["JGAD000001"])
-      expect(cau?.researchTitle).toEqual(bilingualText)
-      expect(cau?.periodOfDataUse).toEqual({ startDate: "2025-01-01", endDate: "2026-12-31" })
-    }
-  })
-
-  it("accepts omitted optional fields", () => {
+describe("controlledAccessUser removed from update schema", () => {
+  it("strips controlledAccessUser from request body", () => {
     const result = UpdateResearchRequestSchema.safeParse({
       controlledAccessUser: [validPerson],
       _seq_no: 1,
@@ -120,6 +98,9 @@ describe("controlledAccessUser schema", () => {
     })
 
     expect(result.success).toBe(true)
+    if (result.success) {
+      expect("controlledAccessUser" in result.data).toBe(false)
+    }
   })
 })
 
