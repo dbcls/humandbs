@@ -945,31 +945,6 @@ export function AssistantTaskStatusPanel({
                     {reanalyzing ? "再解析中..." : "再解析を実行"}
                   </Button>
 
-                  {taskDetails.status === "completed" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          window.open(`${publicApiBaseUrl}/applications/${taskDetails.task_id as string}/handout`, "_blank")
-                        }
-                      >
-                        配布資料をプレビュー
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          window.open(
-                            `${publicApiBaseUrl}/applications/${taskDetails.task_id as string}/handout/word`,
-                            "_blank",
-                          )
-                        }
-                      >
-                        配布資料ダウンロード(Word)
-                      </Button>
-                    </>
-                  ) : null}
                 </div>
               ) : null}
 

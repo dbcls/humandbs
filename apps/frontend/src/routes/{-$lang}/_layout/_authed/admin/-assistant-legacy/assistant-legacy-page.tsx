@@ -246,7 +246,10 @@ export function AssistantLegacyPage() {
   const publicApiBaseUrl = config?.publicApiBaseUrl ?? "/assistant-api/api";
 
   return (
-    <Card className="flex h-full min-w-0 flex-1 flex-col" caption="AI Application Assistant">
+    <Card
+      className="assistant-legacy-font-scope flex h-full min-w-0 flex-1 flex-col overflow-scroll"
+      caption="AI Application Assistant"
+    >
       <div className="space-y-8">
         <div className="rounded-lg border p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-xl">申請書PDFアップロード（1ファイル100MBまで）</h2>

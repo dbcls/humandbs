@@ -187,6 +187,14 @@
 }
 
 @layer components {
+  .assistant-legacy-font-scope .text-xs,
+  .assistant-legacy-font-scope .text-sm,
+  .assistant-legacy-font-scope .text-base,
+  .assistant-legacy-font-scope .prose-sm,
+  .assistant-legacy-font-scope .prose-sm :where(p, li, td, th, a, span, div, label, small) {
+    font-size: 1em !important;
+  }
+
   .main-content {
     max-width: calc(var(--content-max-width) + 2.5rem);
     @apply mx-auto px-10;
