@@ -32,6 +32,7 @@ export default defineConfig(async () => {
       allowedHosts: ["frontend"],
       watch: {
         usePolling: true,
+        ignored: ["**/e2e/**"],
       },
     },
     resolve: {

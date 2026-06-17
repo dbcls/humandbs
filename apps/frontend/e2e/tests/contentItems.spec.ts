@@ -1,10 +1,11 @@
-import { expect, test } from "../fixtures";
+import { expect, test } from "@playwright/test";
 
-test("Content search field not resets on item click", async ({ loggedInPage }) => {
-  await loggedInPage.page.getByRole("link", { name: "Content" }).click();
+test("Content search field not resets on item click", async ({ page }) => {
+  await page.getByRole("link", { name: "Content" }).click();
 
-  const list = loggedInPage.page.getByText('Content"Oprhan pages" listAdd');
-  await list.isVisible();
+  const list = page.getByText('Content"Oprhan pages" listAdd');
+
+  await expect(list).toBeVisible();
 
   const listContainer = list.getByTestId("content-list-ul");
 
@@ -26,7 +27,7 @@ test("Content search field not resets on item click", async ({ loggedInPage }) =
 
   await someItem.click();
 
-  await expect(loggedInPage.page.locator("main > div").nth(2).getByText("Details")).toBeVisible();
+  await expect(page.locator("main > div").nth(2).getByText("Details")).toBeVisible();
 
   expect(search).toHaveValue("guideline-");
 });

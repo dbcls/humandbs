@@ -124,7 +124,7 @@ function NavPanel() {
         {canViewCms && (
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
-            <div className="flex flex-col items-stretch gap-5 pl-5">
+            <div className="flex flex-col items-stretch gap-5 pl-5" data-testid="cms-left-panel">
               <PanelItem
                 title={
                   <span>

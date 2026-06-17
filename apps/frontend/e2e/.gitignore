@@ -35,3 +35,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 playwright-report/
 test-results/
+# test auth state
+playwright/.auth
+**/auth.json
