@@ -35,8 +35,8 @@ const main = async () => {
   console.log("  extracting du-phase...")
   const duPhaseRaw = await extractDuPhase()
   console.log(`  du-phase: ${duPhaseRaw.length}`)
-  console.log("  extracting jgad-humid...")
-  const jgadHumIdRaw = await extractJgadHumId()
+  console.log(`  loading jgad-humid from ${process.env.HUMANDBS_JGAD_HUM_TSV ?? "~/jga-relation/jga_dataset_hum_id.tsv"}...`)
+  const jgadHumIdRaw = extractJgadHumId()
   console.log(`  jgad-hum: ${jgadHumIdRaw.length}`)
 
   console.log("[2/5] Building occurrences...")

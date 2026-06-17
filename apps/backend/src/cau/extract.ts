@@ -1,6 +1,10 @@
+import { readFileSync } from "fs"
+
 import { jgaSql, JGA_DB_SCHEMA } from "@/api/db-client/client"
 
 import type { RawCore, RawDuPhase, RawJgad, RawJgadHumId, RawPerson } from "./types"
+
+const JGAD_HUM_TSV = process.env.HUMANDBS_JGAD_HUM_TSV ?? `${process.env.HOME}/jga-relation/jga_dataset_hum_id.tsv`
 
 const str = (v: unknown): string => {
   if (v == null) return ""
@@ -192,43 +196,13 @@ export const extractDuPhase = async (): Promise<RawDuPhase[]> =>
     endedDate: dateStr(r.ended_date),
   }))
 
-export const extractJgadHumId = async (): Promise<RawJgadHumId[]> =>
-  runQuery(`
-    SELECT DISTINCT jgad, hum_id FROM (
-      SELECT a.accession AS jgad, na.hum_id
-      FROM nbdc_application na
-      JOIN submission_permission sp ON na.appl_id=sp.appl_id
-      JOIN submission s ON sp.submission_id=s.submission_id
-      JOIN entry e ON s.submission_id=e.submission_id
-      JOIN relation r ON e.entry_id=r.entry_id
-      JOIN accession a ON r.self=a.accession_id
-      JOIN current_accession_status cas ON a.accession=cas.accession
-      WHERE a.accession LIKE 'JGAD%'
-        AND na.hum_id IS NOT NULL AND na.hum_id <> '' AND na.hum_id <> 'N/A'
-        AND cas.accession_status = 2098186
-      UNION
-      SELECT a_jgad.accession AS jgad, na.hum_id
-      FROM relation r_jgad
-      JOIN accession a_jgad ON r_jgad.self = a_jgad.accession_id
-      JOIN current_accession_status cas ON a_jgad.accession=cas.accession
-      JOIN relation r_jgas_local
-        ON r_jgad.entry_id = r_jgas_local.entry_id
-      JOIN accession a_jgas
-        ON r_jgas_local.self = a_jgas.accession_id
-      JOIN relation r_jgas_remote
-        ON a_jgas.accession_id = r_jgas_remote.self
-        AND r_jgas_remote.entry_id != r_jgad.entry_id
-      JOIN entry e ON r_jgas_remote.entry_id = e.entry_id
-      JOIN submission s ON e.submission_id = s.submission_id
-      JOIN submission_permission sp ON s.submission_id = sp.submission_id
-      JOIN nbdc_application na ON sp.appl_id = na.appl_id
-      WHERE a_jgad.accession LIKE 'JGAD%'
-        AND a_jgas.accession LIKE 'JGAS%'
-        AND na.hum_id IS NOT NULL AND na.hum_id <> '' AND na.hum_id <> 'N/A'
-        AND cas.accession_status = 2098186
-    ) combined
-    ORDER BY jgad
-  `, r => ({
-    jgad: str(r.jgad),
-    humId: str(r.hum_id),
-  }))
+export const extractJgadHumId = (): RawJgadHumId[] => {
+  const content = readFileSync(JGAD_HUM_TSV, "utf8")
+  const results: RawJgadHumId[] = []
+  for (const line of content.split("\n")) {
+    if (!line.trim()) continue
+    const [jgad, humId] = line.split("\t")
+    if (jgad && humId) results.push({ jgad: jgad.trim(), humId: humId.trim() })
+  }
+  return results
+}
