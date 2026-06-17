@@ -55,7 +55,6 @@ const topLevelFields = [
   "researchProject",
   "grant",
   "relatedPublication",
-  "controlledAccessUser",
 ] as const;
 
 export function ResearchDetails({
@@ -155,7 +154,6 @@ export function ResearchDetails({
               researchProject: value.researchProject,
               grant: value.grant,
               relatedPublication: value.relatedPublication,
-              controlledAccessUser: value.controlledAccessUser,
               _seq_no: seqNo,
               _primary_term: primaryTerm,
             },
