@@ -8,11 +8,12 @@ import uvicorn
 import yaml  # Added PyYAML for YAML serialization
 from docx import Document
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
+from src.auth import require_admin
 from src.services.assessment_service import create_assessment_report, create_handout
 from src.tasks import add_datasets_to_application_task, process_application_task, remove_dataset_from_application_task
 from src.utils import (
@@ -47,6 +48,7 @@ app = FastAPI(
     title="Human Database Submission Assistant",
     description="FastAPI implementation of the Human Database Submission Assistant workflow",
     version="0.1.0",
+    dependencies=[Depends(require_admin)],
 )
 
 # Add CORS middleware
