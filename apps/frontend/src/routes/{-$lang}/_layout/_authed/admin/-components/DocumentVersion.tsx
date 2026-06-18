@@ -53,6 +53,7 @@ import {
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
+import { revisionLabel } from "@/utils/revision";
 
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { TitleValue } from "./TitleValue";
@@ -103,7 +104,7 @@ export function DocumentVersion({
         caption="Document"
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-sm">
-          <p>No versions available for this document.</p>
+          <p>No revisions yet for this document.</p>
           <Button
             variant="accent"
             onClick={() => {
@@ -116,7 +117,7 @@ export function DocumentVersion({
             ) : (
               <Plus className="size-4" />
             )}
-            Create First Version
+            Create Original
           </Button>
         </div>
       </Card>
@@ -499,7 +500,7 @@ function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
         onCheckedChange={(checked) => updateHideRevisions(!checked)}
       />
       <Label htmlFor="show-revisions" className="cursor-pointer font-normal">
-        Show previous versions
+        Show revisions
       </Label>
     </div>
   );
@@ -733,7 +734,7 @@ function DocumentVersionSelector({
           ))}
           <Button variant="accent" onClick={handleCreateVersion} disabled={isCreating}>
             {isCreating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            New Version
+            New Revision
           </Button>
         </SelectGroup>
       </SelectContent>
@@ -748,9 +749,10 @@ function DocumentVersionSelectorItem({
   item: DocumentVersionsResponse;
   compact?: boolean;
 }) {
+  const tCommon = useTranslations("common");
   return (
     <div className="text-left text-xs group-focus:text-white">
-      <div className="mb-1 font-medium">Version {item.versionNumber}</div>
+      <div className="mb-1 font-medium">{revisionLabel(item.versionNumber, tCommon)}</div>
       {!compact && (
         <ul className="space-y-2">
           {item.translations.map((tr) => (

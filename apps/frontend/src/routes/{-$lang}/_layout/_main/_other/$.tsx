@@ -25,9 +25,9 @@ const humIdWithVersion = z
   });
 
 // Matches "<docId>/revision/<N>" where N is a positive integer
-const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
+const revisionVersionPattern = /^(.+)\/revision\/(\d+)$/;
 // Matches "<docId>/revision"
-const revisionListPattern = /^(.+)\/version$/;
+const revisionListPattern = /^(.+)\/revision/;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -68,10 +68,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     if (revisionVersionMatch) {
       const docId = revisionVersionMatch[1];
-      const versionNumber = Number(revisionVersionMatch[2]);
-      if (!Number.isInteger(versionNumber) || versionNumber < 1) {
-        throw new Error("Invalid version number");
+      const revisionNumber = Number(revisionVersionMatch[2]);
+      if (!Number.isInteger(revisionNumber) || revisionNumber < 0) {
+        throw new Error("Invalid revision number");
       }
+      // Revision 0 is the original (version 1); revision N maps to version N + 1.
+      const versionNumber = revisionNumber + 1;
       const [data, docCrumbs] = await Promise.all([
         $getPublishedDocumentVersion({
           data: { contentId: docId, locale: context.lang, versionNumber },
@@ -92,10 +94,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         title: data.title,
         crumbs: [
           ...docCrumbs,
-          { label: "Versions", href: `/${docId}/version` },
+          { label: "Revisions", href: `/${docId}/revision` },
           {
-            label: String(versionNumber),
-            href: `/${docId}/version/${versionNumber}`,
+            label: revisionNumber === 0 ? "Original" : `Revision ${revisionNumber}`,
+            href: `/${docId}/revision/${revisionNumber}`,
           },
         ],
         hideTOC: false,
@@ -120,7 +122,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         kind: "revisionList" as const,
         contentHtml: null,
         title: null,
-        crumbs: [...docCrumbs, { label: "Versions", href: `/${docId}/version` }],
+        crumbs: [...docCrumbs, { label: "Revisions", href: `/${docId}/revision` }],
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,

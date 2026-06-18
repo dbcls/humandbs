@@ -2,7 +2,10 @@
   "common": {
     "humandb": "NBDC ヒトデータベース",
     "to-": "{place}へ",
-    "previous-versions": "{documentName}の改定",
+    "previous-versions": "{documentName}の改訂",
+    "original": "初版",
+    "revision": "改訂{n}",
+    "revisions": "改訂",
     "search": "検索",
     "copy": "コピー",
     "copied": "コピーしました",
