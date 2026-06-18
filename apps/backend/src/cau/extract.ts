@@ -6,9 +6,11 @@ const str = (v: unknown): string => {
   if (v == null) return ""
   if (typeof v === "string") return v.trim()
   if (typeof v === "number" || typeof v === "bigint") return String(v).trim()
+  if (v instanceof Date) return v.toISOString()
   return ""
 }
 const dateStr = (v: unknown): string | null => {
+  if (v instanceof Date) return v.toISOString().split("T")[0] ?? null
   const s = str(v)
   return s ? s.substring(0, 10) : null
 }

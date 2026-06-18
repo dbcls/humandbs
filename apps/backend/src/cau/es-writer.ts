@@ -34,6 +34,11 @@ export const toPersonDoc = (
 
   if (!enText && !jaText) {
     enText = person.displayName || null
+    jaText = enText
+  } else if (!jaText) {
+    jaText = enText
+  } else if (!enText) {
+    enText = jaText
   }
 
   return {
@@ -41,7 +46,7 @@ export const toPersonDoc = (
     email: person.canonicalEmail || null,
     orcid: person.orcid || null,
     organization: person.affiliation
-      ? { name: { ja: null, en: tv(person.affiliation) }, address: null }
+      ? { name: { ja: tv(person.affiliation), en: tv(person.affiliation) }, address: null }
       : null,
     datasetIds: personHum.datasetIds,
     periodOfDataUse: {

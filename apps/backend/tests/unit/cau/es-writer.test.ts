@@ -71,7 +71,7 @@ describe("toPersonDoc", () => {
       person({ enFamily: "Smith", enGiven: "John" }),
     )
     expect(doc.name.en?.text).toBe("Smith John")
-    expect(doc.name.ja).toBeNull()
+    expect(doc.name.ja?.text).toBe("Smith John")
   })
 
   it("maps collaborator with CJK displayName to ja", () => {
@@ -80,7 +80,7 @@ describe("toPersonDoc", () => {
       person({ displayName: "佐藤宏征" }),
     )
     expect(doc.name.ja?.text).toBe("佐藤宏征")
-    expect(doc.name.en).toBeNull()
+    expect(doc.name.en?.text).toBe("佐藤宏征")
   })
 
   it("maps collaborator with romaji displayName to en", () => {
@@ -89,7 +89,7 @@ describe("toPersonDoc", () => {
       person({ displayName: "David Monk" }),
     )
     expect(doc.name.en?.text).toBe("David Monk")
-    expect(doc.name.ja).toBeNull()
+    expect(doc.name.ja?.text).toBe("David Monk")
   })
 
   it("falls back to displayName for en when both are empty", () => {
@@ -98,7 +98,7 @@ describe("toPersonDoc", () => {
       person({ displayName: "unknown" }),
     )
     expect(doc.name.en?.text).toBe("unknown")
-    expect(doc.name.ja).toBeNull()
+    expect(doc.name.ja?.text).toBe("unknown")
   })
 
   it("maps email and orcid", () => {
@@ -122,7 +122,7 @@ describe("toPersonDoc", () => {
       person({ affiliation: "University of Tokyo" }),
     )
     expect(doc.organization?.name.en?.text).toBe("University of Tokyo")
-    expect(doc.organization?.name.ja).toBeNull()
+    expect(doc.organization?.name.ja?.text).toBe("University of Tokyo")
     expect(doc.organization?.address).toBeNull()
   })
 
