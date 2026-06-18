@@ -40,8 +40,8 @@ export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>
 
 export const JdsIdParamsSchema = z.object({
   jdsId: z.string()
-    .regex(/^J-DS\d+$/)
-    .describe("DS application ID (e.g., 'J-DS002494')"),
+    .regex(/^J-DS\d+(-\d{3})?$/)
+    .describe("DS application ID (e.g., 'J-DS002494'). Version suffix '-NNN' is accepted and stripped."),
 })
 export type JdsIdParams = z.infer<typeof JdsIdParamsSchema>
 

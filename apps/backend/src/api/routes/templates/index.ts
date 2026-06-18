@@ -120,9 +120,9 @@ templatesRouter.use("*", requireAuth)
 templatesRouter.use("*", requireAdmin)
 
 templatesRouter.openapi(getResearchTemplateRoute, async (c) => {
-  const { jdsId } = c.req.valid("param")
+  const { jdsId: rawJdsId } = c.req.valid("param")
+  const jdsId = rawJdsId.replace(/-\d{3}$/, "")
   const requestId = getRequestId(c)
-  // getDsApplicationByMasterId returns the latest version of the J-DS application
   const jds = await getDsApplicationByMasterId(jdsId)
   const data = await mapDsApplicationToResearchTemplate(jds, requestId)
   return singleReadOnlyResponse(c, data)
