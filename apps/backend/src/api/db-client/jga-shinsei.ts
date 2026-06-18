@@ -102,22 +102,6 @@ const resolveApplId = async (
   return rows[0].appl_id
 }
 
-const resolveLatestApplId = async (
-  dsDuId: string,
-): Promise<number> => {
-  const schema = jgaSql(JGA_DB_SCHEMA)
-  const rows = await jgaSql<{ appl_id: number }[]>`
-    SELECT appl_id
-    FROM ${schema}.nbdc_application
-    WHERE ds_du_id = ${dsDuId}
-    ORDER BY appl_version DESC
-    LIMIT 1
-  `
-  if (rows.length === 0)
-    throw NotFoundError.forResource("Application", dsDuId)
-  return rows[0].appl_id
-}
-
 export const fetchDsRaw = async (applIds: number[]): Promise<RawDsApplication[]> => {
   if (applIds.length === 0) return []
   const schema = jgaSql(JGA_DB_SCHEMA)
@@ -348,13 +332,6 @@ export const getDsApplication = async (applIdStr: string): Promise<DsApplication
   const { dsDuId, applVersion } = parseApplIdStr(applIdStr)
   const applId = await resolveApplId(dsDuId, applVersion)
   return getApplicationByApplId(applId, applIdStr, fetchDsRaw, parseDs, "DS Application")
-}
-
-export const getDsApplicationByMasterId = async (
-  dsDuId: string,
-): Promise<DsApplicationTransformed> => {
-  const applId = await resolveLatestApplId(dsDuId)
-  return getApplicationByApplId(applId, dsDuId, fetchDsRaw, parseDs, "DS Application")
 }
 
 export const listDuApplications = (

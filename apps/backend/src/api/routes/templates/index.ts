@@ -13,7 +13,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
-import { getDsApplicationByMasterId } from "@/api/db-client/jga-shinsei"
+import { getDsApplication } from "@/api/db-client/jga-shinsei"
 import { NotFoundError } from "@/api/errors"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
@@ -29,7 +29,7 @@ import {
 } from "@/api/routes/errors"
 import {
   DatasetTemplateResponseSchema,
-  JdsIdParamsSchema,
+  JdsApplIdParamsSchema,
   ResearchTemplateResponseSchema,
   TemplateDatasetParamsSchema,
 } from "@/api/types"
@@ -40,13 +40,14 @@ import { mapDsApplicationToResearchTemplate } from "./mapping-research"
 
 const getResearchTemplateRoute = createRoute({
   method: "get",
-  path: "/research/{jdsId}",
+  path: "/research/{jdsApplId}",
   tags: ["Templates"],
   operationId: "getResearchTemplate",
-  summary: "Get Research draft from a J-DS application",
+  summary: "Get Research draft from a J-DS application version",
   description:
     "**Authorization:** Admin only.\n\n" +
-    "Build a Research draft from the JGA-Shinsei DB record identified by `jdsId`. " +
+    "Build a Research draft from the JGA-Shinsei DB record identified by " +
+    "`jdsApplId` (e.g., `J-DS001226-001`). " +
     "The response payload is shape-compatible with `POST /research/new` request " +
     "body so the admin can edit and post it back without field-level " +
     "transformation. JGAD accessions linked to this J-DS appear under " +
@@ -55,7 +56,7 @@ const getResearchTemplateRoute = createRoute({
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    params: JdsIdParamsSchema,
+    params: JdsApplIdParamsSchema,
   },
   responses: {
     200: {
@@ -120,10 +121,9 @@ templatesRouter.use("*", requireAuth)
 templatesRouter.use("*", requireAdmin)
 
 templatesRouter.openapi(getResearchTemplateRoute, async (c) => {
-  const { jdsId: rawJdsId } = c.req.valid("param")
-  const jdsId = rawJdsId.replace(/-\d{3}$/, "")
+  const { jdsApplId } = c.req.valid("param")
   const requestId = getRequestId(c)
-  const jds = await getDsApplicationByMasterId(jdsId)
+  const jds = await getDsApplication(jdsApplId)
   const data = await mapDsApplicationToResearchTemplate(jds, requestId)
   return singleReadOnlyResponse(c, data)
 })

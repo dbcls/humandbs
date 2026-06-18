@@ -213,6 +213,26 @@ describe("runPipeline", () => {
     expect(result.stats.inScopeDu).toBe(0)
   })
 
+  it("current grant detected even when latest approved appl has no JGAD", () => {
+    const v1 = makeCore({ applId: "1001", applVersion: "1" })
+    const v2 = makeCore({ applId: "1002", applVersion: "2" })
+    const jgadRows = [makeJgad("1001", "JGAD000001")]
+    const duPhase = new Map([
+      ["J-DU000001", makeDuPhase({
+        phase: "160",
+        expireDate: new Date("2029-07-10"),
+      })],
+    ])
+    const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
+
+    const result = run([v1, v2], jgadRows, duPhase, jgadHumMap)
+
+    const entries = result.cauByHum.get("hum0001")!
+    expect(entries).toHaveLength(1)
+    expect(entries[0].rollup.isCurrent).toBe(true)
+    expect(entries[0].rollup.endDate).toEqual(new Date("2029-07-10"))
+  })
+
   it("startDate uses earliest approved_at, endDate uses latest expire_date for current", () => {
     const v1 = makeCore({ applId: "1001", applVersion: "1" })
     const v2 = makeCore({ applId: "1002", applVersion: "2" })

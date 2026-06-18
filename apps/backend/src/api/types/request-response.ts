@@ -641,7 +641,7 @@ export const LinkedResearchesListResponseSchema =
   createListResponseSchema(ResearchDetailSchema)
 export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>
 
-// JGA Shinsei path params (JdsIdParamsSchema / JduIdParamsSchema) live in `./path-params.ts`.
+// JGA Shinsei path params (JdsApplIdParamsSchema / JduApplIdParamsSchema / JduIdParamsSchema) live in `./path-params.ts`.
 
 // DS
 export const DsApplicationListResponseSchema =

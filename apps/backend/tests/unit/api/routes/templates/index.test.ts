@@ -2,7 +2,7 @@
  * Templates router unit tests.
  *
  * Exercises auth gates, param validation, and the success path of:
- *   - GET /templates/research/{jdsId}
+ *   - GET /templates/research/{jdsApplId}
  *   - GET /templates/dataset/{externalId}
  *
  * The actual mappers (mapDsApplicationToResearchTemplate, mapJgad..., mapDra...)
@@ -23,15 +23,13 @@ void mock.module("@/api/middleware/auth", buildMockAuthModule)
 // === DB / mapper mocks ===
 
 const stubDsApplication = {
-  jdsId: "J-DS000001",
+  jdsId: "J-DS000001-001",
 } as unknown as DsApplicationTransformed
 
-const getDsApplicationByMasterIdMock = mock(async (_dsDuId: string): Promise<DsApplicationTransformed> => stubDsApplication)
+const getDsApplicationMock = mock(async (_applIdStr: string): Promise<DsApplicationTransformed> => stubDsApplication)
 
 void mock.module("@/api/db-client/jga-shinsei", () => ({
-  getDsApplication: mock(async () => stubDsApplication),
-  getDsApplicationByMasterId: getDsApplicationByMasterIdMock,
-  // Surface other exports so any incidental imports don't blow up.
+  getDsApplication: getDsApplicationMock,
   listDsApplications: mock(async () => ({ hits: [], total: 0 })),
   getDuApplication: mock(async () => ({})),
   listDuApplications: mock(async () => ({ hits: [], total: 0 })),
@@ -90,7 +88,7 @@ void mock.module("@/api/routes/templates/mapping-dataset-dra", () => ({
 const { getTestApp } = await import("../../helpers")
 
 beforeEach(() => {
-  getDsApplicationByMasterIdMock.mockClear()
+  getDsApplicationMock.mockClear()
   mapDsApplicationToResearchTemplateMock.mockClear()
   mapJgadToDatasetTemplateMock.mockClear()
   mapDraSubmissionToDatasetTemplateMock.mockClear()
@@ -100,7 +98,7 @@ beforeEach(() => {
 
 describe("api/routes/templates auth gates", () => {
   it.each([
-    ["GET /templates/research/{jdsId}", "/templates/research/J-DS000001"],
+    ["GET /templates/research/{jdsApplId}", "/templates/research/J-DS000001-001"],
     ["GET /templates/dataset/{externalId}", "/templates/dataset/JGAD000001"],
   ])("%s returns 401 without auth", async (_label, path) => {
     const app = getTestApp()
@@ -109,7 +107,7 @@ describe("api/routes/templates auth gates", () => {
   })
 
   it.each([
-    ["GET /templates/research/{jdsId}", "/templates/research/J-DS000001"],
+    ["GET /templates/research/{jdsApplId}", "/templates/research/J-DS000001-001"],
     ["GET /templates/dataset/{externalId}", "/templates/dataset/JGAD000001"],
   ])("%s returns 403 for non-admin", async (_label, path) => {
     const app = getTestApp()
@@ -119,51 +117,60 @@ describe("api/routes/templates auth gates", () => {
 
   it("does not invoke the JGA-Shinsei DB when unauthenticated", async () => {
     const app = getTestApp()
-    await app.request("/templates/research/J-DS000001")
-    expect(getDsApplicationByMasterIdMock).not.toHaveBeenCalled()
+    await app.request("/templates/research/J-DS000001-001")
+    expect(getDsApplicationMock).not.toHaveBeenCalled()
   })
 })
 
-describe("api/routes/templates - GET /templates/research/{jdsId}", () => {
+describe("api/routes/templates - GET /templates/research/{jdsApplId}", () => {
   it("returns 200 + payload from the mapper for an admin", async () => {
     const app = getTestApp()
-    const res = await app.request("/templates/research/J-DS000001", {
+    const res = await app.request("/templates/research/J-DS000001-001", {
       headers: adminAuthHeader(),
     })
     expect(res.status).toBe(200)
     const body = (await res.json()) as { data: typeof researchTemplateStub }
     expect(body.data.humId).toBe("hum0001")
     expect(body.data.relatedAccessions.jgad).toEqual(["JGAD000001"])
-    expect(getDsApplicationByMasterIdMock).toHaveBeenCalledWith("J-DS000001")
+    expect(getDsApplicationMock).toHaveBeenCalledWith("J-DS000001-001")
     expect(mapDsApplicationToResearchTemplateMock).toHaveBeenCalledTimes(1)
   })
 
-  it("rejects malformed jdsId with 400", async () => {
+  it("rejects master ID without version suffix with 400", async () => {
+    const app = getTestApp()
+    const res = await app.request("/templates/research/J-DS000001", {
+      headers: adminAuthHeader(),
+    })
+    expect(res.status).toBe(400)
+    expect(getDsApplicationMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed jdsApplId with 400", async () => {
     const app = getTestApp()
     const res = await app.request("/templates/research/JDS-001", {
       headers: adminAuthHeader(),
     })
     expect(res.status).toBe(400)
-    expect(getDsApplicationByMasterIdMock).not.toHaveBeenCalled()
+    expect(getDsApplicationMock).not.toHaveBeenCalled()
   })
 
   it("returns 404 when getDsApplication throws NotFoundError", async () => {
-    getDsApplicationByMasterIdMock.mockImplementationOnce(async () => {
-      throw NotFoundError.forResource("DS Application", "J-DS999999")
+    getDsApplicationMock.mockImplementationOnce(async () => {
+      throw NotFoundError.forResource("DS Application", "J-DS999999-001")
     })
     const app = getTestApp()
-    const res = await app.request("/templates/research/J-DS999999", {
+    const res = await app.request("/templates/research/J-DS999999-001", {
       headers: adminAuthHeader(),
     })
     expect(res.status).toBe(404)
   })
 
   it("returns 500 when getDsApplication throws a generic Error (e.g., DB connection failure)", async () => {
-    getDsApplicationByMasterIdMock.mockImplementationOnce(async () => {
+    getDsApplicationMock.mockImplementationOnce(async () => {
       throw new Error("connection refused")
     })
     const app = getTestApp()
-    const res = await app.request("/templates/research/J-DS000001", {
+    const res = await app.request("/templates/research/J-DS000001-001", {
       headers: adminAuthHeader(),
     })
     expect(res.status).toBe(500)

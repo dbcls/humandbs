@@ -176,8 +176,8 @@ export function runPipeline(
     const dp = duPhase.get(c.jduId)
     if (!dp || !SCOPE_PHASES.has(dp.phase)) continue
 
-    const isCurrentGrant =
-      latestApproved.get(c.jduId) === c.applId && CURRENT_PHASES.has(dp.phase)
+    const isLatest = latestApproved.get(c.jduId) === c.applId
+    const phaseIsCurrent = CURRENT_PHASES.has(dp.phase)
 
     const personRoles = applPersons.get(c.applId)
     if (!personRoles) continue
@@ -187,7 +187,7 @@ export function runPipeline(
 
     for (const g of [...jgads].sort()) {
       if (!jgadHumMap.has(g)) {
-        if (latestApproved.get(c.jduId) === c.applId) {
+        if (isLatest) {
           unmappedJgads.add(g)
         }
         continue
@@ -202,7 +202,7 @@ export function runPipeline(
         }
         if (ROLE_RANK[role] < ROLE_RANK[a.role]) a.role = role
         if (dp.approvedAt) a.startDate = minDate(a.startDate, dp.approvedAt)
-        if (isCurrentGrant) {
+        if (phaseIsCurrent) {
           a.isCurrent = true
           if (dp.expireDate) a.currentExpire = maxDate(a.currentExpire, dp.expireDate)
         }
