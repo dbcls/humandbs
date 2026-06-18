@@ -102,7 +102,7 @@
     "status": "Status"
   },
   "VersionCard": {
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "researchOverview": "Research overview",
     "aims": "Aims:",
     "methods": "Methods:",
@@ -230,7 +230,7 @@
     "research-list": "List of researches",
     "humId": "Research ID",
     "datasets": "Datasets",
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "researchOverview": "Research overview",
     "aims": "Aims",
     "title": "Title",
@@ -260,6 +260,7 @@
     "publicationDatasets": "Datasets",
     "platforms": "Platforms",
     "controlledAccessUser": "Controlled access users",
+    "organization-country": "Country",
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
@@ -270,7 +271,7 @@
     "releaseNote": "Release note"
   },
   "DatasetVersionCard": {
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "alreadyInCart": "Already in cart",
     "addToCart": "Add to cart",
     "info": "Info",

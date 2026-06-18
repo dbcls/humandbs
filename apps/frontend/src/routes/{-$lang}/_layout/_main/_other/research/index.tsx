@@ -347,7 +347,7 @@ function ResearchSortSelect() {
 
 function TableWrapper() {
   const lang = useLocale();
-  const t = useTranslations("Research");
+  const t = useTranslations();
 
   const {
     data: researchesData,
@@ -410,13 +410,13 @@ const columns = [
   }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => ctx.table.options.meta?.t("research-id"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.research-id"),
     cell: (ctx) => <ResearchLink humId={ctx.getValue()} />,
     size: 15,
   }),
   columnHelper.accessor("datasetIds", {
     id: "datasets",
-    header: (ctx) => ctx.table.options.meta?.t("datasets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.datasets"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -437,7 +437,7 @@ const columns = [
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => ctx.table.options.meta?.t?.("title"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.title"),
     cell: function Cell(ctx) {
       return (
         <ModalCell maxHeight={96}>
@@ -449,7 +449,7 @@ const columns = [
 
   columnHelper.accessor("methods", {
     id: "methods",
-    header: (ctx) => ctx.table.options.meta?.t("methods"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.methods"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
         <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
@@ -458,7 +458,7 @@ const columns = [
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.type-of-data"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -473,7 +473,7 @@ const columns = [
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
-    header: (ctx) => ctx.table.options.meta?.t("platforms"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.platforms"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -488,7 +488,7 @@ const columns = [
   }),
   columnHelper.accessor("targets", {
     id: "targets",
-    header: (ctx) => ctx.table.options.meta?.t("targets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.targets"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
         <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
@@ -497,12 +497,12 @@ const columns = [
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.criteria"),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.data-provider"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -517,7 +517,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => ctx.table.options.meta?.t?.("datePublished"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.date-published"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -540,7 +540,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => ctx.table.options.meta?.t?.("dateModified"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.date-modified"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (

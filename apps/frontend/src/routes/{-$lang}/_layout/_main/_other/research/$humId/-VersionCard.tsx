@@ -1,6 +1,6 @@
 import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { useMessages, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
@@ -27,14 +27,12 @@ export function VersionCard({
   lang?: Locale;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const t = useTranslations("Research");
+  const t = useTranslations();
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
-  const messages = useMessages();
 
   const tableMeta = {
     lang,
     t,
-    messages,
   };
 
   return (
@@ -51,7 +49,7 @@ export function VersionCard({
               className="text-white no-underline visited:text-white"
               params={{ humId: versionData.humId }}
             >
-              {t("releaseInfo")}
+              {t("Research.release-info")}
             </Link>
           }
         >
@@ -60,25 +58,25 @@ export function VersionCard({
       }
     >
       <article>
-        <ContentHeader>{t("researchOverview")}</ContentHeader>
+        <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
         <div className="columns-2 [&>p>span]:mr-2 [&>p>span]:font-extrabold [&>p]:mb-4">
           <p>
-            <span>{t("aims")}:</span>
+            <span>{t("Research.aims")}:</span>
             {versionData.summary.aims[lang]?.text}
           </p>
           <p>
-            <span>{t("methods")}:</span>
+            <span>{t("Research.methods")}:</span>
             {versionData.summary.methods[lang]?.text}
           </p>
           <p>
-            <span>{t("targets")}:</span>
+            <span>{t("Research.targets")}:</span>
             {versionData.summary.targets[lang]?.text}
           </p>
         </div>
       </article>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("datasets")}</ContentHeader>
+        <ContentHeader>{t("Research.datasets")}</ContentHeader>
         {versionData?.datasets.length === 0 && (
           <div className="rounded-sm bg-foreground-light/10 p-3"> No data</div>
         )}
@@ -94,23 +92,30 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("dataProvider")}</ContentHeader>
+        <ContentHeader>{t("Research.dataProvider")}</ContentHeader>
         <ul>
           {versionData?.dataProvider.map((p) => {
             return (
               <dl key={`${p.name.ja?.text}-${p.name.en?.text}`} className="columns-2">
-                <KeyValueCard title={t("representative")} value={p.name[lang]?.text ?? ""} />
+                <KeyValueCard title={t("Research.representative")} value={p.name[lang]?.text} />
                 <KeyValueCard
-                  title={t("organization")}
-                  value={p.organization?.name[lang]?.text ?? ""}
+                  title={t("Research.organization")}
+                  value={p.organization?.name[lang]?.text}
                 />
                 <KeyValueCard
-                  title={t("periodOfDataUse")}
-                  value={`${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`}
+                  title={t("Research.periodOfDataUse")}
+                  value={
+                    p.periodOfDataUse
+                      ? `${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`
+                      : undefined
+                  }
                 />
-                <KeyValueCard title={t("researchTitle")} value={p.researchTitle?.[lang] ?? ""} />
+                <KeyValueCard title={t("Research.researchTitle")} value={p.researchTitle?.[lang]} />
                 <KeyValueCard title="ORCID" value={p.orcid} />
-                <KeyValueCard title="Dataset IDs" value={p.datasetIds?.join(", ")} />
+                <KeyValueCard
+                  title="Dataset IDs"
+                  value={p.datasetIds?.map((id) => <DatasetLink key={id} datasetId={id} />)}
+                />
               </dl>
             );
           })}
@@ -118,7 +123,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("researchProject.self")}</ContentHeader>
+        <ContentHeader>{t("Research.researchProject.self")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={researchProjectsColumns}
@@ -127,7 +132,7 @@ export function VersionCard({
         />
       </section>
       <section>
-        <ContentHeader>{t("grant.self")}</ContentHeader>
+        <ContentHeader>{t("Research.grant.self")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={grantsColumns}
@@ -137,7 +142,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("relatedPublication")}</ContentHeader>
+        <ContentHeader>{t("Research.relatedPublication")}</ContentHeader>
         <Table
           columns={makePublicationColumns(t)}
           data={versionData?.relatedPublication || []}
@@ -147,7 +152,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("controlledAccessUser")}</ContentHeader>
+        <ContentHeader>{t("Research.controlledAccessUser")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={dataUsedByColumns}
@@ -181,19 +186,21 @@ const datasetColumns = [
   }),
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.datasetId")} />
+    ),
     cell: (ctx) => <DatasetLink datasetId={ctx.getValue()} />,
     maxSize: 12,
   }),
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.criteria"),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />, //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
   datasetColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.typeOfData"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
 
     maxSize: 14,
@@ -263,29 +270,41 @@ const dataUsedByColumnsHelper =
 
 const dataUsedByColumns = [
   dataUsedByColumnsHelper.accessor("name", {
-    id: "name",
-    header: (ctx) => ctx.table.options.meta?.messages?.Person.name,
+    id: "cau.name",
+    header: (ctx) => ctx.table.options.meta?.t("Person.name"),
     cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
   dataUsedByColumnsHelper.accessor("organization.name", {
-    id: "org.name",
-    header: (ctx) => ctx.table.options.meta?.t("organization"),
+    id: "cau.org.name",
+    header: (ctx) => ctx.table.options.meta?.t("Research.organization"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
+  dataUsedByColumnsHelper.accessor("organization.address.country", {
+    id: "cau.org.country",
+    header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
+    cell: (ctx) => ctx.getValue(),
+  }),
+  dataUsedByColumnsHelper.accessor("researchTitle", {
+    id: "cau.research-title",
+    header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+  }),
   dataUsedByColumnsHelper.accessor("datasetIds", {
-    id: "datasetIds",
-    header: (ctx) => ctx.table.options.meta?.t("datasetIds"),
+    id: "cau.datasetIds",
+    header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
     cell: (ctx) => (
       <ul>
         {ctx.getValue()?.map((id) => (
-          <li key={id}></li>
+          <li key={id}>
+            <DatasetLink datasetId={id} />
+          </li>
         ))}
       </ul>
     ),
   }),
   dataUsedByColumnsHelper.accessor("periodOfDataUse", {
-    id: "periodOfDataUse",
-    header: (ctx) => ctx.table.options.meta?.t("periodOfDataUse"),
+    id: "cau.periodOfDataUse",
+    header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
     cell: (ctx) => {
       const v = ctx.getValue();
       if (!v) return null;
@@ -300,19 +319,19 @@ const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["g
 const grantsColumns = [
   grantsColumnsHelper.accessor("title", {
     id: "grantTitle",
-    header: (ctx) => ctx.table.options.meta?.t("grant.title"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("agency.name", {
     id: "grantAgency",
-    header: (ctx) => ctx.table.options.meta?.t("grant.agency"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.grant.agency"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("id", {
     id: "grantId",
-    header: (ctx) => ctx.table.options.meta?.t("grant.id"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.grant.id"),
     cell: (ctx) => (
-      <ul className="flex items-center gap-2">
+      <ul className="flex flex-wrap items-center gap-2">
         {ctx.getValue()?.map((id) => (
           <li className="rounded-full bg-form-tag-bg px-2 py-1" key={id}>
             {id}
@@ -329,12 +348,12 @@ const researchProjectsColumnsHelper =
 const researchProjectsColumns = [
   researchProjectsColumnsHelper.accessor("name", {
     id: "researchProjectTitle",
-    header: (ctx) => ctx.table.options.meta?.t("researchProject.name"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.name"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ?? "",
   }),
   researchProjectsColumnsHelper.accessor("url", {
     id: "researchProjectId",
-    header: (ctx) => ctx.table.options.meta?.t("researchProject.URL"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.URL"),
     cell: (ctx) => (
       <a
         href={

@@ -8,7 +8,6 @@ import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
-import { Link } from "@/components/Link";
 import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
 import { Button } from "@/components/ui/button";
@@ -61,9 +60,6 @@ export function DatasetVersionCard({
     }
   };
 
-  const identifier =
-    [versionData.datasetId, versionData.version].filter(Boolean).join(".") || "Preview";
-
   const showAddToCartButton = isCartableDatasetId(versionData.datasetId);
 
   return (
@@ -76,17 +72,6 @@ export function DatasetVersionCard({
             className="flex-1"
             title="NBDC Dataset ID:"
             icon="dataset"
-            badge={
-              showPublicActions ? (
-                <Link
-                  to="/{-$lang}/dataset/$datasetId/versions"
-                  params={{ datasetId: versionData.datasetId }}
-                  className="text-white no-underline"
-                >
-                  {t("release-info")}
-                </Link>
-              ) : null
-            }
             right={
               showPublicActions && showAddToCartButton ? (
                 <div className="flex gap-5">
@@ -107,7 +92,7 @@ export function DatasetVersionCard({
               ) : null
             }
           >
-            {identifier}
+            {versionData.datasetId}
           </CardCaption>
         </div>
       }
