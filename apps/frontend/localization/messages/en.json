@@ -140,8 +140,8 @@
     "criteria": "Access type",
     "experiments": "Experiments",
     "Unrestricted-access": "Open (no restrictions)",
-    "Controlled-access (Type I)": "Type I (restrictions apply)",
-    "Controlled-access (Type II)": "Type II (restrictions apply)",
+    "Controlled-access (Type I)": "Controlled-access (Type I)",
+    "Controlled-access (Type II)": "Controlled-access (Type II)",
     "Analysis Methods": "Analysis Methods",
     "Antigen Activation": "Antigen Activation",
     "Bacteria Identification": "Bacteria Identification",
@@ -294,8 +294,8 @@
       "title": "Access type",
       "options": {
         "Unrestricted-access": "Open (no restrictions)",
-        "Controlled-access (Type I)": "Type I (restrictions apply)",
-        "Controlled-access (Type II)": "Type II (restrictions apply)"
+        "Controlled-access (Type I)": "Controlled-access (Type I)",
+        "Controlled-access (Type II)": "Controlled-access (Type II)"
       }
     },
     "subjectCountType": {
