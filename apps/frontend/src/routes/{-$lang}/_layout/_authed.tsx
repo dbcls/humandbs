@@ -8,7 +8,6 @@ import {
   LibraryBig,
   Newspaper,
   PanelsTopLeft,
-  PenTool,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -124,16 +123,7 @@ function NavPanel() {
         {canViewCms && (
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
-            <div className="flex flex-col items-stretch gap-5 pl-5">
-              <PanelItem
-                title={
-                  <span>
-                    <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
-                    Content
-                  </span>
-                }
-                tab="content"
-              />
+            <div className="flex flex-col items-stretch gap-5 pl-5" data-testid="cms-left-panel">
               <PanelItem
                 title={
                   <span>

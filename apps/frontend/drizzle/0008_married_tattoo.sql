@@ -1,0 +1,1 @@
+ALTER TABLE "document" ADD COLUMN "hide_from_nav" boolean DEFAULT false;

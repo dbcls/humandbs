@@ -1,4 +1,7 @@
 /// <reference types="vite/client" />
+
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { formDevtoolsPlugin } from "@tanstack/react-form-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -99,6 +102,7 @@ function RootDocument() {
         className="main-bg relative flex h-screen flex-col bg-primary-translucent font-family-sans text-foreground"
       >
         <Outlet />
+        <TanStackDevtools plugins={[formDevtoolsPlugin()]} />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />
         <ConfirmationDialog />

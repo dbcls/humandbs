@@ -29,7 +29,7 @@ export interface Permissions {
   };
   documents: {
     dataType: Document;
-    action: "view" | "create" | "update" | "delete";
+    action: "view" | "create" | "update" | "delete" | "list";
   };
   contents: {
     dataType: ContentItem;
@@ -69,6 +69,7 @@ const ROLES = {
       create: true,
       update: true,
       delete: true,
+      list: true,
     },
     documentVersions: {
       view: true,

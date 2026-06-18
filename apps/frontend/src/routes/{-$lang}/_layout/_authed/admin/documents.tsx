@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { FilesIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -26,8 +26,11 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents"
   loaderDeps: ({ search }) => ({
     selectedId: search.selectedId,
     selectedVer: search.selectedVer,
+    q: search.q,
   }),
   loader: async ({ deps, context }) => {
+    await context.queryClient.ensureQueryData(getDocumentsQueryOptions({ q: deps.q }));
+
     if (!deps.selectedId) {
       return;
     }
@@ -75,8 +78,11 @@ function RouteComponent() {
 
   const setSelectedContentId = (contentId: string | undefined) => {
     const documents = queryClient.getQueryData(getDocumentsQueryOptions({ q }).queryKey);
-    const latestVersionNumber = documents?.find((d) => d.contentId === contentId)?.latestVersionNumber ?? undefined;
-    navigate({ search: (prev) => ({ ...prev, selectedId: contentId, selectedVer: latestVersionNumber }) });
+    const latestVersionNumber =
+      documents?.find((d) => d.contentId === contentId)?.latestVersionNumber ?? undefined;
+    navigate({
+      search: (prev) => ({ ...prev, selectedId: contentId, selectedVer: latestVersionNumber }),
+    });
   };
 
   const onSelectVersion = useCallback(

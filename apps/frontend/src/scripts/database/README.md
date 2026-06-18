@@ -98,6 +98,22 @@ bun run db:seed-content -- --overwrite
 - Skips existing items by `contentId`; use `--overwrite` to update in place
 - Exports `seedContent(pages, overwrite?, db?)` for use in tests
 
+### `migrate-content-items-to-documents.ts`
+
+Migrates all `content_item` records into `document` / `document_version` tables. Run after `seed-content.ts`.
+
+```bash
+bun run src/scripts/database/migrate-content-items-to-documents.ts
+bun run src/scripts/database/migrate-content-items-to-documents.ts --overwrite
+```
+
+- Each content item becomes a `document` with `hideFromNav: true` (excluded from the header/footer nav item picker)
+- Each translation (published and draft) becomes a `document_version` at `versionNumber: 1`, preserving the original status
+- `hideTOC` is carried over from the content item
+- `publishedAt` is set from `contentItem.publishedAt` for published translations
+- Guideline version archives (`data-sharing-guidelines-v1`, etc.) and revision changelogs (`guideline-revision*`) are skipped — handled by `seed-guideline-versions.ts`
+- Skips items where a document with the same `contentId` already exists; use `--overwrite` to update in place
+
 ### `reset-db.ts`
 
 Drops all tables entirely.
@@ -130,9 +146,7 @@ bun run db:clear -- --tables=news_item,news_translation
 bun test ./src/scripts/database/tests
 ```
 
-Tests run against a `humandbs_test` database in the existing dev Postgres container. The test setup creates the database, applies the current schema via `drizzle-kit push`, and drops it after all tests complete. `clearTables()` truncates data between tests.
-
-The dev Postgres container must be running and `HUMANDBS_POSTGRES_*` env vars must be set.
+Tests run against an in-memory PGlite database. The test fixture creates a fresh PGlite-backed Drizzle instance per test file, bootstraps the current test schema, and `clearTables()` truncates data between tests.
 
 ## Environment Variables
 

@@ -2,6 +2,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import type { NavigationFlowchartStatus } from "@/db/schema";
 import {
@@ -84,9 +85,7 @@ export interface NavigationFlowchartRepository {
   getDependencies: (id: string) => Promise<NavigationFlowchartDependency[]>;
 }
 
-export function createNavigationFlowchartRepository(
-  database: typeof db,
-): NavigationFlowchartRepository {
+export function createNavigationFlowchartRepository(database: DB): NavigationFlowchartRepository {
   return {
     async getAll() {
       const rows = await database

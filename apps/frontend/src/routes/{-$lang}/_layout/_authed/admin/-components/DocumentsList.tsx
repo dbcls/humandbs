@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
-import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import type { DocumentsListItemResponse } from "@/repositories/document";
 import {
   $changeIdOfDocument,
   $createDocument,
@@ -62,9 +62,10 @@ export function DocumentsList({
         (oldData: DocumentsListItemResponse[] | undefined) => {
           const optimisticDocument: DocumentsListItemResponse = {
             contentId,
-            id: "optimistic-id-" + contentId,
-            createdAt: new Date(),
+            id: `optimistic-id-${contentId}`,
+
             latestVersionNumber: null,
+            hideFromNav: true,
             translations: [],
           };
 

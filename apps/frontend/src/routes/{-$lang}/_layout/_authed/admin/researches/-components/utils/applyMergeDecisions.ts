@@ -1,5 +1,5 @@
 import type { FieldDecision, MergeFieldDescriptor } from "./computeMergeFields";
-import type { EditableResearchValues } from "./jdsResearchValues";
+import type { EditableResearchValues } from "./researchValues";
 
 type DecisionsMap = Record<string, FieldDecision>;
 type CustomValuesMap = Record<string, unknown>;

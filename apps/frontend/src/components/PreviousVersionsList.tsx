@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
 import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
+import { revisionLabel, revisionSplatPath } from "@/utils/revision";
 
 export function PreviousVersionsList({
   revisionsBasePath,
@@ -25,12 +26,12 @@ export function PreviousVersionsList({
       <ul>
         {versions.map((version) => (
           <li className="flex gap-2" key={version.versionNumber}>
-            <span>v. {version.versionNumber}</span>
+            <span>{revisionLabel(version.versionNumber, tCommon)}</span>
             <Link
               to="/{-$lang}/$"
               params={{
                 lang,
-                _splat: `${revisionsBasePath}/version/${version.versionNumber}`,
+                _splat: revisionSplatPath(revisionsBasePath, version.versionNumber),
               }}
               className="text-secondary"
             >

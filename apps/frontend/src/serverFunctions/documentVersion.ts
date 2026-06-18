@@ -7,13 +7,8 @@ import { z } from "zod";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
-import type { DocumentVersionStatus } from "@/db/types";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import type {
-  DocAnyVersionResponseRaw,
-  DocVersionListItemResponseRaw,
-} from "@/repositories/documentVersion";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
 import { $getPublishedContentItemTranslation } from "./contentItem";
@@ -23,15 +18,6 @@ const documentVersionRepo = createDocumentVersionRepository(db);
 // === For CMS ===
 
 // === LIST VERSIONS
-
-export interface DocVersionListItemResponse {
-  versionNumber: number;
-  contentId: string;
-  translations: {
-    locale: Locale;
-    statuses: { status: DocumentVersionStatus; title: string }[];
-  }[];
-}
 
 const docVersionsRequestSchema = documentSelectSchema;
 /**
@@ -47,9 +33,7 @@ export const $getDocumentVersionList = createServerFn({
 
     const { contentId } = data;
 
-    const versions = await documentVersionRepo.getVersionList(contentId);
-
-    return groupDocumentVersions(versions);
+    return await documentVersionRepo.getVersionList(contentId);
   });
 
 export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: string | null }) =>
@@ -62,49 +46,6 @@ export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: s
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId,
   });
-
-export function groupDocumentVersions(
-  rawVersions: DocVersionListItemResponseRaw[],
-): DocVersionListItemResponse[] {
-  const groupedVersions: DocVersionListItemResponse[] = [];
-
-  for (const version of rawVersions) {
-    const existingVersion = groupedVersions.find(
-      (v) => v.contentId === version.contentId && v.versionNumber === version.versionNumber,
-    );
-
-    if (existingVersion) {
-      const existingTranslation = existingVersion.translations.find(
-        (t) => t.locale === version.locale,
-      );
-
-      if (existingTranslation) {
-        existingTranslation.statuses.push({
-          status: version.status,
-          title: version.title ?? "",
-        });
-      } else {
-        existingVersion.translations.push({
-          locale: version.locale,
-          statuses: [{ status: version.status, title: version.title ?? "" }],
-        });
-      }
-    } else {
-      groupedVersions.push({
-        versionNumber: version.versionNumber,
-        contentId: version.contentId,
-        translations: [
-          {
-            locale: version.locale,
-            statuses: [{ status: version.status, title: version.title ?? "" }],
-          },
-        ],
-      });
-    }
-  }
-
-  return groupedVersions;
-}
 
 // === GET VERSION
 
@@ -143,7 +84,7 @@ export const $getDocumentVersion = createServerFn({
 
     const version = await documentVersionRepo.getVersion(contentId, versionNumber);
 
-    return groupDocVersion(version);
+    return version;
   });
 
 export const getDocumentVersionQueryOptions = ({
@@ -165,62 +106,6 @@ export const getDocumentVersionQueryOptions = ({
     enabled: typeof versionNumber === "number",
   });
 
-/**
- *
- * @param rawVersion raw version return
- * @returns grouped result
- */
-export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVersionResponse {
-  if (rawVersion.length === 0) {
-    return {
-      contentId: "",
-      versionNumber: 0,
-      translations: {},
-    };
-  }
-
-  const result: DocVersionResponse = {
-    contentId: rawVersion[0].contentId,
-    versionNumber: rawVersion[0].versionNumber,
-    translations: {},
-  };
-
-  for (const verStatusLang of rawVersion) {
-    let translation = result.translations[verStatusLang.locale];
-    if (!translation) {
-      translation = {
-        createdAt: verStatusLang.createdAt,
-        updatedAt: verStatusLang.updatedAt,
-        author: verStatusLang.author,
-        [verStatusLang.status]: {
-          title: verStatusLang.title ?? "",
-          content: verStatusLang.content ?? "",
-        },
-      };
-    } else {
-      translation[verStatusLang.status] = {
-        title: verStatusLang.title ?? "",
-        content: verStatusLang.content ?? "",
-      };
-      // keep the most recent updatedAt across statuses for this locale
-      if (verStatusLang.updatedAt > translation.updatedAt) {
-        translation.updatedAt = verStatusLang.updatedAt;
-      }
-    }
-
-    // copy published content in draft
-    if (!translation.draft) {
-      translation.draft = {
-        content: translation.published?.content ?? "",
-        title: translation.published?.title ?? "",
-      };
-    }
-
-    result.translations[verStatusLang.locale] = translation;
-  }
-  return result;
-}
-
 // === SAVE DRAFT
 
 const saveDocVersionDraftRequestSchema = z.object({
@@ -239,7 +124,7 @@ export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
 
     const { contentId, versionNumber, locale, ...rest } = data;
 
-    await documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest);
+    return documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest, context.user.id);
   });
 
 // === PUBLISH DRAFT

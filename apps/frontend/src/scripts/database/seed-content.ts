@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import type { DB } from "@/db/database";
 import * as schema from "@/db/schema";
 
 import type { MiscPageContent, MiscPagesOutput } from "../../../../backend/joomla/lib/types";
@@ -16,7 +17,7 @@ const MISC_JSON_PATH = path.join(
   "../../../../backend/joomla/output/misc-pages.json",
 );
 
-async function ensureSystemUser(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
+async function ensureSystemUser(db: DB): Promise<string> {
   const [existing] = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -40,7 +41,7 @@ async function ensureSystemUser(db: ReturnType<typeof drizzle<typeof schema>>): 
   return created.id;
 }
 
-async function resolveAuthorId(db: ReturnType<typeof drizzle<typeof schema>>): Promise<string> {
+async function resolveAuthorId(db: DB): Promise<string> {
   const seedId = process.env.SEED_AUTHOR_ID;
   const email = process.env.SEED_AUTHOR_EMAIL;
   const name = process.env.SEED_AUTHOR_NAME || "Seed User";
@@ -108,7 +109,7 @@ function groupByPath(pages: MiscPageContent[]): Map<string, MiscPageContent[]> {
 export async function seedContent(
   pages: MiscPageContent[],
   overwrite = false,
-  db?: ReturnType<typeof drizzle<typeof schema>>,
+  db?: DB,
 ): Promise<{ created: number; skipped: number }> {
   const pool = db ? null : new Pool({ connectionString: buildDatabaseUrl() });
   const resolvedDb = db ?? drizzle(pool!, { schema });

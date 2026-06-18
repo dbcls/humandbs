@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/config/i18n";
 import type { NavigationItem } from "@/config/site-navigation";
-import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import type { DocumentsListItemResponse } from "@/repositories/document";
 
 import {
   CardWithPath,
@@ -500,24 +500,31 @@ function FooterUnassignedPool({
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
-          {documents.map((doc) => {
-            const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
-            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
-            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
+          {(() => {
+            const navDocuments = documents.filter((doc) => !doc.hideFromNav);
             return (
-              <FooterPoolDocCard
-                key={doc.contentId}
-                doc={doc}
-                lang={lang}
-                isAssigned={isAssigned}
-                groupName={groupName}
-                documentId={doc.id}
-              />
+              <>
+                {navDocuments.map((doc) => {
+                  const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
+                  const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+                  const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
+                  return (
+                    <FooterPoolDocCard
+                      key={doc.contentId}
+                      doc={doc}
+                      lang={lang}
+                      isAssigned={isAssigned}
+                      groupName={groupName}
+                      documentId={doc.id}
+                    />
+                  );
+                })}
+                {navDocuments.length === 0 && (
+                  <li className="py-2 text-foreground-light text-xs">No documents</li>
+                )}
+              </>
             );
-          })}
-          {documents.length === 0 && (
-            <li className="py-2 text-foreground-light text-xs">No documents</li>
-          )}
+          })()}
         </ul>
 
         {unassignedLinkItems.length > 0 && (

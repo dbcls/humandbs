@@ -30,9 +30,12 @@ export const documentVersion = pgTable(
     locale: text("locale").notNull().$type<Locale>(),
     title: text("name"),
     content: text("content"),
-    authorId: text("author_id").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    authorId: text("author_id").references(() => user.id),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedBy: text("updated_by").references(() => user.id),
+    publishedAt: timestamp("published_at"),
+    publishedBy: text("publisher_id").references(() => user.id),
   },
   (table) => [
     primaryKey({
@@ -50,6 +53,14 @@ export const documentVersionRelations = relations(documentVersion, ({ one }) => 
   }),
   author: one(user, {
     fields: [documentVersion.authorId],
+    references: [user.id],
+  }),
+  publisher: one(user, {
+    fields: [documentVersion.publishedBy],
+    references: [user.id],
+  }),
+  updater: one(user, {
+    fields: [documentVersion.updatedBy],
     references: [user.id],
   }),
 }));

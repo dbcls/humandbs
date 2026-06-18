@@ -5,6 +5,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
 import { useTranslations } from "use-intl";
 
@@ -16,7 +17,7 @@ import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { StatusTag, Tag } from "@/components/StatusTag";
+import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,16 +32,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
+import type { DocVersionStatus } from "@/db/schema/documentVersion";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
+import type { DocumentVersionsResponse } from "@/repositories/documentVersion";
 import {
+  $updateDocumentHideFromNav,
   $updateDocumentHideRevisions,
   $updateDocumentHideTOC,
   getDocumentQueryOptions,
+  getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
-import type {
-  DocVersionListItemResponse,
-  DocVersionResponse,
-} from "@/serverFunctions/documentVersion";
+import type { DocVersionResponse } from "@/serverFunctions/documentVersion";
 import {
   $createDocumentVersion,
   $publishDocumentVersionDraft,
@@ -51,6 +53,7 @@ import {
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
+import { revisionLabel } from "@/utils/revision";
 
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { TitleValue } from "./TitleValue";
@@ -58,16 +61,20 @@ import { UnpublishedDot } from "./UnpublishedDot";
 
 const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
-interface FormMeta {
-  submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;
-}
+type FormMeta =
+  | {
+      submitAction: "publishAll" | null;
+    }
+  | {
+      submitAction: "saveDraft" | "resetDraft";
+      lang: Locale;
+    };
 
 const defaultMeta: FormMeta = {
   submitAction: null,
 };
 
 interface FormData {
-  lang: Locale;
   translations: DocVersionResponse["translations"];
 }
 
@@ -97,7 +104,7 @@ export function DocumentVersion({
         caption="Document"
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-sm">
-          <p>No versions available for this document.</p>
+          <p>No revisions yet for this document.</p>
           <Button
             variant="accent"
             onClick={() => {
@@ -110,7 +117,7 @@ export function DocumentVersion({
             ) : (
               <Plus className="size-4" />
             )}
-            Create First Version
+            Create Original
           </Button>
         </div>
       </Card>
@@ -136,6 +143,9 @@ export function DocumentVersion({
           <Suspense>
             <ShowRevisionsCheckbox contentId={contentId} />
           </Suspense>
+          <Suspense>
+            <ShowInNavCheckbox contentId={contentId} />
+          </Suspense>
         </span>
       }
     >
@@ -157,6 +167,12 @@ function DocumentVersionContent({
   contentId: string;
   versionNumber: number;
 }) {
+  const [activeLocaleTab, setActiveLocaleTab] = useState<Locale>(i18n.defaultLocale);
+
+  const [activeModeTab, setActiveModeTab] = useState<DocVersionStatus>(
+    DOCUMENT_VERSION_STATUS.DRAFT,
+  );
+
   const t = useTranslations("common");
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
@@ -178,16 +194,10 @@ function DocumentVersionContent({
     versionNumber,
   );
 
-  const [baselineTranslations, setBaselineTranslations] = useState(
-    () => selectedVersionContent?.translations ?? {},
-  );
-
   const form = useDocumentVersionForm({
     initialValues: {
-      lang: i18n.defaultLocale,
-      translations: baselineTranslations,
+      translations: selectedVersionContent.translations,
     },
-    setBaselineTranslations,
     contentId,
     versionNumber,
   });
@@ -213,23 +223,20 @@ function DocumentVersionContent({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <Tabs
-        defaultValue={i18n.defaultLocale}
-        onValueChange={(val) => form.setFieldValue("lang", val as Locale)}
+        onValueChange={(loc) => setActiveLocaleTab(loc as Locale)}
         className="flex min-h-0 flex-1 flex-col"
+        value={activeLocaleTab}
       >
         <div className="flex items-center justify-end gap-2 pb-1">
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => (
-              <Button
-                variant="outline"
-                size="lg"
-                disabled={!dirtyLocales[lang]}
-                onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
-              >
-                Reset
-              </Button>
-            )}
-          </form.Subscribe>
+          <Button
+            variant="outline"
+            size="lg"
+            // TODO !dirtyLocales[locale] ?
+            disabled={!dirtyLocales[activeLocaleTab]}
+            onClick={() => form.handleSubmit({ submitAction: "resetDraft", lang: activeLocaleTab })}
+          >
+            Reset
+          </Button>
 
           <Button
             type="submit"
@@ -262,13 +269,13 @@ function DocumentVersionContent({
               <TitleValue
                 title={t("created-at")}
                 value={
-                  selectedVersionContent.translations[loc]?.createdAt.toLocaleDateString() ?? "N/A"
+                  selectedVersionContent.translations[loc]?.createdAt?.toLocaleDateString() ?? "N/A"
                 }
               />
               <TitleValue
                 title={t("updated-at")}
                 value={
-                  selectedVersionContent.translations[loc]?.updatedAt.toLocaleDateString() ?? "N/A"
+                  selectedVersionContent.translations[loc]?.updatedAt?.toLocaleDateString() ?? "N/A"
                 }
               />
               <TitleValue
@@ -283,6 +290,10 @@ function DocumentVersionContent({
             <Tabs
               className="flex min-h-0 flex-1 flex-col"
               defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+              value={activeModeTab}
+              onValueChange={(tab) => {
+                setActiveModeTab(tab as DocVersionStatus);
+              }}
             >
               <TabsList variant="line">
                 <TabsTrigger
@@ -338,7 +349,7 @@ function DocumentVersionContent({
                             uploadedTitle,
                           );
                         }
-                        form.handleSubmit({ submitAction: "saveDraft" });
+                        form.handleSubmit({ submitAction: "saveDraft", lang: loc });
                       }}
                     />
                   )}
@@ -347,7 +358,7 @@ function DocumentVersionContent({
                   name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
                   listeners={{
                     onChange: ({ fieldApi }) => {
-                      fieldApi.form.handleSubmit({ submitAction: "saveDraft" });
+                      fieldApi.form.handleSubmit({ submitAction: "saveDraft", lang: loc });
                     },
                     onChangeDebounceMs: 800,
                   }}
@@ -361,6 +372,7 @@ function DocumentVersionContent({
                       onChange: ({ fieldApi }) => {
                         fieldApi.form.handleSubmit({
                           submitAction: "saveDraft",
+                          lang: loc,
                         });
                       },
                       onChangeDebounceMs: 800,
@@ -488,7 +500,49 @@ function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
         onCheckedChange={(checked) => updateHideRevisions(!checked)}
       />
       <Label htmlFor="show-revisions" className="cursor-pointer font-normal">
-        Show previous versions
+        Show revisions
+      </Label>
+    </div>
+  );
+}
+
+function ShowInNavCheckbox({ contentId }: { contentId: string }) {
+  const queryClient = useQueryClient();
+  const docQO = getDocumentQueryOptions(contentId);
+  const { data: doc } = useSuspenseQuery(docQO);
+
+  const { mutate: updateHideFromNav, isPending } = useMutation({
+    mutationFn: (hideFromNav: boolean) =>
+      $updateDocumentHideFromNav({ data: { contentId, hideFromNav } }),
+    onMutate: async (hideFromNav) => {
+      await queryClient.cancelQueries(docQO);
+      const prev = queryClient.getQueryData(docQO.queryKey);
+      queryClient.setQueryData(docQO.queryKey, (old: typeof doc | undefined) =>
+        old ? { ...old, hideFromNav } : old,
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(docQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(docQO);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-in-nav"
+        checked={!(doc?.hideFromNav ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideFromNav(!checked)}
+      />
+      <Label htmlFor="show-in-nav" className="cursor-pointer font-normal">
+        Show in nav config
       </Label>
     </div>
   );
@@ -496,16 +550,14 @@ function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
 
 function useDocumentVersionForm({
   initialValues,
-  setBaselineTranslations,
   contentId,
   versionNumber,
 }: {
   initialValues: FormData;
-  setBaselineTranslations: React.Dispatch<React.SetStateAction<FormData["translations"]>>;
   contentId: string;
   versionNumber: number;
 }) {
-  const { mutate: saveDraft } = useSaveDraft(contentId, versionNumber);
+  const { mutate: saveDraft, mutateAsync: saveDraftAsync } = useSaveDraft(contentId, versionNumber);
   const { mutateAsync: publishDraft } = usePublishDraft(contentId, versionNumber);
   const { mutateAsync: resetDraft } = useResetDraft(contentId, versionNumber);
 
@@ -514,75 +566,47 @@ function useDocumentVersionForm({
   const form = useAppForm({
     defaultValues: initialValues,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta, formApi }) => {
+    onSubmit: async ({ value, meta, formApi }) => {
       if (isIgnoreRef.current) {
         return;
       }
 
-      const title = value.translations?.[value.lang]?.draft?.title;
-      const content = value.translations?.[value.lang]?.draft?.content;
+      // const title = value.translations?.[value.lang]?.draft?.title;
+      // const content = value.translations?.[value.lang]?.draft?.content;
 
       switch (meta.submitAction) {
-        case "saveDraft":
+        // SaveDraft is always per-locale, so we need to know which locale has updated
+        case "saveDraft": {
+          const title = value.translations?.[meta.lang]?.draft?.title;
+          const content = value.translations?.[meta.lang]?.draft?.content;
+
           if (title || content) {
             saveDraft({
-              locale: value.lang,
+              locale: meta.lang,
               title: title ?? "",
               content: content ?? "",
             });
           }
           break;
+        }
         case "resetDraft":
           isIgnoreRef.current = true;
-          resetDraft({ locale: value.lang })
+          resetDraft({ locale: meta.lang })
             .then(() => {
-              const publishedTitle = value.translations?.[value.lang]?.published?.title ?? "";
-              const publishedContent = value.translations?.[value.lang]?.published?.content ?? "";
+              const publishedTitle = value.translations?.[meta.lang]?.published?.title ?? "";
+              const publishedContent = value.translations?.[meta.lang]?.published?.content ?? "";
 
-              const existingLang = value.translations[value.lang];
+              const existingLang = value.translations[meta.lang];
               const newTranslations = existingLang
                 ? {
                     ...value.translations,
-                    [value.lang]: {
+                    [meta.lang]: {
                       ...existingLang,
                       draft: { title: publishedTitle, content: publishedContent },
                     },
                   }
                 : value.translations;
-              setBaselineTranslations(newTranslations);
-              formApi.reset({ ...value, translations: newTranslations });
-            })
-            .finally(() => {
-              isIgnoreRef.current = false;
-            })
-            .catch(() => {
-              formApi.reset();
-            });
-          break;
-
-        case "publish":
-          isIgnoreRef.current = true;
-          if (title || content) {
-            saveDraft({
-              locale: value.lang,
-              title: title ?? "",
-              content: content ?? "",
-            });
-          }
-
-          publishDraft({ locale: value.lang })
-            .then(() => {
-              const existing = value.translations[value.lang];
-              const newTranslations = existing
-                ? {
-                    ...value.translations,
-                    [value.lang]: {
-                      ...existing,
-                      published: { title: title ?? "", content: content ?? "" },
-                    },
-                  }
-                : value.translations;
-              setBaselineTranslations(newTranslations);
+              // setBaselineTranslations(newTranslations);
               formApi.reset({ ...value, translations: newTranslations });
             })
             .finally(() => {
@@ -595,26 +619,19 @@ function useDocumentVersionForm({
 
         case "publishAll": {
           isIgnoreRef.current = true;
-          const dirtyLocs = i18n.locales.filter((loc) => {
-            const draft = value.translations[loc]?.draft;
-            const published = value.translations[loc]?.published;
-            return (
-              normalizeDocTextValue(draft?.content) !== normalizeDocTextValue(published?.content) ||
-              normalizeDocTextValue(draft?.title) !== normalizeDocTextValue(published?.title)
-            );
-          });
 
           Promise.all(
-            dirtyLocs.map(async (loc) => {
+            (Object.keys(value.translations) as Locale[]).map(async (loc) => {
               const locTitle = value.translations[loc]?.draft?.title ?? "";
               const locContent = value.translations[loc]?.draft?.content ?? "";
               if (locTitle || locContent) {
-                saveDraft({
+                await saveDraftAsync({
                   locale: loc,
                   title: locTitle,
                   content: locContent,
                 });
               }
+              console.log("calling publishDraft with loc", loc);
               await publishDraft({ locale: loc });
               return { loc, locTitle, locContent };
             }),
@@ -630,7 +647,7 @@ function useDocumentVersionForm({
                   };
                 }
               }
-              setBaselineTranslations(newTranslations);
+              //setBaselineTranslations(newTranslations);
               formApi.reset({ ...value, translations: newTranslations });
             })
             .finally(() => {
@@ -661,7 +678,7 @@ function useDocVersionsList(contentId: string, version?: number) {
 }
 
 interface DocumentVersionSelectorProps {
-  items: DocVersionListItemResponse[];
+  items: DocumentVersionsResponse[];
   onSelect: (versionNumber: number) => void;
   versionNumber: number | undefined;
   contentId: string;
@@ -717,7 +734,7 @@ function DocumentVersionSelector({
           ))}
           <Button variant="accent" onClick={handleCreateVersion} disabled={isCreating}>
             {isCreating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            New Version
+            New Revision
           </Button>
         </SelectGroup>
       </SelectContent>
@@ -729,28 +746,23 @@ function DocumentVersionSelectorItem({
   item,
   compact,
 }: {
-  item: DocVersionListItemResponse;
+  item: DocumentVersionsResponse;
   compact?: boolean;
 }) {
+  const tCommon = useTranslations("common");
   return (
     <div className="text-left text-xs group-focus:text-white">
-      <div className="mb-1 font-medium">Version {item.versionNumber}</div>
+      <div className="mb-1 font-medium">{revisionLabel(item.versionNumber, tCommon)}</div>
       {!compact && (
         <ul className="space-y-2">
           {item.translations.map((tr) => (
-            <li key={tr.locale} className="flex items-start gap-1">
-              <Tag tag={tr.locale} className="group-focus:border-white group-focus:text-white" />
-              <ul className="flex flex-col items-start gap-0.5">
-                {tr.statuses.map((st) => (
-                  <li key={st.status} className="flex items-start gap-2">
-                    <StatusTag
-                      status={st.status}
-                      className="group-focus:border-white group-focus:text-white"
-                    />
-                    <span className="max-w-48 truncate">{st.title || "(no title)"}</span>
-                  </li>
-                ))}
-              </ul>
+            <li key={tr.lang} className="flex items-start gap-2">
+              <StatusTag
+                status={tr.status}
+                className="group-focus:border-white group-focus:text-white"
+              />
+              <span className="max-w-48 truncate">{tr.title || "(no title)"}</span>
+              {tr.status === "published" && tr.hasUnpublishedChanges ? <UnpublishedDot /> : null}
             </li>
           ))}
         </ul>
@@ -760,20 +772,25 @@ function DocumentVersionSelectorItem({
 }
 
 function useDocVersionQueryOptions(contentId: string, versionNumber: number) {
+  const { q } = useSearch({ from: "/{-$lang}/_layout/_authed/admin/documents" });
+
   return useMemo(
     () => ({
       version: getDocumentVersionQueryOptions({ contentId, versionNumber }),
       list: getDocumentVersionListQueryOptions({ contentId }),
+      docsList: getDocumentsQueryOptions({ q }),
     }),
-    [contentId, versionNumber],
+    [contentId, versionNumber, q],
   );
 }
 
 function useSaveDraft(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
-    contentId,
-    versionNumber,
-  );
+  const {
+    version: docVersionQO,
+    list: docVersionsListQO,
+    docsList: docListQO,
+  } = useDocVersionQueryOptions(contentId, versionNumber);
+
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -798,10 +815,19 @@ function useSaveDraft(contentId: string, versionNumber: number) {
       }),
 
     onMutate: async (data) => {
+      console.log("useSaveDraft onMutate data", data);
+
+      await queryClient.cancelQueries(docListQO);
       await queryClient.cancelQueries(docVersionQO);
+      await queryClient.cancelQueries(docVersionsListQO);
 
       const prevVersion = queryClient.getQueryData(docVersionQO.queryKey);
+      const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const prevDocList = queryClient.getQueryData(docListQO.queryKey);
 
+      const isLatestVersion = prevList?.at(0)?.versionNumber === versionNumber;
+
+      // Optimistically update document version
       queryClient.setQueryData(docVersionQO.queryKey, (old) => {
         if (!old) {
           return {
@@ -830,26 +856,121 @@ function useSaveDraft(contentId: string, versionNumber: number) {
         };
       });
 
-      return { prevVersion };
+      // Read from the already-updated docVersionQO (may have been patched by publish's onMutate)
+
+      const hasUnpublishedChanges =
+        prevVersion !== undefined &&
+        (data.title !== prevVersion.translations[data.locale]?.published?.title ||
+          data.content !== prevVersion.translations[data.locale]?.published?.content);
+
+      console.log("hasUnpublishedChanges", hasUnpublishedChanges);
+      console.log("prevVersion", prevVersion);
+      console.log(
+        "data.title !== prevVersion.translations[data.locale]?.published?.title",
+        data.title !== prevVersion?.translations[data.locale]?.published?.title,
+      );
+      console.log(
+        "data.content !== prevVersion.translations[data.locale]?.published?.content",
+        data.content !== prevVersion?.translations[data.locale]?.published?.content,
+      );
+
+      if (isLatestVersion) {
+        queryClient.setQueryData(docListQO.queryKey, (old) => {
+          if (!old) return old;
+
+          return old.map((doc) => {
+            if (doc.contentId !== contentId) return doc;
+            console.log("previous translations", doc.translations);
+
+            return {
+              ...doc,
+              translations: doc.translations.map((tr) => {
+                if (tr.lang !== data.locale) return tr;
+
+                console.log("mapping translation prev", tr);
+                // if there is published, update its hasUnpublishedChanges
+                if (tr.status === "published") {
+                  const res = { ...tr, hasUnpublishedChanges };
+                  console.log("mapping translations, change", { from: tr, to: res });
+                  return res;
+                } else {
+                  // if only draft present, update the draft title
+                  return { ...tr, ...data };
+                }
+              }),
+            };
+          });
+        });
+      }
+
+      queryClient.setQueryData(docVersionsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((version) => {
+          if (version.versionNumber === versionNumber) {
+            const existingLocale = version.translations.find((tr) => tr.lang === data.locale);
+
+            const updatedTranslations = existingLocale
+              ? version.translations.map((tr) => {
+                  if (tr.lang !== data.locale) return tr;
+                  if (tr.status === "published") return { ...tr, hasUnpublishedChanges };
+                  return { ...tr, title: data.title };
+                })
+              : [
+                  ...version.translations,
+                  { status: "draft" as const, lang: data.locale, title: data.title },
+                ];
+
+            return { ...version, translations: updatedTranslations };
+          }
+          return version;
+        });
+      });
+      return { prevVersion, prevList, prevDocList };
     },
 
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(docVersionQO.queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [variables.locale]: {
+              ...old.translations[variables.locale],
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+              author: data.author,
+            },
+          },
+        };
+      });
+    },
     onError: (_, __, context) => {
       if (context?.prevVersion) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
+      }
+      if (context?.prevList) {
+        queryClient.setQueryData(docVersionsListQO.queryKey, context.prevList);
+      }
+      if (context?.prevDocList) {
+        queryClient.setQueryData(docListQO.queryKey, context.prevDocList);
       }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries(docVersionQO);
       await queryClient.invalidateQueries(docVersionsListQO);
+      await queryClient.invalidateQueries(docListQO);
     },
   });
 }
 
 function usePublishDraft(contentId: string, versionNumber: number) {
-  const { version: docVersionQO, list: docVersionsListQO } = useDocVersionQueryOptions(
-    contentId,
-    versionNumber,
-  );
+  const {
+    version: docVersionQO,
+    list: docVersionsListQO,
+    docsList: docListQO,
+  } = useDocVersionQueryOptions(contentId, versionNumber);
+
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -890,8 +1011,58 @@ function usePublishDraft(contentId: string, versionNumber: number) {
       await queryClient.cancelQueries(docVersionsListQO);
 
       const previousList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const draftTitle = previousVersion?.translations[data.locale]?.draft?.title;
 
-      return { previousVersion, previousList };
+      queryClient.setQueryData(docVersionsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((item) => {
+          if (item.versionNumber !== versionNumber) return item;
+          return {
+            ...item,
+            translations: item.translations.map((t) => {
+              if (t.lang !== data.locale) return t;
+              if (t.status === "published") return { ...t, hasUnpublishedChanges: false };
+              return {
+                status: "published" as const,
+                lang: t.lang,
+                title: draftTitle ?? t.title,
+                hasUnpublishedChanges: false,
+              };
+            }),
+          };
+        });
+      });
+
+      const versionsList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const isLatestVersion = versionsList?.at(0)?.versionNumber === versionNumber;
+
+      let prevDocList;
+
+      if (isLatestVersion) {
+        await queryClient.cancelQueries(docListQO);
+        prevDocList = queryClient.getQueryData(docListQO.queryKey);
+
+        queryClient.setQueryData(docListQO.queryKey, (old) => {
+          if (!old) return old;
+          return old.map((doc) => {
+            if (doc.contentId !== contentId) return doc;
+            return {
+              ...doc,
+              translations: doc.translations.map((tr) => {
+                if (tr.lang !== data.locale) return tr;
+                return {
+                  ...tr,
+                  title: draftTitle ?? tr.title,
+                  status: "published" as const,
+                  hasUnpublishedChanges: false,
+                };
+              }),
+            };
+          });
+        });
+      }
+
+      return { previousVersion, previousList, prevDocList };
     },
     onError: (_, __, context) => {
       if (context?.previousVersion) {
@@ -900,10 +1071,14 @@ function usePublishDraft(contentId: string, versionNumber: number) {
       if (context?.previousList) {
         queryClient.setQueryData(docVersionsListQO.queryKey, context.previousList);
       }
+      if (context?.prevDocList) {
+        queryClient.setQueryData(docListQO.queryKey, context.prevDocList);
+      }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries(docVersionQO);
       await queryClient.invalidateQueries(docVersionsListQO);
+      await queryClient.invalidateQueries(docListQO);
     },
   });
 }
@@ -998,38 +1173,27 @@ function useUnpublishVersion(contentId: string, versionNumber: number) {
 
       await queryClient.cancelQueries(docVersionsListQO);
       const previousList = queryClient.getQueryData(docVersionsListQO.queryKey);
+      const draftTitle = previousVersion?.translations[data.locale]?.draft?.title;
 
-      queryClient.setQueryData(
-        docVersionsListQO.queryKey,
-        (old: DocVersionListItemResponse[] | undefined) => {
-          if (!old) return old;
-          return old.map((item) => {
-            if (item.versionNumber !== versionNumber) return item;
-            return {
-              ...item,
-              translations: item.translations.map((t) => {
-                if (t.locale !== data.locale) return t;
-                const withoutPublished = t.statuses.filter((s) => s.status !== "published");
-                const hasDraft = withoutPublished.some((s) => s.status === "draft");
-                const publishedEntry = t.statuses.find((s) => s.status === "published");
-                return {
-                  ...t,
-                  statuses:
-                    hasDraft || !publishedEntry
-                      ? withoutPublished
-                      : [
-                          ...withoutPublished,
-                          {
-                            status: "draft" as const,
-                            title: publishedEntry.title,
-                          },
-                        ],
-                };
-              }),
-            };
-          });
-        },
-      );
+      queryClient.setQueryData(docVersionsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((item) => {
+          if (item.versionNumber !== versionNumber) return item;
+          return {
+            ...item,
+            translations: item.translations.map((t) => {
+              if (t.lang !== data.locale) return t;
+              if (t.status === "draft") return t;
+
+              return {
+                status: "draft" as const,
+                lang: t.lang,
+                title: draftTitle ?? t.title,
+              };
+            }),
+          };
+        });
+      });
 
       return { previousVersion, previousList };
     },

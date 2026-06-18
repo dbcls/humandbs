@@ -216,7 +216,8 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-    return newsItemRepository.list({
+
+    const listItems = await newsItemRepository.list({
       limit: data.limit,
       offset: data.offset,
       filters: {
@@ -226,6 +227,8 @@ export const $getNewsItems = createServerFn({ method: "GET" })
         tagIds: data.tagIds,
       },
     });
+
+    return listItems;
   });
 
 export type NewsItemResponse = Awaited<ReturnType<typeof $getNewsItems>>[number];
@@ -246,6 +249,8 @@ export const $getNewsItem = createServerFn()
     }
     return item;
   });
+
+export type NewsItemDetailResponse = Awaited<ReturnType<typeof $getNewsItem>>;
 
 export function getNewsItemQueryOptions(id: string) {
   return queryOptions({
@@ -276,7 +281,6 @@ export interface NewsItemsFilters {
   publishedTo?: string;
   tagIds?: string[];
 }
-
 
 export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
   return infiniteQueryOptions({

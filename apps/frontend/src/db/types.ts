@@ -13,6 +13,7 @@ export const documentSelectSchema = createSelectSchema(schema.document).omit({
   createdAt: true,
   hideTOC: true,
   hideRevisions: true,
+  hideFromNav: true,
 });
 
 export const documentVersionSelectSchema = createSelectSchema(schema.documentVersion, {

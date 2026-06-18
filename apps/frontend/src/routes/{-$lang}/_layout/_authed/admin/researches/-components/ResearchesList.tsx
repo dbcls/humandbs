@@ -247,8 +247,9 @@ function ListItems({
             const isDummy = isDummyResearch(research.humId);
 
             const translations = Object.entries(research.title).map(([lang, title]) => ({
-              lang,
-              statuses: { [research.status]: title },
+              lang: lang as Locale,
+              status: research.status,
+              title: title ?? undefined,
             }));
 
             return (
