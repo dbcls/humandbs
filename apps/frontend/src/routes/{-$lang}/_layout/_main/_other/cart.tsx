@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 
 import { CardWithCaption } from "@/components/Card";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { DatasetLink } from "@/components/DatasetLink";
 import { Link } from "@/components/Link";
 import { ModalCell } from "@/components/ModalCell";
 import { SortHeader, Table } from "@/components/Table";
@@ -35,11 +36,8 @@ const cartDatasetColumns = [
       const isStub = !ctx.row.original.criteria;
       return (
         <div className="flex flex-col gap-1">
-          <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
-            <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-              {ctx.renderValue()}
-            </TextWithIcon>
-          </Route.Link>
+          <DatasetLink datasetId={ctx.getValue()} />
+
           {isStub && (
             <span className="text-warning text-xs">
               {ctx.table.options.meta?.t("data-unavailable")}

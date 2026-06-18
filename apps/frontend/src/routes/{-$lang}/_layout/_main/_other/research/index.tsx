@@ -15,6 +15,7 @@ import { FilterableCard } from "@/components/FilterableCard";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
+import { ResearchLink } from "@/components/ResearchLink";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
@@ -410,14 +411,7 @@ const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
     header: (ctx) => ctx.table.options.meta?.t("research-id"),
-
-    cell: function Cell(ctx) {
-      return (
-        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
-          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-        </Route.Link>
-      );
-    },
+    cell: (ctx) => <ResearchLink humId={ctx.getValue()} />,
     size: 15,
   }),
   columnHelper.accessor("datasetIds", {

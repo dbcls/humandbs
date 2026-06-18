@@ -9,12 +9,12 @@ import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
+import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
-import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
+import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
-import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
 
 export function DatasetVersionCard({
@@ -22,18 +22,8 @@ export function DatasetVersionCard({
   lang: langOverride,
   showPublicActions = true,
 }: {
-  versionData: Pick<
-    DatasetDoc,
-    | "criteria"
-    | "datasetId"
-    | "releaseDate"
-    | "typeOfData"
-    | "version"
-    | "experiments"
-    | "humId"
-    | "versionReleaseDate"
-  >;
-  lang?: "ja" | "en";
+  versionData: DatasetDoc;
+  lang?: Locale;
   showPublicActions?: boolean;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
@@ -46,11 +36,7 @@ export function DatasetVersionCard({
     { title: t("date-modified"), value: versionData.versionReleaseDate },
     {
       title: t("research"),
-      value: (
-        <Link to="/{-$lang}/research/$humId" params={{ humId: versionData.humId }}>
-          <TextWithIcon icon={FA_ICONS.books}>{versionData.humId}</TextWithIcon>
-        </Link>
-      ),
+      value: <ResearchLink humId={versionData.humId} />,
     },
     { title: t("typeOfData"), value: versionData.typeOfData?.[lang] ?? "—" },
     {
@@ -136,6 +122,7 @@ export function DatasetVersionCard({
           ))}
         </dl>
         <ContentHeader>{t("experiments")}</ContentHeader>
+
         {versionData.experiments.map((e) => (
           <Experiment key={`${e.header.en?.text}-${e.header.ja?.text}`} experiment={e} />
         ))}
@@ -148,7 +135,7 @@ function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][numb
   const t = useTranslations("Dataset");
   const lang = useLocale();
   return (
-    <section>
+    <section className="mt-3 first:mt-0">
       <h2 className="rounded-t-md bg-linear-to-r from-secondary-light to-secondary-lighter px-7 pt-5 pb-4 text-white">
         {experiment.header[lang]?.text}
       </h2>

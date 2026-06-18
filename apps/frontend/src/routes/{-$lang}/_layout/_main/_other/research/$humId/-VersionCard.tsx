@@ -9,16 +9,15 @@ import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
+import { DatasetLink } from "@/components/DatasetLink";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
 import { SortHeader, Table } from "@/components/Table";
-import { TextWithIcon } from "@/components/TextWithIcon";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
-import { FA_ICONS } from "@/lib/faIcons";
 
 export function VersionCard({
   versionData,
@@ -183,11 +182,7 @@ const datasetColumns = [
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
-    cell: (ctx) => (
-      <Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
-        <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-      </Link>
-    ),
+    cell: (ctx) => <DatasetLink datasetId={ctx.getValue()} />,
     maxSize: 12,
   }),
   datasetColumnHelper.accessor("criteria", {
@@ -254,9 +249,7 @@ function makePublicationColumns(t: ReturnType<typeof useTranslations<"VersionCar
         <ul>
           {info.getValue()?.map((datasetId) => (
             <li key={datasetId}>
-              <Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId }}>
-                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
-              </Link>
+              <DatasetLink datasetId={datasetId} />
             </li>
           ))}
         </ul>
@@ -278,6 +271,17 @@ const dataUsedByColumns = [
     id: "org.name",
     header: (ctx) => ctx.table.options.meta?.t("organization"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+  }),
+  dataUsedByColumnsHelper.accessor("datasetIds", {
+    id: "datasetIds",
+    header: (ctx) => ctx.table.options.meta?.t("datasetIds"),
+    cell: (ctx) => (
+      <ul>
+        {ctx.getValue()?.map((id) => (
+          <li key={id}></li>
+        ))}
+      </ul>
+    ),
   }),
   dataUsedByColumnsHelper.accessor("periodOfDataUse", {
     id: "periodOfDataUse",

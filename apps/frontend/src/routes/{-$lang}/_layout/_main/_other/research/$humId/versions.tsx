@@ -5,6 +5,7 @@ import type { ResearchVersionDoc } from "@humandbs/backend/types";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
+import { DatasetLink } from "@/components/DatasetLink";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -68,17 +69,13 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
       <section className="flex items-start gap-5 px-3 py-4 text-sm">
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("datasets")}</h4>
-          <div className="w-72">
+          <ul className="w-72 space-y-1.5">
             {version.datasets.map((ds) => (
-              <Route.Link
-                key={ds.datasetId}
-                to="/{-$lang}/dataset/$datasetId"
-                params={{ datasetId: ds.datasetId }}
-              >
-                <TextWithIcon icon={FA_ICONS.books}>{ds.datasetId}</TextWithIcon>
-              </Route.Link>
+              <li key={ds.datasetId}>
+                <DatasetLink datasetId={ds.datasetId} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>
