@@ -107,45 +107,52 @@ echo "  -> $JGAS_COUNT pairs"
 echo "[2/2] Dumping JGAD <-> hum-id..."
 
 run_psql "
--- Direct: JGAD in entries under submissions with valid hum_id
-SELECT DISTINCT a.accession, na.hum_id
-FROM ${DB_SCHEMA}.nbdc_application na
-JOIN ${DB_SCHEMA}.submission_permission sp ON na.appl_id = sp.appl_id
-JOIN ${DB_SCHEMA}.submission s ON sp.submission_id = s.submission_id
-JOIN ${DB_SCHEMA}.entry e ON s.submission_id = e.submission_id
-JOIN ${DB_SCHEMA}.relation r ON e.entry_id = r.entry_id
-JOIN ${DB_SCHEMA}.accession a ON r.self = a.accession_id
-JOIN ${DB_SCHEMA}.current_accession_status cas ON a.accession = cas.accession
-WHERE na.hum_id IS NOT NULL
-  AND na.hum_id != ''
-  AND na.hum_id != 'N/A'
-  AND a.accession LIKE 'JGAD%'
-  AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
+WITH direct AS (
+  SELECT DISTINCT a.accession, na.hum_id
+  FROM ${DB_SCHEMA}.nbdc_application na
+  JOIN ${DB_SCHEMA}.submission_permission sp ON na.appl_id = sp.appl_id
+  JOIN ${DB_SCHEMA}.submission s ON sp.submission_id = s.submission_id
+  JOIN ${DB_SCHEMA}.entry e ON s.submission_id = e.submission_id
+  JOIN ${DB_SCHEMA}.relation r ON e.entry_id = r.entry_id
+  JOIN ${DB_SCHEMA}.accession a ON r.self = a.accession_id
+  JOIN ${DB_SCHEMA}.current_accession_status cas ON a.accession = cas.accession
+  WHERE na.hum_id IS NOT NULL
+    AND na.hum_id != ''
+    AND na.hum_id != 'N/A'
+    AND a.accession LIKE 'JGAD%'
+    AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
+),
+missing AS (
+  SELECT a.accession, a.accession_id
+  FROM ${DB_SCHEMA}.accession a
+  JOIN ${DB_SCHEMA}.current_accession_status cas ON a.accession = cas.accession
+  WHERE a.accession LIKE 'JGAD%'
+    AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
+    AND a.accession NOT IN (SELECT accession FROM direct)
+),
+bridge AS (
+  SELECT DISTINCT m.accession, na.hum_id
+  FROM missing m
+  JOIN ${DB_SCHEMA}.relation r_jgad ON r_jgad.self = m.accession_id
+  JOIN ${DB_SCHEMA}.relation r_jgas_local
+    ON r_jgad.entry_id = r_jgas_local.entry_id
+  JOIN ${DB_SCHEMA}.accession a_jgas
+    ON r_jgas_local.self = a_jgas.accession_id
+  JOIN ${DB_SCHEMA}.relation r_jgas_remote
+    ON a_jgas.accession_id = r_jgas_remote.self
+    AND r_jgas_remote.entry_id != r_jgad.entry_id
+  JOIN ${DB_SCHEMA}.entry e ON r_jgas_remote.entry_id = e.entry_id
+  JOIN ${DB_SCHEMA}.submission s ON e.submission_id = s.submission_id
+  JOIN ${DB_SCHEMA}.submission_permission sp ON s.submission_id = sp.submission_id
+  JOIN ${DB_SCHEMA}.nbdc_application na ON sp.appl_id = na.appl_id
+  WHERE a_jgas.accession LIKE 'JGAS%'
+    AND na.hum_id IS NOT NULL
+    AND na.hum_id != ''
+    AND na.hum_id != 'N/A'
+)
+SELECT accession, hum_id FROM direct
 UNION
--- JGAS bridge: JGAD -> sibling JGAS in same entry -> same JGAS in another entry -> hum_id
--- Covers JGADs under submissions where hum_id is NULL (e.g. J-DS000659)
-SELECT DISTINCT a_jgad.accession, na.hum_id
-FROM ${DB_SCHEMA}.relation r_jgad
-JOIN ${DB_SCHEMA}.accession a_jgad ON r_jgad.self = a_jgad.accession_id
-JOIN ${DB_SCHEMA}.relation r_jgas_local
-  ON r_jgad.entry_id = r_jgas_local.entry_id
-JOIN ${DB_SCHEMA}.accession a_jgas
-  ON r_jgas_local.self = a_jgas.accession_id
-JOIN ${DB_SCHEMA}.relation r_jgas_remote
-  ON a_jgas.accession_id = r_jgas_remote.self
-  AND r_jgas_remote.entry_id != r_jgad.entry_id
-JOIN ${DB_SCHEMA}.entry e ON r_jgas_remote.entry_id = e.entry_id
-JOIN ${DB_SCHEMA}.submission s ON e.submission_id = s.submission_id
-JOIN ${DB_SCHEMA}.submission_permission sp ON s.submission_id = sp.submission_id
-JOIN ${DB_SCHEMA}.nbdc_application na ON sp.appl_id = na.appl_id
-JOIN ${DB_SCHEMA}.current_accession_status cas
-  ON a_jgad.accession = cas.accession
-WHERE a_jgad.accession LIKE 'JGAD%'
-  AND a_jgas.accession LIKE 'JGAS%'
-  AND na.hum_id IS NOT NULL
-  AND na.hum_id != ''
-  AND na.hum_id != 'N/A'
-  AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
+SELECT accession, hum_id FROM bridge
 ORDER BY 1, 2;
 " > "$OUTPUT_DIR/jga_dataset_hum_id.tsv"
 
