@@ -19,7 +19,6 @@ import type {
   RawCore,
   RawJgad,
   RawJgadHumId,
-  RawPerson,
   Role,
 } from "./types"
 
@@ -83,10 +82,7 @@ export const buildJgadHumMap = (raw: RawJgadHumId[]): Map<string, string> => {
   return m
 }
 
-export function buildOccurrences(core: RawCore[], people: RawPerson[]): Occurrence[] {
-  const coreMap = new Map<string, RawCore>()
-  for (const c of core) coreMap.set(c.applId, c)
-
+export function buildOccurrences(core: RawCore[]): Occurrence[] {
   const occs: Occurrence[] = []
 
   for (const c of core) {
@@ -107,45 +103,9 @@ export function buildOccurrences(core: RawCore[], people: RawPerson[]): Occurren
       jaFamily: c.piLastJa.trim(),
       jaGiven: c.piFirstJa.trim(),
       displayName: disp,
-      submitDate: c.submitDate,
-      jduId: c.jduId,
-    })
-  }
-
-  for (const p of people) {
-    const c = coreMap.get(p.applId)
-    if (!c) continue
-
-    let enF = ""
-    let enG = ""
-    let disp: string
-    let tokens: string[]
-
-    if (p.role === "collaborator") {
-      disp = p.nameFull.trim()
-      tokens = normalizeNameTokens(p.nameFull)
-    } else {
-      enF = p.lastEn.trim()
-      enG = p.firstEn.trim()
-      disp = [p.lastEn, p.firstEn].filter(Boolean).join(" ").trim()
-      tokens = normalizeNameTokens(p.lastEn, p.firstEn)
-    }
-
-    occs.push({
-      applId: p.applId,
-      role: p.role,
-      accountId: normalizeId(p.accountId),
-      email: normalizeEmail(p.email),
-      orcid: normalizeId(p.orcid),
-      eradid: normalizeId(p.eradid),
-      tokens,
-      institution: p.institution.trim(),
-      institutionLower: p.institution.trim().toLowerCase(),
-      enFamily: enF,
-      enGiven: enG,
-      jaFamily: "",
-      jaGiven: "",
-      displayName: disp || normalizeEmail(p.email) || "",
+      country: c.piCountryEn.trim(),
+      studyTitle: c.studyTitle.trim(),
+      studyTitleEn: c.studyTitleEn.trim(),
       submitDate: c.submitDate,
       jduId: c.jduId,
     })
@@ -156,7 +116,6 @@ export function buildOccurrences(core: RawCore[], people: RawPerson[]): Occurren
 
 export function runPipeline(
   core: RawCore[],
-  people: RawPerson[],
   jgad: RawJgad[],
   duPhase: Map<string, DuPhaseInfo>,
   jgadHumMap: Map<string, string>,

@@ -46,9 +46,15 @@ export const toPersonDoc = (
     email: person.canonicalEmail || null,
     orcid: person.orcid || null,
     organization: person.affiliation
-      ? { name: { ja: tv(person.affiliation), en: tv(person.affiliation) }, address: null }
+      ? {
+          name: { ja: tv(person.affiliation), en: tv(person.affiliation) },
+          address: person.country ? { country: person.country } : null,
+        }
       : null,
     datasetIds: personHum.datasetIds,
+    researchTitle: (person.studyTitle || person.studyTitleEn)
+      ? { ja: person.studyTitle || null, en: person.studyTitleEn || null }
+      : undefined,
     periodOfDataUse: {
       startDate: formatDate(personHum.startDate),
       endDate: formatDate(personHum.endDate),

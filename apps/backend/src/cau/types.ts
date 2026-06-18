@@ -12,6 +12,9 @@ export interface RawCore {
   piLastJa: string
   piFirstJa: string
   piInstEn: string
+  piCountryEn: string
+  studyTitle: string
+  studyTitleEn: string
 }
 
 export interface RawPerson {
@@ -63,6 +66,9 @@ export interface Occurrence {
   jaFamily: string
   jaGiven: string
   displayName: string
+  country: string
+  studyTitle: string
+  studyTitleEn: string
   submitDate: string
   jduId: string
 }
@@ -76,6 +82,9 @@ export interface CanonicalPerson {
   displayName: string
   canonicalEmail: string
   affiliation: string
+  country: string
+  studyTitle: string
+  studyTitleEn: string
   orcid: string
   allEmails: string[]
   allAccounts: string[]

@@ -49,13 +49,17 @@ export const extractCore = async (): Promise<RawCore[]> =>
         max(c.value) FILTER (WHERE c.key='pi_first_name_en')  AS pi_first_en,
         max(c.value) FILTER (WHERE c.key='pi_last_name')      AS pi_last_ja,
         max(c.value) FILTER (WHERE c.key='pi_first_name')     AS pi_first_ja,
-        max(c.value) FILTER (WHERE c.key='pi_institution_en') AS pi_inst_en
+        max(c.value) FILTER (WHERE c.key='pi_institution_en') AS pi_inst_en,
+        max(c.value) FILTER (WHERE c.key='pi_country_en')     AS pi_country_en,
+        max(c.value) FILTER (WHERE c.key='use_study_title')    AS study_title,
+        max(c.value) FILTER (WHERE c.key='use_study_title_en') AS study_title_en
       FROM ls JOIN nbdc_application_component c ON c.appl_submit_id=ls.appl_submit_id
       GROUP BY ls.appl_id
     )
     SELECT du.jdu_id, du.appl_id, du.appl_version, st.status, ls.submit_date, du.account_group,
            ev.pi_account_id, ev.pi_email, ev.pi_last_en, ev.pi_first_en,
-           ev.pi_last_ja, ev.pi_first_ja, ev.pi_inst_en
+           ev.pi_last_ja, ev.pi_first_ja, ev.pi_inst_en,
+           ev.pi_country_en, ev.study_title, ev.study_title_en
     FROM du
     LEFT JOIN ls ON ls.appl_id=du.appl_id
     LEFT JOIN st ON st.appl_id=du.appl_id
@@ -75,6 +79,9 @@ export const extractCore = async (): Promise<RawCore[]> =>
     piLastJa: str(r.pi_last_ja),
     piFirstJa: str(r.pi_first_ja),
     piInstEn: str(r.pi_inst_en),
+    piCountryEn: str(r.pi_country_en),
+    studyTitle: str(r.study_title),
+    studyTitleEn: str(r.study_title_en),
   }))
 
 export const extractPeople = async (): Promise<RawPerson[]> =>

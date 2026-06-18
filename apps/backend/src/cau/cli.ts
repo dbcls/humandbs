@@ -5,7 +5,7 @@ import { closeJgaDb } from "@/api/db-client/client"
 import type { Person } from "@/crawler/types/structured"
 
 import { toPersonDoc, updateAllCau } from "./es-writer"
-import { extractCore, extractDuPhase, extractJgad, extractJgadHumId, extractPeople } from "./extract"
+import { extractCore, extractDuPhase, extractJgad, extractJgadHumId } from "./extract"
 import { buildDuPhaseMap, buildJgadHumMap, buildOccurrences, runPipeline } from "./pipeline"
 import { resolvePersons } from "./resolve"
 
@@ -26,9 +26,6 @@ const main = async () => {
   console.log("  extracting core...")
   const coreRaw = await extractCore()
   console.log(`  core: ${coreRaw.length}`)
-  console.log("  extracting people...")
-  const peopleRaw = await extractPeople()
-  console.log(`  people: ${peopleRaw.length}`)
   console.log("  extracting jgad...")
   const jgadRaw = await extractJgad()
   console.log(`  jgad: ${jgadRaw.length}`)
@@ -40,7 +37,7 @@ const main = async () => {
   console.log(`  jgad-hum: ${jgadHumIdRaw.length}`)
 
   console.log("[2/5] Building occurrences...")
-  const occs = buildOccurrences(coreRaw, peopleRaw)
+  const occs = buildOccurrences(coreRaw)
   console.log(`  occurrences: ${occs.length}`)
 
   console.log("[3/5] Resolving persons (name resolution)...")
@@ -51,7 +48,7 @@ const main = async () => {
   const duPhase = buildDuPhaseMap(duPhaseRaw)
   const jgadHumMap = buildJgadHumMap(jgadHumIdRaw)
 
-  const result = runPipeline(coreRaw, peopleRaw, jgadRaw, duPhase, jgadHumMap, resolved)
+  const result = runPipeline(coreRaw, jgadRaw, duPhase, jgadHumMap, resolved)
 
   console.log(`  in-scope DU: ${result.stats.inScopeDu}`)
   console.log(`  (person, JGAD) pairs: ${result.stats.personJgadPairs}`)

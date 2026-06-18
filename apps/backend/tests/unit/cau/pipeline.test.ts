@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import { buildOccurrences, runPipeline } from "@/cau/pipeline"
 import { resolvePersons } from "@/cau/resolve"
-import type { DuPhaseInfo, RawCore, RawJgad, RawPerson } from "@/cau/types"
+import type { DuPhaseInfo, RawCore, RawJgad } from "@/cau/types"
 
 const makeCore = (overrides: Partial<RawCore> = {}): RawCore => ({
   jduId: "J-DU000001",
@@ -18,6 +18,9 @@ const makeCore = (overrides: Partial<RawCore> = {}): RawCore => ({
   piLastJa: "山田",
   piFirstJa: "太郎",
   piInstEn: "University of Tokyo",
+  piCountryEn: "Japan",
+  studyTitle: "テスト研究",
+  studyTitleEn: "Test Study",
   ...overrides,
 })
 
@@ -31,31 +34,15 @@ const makeDuPhase = (overrides: Partial<DuPhaseInfo> = {}): DuPhaseInfo => ({
   ...overrides,
 })
 
-const makeMember = (overrides: Partial<RawPerson> = {}): RawPerson => ({
-  applId: "1001",
-  role: "member",
-  idx: 1,
-  accountId: "macc1",
-  email: "member@example.com",
-  orcid: "",
-  eradid: "",
-  lastEn: "Sato",
-  firstEn: "Jiro",
-  institution: "Osaka University",
-  nameFull: "",
-  ...overrides,
-})
-
 function run(
   core: RawCore[],
-  people: RawPerson[],
   jgadRows: RawJgad[],
   duPhaseMap: Map<string, DuPhaseInfo>,
   jgadHumMap: Map<string, string>,
 ) {
-  const occs = buildOccurrences(core, people)
+  const occs = buildOccurrences(core)
   const resolved = resolvePersons(occs)
-  return runPipeline(core, people, jgadRows, duPhaseMap, jgadHumMap, resolved)
+  return runPipeline(core, jgadRows, duPhaseMap, jgadHumMap, resolved)
 }
 
 describe("runPipeline", () => {
@@ -65,7 +52,7 @@ describe("runPipeline", () => {
     const duPhase = new Map([["J-DU000001", makeDuPhase()]])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     expect(result.cauByHum.size).toBe(1)
     const entries = result.cauByHum.get("hum0001")!
@@ -96,7 +83,7 @@ describe("runPipeline", () => {
       ["JGAD000002", "hum0002"],
     ])
 
-    const result = run([coreA, coreB], [], jgadRows, duPhase, jgadHumMap)
+    const result = run([coreA, coreB], jgadRows, duPhase, jgadHumMap)
 
     const hum1 = result.cauByHum.get("hum0001")!
     expect(hum1[0].rollup.isCurrent).toBe(true)
@@ -108,20 +95,12 @@ describe("runPipeline", () => {
     expect(result.stats.endedPairs).toBe(1)
   })
 
-  it("role promotion: same person as PI in one DU and member in another → PI wins", () => {
+  it("same PI across two DUs merges into one person", () => {
     const coreA = makeCore({ jduId: "J-DU000001", applId: "1001", piEmail: "shared@example.com" })
     const coreB = makeCore({
       jduId: "J-DU000002",
       applId: "1002",
-      piEmail: "other-pi@example.com",
-      piLastEn: "Other",
-      piFirstEn: "PI",
-    })
-    const memberInB = makeMember({
-      applId: "1002",
-      email: "shared@example.com",
-      lastEn: "Yamada",
-      firstEn: "Taro",
+      piEmail: "shared@example.com",
     })
     const jgadRows = [makeJgad("1001", "JGAD000001"), makeJgad("1002", "JGAD000002")]
     const duPhase = new Map<string, DuPhaseInfo>([
@@ -133,11 +112,11 @@ describe("runPipeline", () => {
       ["JGAD000002", "hum0001"],
     ])
 
-    const result = run([coreA, coreB], [memberInB], jgadRows, duPhase, jgadHumMap)
+    const result = run([coreA, coreB], jgadRows, duPhase, jgadHumMap)
 
     const entries = result.cauByHum.get("hum0001")!
     const sharedPerson = entries.find(e => e.person.canonicalEmail === "shared@example.com")!
-    expect(sharedPerson.rollup.role).toBe("PI")
+    expect(sharedPerson.rollup.datasetIds).toEqual(["JGAD000001", "JGAD000002"])
   })
 
   it("multiple JGADs per hum aggregated into datasetIds", () => {
@@ -154,7 +133,7 @@ describe("runPipeline", () => {
       ["JGAD000003", "hum0001"],
     ])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     const entries = result.cauByHum.get("hum0001")!
     expect(entries[0].rollup.datasetIds).toEqual(["JGAD000001", "JGAD000002", "JGAD000003"])
@@ -173,7 +152,7 @@ describe("runPipeline", () => {
       ["JGAD000002", "hum0001"],
     ])
 
-    const result = run([v1, v2], [], jgadRows, duPhase, jgadHumMap)
+    const result = run([v1, v2], jgadRows, duPhase, jgadHumMap)
 
     const entries = result.cauByHum.get("hum0001")!
     expect(entries[0].rollup.isCurrent).toBe(true)
@@ -190,7 +169,7 @@ describe("runPipeline", () => {
     const duPhase = new Map([["J-DU000001", makeDuPhase()]])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     const entries = result.cauByHum.get("hum0001")!
     expect(entries[0].rollup.datasetIds).toEqual(["JGAD000001"])
@@ -203,7 +182,7 @@ describe("runPipeline", () => {
     const duPhase = new Map([["J-DU000001", makeDuPhase()]])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     expect(result.cauByHum.size).toBe(0)
     expect(result.stats.personHumPairs).toBe(1)
@@ -216,7 +195,7 @@ describe("runPipeline", () => {
     const duPhase = new Map([["J-DU000001", makeDuPhase()]])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     expect(result.cauByHum.size).toBe(0)
     expect(result.stats.personJgadPairs).toBe(0)
@@ -228,7 +207,7 @@ describe("runPipeline", () => {
     const duPhase = new Map([["J-DU000001", makeDuPhase({ phase: "110" })]])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run(core, [], jgadRows, duPhase, jgadHumMap)
+    const result = run(core, jgadRows, duPhase, jgadHumMap)
 
     expect(result.cauByHum.size).toBe(0)
     expect(result.stats.inScopeDu).toBe(0)
@@ -247,7 +226,7 @@ describe("runPipeline", () => {
     ])
     const jgadHumMap = new Map([["JGAD000001", "hum0001"]])
 
-    const result = run([v1, v2], [], jgadRows, duPhase, jgadHumMap)
+    const result = run([v1, v2], jgadRows, duPhase, jgadHumMap)
 
     const entries = result.cauByHum.get("hum0001")!
     expect(entries[0].rollup.startDate).toEqual(new Date("2025-01-15"))
