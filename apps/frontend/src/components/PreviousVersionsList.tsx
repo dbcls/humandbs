@@ -51,8 +51,12 @@ export function PreviousVersionsList({
               <span>{version.title}</span>
             </Link>
             <span>{new Date(version.createdAt).toLocaleDateString(lang)}</span>
-            {i < versions.length - 1 ? (
-              <DiffModal contentId={version.contentId} versionNumber={version.versionNumber} />
+            {versions[i + 1] ? (
+              <DiffModal
+                contentId={version.contentId}
+                versionNumber={version.versionNumber}
+                previousVersionNumber={versions[i + 1]!.versionNumber}
+              />
             ) : null}
           </li>
         ))}
@@ -61,19 +65,31 @@ export function PreviousVersionsList({
   );
 }
 
-function DiffModal({ contentId, versionNumber }: { contentId: string; versionNumber: number }) {
+function DiffModal({
+  contentId,
+  versionNumber,
+  previousVersionNumber,
+}: {
+  contentId: string;
+  versionNumber: number;
+  previousVersionNumber: number;
+}) {
+  const tCommon = useTranslations("common");
   return (
     <Dialog>
-      <DialogTrigger>Open</DialogTrigger>
+      <DialogTrigger>{tCommon("show-diff")}</DialogTrigger>
       <DialogContent className="flex max-h-[90vh] max-w-[90vw] flex-col items-stretch">
         <DialogHeader>
-          <DialogTitle>Diff</DialogTitle>
+          <DialogTitle>{tCommon("diff-title")}</DialogTitle>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete your account and remove your
-            data from our servers.
+            {tCommon("diff-description", { from: previousVersionNumber, to: versionNumber })}
           </DialogDescription>
         </DialogHeader>
-        <DiffModalContent contentId={contentId} versionNumber={versionNumber} />
+        <DiffModalContent
+          contentId={contentId}
+          versionNumber={versionNumber}
+          previousVersionNumber={previousVersionNumber}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -82,15 +98,17 @@ function DiffModal({ contentId, versionNumber }: { contentId: string; versionNum
 function DiffModalContent({
   contentId,
   versionNumber,
+  previousVersionNumber,
 }: {
   contentId: string;
   versionNumber: number;
+  previousVersionNumber: number;
 }) {
   const locale = useLocale();
 
   const documentsDiffQO = getTwoDocumentVersionsQueryOptions({
     contentId,
-    versionNumber1: versionNumber - 1,
+    versionNumber1: previousVersionNumber,
     versionNumber2: versionNumber,
     locale,
   });

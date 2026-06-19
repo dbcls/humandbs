@@ -28,6 +28,7 @@ export function VersionCard({
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const t = useTranslations();
+  const tVersionCard = useTranslations("VersionCard");
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
 
   const tableMeta = {
@@ -144,7 +145,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("Research.relatedPublication")}</ContentHeader>
         <Table
-          columns={makePublicationColumns(t)}
+          columns={makePublicationColumns(tVersionCard)}
           data={versionData?.relatedPublication || []}
           className="mt-4 text-sm"
           meta={tableMeta}
@@ -286,7 +287,7 @@ const dataUsedByColumns = [
   }),
   dataUsedByColumnsHelper.accessor("researchTitle", {
     id: "cau.research-title",
-    header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
+    header: (ctx) => ctx.table.options.meta?.t("Research.researchTitle"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   dataUsedByColumnsHelper.accessor("datasetIds", {

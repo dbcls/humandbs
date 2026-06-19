@@ -66,7 +66,7 @@ export default defineConfig(async () => {
       ),
       DU_APPLICATION_URL: JSON.stringify(
         process.env.HUMANBDS_FRONTEND_DU_APPLICATION_URL ??
-          "https://ts-humandbs.ddbj.nig.ac.jp/ndbc/application/import_form",
+          "https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import",
       ),
     },
   };

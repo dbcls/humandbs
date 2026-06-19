@@ -306,7 +306,13 @@ export function getTwoDocumentVersionsQueryOptions({
       return [version1, version2];
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!contentId && !!versionNumber1 && !!versionNumber2 && !!locale,
+    // versionNumber can legitimately be 0/falsy-adjacent on the smallest version,
+    // so guard on Number.isFinite rather than truthiness.
+    enabled:
+      !!contentId &&
+      Number.isFinite(versionNumber1) &&
+      Number.isFinite(versionNumber2) &&
+      !!locale,
   });
 }
 
