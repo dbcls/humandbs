@@ -257,6 +257,56 @@
     }
   }
 
+  /* Track-changes markdown diff (see DiffViewer / markdownDiff.ts) */
+  .markdown-diff {
+    ins {
+      @apply bg-green-100 text-green-900 no-underline rounded-xs px-0.5;
+    }
+
+    del {
+      @apply bg-red-100 text-red-900 rounded-xs px-0.5;
+    }
+
+    [data-diff-node="ins"] {
+      @apply bg-green-50 pl-2 shadow-[inset_3px_0_var(--color-green-500)];
+    }
+
+    [data-diff-node="del"] {
+      @apply bg-red-50 pl-2 shadow-[inset_3px_0_var(--color-red-500)];
+    }
+
+    [data-attr-changed] {
+      @apply outline-1 outline-dashed outline-amber-400;
+      outline-offset: 2px;
+    }
+
+    .diff-attr-change {
+      @apply mr-1.5 inline-block rounded-xs bg-amber-100 px-1 text-amber-800 text-xs;
+    }
+
+    /* placeholder for the empty side of an add/remove pair, so rows stay aligned */
+    [data-empty-side="added"] {
+      @apply bg-green-50/40;
+    }
+
+    [data-empty-side="removed"] {
+      @apply bg-red-50/40;
+    }
+
+    /* Keep list markers visible inside the narrow diff columns. Markers are
+       drawn "outside" the list item, in the list's inline-start padding; if the
+       list sits flush against the column edge they get clipped. Reserve space
+       with BOTH a margin (insets the whole list) and padding (room for the
+       marker, incl. two-digit "10."), and pin list-style-position so a parent
+       prose rule can't switch it. */
+    .custom-prose ol,
+    .custom-prose ul {
+      list-style-position: outside;
+      margin-inline-start: 0.5em;
+      padding-inline-start: 1.75em;
+    }
+  }
+
   .md-editor {
     position: absolute;
     inset: 0;
