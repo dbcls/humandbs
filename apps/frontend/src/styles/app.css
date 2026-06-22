@@ -187,11 +187,11 @@
 }
 
 @layer components {
-  .assistant-legacy-font-scope .text-xs,
-  .assistant-legacy-font-scope .text-sm,
-  .assistant-legacy-font-scope .text-base,
-  .assistant-legacy-font-scope .prose-sm,
-  .assistant-legacy-font-scope .prose-sm :where(p, li, td, th, a, span, div, label, small) {
+  .assistant-font-scope .text-xs,
+  .assistant-font-scope .text-sm,
+  .assistant-font-scope .text-base,
+  .assistant-font-scope .prose-sm,
+  .assistant-font-scope .prose-sm :where(p, li, td, th, a, span, div, label, small) {
     font-size: 1em !important;
   }
 
