@@ -45,6 +45,7 @@ import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { researchFieldsConfig } from "./researchFieldsConfig";
+import type { ResearchForm } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
 import type { MergeResearchResult } from "./utils/researchValues";
 
@@ -82,7 +83,7 @@ type MetadataField = {
   label: string;
   order: number;
   kind: ReturnType<typeof getFieldKind>;
-  renderer?: (form: any) => React.ReactNode;
+  renderer?: (form: ResearchForm) => React.ReactNode;
 };
 
 const metadataFields: MetadataField[] = Object.entries(UpdateResearchRequestSchema.shape)
@@ -592,8 +593,6 @@ export function ResearchDetails({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
-
               {canUpdateUids && (
                 <div className="px-5 pt-5">
                   <form.AppField name="uids" mode="array">
@@ -630,14 +629,16 @@ export function ResearchDetails({
                 </div>
               )}
 
-              <form.AppField name="releaseNote">
-                {(field) => (
-                  <field.BilingualTextValueField
-                    label="Release note"
-                    inputsClassName="flex w-full gap-2"
-                  />
-                )}
-              </form.AppField>
+              <fieldset disabled={!isViewingDraft || !canUpdate} className="group/fieldset p-5">
+                <form.AppField name="releaseNote">
+                  {(field) => (
+                    <field.BilingualTextValueField
+                      label="Release note"
+                      inputsClassName="flex w-full gap-2"
+                    />
+                  )}
+                </form.AppField>
+              </fieldset>
               <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">
@@ -648,10 +649,7 @@ export function ResearchDetails({
                     ))}
                   </TabsList>
                 </div>
-                <fieldset
-                  disabled={!isViewingDraft || !canUpdate}
-                  className="group/fieldset px-5 pt-5 pb-5"
-                >
+                <fieldset disabled={!isViewingDraft || !canUpdate} className="group/fieldset p-5">
                   {metadataFields.map((field) => (
                     <TabsContent key={field.key} value={field.key}>
                       {field.renderer ? (
@@ -730,32 +728,5 @@ export function ResearchDetails({
         </Tabs>
       </div>
     </Card>
-  );
-}
-
-function ReleaseNoteDisplay({
-  releaseNote,
-}: {
-  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
-}) {
-  const en = releaseNote?.en?.text;
-  const ja = releaseNote?.ja?.text;
-  if (!en && !ja) return null;
-
-  return (
-    <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
-      {en && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (En)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{en}</p>
-        </div>
-      )}
-      {ja && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (Ja)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
-        </div>
-      )}
-    </div>
   );
 }

@@ -42,7 +42,7 @@ export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema
     z.object({
       q: z.string().optional(),
       sort: z.string().default("humId"),
-      order: z.string().default("desc"),
+      // order: z.string().default("desc"),
     }).shape,
   );
 

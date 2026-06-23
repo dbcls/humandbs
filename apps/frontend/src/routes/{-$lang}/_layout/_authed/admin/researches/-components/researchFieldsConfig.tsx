@@ -1,11 +1,37 @@
+import type { ReactNode } from "react";
+
 import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { SortableObjectArrayField } from "@/components/form-context/schema-form/SortableObjectArrayField";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { ResearchForm, ResearchValues } from "./researchForm";
 
-/** Unwrap nullable/optional/default to reach the inner schema. */
+// Element item types, derived from the form's value shape.
+type DataProvider = NonNullable<ResearchValues["dataProvider"]>[number];
+type ResearchProject = NonNullable<ResearchValues["researchProject"]>[number];
+type Grant = NonNullable<ResearchValues["grant"]>[number];
+type RelatedPublication = NonNullable<ResearchValues["relatedPublication"]>[number];
+
+/**
+ * Structural constraint for an app form usable by the array-section wrappers:
+ * it must expose the `AppField`/`Field` mounters. The wrappers are generic over
+ * `F` so each accepts whatever *precise* form the caller has — the
+ * research-*detail* form (`ResearchValues`) or the *create* form
+ * (`CreateResearchRequest`) — instead of widening it to `any`. (TanStack's form
+ * data type is invariant, so a plain union of the two forms isn't assignable; a
+ * generic lets the exact call-site type flow through.)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SectionForm = { AppField: any; Field: any };
+
+/**
+ * Unwrap nullable/optional/default to reach the inner Zod schema.
+ *
+ * Operates on Zod `_def` internals, which are intentionally untyped — this is the
+ * dynamic boundary between the typed config surface and the schema-walking engine.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function unwrap(schema: any): any {
   let s = schema;
   for (let i = 0; i < 10; i++) {
@@ -17,9 +43,8 @@ function unwrap(schema: any): any {
 }
 
 /** Element schema of an (optional) array field on UpdateResearchRequestSchema. */
-function elementOf(key: string): any {
-  return unwrap(UpdateResearchRequestSchema.shape[key as keyof typeof UpdateResearchRequestSchema.shape])
-    ?._def?.element;
+function elementOf(key: keyof typeof UpdateResearchRequestSchema.shape) {
+  return unwrap(UpdateResearchRequestSchema.shape[key])?._def?.element;
 }
 
 // === Reusable array-field renderers ===
@@ -27,52 +52,52 @@ function elementOf(key: string): any {
 // from the array element schema (no hardcoded field list). Shared by the dynamic
 // research-detail tabs (via the config below) and the standalone NewResearchForm.
 
-export function DataProviderArrayField({ form }: { form: any }) {
+export function DataProviderArrayField<F extends SectionForm>({ form }: { form: F }) {
   return (
-    <SortableObjectArrayField
+    <SortableObjectArrayField<DataProvider>
       form={form}
       name="dataProvider"
       elementSchema={elementOf("dataProvider")}
-      getTitle={(item: any) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+      getTitle={(item) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
     />
   );
 }
 
-export function ResearchProjectArrayField({ form }: { form: any }) {
+export function ResearchProjectArrayField<F extends SectionForm>({ form }: { form: F }) {
   return (
-    <SortableObjectArrayField
+    <SortableObjectArrayField<ResearchProject>
       form={form}
       name="researchProject"
       elementSchema={elementOf("researchProject")}
-      getTitle={(item: any) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+      getTitle={(item) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
     />
   );
 }
 
-export function GrantArrayField({ form }: { form: any }) {
+export function GrantArrayField<F extends SectionForm>({ form }: { form: F }) {
   return (
-    <SortableObjectArrayField
+    <SortableObjectArrayField<Grant>
       form={form}
       name="grant"
       elementSchema={elementOf("grant")}
-      getTitle={(item: any) => item?.title?.en ?? item?.title?.ja ?? ""}
+      getTitle={(item) => item?.title?.en ?? item?.title?.ja ?? ""}
     />
   );
 }
 
-export function RelatedPublicationArrayField({ form }: { form: any }) {
+export function RelatedPublicationArrayField<F extends SectionForm>({ form }: { form: F }) {
   return (
-    <SortableObjectArrayField
+    <SortableObjectArrayField<RelatedPublication>
       form={form}
       name="relatedPublication"
       elementSchema={elementOf("relatedPublication")}
-      getTitle={(item: any) => item?.title?.en ?? item?.title?.ja ?? ""}
-      renderItemExtra={(item: any) =>
+      getTitle={(item) => item?.title?.en ?? item?.title?.ja ?? ""}
+      renderItemExtra={(item) =>
         item?.datasetIds && item.datasetIds.length > 0 ? (
           <div className="mt-3 flex flex-col gap-1">
             <span className="font-medium text-form-label text-xs">Dataset IDs</span>
             <div className="flex flex-wrap gap-1">
-              {item.datasetIds.map((id: string) => (
+              {item.datasetIds.map((id) => (
                 <span key={id} className="font-mono text-form-value text-xs">
                   {id}
                 </span>
@@ -100,17 +125,17 @@ export type ResearchFieldConfig = {
   label: string;
   order: number;
   hidden?: boolean;
-  /** Renders the field body given the live form. */
-  renderer: (form: any) => React.ReactNode;
+  /** Renders the field body given the live, typed research form. */
+  renderer: (form: ResearchForm) => ReactNode;
 };
 
-export const researchFieldsConfig: Partial<Record<string, ResearchFieldConfig>> = {
+export const researchFieldsConfig: Partial<Record<keyof ResearchValues, ResearchFieldConfig>> = {
   title: {
     label: "Title",
     order: 0,
     renderer: (form) => (
       <form.AppField name="title">
-        {(field: any) => <field.BilingualTextField variant="textarea" />}
+        {(field) => <field.BilingualTextField label={null} variant="textarea" />}
       </form.AppField>
     ),
   },

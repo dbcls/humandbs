@@ -316,7 +316,7 @@ export const $listResearches = createServerFn()
 
     const { q, ...rest } = data;
 
-    // if query is humIdm then use search with humId
+    // if query is humId, then use search with humId
     if (q && /^hum\d+/i.test(q)) {
       return api.getResearchListPaginated(
         {
@@ -332,10 +332,10 @@ export const $listResearches = createServerFn()
     } else {
       return api.searchResearches(
         {
+          ...rest,
           query: q,
           includeFacets: false,
           sort: "humId",
-          ...rest,
         },
         accessToken ?? undefined,
       );
@@ -373,7 +373,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
           ...data,
           page: pageParam,
           limit: 20,
-          order: data.order ?? "desc",
+          order: data.order ?? "asc",
         },
       }),
     initialPageParam: 1,
