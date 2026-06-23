@@ -12,6 +12,7 @@ import { ContentHeader } from "@/components/ContentHeader";
 import { DatasetLink } from "@/components/DatasetLink";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
+import { Markdown } from "@/components/markdown";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
 import { SortHeader, Table } from "@/components/Table";
@@ -71,7 +72,12 @@ export function VersionCard({
           </p>
           <p>
             <span>{t("Research.targets")}:</span>
-            {versionData.summary.targets[lang]?.text}
+            {
+              <Markdown
+                className="inline-prose text-base"
+                contentHtml={{ markup: versionData.summary.targets[lang]?.rawHtml ?? "" }}
+              />
+            }
           </p>
         </div>
       </article>

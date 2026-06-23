@@ -27,6 +27,7 @@ import { api, mapApiError } from "@/services/backend";
 import { throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { renderMarkdown } from "@/utils/markdown";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
@@ -35,6 +36,7 @@ import type {
   DatasetTemplateData,
   ResearchTemplateData,
 } from "../../../backend/src/api/types/templates";
+import { $renderMarkdown } from "./markdown";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -389,13 +391,30 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(({ data }) => {
+  .handler(async ({ data }) => {
     const accessToken = $$getJWT();
-    return api.getResearchVersions({
+
+    const res = await api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang, includeRawHtml: false },
       accessToken: accessToken ?? undefined,
     });
+
+    for (const version of res.data) {
+      if (version.releaseNote.en) {
+        version.releaseNote.en.rawHtml = await $renderMarkdown({
+          data: { raw: version.releaseNote.en.text },
+        });
+      }
+
+      if (version.releaseNote.ja) {
+        version.releaseNote.ja.rawHtml = await $renderMarkdown({
+          data: { raw: version.releaseNote.ja.text },
+        });
+      }
+    }
+
+    return res;
   });
 
 export function getResearchVersionsQueryOptions(
@@ -423,11 +442,34 @@ export const $getResearch = createServerFn()
     const { humId, ...search } = filterDefined(data);
 
     try {
-      return await api.getResearchDetail({
+      const res = await api.getResearchDetail({
         search: { ...search, includeRawHtml: false },
         params: { humId },
         accessToken: accessToken ?? undefined,
       });
+
+      if (res.data.summary.targets.en) {
+        res.data.summary.targets.en.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.summary.targets.en.text },
+        });
+      }
+      if (res.data.summary.targets.ja) {
+        res.data.summary.targets.ja.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.summary.targets.ja.text },
+        });
+      }
+      if (res.data.releaseNote.en) {
+        res.data.releaseNote.en.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.releaseNote.en.text },
+        });
+      }
+      if (res.data.releaseNote.ja) {
+        res.data.releaseNote.ja.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.releaseNote.ja.text },
+        });
+      }
+
+      return res;
     } catch (error) {
       throwSerializableApiError(error);
     }

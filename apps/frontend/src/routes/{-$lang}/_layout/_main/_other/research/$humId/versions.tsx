@@ -6,6 +6,7 @@ import type { ResearchVersionDoc } from "@humandbs/backend/types";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { DatasetLink } from "@/components/DatasetLink";
+import { Markdown } from "@/components/markdown";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -54,7 +55,6 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
   const { lang } = useRouteContext({ strict: false });
   const tResearch = useTranslations("Research");
 
-  console.log("version", version);
   return (
     <section className="overflow-clip rounded-sm border border-gray-200">
       <h3 className="flex w-full items-baseline gap-3 bg-linear-to-r from-cyan-900 to-secondary-lighter px-4 py-2">
@@ -79,7 +79,11 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
         </div>
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>
-          {version.releaseNote[lang ?? i18n.defaultLocale]?.text}
+          <Markdown
+            className="inline-prose"
+            contentHtml={{ markup: version.releaseNote[lang ?? i18n.defaultLocale]?.rawHtml ?? "" }}
+          />
+
           <h4 className="my-4 font-semibold text-secondary text-xs">
             {tResearch("versionReleaseDate")}
           </h4>

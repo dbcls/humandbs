@@ -201,7 +201,7 @@
   }
 
   .custom-prose {
-    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty wrap-break-word;
 
     table {
       @apply w-full table-auto;
@@ -257,14 +257,17 @@
     }
   }
 
+  .inline-prose {
+    @apply prose-p:my-3 prose-ul:my-2 prose-li:my-2 text-sm leading-none text-black;
+  }
   /* Track-changes markdown diff (see DiffViewer / markdownDiff.ts) */
   .markdown-diff {
     ins {
-      @apply bg-green-100 text-green-900 no-underline rounded-xs px-0.5;
+      @apply rounded-xs bg-green-100 px-0.5 text-green-900 no-underline;
     }
 
     del {
-      @apply bg-red-100 text-red-900 rounded-xs px-0.5;
+      @apply rounded-xs bg-red-100 px-0.5 text-red-900;
     }
 
     [data-diff-node="ins"] {
@@ -276,12 +279,12 @@
     }
 
     [data-attr-changed] {
-      @apply outline-1 outline-dashed outline-amber-400;
+      @apply outline-1 outline-amber-400 outline-dashed;
       outline-offset: 2px;
     }
 
     .diff-attr-change {
-      @apply mr-1.5 inline-block rounded-xs bg-amber-100 px-1 text-amber-800 text-xs;
+      @apply mr-1.5 inline-block rounded-xs bg-amber-100 px-1 text-xs text-amber-800;
     }
 
     /* placeholder for the empty side of an add/remove pair, so rows stay aligned */

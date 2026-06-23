@@ -19,7 +19,7 @@ export interface MarkdownHeading {
 
 export interface MarkdownResult {
   markup: string;
-  headings: MarkdownHeading[];
+  headings?: MarkdownHeading[];
 }
 
 function parseTagAttributes(rawAttributes: string): Record<string, string> {
