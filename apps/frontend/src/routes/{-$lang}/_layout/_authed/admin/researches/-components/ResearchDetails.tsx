@@ -7,15 +7,14 @@ import { IntlProvider } from "use-intl";
 import { useState } from "react";
 
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
+import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
-import { SummaryForm } from "@/components/form-context/research-fields/SummaryForm";
+import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
+import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
+import { humanize } from "@/components/form-context/schema-form/utils";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
@@ -45,17 +44,65 @@ import { DatasetEditView } from "./DatasetEditView";
 import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
+import { researchFieldsConfig } from "./researchFieldsConfig";
 import { TabContentLayout } from "./TabContentLayout";
 import type { MergeResearchResult } from "./utils/researchValues";
 
-const topLevelFields = [
-  "title",
-  "summary",
-  "dataProvider",
-  "researchProject",
-  "grant",
-  "relatedPublication",
-] as const;
+/**
+ * Top-level research metadata fields rendered as tabs, derived from the schema
+ * shape (single source of truth) and ordered/labelled via `researchFieldsConfig`.
+ * Fields whose key carries no config entry and resolve to a primitive kind fall
+ * through to the generic schema-driven `FieldControl` — so a new scalar backend
+ * field surfaces automatically with no code change here.
+ *
+ * `uids`, `releaseNote`, `status`, versions and datasets are handled separately
+ * outside this tabbed loop, so they're excluded.
+ */
+const EXCLUDED_FIELDS = new Set<string>([
+  "humId",
+  "url",
+  "status",
+  "uids",
+  "draftVersion",
+  "latestVersion",
+  "version",
+  "versionIds",
+  "humVersionId",
+  "versionReleaseDate",
+  "releaseNote",
+  "datasets",
+  "controlledAccessUser",
+  // Optimistic-locking metadata carried by UpdateResearchRequestSchema — not editable fields.
+  "_seq_no",
+  "_primary_term",
+]);
+
+type MetadataField = {
+  key: string;
+  label: string;
+  order: number;
+  kind: ReturnType<typeof getFieldKind>;
+  renderer?: (form: any) => React.ReactNode;
+};
+
+const metadataFields: MetadataField[] = Object.entries(UpdateResearchRequestSchema.shape)
+  .filter(([key]) => !EXCLUDED_FIELDS.has(key))
+  .flatMap(([key, schema], schemaIndex): MetadataField[] => {
+    const config = researchFieldsConfig[key as keyof typeof researchFieldsConfig];
+    if (config?.hidden) return [];
+    return [
+      {
+        key,
+        label: config?.label ?? humanize(key),
+        order: config?.order ?? schemaIndex + 1000,
+        kind: getFieldKind(schema as { _def: any }),
+        renderer: config?.renderer,
+      },
+    ];
+  })
+  .sort((a, b) => a.order - b.order);
+
+const topLevelFields = metadataFields.map((f) => f.key);
 
 export function ResearchDetails({
   humId,
@@ -591,55 +638,39 @@ export function ResearchDetails({
                   />
                 )}
               </form.AppField>
-              <Tabs defaultValue="title" className="mt-5 flex flex-col">
+              <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">
-                    <TabsTrigger variant="line" value="title">
-                      <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="summary">
-                      <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="dataProvider">
-                      <TabLabel dirty={dirtyFields.dataProvider}>Data providers</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="researchProject">
-                      <TabLabel dirty={dirtyFields.researchProject}>Research project</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="grant">
-                      <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="relatedPublication">
-                      <TabLabel dirty={dirtyFields.relatedPublication}>
-                        Related publication
-                      </TabLabel>
-                    </TabsTrigger>
+                    {metadataFields.map((field) => (
+                      <TabsTrigger key={field.key} variant="line" value={field.key}>
+                        <TabLabel dirty={dirtyFields[field.key]}>{field.label}</TabLabel>
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </div>
                 <fieldset
                   disabled={!isViewingDraft || !canUpdate}
                   className="group/fieldset px-5 pt-5 pb-5"
                 >
-                  <TabsContent value="title">
-                    <form.AppField name="title">
-                      {(field) => <field.BilingualTextField variant="textarea" />}
-                    </form.AppField>
-                  </TabsContent>
-                  <TabsContent value="summary">
-                    <SummaryForm form={form} fields="summary" />
-                  </TabsContent>
-                  <TabsContent value="dataProvider">
-                    <DataProviderArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="researchProject">
-                    <ResearchProjectArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="grant">
-                    <GrantArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="relatedPublication">
-                    <RelatedPublicationArrayField form={form} />
-                  </TabsContent>
+                  {metadataFields.map((field) => (
+                    <TabsContent key={field.key} value={field.key}>
+                      {field.renderer ? (
+                        field.renderer(form)
+                      ) : (
+                        <form.AppField name={field.key as never}>
+                          {(f) => (
+                            <FieldControl
+                              fieldKey={field.key}
+                              kind={field.kind}
+                              value={f.state.value}
+                              defaultValue={(defaultValues as Record<string, unknown>)[field.key]}
+                              onChange={(v) => f.handleChange(v as never)}
+                            />
+                          )}
+                        </form.AppField>
+                      )}
+                    </TabsContent>
+                  ))}
                 </fieldset>
               </Tabs>
             </div>

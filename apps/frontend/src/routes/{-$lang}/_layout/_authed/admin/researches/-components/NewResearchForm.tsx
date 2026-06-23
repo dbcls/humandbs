@@ -8,10 +8,6 @@ import type { CreateResearchRequest } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +17,12 @@ import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { MergeResearchDialog } from "./MergeResearch/index";
+import {
+  DataProviderArrayField,
+  GrantArrayField,
+  RelatedPublicationArrayField,
+  ResearchProjectArrayField,
+} from "./researchFieldsConfig";
 import { DUMMY_HUM_ID } from "./utils/dummyResearch";
 import type { NewResearchMergeValues } from "./utils/researchValues";
 import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
