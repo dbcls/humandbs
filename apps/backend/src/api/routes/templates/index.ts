@@ -29,7 +29,7 @@ import {
 } from "@/api/routes/errors"
 import {
   DatasetTemplateResponseSchema,
-  JdsIdParamsSchema,
+  JdsApplIdParamsSchema,
   ResearchTemplateResponseSchema,
   TemplateDatasetParamsSchema,
 } from "@/api/types"
@@ -40,13 +40,14 @@ import { mapDsApplicationToResearchTemplate } from "./mapping-research"
 
 const getResearchTemplateRoute = createRoute({
   method: "get",
-  path: "/research/{jdsId}",
+  path: "/research/{jdsApplId}",
   tags: ["Templates"],
   operationId: "getResearchTemplate",
-  summary: "Get Research draft from a J-DS application",
+  summary: "Get Research draft from a J-DS application version",
   description:
     "**Authorization:** Admin only.\n\n" +
-    "Build a Research draft from the JGA-Shinsei DB record identified by `jdsId`. " +
+    "Build a Research draft from the JGA-Shinsei DB record identified by " +
+    "`jdsApplId` (e.g., `J-DS001226-001`). " +
     "The response payload is shape-compatible with `POST /research/new` request " +
     "body so the admin can edit and post it back without field-level " +
     "transformation. JGAD accessions linked to this J-DS appear under " +
@@ -55,7 +56,7 @@ const getResearchTemplateRoute = createRoute({
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    params: JdsIdParamsSchema,
+    params: JdsApplIdParamsSchema,
   },
   responses: {
     200: {
@@ -120,10 +121,9 @@ templatesRouter.use("*", requireAuth)
 templatesRouter.use("*", requireAdmin)
 
 templatesRouter.openapi(getResearchTemplateRoute, async (c) => {
-  const { jdsId } = c.req.valid("param")
+  const { jdsApplId } = c.req.valid("param")
   const requestId = getRequestId(c)
-  // getDsApplication throws NotFoundError if J-DS is not in the JGA-Shinsei DB
-  const jds = await getDsApplication(jdsId)
+  const jds = await getDsApplication(jdsApplId)
   const data = await mapDsApplicationToResearchTemplate(jds, requestId)
   return singleReadOnlyResponse(c, data)
 })

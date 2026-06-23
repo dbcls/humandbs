@@ -26,13 +26,10 @@ describe("buildStatusFilter", () => {
     expect(buildStatusFilter(admin)).toBeNull()
   })
 
-  it("returns latestVersion exists AND not deleted for public", () => {
+  it("returns latestVersion exists for public", () => {
     const filter = buildStatusFilter(null)
     expect(filter).toEqual({
-      bool: {
-        must: [{ exists: { field: "latestVersion" } }],
-        must_not: [{ term: { status: "deleted" } }],
-      },
+      exists: { field: "latestVersion" },
     })
   })
 
@@ -42,12 +39,7 @@ describe("buildStatusFilter", () => {
     expect(filter).toEqual({
       bool: {
         should: [
-          {
-            bool: {
-              must: [{ exists: { field: "latestVersion" } }],
-              must_not: [{ term: { status: "deleted" } }],
-            },
-          },
+          { exists: { field: "latestVersion" } },
           { term: { uids: "user-123" } },
         ],
         minimum_should_match: 1,
@@ -84,20 +76,6 @@ describe("canAccessResearchDoc", () => {
     uids: ["owner-1"],
   })
 
-  const deleted: EsResearch = createMockResearchDoc({
-    status: "deleted",
-    latestVersion: "v1",
-    draftVersion: null,
-    uids: ["owner-1"],
-  })
-
-  const deletedNeverPublished: EsResearch = createMockResearchDoc({
-    status: "deleted",
-    latestVersion: null,
-    draftVersion: null,
-    uids: ["owner-1"],
-  })
-
   // Admin can access everything
   it("admin can access published", () => {
     expect(canAccessResearchDoc(admin, published)).toBe(true)
@@ -105,11 +83,8 @@ describe("canAccessResearchDoc", () => {
   it("admin can access draft (first time)", () => {
     expect(canAccessResearchDoc(admin, draftFirstTime)).toBe(true)
   })
-  it("admin can access deleted", () => {
-    expect(canAccessResearchDoc(admin, deleted)).toBe(true)
-  })
 
-  // Public: latestVersion != null AND status != deleted
+  // Public: latestVersion != null
   it("public can access published", () => {
     expect(canAccessResearchDoc(null, published)).toBe(true)
   })
@@ -119,12 +94,6 @@ describe("canAccessResearchDoc", () => {
   it("public cannot access draft (first time, latestVersion=null)", () => {
     expect(canAccessResearchDoc(null, draftFirstTime)).toBe(false)
   })
-  it("public cannot access deleted (even with latestVersion)", () => {
-    expect(canAccessResearchDoc(null, deleted)).toBe(false)
-  })
-  it("public cannot access deleted (never published)", () => {
-    expect(canAccessResearchDoc(null, deletedNeverPublished)).toBe(false)
-  })
 
   // Owner
   it("owner can access own draft", () => {
@@ -132,12 +101,6 @@ describe("canAccessResearchDoc", () => {
   })
   it("owner can access own published", () => {
     expect(canAccessResearchDoc(owner, published)).toBe(true)
-  })
-  it("owner cannot access own deleted (admin only)", () => {
-    expect(canAccessResearchDoc(owner, deleted)).toBe(false)
-  })
-  it("owner cannot access own deleted (never published)", () => {
-    expect(canAccessResearchDoc(owner, deletedNeverPublished)).toBe(false)
   })
 
   // Other authenticated user
@@ -168,9 +131,6 @@ describe("checkRequestedStatus", () => {
     { user: "public", status: "review", allowed: false },
     { user: "auth", status: "review", allowed: true },
     { user: "admin", status: "review", allowed: true },
-    { user: "public", status: "deleted", allowed: false },
-    { user: "auth", status: "deleted", allowed: false },
-    { user: "admin", status: "deleted", allowed: true },
   ]
 
   for (const { user, status, allowed } of cases) {
@@ -203,16 +163,12 @@ describe("validateStatusTransition", () => {
   it.each([
     ["review", "submit"],
     ["published", "submit"],
-    ["deleted", "submit"],
     ["draft", "approve"],
     ["published", "approve"],
-    ["deleted", "approve"],
     ["draft", "reject"],
     ["published", "reject"],
-    ["deleted", "reject"],
     ["draft", "unpublish"],
     ["review", "unpublish"],
-    ["deleted", "unpublish"],
   ] as const)("invalid: %s + %s -> error message", (status, action) => {
     const result = validateStatusTransition(status, action)
     expect(result).toBeString()
@@ -286,23 +242,13 @@ describe("canAccessResearchDoc as post-filter", () => {
   const reviewNeverPublished = { latestVersion: null, status: "review" as const, uids: ["owner-1"] }
   const reviewWithPublished = { latestVersion: "v1", status: "review" as const, uids: ["owner-1"] }
   const published = { latestVersion: "v1", status: "published" as const, uids: ["owner-1"] }
-  const deleted = { latestVersion: "v1", status: "deleted" as const, uids: ["owner-1"] }
 
   it("admin passes all", () => {
     expect(canAccessResearchDoc(admin, draftNeverPublished)).toBe(true)
-    expect(canAccessResearchDoc(admin, deleted)).toBe(true)
   })
 
   it("public excludes latestVersion=null", () => {
     expect(canAccessResearchDoc(null, draftNeverPublished)).toBe(false)
-  })
-
-  it("public excludes deleted", () => {
-    expect(canAccessResearchDoc(null, deleted)).toBe(false)
-  })
-
-  it("owner excludes own deleted (admin only)", () => {
-    expect(canAccessResearchDoc(owner, deleted)).toBe(false)
   })
 
   it("public includes published", () => {
@@ -335,19 +281,5 @@ describe("canAccessResearchDoc as post-filter", () => {
 
   it("non-owner includes review with latestVersion (public visible)", () => {
     expect(canAccessResearchDoc(otherUser, reviewWithPublished)).toBe(true)
-  })
-
-  it("PBT: post-filter never allows deleted for non-admin (owner included)", () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom(null, otherUser, owner),
-        fc.constantFrom("v1", "v2", null),
-        (user, latestVersion) => {
-          const doc = { latestVersion, status: "deleted" as const, uids: ["owner-1"] }
-
-          return !canAccessResearchDoc(user, doc)
-        },
-      ),
-    )
   })
 })

@@ -22,7 +22,7 @@ ResearchVersion N:M Dataset (datasets で参照)
 
 ### Dataset の status 依存
 
-Dataset 自体は status フィールドを持たない。親 Research の可視性に依存する。公開判定は `latestVersion != null AND status != "deleted"` で行う。
+Dataset 自体は status フィールドを持たない。親 Research の可視性に依存する。公開判定は `latestVersion != null` で行う。
 
 | 親 Research の状態 | Dataset の可視性 | Dataset の操作 |
 |-------------------|-----------------|---------------|
@@ -30,7 +30,6 @@ Dataset 自体は status フィールドを持たない。親 Research の可視
 | draft (latestVersion!=null) | 公開版は public 可視、draft 版は非公開 | 作成・更新・削除 可能 |
 | review | draft と同じ可視性 | 作成・更新・削除 不可 |
 | published | 公開 | 作成・更新・削除 不可 |
-| deleted | 非公開（アクセス不可） | N/A |
 
 **重要**: Dataset の作成・更新・削除は、親 Research が **draft 状態の場合のみ** 可能。
 
@@ -69,11 +68,9 @@ Keycloak の管理設定は [keycloak-admin.md](../../../docs/keycloak-admin.md)
 
 | ユーザー種別 | 指定可能な status | 範囲外を指定した場合 |
 |-------------|------------------|---------------------|
-| public | `published` のみ（内部では `latestVersion exists AND not deleted` に変換） | 403 Forbidden |
+| public | `published` のみ（内部では `latestVersion exists` に変換） | 403 Forbidden |
 | authenticated | `draft`, `review`, `published`（非 `published` は自分のリソースのみ） | 403 Forbidden |
-| admin | `draft`, `review`, `published`, `deleted` | - |
-
-`deleted` は admin 専用。owner を含む非 admin が `status=deleted` を指定した場合は 403 Forbidden を返す。これは [`§ deleted 状態`](#deleted-状態) の「admin のみ閲覧可」と整合する。
+| admin | `draft`, `review`, `published` | - |
 
 ### 認可マトリクス
 
@@ -158,12 +155,9 @@ Research のライフサイクル状態遷移を管理する。
 - `datePublished`: 初回 approve 時に設定され、以後変更されない。作成時は null
 - `dateModified`: 状態変更および通常の更新（`PUT /research/{humId}/update`）のたびに更新される
 
-### deleted 状態
+### 削除
 
-- `status=deleted` の Research は更新・状態遷移の操作対象外
-- admin のみ閲覧可能（一覧・詳細・バージョン一覧）。owner を含むそれ以外のユーザーには 404 を返す
-- 物理削除ではなく論理削除
-- 紐づく Dataset は `deleteResearch` 時に物理削除される
+Research の削除は物理削除で行う。`POST /research/{humId}/delete` (admin only) は Research ドキュメント、全 ResearchVersion、全紐づき Dataset を物理的に削除する。削除後は同じ humId で再作成が可能。
 
 ## 公開判定（Public Visibility）
 
@@ -172,7 +166,7 @@ Research が public API（認証なし）で見えるかどうかと、どのバ
 ### 公開条件
 
 ```
-latestVersion != null AND status != "deleted"
+latestVersion != null
 ```
 
 この条件を満たす Research とその Dataset が、認証なしの public API で閲覧できる。
@@ -187,7 +181,6 @@ latestVersion != null AND status != "deleted"
 | draft | v1 | v2 | Yes | v1 |
 | review | v1 | v2 | Yes | v1 |
 | published | v2 | null | Yes | v2 |
-| deleted | - | - | No | - |
 
 v2 を編集中（draft/review）でも、`latestVersion` が v1 なら public API には v1 が返り続ける。
 

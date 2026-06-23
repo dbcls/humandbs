@@ -102,8 +102,8 @@ export const createResearchRoute = createRoute({
 
 **Behavior:**
 - Creates Research in draft status
-- humId is auto-generated (hum0001, hum0002, ...) if not provided
-- All fields are optional; defaults are used for missing fields
+- humId is required and must match /^hum\\d{4}$/ (e.g., hum0001)
+- All fields except humId are optional; defaults are used for missing fields
 - Admin can assign uids (owner list) to grant edit access to other users`,
   request: {
     body: {
@@ -205,7 +205,8 @@ export const updateResearchRoute = createRoute({
 
 **Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits. Returns 409 Conflict if the document has been modified since retrieval.
 
-**Note:** humId, url, versionIds, latestVersion, datePublished cannot be modified.`,
+**Note:** humId, url, versionIds, latestVersion, datePublished cannot be modified.
+releaseNote updates the current draft ResearchVersion's release note.`,
   request: {
     params: HumIdParamsSchema,
     body: {
@@ -236,14 +237,13 @@ export const deleteResearchRoute = createRoute({
   summary: "Delete Research",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
-  description: `Delete a Research (logical deletion).
+  description: `Delete a Research (physical deletion).
 
 **Authorization:** Admin only
 
 **Behavior:**
-- Sets status to "deleted" (logical deletion to preserve humId uniqueness)
-- All linked Datasets are physically deleted
-- Deleted Research becomes inaccessible (returns 404)`,
+- Physically removes the Research document, all linked ResearchVersions, and all linked Datasets
+- The humId becomes available for reuse`,
   request: {
     params: HumIdParamsSchema,
   },

@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import type { AuthUser } from "@/api/types"
 
-import { adminAuthHeader, buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
+import { buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
 import { createMockResearchDoc } from "../../helpers/mock-es"
 
 // === Auth mock (shared header-based factory) ===
@@ -86,7 +86,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: mockGetResearchWithSeqNo,
   getResearchDetail: mock(async () => null),
   getResearchDoc: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mockCreateResearch,
   updateResearch: mockUpdateResearch,
   updateResearchStatus: mockUpdateResearchStatus,
@@ -102,12 +101,12 @@ void mock.module("@/api/es-client/research-version", () => ({
   listResearchVersions: mock(async () => []),
   linkDatasetToResearch: mock(async () => undefined),
   unlinkDatasetFromResearch: mock(async () => undefined),
+  updateResearchVersionReleaseNote: mock(async () => true),
 }))
 
 const { getTestApp } = await import("../../helpers")
 
 const userAuth = userAuthHeader
-const adminAuth = adminAuthHeader
 
 beforeEach(() => {
   searchCalls.length = 0
@@ -175,7 +174,6 @@ describe("api/routes/research", () => {
     it.each([
       ["draft", /Public users can only access published/],
       ["review", /Public users can only access published/],
-      ["deleted", /Only admins can access deleted/],
     ] as const)(
       "public requesting status=%s returns 403",
       async (status, detailPattern) => {
@@ -208,14 +206,6 @@ describe("api/routes/research", () => {
       expect(call?.authUser?.userId).toBe("user-1")
     })
 
-    it("admin can request any status including deleted", async () => {
-      const app = getTestApp()
-      const res = await app.request("/research?status=deleted", { headers: adminAuth() })
-      expect(res.status).toBe(200)
-      const call = searchCalls.at(-1)
-      expect(call?.query.status).toBe("deleted")
-      expect(call?.authUser?.isAdmin).toBe(true)
-    })
   })
 
   describe("listing response shape (IT-AUTH-20)", () => {

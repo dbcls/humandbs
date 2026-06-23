@@ -35,7 +35,7 @@ describe("ResearchSearchBodySchema", () => {
 
   describe("status filter", () => {
     it("accepts valid status values", () => {
-      for (const status of ["draft", "review", "published", "deleted"] as const) {
+      for (const status of ["draft", "review", "published"] as const) {
         const result = ResearchSearchBodySchema.safeParse({ status })
 
         expect(result.success).toBe(true)

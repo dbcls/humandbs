@@ -77,6 +77,9 @@ export interface RawStatusHistoryEntry {
 /** DB 由来の J-DS (データ提供申請) レコード */
 export interface RawDsApplication {
   jds_id: string
+  appl_id: number
+  appl_version: number
+  application_type: number
   jsub_ids: string[]
   hum_ids: string[]
   jga_ids: string[]
@@ -89,6 +92,9 @@ export interface RawDsApplication {
 /** DB 由来の J-DU (データ利用申請) レコード */
 export interface RawDuApplication {
   jdu_id: string
+  appl_id: number
+  appl_version: number
+  application_type: number
   jgad_ids: string[]
   jgas_ids: string[]
   hum_ids: string[]
@@ -114,6 +120,7 @@ export const StatusHistoryEntrySchema = z.object({
   date: z.string(),
 })
 export type StatusHistoryEntry = z.infer<typeof StatusHistoryEntrySchema>
+
 
 /** 住所 */
 export const AddressSchema = z.object({
@@ -235,6 +242,8 @@ export type Review = z.infer<typeof ReviewSchema>
 /** J-DS (データ提供申請) 変換後データ */
 export const DsApplicationTransformedSchema = z.object({
   jdsId: z.string(),
+  status: JgaStatusCodeSchema.nullable(),
+  statusLabel: JgaBilingualTextSchema,
   jsubIds: z.array(z.string()),
   humIds: z.array(z.string()),
   jgaIds: z.array(z.string()),
@@ -255,7 +264,6 @@ export const DsApplicationTransformedSchema = z.object({
   collaborators: z.array(CollaboratorSchema),
   uploadedFiles: z.array(UploadedFileSchema),
   control: ControlSchema,
-  statusHistory: z.array(StatusHistoryEntrySchema),
   submitDate: z.string(),
   createDate: z.string(),
 })
@@ -349,6 +357,8 @@ export type Member = z.infer<typeof MemberSchema>
 /** J-DU (データ利用申請) 変換後データ */
 export const DuApplicationTransformedSchema = z.object({
   jduId: z.string(),
+  status: JgaStatusCodeSchema.nullable(),
+  statusLabel: JgaBilingualTextSchema,
   jgadIds: z.array(z.string()),
   jgasIds: z.array(z.string()),
   humIds: z.array(z.string()),
@@ -371,7 +381,6 @@ export const DuApplicationTransformedSchema = z.object({
   collaborators: z.array(CollaboratorSchema),
   uploadedFiles: z.array(UploadedFileSchema),
   control: ControlSchema,
-  statusHistory: z.array(StatusHistoryEntrySchema),
   submitDate: z.string(),
   createDate: z.string(),
 })

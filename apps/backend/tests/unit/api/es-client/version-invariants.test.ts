@@ -158,8 +158,8 @@ describe("version field invariants enforced by computeVersionUpdates", () => {
   })
 
   // PBT: public visibility via canAccessResearchDoc
-  it("canAccessResearchDoc(null, doc) matches rule: latestVersion !== null AND status !== deleted", () => {
-    const statuses = ["draft", "review", "published", "deleted"] as const
+  it("canAccessResearchDoc(null, doc) matches rule: latestVersion !== null", () => {
+    const statuses = ["draft", "review", "published"] as const
     const versions = [null, "v1", "v2"]
 
     fc.assert(
@@ -169,7 +169,7 @@ describe("version field invariants enforced by computeVersionUpdates", () => {
         (status, latestVersion) => {
           const doc = createMockResearchDoc({ status, latestVersion, draftVersion: null })
           const result = canAccessResearchDoc(null, doc)
-          const expected = latestVersion !== null && status !== "deleted"
+          const expected = latestVersion !== null
 
           return result === expected
         },

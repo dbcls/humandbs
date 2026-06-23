@@ -37,7 +37,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: mockGetResearchWithSeqNo,
   getResearchDetail: mockGetResearchDetail,
   getResearchDoc: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mock(async () => { throw new Error("createResearch not stubbed in this test") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),
@@ -59,6 +58,7 @@ void mock.module("@/api/es-client/research-version", () => ({
   listResearchVersions: mock(async () => []),
   linkDatasetToResearch: mock(async () => undefined),
   unlinkDatasetFromResearch: mock(async () => undefined),
+  updateResearchVersionReleaseNote: mock(async () => true),
 }))
 
 // (search-related modules are not exercised here, but mocked to avoid pulling ES)
@@ -250,22 +250,6 @@ describe("api/routes/research/versions", () => {
       expect(res.status).toBe(201)
     })
 
-    it("returns 404 for deleted Research even as admin", async () => {
-      mockGetResearchWithSeqNo.mockResolvedValue({
-        doc: createMockResearchDoc({ humId: "hum0001", status: "deleted", uids: ["owner-1"] }),
-        seqNo: 1,
-        primaryTerm: 1,
-      })
-
-      const app = getTestApp()
-      const res = await app.request("/research/hum0001/versions/new", {
-        method: "POST",
-        headers: { ...authHeader(admin), "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      })
-
-      expect(res.status).toBe(404)
-    })
   })
 
   // === GET /research/{humId}/versions (visibility filter) ===

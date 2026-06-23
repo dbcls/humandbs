@@ -92,11 +92,6 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 
     const { doc, seqNo, primaryTerm } = result
 
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      throw new NotFoundError(ERROR_MESSAGES.NOT_FOUND("Research", humId))
-    }
-
     // Check ownership permission (admin or owner via uids)
     if (options.requireOwnership && !authUser?.isAdmin) {
       if (!canModifyResource(authUser, doc)) {
@@ -146,7 +141,7 @@ export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): b
  *  2. admin requirement (ForbiddenError 403 when requireAdmin)
  *  3. Dataset preload via `?version=<v>` (defaults to `v1`, matching the
  *     handler's prior default). Missing dataset → 404.
- *  4. parent Research preload via `getResearchDoc`. Missing or `status="deleted"` → 404.
+ *  4. parent Research preload via `getResearchDoc`. Missing → 404.
  *  5. ownership check (`canModifyResource`) when requireOwnership.
  *  6. parent-draft check (`parentResearch.status === "draft"`) when requireParentDraft.
  *     Surfaced as 409 ConflictError to match `loadResearchAndAuthorize.requireDraftStatus`.
@@ -192,7 +187,7 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     const { doc, seqNo, primaryTerm } = result
 
     const parentResearch = await getResearchDoc(doc.humId)
-    if (!parentResearch || parentResearch.status === "deleted") {
+    if (!parentResearch) {
       throw new NotFoundError(`Parent Research ${doc.humId} not found`)
     }
 

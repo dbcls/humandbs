@@ -7,7 +7,7 @@
 import { createRoute } from "@hono/zod-openapi"
 
 import { BATCH } from "@/api/constants"
-import { ConflictError, NotFoundError, ValidationError } from "@/api/errors"
+import { ConflictError, NotFoundError } from "@/api/errors"
 import {
   deleteDataset,
   getDataset,
@@ -417,22 +417,6 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
-  // body.humId must match the dataset's existing parent linkage. Without
-  // this check, an owner of Research A could try to repoint Dataset X to
-  // Research B via the body. The ES layer (`updateDataset`) is a second
-  // backstop — it ignores humId / humVersionId in updates outright — but this
-  // 400 short-circuits the call so the client gets a clear error.
-  //
-  // body.humVersionId is NOT compared because the value rotates across draft
-  // cycles (v1 → v2 when a new Research version is created). Pinning the
-  // correct humVersionId is the ES layer's job (`bumpDatasetVersion` derives
-  // it from `currentDoc.humId` + `parentResearch.draftVersion`).
-  if (body.humId !== preloaded.humId) {
-    throw new ValidationError(
-      "body.humId must match the dataset's parent Research",
-    )
-  }
-
   const updated = await updateDataset(datasetId, version, {
     releaseDate: body.releaseDate,
     criteria: body.criteria,
@@ -483,7 +467,7 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
   // `loadDatasetAndAuthorize({ requireParentDraft })` middleware check kept
   // inline here so the idempotent 204 short-circuit above stays in place.
   const research = await getResearchDoc(dataset.humId)
-  if (!research || research.status === "deleted") {
+  if (!research) {
     throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
   }
   if (research.status !== "draft") {

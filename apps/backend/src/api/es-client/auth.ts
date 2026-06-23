@@ -17,26 +17,20 @@ import { StatusTransitions } from "@/api/types"
 /**
  * Build Elasticsearch filter based on user authorization level
  *
- * - public (authUser=null): `latestVersion exists AND status != "deleted"`
+ * - public (authUser=null): `latestVersion exists`
  * - auth (authUser!=null, !isAdmin): above OR `uids` contains userId
  * - admin: No filter (can see all)
  */
 export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQueryContainer | null => {
   if (authUser?.isAdmin) {
-    // Admin can see everything
     return null
   }
 
-  // Public visibility: latestVersion exists AND not deleted
   const publicFilter: estypes.QueryDslQueryContainer = {
-    bool: {
-      must: [{ exists: { field: "latestVersion" } }],
-      must_not: [{ term: { status: "deleted" } }],
-    },
+    exists: { field: "latestVersion" },
   }
 
   if (authUser) {
-    // Authenticated user: public visible OR own resources (userId in uids)
     return {
       bool: {
         should: [
@@ -48,7 +42,6 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
     }
   }
 
-  // Public: latestVersion exists AND not deleted
   return publicFilter
 }
 
@@ -60,10 +53,9 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
  * non-admins) is performed separately in the search/listing layer; this
  * function only gates entry.
  *
- * Rules (architecture.md § deleted 状態, § status フィルタの権限):
+ * Rules:
  * - undefined: allowed (default visibility applies)
  * - "published": allowed for everyone
- * - "deleted": admin only
  * - others ("draft", "review"): authenticated only
  */
 export type RequestedStatusCheck =
@@ -76,10 +68,6 @@ export const checkRequestedStatus = (
 ): RequestedStatusCheck => {
   if (!requestedStatus) return { allowed: true }
   if (requestedStatus === "published") return { allowed: true }
-  if (requestedStatus === "deleted") {
-    if (authUser?.isAdmin) return { allowed: true }
-    return { allowed: false, message: "Only admins can access deleted resources" }
-  }
   if (!authUser) {
     return { allowed: false, message: "Public users can only access published resources" }
   }
@@ -94,8 +82,6 @@ export const canAccessResearchDoc = (
   researchDoc: Pick<EsResearch, "latestVersion" | "status" | "uids">,
 ): boolean => {
   if (authUser?.isAdmin) return true
-  // deleted は admin 以外 (owner 含む) には 404
-  if (researchDoc.status === "deleted") return false
   if (researchDoc.latestVersion !== null) return true
   if (authUser && researchDoc.uids.includes(authUser.userId)) return true
 

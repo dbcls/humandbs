@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
     "start": "bun run src/api/run-server.ts",
+    "generate-cau": "bun run src/cau/cli.ts",
     "crawler:download-html": "bun run src/crawler/cli/download-html.ts",
     "crawler:parse-html": "bun run src/crawler/cli/parse-html.ts",
     "crawler:normalize": "bun run src/crawler/cli/normalize.ts",
@@ -25,7 +26,8 @@
     "es:load-mappings": "bun run src/es/load-mappings.ts",
     "es:validate-docs": "bun run src/es/validate-docs.ts",
     "es:load-docs": "bun run src/es/load-docs.ts",
-    "test": "bun run test:api && bun run test:es && bun run test:crawler",
+    "test": "bun run test:api && bun run test:cau && bun run test:es && bun run test:crawler",
+    "test:cau": "FAIL=0; for f in $(find tests/unit/cau -name '*.test.ts' | sort); do echo \"--- $f ---\"; timeout 120 bun test \"$f\" || FAIL=$((FAIL+1)); done; if [ $FAIL -gt 0 ]; then echo \"Failed files: $FAIL\"; exit 1; fi",
     "test:crawler": "bun test tests/unit/crawler",
     "test:es": "bun test tests/unit/es",
     "test:api": "FAIL=0; for f in $(find tests/unit/api -name '*.test.ts' | sort); do echo \"--- $f ---\"; timeout 120 bun test \"$f\" || FAIL=$((FAIL+1)); done; if [ $FAIL -gt 0 ]; then echo \"Failed files: $FAIL\"; exit 1; fi",

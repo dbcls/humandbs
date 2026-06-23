@@ -90,13 +90,21 @@ vim .env
 **データの導出経路:**
 
 ```plaintext
-nbdc_application.hum_id
-  -> submission_permission -> submission -> entry -> relation
-  -> accession (JGAS/JGAD)
-  -> current_accession_status (accession_status = 2098186: public/live)
+JGAS (直接経路):
+  nbdc_application.hum_id -> submission_permission -> submission
+  -> entry -> relation -> accession (JGAS)
+
+JGAD (直接経路 UNION JGAS ブリッジ):
+  直接: 同上 -> accession (JGAD)
+  ブリッジ: JGAD -> 同 entry 内の兄弟 JGAS -> 同 JGAS の別 entry
+            -> submission -> submission_permission -> hum_id
+
+公開フィルタ: current_accession_status.accession_status = 2098186 (public/live)
 ```
 
 metadata XML の `nbdc_number` を経由しない経路で、担当者が DB に直接投入した hum_id を使用する。`current_accession_status` で公開済み (public/live) の accession のみに絞り込む。ステータスの詳細は [database-schema.md](docs/database-schema.md) を参照。
+
+JGAD の JGAS ブリッジは、`hum_id=NULL` の申請 (J-DS000659 等) 配下にある JGAD を拾うためのフォールバック経路。JGAS と JGAD は relation テーブル上で同一 entry 内の兄弟として格納されており、同じ JGAS が別 entry (別 submission) にも存在する場合、そちらの hum_id を使って解決する。
 
 **出力ファイル:** (`$JGA_HUM_REL_OUTPUT_DIR` 以下、デフォルト: `~/jga-relation/`)
 

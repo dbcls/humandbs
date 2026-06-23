@@ -187,17 +187,6 @@ const CONTROLLED_ACCESS_USER_RESPONSE = {
   periodOfDataUse: { startDate: "2025-04-01", endDate: "2027-03-31" },
 }
 
-/** controlledAccessUser entry (request-shaped). */
-const CONTROLLED_ACCESS_USER_REQUEST = {
-  ...DATA_PROVIDER_REQUEST,
-  name: bilingualTextRequest("佐藤 次郎", "Sato Jiro"),
-  email: "sato@example.org",
-  orcid: "0000-0002-3456-7890",
-  datasetIds: [DATASET_ID],
-  researchTitle: BILINGUAL_TITLE,
-  periodOfDataUse: { startDate: "2025-04-01", endDate: "2027-03-31" },
-}
-
 const RESEARCH_PROJECT_RESPONSE = {
   name: bilingualText(
     "AMED 脳とこころの研究推進プログラム",
@@ -322,7 +311,7 @@ export const exampleCreateResearchRequest = {
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
   uids: [KEYCLOAK_SUB],
-  initialReleaseNote: bilingualTextRequest("初版リリース", "Initial release"),
+  humId: HUM_ID,
 } satisfies CreateResearchRequest
 
 export const exampleUpdateResearchRequest = {
@@ -332,7 +321,6 @@ export const exampleUpdateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
-  controlledAccessUser: [CONTROLLED_ACCESS_USER_REQUEST],
   _seq_no: 12,
   _primary_term: 1,
 } satisfies UpdateResearchRequest
@@ -555,8 +543,6 @@ export const exampleCreateDatasetForResearchRequest = {
 } satisfies CreateDatasetForResearchRequest
 
 export const exampleUpdateDatasetRequest = {
-  humId: HUM_ID,
-  humVersionId: HUM_VERSION_ID,
   releaseDate: ISO_DATE,
   criteria: "Controlled-access (Type I)",
   typeOfData: { ja: "WGS データ", en: "WGS data" },
@@ -764,7 +750,9 @@ const JGA_STATUS_HISTORY_ENTRY = {
 
 /** J-DS application body (`DsApplicationTransformedSchema`). */
 const DS_APPLICATION_BODY = {
-  jdsId: JDS_ID,
+  jdsId: `${JDS_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jsubIds: ["JSUB000001"],
   humIds: [HUM_ID],
   jgaIds: ["JGAS000001"],
@@ -807,14 +795,15 @@ const DS_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }
 
 /** J-DU application body (`DuApplicationTransformedSchema`). */
 const DU_APPLICATION_BODY = {
-  jduId: JDU_ID,
+  jduId: `${JDU_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jgadIds: [DATASET_ID],
   jgasIds: ["JGAS000001"],
   humIds: [HUM_ID],
@@ -878,7 +867,6 @@ const DU_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }

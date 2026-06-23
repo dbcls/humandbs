@@ -15,8 +15,6 @@ import type {
   Pi,
   RawDsApplication,
   RawDuApplication,
-  RawStatusHistoryEntry,
-  StatusHistoryEntry,
   Submitter,
   UploadedFile,
   UseDataset,
@@ -260,16 +258,6 @@ export const reverseUseDatasets = (
   return components
 }
 
-// === Status history ===
-
-export const reverseStatusHistory = (
-  history: StatusHistoryEntry[],
-): RawStatusHistoryEntry[] =>
-  history.map((entry) => ({
-    status: entry.status,
-    date: entry.date,
-  }))
-
 // === Application reversers ===
 
 export const reverseDsApplication = (
@@ -349,13 +337,18 @@ export const reverseDsApplication = (
   components.push(...reverseUploadedFiles(ds.uploadedFiles))
   components.push(...reverseControl(ds.control))
 
+  const dsMatch = ds.jdsId.match(/^(J-DS\d+)-(\d{3})$/)
+
   return {
-    jds_id: ds.jdsId,
+    jds_id: dsMatch ? dsMatch[1] : ds.jdsId,
+    appl_id: 0,
+    appl_version: dsMatch ? parseInt(dsMatch[2], 10) : 1,
+    application_type: 0,
     jsub_ids: ds.jsubIds,
     hum_ids: ds.humIds,
     jga_ids: ds.jgaIds,
     components,
-    status_history: reverseStatusHistory(ds.statusHistory),
+    status_history: ds.status !== null ? [{ status: ds.status, date: "" }] : [],
     submit_date: ds.submitDate,
     create_date: ds.createDate,
   }
@@ -464,13 +457,18 @@ export const reverseDuApplication = (
   components.push(...reverseUploadedFiles(du.uploadedFiles))
   components.push(...reverseControl(du.control))
 
+  const duMatch = du.jduId.match(/^(J-DU\d+)-(\d{3})$/)
+
   return {
-    jdu_id: du.jduId,
+    jdu_id: duMatch ? duMatch[1] : du.jduId,
+    appl_id: 0,
+    appl_version: duMatch ? parseInt(duMatch[2], 10) : 1,
+    application_type: 0,
     jgad_ids: du.jgadIds,
     jgas_ids: du.jgasIds,
     hum_ids: du.humIds,
     components,
-    status_history: reverseStatusHistory(du.statusHistory),
+    status_history: du.status !== null ? [{ status: du.status, date: "" }] : [],
     submit_date: du.submitDate,
     create_date: du.createDate,
   }

@@ -53,16 +53,18 @@ export {
   DatasetIdParamsSchema,
   VersionParamsSchema,
   DatasetVersionParamsSchema,
-  JdsIdParamsSchema,
   JduIdParamsSchema,
+  JdsApplIdParamsSchema,
+  JduApplIdParamsSchema,
 } from "./path-params"
 export type {
   HumIdParams,
   DatasetIdParams,
   VersionParams,
   DatasetVersionParams,
-  JdsIdParams,
   JduIdParams,
+  JdsApplIdParams,
+  JduApplIdParams,
 } from "./path-params"
 
 // === Authentication ===
@@ -168,6 +170,8 @@ export {
   ResearchBatchQuerySchema,
   FacetFilterQuerySchema,
   ResearchSummarySchema,
+  JgaShinseiDsListQuerySchema,
+  JgaShinseiDuListQuerySchema,
 } from "./query-params"
 export type {
   LangVersionQuery,
@@ -180,6 +184,8 @@ export type {
   ResearchBatchQuery,
   FacetFilterQuery,
   ResearchSummary,
+  JgaShinseiDsListQuery,
+  JgaShinseiDuListQuery,
 } from "./query-params"
 
 // === Filters ===

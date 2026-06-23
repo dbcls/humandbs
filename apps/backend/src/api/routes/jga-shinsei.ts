@@ -2,7 +2,7 @@
  * JGA Shinsei API Routes
  *
  * DS (データ提供申請) / DU (データ利用申請) の read-only エンドポイント。
- * 全ルートに admin 認証が必要。
+ * すべて版 (appl_id) 単位で操作する。全ルートに admin 認証が必要。
  */
 import { createRoute } from "@hono/zod-openapi"
 
@@ -25,9 +25,10 @@ import {
 import { ErrorSpec400, ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
   createPagination,
-  PaginationQuerySchema,
-  JdsIdParamsSchema,
-  JduIdParamsSchema,
+  JdsApplIdParamsSchema,
+  JduApplIdParamsSchema,
+  JgaShinseiDsListQuerySchema,
+  JgaShinseiDuListQuerySchema,
   DsApplicationListResponseSchema,
   DsApplicationDetailResponseSchema,
   DuApplicationListResponseSchema,
@@ -41,17 +42,18 @@ const listDsRoute = createRoute({
   path: "/ds",
   tags: ["JGA Shinsei"],
   operationId: "listDsApplications",
-  summary: "List DS Applications",
-  description: "**Authorization:** Admin only.\n\nList all DS (data submission) applications.",
+  summary: "List DS Application Versions",
+  description: "**Authorization:** Admin only.\n\nList all DS (data submission) application versions. "
+    + "Use `dsDuId` query parameter to filter by master DS ID.",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    query: PaginationQuerySchema,
+    query: JgaShinseiDsListQuerySchema,
   },
   responses: {
     200: {
       content: { "application/json": { schema: DsApplicationListResponseSchema, example: exampleDsApplicationListResponse } },
-      description: "List of DS applications",
+      description: "List of DS application versions",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,
@@ -62,20 +64,20 @@ const listDsRoute = createRoute({
 
 const getDsRoute = createRoute({
   method: "get",
-  path: "/ds/{jdsId}",
+  path: "/ds/{jdsApplId}",
   tags: ["JGA Shinsei"],
   operationId: "getDsApplication",
-  summary: "Get DS Application",
-  description: "**Authorization:** Admin only.\n\nGet a single DS application by jdsId.",
+  summary: "Get DS Application Version",
+  description: "**Authorization:** Admin only.\n\nGet a single DS application version by version ID (e.g., J-DS002494-001).",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    params: JdsIdParamsSchema,
+    params: JdsApplIdParamsSchema,
   },
   responses: {
     200: {
       content: { "application/json": { schema: DsApplicationDetailResponseSchema, example: exampleDsApplicationDetailResponse } },
-      description: "DS application detail",
+      description: "DS application version detail",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,
@@ -90,17 +92,18 @@ const listDuRoute = createRoute({
   path: "/du",
   tags: ["JGA Shinsei"],
   operationId: "listDuApplications",
-  summary: "List DU Applications",
-  description: "**Authorization:** Admin only.\n\nList all DU (data use) applications.",
+  summary: "List DU Application Versions",
+  description: "**Authorization:** Admin only.\n\nList all DU (data use) application versions. "
+    + "Use `dsDuId` query parameter to filter by master DU ID.",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    query: PaginationQuerySchema,
+    query: JgaShinseiDuListQuerySchema,
   },
   responses: {
     200: {
       content: { "application/json": { schema: DuApplicationListResponseSchema, example: exampleDuApplicationListResponse } },
-      description: "List of DU applications",
+      description: "List of DU application versions",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,
@@ -111,20 +114,20 @@ const listDuRoute = createRoute({
 
 const getDuRoute = createRoute({
   method: "get",
-  path: "/du/{jduId}",
+  path: "/du/{jduApplId}",
   tags: ["JGA Shinsei"],
   operationId: "getDuApplication",
-  summary: "Get DU Application",
-  description: "**Authorization:** Admin only.\n\nGet a single DU application by jduId.",
+  summary: "Get DU Application Version",
+  description: "**Authorization:** Admin only.\n\nGet a single DU application version by version ID (e.g., J-DU006498-001).",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
   request: {
-    params: JduIdParamsSchema,
+    params: JduApplIdParamsSchema,
   },
   responses: {
     200: {
       content: { "application/json": { schema: DuApplicationDetailResponseSchema, example: exampleDuApplicationDetailResponse } },
-      description: "DU application detail",
+      description: "DU application version detail",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,
@@ -144,28 +147,28 @@ jgaShinseiRouter.use("*", requireAdmin)
 
 // DS endpoints
 jgaShinseiRouter.openapi(listDsRoute, async (c) => {
-  const { page, limit } = c.req.valid("query")
-  const { hits, total } = await listDsApplications(page, limit)
+  const { page, limit, dsDuId } = c.req.valid("query")
+  const { hits, total } = await listDsApplications(page, limit, dsDuId)
   const pagination = createPagination(total, page, limit)
   return listResponse(c, hits, pagination)
 })
 
 jgaShinseiRouter.openapi(getDsRoute, async (c) => {
-  const { jdsId } = c.req.valid("param")
-  const doc = await getDsApplication(jdsId)
+  const { jdsApplId } = c.req.valid("param")
+  const doc = await getDsApplication(jdsApplId)
   return singleReadOnlyResponse(c, doc)
 })
 
 // DU endpoints
 jgaShinseiRouter.openapi(listDuRoute, async (c) => {
-  const { page, limit } = c.req.valid("query")
-  const { hits, total } = await listDuApplications(page, limit)
+  const { page, limit, dsDuId } = c.req.valid("query")
+  const { hits, total } = await listDuApplications(page, limit, dsDuId)
   const pagination = createPagination(total, page, limit)
   return listResponse(c, hits, pagination)
 })
 
 jgaShinseiRouter.openapi(getDuRoute, async (c) => {
-  const { jduId } = c.req.valid("param")
-  const doc = await getDuApplication(jduId)
+  const { jduApplId } = c.req.valid("param")
+  const doc = await getDuApplication(jduApplId)
   return singleReadOnlyResponse(c, doc)
 })

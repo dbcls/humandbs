@@ -24,7 +24,6 @@ export {
   reverseDataGroup,
   reverseMembers,
   reverseUseDatasets,
-  reverseStatusHistory,
   reverseDsApplication,
   reverseDuApplication,
 } from "./reverse-transform"

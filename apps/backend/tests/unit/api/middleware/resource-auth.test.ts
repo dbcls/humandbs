@@ -155,12 +155,6 @@ describe("loadResearchAndAuthorize", () => {
     draftVersion: "v2",
   })
 
-  const deletedDoc = createMockResearchDoc({
-    humId: "hum0001",
-    uids: ["owner-1"],
-    status: "deleted",
-  })
-
   const owner = createMockAuthUser({ userId: "owner-1" })
   const otherUser = createMockAuthUser({ userId: "other-1" })
   const admin = createMockAuthUser({ isAdmin: true })
@@ -223,17 +217,6 @@ describe("loadResearchAndAuthorize", () => {
       const res = await app.request("/hum0001/action", { method: "POST" })
 
       expect(res.status).toBe(401)
-    })
-
-    it("returns 404 for deleted resource", async () => {
-      mockGetResearchWithSeqNo.mockResolvedValue({ doc: deletedDoc, seqNo: 1, primaryTerm: 1 })
-
-      const res = await app.request("/hum0001/action", {
-        method: "POST",
-        headers: authHeader(owner),
-      })
-
-      expect(res.status).toBe(404)
     })
 
     it("returns 404 for non-existent resource", async () => {
@@ -350,12 +333,6 @@ describe("loadDatasetAndAuthorize", () => {
     latestVersion: null,
     draftVersion: "v1",
   })
-  const deletedParent = createMockResearchDoc({
-    humId: "hum0001",
-    uids: ["owner-1"],
-    status: "deleted",
-  })
-
   const dataset = createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001" })
 
   const owner = createMockAuthUser({ userId: "owner-1" })
@@ -454,18 +431,6 @@ describe("loadDatasetAndAuthorize", () => {
       expect(res.status).toBe(409)
       const body = (await res.json()) as { detail: string }
       expect(body.detail).toMatch(/'review' status, expected 'draft'/)
-    })
-
-    it("returns 404 when parent Research has status=deleted (before parent-draft check)", async () => {
-      mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
-      mockGetResearchDoc.mockResolvedValue(deletedParent)
-
-      const res = await app.request("/JGAD000001/action", {
-        method: "POST",
-        headers: { "X-Test-Auth": JSON.stringify(owner) },
-      })
-
-      expect(res.status).toBe(404)
     })
 
     it("returns 404 when Dataset is missing", async () => {

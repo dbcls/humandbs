@@ -342,8 +342,8 @@ interface TermsBucket {
   }
 }
 
-interface CompositeBucket {
-  key: { vendor?: string | null; model?: string | null }
+interface MultiTermsBucket {
+  key: (string | number | boolean | null)[]
   doc_count: number
   dataset_count?: {
     doc_count?: number
@@ -366,12 +366,12 @@ const isTermsBucketArray = (value: unknown): value is TermsBucket[] => {
   )
 }
 
-// Type guard for CompositeBucket array
-const isCompositeBucketArray = (value: unknown): value is CompositeBucket[] => {
+// Type guard for MultiTermsBucket array
+const isMultiTermsBucketArray = (value: unknown): value is MultiTermsBucket[] => {
   if (!Array.isArray(value)) return false
   return value.every(item =>
     isRecord(item) &&
-    isRecord(item.key) &&
+    Array.isArray(item.key) &&
     typeof item.doc_count === "number",
   )
 }
@@ -401,15 +401,13 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
         ?? b.doc_count,
     }))
 
-  // Extract platform composite buckets (vendor + model)
+  // Extract platform multi_terms buckets (vendor + model)
   // Format: "{vendor}||{model}" (e.g., "Illumina||NovaSeq 6000")
-  const extractPlatformBuckets = (buckets: CompositeBucket[]) =>
+  const extractPlatformBuckets = (buckets: MultiTermsBucket[]) =>
     buckets
       .map(b => {
-        const vendor = b.key.vendor ?? ""
-        const model = b.key.model ?? ""
-        // Combine vendor and model with "||" separator (no spaces)
-        // Only include if both vendor and model are present
+        const vendor = String(b.key[0] ?? "")
+        const model = String(b.key[1] ?? "")
         if (!vendor || !model) return null
         const value = `${vendor}||${model}`
         return {
@@ -421,19 +419,17 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
       })
       .filter((item): item is { value: string; count: number } => item !== null)
 
-  // Find vendorModel composite aggregation for platform
-  const findPlatformBuckets = (obj: unknown): CompositeBucket[] | null => {
+  // Find vendorModel multi_terms aggregation for platform
+  const findPlatformBuckets = (obj: unknown): MultiTermsBucket[] | null => {
     if (!isRecord(obj)) return null
 
-    // Check for vendorModel composite aggregation
     if ("vendorModel" in obj && isRecord(obj.vendorModel)) {
       const vendorModel = obj.vendorModel
-      if ("buckets" in vendorModel && isCompositeBucketArray(vendorModel.buckets)) {
+      if ("buckets" in vendorModel && isMultiTermsBucketArray(vendorModel.buckets)) {
         return vendorModel.buckets
       }
     }
 
-    // Search nested objects
     for (const [key, val] of Object.entries(obj)) {
       if (key === "doc_count") continue
       if (isRecord(val)) {

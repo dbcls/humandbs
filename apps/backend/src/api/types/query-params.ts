@@ -129,7 +129,7 @@ export const ResearchListingQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })
@@ -149,7 +149,7 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })
@@ -251,3 +251,17 @@ export const ResearchSummarySchema = z.object({
     .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
+
+// === JGA Shinsei List Query ===
+
+export const JgaShinseiDsListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DS\d+$/).optional()
+    .describe("Filter by master DS ID (e.g., 'J-DS002494'). Returns all versions of this master."),
+})
+export type JgaShinseiDsListQuery = z.infer<typeof JgaShinseiDsListQuerySchema>
+
+export const JgaShinseiDuListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DU\d+$/).optional()
+    .describe("Filter by master DU ID (e.g., 'J-DU006498'). Returns all versions of this master."),
+})
+export type JgaShinseiDuListQuery = z.infer<typeof JgaShinseiDuListQuerySchema>

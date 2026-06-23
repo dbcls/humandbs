@@ -108,7 +108,7 @@ describe("ResearchSummarySchema", () => {
     })
 
     it("accepts valid status values", () => {
-      for (const status of ["draft", "review", "published", "deleted"] as const) {
+      for (const status of ["draft", "review", "published"] as const) {
         const result = ResearchSummarySchema.safeParse({ ...withTitle, status })
 
         expect(result.success).toBe(true)

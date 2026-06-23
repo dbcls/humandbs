@@ -65,7 +65,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDoc: mockGetResearchDoc,
   getResearchWithSeqNo: mock(async () => null),
   getResearchDetail: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mock(async () => { throw new Error("not stubbed") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),

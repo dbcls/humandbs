@@ -419,78 +419,6 @@ export const importResearchProjectTsv = (): void => {
   logger.info("Updated research-project files", { count: updated })
 }
 
-// Import Controlled Access User TSV
-
-export const importCauTsv = (): void => {
-  logger.info("Importing research-cau.tsv...")
-
-  const tsvPath = join(getTsvDir(), "research-cau.tsv")
-  if (!existsSync(tsvPath)) {
-    logger.info("Skipped: research-cau.tsv not found")
-    return
-  }
-
-  const content = readFileSync(tsvPath, "utf8")
-  const rows = parseTsv(content)
-
-  // Group by humId
-  const groupedRows = new Map<string, TsvRow[]>()
-  for (const row of rows) {
-    const key = row.humId
-    const existing = groupedRows.get(key) ?? []
-    existing.push(row)
-    groupedRows.set(key, existing)
-  }
-
-  const structuredDir = getStructuredDir("research")
-  let updated = 0
-
-  for (const [humId, cauRows] of groupedRows) {
-    const filename = `${humId}.json`
-    const filePath = join(structuredDir, filename)
-
-    const research = readJsonFile<Research>(filePath)
-    if (!research) {
-      logger.warn("Skipped: file not found", { filename })
-      continue
-    }
-
-    // Sort by index and rebuild array
-    cauRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
-
-    // Preserve datasetIds from existing CAUs (keyed by index)
-    const existingDatasetIds = new Map<number, string[]>()
-    for (let i = 0; i < research.controlledAccessUser.length; i++) {
-      existingDatasetIds.set(i, research.controlledAccessUser[i].datasetIds ?? [])
-    }
-
-    const newCaus: Person[] = cauRows.map((row, i) => ({
-      name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
-      organization: (row.organization_name_ja || row.organization_name_en || row.organization_country)
-        ? {
-          name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
-          address: row.organization_country ? { country: row.organization_country } : null,
-        }
-        : null,
-      researchTitle: parseBilingualText(row.researchTitle_ja ?? "", row.researchTitle_en ?? ""),
-      // Preserve existing datasetIds (not editable via TSV)
-      datasetIds: existingDatasetIds.get(parseInt(row.index ?? String(i))) ?? [],
-      periodOfDataUse: (row.periodOfDataUse_start || row.periodOfDataUse_end)
-        ? {
-          startDate: row.periodOfDataUse_start || null,
-          endDate: row.periodOfDataUse_end || null,
-        }
-        : null,
-    }))
-
-    research.controlledAccessUser = newCaus
-    writeJsonFile(filePath, research)
-    updated++
-  }
-
-  logger.info("Updated research-cau files", { count: updated })
-}
-
 // Import Research Version TSV
 
 export const importResearchVersionTsv = (): void => {
@@ -729,7 +657,6 @@ export const importAllTsv = (): void => {
   importGrantTsv()
   importPublicationTsv()
   importResearchProjectTsv()
-  importCauTsv()
 
   // Import research version TSV
   importResearchVersionTsv()

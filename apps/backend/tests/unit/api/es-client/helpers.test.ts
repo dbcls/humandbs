@@ -27,7 +27,7 @@ describe("nestedFacetAgg", () => {
 
     expect(agg.nested).toEqual({ path: "experiments" })
     expect(agg.aggs?.values).toMatchObject({
-      terms: { field: "experiments.searchable.assayType", size: 50 },
+      terms: { field: "experiments.searchable.assayType", size: 500 },
       aggs: {
         dataset_count: {
           reverse_nested: {},
@@ -39,11 +39,11 @@ describe("nestedFacetAgg", () => {
     })
   })
 
-  it("size のデフォルトは 50、指定すれば上書きされる", () => {
+  it("size のデフォルトは 500、指定すれば上書きされる", () => {
     const def = nestedFacetAgg("f", "datasetId")
     const small = nestedFacetAgg("f", "datasetId", 5)
 
-    expect((def.aggs?.values as { terms: { size: number } }).terms.size).toBe(50)
+    expect((def.aggs?.values as { terms: { size: number } }).terms.size).toBe(500)
     expect((small.aggs?.values as { terms: { size: number } }).terms.size).toBe(5)
   })
 })
@@ -61,7 +61,7 @@ describe("doubleNestedFacetAgg", () => {
       nested: { path: "experiments.searchable.diseases" },
       aggs: {
         values: {
-          terms: { field: "experiments.searchable.diseases.label", size: 50 },
+          terms: { field: "experiments.searchable.diseases.label", size: 500 },
           aggs: {
             dataset_count: {
               reverse_nested: {},
@@ -77,7 +77,7 @@ describe("doubleNestedFacetAgg", () => {
 })
 
 describe("platformFacetAgg", () => {
-  it.each(COUNT_FIELDS)("countField=%s は composite の cardinality に反映される", (countField) => {
+  it.each(COUNT_FIELDS)("countField=%s は multi_terms の cardinality に反映される", (countField) => {
     const agg = platformFacetAgg(countField)
 
     expect(agg.nested).toEqual({ path: "experiments" })
@@ -85,11 +85,11 @@ describe("platformFacetAgg", () => {
       nested: { path: "experiments.searchable.platforms" },
       aggs: {
         vendorModel: {
-          composite: {
-            size: 50,
-            sources: [
-              { vendor: { terms: { field: "experiments.searchable.platforms.vendor", missing_bucket: true } } },
-              { model: { terms: { field: "experiments.searchable.platforms.model", missing_bucket: true } } },
+          multi_terms: {
+            size: 500,
+            terms: [
+              { field: "experiments.searchable.platforms.vendor" },
+              { field: "experiments.searchable.platforms.model" },
             ],
           },
           aggs: {
