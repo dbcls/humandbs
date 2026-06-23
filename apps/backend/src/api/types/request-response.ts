@@ -48,7 +48,7 @@ import {
   ResearchDetailSchema,
   DatasetVersionItemSchema,
 } from "./views"
-import { EditableResearchStatusSchema, RESEARCH_STATUS } from "./workflow"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Response Schemas ===
 
@@ -122,15 +122,14 @@ const ApiDataProviderPersonRequestSchema = PersonRequestSchema.omit({
 /**
  * Create research request
  * Creates Research + initial ResearchVersion (v1) simultaneously
- * Note: humId, versionIds, latestVersion, datePublished, dateModified are auto-generated
- * All fields are optional - defaults will be used for missing fields
+ * Note: versionIds, latestVersion, datePublished, dateModified are auto-generated
+ * All fields except humId are optional - defaults will be used for missing fields
  */
 export const CreateResearchRequestSchema = z.object({
-  // Optional humId - auto-generated if not provided (hum0001, hum0002, ...)
   humId: z
     .string()
-    .optional()
-    .describe("Research ID (e.g., 'hum0001'). Auto-generated if not provided."),
+    .regex(/^hum\d{4}$/, "humId must match hum0000–hum9999")
+    .describe("Research ID (e.g., 'hum0001'). Must match /^hum\\d{4}$/."),
 
   // Research fields - all optional with defaults
   title: BilingualTextSchema.optional().describe(
@@ -161,10 +160,6 @@ export const CreateResearchRequestSchema = z.object({
       "Keycloak user IDs (sub) who can edit this Research. Admin-only field.",
     ),
 
-  // Initial version release note (optional)
-  initialReleaseNote: BilingualTextValueRequestSchema.optional().describe(
-    "Release note for the initial version (v1)",
-  ),
 })
 export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
@@ -194,6 +189,9 @@ export const UpdateResearchRequestSchema = z.object({
     .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
+  releaseNote: BilingualTextValueRequestSchema.optional().describe(
+    "Release note for the current draft version",
+  ),
   _seq_no: z
     .number()
     .describe(
@@ -216,13 +214,7 @@ export const ResearchWithStatusSchema = ResearchSchema.extend({
 })
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
-/**
- * Research response for POST /research/new and PUT /research/{humId}/update.
- * These endpoints can never observe `status: "deleted"` — deletion is a separate
- * route — so the response status is narrowed to the editable subset.
- */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
-  status: EditableResearchStatusSchema,
   datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
@@ -291,8 +283,6 @@ export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
  * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateDatasetRequestSchema = z.object({
-  humId: z.string(),
-  humVersionId: z.string(),
   releaseDate: z.string(),
   criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({

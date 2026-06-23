@@ -311,7 +311,7 @@ export const exampleCreateResearchRequest = {
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
   uids: [KEYCLOAK_SUB],
-  initialReleaseNote: bilingualTextRequest("初版リリース", "Initial release"),
+  humId: HUM_ID,
 } satisfies CreateResearchRequest
 
 export const exampleUpdateResearchRequest = {
@@ -543,8 +543,6 @@ export const exampleCreateDatasetForResearchRequest = {
 } satisfies CreateDatasetForResearchRequest
 
 export const exampleUpdateDatasetRequest = {
-  humId: HUM_ID,
-  humVersionId: HUM_VERSION_ID,
   releaseDate: ISO_DATE,
   criteria: "Controlled-access (Type I)",
   typeOfData: { ja: "WGS データ", en: "WGS data" },

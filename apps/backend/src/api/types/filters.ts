@@ -256,7 +256,7 @@ export const ResearchSearchBodySchema = z.object({
   status: z
     .enum(RESEARCH_STATUS)
     .optional()
-    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
 
   // Options
   includeFacets: z

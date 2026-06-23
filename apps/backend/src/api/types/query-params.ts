@@ -129,7 +129,7 @@ export const ResearchListingQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })
@@ -149,7 +149,7 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })

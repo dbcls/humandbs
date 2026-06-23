@@ -4,6 +4,7 @@
  * This module provides:
  * - ResearchVersion retrieval (getResearchVersion, listResearchVersions)
  * - ResearchVersion creation (createResearchVersion)
+ * - ResearchVersion update (updateResearchVersionReleaseNote)
  * - Dataset linking (linkDatasetToResearch, unlinkDatasetFromResearch)
  */
 import { ConflictError } from "@/api/errors"
@@ -331,6 +332,34 @@ export const unlinkDatasetFromResearch = async (
       refresh: "wait_for",
     })
 
+    return true
+  } catch (error: unknown) {
+    if (isConflictError(error)) return false
+    throw error
+  }
+}
+
+// === ResearchVersion Update ===
+
+export const updateResearchVersionReleaseNote = async (
+  humVersionId: string,
+  releaseNote: BilingualTextValueRequest,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<boolean> => {
+  try {
+    await esClient.update({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          releaseNote: hydrateBilingualTextValue(releaseNote),
+        },
+      },
+      refresh: "wait_for",
+    })
     return true
   } catch (error: unknown) {
     if (isConflictError(error)) return false

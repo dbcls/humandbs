@@ -5,8 +5,7 @@
  * - IT-SEARCH-12: a datasetId query resolves to its parent Research via a
  *   secondary Dataset-index query, and the resulting humIds become a `terms
  *   humId` filter on the main Research query (ID route — no all_text).
- * - Public visibility filter is applied when authUser is null (latestVersion
- *   exists AND status != "deleted")
+ * - Public visibility filter is applied when authUser is null (latestVersion exists)
  * - Empty result short-circuit when Dataset filters yield no humIds
  *
  * Mocking strategy:
@@ -159,12 +158,9 @@ describe("searchResearches: visibility filter", () => {
     await searchResearches({ ...baseQuery }, null)
 
     const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const statusFilter = (q.bool.must as { bool?: { must?: unknown[]; must_not?: unknown[] } }[])
-      .find(m => typeof m === "object" && m !== null && "bool" in m && Array.isArray(m.bool?.must_not))
-    expect(statusFilter).toBeDefined()
-    const mustExists = (statusFilter as { bool: { must: { exists?: { field: string } }[]; must_not: { term?: { status: string } }[] } }).bool
-    expect(mustExists.must.some(c => c.exists?.field === "latestVersion")).toBe(true)
-    expect(mustExists.must_not.some(c => c.term?.status === "deleted")).toBe(true)
+    const hasExistsFilter = (q.bool.must as { exists?: { field: string } }[])
+      .some(m => m.exists?.field === "latestVersion")
+    expect(hasExistsFilter).toBe(true)
   })
 
   it("admin: omits the visibility filter so all docs are reachable", async () => {
@@ -174,12 +170,10 @@ describe("searchResearches: visibility filter", () => {
 
     const q = searchCalls[0].query as { bool?: { must: unknown[] } } | { match_all: object }
     if ("bool" in q && Array.isArray(q.bool?.must)) {
-      // If a bool query is built, it must NOT contain the publicFilter
-      const hasPublicFilter = (q.bool.must as { bool?: { must_not?: { term?: { status?: string } }[] } }[])
-        .some(m => m.bool?.must_not?.some(c => c.term?.status === "deleted"))
-      expect(hasPublicFilter).toBe(false)
+      const hasExistsFilter = (q.bool.must as { exists?: { field: string } }[])
+        .some(m => m.exists?.field === "latestVersion")
+      expect(hasExistsFilter).toBe(false)
     }
-    // Otherwise (match_all), nothing more to assert
   })
 })
 
@@ -217,14 +211,4 @@ describe("searchResearches: explicit status request scoping", () => {
     expect(must.some(c => c.term?.uids === "user-1")).toBe(true)
   })
 
-  it("admin requesting deleted does NOT add uids filter", async () => {
-    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 0 }, hits: [] } }))
-
-    await searchResearches({ ...baseQuery, status: "deleted" }, createMockAuthUser({ userId: "admin-1", isAdmin: true }))
-
-    const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const must = q.bool.must as { term?: { status?: string; uids?: string } }[]
-    expect(must.some(c => c.term?.status === "deleted")).toBe(true)
-    expect(must.some(c => c.term?.uids === "admin-1")).toBe(false)
-  })
 })

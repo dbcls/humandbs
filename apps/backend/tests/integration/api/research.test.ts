@@ -9,8 +9,6 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import { esClient, ES_INDEX } from "@/api/es-client"
-import { generateNextHumId } from "@/api/es-client/research"
 import type { BatchResponse, EsResearch, ResearchDetail, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
@@ -89,7 +87,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       { status: "published", expected: 200 },
       { status: "draft", expected: 403 },
       { status: "review", expected: 403 },
-      { status: "deleted", expected: 403 },
     ]
     for (const c of cases) {
       const res = await app.request(url(`/research?status=${c.status}`))
@@ -109,21 +106,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     const res = await app.request(url("/research?status=draft&limit=20"), { headers: authHeaders(token) })
     expect(res.status).toBe(200)
     // No further assertion here: IT-AUTH-17 owns the uids membership check.
-  })
-
-  itWithNonAdminToken("IT-RESEARCH-T9: authenticated non-admin status=deleted returns 403 on listing and POST search", async (token) => {
-    // architecture.md § deleted 状態: admin のみ閲覧可能 (一覧・詳細・バージョン一覧)。
-    // owner を含むそれ以外のユーザーには 404 を返す。一覧は 403 (permission gate) で弾く。
-    const app = getApp()
-    const list = await app.request(url("/research?status=deleted&limit=10"), { headers: authHeaders(token) })
-    expect(list.status).toBe(403)
-
-    const post = await app.request(url("/research/search"), {
-      method: "POST",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ page: 1, limit: 10, status: "deleted" }),
-    })
-    expect(post.status).toBe(403)
   })
 
   itWithNonAdminToken("IT-RESEARCH-06: POST /research/new by non-admin authenticated returns 403", async (token) => {
@@ -759,53 +741,9 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-T1: generateNextHumId is robust against malformed humId seeds", async () => {
-    // The Painless aggregation in generateNextHumId calls
-    // `Integer.parseInt(doc['humId'].value.substring(3))`. Without a `humId`
-    // regex filter on the search query, a seed with a non-conforming `humId`
-    // (empty, missing the `hum` prefix, etc.) would crash the shard with a
-    // NumberFormatException. The IT seeds three deliberately malformed docs
-    // and asserts that generateNextHumId still returns a syntactically valid
-    // `hum\d{4,}` id, without bubbling a 500 / shard failure.
-    const seeds: { id: string; doc: Record<string, unknown> }[] = [
-      { id: "__t1_empty__", doc: { humId: "" } },
-      { id: "__t1_nonhum__", doc: { humId: "abc1234" } },
-      { id: "__t1_prefix_only__", doc: { humId: "hum" } },
-    ]
-    try {
-      for (const s of seeds) {
-        await esClient.index({
-          index: ES_INDEX.research,
-          id: s.id,
-          body: s.doc,
-          refresh: "wait_for",
-        })
-      }
-      // Should not throw a Painless shard failure even with the malformed seeds present.
-      const nextId = await generateNextHumId()
-      expect(nextId).toMatch(/^hum\d{4,}$/)
-    } finally {
-      for (const s of seeds) {
-        await esClient.delete({
-          index: ES_INDEX.research,
-          id: s.id,
-          refresh: "wait_for",
-        }, { ignore: [404] })
-      }
-    }
-  })
-
   itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from public listing", async ({ admin, nonAdmin }) => {
-    // A Research that was once published (latestVersion=v1) and then deleted
-    // (status="deleted") must disappear from the public listing. This exercises
-    // the search post-filter that drops `status === "deleted"` rows.
-    //
-    // `GET /research?humId=<id>` is used because it is the canonical
-    // direct-filter path (`ResearchListingQuerySchema § humId`) and shares the
-    // `searchResearches` post-filter with `POST /research/search`. The POST
-    // search body (`ResearchSearchBodySchema`) does not currently expose a
-    // dedicated `humId` filter, and `query` (full-text) does not match the
-    // `humId` keyword field — so we rely on the GET endpoint here.
+    // A Research that was once published and then physically deleted
+    // must disappear from the public listing.
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humId = ""
@@ -828,9 +766,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       })
       expect(del.status).toBe(204)
 
-      // After delete, the humId-filtered list must return 0 hits. This is the
-      // canonical invariant — the same `searchResearches` post-filter that
-      // drops `status === "deleted"` also backs `POST /research/search`.
+      // After physical delete, the humId-filtered list must return 0 hits.
       const filtered = await app.request(url(`/research?humId=${humId}&limit=10`))
       expect(filtered.status).toBe(200)
       const filteredJson = (await filtered.json()) as SearchResponse<{ humId: string }>

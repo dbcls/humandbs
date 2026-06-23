@@ -59,7 +59,6 @@ export {
   getResearchDoc,
   getResearchWithSeqNo,
   getResearchDetail,
-  generateNextHumId,
   createResearch,
   updateResearch,
   updateResearchStatus,

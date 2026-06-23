@@ -59,7 +59,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearch: mock(() => Promise.resolve(null)),
   updateResearchUids: mock(() => Promise.resolve(null)),
   updateResearchStatus: mock(() => Promise.resolve(null)),
-  generateNextHumId: mock(() => Promise.resolve("hum0001")),
 }))
 
 void mock.module("@/api/es-client/search", () => ({
@@ -82,8 +81,6 @@ const stranger = userAuthHeader({ userId: "stranger-9" })
 const admin = adminAuthHeader({ userId: "admin-1" })
 
 const updateBody = {
-  humId: "hum0001",
-  humVersionId: "hum0001-v1",
   releaseDate: "2024-01-01",
   criteria: "Controlled-access (Type I)" as const,
   typeOfData: { ja: "NGS", en: "NGS" },
@@ -152,17 +149,6 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
     expect(mockUpdateDataset).not.toHaveBeenCalled()
   })
 
-  it("404 when parent Research is deleted (cloak)", async () => {
-    wireDatasetAndParent({ status: "deleted", latestVersion: "v1", draftVersion: null })
-    const res = await getTestApp().request("/dataset/JGAD000001/update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(404)
-    expect(mockUpdateDataset).not.toHaveBeenCalled()
-  })
-
   it("403 when authenticated stranger (not in parent.uids and not admin)", async () => {
     wireDatasetAndParent()
     const res = await getTestApp().request("/dataset/JGAD000001/update", {
@@ -193,17 +179,6 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
       body: JSON.stringify(updateBody),
     })
     expect(res.status).toBe(409)
-    expect(mockUpdateDataset).not.toHaveBeenCalled()
-  })
-
-  it("400 when body.humId !== preloaded.humId", async () => {
-    wireDatasetAndParent()
-    const res = await getTestApp().request("/dataset/JGAD000001/update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify({ ...updateBody, humId: "hum9999" }),
-    })
-    expect(res.status).toBe(400)
     expect(mockUpdateDataset).not.toHaveBeenCalled()
   })
 
@@ -337,16 +312,6 @@ describe("POST /dataset/{datasetId}/delete mutation auth", () => {
       headers: { ...admin },
     })
     expect(res.status).toBe(409)
-    expect(mockDeleteDataset).not.toHaveBeenCalled()
-  })
-
-  it("404 when parent Research is deleted (cloak)", async () => {
-    wireDatasetAndParent({ status: "deleted", latestVersion: "v1", draftVersion: null })
-    const res = await getTestApp().request("/dataset/JGAD000001/delete", {
-      method: "POST",
-      headers: { ...admin },
-    })
-    expect(res.status).toBe(404)
     expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 

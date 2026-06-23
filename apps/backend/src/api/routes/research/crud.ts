@@ -19,6 +19,7 @@ import {
   updateResearch,
   updateResearchUids,
 } from "@/api/es-client/research"
+import { getResearchVersionWithSeqNo, updateResearchVersionReleaseNote } from "@/api/es-client/research-version"
 import { searchResearches } from "@/api/es-client/search"
 import { uniq } from "@/api/es-client/utils"
 import {
@@ -28,9 +29,9 @@ import {
   singleResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
+import { ResearchStatusSchema } from "@/api/types"
 import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
-import { EditableResearchStatusSchema } from "@/api/types/workflow"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 import { sanitizeResearchDetailForUser } from "@/api/utils/version"
 
@@ -124,7 +125,6 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       grant: body.grant,
       relatedPublication: body.relatedPublication,
       uids: body.uids,
-      initialReleaseNote: body.initialReleaseNote,
     })
 
     // Get the created research with seqNo for the response
@@ -136,7 +136,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const { status, ...rest } = createResult.research
     const responseData = {
       ...rest,
-      status: EditableResearchStatusSchema.parse(status),
+      status: ResearchStatusSchema.parse(status),
       datasets: [],
     }
 
@@ -193,6 +193,19 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw new ConflictError()
     }
 
+    if (body.releaseNote !== undefined && research.draftVersion) {
+      const draftVersionId = `${humId}-${research.draftVersion}`
+      const versionWithSeq = await getResearchVersionWithSeqNo(draftVersionId)
+      if (versionWithSeq) {
+        const ok = await updateResearchVersionReleaseNote(
+          draftVersionId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
+        )
+        if (!ok) {
+          throw new ConflictError()
+        }
+      }
+    }
+
     // Get updated seqNo/primaryTerm
     const updatedWithSeqNo = await getResearchWithSeqNo(humId)
     if (!updatedWithSeqNo) {
@@ -202,7 +215,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const { status: updatedStatus, ...restUpdated } = updated
     const responseData = {
       ...restUpdated,
-      status: EditableResearchStatusSchema.parse(updatedStatus),
+      status: ResearchStatusSchema.parse(updatedStatus),
       datasets: [],
     }
 

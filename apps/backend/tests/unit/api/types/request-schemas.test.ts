@@ -77,6 +77,7 @@ describe("relatedPublication schema", () => {
 
   it("accepts datasetIds in CreateResearchRequestSchema", () => {
     const result = CreateResearchRequestSchema.safeParse({
+      humId: "hum0001",
       relatedPublication: [
         { title: bilingualText, datasetIds: ["JGAD000001"] },
       ],
@@ -161,6 +162,7 @@ describe("rawHtml exclusion from request schemas", () => {
 
   it("CreateResearchRequestSchema: minimal payload without rawHtml is valid", () => {
     const result = CreateResearchRequestSchema.safeParse({
+      humId: "hum0001",
       title: bilingualText,
       summary: {
         aims: bilingualTextValue,
@@ -175,6 +177,7 @@ describe("rawHtml exclusion from request schemas", () => {
 
   it("CreateResearchRequestSchema: rawHtml in payload is silently stripped", () => {
     const payloadWithRawHtml = {
+      humId: "hum0001",
       summary: {
         aims: {
           ja: { text: "目的", rawHtml: "<p>目的</p>" },
