@@ -148,12 +148,7 @@ export function ResearchDetails({
           data: {
             humId,
             body: {
-              title: value.title,
-              summary: value.summary,
-              dataProvider: value.dataProvider,
-              researchProject: value.researchProject,
-              grant: value.grant,
-              relatedPublication: value.relatedPublication,
+              ...value,
               _seq_no: seqNo,
               _primary_term: primaryTerm,
             },
@@ -373,10 +368,7 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedValues(
-    values: MergeResearchResult["values"],
-    relatedAccessions: string[],
-  ) {
+  function applyMergedValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
     form.setFieldValue("dataProvider", values.dataProvider as typeof researchValues.dataProvider);
@@ -410,6 +402,7 @@ export function ResearchDetails({
 
   // Per-tab dirty state: a tab is dirty if the field value differs from initial
   const formValues = useStore(form.store, (state) => state.values);
+
   const dirtyFields = Object.fromEntries(
     topLevelFields.map((field) => [
       field,
@@ -564,8 +557,8 @@ export function ResearchDetails({
                       >
                         <Label>User IDs (uids)</Label>
                         <div className="nested-form flex w-full flex-col gap-1">
-                          {field.state.value?.map((_, i) => (
-                            <div key={i} className="flex items-center gap-1">
+                          {field.state.value?.map((uid, i) => (
+                            <div key={uid} className="flex items-center gap-1">
                               <form.AppField name={`uids[${i}]`}>
                                 {(f) => <f.TextField className="flex-1" />}
                               </form.AppField>
@@ -590,6 +583,14 @@ export function ResearchDetails({
                 </div>
               )}
 
+              <form.AppField name="releaseNote">
+                {(field) => (
+                  <field.BilingualTextValueField
+                    label="Release note"
+                    inputsClassName="flex w-full gap-2"
+                  />
+                )}
+              </form.AppField>
               <Tabs defaultValue="title" className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">

@@ -26,7 +26,7 @@ import type { NewResearchMergeValues } from "./utils/researchValues";
 import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
 
 const defaultValues: CreateResearchRequest = {
-  humId: undefined,
+  humId: "",
   title: { ja: "", en: "" },
   summary: {
     aims: { ja: { text: "" }, en: { text: "" } },
@@ -39,10 +39,6 @@ const defaultValues: CreateResearchRequest = {
   grant: [],
   relatedPublication: [],
   uids: [],
-  initialReleaseNote: {
-    ja: { text: "" },
-    en: { text: "" },
-  },
 };
 
 export function NewResearchForm({
@@ -98,9 +94,8 @@ export function NewResearchForm({
 
     onSubmit: async ({ value }) => {
       setError(null);
-      const normalizedHumId =
-        value.humId == null || value.humId.trim() === "" ? undefined : value.humId.trim();
-      await mutateAsync({ ...value, humId: normalizedHumId });
+
+      await mutateAsync({ ...value, humId: value.humId.trim() });
     },
   });
   const formValues = useStore(form.store, (state) => state.values);
@@ -171,8 +166,8 @@ export function NewResearchForm({
                 <fieldset className="flex flex-col gap-2">
                   <Label>User IDs (uids)</Label>
                   <div className="nested-form flex w-full flex-col gap-1">
-                    {field.state.value?.map((_, i) => (
-                      <div key={i} className="flex items-center gap-1">
+                    {field.state.value?.map((uid, i) => (
+                      <div key={uid} className="flex items-center gap-1">
                         <form.AppField name={`uids[${i}]`}>
                           {(f) => <f.TextField className="flex-1" />}
                         </form.AppField>
@@ -197,15 +192,6 @@ export function NewResearchForm({
                     </Button>
                   </div>
                 </fieldset>
-              )}
-            </form.AppField>
-
-            <form.AppField name="initialReleaseNote">
-              {(field) => (
-                <field.BilingualTextValueField
-                  label="Initial Release Note"
-                  inputsClassName="flex w-full gap-2"
-                />
               )}
             </form.AppField>
           </div>
