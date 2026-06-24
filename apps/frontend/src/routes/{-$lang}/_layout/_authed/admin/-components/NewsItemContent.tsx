@@ -41,7 +41,7 @@ import {
 import { toDateString } from "@/utils/dates";
 import type { SessionUser } from "@/utils/jwt-helpers";
 
-import { DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
+import { createDraftNewsItemDetail, DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { TitleValue } from "./TitleValue";
 
 interface FormDataType {
@@ -137,8 +137,25 @@ export function NewsItemContent({
   className?: string;
   onSelectNewsItemId: (id: string) => void;
 }) {
+  const { user } = useRouteContext({ from: "__root__" });
+  const isDraft = isDraftNewsItem(selectedNewsItemId);
+
   const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
-  const { data: fetchedNewsItem } = useQuery(newsItemQO);
+  const { data: fetchedNewsItem } = useQuery({ ...newsItemQO, enabled: !isDraft });
+
+  if (isDraft) {
+    return (
+      <NewsItemForm
+        key={DRAFT_NEWS_ID}
+        newsItem={createDraftNewsItemDetail({
+          name: user?.name ?? null,
+          email: user?.email ?? "",
+        })}
+        className={className}
+        onSelectNewsItemId={onSelectNewsItemId}
+      />
+    );
+  }
 
   if (!fetchedNewsItem) {
     return (
