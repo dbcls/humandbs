@@ -119,7 +119,7 @@ const extractDatasetHandle = (
 }
 
 const randomHumId = (): string =>
-  `hum${90000 + Math.floor(Math.random() * 9999)}`
+  `hum${9000 + Math.floor(Math.random() * 999)}`
 
 /**
  * Create a fresh draft Research as admin.

@@ -331,7 +331,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) with valid humId creates a draft", async ({ admin }) => {
     // IT-RESEARCH-04
-    const fixed = `hum${90000 + Math.floor(Math.random() * 9999)}`
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
     const app = getApp()
     try {
       const res = await app.request(url("/research/new"), {
@@ -364,7 +364,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-05: POST /research/new accepts explicit humId and returns 409 on duplicate", async ({ admin }) => {
     // IT-RESEARCH-05
-    const fixed = `hum${90000 + Math.floor(Math.random() * 9999)}` // 5-digit hum to avoid colliding with reindexed production data
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
     try {
       const created = await createDraftResearch(admin, { humId: fixed })
       expect(created.humId).toBe(fixed)
