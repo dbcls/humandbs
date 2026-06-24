@@ -1,0 +1,5 @@
+# データセットID
+{dataset_id}
+
+# 研究の説明
+{dataset_info_json}
