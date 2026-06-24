@@ -8,12 +8,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { evaluate } from "@tanstack/react-form";
+import { evaluate, getBy, useStore } from "@tanstack/react-form";
 
 import type { ReactNode } from "react";
 import { useId, useRef } from "react";
@@ -124,7 +123,10 @@ function SortableList<TItem>({
       const newIndex = itemIds.indexOf(String(over.id));
       if (oldIndex < 0 || newIndex < 0) return;
       moveItemId(oldIndex, newIndex);
-      field.setValue(arrayMove([...items], oldIndex, newIndex));
+      // Use the array field's own `moveValue` so the nested subfields' state and
+      // meta travel with their values; `setValue(arrayMove(...))` only swaps the
+      // raw array and leaves mounted subfields bound to stale indices.
+      field.moveValue(oldIndex, newIndex);
     }
   }
 
@@ -141,26 +143,24 @@ function SortableList<TItem>({
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((item, i) => (
-            <SortableItem
+          {items.map((_item, i) => (
+            <SortableItemRow
               key={itemIds[i]}
               id={itemIds[i]!}
+              form={form}
+              name={name}
               index={i}
-              title={getTitle(item)}
-              isModified={i >= initialItems.length || !evaluate(item, initialItems[i])}
+              elementSchema={elementSchema}
+              overrides={overrides}
+              initialItem={initialItems[i]}
+              isInitial={i < initialItems.length}
+              getTitle={getTitle}
+              renderItemExtra={renderItemExtra}
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
               }}
-            >
-              <SchemaObjectFields
-                form={form}
-                baseName={`${name}[${i}]`}
-                schema={elementSchema}
-                overrides={overrides}
-              />
-              {renderItemExtra?.(item)}
-            </SortableItem>
+            />
           ))}
         </SortableContext>
       </DndContext>
@@ -168,5 +168,60 @@ function SortableList<TItem>({
         {addLabel}
       </Button>
     </fieldset>
+  );
+}
+
+/**
+ * A single sortable row that subscribes to *its own* item value via the form
+ * store, so the header title and modified-state recompute on every keystroke in
+ * a nested field — not just on structural array changes. (The parent array
+ * `form.Field` render prop does not re-run on deep child mutations.)
+ */
+function SortableItemRow<TItem>({
+  id,
+  form,
+  name,
+  index,
+  elementSchema,
+  overrides,
+  initialItem,
+  isInitial,
+  getTitle,
+  renderItemExtra,
+  onRemove,
+}: {
+  id: string;
+  form: any;
+  name: string;
+  index: number;
+  elementSchema: any;
+  overrides?: Record<string, FieldOverride>;
+  initialItem: TItem | undefined;
+  isInitial: boolean;
+  getTitle: (item: TItem) => string;
+  renderItemExtra?: (item: TItem) => ReactNode;
+  onRemove: () => void;
+}) {
+  const item: TItem = useStore(
+    form.store,
+    (state: any) => getBy(state.values, `${name}[${index}]`) as TItem,
+  );
+
+  return (
+    <SortableItem
+      id={id}
+      index={index}
+      title={getTitle(item)}
+      isModified={!isInitial || !evaluate(item, initialItem)}
+      onRemove={onRemove}
+    >
+      <SchemaObjectFields
+        form={form}
+        baseName={`${name}[${index}]`}
+        schema={elementSchema}
+        overrides={overrides}
+      />
+      {renderItemExtra?.(item)}
+    </SortableItem>
   );
 }
