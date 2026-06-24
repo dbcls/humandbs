@@ -35,6 +35,7 @@ import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { AccessionChips } from "./AccessionChips";
+import { CopyFromDataset } from "./CopyFromDataset";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -209,13 +210,22 @@ function DatasetEditViewInner({
 
       <div className={cn(preview && "hidden")}>
         {isDraft && (
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
+            <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
+              Copy data in
+            </span>
             <AccessionChips
               accessions={accessions}
               onAccessionsChange={setAccessions}
               onApply={applyTemplate}
               lastAppliedId={lastAppliedId}
               pendingAccession={pendingTemplate?.accession}
+              resetKey={chipsResetKey}
+            />
+            <CopyFromDataset
+              onApply={applyTemplate}
+              lastAppliedId={lastAppliedId}
+              pendingDatasetId={pendingTemplate?.accession}
               resetKey={chipsResetKey}
             />
           </div>

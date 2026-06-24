@@ -460,7 +460,21 @@ export function ResearchDetails({
       ),
     ]),
   ) as Record<(typeof topLevelFields)[number], boolean>;
-  const isModified = Object.values(dirtyFields).some(Boolean);
+  // releaseNote is part of the update payload but rendered outside the tabbed
+  // loop (excluded from topLevelFields), so track its dirty state separately to
+  // keep the Save draft button in sync. Compare per-locale text and treat empty
+  // string and undefined as equivalent, so clearing all text in a field that
+  // started empty returns it to the non-modified state.
+  const releaseNoteCurrent = (formValues as Record<string, any>).releaseNote;
+  const releaseNoteDefault = (defaultValues as Record<string, any>).releaseNote;
+  const releaseNoteDirty = (["en", "ja"] as const).some(
+    (locale) =>
+      !evaluate(
+        releaseNoteCurrent?.[locale]?.text || undefined,
+        releaseNoteDefault?.[locale]?.text || undefined,
+      ),
+  );
+  const isModified = Object.values(dirtyFields).some(Boolean) || releaseNoteDirty;
 
   return (
     <Card
