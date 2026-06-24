@@ -73,7 +73,7 @@ export function InputDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogTitle className="text-base">{title}</DialogTitle>
         {description && <DialogDescription>{description}</DialogDescription>}
         <form
