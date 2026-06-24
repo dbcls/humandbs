@@ -80,8 +80,8 @@
     "updatedAt": "更新日"
   },
   "Front": {
-    "data-submission-button": "データを提供される方",
-    "data-usage-button": "データを利用される方",
+    "data-submission-button": "データを提供する",
+    "data-usage-button": "データを利用する",
     "news": "新着情報"
   },
   "Data-usage": {

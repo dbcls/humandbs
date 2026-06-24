@@ -80,8 +80,8 @@
     "updatedAt": "Updated at"
   },
   "Front": {
-    "data-submission-button": "For Data Providers",
-    "data-usage-button": "For Data Users",
+    "data-submission-button": "Submit data",
+    "data-usage-button": "Use data",
     "news": "News"
   },
   "Data-usage": {
