@@ -9,15 +9,12 @@ import { useRef, useState } from "react";
 import { CardWithCaption } from "@/components/Card";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { DatasetLink } from "@/components/DatasetLink";
-import { Link } from "@/components/Link";
 import { ModalCell } from "@/components/ModalCell";
 import { SortHeader, Table } from "@/components/Table";
-import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCartStore } from "@/hooks/useCart";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
-import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@/lib/types";
 import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
 
@@ -31,7 +28,9 @@ const cartColumnsHelper = createColumnHelper<DatasetDoc>();
 const cartDatasetColumns = [
   cartColumnsHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Dataset.datasetId")} />
+    ),
     cell: (ctx) => {
       const isStub = !ctx.row.original.criteria;
       return (
@@ -40,7 +39,7 @@ const cartDatasetColumns = [
 
           {isStub && (
             <span className="text-warning text-xs">
-              {ctx.table.options.meta?.t("data-unavailable")}
+              {ctx.table.options.meta?.t("Dataset.data-unavailable")}
             </span>
           )}
         </div>
@@ -50,7 +49,7 @@ const cartDatasetColumns = [
   }),
   cartColumnsHelper.accessor("experiments", {
     id: "experiments",
-    header: (ctx) => ctx.table.options.meta?.t("experiments"),
+    header: (ctx) => ctx.table.options.meta?.t("Dataset.experiments"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -65,8 +64,8 @@ const cartDatasetColumns = [
   }),
   cartColumnsHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    header: (ctx) => ctx.table.options.meta?.t("Dataset.criteria"),
+    cell: (ctx) => ctx.table.options.meta?.t(`Dataset.${ctx.getValue()}`),
   }),
   cartColumnsHelper.display({
     id: "delete",
@@ -90,7 +89,7 @@ const cartDatasetColumns = [
 ];
 
 function CartContents({ cartIds }: { cartIds: string[] }) {
-  const t = useTranslations("Dataset");
+  const t = useTranslations();
   const tCommon = useTranslations("common");
   const tCart = useTranslations("Cart");
 
@@ -136,10 +135,10 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
         <Button onClick={handleClickCopy}>
           <Copy className="mr-2 inline size-6" /> {copied ? tCommon("copied") : tCommon("copy")}
         </Button>
-        <Link href={DU_APPLICATION_URL} className="block">
+        <a href={DU_APPLICATION_URL} className="block">
           {tCart("naviagte-to-application-form")}
           <ExternalLink className="ml-2 inline size-6" />
-        </Link>
+        </a>
       </div>
       <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
       <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />

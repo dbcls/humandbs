@@ -68,6 +68,8 @@ export default defineConfig(async () => {
         process.env.HUMANBDS_FRONTEND_DU_APPLICATION_URL ??
           "https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import",
       ),
+      DS_NAVIGATION_URL: JSON.stringify(process.env.HUMANDBS_FRONTEND_DS_NAVIGATION_URL ?? "/"),
+      DS_SUBMISSION_URL: JSON.stringify(process.env.HUMANDBS_FRONTEND_DS_SUBMISSION_URL ?? "/"),
     },
   };
 });

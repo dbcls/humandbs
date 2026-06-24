@@ -286,6 +286,8 @@
     "experiments": "Analysis method"
   },
   "Data-submission": {
+    "to-data-submission": "To application system",
+    "to-navigation": "To applicaton submission",
     "data-submission": "Data submission",
     "before-application": "Before application system"
   },
