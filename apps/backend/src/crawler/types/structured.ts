@@ -176,6 +176,7 @@ export type SearchableExperimentFields = z.infer<
 export const ExperimentSchema = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
+  dataText: z.string().optional(),
   searchable: SearchableExperimentFieldsSchema.optional(),
 })
 export type Experiment = z.infer<typeof ExperimentSchema>

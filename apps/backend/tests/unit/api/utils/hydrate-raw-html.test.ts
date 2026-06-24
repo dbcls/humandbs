@@ -148,6 +148,18 @@ describe("hydrateExperiment", () => {
     expect(result.data.row2).toBeNull()
   })
 
+  it("populates dataText from data entries", () => {
+    const result = hydrateExperiment({
+      header: { ja: { text: "h" }, en: null },
+      data: {
+        Method: { ja: { text: "Novoalign" }, en: { text: "Novoalign" } },
+        Platform: { ja: { text: "HiSeq" }, en: null },
+      },
+    })
+    expect(result.dataText).toContain("Novoalign")
+    expect(result.dataText).toContain("HiSeq")
+  })
+
   it("omits searchable when the request leaves it undefined", () => {
     const result = hydrateExperiment({
       header: { ja: { text: "h" }, en: null },

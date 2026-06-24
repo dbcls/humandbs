@@ -476,6 +476,50 @@ describe("buildResearchQueryClauses", () => {
   it("returns no clauses for an empty query", () => {
     expect(buildResearchQueryClauses(classifyFreeTextQuery(""), [])).toEqual([])
   })
+
+  it("text query + non-empty datasetTextHumIds wraps in should (OR)", () => {
+    const clauses = buildResearchQueryClauses(
+      classifyFreeTextQuery("Novoalign"),
+      [],
+      ["hum0001", "hum0003"],
+    )
+    const s = dump(clauses)
+    expect(s).toContain("should")
+    expect(s).toContain("all_text")
+    expect(s).toContain("hum0001")
+    expect(s).toContain("hum0003")
+    expect(s).toContain("minimum_should_match")
+  })
+
+  it("text query + empty datasetTextHumIds produces no cross-search terms clause", () => {
+    const clauses = buildResearchQueryClauses(
+      classifyFreeTextQuery("cancer"),
+      [],
+      [],
+    )
+    const s = dump(clauses)
+    expect(s).toContain("all_text")
+    // No cross-search terms clause wrapping text with humId
+    expect(s).not.toContain("\"terms\":{\"humId\"")
+  })
+
+  it("ID-only query ignores datasetTextHumIds", () => {
+    const clauses = buildResearchQueryClauses(
+      classifyFreeTextQuery("hum0001"),
+      [],
+      ["hum9999"],
+    )
+    const s = dump(clauses)
+    expect(s).toContain("hum0001")
+    // hum9999 should not appear because there are no text clauses to cross-search
+    expect(s).not.toContain("hum9999")
+  })
+
+  it("backward compatible: omitting third parameter = existing behavior", () => {
+    const withArg = buildResearchQueryClauses(classifyFreeTextQuery("cancer"), [])
+    const withoutArg = buildResearchQueryClauses(classifyFreeTextQuery("cancer"), [])
+    expect(dump(withArg)).toBe(dump(withoutArg))
+  })
 })
 
 describe("free-text query invariants (PBT)", () => {

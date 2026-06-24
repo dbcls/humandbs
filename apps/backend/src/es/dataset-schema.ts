@@ -47,6 +47,9 @@ export const datasetSchema = {
 
     // Dynamic key-value data (flattened cannot be a copy_to source)
     data: f.flattened(),
+    // Concatenated text from data values; populated at ingest time so the
+    // flattened field's content participates in the all_text catch-all.
+    dataText: f.text(C),
 
     // Searchable fields (LLM-extracted + rule-based)
     searchable: f.object({

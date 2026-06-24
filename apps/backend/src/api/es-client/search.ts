@@ -34,6 +34,7 @@ import {
   resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
+import type { ParsedFreeTextQuery } from "@/api/es-client/query-builders"
 import {
   nestedTermsQuery,
   nestedTermQuery,
@@ -657,6 +658,34 @@ const getHumIdsByDatasetIdQuery = async (q: string): Promise<string[]> => {
   return buckets.map(b => b.key)
 }
 
+const getHumIdsByTextQuery = async (
+  parsed: ParsedFreeTextQuery,
+): Promise<string[]> => {
+  if (parsed.phraseTokens.length === 0 && parsed.bareWords.length === 0) {
+    return []
+  }
+
+  const textClauses = buildDatasetQueryClauses(parsed)
+  if (textClauses.length === 0) return []
+
+  interface HumIdAggs {
+    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
+  }
+
+  const res = await esClient.search<unknown, HumIdAggs>({
+    index: ES_INDEX.dataset,
+    size: 0,
+    query: { bool: { must: textClauses } },
+    aggs: {
+      humIds: { terms: { field: "humId", size: 10000 } },
+    },
+  })
+
+  const buckets = res.aggregations?.humIds.buckets
+  if (!Array.isArray(buckets)) return []
+  return buckets.map(b => b.key)
+}
+
 export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
@@ -737,7 +766,8 @@ export const searchResearches = async (
     const resolved = await Promise.all(dsIdTokens.map(getHumIdsByDatasetIdQuery))
     datasetParentHumIds = [...new Set(resolved.flat())]
   }
-  must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds))
+  const datasetTextHumIds = await getHumIdsByTextQuery(parsed)
+  must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds, datasetTextHumIds))
 
   // Date range filters
   must.push(...buildResearchDateRangeFilters({

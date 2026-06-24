@@ -223,6 +223,12 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 
 構造を分けている理由: Research 検索は内部で「Dataset を引いて親 Research をヒットさせる」処理を含むため、Research 自身の属性と Dataset 属性をクエリビルダ上で明確に分離する必要があるため。
 
+#### Research 検索の Dataset 横断検索
+
+Research のフリーテキスト検索は、Research 自身の `all_text` に加え、子 Dataset の `all_text` も横断検索する。子 Dataset のみにヒットする語（例: `experiments.data` 中のマッピング手法名 "Novoalign"）で検索しても、親 Research が結果に含まれる。
+
+内部実装: `getHumIdsByTextQuery()` で Dataset index にテキストクエリを投げ、親 `humId` 群を OR 条件で Research クエリに合流させる（既存の `getHumIdsByDatasetIdQuery()` と同パターン）。Research 自身のテキスト一致と Dataset 経由のテキスト一致は `should`（OR）で結合されるため、どちらか一方でも一致すれば結果に含まれる。
+
 ### フリーテキスト検索の挙動
 
 `query` パラメータは入力を分類し、ID 系は完全一致ルックアップ、自然文は本文 + facet 値の全文検索（`all_text`）へ振り分ける。trim 後、引用符を尊重して空白で語分割し、**各語を「ID → 引用符/記号 → bare」の順**で判定する（ID 判定を最優先するのは、`E-GEAD-…` のハイフンや NBDC dataset ID のドットが記号フレージングに食われないようにするため）。
@@ -251,11 +257,11 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 `all_text` に集約する値:
 
 - **Research**: `title`, `summary.aims/methods/targets` の本文に加え、nested 配下の `dataProvider.name`, `researchProject.name`, `grant.title`, `grant.agency.name`, `relatedPublication.title`, `controlledAccessUser.name` 等の自然文テキスト
-- **Dataset**: `typeOfData`, `experiments.header`, `experiments.searchable.targets` の本文に加え、facet 値 keyword（`criteria`, `diseases.label`, `tissues`, `population`, `cohorts`, `assayType`, `platforms.vendor/model`, `sex`, `ageGroup`, `fileTypes` 等）
+- **Dataset**: `typeOfData`, `experiments.header`, `experiments.dataText`（`experiments.data` の全テキスト値を連結した派生フィールド）, `experiments.searchable.targets` の本文に加え、facet 値 keyword（`criteria`, `diseases.label`, `tissues`, `population`, `cohorts`, `assayType`, `platforms.vendor/model`, `sex`, `ageGroup`, `fileTypes` 等）
 
 `all_text` に含めないもの: ID / コード（`humId`, `datasetId`, `doi`, `icd10`, policy id）、数値・boolean フィールド、URL。ID は専用の term / prefix 経路で扱う。
 
-**取りこぼし**: `experiments.data`（実験メタデータ本文）は `flattened` 型で、Elasticsearch の仕様上 `copy_to` のソースにできないため `all_text` には含まれない。
+`experiments.data` は `flattened` 型（Elasticsearch の仕様上 `copy_to` のソースにできない）だが、ingest 時に `experiments.dataText` へ全テキスト値を連結したコピーを生成し、`copy_to: all_text` で catch-all に含めている。
 
 `all_text` を含む全 text フィールドは index 既定 analyzer（**kuromoji** 形態素解析。`apps/backend/src/es/analysis.ts`）でトークナイズされる。日本語は語境界で分割され（`肺がん` → `肺` / `がん`）、英語は小文字化される（`cancer` / `CANCER` は同一）。`all_text` は `copy_to` のターゲット（index 時のみ書き込まれる write-time フィールド）なので `_source` には現れず、Zod schema にも含まれない。
 
