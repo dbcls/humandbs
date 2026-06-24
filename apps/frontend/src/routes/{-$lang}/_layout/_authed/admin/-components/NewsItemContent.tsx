@@ -380,11 +380,13 @@ function NewsItemForm({
 
   const dirtyLocales = useStore(form.store, (state) => {
     return Object.fromEntries(
-      i18n.locales.map((loc) => [
-        loc,
-        state.fieldMeta[`translations.${loc}.title`]?.isDirty ||
-          state.fieldMeta[`translations.${loc}.content`]?.isDirty,
-      ]),
+      i18n.locales.map((loc) => {
+        const current = state.values.translations[loc];
+        const initial = newsItem.translations[loc];
+        const titleModified = (current?.title ?? "") !== (initial?.title ?? "");
+        const contentModified = (current?.content ?? "") !== (initial?.content ?? "");
+        return [loc, titleModified || contentModified];
+      }),
     ) as Record<Locale, boolean>;
   });
 
