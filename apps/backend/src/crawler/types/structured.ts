@@ -113,7 +113,7 @@ export const SearchableExperimentFieldsSchema = z.object({
     .describe("Cell line names if applicable"),
   population: z.array(z.string())
     .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
-  cohorts: z.array(z.string())
+  cohorts: z.array(z.string()).default([])
     .describe("Named study cohorts (e.g., 'BioBank Japan', '1000 Genomes Project', 'ToMMo'). Distinct from population ancestry."),
 
   // Demographics
@@ -176,6 +176,7 @@ export type SearchableExperimentFields = z.infer<
 export const ExperimentSchema = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
+  dataText: z.string().optional(),
   searchable: SearchableExperimentFieldsSchema.optional(),
 })
 export type Experiment = z.infer<typeof ExperimentSchema>

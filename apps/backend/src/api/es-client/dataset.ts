@@ -365,6 +365,46 @@ export const updateDataset = async (
   }
 }
 
+/**
+ * Patch a published Dataset in-place (no version bump).
+ *
+ * @returns Updated Dataset document, null on conflict
+ */
+export const patchDataset = async (
+  datasetId: string,
+  version: string,
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term" | "humId" | "humVersionId">>,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsDataset | null> => {
+  const esId = `${datasetId}-${version}`
+
+  const hydratedDoc: Record<string, unknown> = {}
+  if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
+  if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
+  if (updates.typeOfData !== undefined) hydratedDoc.typeOfData = updates.typeOfData
+  if (updates.experiments !== undefined) hydratedDoc.experiments = updates.experiments.map(hydrateExperiment)
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.dataset,
+      id: esId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: { doc: hydratedDoc },
+      refresh: "wait_for",
+    })
+
+    await syncDatasetDateModified(datasetId)
+
+    const result = await getDatasetWithSeqNo(datasetId, version)
+    return result?.doc ?? null
+  } catch (error: unknown) {
+    if (isConflictError(error)) return null
+    throw error
+  }
+}
+
 const bumpDatasetVersion = async (
   datasetId: string,
   currentDoc: EsDataset,

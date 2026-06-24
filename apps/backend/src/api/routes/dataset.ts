@@ -14,6 +14,7 @@ import {
   getDatasetWithSeqNo,
   getResearchByDatasetId,
   listDatasetVersions,
+  patchDataset,
   updateDataset,
 } from "@/api/es-client/dataset"
 import { getResearchDoc } from "@/api/es-client/research"
@@ -201,6 +202,43 @@ const updateDatasetRoute = createRoute({
   },
 })
 
+const patchDatasetRoute = createRoute({
+  method: "put",
+  path: "/{datasetId}/patch",
+  tags: ["Dataset"],
+  operationId: "patchDataset",
+  summary: "Patch Published Dataset",
+  security: SECURITY_REQUIRES_AUTH,
+  description: `Apply minor fixes to a published Dataset without creating a new version.
+
+**Authorization:** Owner (user in parent Research's uids) or admin
+
+**Precondition:** Parent Research must be in published status (409 otherwise)
+
+**Behavior:**
+- Directly modifies the published content (no version bump)
+- dateModified is updated
+
+**Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
+  request: {
+    params: DatasetIdParamsSchema,
+    query: LangVersionQuerySchema,
+    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema, example: exampleUpdateDatasetRequest } } },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: DatasetUpdateResponseSchema, example: exampleDatasetUpdateResponse } },
+      description: "Dataset patched successfully",
+    },
+    400: ErrorSpec400,
+    401: ErrorSpec401,
+    403: ErrorSpec403,
+    404: ErrorSpec404,
+    409: ErrorSpec409,
+    500: ErrorSpec500,
+  },
+})
+
 const deleteDatasetRoute = createRoute({
   method: "post",
   path: "/{datasetId}/delete",
@@ -324,6 +362,10 @@ datasetRouter.use(
   "/:datasetId/update",
   loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
 )
+datasetRouter.use(
+  "/:datasetId/patch",
+  loadDatasetAndAuthorize({ requireOwnership: true, requireParentPublished: true }),
+)
 // DELETE uses requireAuth + requireAdmin so the handler can still return
 // idempotent 204 when the dataset is already gone (matching REST DELETE
 // semantics). Parent-draft is enforced inline by the handler.
@@ -442,6 +484,35 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   }
 
   return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
+})
+
+// PUT /dataset/{datasetId}/patch
+// auth / ownership / parent-published validated by loadDatasetAndAuthorize
+datasetRouter.openapi(patchDatasetRoute, async (c) => {
+  const preloaded = c.get("dataset")
+  const { datasetId, version } = preloaded
+
+  const body = c.req.valid("json")
+  const seqNo = body._seq_no
+  const primaryTerm = body._primary_term
+
+  const updated = await patchDataset(datasetId, version, {
+    releaseDate: body.releaseDate,
+    criteria: body.criteria,
+    typeOfData: body.typeOfData,
+    experiments: body.experiments,
+  }, seqNo, primaryTerm)
+
+  if (!updated) {
+    throw new ConflictError()
+  }
+
+  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, updated.version)
+  if (!updatedWithSeqNo) {
+    throw new NotFoundError("Updated dataset not found")
+  }
+
+  return singleResponse(c, updated, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
 })
 
 // POST /dataset/{datasetId}/delete

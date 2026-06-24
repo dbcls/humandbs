@@ -139,6 +139,12 @@ Research のライフサイクル状態遷移を管理する。
 [unpublish] → draft (latest=null, draft=<元の latest>)
 ```
 
+#### パッチ（公開済の軽微修正）
+
+```plaintext
+[patch] → published (latest=v1, draft=null)  ※ 状態・バージョン不変、内容のみ更新
+```
+
 ### 状態遷移テーブル
 
 | Action | From | To | latestVersion | draftVersion | 実行者 | 追加処理 |
@@ -149,11 +155,12 @@ Research のライフサイクル状態遷移を管理する。
 | reject | review | draft | 変更なし | 変更なし | admin | `dateModified` 更新 |
 | unpublish | published | draft | null | = 元の latestVersion | admin | `dateModified` 更新 |
 | versions/new | published | draft | 変更なし | 新バージョン | owner/admin | `dateModified` 更新 |
+| patch | published | published | 変更なし | 変更なし | owner/admin | 同一バージョンの内容を直接修正、`dateModified` 更新 |
 
 **日付フィールドの意味**:
 
 - `datePublished`: 初回 approve 時に設定され、以後変更されない。作成時は null
-- `dateModified`: 状態変更および通常の更新（`PUT /research/{humId}/update`）のたびに更新される
+- `dateModified`: 状態変更、通常の更新（`PUT /research/{humId}/update`）、パッチ（`PUT /research/{humId}/patch`）のたびに更新される
 
 ### 削除
 

@@ -32,6 +32,7 @@ void mock.module("@/api/es-client/dataset", () => ({
   generateDraftDatasetId: mock(() => "DRAFT-x"),
   createDataset: mock(async () => { throw new Error("createDataset not stubbed in this test") }),
   updateDataset: mock(async () => null),
+  patchDataset: mock(async () => null),
   deleteDataset: mock(async () => false),
   getResearchByDatasetId: mock(async () => null),
 }))

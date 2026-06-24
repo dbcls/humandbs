@@ -134,16 +134,22 @@ describe("searchResearches: full-text query via Dataset-side resolution (IT-SEAR
     expect(prefixClause?.prefix?.datasetId.case_insensitive).toBe(true)
   })
 
-  it("a humId + word query filters by humId AND matches the word, with no dataset-side resolution", async () => {
+  it("a humId + word query filters by humId AND matches the word, with dataset-side text cross-search", async () => {
+    // Dataset-side text cross-search for "cancer"
+    mockEsSearch.mockImplementationOnce(async () => ({
+      aggregations: { humIds: { buckets: [] } },
+    }))
+    // Research-index query
     mockEsSearch.mockImplementationOnce(async () => ({
       hits: { total: { value: 0 }, hits: [] },
     }))
 
     await searchResearches({ ...baseQuery, q: "hum0001 cancer" }, null)
 
-    // No datasetId token → no secondary Dataset-index query is issued.
-    expect(searchCalls.every(c => c.index !== "dataset")).toBe(true)
-    const s = JSON.stringify(searchCalls[0].query)
+    // Text cross-search issues a Dataset-index query for the text portion
+    expect(searchCalls.some(c => c.index === "dataset")).toBe(true)
+    const researchCall = searchCalls.find(c => c.index === "research")!
+    const s = JSON.stringify(researchCall.query)
     // humId filter (ID extraction) AND the body word matched via all_text (operator:and).
     expect(s).toContain("hum0001")
     expect(s).toContain("all_text")

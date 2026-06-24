@@ -97,20 +97,25 @@ Research のライフサイクル: `draft → review → published`。詳細は 
 |---|---|---|---|
 | `draft` | 所有者・admin が編集可 | 非公開 | `submit` → `review` |
 | `review` | 編集不可（admin が判定） | 非公開 | `approve` → `published` / `reject` → `draft` |
-| `published` | 直接編集不可 | 公開（`latestVersion`） | `unpublish` → `draft` / `createResearchVersion` → 新 draft version |
+| `published` | `patch` で軽微修正可 | 公開（`latestVersion`） | `patch`（同一版で修正） / `unpublish` → `draft` / `createResearchVersion` → 新 draft version |
 
 ### published 中の編集
 
-published 状態の Research を直接編集するエンドポイントは存在しない。`createResearchVersion` で新 draft version を起こし、`latestVersion` は維持したまま `draftVersion` で編集する。再度 `submit` → `approve` で publish。
+published 状態の Research / Dataset にはバージョンを上げずに軽微な修正を加える **patch** エンドポイントがある。
+
+- `PUT /research/{humId}/patch` — published Research の内容を直接修正（owner/admin）
+- `PUT /dataset/{datasetId}/patch` — published Dataset の内容を直接修正（親 Research が published のとき、owner/admin）
+
+バージョン番号・状態は変わらず `dateModified` のみ更新される。承認フロー（submit/approve）は不要。大きな内容変更には従来どおり `createResearchVersion` で新 draft version を起こす。
 
 ### Dataset の編集制約
 
-Dataset の create/update/delete は **親 Research が `draft` のときのみ** 許可される。`review` / `published` 中の Dataset 編集は 403/409 を返す。
+Dataset の create/update/delete は **親 Research が `draft` のときのみ** 許可される。`review` / `published` 中の Dataset 編集は 403/409 を返す（`patch` を除く）。
 
 ### 関連 OpenAPI 参照
 
 - tag: `Research Status`
-- operationId: `submitResearch`, `approveResearch`, `rejectResearch`, `unpublishResearch`
+- operationId: `submitResearch`, `approveResearch`, `rejectResearch`, `unpublishResearch`, `patchResearch`, `patchDataset`
 
 ---
 
@@ -218,6 +223,12 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 
 構造を分けている理由: Research 検索は内部で「Dataset を引いて親 Research をヒットさせる」処理を含むため、Research 自身の属性と Dataset 属性をクエリビルダ上で明確に分離する必要があるため。
 
+#### Research 検索の Dataset 横断検索
+
+Research のフリーテキスト検索は、Research 自身の `all_text` に加え、子 Dataset の `all_text` も横断検索する。子 Dataset のみにヒットする語（例: `experiments.data` 中のマッピング手法名 "Novoalign"）で検索しても、親 Research が結果に含まれる。
+
+内部実装: `getHumIdsByTextQuery()` で Dataset index にテキストクエリを投げ、親 `humId` 群を OR 条件で Research クエリに合流させる（既存の `getHumIdsByDatasetIdQuery()` と同パターン）。Research 自身のテキスト一致と Dataset 経由のテキスト一致は `should`（OR）で結合されるため、どちらか一方でも一致すれば結果に含まれる。
+
 ### フリーテキスト検索の挙動
 
 `query` パラメータは入力を分類し、ID 系は完全一致ルックアップ、自然文は本文 + facet 値の全文検索（`all_text`）へ振り分ける。trim 後、引用符を尊重して空白で語分割し、**各語を「ID → 引用符/記号 → bare」の順**で判定する（ID 判定を最優先するのは、`E-GEAD-…` のハイフンや NBDC dataset ID のドットが記号フレージングに食われないようにするため）。
@@ -246,11 +257,11 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 `all_text` に集約する値:
 
 - **Research**: `title`, `summary.aims/methods/targets` の本文に加え、nested 配下の `dataProvider.name`, `researchProject.name`, `grant.title`, `grant.agency.name`, `relatedPublication.title`, `controlledAccessUser.name` 等の自然文テキスト
-- **Dataset**: `typeOfData`, `experiments.header`, `experiments.searchable.targets` の本文に加え、facet 値 keyword（`criteria`, `diseases.label`, `tissues`, `population`, `cohorts`, `assayType`, `platforms.vendor/model`, `sex`, `ageGroup`, `fileTypes` 等）
+- **Dataset**: `typeOfData`, `experiments.header`, `experiments.dataText`（`experiments.data` の全テキスト値を連結した派生フィールド）, `experiments.searchable.targets` の本文に加え、facet 値 keyword（`criteria`, `diseases.label`, `tissues`, `population`, `cohorts`, `assayType`, `platforms.vendor/model`, `sex`, `ageGroup`, `fileTypes` 等）
 
 `all_text` に含めないもの: ID / コード（`humId`, `datasetId`, `doi`, `icd10`, policy id）、数値・boolean フィールド、URL。ID は専用の term / prefix 経路で扱う。
 
-**取りこぼし**: `experiments.data`（実験メタデータ本文）は `flattened` 型で、Elasticsearch の仕様上 `copy_to` のソースにできないため `all_text` には含まれない。
+`experiments.data` は `flattened` 型（Elasticsearch の仕様上 `copy_to` のソースにできない）だが、ingest 時に `experiments.dataText` へ全テキスト値を連結したコピーを生成し、`copy_to: all_text` で catch-all に含めている。
 
 `all_text` を含む全 text フィールドは index 既定 analyzer（**kuromoji** 形態素解析。`apps/backend/src/es/analysis.ts`）でトークナイズされる。日本語は語境界で分割され（`肺がん` → `肺` / `がん`）、英語は小文字化される（`cancer` / `CANCER` は同一）。`all_text` は `copy_to` のターゲット（index 時のみ書き込まれる write-time フィールド）なので `_source` には現れず、Zod schema にも含まれない。
 

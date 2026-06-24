@@ -1,7 +1,8 @@
 /**
- * Research update status guard tests
+ * Research update/patch status guard tests
  *
- * Verifies that PUT /research/{humId}/update rejects non-draft Research.
+ * Verifies that PUT /research/{humId}/update rejects non-draft Research
+ * and PUT /research/{humId}/patch rejects non-published Research.
  * The full router is exercised (not a custom mini-app) via the shared
  * header-based auth mock so the route order (`requireAuth` → resource auth
  * → handler) stays in scope of the regression.
@@ -10,7 +11,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import type { EsResearch } from "@/api/types"
 
-import { buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
+import { adminAuthHeader, buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
 import { createMockResearchDoc } from "../../helpers/mock-es"
 
 // === Auth mock ===
@@ -217,5 +218,163 @@ describe("PUT /research/{humId}/update status guard", () => {
 
     expect(res.status).toBe(403)
     expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+})
+
+// === Patch (published) ===
+
+const admin = adminAuthHeader({ userId: "admin-1" })
+
+describe("PUT /research/{humId}/patch status guard", () => {
+  beforeEach(() => {
+    mockUpdateResearch.mockReset()
+    mockGetResearchWithSeqNo.mockReset()
+  })
+
+  it("allows patch when status is published", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      uids: ["owner-1"],
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    const updatedDoc = { ...publishedDoc, title: { ja: "修正", en: "Fixed" } }
+
+    mockGetResearchWithSeqNo
+      .mockResolvedValueOnce({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: updatedDoc, seqNo: 2, primaryTerm: 1 })
+
+    mockUpdateResearch.mockResolvedValue(updatedDoc)
+
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(200)
+    expect(mockUpdateResearch).toHaveBeenCalled()
+  })
+
+  it("rejects patch when status is draft (409)", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      uids: ["owner-1"],
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(409)
+    const body = await res.json() as { detail: string }
+    expect(body.detail).toContain("draft")
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("rejects patch when status is review (409)", async () => {
+    const reviewDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "review",
+      uids: ["owner-1"],
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(409)
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("401 when unauthenticated", async () => {
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(401)
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("403 when stranger (not owner, not admin)", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      uids: ["owner-1"],
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+
+    const stranger = userAuthHeader({ userId: "stranger-9" })
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...stranger },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(403)
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("200 when admin patches published research", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      uids: ["owner-1"],
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    const updatedDoc = { ...publishedDoc, title: { ja: "修正", en: "Fixed" } }
+
+    mockGetResearchWithSeqNo
+      .mockResolvedValueOnce({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: updatedDoc, seqNo: 2, primaryTerm: 1 })
+
+    mockUpdateResearch.mockResolvedValue(updatedDoc)
+
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...admin },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(200)
+  })
+
+  it("409 when updateResearch returns null (lock mismatch)", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      uids: ["owner-1"],
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearch.mockResolvedValue(null)
+
+    const res = await getTestApp().request("/research/hum0001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(409)
   })
 })

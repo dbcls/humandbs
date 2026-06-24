@@ -4,10 +4,7 @@ const TIMEOUT = 30_000
 
 // === Configuration ===
 
-const envUrl = process.env.SMOKE_TEST_BASE_URL
-if (!envUrl) {
-  throw new Error("SMOKE_TEST_BASE_URL environment variable is required")
-}
+const envUrl = process.env.SMOKE_TEST_BASE_URL ?? ""
 
 export const BASE_URL = envUrl.replace(/\/+$/, "")
 
@@ -107,6 +104,11 @@ let setupPromise: Promise<SmokeState> | undefined
 
 const runSetup = async (): Promise<SmokeState> => {
   const state: SmokeState = { reachable: false, humId: "", datasetId: "" }
+
+  if (!BASE_URL) {
+    console.log("SMOKE_TEST_BASE_URL not set — all smoke tests will be skipped")
+    return state
+  }
 
   try {
     const res = await fetch(url("/health"), { signal: AbortSignal.timeout(10_000) })

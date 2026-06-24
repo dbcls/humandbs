@@ -329,34 +329,42 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     expect(res.status).toBe(404)
   })
 
-  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) auto-generates humId in `hum\\d{4,}` format", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) with valid humId creates a draft", async ({ admin }) => {
     // IT-RESEARCH-04
-    // The isolation index already contains hum0001 (seed); a new POST must allocate the next free id.
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
+    const app = getApp()
+    try {
+      const res = await app.request(url("/research/new"), {
+        method: "POST",
+        headers: { ...authHeaders(admin), "Content-Type": "application/json" },
+        body: JSON.stringify({ humId: fixed }),
+      })
+      expect(res.status).toBe(201)
+      const json = (await res.json()) as SingleResearchResponse
+      expect(json.data.humId).toBe(fixed)
+      expect(json.data.status).toBe("draft")
+      expect(json.data.latestVersion).toBeNull()
+      expect(json.data.draftVersion).toBe("v1")
+      expect(typeof json.meta._seq_no).toBe("number")
+      expect(typeof json.meta._primary_term).toBe("number")
+    } finally {
+      await purgeResearch(admin, fixed)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-04b: POST /research/new without humId returns 400", async ({ admin }) => {
     const app = getApp()
     const res = await app.request(url("/research/new"), {
       method: "POST",
       headers: { ...authHeaders(admin), "Content-Type": "application/json" },
       body: "{}",
     })
-    expect(res.status).toBe(201)
-    const json = (await res.json()) as SingleResearchResponse
-    expect(json.data.humId).toMatch(/^hum\d{4,}$/)
-    expect(json.data.status).toBe("draft")
-    expect(json.data.latestVersion).toBeNull()
-    expect(json.data.draftVersion).toBe("v1")
-    expect(typeof json.meta._seq_no).toBe("number")
-    expect(typeof json.meta._primary_term).toBe("number")
-    // Cleanup so the isolation index stays at a known baseline for the next run.
-    const del = await app.request(url(`/research/${json.data.humId}/delete`), {
-      method: "POST",
-      headers: authHeaders(admin),
-    })
-    expect([204, 404]).toContain(del.status)
+    expect(res.status).toBe(400)
   })
 
   itWithIsolationIndex("IT-RESEARCH-05: POST /research/new accepts explicit humId and returns 409 on duplicate", async ({ admin }) => {
     // IT-RESEARCH-05
-    const fixed = `hum${90000 + Math.floor(Math.random() * 9999)}` // 5-digit hum to avoid colliding with reindexed production data
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
     try {
       const created = await createDraftResearch(admin, { humId: fixed })
       expect(created.humId).toBe(fixed)
@@ -626,29 +634,23 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // GET /research/{humId} is 404 for admin too: after delete `draftVersion`
-      // and `latestVersion` are both null, so `resolveVersionForUser` returns
-      // null and the detail handler 404s — independent of the admin bypass in
-      // `canAccessResearchDoc`.
+      // Physical deletion removes the document from ES entirely.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(404)
-      // architecture.md § deleted: admin のみ /versions を 200 で閲覧可、owner 含むそれ以外は 404
       const adminVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(admin) })
-      expect(adminVersions.status).toBe(200)
-      const ownerVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(nonAdmin) })
-      expect(ownerVersions.status).toBe(404)
+      expect(adminVersions.status).toBe(404)
       // Associated Datasets are physically removed by `deleteByQuery`.
       const dsGet = await app.request(url(`/dataset/${dataset.datasetId}`), {
         headers: authHeaders(admin),
       })
       expect(dsGet.status).toBe(404)
-      humId = "" // suppress finally cleanup; already deleted.
+      humId = ""
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-20: humId of a deleted Research cannot be reused", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-20: humId of a physically deleted Research can be reused", async ({ admin }) => {
     // IT-RESEARCH-20
     let humId = ""
     try {
@@ -660,14 +662,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // Recreating with the same humId must fail with 409 because the deleted doc still occupies the id.
-      const dup = await app.request(url("/research/new"), {
+      // Physical deletion removes the doc from ES, so the same humId is available for reuse.
+      const reuse = await app.request(url("/research/new"), {
         method: "POST",
         headers: { ...authHeaders(admin), "Content-Type": "application/json" },
         body: JSON.stringify({ humId }),
       })
-      expect(dup.status).toBe(409)
-      humId = "" // already deleted; nothing to clean up.
+      expect(reuse.status).toBe(201)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
@@ -778,7 +779,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with empty body applies all spec defaults", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with only humId applies all spec defaults", async ({ admin }) => {
     // IT-RESEARCH-27
     let humId = ""
     try {

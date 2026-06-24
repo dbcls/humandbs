@@ -245,6 +245,7 @@ export const buildDatasetQueryClauses = (parsed: ParsedFreeTextQuery): QueryCont
 export const buildResearchQueryClauses = (
   parsed: ParsedFreeTextQuery,
   datasetParentHumIds: readonly string[],
+  datasetTextHumIds: readonly string[] = [],
 ): QueryContainer[] => {
   const clauses: QueryContainer[] = []
   const humIds = parsed.idTokens.filter((t) => t.field === "humId").map((t) => t.value)
@@ -252,7 +253,21 @@ export const buildResearchQueryClauses = (
   if (parsed.idTokens.some((t) => t.field === "datasetId")) {
     clauses.push({ terms: { humId: [...datasetParentHumIds] } })
   }
-  clauses.push(...buildTextClauses(parsed, RESEARCH_TEXT_FIELDS))
+
+  const textClauses = buildTextClauses(parsed, RESEARCH_TEXT_FIELDS)
+  if (textClauses.length > 0 && datasetTextHumIds.length > 0) {
+    clauses.push({
+      bool: {
+        should: [
+          { bool: { must: textClauses } },
+          { terms: { humId: [...datasetTextHumIds] } },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  } else {
+    clauses.push(...textClauses)
+  }
 
   return clauses
 }

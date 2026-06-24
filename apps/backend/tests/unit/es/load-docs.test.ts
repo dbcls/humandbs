@@ -7,7 +7,9 @@ import {
   idDataset,
   transformResearch,
   makeDatasetDateModifiedTransform,
+  makeDatasetTransform,
 } from "@/es/load-docs"
+import { extractDataText } from "@/es/types"
 
 describe("es/load-docs.ts", () => {
   // ===========================================================================
@@ -198,6 +200,111 @@ describe("es/load-docs.ts", () => {
       expect(result.humId).toBe("hum0001")
       expect(result.versionReleaseDate).toBe("2020-01-01")
       expect(doc).toEqual(original)
+    })
+  })
+
+  // ===========================================================================
+  // extractDataText
+  // ===========================================================================
+  describe("extractDataText", () => {
+    it("concatenates ja and en text from all data entries", () => {
+      const data = {
+        Method: {
+          ja: { text: "マッピング方法 Novoalign" },
+          en: { text: "Mapping method Novoalign" },
+        },
+        Platform: {
+          ja: { text: "Illumina HiSeq" },
+          en: { text: "Illumina HiSeq" },
+        },
+      }
+      const result = extractDataText(data)
+      expect(result).toContain("Novoalign")
+      expect(result).toContain("マッピング方法")
+      expect(result).toContain("Illumina HiSeq")
+    })
+
+    it("skips null values", () => {
+      const data = {
+        Method: null,
+        Platform: { ja: { text: "HiSeq" }, en: null },
+      }
+      const result = extractDataText(data)
+      expect(result).toBe("HiSeq")
+    })
+
+    it("skips entries where text is empty or missing", () => {
+      const data = {
+        A: { ja: { text: "" }, en: { text: "" } },
+        B: { ja: null, en: null },
+      }
+      expect(extractDataText(data)).toBe("")
+    })
+
+    it("returns empty string for empty data object", () => {
+      expect(extractDataText({})).toBe("")
+    })
+
+    it("handles entries with only ja or only en", () => {
+      const jaOnly = { A: { ja: { text: "日本語" }, en: null } }
+      expect(extractDataText(jaOnly)).toBe("日本語")
+
+      const enOnly = { A: { ja: null, en: { text: "English" } } }
+      expect(extractDataText(enOnly)).toBe("English")
+    })
+  })
+
+  // ===========================================================================
+  // makeDatasetTransform
+  // ===========================================================================
+  describe("makeDatasetTransform", () => {
+    it("stamps both dateModified and dataText on dataset docs", () => {
+      const rawDocs = [
+        {
+          fileName: "JGAD000001-v1.json",
+          data: {
+            datasetId: "JGAD000001",
+            version: "v1",
+            versionReleaseDate: "2024-01-01",
+            experiments: [
+              {
+                data: {
+                  Method: {
+                    ja: { text: "BWA", rawHtml: null },
+                    en: { text: "BWA", rawHtml: null },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]
+
+      const transform = makeDatasetTransform(rawDocs)
+      const result = transform(rawDocs[0].data as Record<string, unknown>)
+
+      expect(result.dateModified).toBe("2024-01-01")
+      const experiments = result.experiments as Array<Record<string, unknown>>
+      expect(experiments[0].dataText).toContain("BWA")
+    })
+
+    it("handles experiments with empty data", () => {
+      const rawDocs = [
+        {
+          fileName: "JGAD000001-v1.json",
+          data: {
+            datasetId: "JGAD000001",
+            version: "v1",
+            versionReleaseDate: "2024-01-01",
+            experiments: [{ data: {} }],
+          },
+        },
+      ]
+
+      const transform = makeDatasetTransform(rawDocs)
+      const result = transform(rawDocs[0].data as Record<string, unknown>)
+      const experiments = result.experiments as Array<Record<string, unknown>>
+      expect(experiments[0].dataText).toBe("")
     })
   })
 

@@ -20,6 +20,7 @@ import {
   EsResearchSchema,
   EsDatasetSchema,
   ResearchVersionSchema,
+  extractDataText,
 } from "./types"
 
 // === Constants ===
@@ -89,6 +90,27 @@ export const makeDatasetDateModifiedTransform = (
     ...doc,
     dateModified: maxByDatasetId.get(doc.datasetId as string) ?? (doc.versionReleaseDate ?? ""),
   })
+}
+
+type DataValue = { ja?: { text?: string } | null; en?: { text?: string } | null } | null
+
+const stampDataText = (doc: Record<string, unknown>): Record<string, unknown> => {
+  const experiments = doc.experiments as Array<Record<string, unknown>> | undefined
+  if (!experiments) return doc
+  return {
+    ...doc,
+    experiments: experiments.map((exp) => ({
+      ...exp,
+      dataText: extractDataText(exp.data as Record<string, DataValue>),
+    })),
+  }
+}
+
+export const makeDatasetTransform = (
+  rawDocs: { fileName: string; data: unknown }[],
+): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
+  const dateModifiedTransform = makeDatasetDateModifiedTransform(rawDocs)
+  return (doc) => stampDataText(dateModifiedTransform(doc))
 }
 
 /**
@@ -279,7 +301,7 @@ const main = async () => {
     datasetRaw,
     EsDatasetSchema,
     (d) => idDataset(d.datasetId, d.version),
-    makeDatasetDateModifiedTransform(datasetRaw),
+    makeDatasetTransform(datasetRaw),
   )
 
   console.log("\nDone!")

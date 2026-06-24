@@ -127,6 +127,20 @@ export type {
   SearchableDataset,
 } from "../crawler/types"
 
+// === Derived-field helpers ===
+
+export const extractDataText = (
+  data: Record<string, { ja?: { text?: string } | null; en?: { text?: string } | null } | null>,
+): string => {
+  const texts: string[] = []
+  for (const value of Object.values(data)) {
+    if (value == null) continue
+    if (value.ja?.text) texts.push(value.ja.text)
+    if (value.en?.text) texts.push(value.en.text)
+  }
+  return texts.join(" ")
+}
+
 // === ES-specific schemas (extensions for ES documents) ===
 // Schemas with differences use .extend() for composition.
 
