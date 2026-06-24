@@ -118,25 +118,30 @@ const extractDatasetHandle = (
   }
 }
 
+const randomHumId = (): string =>
+  `hum${90000 + Math.floor(Math.random() * 9999)}`
+
 /**
  * Create a fresh draft Research as admin.
  *
  * Calls `POST /research/new` and asserts 201. The returned handle carries the
- * auto-allocated `humId`, the initial `_seq_no` / `_primary_term`, and the
- * default value-based fields (`status:"draft"`, `latestVersion:null`,
+ * `humId`, the initial `_seq_no` / `_primary_term`, and the default
+ * value-based fields (`status:"draft"`, `latestVersion:null`,
  * `draftVersion:"v1"`).
+ *
+ * When `opts.humId` is omitted a random 5-digit humId is generated so tests
+ * that don't care about the specific id don't have to supply one.
  */
 export const createDraftResearch = async (
   admin: string,
   opts: { humId?: string } = {},
 ): Promise<ResearchHandle> => {
   const app = getApp()
-  const body: Record<string, unknown> = {}
-  if (opts.humId !== undefined) body.humId = opts.humId
+  const humId = opts.humId ?? randomHumId()
   const res = await app.request(url("/research/new"), {
     method: "POST",
     headers: { ...authHeaders(admin), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ humId }),
   })
   expect(res.status).toBe(201)
   const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>

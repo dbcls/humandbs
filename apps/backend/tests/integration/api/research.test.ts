@@ -329,29 +329,37 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     expect(res.status).toBe(404)
   })
 
-  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) auto-generates humId in `hum\\d{4,}` format", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) with valid humId creates a draft", async ({ admin }) => {
     // IT-RESEARCH-04
-    // The isolation index already contains hum0001 (seed); a new POST must allocate the next free id.
+    const fixed = `hum${90000 + Math.floor(Math.random() * 9999)}`
+    const app = getApp()
+    try {
+      const res = await app.request(url("/research/new"), {
+        method: "POST",
+        headers: { ...authHeaders(admin), "Content-Type": "application/json" },
+        body: JSON.stringify({ humId: fixed }),
+      })
+      expect(res.status).toBe(201)
+      const json = (await res.json()) as SingleResearchResponse
+      expect(json.data.humId).toBe(fixed)
+      expect(json.data.status).toBe("draft")
+      expect(json.data.latestVersion).toBeNull()
+      expect(json.data.draftVersion).toBe("v1")
+      expect(typeof json.meta._seq_no).toBe("number")
+      expect(typeof json.meta._primary_term).toBe("number")
+    } finally {
+      await purgeResearch(admin, fixed)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-04b: POST /research/new without humId returns 400", async ({ admin }) => {
     const app = getApp()
     const res = await app.request(url("/research/new"), {
       method: "POST",
       headers: { ...authHeaders(admin), "Content-Type": "application/json" },
       body: "{}",
     })
-    expect(res.status).toBe(201)
-    const json = (await res.json()) as SingleResearchResponse
-    expect(json.data.humId).toMatch(/^hum\d{4,}$/)
-    expect(json.data.status).toBe("draft")
-    expect(json.data.latestVersion).toBeNull()
-    expect(json.data.draftVersion).toBe("v1")
-    expect(typeof json.meta._seq_no).toBe("number")
-    expect(typeof json.meta._primary_term).toBe("number")
-    // Cleanup so the isolation index stays at a known baseline for the next run.
-    const del = await app.request(url(`/research/${json.data.humId}/delete`), {
-      method: "POST",
-      headers: authHeaders(admin),
-    })
-    expect([204, 404]).toContain(del.status)
+    expect(res.status).toBe(400)
   })
 
   itWithIsolationIndex("IT-RESEARCH-05: POST /research/new accepts explicit humId and returns 409 on duplicate", async ({ admin }) => {
@@ -778,7 +786,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with empty body applies all spec defaults", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with only humId applies all spec defaults", async ({ admin }) => {
     // IT-RESEARCH-27
     let humId = ""
     try {
