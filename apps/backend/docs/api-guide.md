@@ -97,20 +97,25 @@ Research のライフサイクル: `draft → review → published`。詳細は 
 |---|---|---|---|
 | `draft` | 所有者・admin が編集可 | 非公開 | `submit` → `review` |
 | `review` | 編集不可（admin が判定） | 非公開 | `approve` → `published` / `reject` → `draft` |
-| `published` | 直接編集不可 | 公開（`latestVersion`） | `unpublish` → `draft` / `createResearchVersion` → 新 draft version |
+| `published` | `patch` で軽微修正可 | 公開（`latestVersion`） | `patch`（同一版で修正） / `unpublish` → `draft` / `createResearchVersion` → 新 draft version |
 
 ### published 中の編集
 
-published 状態の Research を直接編集するエンドポイントは存在しない。`createResearchVersion` で新 draft version を起こし、`latestVersion` は維持したまま `draftVersion` で編集する。再度 `submit` → `approve` で publish。
+published 状態の Research / Dataset にはバージョンを上げずに軽微な修正を加える **patch** エンドポイントがある。
+
+- `PUT /research/{humId}/patch` — published Research の内容を直接修正（owner/admin）
+- `PUT /dataset/{datasetId}/patch` — published Dataset の内容を直接修正（親 Research が published のとき、owner/admin）
+
+バージョン番号・状態は変わらず `dateModified` のみ更新される。承認フロー（submit/approve）は不要。大きな内容変更には従来どおり `createResearchVersion` で新 draft version を起こす。
 
 ### Dataset の編集制約
 
-Dataset の create/update/delete は **親 Research が `draft` のときのみ** 許可される。`review` / `published` 中の Dataset 編集は 403/409 を返す。
+Dataset の create/update/delete は **親 Research が `draft` のときのみ** 許可される。`review` / `published` 中の Dataset 編集は 403/409 を返す（`patch` を除く）。
 
 ### 関連 OpenAPI 参照
 
 - tag: `Research Status`
-- operationId: `submitResearch`, `approveResearch`, `rejectResearch`, `unpublishResearch`
+- operationId: `submitResearch`, `approveResearch`, `rejectResearch`, `unpublishResearch`, `patchResearch`, `patchDataset`
 
 ---
 

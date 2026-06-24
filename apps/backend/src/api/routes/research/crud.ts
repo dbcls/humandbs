@@ -41,6 +41,7 @@ import {
   createResearchRoute,
   getResearchRoute,
   updateResearchRoute,
+  patchResearchRoute,
   deleteResearchRoute,
   updateUidsRoute,
 } from "./routes"
@@ -207,6 +208,57 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     // Get updated seqNo/primaryTerm
+    const updatedWithSeqNo = await getResearchWithSeqNo(humId)
+    if (!updatedWithSeqNo) {
+      throw new NotFoundError("Updated research not found")
+    }
+
+    const { status: updatedStatus, ...restUpdated } = updated
+    const responseData = {
+      ...restUpdated,
+      status: ResearchStatusSchema.parse(updatedStatus),
+      datasets: [],
+    }
+
+    return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
+  })
+
+  // PUT /research/{humId}/patch
+  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requirePublishedStatus: true })
+  router.openapi(patchResearchRoute, async (c) => {
+    const research = c.get("research")
+    const { humId } = research
+
+    const body = c.req.valid("json")
+    const seqNo = body._seq_no
+    const primaryTerm = body._primary_term
+
+    const updated = await updateResearch(humId, {
+      title: body.title,
+      summary: body.summary,
+      dataProvider: body.dataProvider,
+      researchProject: body.researchProject,
+      grant: body.grant,
+      relatedPublication: body.relatedPublication,
+    }, seqNo, primaryTerm)
+
+    if (!updated) {
+      throw new ConflictError()
+    }
+
+    if (body.releaseNote !== undefined && research.latestVersion) {
+      const latestVersionId = `${humId}-${research.latestVersion}`
+      const versionWithSeq = await getResearchVersionWithSeqNo(latestVersionId)
+      if (versionWithSeq) {
+        const ok = await updateResearchVersionReleaseNote(
+          latestVersionId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
+        )
+        if (!ok) {
+          throw new ConflictError()
+        }
+      }
+    }
+
     const updatedWithSeqNo = await getResearchWithSeqNo(humId)
     if (!updatedWithSeqNo) {
       throw new NotFoundError("Updated research not found")

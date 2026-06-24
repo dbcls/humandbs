@@ -634,29 +634,23 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // GET /research/{humId} is 404 for admin too: after delete `draftVersion`
-      // and `latestVersion` are both null, so `resolveVersionForUser` returns
-      // null and the detail handler 404s — independent of the admin bypass in
-      // `canAccessResearchDoc`.
+      // Physical deletion removes the document from ES entirely.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(404)
-      // architecture.md § deleted: admin のみ /versions を 200 で閲覧可、owner 含むそれ以外は 404
       const adminVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(admin) })
-      expect(adminVersions.status).toBe(200)
-      const ownerVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(nonAdmin) })
-      expect(ownerVersions.status).toBe(404)
+      expect(adminVersions.status).toBe(404)
       // Associated Datasets are physically removed by `deleteByQuery`.
       const dsGet = await app.request(url(`/dataset/${dataset.datasetId}`), {
         headers: authHeaders(admin),
       })
       expect(dsGet.status).toBe(404)
-      humId = "" // suppress finally cleanup; already deleted.
+      humId = ""
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-20: humId of a deleted Research cannot be reused", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-20: humId of a physically deleted Research can be reused", async ({ admin }) => {
     // IT-RESEARCH-20
     let humId = ""
     try {
@@ -668,14 +662,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // Recreating with the same humId must fail with 409 because the deleted doc still occupies the id.
-      const dup = await app.request(url("/research/new"), {
+      // Physical deletion removes the doc from ES, so the same humId is available for reuse.
+      const reuse = await app.request(url("/research/new"), {
         method: "POST",
         headers: { ...authHeaders(admin), "Content-Type": "application/json" },
         body: JSON.stringify({ humId }),
       })
-      expect(dup.status).toBe(409)
-      humId = "" // already deleted; nothing to clean up.
+      expect(reuse.status).toBe(201)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

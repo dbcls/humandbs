@@ -44,6 +44,7 @@ void mock.module("@/api/es-client/dataset", () => ({
     mockResolveLatestDatasetVersion(datasetId),
   listDatasetVersions: mock(() => Promise.resolve([])),
   updateDataset: (...args: unknown[]) => mockUpdateDataset(...args),
+  patchDataset: (...args: unknown[]) => mockUpdateDataset(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
   generateDraftDatasetId: mock(() => "DRAFT-hum0001-x"),
   createDataset: mock(() => Promise.reject(new Error("not used"))),
@@ -324,5 +325,109 @@ describe("POST /dataset/{datasetId}/delete mutation auth", () => {
     })
     expect(res.status).toBe(204)
     expect(mockDeleteDataset).toHaveBeenCalledWith("JGAD000001", undefined)
+  })
+})
+
+// === Patch (published) ===
+
+const wirePublishedDatasetAndParent = (
+  parentOverrides: Partial<EsResearch> = {},
+  datasetOverrides: Partial<EsDataset> = {},
+) => wireDatasetAndParent(
+  { status: "published", latestVersion: "v1", draftVersion: null, ...parentOverrides },
+  datasetOverrides,
+)
+
+const mockPatchDataset = mockUpdateDataset
+
+describe("PUT /dataset/{datasetId}/patch mutation auth", () => {
+  beforeEach(resetMocks)
+
+  it("401 when no auth header", async () => {
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(401)
+    expect(mockPatchDataset).not.toHaveBeenCalled()
+  })
+
+  it("404 when dataset does not exist", async () => {
+    mockResolveLatestDatasetVersion.mockResolvedValue(null)
+    const res = await getTestApp().request("/dataset/JGAD999/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(404)
+    expect(mockPatchDataset).not.toHaveBeenCalled()
+  })
+
+  it("403 when authenticated stranger", async () => {
+    wirePublishedDatasetAndParent()
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...stranger },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(403)
+    expect(mockPatchDataset).not.toHaveBeenCalled()
+  })
+
+  it("409 when parent Research is in draft status", async () => {
+    wireDatasetAndParent()
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(409)
+    expect(mockPatchDataset).not.toHaveBeenCalled()
+  })
+
+  it("200 when owner patches published dataset", async () => {
+    const { dataset } = wirePublishedDatasetAndParent()
+    const updated = { ...dataset, releaseDate: "2024-12-31" }
+    mockPatchDataset.mockResolvedValue(updated)
+    mockGetDatasetWithSeqNo
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: updated, seqNo: 2, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { meta: { _seq_no: number } }
+    expect(body.meta._seq_no).toBe(2)
+  })
+
+  it("200 when admin patches published dataset", async () => {
+    const { dataset } = wirePublishedDatasetAndParent()
+    const updated = { ...dataset, releaseDate: "2024-12-31" }
+    mockPatchDataset.mockResolvedValue(updated)
+    mockGetDatasetWithSeqNo
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: updated, seqNo: 2, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...admin },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("409 when patchDataset returns null (lock mismatch)", async () => {
+    wirePublishedDatasetAndParent()
+    mockPatchDataset.mockResolvedValue(null)
+    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(409)
   })
 })

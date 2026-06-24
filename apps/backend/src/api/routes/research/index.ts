@@ -29,6 +29,10 @@ researchRouter.use(
   "/:humId/update",
   loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),
 )
+researchRouter.use(
+  "/:humId/patch",
+  loadResearchAndAuthorize({ requireOwnership: true, requirePublishedStatus: true }),
+)
 researchRouter.use("/:humId/delete", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/versions/new", loadResearchAndAuthorize({ requireOwnership: true }))
 researchRouter.use("/:humId/submit", loadResearchAndAuthorize({ requireOwnership: true }))

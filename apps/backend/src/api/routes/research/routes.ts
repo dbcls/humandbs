@@ -229,6 +229,48 @@ releaseNote updates the current draft ResearchVersion's release note.`,
   },
 })
 
+export const patchResearchRoute = createRoute({
+  method: "put",
+  path: "/{humId}/patch",
+  tags: ["Research"],
+  operationId: "patchResearch",
+  summary: "Patch Published Research",
+  security: SECURITY_REQUIRES_AUTH,
+  description: `Apply minor fixes to a published Research without creating a new version.
+
+**Authorization:** Owner (user in uids) or admin
+
+**Precondition:** Research must be in published status (409 otherwise)
+
+**Behavior:**
+- Directly modifies the published content (no draft/submit/approve cycle)
+- Version stays the same (no version bump)
+- dateModified is updated
+
+**Optimistic Locking:** Include _seq_no and _primary_term from GET response.
+releaseNote updates the current published ResearchVersion's release note.`,
+  request: {
+    params: HumIdParamsSchema,
+    body: {
+      content: { "application/json": { schema: UpdateResearchRequestSchema, example: exampleUpdateResearchRequest } },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": { schema: ResearchWithLockResponseSchema, example: exampleResearchWithLockResponse },
+      },
+      description: "Research patched successfully",
+    },
+    400: ErrorSpec400,
+    401: ErrorSpec401,
+    403: ErrorSpec403,
+    404: ErrorSpec404,
+    409: ErrorSpec409,
+    500: ErrorSpec500,
+  },
+})
+
 export const deleteResearchRoute = createRoute({
   method: "post",
   path: "/{humId}/delete",
