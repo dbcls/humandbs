@@ -15,16 +15,13 @@ import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
 import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
 import { humanize } from "@/components/form-context/schema-form/utils";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { messages } from "@/config/messages";
 import { useCan } from "@/hooks/useCan";
-import { cn } from "@/lib/utils";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
@@ -39,6 +36,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { DatasetCreateView } from "./DatasetCreateView";
 import { DatasetEditView } from "./DatasetEditView";
 import { MergeResearchDialog } from "./MergeResearch/index";
@@ -438,7 +436,6 @@ export function ResearchDetails({
   const [datasetPreview, setDatasetPreview] = useState(false);
 
   const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
-  const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
   const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
   const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
 
@@ -492,14 +489,15 @@ export function ResearchDetails({
             canNewVersion={canNewVersion}
             onVersionChange={setSelectedVersion}
           />
-          <Label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="slim"
+            className="ml-auto"
+            onClick={() => setEffectivePreview(true)}
+          >
             {previewLabel}
-            <Switch
-              checked={effectivePreview}
-              onCheckedChange={setEffectivePreview}
-              className="data-[state=checked]:bg-secondary"
-            />
-          </Label>
+          </Button>
         </>
       }
       captionClassName="flex items-center"
@@ -523,11 +521,14 @@ export function ResearchDetails({
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 flex-col overflow-hidden", preview ? "flex" : "hidden")}>
-        <div className="flex shrink-0 items-center gap-2 px-5 pt-3 pb-2">
-          <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <PreviewDialog
+        open={preview}
+        onOpenChange={setPreview}
+        title={`${researchValues.humId} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
+        <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
             <VersionCard
               versionData={previewValues as ResearchDetailResponse["data"]}
@@ -535,9 +536,9 @@ export function ResearchDetails({
             />
           </IntlProvider>
         </div>
-      </div>
+      </PreviewDialog>
 
-      <div className={cn("flex min-h-0 flex-1 flex-col", preview && "hidden")}>
+      <div className="flex min-h-0 flex-1 flex-col">
         <Tabs
           defaultValue="metadata"
           value={activeTab}
@@ -718,6 +719,7 @@ export function ResearchDetails({
                 lang={lang}
                 research={researchValues}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetDirty(false);
@@ -729,6 +731,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);

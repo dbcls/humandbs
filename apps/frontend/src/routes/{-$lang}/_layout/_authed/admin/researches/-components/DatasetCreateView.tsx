@@ -14,7 +14,6 @@ import {
   getDefaultDatasetFormValues,
 } from "@/components/form-context/dataset-fields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/dataset-fields/ExperimentsArrayField";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,11 +26,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
-import { cn } from "@/lib/utils";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { AccessionChips } from "./AccessionChips";
 import { CopyFromDataset } from "./CopyFromDataset";
 import { TabContentLayout } from "./TabContentLayout";
@@ -42,6 +41,7 @@ interface DatasetCreateViewProps {
   onBack: () => void;
   onCreated: (datasetId: string) => void;
   preview?: boolean;
+  onPreviewChange?: (open: boolean) => void;
   relatedAccessions?: string[];
 }
 
@@ -50,6 +50,7 @@ export function DatasetCreateView({
   onBack,
   onCreated,
   preview = false,
+  onPreviewChange,
   relatedAccessions: initialAccessions = [],
 }: DatasetCreateViewProps) {
   const queryClient = useQueryClient();
@@ -137,9 +138,7 @@ export function DatasetCreateView({
     </div>
   );
 
-  const actions = preview ? (
-    <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-  ) : (
+  const actions = (
     <Button
       type="button"
       size="lg"
@@ -184,11 +183,7 @@ export function DatasetCreateView({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div
-        className={cn({
-          hidden: preview,
-        })}
-      >
+      <div>
         <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
           <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
             Copy data in
@@ -231,19 +226,23 @@ export function DatasetCreateView({
           imperativeRef={formRef}
         />
       </div>
-      <div
-        className={cn({
-          hidden: !preview,
-        })}
+      <PreviewDialog
+        open={preview}
+        onOpenChange={(open) => onPreviewChange?.(open)}
+        title="New dataset preview"
+        lang={previewLang}
+        onLangChange={setPreviewLang}
       >
-        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues)}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      </div>
+        <div className="px-5 py-5">
+          <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+            <DatasetVersionCard
+              versionData={datasetFormValuesToPreviewDataset(previewValues)}
+              lang={previewLang}
+              showPublicActions={false}
+            />
+          </IntlProvider>
+        </div>
+      </PreviewDialog>
     </TabContentLayout>
   );
 }

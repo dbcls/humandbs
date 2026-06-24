@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { CreateResearchRequest } from "@humandbs/backend/types";
+import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -93,6 +94,7 @@ export function NewResearchForm({
 
   const form = useAppForm({
     defaultValues,
+    validators: { onChange: CreateResearchRequestSchema },
 
     onSubmit: async ({ value }) => {
       setError(null);
@@ -153,13 +155,7 @@ export function NewResearchForm({
           </div>
 
           <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
-            <form.AppField
-              name="humId"
-              validators={{
-                onChange: ({ value }) =>
-                  !value || value.trim() === "" ? "Research ID is required" : undefined,
-              }}
-            >
+            <form.AppField name="humId">
               {(field) => <field.TextField type="col" label="Research ID (humId)*" />}
             </form.AppField>
 

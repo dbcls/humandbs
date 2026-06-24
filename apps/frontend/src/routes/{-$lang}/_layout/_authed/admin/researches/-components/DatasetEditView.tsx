@@ -16,7 +16,6 @@ import {
   datasetToFormValues,
   formValuesToDatasetUpdate,
 } from "@/components/form-context/dataset-fields/DatasetForm";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +28,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
-import { cn } from "@/lib/utils";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { AccessionChips } from "./AccessionChips";
 import { CopyFromDataset } from "./CopyFromDataset";
 import { TabContentLayout } from "./TabContentLayout";
@@ -57,6 +56,7 @@ interface DatasetEditViewProps {
   onCreated?: (datasetId: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
   preview?: boolean;
+  onPreviewChange?: (open: boolean) => void;
 }
 
 function DatasetEditViewInner({
@@ -66,6 +66,7 @@ function DatasetEditViewInner({
   onBack,
   onDirtyChange,
   preview = false,
+  onPreviewChange,
 }: DatasetEditViewProps) {
   const queryClient = useQueryClient();
   const { data: datasetResponse } = useSuspenseQuery(getDatasetEditQueryOptions(datasetId, lang));
@@ -161,9 +162,7 @@ function DatasetEditViewInner({
     </div>
   );
 
-  const actions = preview ? (
-    <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-  ) : isDraft ? (
+  const actions = isDraft ? (
     <Button
       type="button"
       size="lg"
@@ -208,7 +207,7 @@ function DatasetEditViewInner({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className={cn(preview && "hidden")}>
+      <div>
         {isDraft && (
           <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
             <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
@@ -255,18 +254,26 @@ function DatasetEditViewInner({
           imperativeRef={formRef}
         />
       </div>
-      <div className={cn(!preview && "hidden")}>
-        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues, {
-              datasetId: dataset.datasetId,
-              version: dataset.version,
-            })}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      </div>
+      <PreviewDialog
+        open={preview}
+        onOpenChange={(open) => onPreviewChange?.(open)}
+        title={`${datasetId} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
+        <div className="px-5 py-5">
+          <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+            <DatasetVersionCard
+              versionData={datasetFormValuesToPreviewDataset(previewValues, {
+                datasetId: dataset.datasetId,
+                version: dataset.version,
+              })}
+              lang={previewLang}
+              showPublicActions={false}
+            />
+          </IntlProvider>
+        </div>
+      </PreviewDialog>
     </TabContentLayout>
   );
 }
