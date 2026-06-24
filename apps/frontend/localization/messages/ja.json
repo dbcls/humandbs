@@ -141,7 +141,7 @@
     "date-modified": "更新日",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
-    "experiments": "実験一覧",
+    "experiments": "解析手法",
     "Unrestricted-access": "非制限公開",
     "Controlled-access (Type I)": "制限公開（Type I）",
     "Controlled-access (Type II)": "制限公開（Type II）",
@@ -282,7 +282,7 @@
     "releaseDate": "公開日付",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
-    "experiments": "実験一覧"
+    "experiments": "解析手法"
   },
   "Data-submission": {
     "data-submission": "データの提供",

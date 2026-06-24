@@ -19,6 +19,7 @@ import { SortHeader, Table } from "@/components/Table";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
+import { toDateString } from "@/utils/dates";
 
 export function VersionCard({
   versionData,
@@ -211,6 +212,11 @@ const datasetColumns = [
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
 
     maxSize: 14,
+  }),
+  datasetColumnHelper.accessor("releaseDate", {
+    id: "releaseDate",
+    header: (ctx) => ctx.table.options.meta?.t("Dataset.releaseDate"),
+    cell: (ctx) => toDateString(ctx.getValue()),
   }),
 ];
 

@@ -141,7 +141,7 @@
     "date-modified": "Date modified",
     "typeOfData": "Type of data",
     "criteria": "Access type",
-    "experiments": "Experiments",
+    "experiments": "Analysis method",
     "Unrestricted-access": "Open (no restrictions)",
     "Controlled-access (Type I)": "Controlled-access (Type I)",
     "Controlled-access (Type II)": "Controlled-access (Type II)",
@@ -281,7 +281,7 @@
     "releaseDate": "Release date",
     "typeOfData": "Type of data",
     "criteria": "Access type",
-    "experiments": "Experiments"
+    "experiments": "Analysis method"
   },
   "Data-submission": {
     "data-submission": "Data submission",
