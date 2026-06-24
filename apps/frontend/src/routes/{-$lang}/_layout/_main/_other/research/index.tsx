@@ -196,10 +196,12 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const t = useTranslations("Research");
   const { containerRef, maxHeight } = useMaxHeight(130);
 
   return (
     <>
+      <p className="text-muted-foreground mb-2 text-sm">{t("cart-note")}</p>
       <div
         ref={containerRef}
         style={{ maxHeight }}

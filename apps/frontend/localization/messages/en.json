@@ -126,6 +126,7 @@
     "details": "Details"
   },
   "Dataset": {
+    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "datasetId": "Dataset ID",
     "release-info": "Release info",
     "dataset-list": "Dataset list",
@@ -229,6 +230,7 @@
     "country": "Country"
   },
   "Research": {
+    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "research-id": "Research ID",
     "research-list": "List of researches",
     "humId": "Research ID",
