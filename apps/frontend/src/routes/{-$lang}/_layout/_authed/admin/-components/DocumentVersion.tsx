@@ -1036,11 +1036,10 @@ function usePublishDraft(contentId: string, versionNumber: number) {
       const versionsList = queryClient.getQueryData(docVersionsListQO.queryKey);
       const isLatestVersion = versionsList?.at(0)?.versionNumber === versionNumber;
 
-      let prevDocList;
+      const prevDocList = queryClient.getQueryData(docListQO.queryKey);
 
       if (isLatestVersion) {
         await queryClient.cancelQueries(docListQO);
-        prevDocList = queryClient.getQueryData(docListQO.queryKey);
 
         queryClient.setQueryData(docListQO.queryKey, (old) => {
           if (!old) return old;

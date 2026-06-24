@@ -21,7 +21,6 @@ import { useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { ListItem } from "@/components/ListItem";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import type { BreadcrumbItem, FlowchartAnswers } from "@/components/NavigationChart";
@@ -60,6 +59,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
+import { PreviewDialog } from "./-components/PreviewDialog";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 
@@ -594,31 +594,37 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
       caption={
         <>
           {record.nameEn}
-          <label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="slim"
+            className="ml-auto"
+            onClick={() => setPreview(true)}
+          >
             Preview
-            <Switch
-              checked={preview}
-              onCheckedChange={setPreview}
-              className="data-[state=checked]:bg-secondary"
-            />
-          </label>
+          </Button>
         </>
       }
       captionClassName="flex items-center"
       containerClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {preview ? (
+      <PreviewDialog
+        open={preview}
+        onOpenChange={setPreview}
+        title={`${record.nameEn} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
         <FlowchartPreview
           record={record}
           configDraft={configDraft}
           allFlowcharts={allFlowcharts}
           lang={previewLang}
-          onLangChange={setPreviewLang}
         />
-      ) : (
-        <>
-          {/* Sticky action bar */}
-          <div className="flex items-center justify-between px-5 pt-5">
+      </PreviewDialog>
+
+      {/* Sticky action bar */}
+      <div className="flex items-center justify-between px-5 pt-5">
             <div className="flex items-center gap-3">
               <Switch
                 checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
@@ -708,8 +714,6 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
               />
             </div>
           </div>
-        </>
-      )}
     </Card>
   );
 }
@@ -731,13 +735,11 @@ function FlowchartPreview({
   configDraft,
   allFlowcharts,
   lang,
-  onLangChange,
 }: {
   record: NavigationFlowchartRecord;
   configDraft: NavigationFlowchartConfig;
   allFlowcharts: NavigationFlowchartSummary[];
   lang: "en" | "ja";
-  onLangChange: (l: "en" | "ja") => void;
 }) {
   // Stack of linked flowchart IDs navigated into; empty means showing root.
   const [linkedStack, setLinkedStack] = useState<string[]>([]);
@@ -815,11 +817,8 @@ function FlowchartPreview({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 px-5 pt-4 pb-2">
-        <LangSwitcherPill value={lang} onChange={onLangChange} />
-      </div>
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
-        <div className="min-w-max px-5 pb-5">
+        <div className="min-w-max px-5 pb-5 pt-4">
           <Breadcrumbs items={breadcrumbItems} locale={lang} />
           {currentData ? (
             <NavigationChartInner

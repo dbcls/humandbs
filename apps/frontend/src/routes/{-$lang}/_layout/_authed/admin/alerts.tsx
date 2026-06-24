@@ -11,6 +11,7 @@ import { Bell, Plus, Trash2Icon } from "lucide-react";
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DateRangePicker } from "@/components/DatePicker";
@@ -38,7 +39,6 @@ import type { DateStringRange } from "@/utils/dates";
 import { toDateString } from "@/utils/dates";
 import { alertsAdminSearchParamsSchema } from "@/utils/query-params";
 
-import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
@@ -257,8 +257,7 @@ function ListItems({
           translations: i18n.locales
             .map((lang) => ({
               lang,
-              content:
-                targetAlert.translations.find((t) => t.lang === lang)?.content?.trim() ?? "",
+              content: targetAlert.translations.find((t) => t.lang === lang)?.content?.trim() ?? "",
             }))
             .filter((translation) => translation.content.length > 0),
         },

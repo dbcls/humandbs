@@ -10,7 +10,7 @@ export type FieldKind =
 export function getFieldKind(schema: { _def: any }): FieldKind {
   const type: string = schema._def?.type ?? "";
 
-  if (type === "nullable" || type === "optional") {
+  if (type === "nullable" || type === "optional" || type === "default") {
     return getFieldKind(schema._def.innerType);
   }
 
@@ -21,7 +21,7 @@ export function getFieldKind(schema: { _def: any }): FieldKind {
   if (type === "enum") {
     const options: string[] = schema._def.entries
       ? Object.values(schema._def.entries as Record<string, string>)
-      : (schema as any).options ?? [];
+      : ((schema as any).options ?? []);
     return { kind: "enum", options };
   }
 

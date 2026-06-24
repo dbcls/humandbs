@@ -7,30 +7,27 @@ import { IntlProvider } from "use-intl";
 import { useState } from "react";
 
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
+import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
-import { SummaryForm } from "@/components/form-context/research-fields/SummaryForm";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
+import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
+import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
+import { humanize } from "@/components/form-context/schema-form/utils";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { messages } from "@/config/messages";
 import { useCan } from "@/hooks/useCan";
-import { cn } from "@/lib/utils";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
   $deleteResearch,
+  $patchResearch,
   $rejectResearch,
   $submitResearch,
   $updateResearch,
@@ -40,22 +37,78 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { DatasetCreateView } from "./DatasetCreateView";
 import { DatasetEditView } from "./DatasetEditView";
 import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
+import { researchFieldsConfig } from "./researchFieldsConfig";
+import type { ResearchForm } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
+import {
+  isResearchEditable,
+  isViewingDraftVersion,
+  researchSaveEndpoint,
+} from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
+import { runResearchSave } from "./utils/saveSequencer";
 
-const topLevelFields = [
-  "title",
-  "summary",
-  "dataProvider",
-  "researchProject",
-  "grant",
-  "relatedPublication",
-] as const;
+/**
+ * Top-level research metadata fields rendered as tabs, derived from the schema
+ * shape (single source of truth) and ordered/labelled via `researchFieldsConfig`.
+ * Fields whose key carries no config entry and resolve to a primitive kind fall
+ * through to the generic schema-driven `FieldControl` — so a new scalar backend
+ * field surfaces automatically with no code change here.
+ *
+ * `uids`, `releaseNote`, `status`, versions and datasets are handled separately
+ * outside this tabbed loop, so they're excluded.
+ */
+const EXCLUDED_FIELDS = new Set<string>([
+  "humId",
+  "url",
+  "status",
+  "uids",
+  "draftVersion",
+  "latestVersion",
+  "version",
+  "versionIds",
+  "humVersionId",
+  "versionReleaseDate",
+  "releaseNote",
+  "datasets",
+  "controlledAccessUser",
+  // Optimistic-locking metadata carried by UpdateResearchRequestSchema — not editable fields.
+  "_seq_no",
+  "_primary_term",
+]);
+
+type MetadataField = {
+  key: string;
+  label: string;
+  order: number;
+  kind: ReturnType<typeof getFieldKind>;
+  renderer?: (form: ResearchForm) => React.ReactNode;
+};
+
+const metadataFields: MetadataField[] = Object.entries(UpdateResearchRequestSchema.shape)
+  .filter(([key]) => !EXCLUDED_FIELDS.has(key))
+  .flatMap(([key, schema], schemaIndex): MetadataField[] => {
+    const config = researchFieldsConfig[key as keyof typeof researchFieldsConfig];
+    if (config?.hidden) return [];
+    return [
+      {
+        key,
+        label: config?.label ?? humanize(key),
+        order: config?.order ?? schemaIndex + 1000,
+        kind: getFieldKind(schema as { _def: any }),
+        renderer: config?.renderer,
+      },
+    ];
+  })
+  .sort((a, b) => a.order - b.order);
+
+const topLevelFields = metadataFields.map((f) => f.key);
 
 export function ResearchDetails({
   humId,
@@ -143,39 +196,45 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      const calls: Promise<unknown>[] = [
-        $updateResearch({
-          data: {
-            humId,
-            body: {
-              title: value.title,
-              summary: value.summary,
-              dataProvider: value.dataProvider,
-              researchProject: value.researchProject,
-              grant: value.grant,
-              relatedPublication: value.relatedPublication,
-              _seq_no: seqNo,
-              _primary_term: primaryTerm,
+      // Route the research write by the viewed version: draft → /update,
+      // published latest → /patch. Editability is guaranteed by the Save button gate.
+      const endpoint = researchSaveEndpoint({
+        selectedVersion,
+        draftVersion: researchValues.draftVersion,
+        latestVersion: researchValues.latestVersion,
+        status: researchValues.status,
+      });
+      const writeResearch = endpoint === "patch" ? $patchResearch : $updateResearch;
+
+      // uids and the research metadata target the SAME document. Run them
+      // sequentially (research first, threading its fresh lock token into uids)
+      // to avoid a stale-token version conflict. Skip uids when not permitted or
+      // unchanged. See saveSequencer for the rationale.
+      const uidsChanged =
+        JSON.stringify(value.uids ?? []) !== JSON.stringify(defaultValues.uids ?? []);
+
+      const result = await runResearchSave({
+        writeResearch: () =>
+          writeResearch({
+            data: {
+              humId,
+              body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
             },
-          },
-        }),
-      ];
-      if (canUpdateUids) {
-        calls.push(
+          }),
+        shouldWriteUids: canUpdateUids && uidsChanged,
+        writeUids: (lock) =>
           $updateResearchUids({
             data: {
               humId,
               body: {
                 uids: value.uids ?? [],
-                _seq_no: seqNo,
-                _primary_term: primaryTerm,
+                _seq_no: lock._seq_no,
+                _primary_term: lock._primary_term,
               },
             },
           }),
-        );
-      }
-      const [updateResult] = await Promise.all(calls);
-      return updateResult as UpdateResearchResult;
+      });
+      return result as UpdateResearchResult;
     },
     onSuccess: (result: UpdateResearchResult) => {
       if (!result.ok) {
@@ -373,10 +432,7 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedValues(
-    values: MergeResearchResult["values"],
-    relatedAccessions: string[],
-  ) {
+  function applyMergedValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
     form.setFieldValue("dataProvider", values.dataProvider as typeof researchValues.dataProvider);
@@ -398,7 +454,6 @@ export function ResearchDetails({
   const [datasetPreview, setDatasetPreview] = useState(false);
 
   const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
-  const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
   const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
   const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
 
@@ -406,10 +461,25 @@ export function ResearchDetails({
   // researchValues.draftVersion always reflects the current research state —
   // getResearchDetail always spreads the full research doc (incl. draftVersion)
   // regardless of which version was requested.
-  const isViewingDraft = selectedVersion === researchValues.draftVersion;
+  // Draft-only workflow actions (Submit/Reject/Approve, Merge) stay gated on this.
+  const isViewingDraft = isViewingDraftVersion({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+  });
+
+  // The edit surface (fieldsets + Save) is unlocked whenever editing is valid:
+  // the draft version, OR the published latest of a published research (patch).
+  // Replaces the former isViewingDraft-only gates so the published view is editable.
+  const isEditable = isResearchEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
 
   // Per-tab dirty state: a tab is dirty if the field value differs from initial
   const formValues = useStore(form.store, (state) => state.values);
+
   const dirtyFields = Object.fromEntries(
     topLevelFields.map((field) => [
       field,
@@ -419,7 +489,21 @@ export function ResearchDetails({
       ),
     ]),
   ) as Record<(typeof topLevelFields)[number], boolean>;
-  const isModified = Object.values(dirtyFields).some(Boolean);
+  // releaseNote is part of the update payload but rendered outside the tabbed
+  // loop (excluded from topLevelFields), so track its dirty state separately to
+  // keep the Save draft button in sync. Compare per-locale text and treat empty
+  // string and undefined as equivalent, so clearing all text in a field that
+  // started empty returns it to the non-modified state.
+  const releaseNoteCurrent = (formValues as Record<string, any>).releaseNote;
+  const releaseNoteDefault = (defaultValues as Record<string, any>).releaseNote;
+  const releaseNoteDirty = (["en", "ja"] as const).some(
+    (locale) =>
+      !evaluate(
+        releaseNoteCurrent?.[locale]?.text || undefined,
+        releaseNoteDefault?.[locale]?.text || undefined,
+      ),
+  );
+  const isModified = Object.values(dirtyFields).some(Boolean) || releaseNoteDirty;
 
   return (
     <Card
@@ -437,14 +521,15 @@ export function ResearchDetails({
             canNewVersion={canNewVersion}
             onVersionChange={setSelectedVersion}
           />
-          <Label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="slim"
+            className="ml-auto"
+            onClick={() => setEffectivePreview(true)}
+          >
             {previewLabel}
-            <Switch
-              checked={effectivePreview}
-              onCheckedChange={setEffectivePreview}
-              className="data-[state=checked]:bg-secondary"
-            />
-          </Label>
+          </Button>
         </>
       }
       captionClassName="flex items-center"
@@ -468,11 +553,14 @@ export function ResearchDetails({
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 flex-col overflow-hidden", preview ? "flex" : "hidden")}>
-        <div className="flex shrink-0 items-center gap-2 px-5 pt-3 pb-2">
-          <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <PreviewDialog
+        open={preview}
+        onOpenChange={setPreview}
+        title={`${researchValues.humId} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
+        <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
             <VersionCard
               versionData={previewValues as ResearchDetailResponse["data"]}
@@ -480,9 +568,9 @@ export function ResearchDetails({
             />
           </IntlProvider>
         </div>
-      </div>
+      </PreviewDialog>
 
-      <div className={cn("flex min-h-0 flex-1 flex-col", preview && "hidden")}>
+      <div className="flex min-h-0 flex-1 flex-col">
         <Tabs
           defaultValue="metadata"
           value={activeTab}
@@ -505,13 +593,19 @@ export function ResearchDetails({
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              <MergeResearchDialog
-                className="mr-auto"
-                currentValues={formValues}
-                currentHumId={humId}
-                disabled={!isViewingDraft || !canUpdate}
-                onMerge={applyMergedValues}
-              />
+              {/* Merge is a draft-construction tool — hidden entirely on non-draft
+                  views (e.g. published patch). The spacer keeps the rest of the
+                  action row right-aligned when the button is absent. */}
+              {isViewingDraft ? (
+                <MergeResearchDialog
+                  className="mr-auto"
+                  currentValues={formValues}
+                  disabled={!canUpdate}
+                  onMerge={applyMergedValues}
+                />
+              ) : (
+                <div className="mr-auto" />
+              )}
 
               {canDelete && (
                 <Button type="button" size="lg" onClick={handleDelete}>
@@ -540,32 +634,30 @@ export function ResearchDetails({
                 </Button>
               )}
 
-              {isViewingDraft && canUpdate && (
+              {isEditable && canUpdate && (
                 <Button
                   size="lg"
                   onClick={() => form.handleSubmit()}
                   disabled={isSaving || !isModified}
                 >
-                  {isSaving ? "Saving…" : "Save draft"}
+                  {isSaving ? "Saving…" : isViewingDraft ? "Save draft" : "Save"}
                 </Button>
               )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
-
               {canUpdateUids && (
                 <div className="px-5 pt-5">
                   <form.AppField name="uids" mode="array">
                     {(field) => (
                       <fieldset
-                        disabled={!isViewingDraft || !canUpdate}
+                        disabled={!isEditable || !canUpdate}
                         className="group/fieldset flex flex-col gap-2"
                       >
                         <Label>User IDs (uids)</Label>
                         <div className="nested-form flex w-full flex-col gap-1">
-                          {field.state.value?.map((_, i) => (
-                            <div key={i} className="flex items-center gap-1">
+                          {field.state.value?.map((uid, i) => (
+                            <div key={uid} className="flex items-center gap-1">
                               <form.AppField name={`uids[${i}]`}>
                                 {(f) => <f.TextField className="flex-1" />}
                               </form.AppField>
@@ -590,55 +682,46 @@ export function ResearchDetails({
                 </div>
               )}
 
-              <Tabs defaultValue="title" className="mt-5 flex flex-col">
+              <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
+                <form.AppField name="releaseNote">
+                  {(field) => (
+                    <field.BilingualTextValueField
+                      label="Release note"
+                      inputsClassName="flex w-full gap-2"
+                    />
+                  )}
+                </form.AppField>
+              </fieldset>
+              <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">
-                    <TabsTrigger variant="line" value="title">
-                      <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="summary">
-                      <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="dataProvider">
-                      <TabLabel dirty={dirtyFields.dataProvider}>Data providers</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="researchProject">
-                      <TabLabel dirty={dirtyFields.researchProject}>Research project</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="grant">
-                      <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="relatedPublication">
-                      <TabLabel dirty={dirtyFields.relatedPublication}>
-                        Related publication
-                      </TabLabel>
-                    </TabsTrigger>
+                    {metadataFields.map((field) => (
+                      <TabsTrigger key={field.key} variant="line" value={field.key}>
+                        <TabLabel dirty={dirtyFields[field.key]}>{field.label}</TabLabel>
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </div>
-                <fieldset
-                  disabled={!isViewingDraft || !canUpdate}
-                  className="group/fieldset px-5 pt-5 pb-5"
-                >
-                  <TabsContent value="title">
-                    <form.AppField name="title">
-                      {(field) => <field.BilingualTextField variant="textarea" />}
-                    </form.AppField>
-                  </TabsContent>
-                  <TabsContent value="summary">
-                    <SummaryForm form={form} fields="summary" />
-                  </TabsContent>
-                  <TabsContent value="dataProvider">
-                    <DataProviderArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="researchProject">
-                    <ResearchProjectArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="grant">
-                    <GrantArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="relatedPublication">
-                    <RelatedPublicationArrayField form={form} />
-                  </TabsContent>
+                <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
+                  {metadataFields.map((field) => (
+                    <TabsContent key={field.key} value={field.key}>
+                      {field.renderer ? (
+                        field.renderer(form)
+                      ) : (
+                        <form.AppField name={field.key as never}>
+                          {(f) => (
+                            <FieldControl
+                              fieldKey={field.key}
+                              kind={field.kind}
+                              value={f.state.value}
+                              defaultValue={(defaultValues as Record<string, unknown>)[field.key]}
+                              onChange={(v) => f.handleChange(v as never)}
+                            />
+                          )}
+                        </form.AppField>
+                      )}
+                    </TabsContent>
+                  ))}
                 </fieldset>
               </Tabs>
             </div>
@@ -675,6 +758,7 @@ export function ResearchDetails({
                 lang={lang}
                 research={researchValues}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetDirty(false);
@@ -686,6 +770,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);
@@ -698,32 +783,5 @@ export function ResearchDetails({
         </Tabs>
       </div>
     </Card>
-  );
-}
-
-function ReleaseNoteDisplay({
-  releaseNote,
-}: {
-  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
-}) {
-  const en = releaseNote?.en?.text;
-  const ja = releaseNote?.ja?.text;
-  if (!en && !ja) return null;
-
-  return (
-    <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
-      {en && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (En)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{en}</p>
-        </div>
-      )}
-      {ja && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (Ja)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
-        </div>
-      )}
-    </div>
   );
 }

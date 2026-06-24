@@ -42,7 +42,7 @@ export const Route = createRootRouteWithContext<Context>()({
         content: `${APP_VERSION}_${APP_VERSION_HASH}`,
       },
       ...seo({
-        title: "HumanDBS",
+        title: "HumanDBs",
         description: `HumanDBs - databases of researches`,
         image: "/favicon-48x48.ico",
       }),

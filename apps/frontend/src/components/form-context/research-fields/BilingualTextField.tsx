@@ -34,7 +34,7 @@ export default function BilingualTextField({
   }
   return (
     <Label className="flex w-full flex-col items-stretch gap-2">
-      <span>{label ?? "Text"}</span>
+      <span>{label}</span>
       <div className="flex w-full gap-2">
         {i18n.locales.map((locale) => {
           const isModified = isFieldModified(field, locale);

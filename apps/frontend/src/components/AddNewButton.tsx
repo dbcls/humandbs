@@ -3,6 +3,9 @@ import { LucidePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/**
+ *  "+ Add new" button for CMS list of items (middle column)
+ */
 export function AddNewButton({
   onClick,
   children,

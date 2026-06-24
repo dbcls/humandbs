@@ -5,13 +5,10 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { CreateResearchRequest } from "@humandbs/backend/types";
+import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,12 +18,18 @@ import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { MergeResearchDialog } from "./MergeResearch/index";
+import {
+  DataProviderArrayField,
+  GrantArrayField,
+  RelatedPublicationArrayField,
+  ResearchProjectArrayField,
+} from "./researchFieldsConfig";
 import { DUMMY_HUM_ID } from "./utils/dummyResearch";
 import type { NewResearchMergeValues } from "./utils/researchValues";
 import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
 
 const defaultValues: CreateResearchRequest = {
-  humId: undefined,
+  humId: "",
   title: { ja: "", en: "" },
   summary: {
     aims: { ja: { text: "" }, en: { text: "" } },
@@ -39,10 +42,6 @@ const defaultValues: CreateResearchRequest = {
   grant: [],
   relatedPublication: [],
   uids: [],
-  initialReleaseNote: {
-    ja: { text: "" },
-    en: { text: "" },
-  },
 };
 
 export function NewResearchForm({
@@ -95,12 +94,12 @@ export function NewResearchForm({
 
   const form = useAppForm({
     defaultValues,
+    validators: { onChange: CreateResearchRequestSchema },
 
     onSubmit: async ({ value }) => {
       setError(null);
-      const normalizedHumId =
-        value.humId == null || value.humId.trim() === "" ? undefined : value.humId.trim();
-      await mutateAsync({ ...value, humId: normalizedHumId });
+
+      await mutateAsync({ ...value, humId: value.humId.trim() });
     },
   });
   const formValues = useStore(form.store, (state) => state.values);
@@ -156,13 +155,7 @@ export function NewResearchForm({
           </div>
 
           <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
-            <form.AppField
-              name="humId"
-              validators={{
-                onChange: ({ value }) =>
-                  !value || value.trim() === "" ? "Research ID is required" : undefined,
-              }}
-            >
+            <form.AppField name="humId">
               {(field) => <field.TextField type="col" label="Research ID (humId)*" />}
             </form.AppField>
 
@@ -171,8 +164,8 @@ export function NewResearchForm({
                 <fieldset className="flex flex-col gap-2">
                   <Label>User IDs (uids)</Label>
                   <div className="nested-form flex w-full flex-col gap-1">
-                    {field.state.value?.map((_, i) => (
-                      <div key={i} className="flex items-center gap-1">
+                    {field.state.value?.map((uid, i) => (
+                      <div key={uid} className="flex items-center gap-1">
                         <form.AppField name={`uids[${i}]`}>
                           {(f) => <f.TextField className="flex-1" />}
                         </form.AppField>
@@ -197,15 +190,6 @@ export function NewResearchForm({
                     </Button>
                   </div>
                 </fieldset>
-              )}
-            </form.AppField>
-
-            <form.AppField name="initialReleaseNote">
-              {(field) => (
-                <field.BilingualTextValueField
-                  label="Initial Release Note"
-                  inputsClassName="flex w-full gap-2"
-                />
               )}
             </form.AppField>
           </div>

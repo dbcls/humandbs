@@ -14,6 +14,7 @@ export function MarkdownWithTOC({
   previousVersions,
   revisionsBasePath,
   afterContent,
+  beforeContent,
   hideTOC,
 }: {
   title: React.ReactNode | string | null;
@@ -22,14 +23,16 @@ export function MarkdownWithTOC({
   revisionsBasePath?: string;
   documentName?: string | null;
   afterContent?: React.ReactNode;
+  beforeContent?: React.ReactNode;
   hideTOC?: boolean;
 }) {
-  const showTOC = markdownResult.headings.length > 0 && !hideTOC;
+  const showTOC = markdownResult.headings && markdownResult.headings?.length > 0 && !hideTOC;
   return (
     <Card className="w-full min-w-0 pt-6 pb-20" containerClassName="main-content mt-8 min-w-0">
       <div className="flex gap-8">
-        {showTOC ? <TOC headings={markdownResult.headings} /> : null}
+        {showTOC ? <TOC headings={markdownResult.headings ?? []} /> : null}
         <div className="flex-1">
+          {beforeContent}
           <Markdown contentHtml={markdownResult} title={title} />
           {previousVersions && revisionsBasePath && (
             <PreviousVersionsList

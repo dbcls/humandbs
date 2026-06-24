@@ -271,6 +271,51 @@ export const $getPublishedDocumentVersion = createServerFn({
     return docVersion;
   });
 
+/**
+ * For Diff view
+ */
+export function getTwoDocumentVersionsQueryOptions({
+  contentId,
+  versionNumber1,
+  versionNumber2,
+  locale,
+}: {
+  contentId: string;
+  versionNumber1: number;
+  versionNumber2: number;
+  locale: Locale;
+}) {
+  return queryOptions({
+    queryKey: [
+      "documents",
+      contentId,
+      "published-versions",
+      versionNumber1,
+      versionNumber2,
+      locale,
+    ],
+    queryFn: async () => {
+      const [version1, version2] = await Promise.all([
+        $getPublishedDocumentVersion({
+          data: { contentId, versionNumber: versionNumber1, locale },
+        }),
+        $getPublishedDocumentVersion({
+          data: { contentId, versionNumber: versionNumber2, locale },
+        }),
+      ]);
+      return [version1, version2];
+    },
+    staleTime: 5 * 1000 * 60,
+    // versionNumber can legitimately be 0/falsy-adjacent on the smallest version,
+    // so guard on Number.isFinite rather than truthiness.
+    enabled:
+      !!contentId &&
+      Number.isFinite(versionNumber1) &&
+      Number.isFinite(versionNumber2) &&
+      !!locale,
+  });
+}
+
 // === GET PUBLISHED VERSIONS LIST
 
 const getPublishedDocVersionListRequestSchema = docPublishedVersionsRequestSchema;

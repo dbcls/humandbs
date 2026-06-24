@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 
 import { Suspense, useMemo, useState } from "react";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
@@ -26,7 +27,6 @@ import type { ValidationResponse } from "@/serverFunctions/validate";
 import { $validateEntityId } from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { NoItemsMessage } from "./NoItemsMessage";
 
@@ -197,6 +197,7 @@ export function DocumentsList({
         title="Change Document ID"
         description={renamingId ? `Current ID: ${renamingId}` : undefined}
         label="New ID"
+        initialValue={renamingId ?? ""}
         trigger={<span />}
         open={renamingId !== null}
         onOpenChange={(open) => {

@@ -3,6 +3,9 @@
     "humandb": "NBDC ヒトデータベース",
     "to-": "{place}へ",
     "previous-versions": "{documentName}の改訂",
+    "show-diff": "差分を表示",
+    "diff-title": "変更点",
+    "diff-description": "改訂{from}から改訂{to}への差分。",
     "original": "初版",
     "revision": "改訂{n}",
     "revisions": "改訂",
@@ -102,7 +105,7 @@
     "status": "ステータス"
   },
   "VersionCard": {
-    "releaseInfo": "リリース情報",
+    "release-info": "リリース情報",
     "researchOverview": "研究概要",
     "aims": "目的",
     "methods": "研究方法",
@@ -123,6 +126,7 @@
     "details": "詳細"
   },
   "Dataset": {
+    "cart-note": "利用申請したい研究IDまたはデータセットIDのカートアイコンをクリックして、カートに追加してください。",
     "datasetId": "データセット ID",
     "release-info": "リリース情報",
     "dataset-list": "データセット一覧",
@@ -138,7 +142,7 @@
     "date-modified": "更新日",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
-    "experiments": "実験一覧",
+    "experiments": "解析手法",
     "Unrestricted-access": "非制限公開",
     "Controlled-access (Type I)": "制限公開（Type I）",
     "Controlled-access (Type II)": "制限公開（Type II）",
@@ -226,11 +230,12 @@
     "country": "国"
   },
   "Research": {
+    "cart-note": "利用申請したい研究IDまたはデータセットIDのカートアイコンをクリックして、カートに追加してください。",
     "research-id": "研究 ID",
     "research-list": "研究一覧",
     "humId": "研究 ID",
     "datasets": "データセット一覧",
-    "releaseInfo": "リリース情報",
+    "release-info": "リリース情報",
     "researchOverview": "研究概要",
     "aims": "目的",
     "title": "研究題目",
@@ -260,6 +265,7 @@
     "publicationDatasets": "データセット",
     "platforms": "プラットフォーム",
     "controlledAccessUser": "制限公開データの利用者一覧",
+    "organization-country": "国",
     "datasetId": "データセット ID",
     "criteria": "アクセス制限",
     "typeOfData": "データの種類",
@@ -271,16 +277,18 @@
     "totalResults": "全{count}件"
   },
   "DatasetVersionCard": {
-    "releaseInfo": "リリース情報",
+    "release-info": "リリース情報",
     "alreadyInCart": "カートに追加済み",
     "addToCart": "カートに追加",
     "info": "情報",
     "releaseDate": "公開日付",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
-    "experiments": "実験一覧"
+    "experiments": "解析手法"
   },
   "Data-submission": {
+    "to-data-submission": "申請システムへ（仮）",
+    "to-navigation": "登録ナビゲーション（仮）",
     "data-submission": "データの提供",
     "before-application": "申請システムの前に"
   },
@@ -481,7 +489,19 @@
     "decision-label-custom": "カスタム値",
     "decision-label-pending": "未決定 — 適用時は現在の値を保持",
     "will-overwrite": "上書きされる値",
-    "no-changes": "変更はありません"
+    "no-changes": "変更はありません",
+    "merge-data": "データを統合",
+    "merge-data-description": "研究データをこのドラフトにフィールドごとに確認して統合します。",
+    "jds-id-label": "ブランチ番号つき　J-DS ID",
+    "jds-id-placeholder": "J-DS000001-001 ",
+    "empty-state": "J-DS ID を入力して「取得」をクリックして開始",
+    "not-found": "この ID の J-DS 研究が見つかりません。",
+    "fetch-failed": "J-DS 研究の取得に失敗しました。",
+    "enter-id": "J-DS ID を入力してください。",
+    "get": "取得",
+    "cancel": "キャンセル",
+    "apply": "適用",
+    "select-field": "左のパネルからフィールドを選択してください"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",

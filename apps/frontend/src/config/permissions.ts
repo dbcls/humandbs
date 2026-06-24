@@ -121,7 +121,7 @@ export interface AccessResources {
   researches: {
     action:
       | "create" // POST /research/new                  — admin only
-      | "update" // PUT  /research/{humId}/update       — owner (draft) or admin
+      | "update" // PUT  /research/{humId}/update|patch  — owner or admin (draft → /update, published → /patch)
       | "delete" // POST /research/{humId}/delete       — admin only (logical delete)
       | "submit" // POST /research/{humId}/submit       — owner or admin (draft → review)
       | "approve" // POST /research/{humId}/approve      — admin only (review → published)
@@ -132,10 +132,12 @@ export interface AccessResources {
     params?: { research?: Pick<ResearchDetail, "uids" | "status"> };
   };
   datasets: {
-    // Dataset has no status of its own — all operations require parent research to be draft
+    // Dataset has no status of its own — operations derive from the parent research
+    // status. create/delete require a draft parent; update additionally allows a
+    // published parent (in-place patch via /dataset/{datasetId}/patch).
     action:
       | "create" // POST /research/{humId}/dataset/new  — owner or admin (research draft only)
-      | "update" // PUT  /dataset/{datasetId}/update    — owner or admin (research draft only)
+      | "update" // PUT  /dataset/{datasetId}/update|patch — owner or admin (draft → /update, published → /patch)
       | "delete"; // POST /dataset/{datasetId}/delete    — admin only (research draft only)
     params?: { research?: Pick<ResearchDetail, "uids" | "status"> };
   };
@@ -173,7 +175,10 @@ export function can<R extends keyof AccessResources>(
       case "delete":
         return { can: isAdmin };
       case "update":
-        return { can: (isAdmin || isOwner) && status === "draft" };
+        // Loosened from draft-only: a published research can be patched in place
+        // (PUT /research/{humId}/patch) with no version bump. Draft edits still go
+        // to /update; the component routes by viewed version.
+        return { can: (isAdmin || isOwner) && (status === "draft" || status === "published") };
       case "submit":
         return { can: (isAdmin || isOwner) && status === "draft" };
       case "approve":
@@ -193,12 +198,16 @@ export function can<R extends keyof AccessResources>(
     const research = (params as AccessResources["datasets"]["params"])?.research;
     const isOwner = isAuthed && !!research && research.uids.includes(user!.id);
     const isDraft = research?.status === "draft";
+    const isPublished = research?.status === "published";
 
     switch (action as AccessResources["datasets"]["action"]) {
       case "create":
         return { can: (isAdmin || isOwner) && isDraft };
       case "update":
-        return { can: (isAdmin || isOwner) && isDraft };
+        // Loosened from draft-only: a dataset whose parent research is published
+        // can be patched in place (PUT /dataset/{datasetId}/patch). The view routes
+        // by parent status — draft → /update, published → /patch.
+        return { can: (isAdmin || isOwner) && (isDraft || isPublished) };
       case "delete":
         return { can: isAdmin && isDraft };
     }

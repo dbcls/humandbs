@@ -6,12 +6,12 @@ import { Suspense, useEffect, useRef } from "react";
 import type { ResearchSearchResponse, ResearchSummary } from "@humandbs/backend/types";
 import { ResearchStatusSchema } from "@humandbs/backend/types";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { StatusTag } from "@/components/StatusTag";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Locale } from "@/config/i18n";
@@ -32,10 +32,6 @@ type ResearchesInfiniteData = {
   pages: Array<{ data: ResearchSummary[] }>;
   pageParams: unknown[];
 };
-
-function markResearchDeleted(research: ResearchSummary): ResearchSummary {
-  return { ...research, status: "deleted" };
-}
 
 export function ResearchesList({
   lang,
@@ -113,18 +109,14 @@ export function ResearchesList({
               ...oldData,
               pages: oldData.pages.map((page) => ({
                 ...page,
-                data: page.data.map((research) =>
-                  research.humId === humId ? markResearchDeleted(research) : research,
-                ),
+                data: page.data.filter((research) => research.humId !== humId),
               })),
             };
           }
 
           return {
             ...oldData,
-            data: oldData.data.map((research) =>
-              research.humId === humId ? markResearchDeleted(research) : research,
-            ),
+            data: oldData.data.filter((research) => research.humId !== humId),
           };
         },
       );
@@ -158,16 +150,7 @@ export function ResearchesList({
       <div className="flex flex-col gap-3">
         <ResearchFilters />
 
-        {canCreate && (
-          <Button
-            variant="accent"
-            className="text-center"
-            disabled={hasDummy}
-            onClick={handleAddNew}
-          >
-            Add New
-          </Button>
-        )}
+        {canCreate && <AddNewButton disabled={hasDummy} onClick={handleAddNew} />}
       </div>
 
       <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">

@@ -92,6 +92,93 @@ function SortableItem({
   );
 }
 
+type ArrayFieldInnerProps<T> = Pick<
+  ArrayFieldProps<T>,
+  "defaultItem" | "renderItem" | "icon" | "getItemTitle" | "label" | "initialItems"
+> & {
+  field: AnyForm;
+  dndId: string;
+};
+
+function ArrayFieldInner<T>({
+  field,
+  dndId,
+  defaultItem,
+  renderItem,
+  icon,
+  getItemTitle,
+  label,
+  initialItems,
+}: ArrayFieldInnerProps<T>) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const items: T[] = field.state.value ?? [];
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = itemIds.indexOf(String(active.id));
+      const newIndex = itemIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      const reordered = arrayMove([...items], oldIndex, newIndex);
+      moveItemId(oldIndex, newIndex);
+      // Replace entire array with reordered version
+      field.setValue(reordered);
+    }
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-3">
+      {label && <legend className="font-semibold text-sm">{label}</legend>}
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+          {items.map((_item: T, i: number) => {
+            const isItemModified = initialItems
+              ? i >= initialItems.length || !evaluate(_item, initialItems[i])
+              : false;
+
+            return (
+              <SortableItem
+                key={itemIds[i]}
+                id={itemIds[i]}
+                index={i}
+                icon={icon}
+                title={getItemTitle ? getItemTitle(_item, i) : `Item ${i + 1}`}
+                isModified={isItemModified}
+                onRemove={() => {
+                  removeItemId(i);
+                  field.removeValue(i);
+                }}
+              >
+                {renderItem(i)}
+              </SortableItem>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full border-dashed"
+        onClick={() => field.pushValue(defaultItem())}
+      >
+        + Add
+      </Button>
+    </fieldset>
+  );
+}
+
 export function ArrayField<T>({
   form,
   name,
@@ -103,77 +190,21 @@ export function ArrayField<T>({
   initialItems,
 }: ArrayFieldProps<T>) {
   const dndId = useId();
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
 
   return (
     <form.AppField name={name} mode="array">
-      {(field: AnyForm) => {
-        const items: T[] = field.state.value ?? [];
-        const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
-
-        function handleDragEnd(event: DragEndEvent) {
-          const { active, over } = event;
-          if (over && active.id !== over.id) {
-            const oldIndex = itemIds.indexOf(String(active.id));
-            const newIndex = itemIds.indexOf(String(over.id));
-            if (oldIndex < 0 || newIndex < 0) return;
-            const reordered = arrayMove([...items], oldIndex, newIndex);
-            moveItemId(oldIndex, newIndex);
-            // Replace entire array with reordered version
-            field.setValue(reordered);
-          }
-        }
-
-        return (
-          <fieldset className="flex flex-col gap-3">
-            {label && <legend className="font-semibold text-sm">{label}</legend>}
-            <DndContext
-              id={dndId}
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                {items.map((_item: T, i: number) => {
-                  const isItemModified = initialItems
-                    ? i >= initialItems.length || !evaluate(_item, initialItems[i])
-                    : false;
-
-                  return (
-                    <SortableItem
-                      key={itemIds[i]}
-                      id={itemIds[i]}
-                      index={i}
-                      icon={icon}
-                      title={getItemTitle ? getItemTitle(_item, i) : `Item ${i + 1}`}
-                      isModified={isItemModified}
-                      onRemove={() => {
-                        removeItemId(i);
-                        field.removeValue(i);
-                      }}
-                    >
-                      {renderItem(i)}
-                    </SortableItem>
-                  );
-                })}
-              </SortableContext>
-            </DndContext>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-dashed"
-              onClick={() => field.pushValue(defaultItem())}
-            >
-              + Add
-            </Button>
-          </fieldset>
-        );
-      }}
+      {(field: AnyForm) => (
+        <ArrayFieldInner<T>
+          field={field}
+          dndId={dndId}
+          defaultItem={defaultItem}
+          renderItem={renderItem}
+          icon={icon}
+          getItemTitle={getItemTitle}
+          label={label}
+          initialItems={initialItems}
+        />
+      )}
     </form.AppField>
   );
 }

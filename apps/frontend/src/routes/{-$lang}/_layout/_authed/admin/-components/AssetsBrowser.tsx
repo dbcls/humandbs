@@ -92,20 +92,20 @@ function getFolderBaseName(path: string) {
 }
 
 interface AssetsBrowserProps {
-  mode?: "manage" | "pick";
   initialFolderPath?: string;
   onSelectedFileChange?: (file: AssetHierarchyFile | null) => void;
 }
 
 export function AssetsBrowser({
-  mode = "manage",
   initialFolderPath = "",
   onSelectedFileChange,
 }: AssetsBrowserProps) {
   const queryClient = useQueryClient();
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
   const [selectedFolderPath, setSelectedFolderPath] = useState(initialFolderPath);
-  const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
+  const [selectedItemPath, setSelectedItemPath] = useState<string | null>(
+    initialFolderPath || null,
+  );
   const [creatingFolderIn, setCreatingFolderIn] = useState<{
     path: string;
     existingNames: string[];
@@ -144,16 +144,14 @@ export function AssetsBrowser({
         setSelectedFolderPath(folderPath);
         setSelectedItemPath(nextPath);
 
-        if (mode === "pick") {
-          onSelectedFileChange?.({
-            type: "file",
-            name: file.name,
-            path: nextPath,
-            url: `/files/${nextPath}`,
-            mimeType: file.type || "application/octet-stream",
-            size: file.size,
-          });
-        }
+        onSelectedFileChange?.({
+          type: "file",
+          name: file.name,
+          path: nextPath,
+          url: `/files/${nextPath}`,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+        });
       }
 
       await invalidateHierarchy();
@@ -208,8 +206,6 @@ export function AssetsBrowser({
 
   const selectedItem =
     currentFolder.children.find((item) => item.path === selectedItemPath) ?? null;
-
-  const canManage = mode === "manage";
 
   function handleSelectItem(item: AssetHierarchyItem) {
     setSelectedItemPath(item.path);
@@ -410,77 +406,73 @@ export function AssetsBrowser({
                                   </>
                                 )}
                               </Button>
-                              {canManage && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={(e) => e.stopPropagation()}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <LucideMoreVertical className="size-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuItem
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        setRenamingItem({ item, siblings: folder.children });
+                                      }}
                                     >
-                                      <LucideMoreVertical className="size-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    <DropdownMenuGroup>
-                                      <DropdownMenuItem
-                                        onSelect={(e) => {
-                                          e.preventDefault();
-                                          setRenamingItem({ item, siblings: folder.children });
-                                        }}
-                                      >
-                                        <Label>Rename</Label>
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onSelect={(e) => {
-                                          e.preventDefault();
-                                          handleDeleteItem(item);
-                                        }}
-                                      >
-                                        <Label>
-                                          <Trash2 />
-                                          Delete
-                                        </Label>
-                                      </DropdownMenuItem>
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
+                                      <Label>Rename</Label>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteItem(item);
+                                      }}
+                                    >
+                                      <Label>
+                                        <Trash2 />
+                                        Delete
+                                      </Label>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </li>
                           );
                         })
                       )}
                     </ul>
 
-                    {canManage && (
-                      <div className="mt-2 flex gap-1 border-t pt-2">
-                        <Button
-                          variant="ghost"
-                          size="slim"
-                          className="flex-1 text-xs"
-                          onClick={() =>
-                            setCreatingFolderIn({
-                              path: folder.path,
-                              existingNames: folder.children.map((c) => c.name),
-                            })
-                          }
-                        >
-                          <FolderPlus className="mr-1 size-3" />
-                          Create folder...
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="slim"
-                          className="flex-1 text-xs"
-                          disabled={isUploadingAsset}
-                          onClick={() => handleUploadClick(folder.path)}
-                        >
-                          <FilePlus2 className="mr-1 size-3" />
-                          Upload file...
-                        </Button>
-                      </div>
-                    )}
+                    <div className="mt-2 flex gap-1 border-t pt-2">
+                      <Button
+                        variant="ghost"
+                        size="slim"
+                        className="flex-1 text-xs"
+                        onClick={() =>
+                          setCreatingFolderIn({
+                            path: folder.path,
+                            existingNames: folder.children.map((c) => c.name),
+                          })
+                        }
+                      >
+                        <FolderPlus className="mr-1 size-3" />
+                        Create folder...
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="slim"
+                        className="flex-1 text-xs"
+                        disabled={isUploadingAsset}
+                        onClick={() => handleUploadClick(folder.path)}
+                      >
+                        <FilePlus2 className="mr-1 size-3" />
+                        Upload file...
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               </div>

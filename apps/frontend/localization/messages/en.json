@@ -3,6 +3,9 @@
     "humandb": "NBDC HumanDB",
     "to-": "To {place}",
     "previous-versions": "Revisions of {documentName}:",
+    "show-diff": "Show diff",
+    "diff-title": "Changes",
+    "diff-description": "Differences from revision {from} to revision {to}.",
     "original": "Original",
     "revision": "Revision {n}",
     "revisions": "Revisions",
@@ -102,7 +105,7 @@
     "status": "Status"
   },
   "VersionCard": {
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "researchOverview": "Research overview",
     "aims": "Aims:",
     "methods": "Methods:",
@@ -123,6 +126,7 @@
     "details": "Details"
   },
   "Dataset": {
+    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "datasetId": "Dataset ID",
     "release-info": "Release info",
     "dataset-list": "Dataset list",
@@ -138,10 +142,10 @@
     "date-modified": "Date modified",
     "typeOfData": "Type of data",
     "criteria": "Access type",
-    "experiments": "Experiments",
+    "experiments": "Analysis method",
     "Unrestricted-access": "Open (no restrictions)",
-    "Controlled-access (Type I)": "Type I (restrictions apply)",
-    "Controlled-access (Type II)": "Type II (restrictions apply)",
+    "Controlled-access (Type I)": "Controlled-access (Type I)",
+    "Controlled-access (Type II)": "Controlled-access (Type II)",
     "Analysis Methods": "Analysis Methods",
     "Antigen Activation": "Antigen Activation",
     "Bacteria Identification": "Bacteria Identification",
@@ -226,11 +230,12 @@
     "country": "Country"
   },
   "Research": {
+    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "research-id": "Research ID",
     "research-list": "List of researches",
     "humId": "Research ID",
     "datasets": "Datasets",
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "researchOverview": "Research overview",
     "aims": "Aims",
     "title": "Title",
@@ -260,6 +265,7 @@
     "publicationDatasets": "Datasets",
     "platforms": "Platforms",
     "controlledAccessUser": "Controlled access users",
+    "organization-country": "Country",
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
@@ -270,16 +276,18 @@
     "releaseNote": "Release note"
   },
   "DatasetVersionCard": {
-    "releaseInfo": "Release info",
+    "release-info": "Release info",
     "alreadyInCart": "Already in cart",
     "addToCart": "Add to cart",
     "info": "Info",
     "releaseDate": "Release date",
     "typeOfData": "Type of data",
     "criteria": "Access type",
-    "experiments": "Experiments"
+    "experiments": "Analysis method"
   },
   "Data-submission": {
+    "to-data-submission": "To application system",
+    "to-navigation": "To applicaton submission",
     "data-submission": "Data submission",
     "before-application": "Before application system"
   },
@@ -294,8 +302,8 @@
       "title": "Access type",
       "options": {
         "Unrestricted-access": "Open (no restrictions)",
-        "Controlled-access (Type I)": "Type I (restrictions apply)",
-        "Controlled-access (Type II)": "Type II (restrictions apply)"
+        "Controlled-access (Type I)": "Controlled-access (Type I)",
+        "Controlled-access (Type II)": "Controlled-access (Type II)"
       }
     },
     "subjectCountType": {
@@ -480,7 +488,19 @@
     "decision-label-custom": "Custom value",
     "decision-label-pending": "No decision yet — will keep current on apply",
     "will-overwrite": "Will overwrite fields",
-    "no-changes": "No fields will be overwritten"
+    "no-changes": "No fields will be overwritten",
+    "merge-data": "Merge data",
+    "merge-data-description": "Review and merge research data into this draft field by field.",
+    "jds-id-label": "J-DS ID with branch number",
+    "jds-id-placeholder": "J-DS000001-001",
+    "empty-state": "Enter a J-DS ID and click Get to start",
+    "not-found": "No J-DS research found with this ID.",
+    "fetch-failed": "Failed to get J-DS research.",
+    "enter-id": "Enter a J-DS ID.",
+    "get": "Get",
+    "cancel": "Cancel",
+    "apply": "Apply",
+    "select-field": "Select a field from the left panel"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",

@@ -239,6 +239,26 @@ export const $updateDataset = createServerFn({ method: "POST" })
     }
   });
 
+/**
+ * Patches a dataset in place when its parent research is published (no version
+ * bump). Mirrors $updateDataset — same body and lock-bearing response — differing
+ * only in the backend endpoint (`/patch` vs `/update`). The backend rejects a
+ * patch unless the parent research status is `published`, surfaced as a CONFLICT.
+ */
+export const $patchDataset = createServerFn({ method: "POST" })
+  .inputValidator((data: { datasetId: string; body: UpdateDatasetRequest }) => data)
+  .handler<Promise<UpdateDatasetResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const updated = await api.patchDataset(data.datasetId, data.body, accessToken);
+      return { ok: true, data: updated };
+    } catch (error) {
+      return mapApiError(error, "Failed to patch dataset.");
+    }
+  });
+
 const DeleteDatasetInputSchema = z.object({
   datasetId: z.string().min(1),
 });

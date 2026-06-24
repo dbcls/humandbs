@@ -64,7 +64,7 @@ export function TagInput({
       >
         {value.map((tag, i) => (
           <span
-            key={i}
+            key={tag}
             className={cn(
               "inline-flex items-center gap-0.5 rounded-full bg-form-tag-bg px-2 py-0.5 text-xs",
               {

@@ -41,7 +41,12 @@ export default function BilingualTextValueField({
       <span className="font-medium text-sm">{label ?? "Text Value"}</span>
       <div className={inputsClassName ?? "flex gap-2"}>
         {i18n.locales.map((locale) => {
-          const isModified = !evaluate(field.state.value?.[locale]?.text, initial?.[locale]?.text);
+          // Treat empty string and undefined as equivalent: clearing all text in
+          // a field that started empty should return it to the non-modified state.
+          const isModified = !evaluate(
+            field.state.value?.[locale]?.text || undefined,
+            initial?.[locale]?.text || undefined,
+          );
 
           return (
             <div key={locale} className="relative flex-1">

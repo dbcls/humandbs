@@ -38,13 +38,11 @@ export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema
     page: true,
     limit: true,
   })
-  .extend(
-    z.object({
-      q: z.string().optional(),
-      sort: z.string().default("humId"),
-      order: z.string().default("desc"),
-    }).shape,
-  );
+  .extend({
+    q: z.string().optional(),
+    sort: ResearchSearchBodySchema.shape.sort.unwrap().default("humId"),
+    order: ResearchSearchBodySchema.shape.order.removeDefault().default("desc"),
+  });
 
 export type AuthedResearchesListSearchParams = z.infer<
   typeof authedResearchesListSearchParamsSchema

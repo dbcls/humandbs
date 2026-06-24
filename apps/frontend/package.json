@@ -131,6 +131,8 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.3.0",
+    "hast-util-from-html": "^2.0.3",
+    "hast-util-to-html": "^9.0.5",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.3",
     "shadcn": "^3.8.4",

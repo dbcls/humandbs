@@ -19,7 +19,7 @@ export interface MarkdownHeading {
 
 export interface MarkdownResult {
   markup: string;
-  headings: MarkdownHeading[];
+  headings?: MarkdownHeading[];
 }
 
 function parseTagAttributes(rawAttributes: string): Record<string, string> {
@@ -192,11 +192,11 @@ function remarkCallouts() {
   return (tree: Parent) => processCalloutChildren(tree.children);
 }
 
-export async function renderMarkdown(content: string): Promise<MarkdownResult> {
-  const headings: MarkdownHeading[] = [];
-  content = normalizeCalloutFences(content);
-
-  const result = await unified()
+// Shared markdown→HAST pipeline (everything except final HTML serialization).
+// Reused by both renderMarkdown (HTML string) and renderMarkdownToHast (tree),
+// so callouts/headings/etc. behave identically wherever markdown is processed.
+function markdownToHastProcessor(headings: MarkdownHeading[]) {
+  return unified()
     .use(remarkParse) // Parse markdown
     .use(remarkGfm) // Support GitHub Flavored Markdown
     .use(remarkCallouts) // Convert :::callout blocks to <callout> elements
@@ -208,14 +208,36 @@ export async function renderMarkdown(content: string): Promise<MarkdownResult> {
     .use(rehypeAutolinkHeadings, {
       behavior: "prepend",
       properties: { className: ["anchor"] },
-    })
+    });
+}
 
+export async function renderMarkdown(content: string): Promise<MarkdownResult> {
+  const headings: MarkdownHeading[] = [];
+  content = normalizeCalloutFences(content);
+
+  const result = await markdownToHastProcessor(headings)
     .use(rehypeStringify) // Serialize to HTML string
-
     .process(content);
 
   return {
     markup: String(result),
     headings,
   };
+}
+
+/**
+ * Same pipeline as {@link renderMarkdown} but returns the HAST tree instead of
+ * an HTML string. Used by the version diff so we can diff the structured tree
+ * (callouts, headings, attributes) and re-serialize the result.
+ */
+export async function renderMarkdownToHast(
+  content: string,
+): Promise<{ tree: Root; headings: MarkdownHeading[] }> {
+  const headings: MarkdownHeading[] = [];
+  content = normalizeCalloutFences(content);
+
+  const processor = markdownToHastProcessor(headings);
+  const tree = (await processor.run(processor.parse(content))) as Root;
+
+  return { tree, headings };
 }

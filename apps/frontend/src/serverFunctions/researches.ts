@@ -20,13 +20,14 @@ import {
   ResearchSearchBodySchema,
 } from "@humandbs/backend/types";
 
-import { i18n, localeSchema } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { renderMarkdown } from "@/utils/markdown";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
@@ -35,6 +36,7 @@ import type {
   DatasetTemplateData,
   ResearchTemplateData,
 } from "../../../backend/src/api/types/templates";
+import { $renderMarkdown } from "./markdown";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -62,14 +64,6 @@ export type DeleteResearchResult =
     };
 export type GetJDSResearchResult =
   | { ok: true; data: ResearchTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-
-export type GetResearchForMergeResult =
-  | { ok: true; data: ResearchDetailResponse["data"] }
   | {
       ok: false;
       error: string;
@@ -124,6 +118,28 @@ export const $updateResearch = createServerFn({ method: "POST" })
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to update research.");
+    }
+  });
+
+/**
+ * Patches a published research in place (no version bump). Mirrors $updateResearch
+ * — same body and lock-bearing response — differing only in the backend endpoint
+ * (`/patch` vs `/update`). Trusts backend validation (validator is an identity
+ * function, for type safety only); the backend rejects a patch unless the research
+ * status is `published`, surfaced here as a CONFLICT.
+ */
+export const $patchResearch = createServerFn({ method: "POST" })
+  .inputValidator((data: { humId: string; body: UpdateResearchRequest }) => data)
+  .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const result = await api.patchResearch(data.humId, data.body, accessToken);
+
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to patch research.");
     }
   });
 
@@ -314,7 +330,7 @@ export const $listResearches = createServerFn()
 
     const { q, ...rest } = data;
 
-    // if query is humIdm then use search with humId
+    // if query is humId, then use search with humId
     if (q && /^hum\d+/i.test(q)) {
       return api.getResearchListPaginated(
         {
@@ -330,10 +346,10 @@ export const $listResearches = createServerFn()
     } else {
       return api.searchResearches(
         {
+          ...rest,
           query: q,
           includeFacets: false,
           sort: "humId",
-          ...rest,
         },
         accessToken ?? undefined,
       );
@@ -371,7 +387,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
           ...data,
           page: pageParam,
           limit: 20,
-          order: data.order ?? "desc",
+          order: data.order ?? "asc",
         },
       }),
     initialPageParam: 1,
@@ -389,13 +405,30 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(({ data }) => {
+  .handler(async ({ data }) => {
     const accessToken = $$getJWT();
-    return api.getResearchVersions({
+
+    const res = await api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang, includeRawHtml: false },
       accessToken: accessToken ?? undefined,
     });
+
+    for (const version of res.data) {
+      if (version.releaseNote.en) {
+        version.releaseNote.en.rawHtml = await $renderMarkdown({
+          data: { raw: version.releaseNote.en.text },
+        });
+      }
+
+      if (version.releaseNote.ja) {
+        version.releaseNote.ja.rawHtml = await $renderMarkdown({
+          data: { raw: version.releaseNote.ja.text },
+        });
+      }
+    }
+
+    return res;
   });
 
 export function getResearchVersionsQueryOptions(
@@ -423,11 +456,34 @@ export const $getResearch = createServerFn()
     const { humId, ...search } = filterDefined(data);
 
     try {
-      return await api.getResearchDetail({
+      const res = await api.getResearchDetail({
         search: { ...search, includeRawHtml: false },
         params: { humId },
         accessToken: accessToken ?? undefined,
       });
+
+      if (res.data.summary.targets.en) {
+        res.data.summary.targets.en.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.summary.targets.en.text },
+        });
+      }
+      if (res.data.summary.targets.ja) {
+        res.data.summary.targets.ja.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.summary.targets.ja.text },
+        });
+      }
+      if (res.data.releaseNote.en) {
+        res.data.releaseNote.en.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.releaseNote.en.text },
+        });
+      }
+      if (res.data.releaseNote.ja) {
+        res.data.releaseNote.ja.rawHtml = await $renderMarkdown({
+          data: { raw: res.data.releaseNote.ja.text },
+        });
+      }
+
+      return res;
     } catch (error) {
       throwSerializableApiError(error);
     }
@@ -456,34 +512,6 @@ export const $getResearchForEdit = createServerFn()
       params: { humId },
       accessToken: accessToken ?? undefined,
     });
-  });
-
-const GetResearchForMergeInputSchema = z.object({
-  humId: HumIdParamsSchema.shape.humId,
-});
-
-/**
- * Fetches an existing research (latest version, with rawHtml) for use as a merge
- * source. Returns the same discriminated result shape as the J-DS fetch so the
- * merge dialog can drive two symmetric mutations. `lang` is supplied as
- * `i18n.defaultLocale` purely to satisfy the API — the detail response carries
- * both locales regardless of the requested lang.
- */
-export const $getResearchForMerge = createServerFn({ method: "POST" })
-  .inputValidator(GetResearchForMergeInputSchema)
-  .handler<Promise<GetResearchForMergeResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-    try {
-      const result = await api.getResearchDetail({
-        search: { lang: i18n.defaultLocale, includeRawHtml: true },
-        params: { humId: data.humId },
-        accessToken,
-      });
-      return { ok: true, data: result.data };
-    } catch (error) {
-      return mapApiError(error, "Failed to get research.");
-    }
   });
 
 const ListDsApplicationsInputSchema = z.object({

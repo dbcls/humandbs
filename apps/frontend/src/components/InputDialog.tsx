@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "@tanstack/form-core";
 import { useForm } from "@tanstack/react-form";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -70,10 +70,21 @@ export function InputDialog({
     }
   }
 
+  // Sync the form to initialValue whenever the dialog opens. For controlled
+  // dialogs the parent drives `open`, so handleOpenChange(true) never fires and
+  // a changed initialValue (e.g. a different rename target) wouldn't prefill.
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      form.reset({ value: initialValue });
+    }
+    wasOpen.current = open;
+  }, [open, initialValue]);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogTitle className="text-base">{title}</DialogTitle>
         {description && <DialogDescription>{description}</DialogDescription>}
         <form

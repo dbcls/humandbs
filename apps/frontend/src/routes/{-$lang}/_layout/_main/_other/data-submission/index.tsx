@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  LucideExternalLink,
+  LucideFilePenLine,
+  LucideNavigation,
+  LucideNavigation2,
+  LucideNetwork,
+  LucideSend,
+} from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import { Link } from "@/components/Link";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +38,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-submis
 function RouteComponent() {
   const { contentHtml, versions, title } = Route.useLoaderData();
   const navigate = Route.useNavigate();
-  const t = useTranslations("Navbar");
-  const tCommon = useTranslations("common");
+  const t = useTranslations();
 
   return (
     <MarkdownWithTOC
@@ -38,16 +46,30 @@ function RouteComponent() {
       markdownResult={contentHtml}
       previousVersions={versions}
       revisionsBasePath="data-submission"
-      afterContent={
-        <div className="my-5 flex justify-center">
+      beforeContent={
+        <div className="my-5 flex justify-center gap-4">
           <Button
             className="text-3xl"
             size="lg"
             onClick={() => {
-              navigate({ to: "./navigation" });
+              navigate({ href: DS_NAVIGATION_URL });
             }}
           >
-            {tCommon("to-", { place: t("data-submission").toLowerCase() })}
+            <LucideNetwork className="mr-2 size-6" />
+            {t("Data-submission.to-navigation")}
+            <LucideExternalLink className="ml-2 size-6" />
+          </Button>
+
+          <Button
+            className="text-3xl"
+            size="lg"
+            onClick={() => {
+              navigate({ href: DS_SUBMISSION_URL });
+            }}
+          >
+            <LucideFilePenLine className="mr-2 size-6" />
+            {t("Data-submission.to-data-submission")}
+            <LucideExternalLink className="ml-2 size-6" />
           </Button>
         </div>
       }

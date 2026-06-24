@@ -5,21 +5,19 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
-import { Card } from "@/components/Card";
+import { AddNewButton } from "@/components/AddNewButton";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { TagPill } from "@/components/TagPill";
 import { Label } from "@/components/ui/label";
-import type { Locale } from "@/config/i18n";
 import { cn } from "@/lib/utils";
 import type { NewsItemResponse } from "@/serverFunctions/news";
 import { $deleteNewsItem, newsItemsInfiniteQueryOptions } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { toLocaleDateTimeString } from "@/utils/dates";
 
-import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { createDraftNewsItem, DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { NewsFiltersBar } from "./NewsFiltersBar";

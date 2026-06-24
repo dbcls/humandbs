@@ -34,10 +34,10 @@ export type DatasetFormValues = {
 };
 
 export function datasetToFormValues(
-  dataset: Pick<
-    UpdateDatasetRequest,
-    "humId" | "humVersionId" | "releaseDate" | "criteria" | "typeOfData" | "experiments"
-  >,
+  dataset: {
+    humId: string;
+    humVersionId: string;
+  } & Pick<UpdateDatasetRequest, "releaseDate" | "criteria" | "typeOfData" | "experiments">,
 ): DatasetFormValues {
   return {
     datasetId: "",
@@ -63,8 +63,6 @@ export function formValuesToDatasetUpdate(
   primaryTerm: number,
 ): UpdateDatasetRequest {
   return {
-    humId: values.humId,
-    humVersionId: values.humVersionId,
     releaseDate: values.releaseDate,
     criteria: values.criteria as UpdateDatasetRequest["criteria"],
     typeOfData: {
@@ -79,6 +77,29 @@ export function formValuesToDatasetUpdate(
     _seq_no: seqNo,
     _primary_term: primaryTerm,
   };
+}
+
+/**
+ * Convert form experiment entries into the `DatasetDoc` experiments shape so the
+ * preview renders experiments the same way the public-facing page does. Reuses
+ * `entriesToExperimentData` for the array→record shape, then mirrors `text` into
+ * `rawHtml` (which the data values render through) since the form only stores `text`.
+ */
+function formExperimentsToPreview(
+  experiments: DatasetFormValues["experiments"],
+): DatasetDoc["experiments"] {
+  return experiments.map((exp) => ({
+    header: exp.header,
+    data: Object.fromEntries(
+      Object.entries(entriesToExperimentData(exp.data)).map(([key, value]) => [
+        key,
+        {
+          ja: value?.ja ? { ...value.ja, rawHtml: value.ja.text } : null,
+          en: value?.en ? { ...value.en, rawHtml: value.en.text } : null,
+        },
+      ]),
+    ),
+  })) as DatasetDoc["experiments"];
 }
 
 export function datasetFormValuesToPreviewDataset(
@@ -96,6 +117,7 @@ export function datasetFormValuesToPreviewDataset(
   | "version"
   | "experiments"
   | "humId"
+  | "humVersionId"
   | "versionReleaseDate"
 > {
   return {
@@ -107,8 +129,9 @@ export function datasetFormValuesToPreviewDataset(
       en: values.typeOfData.en ?? null,
     },
     version: options?.version || "",
-    experiments: [],
+    experiments: formExperimentsToPreview(values.experiments),
     humId: values.humId,
+    humVersionId: values.humVersionId,
     versionReleaseDate: values.releaseDate,
   };
 }

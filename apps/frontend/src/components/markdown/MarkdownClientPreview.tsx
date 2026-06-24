@@ -25,7 +25,7 @@ export default function MarkdownClientPreview({
       .catch(() => {
         setError(true);
       });
-  }, [source, setContentHtml, setError]);
+  }, [source]);
 
   if (error) return <div>Some error occurred. Markdown couldn't be previewed </div>;
 

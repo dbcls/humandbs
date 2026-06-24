@@ -16,7 +16,6 @@ import {
   datasetToFormValues,
   formValuesToDatasetUpdate,
 } from "@/components/form-context/dataset-fields/DatasetForm";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +28,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
-import { cn } from "@/lib/utils";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
-import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
+import { $getDataset, $patchDataset, $updateDataset } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { AccessionChips } from "./AccessionChips";
+import { CopyFromDataset } from "./CopyFromDataset";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -56,6 +56,7 @@ interface DatasetEditViewProps {
   onCreated?: (datasetId: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
   preview?: boolean;
+  onPreviewChange?: (open: boolean) => void;
 }
 
 function DatasetEditViewInner({
@@ -65,6 +66,7 @@ function DatasetEditViewInner({
   onBack,
   onDirtyChange,
   preview = false,
+  onPreviewChange,
 }: DatasetEditViewProps) {
   const queryClient = useQueryClient();
   const { data: datasetResponse } = useSuspenseQuery(getDatasetEditQueryOptions(datasetId, lang));
@@ -76,11 +78,16 @@ function DatasetEditViewInner({
   const [conflictError, setConflictError] = useState(false);
 
   const isDraft = research.status === "draft";
+  const isPublished = research.status === "published";
+  // Editable when the parent is a draft (→ /update) or published (→ /patch).
+  const isEditable = isDraft || isPublished;
 
   const { mutateAsync: save, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
       const body = formValuesToDatasetUpdate(values, seqNo, primaryTerm);
-      return $updateDataset({ data: { datasetId, body } });
+      // Route by parent status: published parent patches in place; draft updates.
+      const writeDataset = isPublished ? $patchDataset : $updateDataset;
+      return writeDataset({ data: { datasetId, body } });
     },
     onSuccess: (result, submittedValues) => {
       if (!result.ok) {
@@ -97,6 +104,7 @@ function DatasetEditViewInner({
       setError(null);
       setConflictError(false);
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset"] });
     },
   });
 
@@ -160,9 +168,7 @@ function DatasetEditViewInner({
     </div>
   );
 
-  const actions = preview ? (
-    <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-  ) : isDraft ? (
+  const actions = isEditable ? (
     <Button
       type="button"
       size="lg"
@@ -207,9 +213,12 @@ function DatasetEditViewInner({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className={cn(preview && "hidden")}>
+      <div>
         {isDraft && (
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
+            <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
+              Copy data in
+            </span>
             <AccessionChips
               accessions={accessions}
               onAccessionsChange={setAccessions}
@@ -218,11 +227,17 @@ function DatasetEditViewInner({
               pendingAccession={pendingTemplate?.accession}
               resetKey={chipsResetKey}
             />
+            <CopyFromDataset
+              onApply={applyTemplate}
+              lastAppliedId={lastAppliedId}
+              pendingDatasetId={pendingTemplate?.accession}
+              resetKey={chipsResetKey}
+            />
           </div>
         )}
         <DatasetForm
           defaultValues={defaultValues}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onSubmit={async (values) => {
             await save(values);
           }}
@@ -245,18 +260,26 @@ function DatasetEditViewInner({
           imperativeRef={formRef}
         />
       </div>
-      <div className={cn(!preview && "hidden")}>
-        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues, {
-              datasetId: dataset.datasetId,
-              version: dataset.version,
-            })}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      </div>
+      <PreviewDialog
+        open={preview}
+        onOpenChange={(open) => onPreviewChange?.(open)}
+        title={`${datasetId} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
+        <div className="px-5 py-5">
+          <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+            <DatasetVersionCard
+              versionData={datasetFormValuesToPreviewDataset(previewValues, {
+                datasetId: dataset.datasetId,
+                version: dataset.version,
+              })}
+              lang={previewLang}
+              showPublicActions={false}
+            />
+          </IntlProvider>
+        </div>
+      </PreviewDialog>
     </TabContentLayout>
   );
 }
