@@ -185,7 +185,7 @@ function DataEntriesTable({
 
               return (
                 <tr
-                  key={`${experimentIndex}-${di}`}
+                  key={`${experimentIndex}-${entry.key}`}
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">

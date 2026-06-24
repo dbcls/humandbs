@@ -93,7 +93,7 @@ function PoliciesField({
           </thead>
           <tbody>
             {value.map((policy, i) => (
-              <tr key={i} className="border-form-divider border-b last:border-0">
+              <tr key={policy.id} className="border-form-divider border-b last:border-0">
                 <td className="py-1.5 pr-2 align-middle">
                   <Select
                     value={policy.id}

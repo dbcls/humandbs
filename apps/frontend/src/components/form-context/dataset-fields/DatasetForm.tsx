@@ -34,10 +34,10 @@ export type DatasetFormValues = {
 };
 
 export function datasetToFormValues(
-  dataset: Pick<
-    UpdateDatasetRequest,
-    "humId" | "humVersionId" | "releaseDate" | "criteria" | "typeOfData" | "experiments"
-  >,
+  dataset: {
+    humId: string;
+    humVersionId: string;
+  } & Pick<UpdateDatasetRequest, "releaseDate" | "criteria" | "typeOfData" | "experiments">,
 ): DatasetFormValues {
   return {
     datasetId: "",
@@ -63,8 +63,6 @@ export function formValuesToDatasetUpdate(
   primaryTerm: number,
 ): UpdateDatasetRequest {
   return {
-    humId: values.humId,
-    humVersionId: values.humVersionId,
     releaseDate: values.releaseDate,
     criteria: values.criteria as UpdateDatasetRequest["criteria"],
     typeOfData: {
@@ -119,6 +117,7 @@ export function datasetFormValuesToPreviewDataset(
   | "version"
   | "experiments"
   | "humId"
+  | "humVersionId"
   | "versionReleaseDate"
 > {
   return {
@@ -132,6 +131,7 @@ export function datasetFormValuesToPreviewDataset(
     version: options?.version || "",
     experiments: formExperimentsToPreview(values.experiments),
     humId: values.humId,
+    humVersionId: values.humVersionId,
     versionReleaseDate: values.releaseDate,
   };
 }
