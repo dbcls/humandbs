@@ -1,29 +1,9 @@
-import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { evaluate, getBy, useStore } from "@tanstack/react-form";
-
 import type { ReactNode } from "react";
-import { useId, useRef } from "react";
-
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
-import { SortableItem } from "@/components/form-context/research-fields/SortableItem";
-import { Button } from "@/components/ui/button";
 
 import { buildEmpty } from "./buildEmpty";
 import type { FieldOverride } from "./SchemaObjectFields";
 import { SchemaObjectFields } from "./SchemaObjectFields";
+import { SortableArrayShell } from "./SortableArrayShell";
 
 // TanStack's `form` API is heavily generic; `any` here keeps the component
 // schema-agnostic.
@@ -33,6 +13,9 @@ import { SchemaObjectFields } from "./SchemaObjectFields";
  * Generic drag-sortable array-of-objects field whose item body is generated
  * from the array's *element schema* (see `SchemaObjectFields`) — no hardcoded
  * field list. New items are built from the schema via `buildEmpty`.
+ *
+ * The sortable scaffolding (ids, dnd, reorder, add/remove, live title) lives in
+ * `SortableArrayShell`; this component only supplies the schema-driven body.
  *
  * Per-key overrides and the item header title come through props so each section
  * (data providers, grants, …) is fully described by config + schema.
@@ -57,171 +40,35 @@ export function SortableObjectArrayField<TItem = any>({
   /** Optional blank-item factory; defaults to `buildEmpty(elementSchema)`. */
   emptyItem?: () => TItem;
   /** Derives the header title shown for an item. */
-  getTitle: (item: TItem) => string;
+  getTitle: (item: TItem | undefined) => string;
   /** Optional extra content rendered below an item's body (e.g. read-only chips). */
-  renderItemExtra?: (item: TItem) => ReactNode;
+  renderItemExtra?: (item: TItem | undefined) => ReactNode;
   addLabel?: string;
 }) {
   return (
     <form.Field name={name} mode="array">
       {(field: any) => (
-        <SortableList
+        <SortableArrayShell<TItem>
           form={form}
           field={field}
           name={name}
-          elementSchema={elementSchema}
-          overrides={overrides}
-          emptyItem={emptyItem}
+          initialItems={(field.form.options.defaultValues as any)?.[name] ?? []}
           getTitle={getTitle}
-          renderItemExtra={renderItemExtra}
+          newItem={() => (emptyItem ? emptyItem() : (buildEmpty(elementSchema) as TItem))}
           addLabel={addLabel}
+          renderItem={({ index, item }) => (
+            <>
+              <SchemaObjectFields
+                form={form}
+                baseName={`${name}[${index}]`}
+                schema={elementSchema}
+                overrides={overrides}
+              />
+              {renderItemExtra?.(item)}
+            </>
+          )}
         />
       )}
     </form.Field>
-  );
-}
-
-function SortableList<TItem>({
-  form,
-  field,
-  name,
-  elementSchema,
-  overrides,
-  emptyItem,
-  getTitle,
-  renderItemExtra,
-  addLabel,
-}: {
-  form: any;
-  field: any;
-  name: string;
-  elementSchema: any;
-  overrides?: Record<string, FieldOverride>;
-  emptyItem?: () => TItem;
-  getTitle: (item: TItem) => string;
-  renderItemExtra?: (item: TItem) => ReactNode;
-  addLabel: string;
-}) {
-  const dndId = useId();
-  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const items: TItem[] = field.state.value ?? [];
-  const initialItems: TItem[] = (field.form.options.defaultValues as any)?.[name] ?? [];
-  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
-
-  function handleDragEnd(event: DragEndEvent) {
-    if (fieldsetRef.current?.disabled) return;
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = itemIds.indexOf(String(active.id));
-      const newIndex = itemIds.indexOf(String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      moveItemId(oldIndex, newIndex);
-      // Use the array field's own `moveValue` so the nested subfields' state and
-      // meta travel with their values; `setValue(arrayMove(...))` only swaps the
-      // raw array and leaves mounted subfields bound to stale indices.
-      field.moveValue(oldIndex, newIndex);
-    }
-  }
-
-  function addItem() {
-    field.pushValue(emptyItem ? emptyItem() : (buildEmpty(elementSchema) as TItem));
-  }
-
-  return (
-    <fieldset ref={fieldsetRef} className="flex flex-col gap-3">
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((_item, i) => (
-            <SortableItemRow
-              key={itemIds[i]}
-              id={itemIds[i]!}
-              form={form}
-              name={name}
-              index={i}
-              elementSchema={elementSchema}
-              overrides={overrides}
-              initialItem={initialItems[i]}
-              isInitial={i < initialItems.length}
-              getTitle={getTitle}
-              renderItemExtra={renderItemExtra}
-              onRemove={() => {
-                removeItemId(i);
-                field.removeValue(i);
-              }}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
-      <Button type="button" onClick={addItem} variant={"dashed"}>
-        {addLabel}
-      </Button>
-    </fieldset>
-  );
-}
-
-/**
- * A single sortable row that subscribes to *its own* item value via the form
- * store, so the header title and modified-state recompute on every keystroke in
- * a nested field — not just on structural array changes. (The parent array
- * `form.Field` render prop does not re-run on deep child mutations.)
- */
-function SortableItemRow<TItem>({
-  id,
-  form,
-  name,
-  index,
-  elementSchema,
-  overrides,
-  initialItem,
-  isInitial,
-  getTitle,
-  renderItemExtra,
-  onRemove,
-}: {
-  id: string;
-  form: any;
-  name: string;
-  index: number;
-  elementSchema: any;
-  overrides?: Record<string, FieldOverride>;
-  initialItem: TItem | undefined;
-  isInitial: boolean;
-  getTitle: (item: TItem) => string;
-  renderItemExtra?: (item: TItem) => ReactNode;
-  onRemove: () => void;
-}) {
-  const item: TItem = useStore(
-    form.store,
-    (state: any) => getBy(state.values, `${name}[${index}]`) as TItem,
-  );
-
-  return (
-    <SortableItem
-      id={id}
-      index={index}
-      title={getTitle(item)}
-      isModified={!isInitial || !evaluate(item, initialItem)}
-      onRemove={onRemove}
-    >
-      <SchemaObjectFields
-        form={form}
-        baseName={`${name}[${index}]`}
-        schema={elementSchema}
-        overrides={overrides}
-      />
-      {renderItemExtra?.(item)}
-    </SortableItem>
   );
 }

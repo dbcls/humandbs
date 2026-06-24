@@ -1,29 +1,14 @@
-import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { evaluate, useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
 
-import { useId, useRef } from "react";
+import { useRef } from "react";
 
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   getFieldDefaultValue,
   isFieldModified,
 } from "@/components/form-context/fields/useFieldModified";
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { SortableArrayShell } from "@/components/form-context/schema-form/SortableArrayShell";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -40,7 +25,6 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import type { DeepOmit } from "@/utils/type-utils";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
-import { SortableItem } from "../research-fields/SortableItem";
 import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
@@ -375,87 +359,12 @@ function ExperimentItemForm({
   );
 }
 
-function ExperimentsSortableList({
-  form,
-  field,
-  initialItems,
-}: {
-  form: AnyForm;
-  field: AnyForm;
-  initialItems: ExperimentItem[];
-}) {
-  const dndId = useId();
-  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const items: ExperimentItem[] = field.state.value ?? [];
-  const { itemIds, moveItemId, removeItemId, insertItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
-
-  function handleDragEnd(event: DragEndEvent) {
-    if (fieldsetRef.current?.disabled) return;
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = itemIds.indexOf(String(active.id));
-      const newIndex = itemIds.indexOf(String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      moveItemId(oldIndex, newIndex);
-      field.setValue(arrayMove([...items], oldIndex, newIndex));
-    }
-  }
-
-  return (
-    <fieldset ref={fieldsetRef} className="flex flex-col gap-3">
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((item, i) => {
-            const initialItem = initialItems[i];
-            const isModified = i >= initialItems.length || !evaluate(item, initialItem);
-            return (
-              <SortableItem
-                key={itemIds[i]}
-                id={itemIds[i]!}
-                index={i}
-                title={item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
-                isModified={isModified}
-                onDuplicate={() => {
-                  insertItemId(i + 1);
-                  field.insertValue(i + 1, structuredClone(item));
-                }}
-                onRemove={() => {
-                  removeItemId(i);
-                  field.removeValue(i);
-                }}
-              >
-                <ExperimentItemForm form={form} index={i} initialItem={initialItem} />
-              </SortableItem>
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-      <Button
-        type="button"
-        onClick={() => field.pushValue({ ...EMPTY_EXPERIMENT })}
-        variant={"dashed"}
-      >
-        + Add experiment
-      </Button>
-    </fieldset>
-  );
-}
-
+/**
+ * Experiments are a sortable array of bespoke item bodies (header + moldata
+ * table + searchable fields), so the dnd/list scaffolding comes from the shared
+ * `SortableArrayShell` and only the item body (`ExperimentItemForm`) and the
+ * header-title accessor are experiment-specific.
+ */
 export function ExperimentsArrayField({
   form,
   initialItems,
@@ -466,7 +375,19 @@ export function ExperimentsArrayField({
   return (
     <form.Field name="experiments" mode="array">
       {(field: AnyForm) => (
-        <ExperimentsSortableList form={form} field={field} initialItems={initialItems} />
+        <SortableArrayShell<ExperimentItem>
+          form={form}
+          field={field}
+          name="experiments"
+          initialItems={initialItems}
+          getTitle={(item) => item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
+          newItem={() => ({ ...EMPTY_EXPERIMENT })}
+          duplicateItem={(item) => structuredClone(item)}
+          addLabel="+ Add experiment"
+          renderItem={({ index, initialItem }) => (
+            <ExperimentItemForm form={form} index={index} initialItem={initialItem} />
+          )}
+        />
       )}
     </form.Field>
   );
