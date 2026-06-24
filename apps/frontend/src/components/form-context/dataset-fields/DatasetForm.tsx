@@ -81,6 +81,29 @@ export function formValuesToDatasetUpdate(
   };
 }
 
+/**
+ * Convert form experiment entries into the `DatasetDoc` experiments shape so the
+ * preview renders experiments the same way the public-facing page does. Reuses
+ * `entriesToExperimentData` for the array→record shape, then mirrors `text` into
+ * `rawHtml` (which the data values render through) since the form only stores `text`.
+ */
+function formExperimentsToPreview(
+  experiments: DatasetFormValues["experiments"],
+): DatasetDoc["experiments"] {
+  return experiments.map((exp) => ({
+    header: exp.header,
+    data: Object.fromEntries(
+      Object.entries(entriesToExperimentData(exp.data)).map(([key, value]) => [
+        key,
+        {
+          ja: value?.ja ? { ...value.ja, rawHtml: value.ja.text } : null,
+          en: value?.en ? { ...value.en, rawHtml: value.en.text } : null,
+        },
+      ]),
+    ),
+  })) as DatasetDoc["experiments"];
+}
+
 export function datasetFormValuesToPreviewDataset(
   values: DatasetFormValues,
   options?: {
@@ -107,7 +130,7 @@ export function datasetFormValuesToPreviewDataset(
       en: values.typeOfData.en ?? null,
     },
     version: options?.version || "",
-    experiments: [],
+    experiments: formExperimentsToPreview(values.experiments),
     humId: values.humId,
     versionReleaseDate: values.releaseDate,
   };
