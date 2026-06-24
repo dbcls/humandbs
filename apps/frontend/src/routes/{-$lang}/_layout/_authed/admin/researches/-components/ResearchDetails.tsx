@@ -27,6 +27,7 @@ import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
   $deleteResearch,
+  $patchResearch,
   $rejectResearch,
   $submitResearch,
   $updateResearch,
@@ -45,7 +46,13 @@ import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { researchFieldsConfig } from "./researchFieldsConfig";
 import type { ResearchForm } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
+import {
+  isResearchEditable,
+  isViewingDraftVersion,
+  researchSaveEndpoint,
+} from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
+import { runResearchSave } from "./utils/saveSequencer";
 
 /**
  * Top-level research metadata fields rendered as tabs, derived from the schema
@@ -189,34 +196,45 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      const calls: Promise<unknown>[] = [
-        $updateResearch({
-          data: {
-            humId,
-            body: {
-              ...value,
-              _seq_no: seqNo,
-              _primary_term: primaryTerm,
+      // Route the research write by the viewed version: draft → /update,
+      // published latest → /patch. Editability is guaranteed by the Save button gate.
+      const endpoint = researchSaveEndpoint({
+        selectedVersion,
+        draftVersion: researchValues.draftVersion,
+        latestVersion: researchValues.latestVersion,
+        status: researchValues.status,
+      });
+      const writeResearch = endpoint === "patch" ? $patchResearch : $updateResearch;
+
+      // uids and the research metadata target the SAME document. Run them
+      // sequentially (research first, threading its fresh lock token into uids)
+      // to avoid a stale-token version conflict. Skip uids when not permitted or
+      // unchanged. See saveSequencer for the rationale.
+      const uidsChanged =
+        JSON.stringify(value.uids ?? []) !== JSON.stringify(defaultValues.uids ?? []);
+
+      const result = await runResearchSave({
+        writeResearch: () =>
+          writeResearch({
+            data: {
+              humId,
+              body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
             },
-          },
-        }),
-      ];
-      if (canUpdateUids) {
-        calls.push(
+          }),
+        shouldWriteUids: canUpdateUids && uidsChanged,
+        writeUids: (lock) =>
           $updateResearchUids({
             data: {
               humId,
               body: {
                 uids: value.uids ?? [],
-                _seq_no: seqNo,
-                _primary_term: primaryTerm,
+                _seq_no: lock._seq_no,
+                _primary_term: lock._primary_term,
               },
             },
           }),
-        );
-      }
-      const [updateResult] = await Promise.all(calls);
-      return updateResult as UpdateResearchResult;
+      });
+      return result as UpdateResearchResult;
     },
     onSuccess: (result: UpdateResearchResult) => {
       if (!result.ok) {
@@ -443,7 +461,21 @@ export function ResearchDetails({
   // researchValues.draftVersion always reflects the current research state —
   // getResearchDetail always spreads the full research doc (incl. draftVersion)
   // regardless of which version was requested.
-  const isViewingDraft = selectedVersion === researchValues.draftVersion;
+  // Draft-only workflow actions (Submit/Reject/Approve, Merge) stay gated on this.
+  const isViewingDraft = isViewingDraftVersion({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+  });
+
+  // The edit surface (fieldsets + Save) is unlocked whenever editing is valid:
+  // the draft version, OR the published latest of a published research (patch).
+  // Replaces the former isViewingDraft-only gates so the published view is editable.
+  const isEditable = isResearchEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
 
   // Per-tab dirty state: a tab is dirty if the field value differs from initial
   const formValues = useStore(form.store, (state) => state.values);
@@ -595,13 +627,13 @@ export function ResearchDetails({
                 </Button>
               )}
 
-              {isViewingDraft && canUpdate && (
+              {isEditable && canUpdate && (
                 <Button
                   size="lg"
                   onClick={() => form.handleSubmit()}
                   disabled={isSaving || !isModified}
                 >
-                  {isSaving ? "Saving…" : "Save draft"}
+                  {isSaving ? "Saving…" : isViewingDraft ? "Save draft" : "Save"}
                 </Button>
               )}
             </div>
@@ -612,7 +644,7 @@ export function ResearchDetails({
                   <form.AppField name="uids" mode="array">
                     {(field) => (
                       <fieldset
-                        disabled={!isViewingDraft || !canUpdate}
+                        disabled={!isEditable || !canUpdate}
                         className="group/fieldset flex flex-col gap-2"
                       >
                         <Label>User IDs (uids)</Label>
@@ -643,7 +675,7 @@ export function ResearchDetails({
                 </div>
               )}
 
-              <fieldset disabled={!isViewingDraft || !canUpdate} className="group/fieldset p-5">
+              <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
                 <form.AppField name="releaseNote">
                   {(field) => (
                     <field.BilingualTextValueField
@@ -663,7 +695,7 @@ export function ResearchDetails({
                     ))}
                   </TabsList>
                 </div>
-                <fieldset disabled={!isViewingDraft || !canUpdate} className="group/fieldset p-5">
+                <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
                   {metadataFields.map((field) => (
                     <TabsContent key={field.key} value={field.key}>
                       {field.renderer ? (

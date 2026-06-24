@@ -122,6 +122,28 @@ export const $updateResearch = createServerFn({ method: "POST" })
   });
 
 /**
+ * Patches a published research in place (no version bump). Mirrors $updateResearch
+ * — same body and lock-bearing response — differing only in the backend endpoint
+ * (`/patch` vs `/update`). Trusts backend validation (validator is an identity
+ * function, for type safety only); the backend rejects a patch unless the research
+ * status is `published`, surfaced here as a CONFLICT.
+ */
+export const $patchResearch = createServerFn({ method: "POST" })
+  .inputValidator((data: { humId: string; body: UpdateResearchRequest }) => data)
+  .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const result = await api.patchResearch(data.humId, data.body, accessToken);
+
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to patch research.");
+    }
+  });
+
+/**
  * Creates a research uids. Trusts backend validation (validator is just an identity function - to provide only type safety),
  * because it uses some logic other that just zod schema.
  * The zod schema from the backend cannot simply be put in the input validator:

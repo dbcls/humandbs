@@ -29,7 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
-import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
+import { $getDataset, $patchDataset, $updateDataset } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { PreviewDialog } from "../../-components/PreviewDialog";
@@ -78,11 +78,16 @@ function DatasetEditViewInner({
   const [conflictError, setConflictError] = useState(false);
 
   const isDraft = research.status === "draft";
+  const isPublished = research.status === "published";
+  // Editable when the parent is a draft (→ /update) or published (→ /patch).
+  const isEditable = isDraft || isPublished;
 
   const { mutateAsync: save, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
       const body = formValuesToDatasetUpdate(values, seqNo, primaryTerm);
-      return $updateDataset({ data: { datasetId, body } });
+      // Route by parent status: published parent patches in place; draft updates.
+      const writeDataset = isPublished ? $patchDataset : $updateDataset;
+      return writeDataset({ data: { datasetId, body } });
     },
     onSuccess: (result, submittedValues) => {
       if (!result.ok) {
@@ -99,6 +104,7 @@ function DatasetEditViewInner({
       setError(null);
       setConflictError(false);
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset"] });
     },
   });
 
@@ -162,7 +168,7 @@ function DatasetEditViewInner({
     </div>
   );
 
-  const actions = isDraft ? (
+  const actions = isEditable ? (
     <Button
       type="button"
       size="lg"
@@ -231,7 +237,7 @@ function DatasetEditViewInner({
         )}
         <DatasetForm
           defaultValues={defaultValues}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onSubmit={async (values) => {
             await save(values);
           }}

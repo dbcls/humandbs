@@ -45,6 +45,16 @@ describe("getFieldKind – arrays", () => {
     });
   });
 
+  // Regression: a `.default([])`-wrapped array must still resolve to `array`,
+  // not fall through to `unknown`. Otherwise EMPTY_SEARCHABLE seeds it as `null`,
+  // which a non-nullable array schema then rejects (the `cohorts` crash).
+  test("array with .default([]) → { kind: 'array', itemKind: { kind: 'string' } }", () => {
+    expect(getFieldKind(z.array(z.string()).default([]))).toEqual({
+      kind: "array",
+      itemKind: { kind: "string" },
+    });
+  });
+
   test("array of DiseaseInfoSchema (ZodObject) → itemKind is object with shape", () => {
     const result = getFieldKind(z.array(DiseaseInfoSchema));
     expect(result.kind).toBe("array");
