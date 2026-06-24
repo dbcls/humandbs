@@ -197,6 +197,7 @@ export function DocumentsList({
         title="Change Document ID"
         description={renamingId ? `Current ID: ${renamingId}` : undefined}
         label="New ID"
+        initialValue={renamingId ?? ""}
         trigger={<span />}
         open={renamingId !== null}
         onOpenChange={(open) => {
