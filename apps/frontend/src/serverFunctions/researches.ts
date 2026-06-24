@@ -20,7 +20,7 @@ import {
   ResearchSearchBodySchema,
 } from "@humandbs/backend/types";
 
-import { i18n, localeSchema } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
@@ -64,14 +64,6 @@ export type DeleteResearchResult =
     };
 export type GetJDSResearchResult =
   | { ok: true; data: ResearchTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-
-export type GetResearchForMergeResult =
-  | { ok: true; data: ResearchDetailResponse["data"] }
   | {
       ok: false;
       error: string;
@@ -498,34 +490,6 @@ export const $getResearchForEdit = createServerFn()
       params: { humId },
       accessToken: accessToken ?? undefined,
     });
-  });
-
-const GetResearchForMergeInputSchema = z.object({
-  humId: HumIdParamsSchema.shape.humId,
-});
-
-/**
- * Fetches an existing research (latest version, with rawHtml) for use as a merge
- * source. Returns the same discriminated result shape as the J-DS fetch so the
- * merge dialog can drive two symmetric mutations. `lang` is supplied as
- * `i18n.defaultLocale` purely to satisfy the API — the detail response carries
- * both locales regardless of the requested lang.
- */
-export const $getResearchForMerge = createServerFn({ method: "POST" })
-  .inputValidator(GetResearchForMergeInputSchema)
-  .handler<Promise<GetResearchForMergeResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-    try {
-      const result = await api.getResearchDetail({
-        search: { lang: i18n.defaultLocale, includeRawHtml: true },
-        params: { humId: data.humId },
-        accessToken,
-      });
-      return { ok: true, data: result.data };
-    } catch (error) {
-      return mapApiError(error, "Failed to get research.");
-    }
   });
 
 const ListDsApplicationsInputSchema = z.object({

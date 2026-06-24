@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "use-intl";
 
 import { useEffect, useState } from "react";
 
@@ -15,8 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { $getJDSResearch, $getResearchForMerge } from "@/serverFunctions/researches";
+import { $getJDSResearch } from "@/serverFunctions/researches";
 import useMergeWizardStore from "@/stores/mergeWizardStore";
 
 import type { ResearchTemplateData } from "../../../../../../../../../../backend/src/api/types/templates";
@@ -24,7 +24,6 @@ import { AdminStatusMessage } from "../../../-components/AdminStatusMessage";
 import { applyMergeDecisions } from "../utils/applyMergeDecisions";
 import type { FieldDecision } from "../utils/computeMergeFields";
 import { computeMergeFields } from "../utils/computeMergeFields";
-import { researchDetailToTemplate } from "../utils/researchDetailToTemplate";
 import type { MergeResearchResult } from "../utils/researchValues";
 import { CompareArea } from "./CompareArea";
 import { FieldHeader } from "./FieldHeader";
@@ -33,56 +32,26 @@ import { MergeSummary } from "./MergeSummary";
 
 type ResearchValues = ResearchDetailResponse["data"];
 
-type MergeSource = "jds" | "research";
-
-const MERGE_COPY: Record<
-  MergeSource,
-  { label: string; placeholder: string; emptyState: string; notFound: string; fallback: string }
-> = {
-  jds: {
-    label: "J-DS ID",
-    placeholder: "J-DS000001",
-    emptyState: "Enter a J-DS ID and click Get to start",
-    notFound: "No J-DS research found with this ID.",
-    fallback: "Failed to get J-DS research.",
-  },
-  research: {
-    label: "Research ID (humId)",
-    placeholder: "hum0001",
-    emptyState: "Enter a humId and click Get to start",
-    notFound: "No research found with this humId.",
-    fallback: "Failed to get research.",
-  },
-};
-
 /**
- * Merge research data from a selectable source: J-DS or an existing research by
- * humId. Both sources flow through the same source-agnostic merge wizard.
+ * Merge research data fetched from J-DS into the current draft field by field.
  */
 export function MergeResearchDialog({
   currentValues,
-  currentHumId,
   disabled,
   onMerge,
   className,
 }: {
   currentValues: ResearchValues | ResearchTemplateData;
-  /** When set (edit screen), merging this humId into itself is blocked in research mode. */
-  currentHumId?: string;
   disabled?: boolean;
   onMerge: (values: MergeResearchResult["values"], relatedAccessions: string[]) => void;
   className?: string;
 }) {
+  const t = useTranslations("MergeWizard");
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<MergeSource>("jds");
-  // Per-mode raw input survives mode toggles.
-  const [inputs, setInputs] = useState<Record<MergeSource, string>>({ jds: "", research: "" });
+  const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const store = useMergeWizardStore();
-
-  const currentInput = inputs[mode];
-  const copy = MERGE_COPY[mode];
 
   function loadFields(incoming: ResearchTemplateData) {
     const fields = computeMergeFields(currentValues, incoming);
@@ -92,71 +61,38 @@ export function MergeResearchDialog({
     if (firstActionable) store.setActiveField(firstActionable.key);
   }
 
-  const { mutate: getJDSResearch, isPending: isJdsPending } = useMutation({
+  const { mutate: getJDSResearch, isPending } = useMutation({
     mutationFn: (id: string) => $getJDSResearch({ data: { id } }),
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.code === "NOT_FOUND" ? MERGE_COPY.jds.notFound : result.error);
+        setError(result.code === "NOT_FOUND" ? t("not-found") : result.error);
         return;
       }
       loadFields(result.data);
     },
     onError: (err: Error) => {
-      setError(err.message || MERGE_COPY.jds.fallback);
+      setError(err.message || t("fetch-failed"));
     },
   });
-
-  const { mutate: getResearch, isPending: isResearchPending } = useMutation({
-    mutationFn: (humId: string) => $getResearchForMerge({ data: { humId } }),
-    onSuccess: (result) => {
-      if (!result.ok) {
-        setError(result.code === "NOT_FOUND" ? MERGE_COPY.research.notFound : result.error);
-        return;
-      }
-      loadFields(researchDetailToTemplate(result.data));
-    },
-    onError: (err: Error) => {
-      setError(err.message || MERGE_COPY.research.fallback);
-    },
-  });
-
-  const isPending = mode === "jds" ? isJdsPending : isResearchPending;
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) {
-      setMode("jds");
-      setInputs({ jds: "", research: "" });
+      setInput("");
       setError(null);
       store.reset();
     }
   }
 
-  function handleModeChange(next: MergeSource) {
-    if (next === mode) return;
-    setMode(next);
-    setError(null);
-    // Clear fetched fields and pending decisions; the typed identifiers are kept.
-    store.reset();
-  }
-
   function handleInputChange(value: string) {
-    setInputs((prev) => ({ ...prev, [mode]: value }));
+    setInput(value);
     setError(null);
   }
 
   function handleGet() {
-    const trimmedId = currentInput.trim();
+    const trimmedId = input.trim();
     if (!trimmedId) {
-      setError(`Enter a ${copy.label}.`);
-      return;
-    }
-    if (mode === "research") {
-      if (currentHumId && trimmedId === currentHumId) {
-        setError("Cannot merge a research with itself.");
-        return;
-      }
-      getResearch(trimmedId);
+      setError(t("enter-id"));
       return;
     }
     getJDSResearch(trimmedId);
@@ -214,10 +150,7 @@ export function MergeResearchDialog({
 
   function handleApply() {
     const values = applyMergeDecisions(fields, decisions, customValues);
-    // Datasets are out of scope for research-source merges, so they never carry
-    // related accessions; the J-DS source supplies them from the fetched template.
-    const relatedAccessions =
-      mode === "research" ? [] : (store.fetchedResearch?.relatedAccessions?.jgad ?? []);
+    const relatedAccessions = store.fetchedResearch?.relatedAccessions?.jgad ?? [];
     onMerge(values, relatedAccessions);
     handleOpenChange(false);
   }
@@ -242,41 +175,26 @@ export function MergeResearchDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={className} size="lg" disabled={disabled}>
-          Merge data
+          {t("merge-data")}
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[90vh] min-h-[min(85vh,700px)] min-w-[min(95vw,1100px)] flex-col gap-0 overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center gap-4 border-gray-200 border-b px-4 py-3">
-          <DialogTitle className="font-semibold text-base">Merge data</DialogTitle>
+          <DialogTitle className="font-semibold text-base">{t("merge-data")}</DialogTitle>
           {fields.length > 0 && <StatPills fields={fields} decisions={decisions} />}
         </div>
 
-        <DialogDescription className="sr-only">
-          Review and merge research data into this draft field by field.
-        </DialogDescription>
+        <DialogDescription className="sr-only">{t("merge-data-description")}</DialogDescription>
 
-        {/* Source toggle + ID input */}
+        {/* J-DS ID input */}
         <div className="flex shrink-0 items-end gap-4 border-gray-100 border-b px-4 py-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs">Source</span>
-            <ToggleGroup
-              type="single"
-              value={mode}
-              onValueChange={(value: MergeSource) => {
-                if (value) handleModeChange(value);
-              }}
-            >
-              <ToggleGroupItem value="jds">J-DS</ToggleGroupItem>
-              <ToggleGroupItem value="research">Existing research</ToggleGroupItem>
-            </ToggleGroup>
-          </div>
           <Label className="flex-col items-stretch gap-1">
-            <span className="text-xs">{copy.label}</span>
+            <span className="text-xs">{t("jds-id-label")}</span>
             <div className="flex items-center gap-2">
               <Input
-                value={currentInput}
-                placeholder={copy.placeholder}
+                value={input}
+                placeholder={t("jds-id-placeholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -284,7 +202,7 @@ export function MergeResearchDialog({
                   }
                 }}
                 onChange={(e) => handleInputChange(e.target.value)}
-                className="block w-48 text-sm"
+                className="block w-96 text-sm"
               />
               <Button
                 type="button"
@@ -293,7 +211,7 @@ export function MergeResearchDialog({
                 disabled={isPending}
                 onClick={handleGet}
               >
-                {isPending ? <LoadingSpinner variant={"outline"} /> : "Get"}
+                {isPending ? <LoadingSpinner variant={"outline"} /> : t("get")}
               </Button>
             </div>
           </Label>
@@ -344,7 +262,7 @@ export function MergeResearchDialog({
                 </>
               ) : (
                 <div className="flex flex-1 items-center justify-center text-gray-400 text-sm">
-                  Select a field from the left panel
+                  {t("select-field")}
                 </div>
               )}
             </div>
@@ -353,7 +271,7 @@ export function MergeResearchDialog({
 
         {fields.length === 0 && !isPending && store.fetchedResearch === null && (
           <div className="flex flex-1 items-center justify-center text-gray-400 text-sm">
-            {copy.emptyState}
+            {t("empty-state")}
           </div>
         )}
 
@@ -362,10 +280,10 @@ export function MergeResearchDialog({
           <MergeSummary overwritten={overwritten} />
           <div className="ml-auto flex items-center gap-2">
             <Button type="button" variant="ghost" size="lg" onClick={() => handleOpenChange(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="button" size="lg" disabled={!canApply} onClick={handleApply}>
-              Apply
+              {t("apply")}
             </Button>
           </div>
         </div>

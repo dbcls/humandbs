@@ -485,7 +485,19 @@
     "decision-label-custom": "カスタム値",
     "decision-label-pending": "未決定 — 適用時は現在の値を保持",
     "will-overwrite": "上書きされる値",
-    "no-changes": "変更はありません"
+    "no-changes": "変更はありません",
+    "merge-data": "データを統合",
+    "merge-data-description": "研究データをこのドラフトにフィールドごとに確認して統合します。",
+    "jds-id-label": "ブランチ番号つき　J-DS ID",
+    "jds-id-placeholder": "J-DS000001-001 ",
+    "empty-state": "J-DS ID を入力して「取得」をクリックして開始",
+    "not-found": "この ID の J-DS 研究が見つかりません。",
+    "fetch-failed": "J-DS 研究の取得に失敗しました。",
+    "enter-id": "J-DS ID を入力してください。",
+    "get": "取得",
+    "cancel": "キャンセル",
+    "apply": "適用",
+    "select-field": "左のパネルからフィールドを選択してください"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",

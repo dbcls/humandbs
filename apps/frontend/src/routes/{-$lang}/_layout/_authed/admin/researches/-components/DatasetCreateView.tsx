@@ -33,6 +33,7 @@ import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { AccessionChips } from "./AccessionChips";
+import { CopyFromDataset } from "./CopyFromDataset";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -103,6 +104,7 @@ export function DatasetCreateView({
                 ? values.experiments.map((exp) => ({
                     header: exp.header,
                     data: entriesToExperimentData(exp.data),
+                    ...(exp.searchable !== undefined ? { searchable: exp.searchable } : {}),
                   }))
                 : undefined,
           },
@@ -187,13 +189,22 @@ export function DatasetCreateView({
           hidden: preview,
         })}
       >
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
+          <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
+            Copy data in
+          </span>
           <AccessionChips
             accessions={accessions}
             onAccessionsChange={setAccessions}
             onApply={applyTemplate}
             lastAppliedId={lastAppliedId}
             pendingAccession={pendingTemplate?.accession}
+            resetKey={chipsResetKey}
+          />
+          <CopyFromDataset
+            onApply={applyTemplate}
+            lastAppliedId={lastAppliedId}
+            pendingDatasetId={pendingTemplate?.accession}
             resetKey={chipsResetKey}
           />
         </div>

@@ -484,7 +484,19 @@
     "decision-label-custom": "Custom value",
     "decision-label-pending": "No decision yet — will keep current on apply",
     "will-overwrite": "Will overwrite fields",
-    "no-changes": "No fields will be overwritten"
+    "no-changes": "No fields will be overwritten",
+    "merge-data": "Merge data",
+    "merge-data-description": "Review and merge research data into this draft field by field.",
+    "jds-id-label": "J-DS ID with branch number",
+    "jds-id-placeholder": "J-DS000001-001",
+    "empty-state": "Enter a J-DS ID and click Get to start",
+    "not-found": "No J-DS research found with this ID.",
+    "fetch-failed": "Failed to get J-DS research.",
+    "enter-id": "Enter a J-DS ID.",
+    "get": "Get",
+    "cancel": "Cancel",
+    "apply": "Apply",
+    "select-field": "Select a field from the left panel"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",

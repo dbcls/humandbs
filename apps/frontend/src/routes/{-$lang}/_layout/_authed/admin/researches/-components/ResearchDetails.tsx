@@ -549,7 +549,6 @@ export function ResearchDetails({
               <MergeResearchDialog
                 className="mr-auto"
                 currentValues={formValues}
-                currentHumId={humId}
                 disabled={!isViewingDraft || !canUpdate}
                 onMerge={applyMergedValues}
               />
