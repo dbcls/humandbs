@@ -593,12 +593,19 @@ export function ResearchDetails({
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              <MergeResearchDialog
-                className="mr-auto"
-                currentValues={formValues}
-                disabled={!isViewingDraft || !canUpdate}
-                onMerge={applyMergedValues}
-              />
+              {/* Merge is a draft-construction tool — hidden entirely on non-draft
+                  views (e.g. published patch). The spacer keeps the rest of the
+                  action row right-aligned when the button is absent. */}
+              {isViewingDraft ? (
+                <MergeResearchDialog
+                  className="mr-auto"
+                  currentValues={formValues}
+                  disabled={!canUpdate}
+                  onMerge={applyMergedValues}
+                />
+              ) : (
+                <div className="mr-auto" />
+              )}
 
               {canDelete && (
                 <Button type="button" size="lg" onClick={handleDelete}>
