@@ -18,7 +18,6 @@ const emptyResearch: ResearchTemplateData = {
   researchProject: [],
   grant: [],
   relatedPublication: [],
-  uids: [],
   relatedAccessions: { jgad: [] },
   warnings: [],
 };

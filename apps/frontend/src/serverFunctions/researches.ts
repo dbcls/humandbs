@@ -9,7 +9,6 @@ import type {
   ResearchSearchBody,
   ResearchWithLockResponse,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   WorkflowResponse,
 } from "@humandbs/backend/types";
@@ -31,7 +30,7 @@ import { renderMarkdown } from "@/utils/markdown";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
-import type { DsApplicationListResponse } from "../../../backend/src/api/types";
+import type { DsApplicationListResponse, OwnersData } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateData,
   ResearchTemplateData,
@@ -42,13 +41,6 @@ export type CreateResearchResult =
   | { ok: false; error: string; code?: "HUMID_CONFLICT" };
 export type UpdateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type UpdateResearchUidsResult =
-  | { ok: true }
   | {
       ok: false;
       error: string;
@@ -139,26 +131,6 @@ export const $patchResearch = createServerFn({ method: "POST" })
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to patch research.");
-    }
-  });
-
-/**
- * Creates a research uids. Trusts backend validation (validator is just an identity function - to provide only type safety),
- * because it uses some logic other that just zod schema.
- * The zod schema from the backend cannot simply be put in the input validator:
- * it ignores the rawHtml but it is still required by the zod schema
- */
-export const $updateResearchUids = createServerFn({ method: "POST" })
-  .inputValidator((data: { humId: string; body: UpdateUidsRequest }) => data)
-  .handler<Promise<UpdateResearchUidsResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-
-    try {
-      await api.updateResearchUids(data.humId, data.body, accessToken);
-      return { ok: true };
-    } catch (error) {
-      return mapApiError(error, "Failed to update research uids.");
     }
   });
 
@@ -263,6 +235,19 @@ export const $rejectResearch = createServerFn({ method: "POST" })
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to reject research.");
+    }
+  });
+
+export const $unpublishResearch = createServerFn({ method: "POST" })
+  .inputValidator(WorkflowActionInputSchema)
+  .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.unpublishResearch(data.humId, accessToken);
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to unpublish research.");
     }
   });
 
@@ -539,5 +524,39 @@ export function getResearchForEditQueryOptions(query: z.infer<typeof ResearchEdi
   return queryOptions({
     queryKey: ["researches", "byId", "edit", query],
     queryFn: () => $getResearchForEdit({ data: query }),
+  });
+}
+
+export type GetResearchOwnersResult =
+  | { ok: true; data: OwnersData }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+
+/**
+ * Fetches the research owners, resolved server-side from the JGA DB
+ * (GET /research/{humId}/owners, admin only). `owners` are Keycloak
+ * `preferred_username` values; empty when no matching J-DS exists.
+ */
+export const $getResearchOwners = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ humId: HumIdParamsSchema.shape.humId }))
+  .handler<Promise<GetResearchOwnersResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.getResearchOwners(data.humId, accessToken);
+      return { ok: true, data: result.data };
+    } catch (error) {
+      return mapApiError(error, "Failed to get research owners.");
+    }
+  });
+
+export function getResearchOwnersQueryOptions(humId: string) {
+  return queryOptions({
+    queryKey: ["researches", "owners", humId],
+    queryFn: () => $getResearchOwners({ data: { humId } }),
+    staleTime: 1000 * 60 * 5,
   });
 }

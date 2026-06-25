@@ -1,7 +1,6 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { IntlProvider } from "use-intl";
 
 import { useState } from "react";
@@ -17,7 +16,6 @@ import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind
 import { humanize } from "@/components/form-context/schema-form/utils";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { messages } from "@/config/messages";
@@ -30,8 +28,9 @@ import {
   $patchResearch,
   $rejectResearch,
   $submitResearch,
+  $unpublishResearch,
   $updateResearch,
-  $updateResearchUids,
+  getResearchOwnersQueryOptions,
   getResearchQueryOptions,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -52,7 +51,8 @@ import {
   researchSaveEndpoint,
 } from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
-import { runResearchSave } from "./utils/saveSequencer";
+import { TagPill } from "@/components/TagPill";
+import { LucideUser2 } from "lucide-react";
 
 /**
  * Top-level research metadata fields rendered as tabs, derived from the schema
@@ -61,14 +61,13 @@ import { runResearchSave } from "./utils/saveSequencer";
  * through to the generic schema-driven `FieldControl` — so a new scalar backend
  * field surfaces automatically with no code change here.
  *
- * `uids`, `releaseNote`, `status`, versions and datasets are handled separately
+ * `releaseNote`, `status`, versions and datasets are handled separately
  * outside this tabbed loop, so they're excluded.
  */
 const EXCLUDED_FIELDS = new Set<string>([
   "humId",
   "url",
   "status",
-  "uids",
   "draftVersion",
   "latestVersion",
   "version",
@@ -175,15 +174,22 @@ export function ResearchDetails({
     params: { research: researchValues },
   });
 
-  const { can: canUpdateUids } = useCan({
-    resource: "researches",
-    action: "update-uids",
-  });
   const { can: canCreateDataset } = useCan({
     resource: "datasets",
     action: "create",
     params: { research: researchValues },
   });
+
+  // Owners are resolved server-side from the JGA DB and only readable via the
+  // admin-only GET /research/{humId}/owners. Gate the fetch on admin access so
+  // non-admin viewers don't trigger a 403.
+  const { can: isAdmin } = useCan({ resource: "admin-panel", action: "view-cms" });
+  const { data: ownersResult } = useQuery({
+    ...getResearchOwnersQueryOptions(humId),
+    enabled: isAdmin,
+  });
+  const owners = ownersResult?.ok ? ownersResult.data.owners : [];
+
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -206,35 +212,13 @@ export function ResearchDetails({
       });
       const writeResearch = endpoint === "patch" ? $patchResearch : $updateResearch;
 
-      // uids and the research metadata target the SAME document. Run them
-      // sequentially (research first, threading its fresh lock token into uids)
-      // to avoid a stale-token version conflict. Skip uids when not permitted or
-      // unchanged. See saveSequencer for the rationale.
-      const uidsChanged =
-        JSON.stringify(value.uids ?? []) !== JSON.stringify(defaultValues.uids ?? []);
-
-      const result = await runResearchSave({
-        writeResearch: () =>
-          writeResearch({
-            data: {
-              humId,
-              body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
-            },
-          }),
-        shouldWriteUids: canUpdateUids && uidsChanged,
-        writeUids: (lock) =>
-          $updateResearchUids({
-            data: {
-              humId,
-              body: {
-                uids: value.uids ?? [],
-                _seq_no: lock._seq_no,
-                _primary_term: lock._primary_term,
-              },
-            },
-          }),
+      const result = await writeResearch({
+        data: {
+          humId,
+          body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
+        },
       });
-      return result as UpdateResearchResult;
+      return result;
     },
     onSuccess: (result: UpdateResearchResult) => {
       if (!result.ok) {
@@ -389,12 +373,39 @@ export function ResearchDetails({
     },
   });
 
+  const { mutate: unpublishResearch, isPending: isUnpublishing } = useMutation({
+    mutationFn: () => $unpublishResearch({ data: { humId } }),
+    onMutate: () => optimisticallySetStatus("draft"),
+    onSuccess: (result) => {
+      if (!result.ok) setError(result.error);
+      else setError(null);
+    },
+    onError: (err: Error, _v, context) => {
+      if (context) rollbackStatus(context.previousById, context.previousList);
+      setError(err.message ?? "Failed to unpublish research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+    },
+  });
+
   function handleSubmit() {
     openConfirmation({
       title: "Submit for review?",
       description: "This will send the research to admins for review.",
       actionLabel: "Submit",
       onAction: () => submitResearch(),
+    });
+  }
+
+  function handleUnpublish() {
+    openConfirmation({
+      title: "Unpublish research?",
+      description:
+        "This will return the research to draft status and remove it from public view.",
+      actionLabel: "Unpublish",
+      onAction: () => unpublishResearch(),
     });
   }
 
@@ -570,6 +581,64 @@ export function ResearchDetails({
         </div>
       </PreviewDialog>
 
+      {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
+      {isAdmin && (
+        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium text-muted-foreground">Owners:</span>
+          {owners.length > 0 ? (
+            <div className="flex flex-wrap gap-4">
+              {owners.map((owner) => (
+                <span key={owner} className="text-neutral-700">
+
+                  <LucideUser2 className="size-6 inline align-text-bottom" />
+                  {owner}
+                </span>
+
+
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted-foreground italic">None</span>
+          )}
+        </div>
+      )}
+
+      {/* Research-wide workflow actions — apply to the research as a whole,
+          independent of which tab (metadata/datasets) is active. */}
+      <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {canDelete && (
+          <Button type="button" size="lg" onClick={handleDelete}>
+            Delete
+          </Button>
+        )}
+
+        {isViewingDraft && canSubmit && (
+          <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Submitting…" : "Submit for review"}
+          </Button>
+        )}
+        {isViewingDraft && canReject && (
+          <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
+            {isRejecting ? "Rejecting…" : "Reject"}
+          </Button>
+        )}
+        {isViewingDraft && canApprove && (
+          <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
+            {isApproving ? "Approving…" : "Approve"}
+          </Button>
+        )}
+        {canUnpublish && (
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleUnpublish}
+            disabled={isUnpublishing}
+          >
+            {isUnpublishing ? "Unpublishing…" : "Unpublish"}
+          </Button>
+        )}
+      </div>
+
       <div className="flex min-h-0 flex-1 flex-col">
         <Tabs
           defaultValue="metadata"
@@ -591,7 +660,8 @@ export function ResearchDetails({
           </div>
 
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
-            {/* Workflow action row */}
+            {/* Metadata-editing actions — Merge (draft construction) and Save
+                operate on the metadata form, so they stay with this tab. */}
             <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
               {/* Merge is a draft-construction tool — hidden entirely on non-draft
                   views (e.g. published patch). The spacer keeps the rest of the
@@ -607,33 +677,6 @@ export function ResearchDetails({
                 <div className="mr-auto" />
               )}
 
-              {canDelete && (
-                <Button type="button" size="lg" onClick={handleDelete}>
-                  Delete
-                </Button>
-              )}
-
-              {isViewingDraft && canSubmit && (
-                <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? "Submitting…" : "Submit for review"}
-                </Button>
-              )}
-              {isViewingDraft && canReject && (
-                <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-                  {isRejecting ? "Rejecting…" : "Reject"}
-                </Button>
-              )}
-              {isViewingDraft && canApprove && (
-                <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-                  {isApproving ? "Approving…" : "Approve"}
-                </Button>
-              )}
-              {canUnpublish && (
-                <Button variant="outline" size="lg">
-                  Unpublish
-                </Button>
-              )}
-
               {isEditable && canUpdate && (
                 <Button
                   size="lg"
@@ -646,42 +689,6 @@ export function ResearchDetails({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {canUpdateUids && (
-                <div className="px-5 pt-5">
-                  <form.AppField name="uids" mode="array">
-                    {(field) => (
-                      <fieldset
-                        disabled={!isEditable || !canUpdate}
-                        className="group/fieldset flex flex-col gap-2"
-                      >
-                        <Label>User IDs (uids)</Label>
-                        <div className="nested-form flex w-full flex-col gap-1">
-                          {field.state.value?.map((uid, i) => (
-                            <div key={uid} className="flex items-center gap-1">
-                              <form.AppField name={`uids[${i}]`}>
-                                {(f) => <f.TextField className="flex-1" />}
-                              </form.AppField>
-                              <button type="button" onClick={() => field.removeValue(i)}>
-                                <Trash2 className="size-4 text-danger" />
-                              </button>
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="dashed"
-                            size="slim"
-                            className="self-start"
-                            onClick={() => field.pushValue("")}
-                          >
-                            + Add UID
-                          </Button>
-                        </div>
-                      </fieldset>
-                    )}
-                  </form.AppField>
-                </div>
-              )}
-
               <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
                 <form.AppField name="releaseNote">
                   {(field) => (

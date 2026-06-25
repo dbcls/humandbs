@@ -26,7 +26,6 @@ import type {
   ResearchWithLockResponse,
   UpdateDatasetRequest,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   WorkflowResponse,
 } from "@humandbs/backend/types";
@@ -39,6 +38,7 @@ import type { DeepOmit } from "@/utils/type-utils";
 import type {
   DatasetBatchResponse,
   DsApplicationListResponse,
+  OwnersResponse,
 } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateResponse,
@@ -169,6 +169,7 @@ interface APIService {
     query: { humId: string },
     accessToken?: string,
   ): Promise<LinkedDatasetsListResponse>;
+  getResearchOwners(humId: string, accessToken: string): Promise<OwnersResponse>;
   getDatasetsPaginated(query: { search: DatasetListingQuery }): Promise<DatasetSearchResponse>;
   getDataset(query: {
     params: DatasetIdParams;
@@ -212,11 +213,6 @@ interface APIService {
     accessToken: string,
   ): Promise<ResearchWithLockResponse>;
   deleteResearch(humId: string, accessToken: string): Promise<void>;
-  updateResearchUids(
-    humId: string,
-    body: UpdateUidsRequest,
-    accessToken: string,
-  ): Promise<ResearchWithLockResponse>;
   createResearchVersion(
     humId: string,
     body: CreateVersionRequest,
@@ -286,6 +282,14 @@ const api: APIService = {
       `research/${query.humId}/dataset`,
       undefined,
       accessToken ? authHeader(accessToken) : undefined,
+    );
+  },
+
+  getResearchOwners(humId, accessToken) {
+    return get<OwnersResponse>(
+      `/research/${humId}/owners`,
+      undefined,
+      authHeader(accessToken),
     );
   },
 
@@ -360,10 +364,6 @@ const api: APIService = {
 
   async deleteResearch(humId, accessToken) {
     await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
-  },
-
-  updateResearchUids(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(`/research/${humId}/uids`, body, authHeader(accessToken));
   },
 
   createResearchVersion(humId, body, accessToken) {
