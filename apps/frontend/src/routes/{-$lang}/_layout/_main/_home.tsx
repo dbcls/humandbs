@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Download, Search, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { lazy, Suspense, useState } from "react";
@@ -21,6 +21,26 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   },
   errorComponent: () => <div>Oh no, an error!</div>,
 });
+
+function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="9.5" cy="9.5" r="5.5" />
+      <line x1="22" y1="22" x2="13.4" y2="13.4" />
+    </svg>
+  );
+}
 
 function RouteComponent() {
   const navigate = Route.useNavigate();
@@ -45,17 +65,17 @@ function RouteComponent() {
             <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="w-full h-16 py-2 pr-0 pl-8 [&_input]:text-lg [&_input]:placeholder:text-lg"
+                className="w-full h-20 py-2 pr-0 pl-8"
                 placeholder={t("search-placeholder")}
                 value={query}
                 afterIcon={
                   <Button
                     variant="accent"
                     size="icon"
-                    className="pointer-events-auto aspect-square h-12 rounded-full p-0 flex items-center justify-center"
+                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center"
                     onClick={handleSearch}
                   >
-                    <Search size={18} />
+                    <SearchIcon size={18} />
                   </Button>
                 }
                 onChange={(e) => {

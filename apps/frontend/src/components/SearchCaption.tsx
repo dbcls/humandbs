@@ -1,4 +1,4 @@
-import { Filter, Search, X } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useState } from "react";
@@ -6,6 +6,26 @@ import { startTransition, useEffect, useState } from "react";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="9.5" cy="9.5" r="5.5" />
+      <line x1="22" y1="22" x2="13.4" y2="13.4" />
+    </svg>
+  );
+}
 
 export function SearchCaption({
   title,
@@ -107,7 +127,7 @@ export function SearchCaption({
                   className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
                 >
-                  <Search size={16} />
+                  <SearchIcon size={14} />
                 </Button>
               </>
             }
