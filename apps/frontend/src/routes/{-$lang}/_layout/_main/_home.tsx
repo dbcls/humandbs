@@ -72,7 +72,7 @@ function RouteComponent() {
                   <Button
                     variant="accent"
                     size="icon"
-                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center"
+                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
                     onClick={handleSearch}
                   >
                     <SearchIcon size={18} />
