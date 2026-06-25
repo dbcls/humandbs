@@ -46,7 +46,7 @@ function RouteComponent() {
               <Input
                 type="text"
                 className="w-full py-2 pr-0 pl-8"
-                placeholder={tCommon("search")}
+                placeholder={t("search-placeholder")}
                 value={query}
                 afterIcon={
                   <Button
@@ -67,7 +67,8 @@ function RouteComponent() {
                   }
                 }}
               />
-              <div className="flex flex-wrap gap-4 px-4 text-xs">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                <span className="font-medium text-muted-foreground">{t("search-keywords")}</span>
                 {searchSamples[lang]?.map((sample) => (
                   <Button
                     onClick={() => {

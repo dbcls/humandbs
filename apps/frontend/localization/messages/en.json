@@ -82,7 +82,9 @@
   "Front": {
     "data-submission-button": "Submit data",
     "data-usage-button": "Use data",
-    "news": "News"
+    "news": "News",
+    "search-placeholder": "Search research",
+    "search-keywords": "Keywords"
   },
   "Data-usage": {
     "header": "List of Available Research Data",

@@ -82,7 +82,9 @@
   "Front": {
     "data-submission-button": "データを提供する",
     "data-usage-button": "データを利用する",
-    "news": "新着情報"
+    "news": "新着情報",
+    "search-placeholder": "研究を検索",
+    "search-keywords": "検索キーワード"
   },
   "Data-usage": {
     "header": "利用可能な研究データ一覧",
