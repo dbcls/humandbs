@@ -1,10 +1,12 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { createTranslator } from "use-intl";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
+import type { Messages } from "@/config/i18n";
 import {
   $getDocumentBreadcrumbs,
   $getLatestDocumentOrContent,
@@ -24,10 +26,10 @@ const humIdWithVersion = z
     return { humId, version };
   });
 
-// Matches "<docId>/revision/<N>" where N is a positive integer
-const revisionVersionPattern = /^(.+)\/revision\/(\d+)$/;
-// Matches "<docId>/revision"
-const revisionListPattern = /^(.+)\/revision/;
+// Matches "<docId>/version/<N>" where N is a positive integer
+const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
+// Matches "<docId>/version"
+const revisionListPattern = /^(.+)\/version/;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -64,16 +66,20 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     /** === Matching documents/content items === */
 
+    const t = createTranslator({
+      locale: context.lang,
+      messages: context.messages as Messages,
+      namespace: "common",
+    });
+
     const revisionVersionMatch = revisionVersionPattern.exec(params._splat);
 
     if (revisionVersionMatch) {
       const docId = revisionVersionMatch[1];
-      const revisionNumber = Number(revisionVersionMatch[2]);
-      if (!Number.isInteger(revisionNumber) || revisionNumber < 0) {
-        throw new Error("Invalid revision number");
+      const versionNumber = Number(revisionVersionMatch[2]);
+      if (!Number.isInteger(versionNumber) || versionNumber < 1) {
+        throw new Error("Invalid version number");
       }
-      // Revision 0 is the original (version 1); revision N maps to version N + 1.
-      const versionNumber = revisionNumber + 1;
       const [data, docCrumbs] = await Promise.all([
         $getPublishedDocumentVersion({
           data: { contentId: docId, locale: context.lang, versionNumber },
@@ -94,10 +100,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         title: data.title,
         crumbs: [
           ...docCrumbs,
-          { label: "Revisions", href: `/${docId}/revision` },
+          { label: t("versions"), href: `/${docId}/version` },
           {
-            label: revisionNumber === 0 ? "Original" : `Revision ${revisionNumber}`,
-            href: `/${docId}/revision/${revisionNumber}`,
+            label: t("version", { n: versionNumber }),
+            href: `/${docId}/version/${versionNumber}`,
           },
         ],
         hideTOC: false,
@@ -117,12 +123,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           data: { contentId: docId, locale: context.lang },
         }),
       ]);
-      if (!versions.length) throw new Error("No revisions found");
+      if (!versions.length) throw new Error("No versions found");
       return {
         kind: "revisionList" as const,
         contentHtml: null,
         title: null,
-        crumbs: [...docCrumbs, { label: "Revisions", href: `/${docId}/revision` }],
+        crumbs: [...docCrumbs, { label: t("versions"), href: `/${docId}/version` }],
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,

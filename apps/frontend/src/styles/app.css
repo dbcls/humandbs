@@ -258,7 +258,7 @@
   }
 
   .inline-prose {
-    @apply prose-p:my-3 prose-ul:my-2 prose-li:my-2 text-sm leading-none text-black;
+    @apply prose-p:my-3 prose-ul:my-2 prose-li:my-2 text-sm leading-normal text-black;
   }
   /* Track-changes markdown diff (see DiffViewer / markdownDiff.ts) */
   .markdown-diff {

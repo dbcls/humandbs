@@ -152,7 +152,6 @@ export function toResearchValuesForMerge(value: CreateResearchRequest): Research
     researchProject: value.researchProject ?? [],
     grant: value.grant ?? [],
     relatedPublication: value.relatedPublication ?? [],
-    uids: value.uids ?? [],
     relatedAccessions: { jgad: [] },
     warnings: [],
   };

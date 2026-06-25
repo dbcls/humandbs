@@ -71,15 +71,15 @@ export function VersionCard({
             <span>{t("Research.methods")}:</span>
             {versionData.summary.methods[lang]?.text}
           </p>
-          <p>
-            <span>{t("Research.targets")}:</span>
+          <div className="mb-4">
+            <span className="mr-2 font-extrabold">{t("Research.targets")}:</span>
             {
               <Markdown
                 className="inline-prose text-base"
                 contentHtml={{ markup: versionData.summary.targets[lang]?.rawHtml ?? "" }}
               />
             }
-          </p>
+          </div>
         </div>
       </article>
       <Separator className="-mx-4" />
@@ -110,14 +110,7 @@ export function VersionCard({
                   title={t("Research.organization")}
                   value={p.organization?.name[lang]?.text}
                 />
-                <KeyValueCard
-                  title={t("Research.periodOfDataUse")}
-                  value={
-                    p.periodOfDataUse
-                      ? `${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`
-                      : undefined
-                  }
-                />
+
                 <KeyValueCard title={t("Research.researchTitle")} value={p.researchTitle?.[lang]} />
                 <KeyValueCard title="ORCID" value={p.orcid} />
                 <KeyValueCard
@@ -330,14 +323,14 @@ const dataUsedByColumns = [
 const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
 
 const grantsColumns = [
-  grantsColumnsHelper.accessor("title", {
-    id: "grantTitle",
-    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
-    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
-  }),
   grantsColumnsHelper.accessor("agency.name", {
     id: "grantAgency",
     header: (ctx) => ctx.table.options.meta?.t("Research.grant.agency"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+  }),
+  grantsColumnsHelper.accessor("title", {
+    id: "grantTitle",
+    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("id", {

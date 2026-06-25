@@ -1,6 +1,5 @@
 import { useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
 
 import { useState } from "react";
 
@@ -10,7 +9,6 @@ import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import type { CreateResearchResult } from "@/serverFunctions/researches";
@@ -41,7 +39,6 @@ const defaultValues: CreateResearchRequest = {
   researchProject: [],
   grant: [],
   relatedPublication: [],
-  uids: [],
 };
 
 export function NewResearchForm({
@@ -157,40 +154,6 @@ export function NewResearchForm({
           <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
             <form.AppField name="humId">
               {(field) => <field.TextField type="col" label="Research ID (humId)*" />}
-            </form.AppField>
-
-            <form.AppField name="uids" mode="array">
-              {(field) => (
-                <fieldset className="flex flex-col gap-2">
-                  <Label>User IDs (uids)</Label>
-                  <div className="nested-form flex w-full flex-col gap-1">
-                    {field.state.value?.map((uid, i) => (
-                      <div key={uid} className="flex items-center gap-1">
-                        <form.AppField name={`uids[${i}]`}>
-                          {(f) => <f.TextField className="flex-1" />}
-                        </form.AppField>
-                        <Button
-                          size="icon"
-                          variant="plain"
-                          type="button"
-                          onClick={() => field.removeValue(i)}
-                        >
-                          <Trash2 className="size-4 text-danger" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="dashed"
-                      size="slim"
-                      className="self-start"
-                      onClick={() => field.pushValue("")}
-                    >
-                      + Add UID
-                    </Button>
-                  </div>
-                </fieldset>
-              )}
             </form.AppField>
           </div>
 

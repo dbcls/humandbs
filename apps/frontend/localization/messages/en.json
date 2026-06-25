@@ -2,13 +2,13 @@
   "common": {
     "humandb": "NBDC HumanDB",
     "to-": "To {place}",
-    "previous-versions": "Revisions of {documentName}:",
+    "previous-versions": "Versions of {documentName}:",
     "show-diff": "Show diff",
     "diff-title": "Changes",
-    "diff-description": "Differences from revision {from} to revision {to}.",
+    "diff-description": "Differences from version {from} to version {to}.",
     "original": "Original",
-    "revision": "Revision {n}",
-    "revisions": "Revisions",
+    "version": "Version {n}",
+    "versions": "Versions",
     "search": "Search",
     "copy": "Copy",
     "copied": "Copied",
@@ -80,8 +80,8 @@
     "updatedAt": "Updated at"
   },
   "Front": {
-    "data-submission-button": "For Data Providers",
-    "data-usage-button": "For Data Users",
+    "data-submission-button": "Submit data",
+    "data-usage-button": "Use data",
     "news": "News"
   },
   "Data-usage": {
@@ -213,7 +213,12 @@
     "Washing": "Washing",
     "Participant Attributes": "Participant Attributes",
     "Mobile Element Number": "Mobile Element Number",
-    "data-unavailable": "Data unavailable"
+    "data-unavailable": "Data unavailable",
+    "distribution": "Download links",
+    "distribution-button": "View download links",
+    "distribution-empty": "No download links available",
+    "distribution-filter-placeholder": "Filter by name",
+    "distribution-no-matches": "No matching links"
   },
   "Person": {
     "name": "Name",
