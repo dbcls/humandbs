@@ -110,14 +110,7 @@ export function VersionCard({
                   title={t("Research.organization")}
                   value={p.organization?.name[lang]?.text}
                 />
-                <KeyValueCard
-                  title={t("Research.periodOfDataUse")}
-                  value={
-                    p.periodOfDataUse
-                      ? `${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`
-                      : undefined
-                  }
-                />
+
                 <KeyValueCard title={t("Research.researchTitle")} value={p.researchTitle?.[lang]} />
                 <KeyValueCard title="ORCID" value={p.orcid} />
                 <KeyValueCard
@@ -330,14 +323,14 @@ const dataUsedByColumns = [
 const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
 
 const grantsColumns = [
-  grantsColumnsHelper.accessor("title", {
-    id: "grantTitle",
-    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
-    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
-  }),
   grantsColumnsHelper.accessor("agency.name", {
     id: "grantAgency",
     header: (ctx) => ctx.table.options.meta?.t("Research.grant.agency"),
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+  }),
+  grantsColumnsHelper.accessor("title", {
+    id: "grantTitle",
+    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("id", {

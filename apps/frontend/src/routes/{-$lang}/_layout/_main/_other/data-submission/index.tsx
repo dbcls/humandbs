@@ -1,15 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  LucideExternalLink,
-  LucideFilePenLine,
-  LucideNavigation,
-  LucideNavigation2,
-  LucideNetwork,
-  LucideSend,
-} from "lucide-react";
+import { LucideExternalLink, LucideFilePenLine, LucideNetwork } from "lucide-react";
 import { useTranslations } from "use-intl";
 
-import { Link } from "@/components/Link";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { Button } from "@/components/ui/button";
 import {
