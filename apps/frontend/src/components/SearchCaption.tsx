@@ -8,8 +8,6 @@ import { SearchIcon } from "@/components/SearchIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-
-
 export function SearchCaption({
   title,
   filtersCount,
