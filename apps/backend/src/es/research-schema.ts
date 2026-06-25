@@ -35,9 +35,8 @@ export const researchSchema = {
   datePublished: f.date(),
   dateModified: f.date(),
 
-  // Status and ownership
+  // Status and draft tracking
   status: f.keyword(),
-  uids: f.keyword(),
   draftVersion: f.keyword(),
 
   // Summary section

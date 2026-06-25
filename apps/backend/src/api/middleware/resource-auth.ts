@@ -18,6 +18,7 @@ import {
 } from "@/api/errors"
 import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
 import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
+import { isOwner } from "@/api/services/ownership"
 import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 import { VERSION_STRING_REGEX } from "@/api/types/common"
 
@@ -96,9 +97,9 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 
     const { doc, seqNo, primaryTerm } = result
 
-    // Check ownership permission (admin or owner via uids)
+    // Check ownership permission (admin or owner via JGA DB)
     if (options.requireOwnership && !authUser?.isAdmin) {
-      if (!canModifyResource(authUser, doc)) {
+      if (!await canModifyResource(authUser, doc)) {
         throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN)
       }
     }
@@ -132,12 +133,12 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 }
 
 /**
- * Check if user can modify the resource (admin or owner)
+ * Check if user can modify the resource (admin or owner via JGA DB)
  */
-export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): boolean => {
+export const canModifyResource = async (authUser: AuthUser | null, doc: Pick<EsResearch, "humId">): Promise<boolean> => {
   if (!authUser) return false
   if (authUser.isAdmin) return true
-  return doc.uids.includes(authUser.userId)
+  return isOwner(authUser.username, doc.humId)
 }
 
 /**
@@ -201,7 +202,7 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
       throw new NotFoundError(`Parent Research ${doc.humId} not found`)
     }
 
-    if (options.requireOwnership && !canModifyResource(authUser, parentResearch)) {
+    if (options.requireOwnership && !await canModifyResource(authUser, parentResearch)) {
       throw new ForbiddenError("Not authorized to update this dataset")
     }
 

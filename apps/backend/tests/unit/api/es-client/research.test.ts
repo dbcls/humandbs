@@ -98,7 +98,7 @@ beforeEach(() => {
 // === createResearch ===
 
 describe("createResearch", () => {
-  const baseParams = { humId: "hum0001", uids: ["owner-1"] } as Parameters<typeof research.createResearch>[0]
+  const baseParams = { humId: "hum0001" } as Parameters<typeof research.createResearch>[0]
 
   it("creates Research + ResearchVersion v1 in draft status", async () => {
     mockEsIndex.mockResolvedValue({})
@@ -172,7 +172,6 @@ describe("updateResearch", () => {
         datePublished: null,
         dateModified: TODAY,
         status: "draft",
-        uids: ["owner-1"],
       },
       _seq_no: 5,
       _primary_term: 1,
@@ -208,24 +207,6 @@ describe("updateResearch", () => {
   })
 })
 
-// === updateResearchUids ===
-
-describe("updateResearchUids (IT-RESEARCH-21)", () => {
-  it("returns the new uids on success", async () => {
-    mockEsUpdate.mockResolvedValue({})
-
-    const result = await research.updateResearchUids("hum0001", ["uid1", "uid2"], 1, 1)
-    expect(result).toEqual(["uid1", "uid2"])
-  })
-
-  it("returns null on optimistic-lock failure", async () => {
-    mockEsUpdate.mockRejectedValue(optimisticLockError())
-
-    const result = await research.updateResearchUids("hum0001", ["uid1"], 0, 0)
-    expect(result).toBeNull()
-  })
-})
-
 // === updateResearchStatus (IT-WORKFLOW-15 invariants) ===
 
 describe("updateResearchStatus", () => {
@@ -251,7 +232,6 @@ describe("updateResearchStatus", () => {
         datePublished: null,
         dateModified: TODAY,
         status: "review",
-        uids: ["owner-1"],
       },
     })
 

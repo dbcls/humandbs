@@ -23,6 +23,15 @@ import {
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+const mockIsOwner = mock<(username: string, humId: string) => Promise<boolean>>(async () => false)
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
+
 // === ES mocks (external boundary) ===
 
 const mockResolveLatestDatasetVersion =
@@ -58,7 +67,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDoc: (humId: string) => mockGetResearchDoc(humId),
   getResearchWithSeqNo: mock(() => Promise.resolve(null)),
   updateResearch: mock(() => Promise.resolve(null)),
-  updateResearchUids: mock(() => Promise.resolve(null)),
   updateResearchStatus: mock(() => Promise.resolve(null)),
 }))
 
@@ -77,8 +85,8 @@ const { getTestApp } = await import("../../helpers")
 
 // === Helpers ===
 
-const owner = userAuthHeader({ userId: "owner-1" })
-const stranger = userAuthHeader({ userId: "stranger-9" })
+const owner = userAuthHeader({ userId: "owner-1", username: "owner-1" })
+const stranger = userAuthHeader({ userId: "stranger-9", username: "stranger-9" })
 const admin = adminAuthHeader({ userId: "admin-1" })
 
 const updateBody = {
@@ -97,7 +105,6 @@ const wireDatasetAndParent = (
   const parent = createMockResearchDoc({
     humId: "hum0001",
     status: "draft",
-    uids: ["owner-1"],
     latestVersion: null,
     draftVersion: "v1",
     ...parentOverrides,
@@ -122,6 +129,8 @@ const resetMocks = () => {
   mockUpdateDataset.mockReset()
   mockDeleteDataset.mockReset()
   mockGetResearchDoc.mockReset()
+  mockIsOwner.mockReset()
+  mockIsOwner.mockImplementation(async (username: string) => username === "owner-1")
 }
 
 // === Tests ===

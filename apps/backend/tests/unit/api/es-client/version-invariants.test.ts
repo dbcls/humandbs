@@ -4,8 +4,16 @@
  * Tests state invariants for latestVersion/draftVersion
  * across all valid Research states.
  */
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import fc from "fast-check"
+
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
 
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { computeVersionUpdates } from "@/api/routes/research/workflow"
@@ -158,17 +166,17 @@ describe("version field invariants enforced by computeVersionUpdates", () => {
   })
 
   // PBT: public visibility via canAccessResearchDoc
-  it("canAccessResearchDoc(null, doc) matches rule: latestVersion !== null", () => {
+  it("canAccessResearchDoc(null, doc) matches rule: latestVersion !== null", async () => {
     const statuses = ["draft", "review", "published"] as const
     const versions = [null, "v1", "v2"]
 
-    fc.assert(
-      fc.property(
+    await fc.assert(
+      fc.asyncProperty(
         fc.constantFrom(...statuses),
         fc.constantFrom(...versions),
-        (status, latestVersion) => {
+        async (status, latestVersion) => {
           const doc = createMockResearchDoc({ status, latestVersion, draftVersion: null })
-          const result = canAccessResearchDoc(null, doc)
+          const result = await canAccessResearchDoc(null, doc)
           const expected = latestVersion !== null
 
           return result === expected

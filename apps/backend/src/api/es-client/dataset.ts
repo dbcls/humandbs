@@ -37,7 +37,7 @@ const canAccessDataset = async (
   const researchDoc = await getResearchDoc(dataset.humId)
   if (!researchDoc) return false
 
-  return canAccessResearchDoc(authUser, researchDoc)
+  return await canAccessResearchDoc(authUser, researchDoc)
 }
 
 export const getDataset = async (
@@ -146,7 +146,7 @@ export const listDatasetVersions = async (
   // Authorization check: verify user can access parent Research (all versions share same humId)
   const firstRow = rows[0]
   const researchDoc = await getResearchDoc(firstRow.humId)
-  if (!researchDoc || !canAccessResearchDoc(authUser, researchDoc)) {
+  if (!researchDoc || !await canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to indicate not found/unauthorized
   }
 

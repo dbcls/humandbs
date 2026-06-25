@@ -108,22 +108,10 @@ describe("es/load-docs.ts", () => {
       expect(result.status).toBe("published")
     })
 
-    it("should add default empty uids array when missing", () => {
-      const doc = { humId: "hum0001" }
-      const result = transformResearch(doc)
-      expect(result.uids).toEqual([])
-    })
-
     it("should preserve existing status", () => {
       const doc = { humId: "hum0001", status: "draft" }
       const result = transformResearch(doc)
       expect(result.status).toBe("draft")
-    })
-
-    it("should preserve existing uids", () => {
-      const doc = { humId: "hum0001", uids: ["uid1", "uid2"] }
-      const result = transformResearch(doc)
-      expect(result.uids).toEqual(["uid1", "uid2"])
     })
 
     it("should preserve all other fields", () => {

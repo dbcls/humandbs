@@ -17,7 +17,7 @@ import { z } from "zod"
  */
 export const JwtClaimsSchema = z.object({
   sub: z.string(),
-  preferred_username: z.string().optional(),
+  preferred_username: z.string(),
   email: z.string().optional(),
   iat: z.number().optional(),
   exp: z.number().optional(),
@@ -28,11 +28,11 @@ export type JwtClaims = z.infer<typeof JwtClaimsSchema>
  * Authenticated user context
  * Note: Roles are NOT extracted from Keycloak JWT.
  * - isAdmin is determined by admin_uids.json file
- * - Owner status is determined by Research.uids field
+ * - Owner status is determined dynamically from JGA DB (J-DS applications)
  */
 export const AuthUserSchema = z.object({
   userId: z.string(),
-  username: z.string().optional(),
+  username: z.string(),
   email: z.string().optional(),
   isAdmin: z.boolean(), // Determined by admin_uids.json
 })

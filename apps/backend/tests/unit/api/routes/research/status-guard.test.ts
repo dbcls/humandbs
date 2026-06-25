@@ -18,6 +18,15 @@ import { createMockResearchDoc } from "../../helpers/mock-es"
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+const mockIsOwner = mock<(username: string, humId: string) => Promise<boolean>>(async () => false)
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
+
 // === ES mocks (external boundary) ===
 
 const mockUpdateResearch = mock<(...args: unknown[]) => Promise<EsResearch | null>>()
@@ -32,7 +41,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDoc: mock(() => Promise.resolve(null)),
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
   updateResearch: (...args: unknown[]) => mockUpdateResearch(...args),
-  updateResearchUids: mock(() => Promise.resolve(null)),
   updateResearchStatus: mock(() => Promise.resolve(null)),
 }))
 
@@ -51,7 +59,7 @@ const { getTestApp } = await import("../../helpers")
 
 // === Tests ===
 
-const owner = userAuthHeader({ userId: "owner-1" })
+const owner = userAuthHeader({ userId: "owner-1", username: "owner-1" })
 
 const updateBody = {
   title: { ja: "更新", en: "Updated" },
@@ -63,13 +71,14 @@ describe("PUT /research/{humId}/update status guard", () => {
   beforeEach(() => {
     mockUpdateResearch.mockReset()
     mockGetResearchWithSeqNo.mockReset()
+    mockIsOwner.mockReset()
+    mockIsOwner.mockImplementation(async (u: string) => u === "owner-1")
   })
 
   it("allows update when status is draft", async () => {
     const draftDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "draft",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })
@@ -94,7 +103,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const reviewDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "review",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })
@@ -116,7 +124,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })
@@ -138,7 +145,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const reviewDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "review",
-      uids: ["owner-1"],
     })
 
     mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
@@ -156,7 +162,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const draftDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "draft",
-      uids: ["owner-1"],
     })
     mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
 
@@ -179,7 +184,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const draftDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "draft",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })
@@ -203,7 +207,6 @@ describe("PUT /research/{humId}/update status guard", () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })
@@ -229,13 +232,14 @@ describe("PUT /research/{humId}/patch status guard", () => {
   beforeEach(() => {
     mockUpdateResearch.mockReset()
     mockGetResearchWithSeqNo.mockReset()
+    mockIsOwner.mockReset()
+    mockIsOwner.mockImplementation(async (u: string) => u === "owner-1")
   })
 
   it("allows patch when status is published", async () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })
@@ -261,7 +265,6 @@ describe("PUT /research/{humId}/patch status guard", () => {
     const draftDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "draft",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })
@@ -284,7 +287,6 @@ describe("PUT /research/{humId}/patch status guard", () => {
     const reviewDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "review",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })
@@ -316,7 +318,6 @@ describe("PUT /research/{humId}/patch status guard", () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })
@@ -337,7 +338,6 @@ describe("PUT /research/{humId}/patch status guard", () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })
@@ -362,7 +362,6 @@ describe("PUT /research/{humId}/patch status guard", () => {
     const publishedDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "published",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
     })

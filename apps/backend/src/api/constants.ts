@@ -26,7 +26,9 @@ export const CACHE_TTL = {
   /** Admin UIDs cache - 1 minute (shorter for faster updates) */
   ADMIN_UIDS: 60 * 1000,
   /** Distribution cache - 1 hour (dblink relations rarely change) */
-  DISTRIBUTION: parseInt(process.env.HUMANDBS_DISTRIBUTION_CACHE_TTL_MS ?? `${60 * 60 * 1000}`, 10),
+  DISTRIBUTION: 60 * 60 * 1000,
+  /** Ownership cache - 1 hour (JGA DB ownership data changes rarely) */
+  OWNERSHIP: 60 * 60 * 1000,
 } as const
 
 // === Error Messages ===

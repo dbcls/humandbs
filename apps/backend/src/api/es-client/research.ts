@@ -104,12 +104,12 @@ export const getResearchDetail = async (
   if (!researchDoc) return null
 
   // Authorization check: verify user can access this Research
-  if (!canAccessResearchDoc(authUser, researchDoc)) {
+  if (!await canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to hide existence from unauthorized users
   }
 
   // Version resolution (owner/admin gets draft, others get published only)
-  const resolvedVersion = resolveVersionForUser(authUser, researchDoc, version) ?? undefined
+  const resolvedVersion = await resolveVersionForUser(authUser, researchDoc, version) ?? undefined
   if (!resolvedVersion) return null
 
   const researchVersionDoc = await getResearchVersion(humId, { version: resolvedVersion })
@@ -171,7 +171,6 @@ export const createResearch = async (
     datePublished: null,
     dateModified: now,
     status: "draft",
-    uids: params.uids ?? [],
   }
 
   const versionDoc: ResearchVersion = {
@@ -329,41 +328,6 @@ export const updateResearchStatus = async (
   } catch (error: unknown) {
     if (isConflictError(error)) return null
     throw createEsError(error,"updateResearchStatus", humId)
-  }
-}
-
-/**
- * Update Research UIDs (owner list) with optimistic locking
- * Admin only - changes who can edit this research
- * Returns updated uids on success, null on conflict
- */
-export const updateResearchUids = async (
-  humId: string,
-  uids: string[],
-  seqNo: number,
-  primaryTerm: number,
-): Promise<string[] | null> => {
-  try {
-    const now = new Date().toISOString().split("T")[0]
-
-    await esClient.update({
-      index: ES_INDEX.research,
-      id: humId,
-      if_seq_no: seqNo,
-      if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          uids,
-          dateModified: now,
-        },
-      },
-      refresh: "wait_for",
-    })
-
-    return uids
-  } catch (error: unknown) {
-    if (isConflictError(error)) return null
-    throw createEsError(error,"updateResearchUids", humId)
   }
 }
 

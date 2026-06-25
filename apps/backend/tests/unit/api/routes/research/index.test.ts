@@ -26,6 +26,14 @@ import { createMockResearchDoc } from "../../helpers/mock-es"
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
+
 // === ES mocks ===
 
 interface SearchCall {
@@ -39,7 +47,6 @@ const sampleHit = () => createMockResearchDoc({
   humId: "hum0001",
   status: "published",
   latestVersion: "v1",
-  uids: [],
   // dataProvider / versionIds inherit defaults
 })
 
@@ -53,7 +60,6 @@ const mockSearchResearches = mock(async (query: Record<string, unknown>, authUse
       latestVersion: "v1",
       dataProvider: [],
       summary: sampleHit().summary,
-      uids: [],
       status: "published" as const,
       _seq_no: 1,
       _primary_term: 1,
@@ -78,7 +84,6 @@ const mockGetResearchWithSeqNo = mock(async () => null as ({ doc: unknown; seqNo
 const mockCreateResearch = mock(async () => { throw new Error("not stubbed") })
 const mockUpdateResearch = mock(async () => null)
 const mockUpdateResearchStatus = mock(async () => null)
-const mockUpdateResearchUids = mock(async () => null)
 const mockDeleteResearch = mock(async () => false)
 const mockCreateResearchVersion = mock(async () => null)
 
@@ -89,7 +94,6 @@ void mock.module("@/api/es-client/research", () => ({
   createResearch: mockCreateResearch,
   updateResearch: mockUpdateResearch,
   updateResearchStatus: mockUpdateResearchStatus,
-  updateResearchUids: mockUpdateResearchUids,
   deleteResearch: mockDeleteResearch,
 }))
 
@@ -115,7 +119,6 @@ beforeEach(() => {
   mockCreateResearch.mockClear()
   mockUpdateResearch.mockClear()
   mockUpdateResearchStatus.mockClear()
-  mockUpdateResearchUids.mockClear()
   mockDeleteResearch.mockClear()
   mockCreateResearchVersion.mockClear()
 })
@@ -150,7 +153,6 @@ describe("api/routes/research", () => {
       ["POST", "/research/hum0001/reject"],
       ["POST", "/research/hum0001/unpublish"],
       ["POST", "/research/hum0001/versions/new"],
-      ["PUT", "/research/hum0001/uids"],
     ])("%s %s without Authorization returns 401", async (method, path) => {
       const app = getTestApp()
       const res = await app.request(path, {
@@ -164,7 +166,6 @@ describe("api/routes/research", () => {
       expect(mockCreateResearch).not.toHaveBeenCalled()
       expect(mockUpdateResearch).not.toHaveBeenCalled()
       expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
-      expect(mockUpdateResearchUids).not.toHaveBeenCalled()
       expect(mockDeleteResearch).not.toHaveBeenCalled()
       expect(mockCreateResearchVersion).not.toHaveBeenCalled()
     })

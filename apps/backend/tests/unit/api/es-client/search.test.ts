@@ -28,6 +28,14 @@ const searchCalls: SearchCall[] = []
 const mockEsSearch = mock<(args: { index: string; query?: unknown; aggs?: unknown }) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
 const mockEsMget = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({ docs: [] }))
 
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
+
 void mock.module("@/api/es-client/client", () => ({
   ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
   esClient: {
@@ -187,8 +195,8 @@ describe("searchResearches: post-filter defence-in-depth", () => {
   it("excludes a doc with latestVersion=null + empty uids that the ES query should have filtered (public)", async () => {
     // Inject a doc the public ES query "should" never return — to prove the
     // post-filter actually drops it as a backstop and reports via logger.error.
-    const goodDoc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1", uids: [] })
-    const leakedDoc = createMockResearchDoc({ humId: "hum0099", latestVersion: null, uids: [] })
+    const goodDoc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    const leakedDoc = createMockResearchDoc({ humId: "hum0099", latestVersion: null })
     mockEsSearch.mockImplementationOnce(async () => ({
       hits: { total: { value: 2 }, hits: [{ _source: goodDoc }, { _source: leakedDoc }] },
     }))
@@ -212,9 +220,10 @@ describe("searchResearches: explicit status request scoping", () => {
     await searchResearches({ ...baseQuery, status: "draft" }, createMockAuthUser({ userId: "user-1", isAdmin: false }))
 
     const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const must = q.bool.must as { term?: { status?: string; uids?: string } }[]
+    const must = q.bool.must as { term?: { status?: string; humId?: string }; terms?: { humId?: string[] } }[]
     expect(must.some(c => c.term?.status === "draft")).toBe(true)
-    expect(must.some(c => c.term?.uids === "user-1")).toBe(true)
+    // Ownership is now resolved via JGA DB, filtered by humId terms
+    expect(must.some(c => c.terms?.humId !== undefined || c.term?.humId !== undefined)).toBe(true)
   })
 
 })

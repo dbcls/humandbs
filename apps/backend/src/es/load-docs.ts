@@ -59,12 +59,11 @@ export const idDataset = (datasetId: string, version: string): string =>
 
 /**
  * Transform research document for ES indexing
- * - Add default status and uids if not present
+ * - Add default status if not present
  */
 export const transformResearch = (doc: Record<string, unknown>): Record<string, unknown> => ({
   ...doc,
   status: doc.status ?? "published",
-  uids: doc.uids ?? [],
   draftVersion: doc.draftVersion ?? null,
 })
 

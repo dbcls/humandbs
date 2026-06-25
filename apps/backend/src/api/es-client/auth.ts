@@ -9,6 +9,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { getOwnedHumIds, isOwner } from "@/api/services/ownership"
 import type { AuthUser, EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
 
@@ -21,7 +22,7 @@ import { StatusTransitions } from "@/api/types"
  * - auth (authUser!=null, !isAdmin): above OR `uids` contains userId
  * - admin: No filter (can see all)
  */
-export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQueryContainer | null => {
+export const buildStatusFilter = async (authUser: AuthUser | null): Promise<estypes.QueryDslQueryContainer | null> => {
   if (authUser?.isAdmin) {
     return null
   }
@@ -31,11 +32,12 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
   }
 
   if (authUser) {
+    const ownedHumIds = await getOwnedHumIds(authUser.username)
     return {
       bool: {
         should: [
           publicFilter,
-          { term: { uids: authUser.userId } },
+          ...(ownedHumIds.length > 0 ? [{ terms: { humId: ownedHumIds } }] : []),
         ],
         minimum_should_match: 1,
       },
@@ -77,13 +79,13 @@ export const checkRequestedStatus = (
 /**
  * Check if user can access a specific Research based on latestVersion, status and uids
  */
-export const canAccessResearchDoc = (
+export const canAccessResearchDoc = async (
   authUser: AuthUser | null,
-  researchDoc: Pick<EsResearch, "latestVersion" | "status" | "uids">,
-): boolean => {
+  researchDoc: Pick<EsResearch, "humId" | "latestVersion" | "status">,
+): Promise<boolean> => {
   if (authUser?.isAdmin) return true
   if (researchDoc.latestVersion !== null) return true
-  if (authUser && researchDoc.uids.includes(authUser.userId)) return true
+  if (authUser) return isOwner(authUser.username, researchDoc.humId)
 
   return false
 }
@@ -98,7 +100,7 @@ export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<str
     return null
   }
 
-  const statusFilter = buildStatusFilter(authUser)
+  const statusFilter = await buildStatusFilter(authUser)
   if (!statusFilter) return null
 
   interface HumIdAggs {
@@ -142,18 +144,18 @@ export const validateStatusTransition = (
 /**
  * Check if user can perform a status transition
  */
-export const canPerformTransition = (
+export const canPerformTransition = async (
   authUser: AuthUser | null,
   action: StatusAction,
   research: EsResearch,
-): boolean => {
+): Promise<boolean> => {
   if (!authUser) return false
 
   // Admin can do any transition
   if (authUser.isAdmin) return true
 
   // Owner can only submit
-  if (action === "submit" && research.uids.includes(authUser.userId)) {
+  if (action === "submit" && await isOwner(authUser.username, research.humId)) {
     return true
   }
 

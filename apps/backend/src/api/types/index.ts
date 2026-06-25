@@ -214,8 +214,6 @@ export {
   UpdateResearchRequestSchema,
   ResearchWithStatusSchema,
   ResearchResponseSchema,
-  // UIDs API
-  UpdateUidsRequestSchema,
   // Version API
   CreateVersionRequestSchema,
   VersionResponseSchema,
@@ -242,8 +240,6 @@ export {
   // Response schemas for /research routes
   WorkflowDataSchema,
   WorkflowResponseSchema,
-  UidsDataSchema,
-  UidsResponseSchema,
   ResearchDetailResponseSchema,
   ResearchBatchResponseSchema,
   ResearchWithLockResponseSchema,
@@ -272,7 +268,6 @@ export type {
   UpdateResearchRequest,
   ResearchWithStatus,
   ResearchResponse,
-  UpdateUidsRequest,
   CreateVersionRequest,
   VersionResponse,
   CreateDatasetRequest,
@@ -287,8 +282,6 @@ export type {
   // Response types for /research routes
   WorkflowData,
   WorkflowResponse,
-  UidsData,
-  UidsResponse,
   ResearchDetailResponse,
   ResearchBatchResponse,
   ResearchWithLockResponse,

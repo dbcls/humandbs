@@ -22,10 +22,8 @@ import {
   exampleResearchVersionsListResponse,
   exampleResearchWithLockResponse,
   exampleSubmitResearchResponse,
-  exampleUidsResponse,
   exampleUnpublishResearchResponse,
   exampleUpdateResearchRequest,
-  exampleUpdateUidsRequest,
   exampleVersionCreateResponse,
   exampleVersionDetailResponse,
 } from "@/api/openapi/examples"
@@ -47,8 +45,6 @@ import {
   ResearchVersionsListResponseSchema,
   ResearchWithLockResponseSchema,
   UpdateResearchRequestSchema,
-  UpdateUidsRequestSchema,
-  UidsResponseSchema,
   VersionCreateResponseSchema,
   VersionDetailResponseSchema,
   VersionParamsSchema,
@@ -610,42 +606,3 @@ Returns 409 Conflict if Research is not in published status.`,
   },
 })
 
-// === UIDs Route ===
-
-export const updateUidsRoute = createRoute({
-  method: "put",
-  path: "/{humId}/uids",
-  tags: ["Research"],
-  operationId: "updateResearchUids",
-  summary: "Update Research UIDs",
-  security: SECURITY_REQUIRES_AUTH,
-  "x-admin-only": true,
-  description: `Update the UIDs (owner list) of a Research.
-
-**Authorization:** Admin only
-
-**Behavior:**
-- uids is an array of Keycloak sub (UUID) values
-- Users in this list can edit the Research (treated as owners)
-- Empty array means only admins can edit
-
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
-  request: {
-    params: HumIdParamsSchema,
-    body: {
-      content: { "application/json": { schema: UpdateUidsRequestSchema, example: exampleUpdateUidsRequest } },
-    },
-  },
-  responses: {
-    200: {
-      content: { "application/json": { schema: UidsResponseSchema, example: exampleUidsResponse } },
-      description: "UIDs updated successfully",
-    },
-    400: ErrorSpec400,
-    401: ErrorSpec401,
-    403: ErrorSpec403,
-    404: ErrorSpec404,
-    409: ErrorSpec409,
-    500: ErrorSpec500,
-  },
-})
