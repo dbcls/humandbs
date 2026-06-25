@@ -7,6 +7,7 @@ import { lazy, Suspense, useState } from "react";
 import { Card } from "@/components/Card";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
+import { SearchIcon } from "@/components/SearchIcon";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
@@ -21,26 +22,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   },
   errorComponent: () => <div>Oh no, an error!</div>,
 });
-
-function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="10" cy="10" r="6" />
-      <line x1="20.5" y1="20.5" x2="14.24" y2="14.24" />
-    </svg>
-  );
-}
 
 function RouteComponent() {
   const navigate = Route.useNavigate();
@@ -74,6 +55,7 @@ function RouteComponent() {
                     size="icon"
                     className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
                     onClick={handleSearch}
+                    aria-label={tCommon("search")}
                   >
                     <SearchIcon size={18} />
                   </Button>

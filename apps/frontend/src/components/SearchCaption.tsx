@@ -4,28 +4,11 @@ import { useTranslations } from "use-intl";
 import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
+import { SearchIcon } from "@/components/SearchIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="10" cy="10" r="6" />
-      <line x1="20.5" y1="20.5" x2="14.24" y2="14.24" />
-    </svg>
-  );
-}
+
 
 export function SearchCaption({
   title,
@@ -126,6 +109,7 @@ export function SearchCaption({
                   size="icon"
                   className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
+                  aria-label={t("search")}
                 >
                   <SearchIcon size={14} />
                 </Button>
