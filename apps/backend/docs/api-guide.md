@@ -656,9 +656,8 @@ Dataset detail / version detail エンドポイントのレスポンスに、公
   "distribution": [
     {
       "url": "https://ddbj.nig.ac.jp/public/ddbj_database/gea/experiment/E-GEAD-1000/E-GEAD-1051/",
-      "name": "E-GEAD-1051",
-      "type": "directory",
-      "encodingFormat": "DATA"
+      "name": "E-GEAD-1051 data dir",
+      "type": "directory"
     }
   ]
 }
@@ -667,9 +666,8 @@ Dataset detail / version detail エンドポイントのレスポンスに、公
 | フィールド | 型 | 説明 |
 |---|---|---|
 | `url` | string | ダウンロード URL |
-| `name` | string | ファイル名 or ディレクトリ名 |
+| `name` | string | 人間向けラベル（例: `DRX003058 fastq dir`, `DRR003760.sra`） |
 | `type` | `"directory"` \| `"file"` | ディレクトリ一覧かファイル直リンクか |
-| `encodingFormat` | string? | データ形式ヒント（`DATA`, `FASTQ`, `SRA`） |
 
 ### エラー時の挙動
 

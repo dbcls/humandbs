@@ -46,9 +46,8 @@ describe("buildGeaDistribution", () => {
     const result = buildGeaDistribution("E-GEAD-1051")
     expect(result).toEqual([{
       url: "https://ddbj.nig.ac.jp/public/ddbj_database/gea/experiment/E-GEAD-1000/E-GEAD-1051/",
-      name: "E-GEAD-1051",
+      name: "E-GEAD-1051 data dir",
       type: "directory",
-      encodingFormat: "DATA",
     }])
   })
 
@@ -81,9 +80,8 @@ describe("buildMetaboBankDistribution", () => {
     const result = buildMetaboBankDistribution("MTBKS213")
     expect(result).toEqual([{
       url: "https://ddbj.nig.ac.jp/public/metabobank/study/MTBKS213/",
-      name: "MTBKS213",
+      name: "MTBKS213 data dir",
       type: "directory",
-      encodingFormat: "DATA",
     }])
   })
 })
@@ -97,7 +95,7 @@ describe("getDistribution", () => {
   it("returns GEA distribution synchronously (no external calls)", async () => {
     const result = await getDistribution("E-GEAD-1051", "hum0001")
     expect(result).toHaveLength(1)
-    expect(result[0].encodingFormat).toBe("DATA")
+    expect(result[0].name).toBe("E-GEAD-1051 data dir")
   })
 
   it("returns MetaboBank distribution synchronously", async () => {

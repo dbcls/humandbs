@@ -172,11 +172,9 @@ export const DistributionItemSchema = z.object({
   url: z.string()
     .describe("Download URL"),
   name: z.string()
-    .describe("Filename or directory name"),
+    .describe("Human-readable label (e.g., 'DRX003058 fastq dir', 'DRR003760.sra')"),
   type: z.enum(["directory", "file"])
     .describe("Whether URL points to a directory listing or a direct file"),
-  encodingFormat: z.string().optional()
-    .describe("Data format hint (e.g., 'FASTQ', 'SRA', 'DATA')"),
 })
 export type DistributionItem = z.infer<typeof DistributionItemSchema>
 

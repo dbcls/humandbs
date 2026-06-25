@@ -67,18 +67,16 @@ function buildGeaDistribution(datasetId: string): DistributionItem[] {
   const groupPrefix = `E-GEAD-${String(Math.floor(num / 1000) * 1000).padStart(3, "0")}`
   return [{
     url: `${GEA_BASE}/experiment/${groupPrefix}/${datasetId}/`,
-    name: datasetId,
+    name: `${datasetId} data dir`,
     type: "directory",
-    encodingFormat: "DATA",
   }]
 }
 
 function buildMetaboBankDistribution(datasetId: string): DistributionItem[] {
   return [{
     url: `${METABOBANK_BASE}/study/${datasetId}/`,
-    name: datasetId,
+    name: `${datasetId} data dir`,
     type: "directory",
-    encodingFormat: "DATA",
   }]
 }
 
@@ -123,9 +121,8 @@ async function buildDraDistribution(
   for (const { experiment, runs } of runsByExp) {
     items.push({
       url: `${DRA_BASE}/fastq/${subPrefix}/${submission}/${experiment}/`,
-      name: experiment,
+      name: `${experiment} fastq dir`,
       type: "directory",
-      encodingFormat: "FASTQ",
     })
 
     const expPrefix = experiment.slice(0, 6)
@@ -134,7 +131,6 @@ async function buildDraDistribution(
         url: `${DRA_BASE}/sra/ByExp/sra/DRX/${expPrefix}/${experiment}/${run}/${run}.sra`,
         name: `${run}.sra`,
         type: "file",
-        encodingFormat: "SRA",
       })
     }
   }
