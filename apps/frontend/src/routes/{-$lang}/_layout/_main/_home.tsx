@@ -48,11 +48,13 @@ function RouteComponent() {
                 type="text"
                 className="w-full h-20 py-2 pr-0 pl-8"
                 placeholder={t("search-placeholder")}
+                aria-label={t("search-placeholder")}
                 value={query}
                 afterIcon={
                   <Button
                     variant="accent"
                     size="icon"
+                    type="button"
                     className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
                     onClick={handleSearch}
                     aria-label={tCommon("search")}

@@ -84,11 +84,12 @@ export function SearchCaption({
           <Input
             type="text"
             placeholder={t("search")}
+            aria-label={t("search")}
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-14 w-md py-2 pr-0 pl-8"
+            className="h-14 w-md py-2 pr-0 pl-5"
             afterIcon={
               <>
                 {inputValue ? (
@@ -105,6 +106,7 @@ export function SearchCaption({
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
                   size="icon"
+                  type="button"
                   className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
                   aria-label={t("search")}
