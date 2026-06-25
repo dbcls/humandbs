@@ -12,5 +12,8 @@
     "apps/*",
     "!apps/frontend/e2e/*",
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "zod": "4.4.3"
+  }
 }

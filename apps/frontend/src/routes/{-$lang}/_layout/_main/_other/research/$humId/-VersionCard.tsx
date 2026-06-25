@@ -71,15 +71,15 @@ export function VersionCard({
             <span>{t("Research.methods")}:</span>
             {versionData.summary.methods[lang]?.text}
           </p>
-          <p>
-            <span>{t("Research.targets")}:</span>
+          <div className="mb-4">
+            <span className="mr-2 font-extrabold">{t("Research.targets")}:</span>
             {
               <Markdown
                 className="inline-prose text-base"
                 contentHtml={{ markup: versionData.summary.targets[lang]?.rawHtml ?? "" }}
               />
             }
-          </p>
+          </div>
         </div>
       </article>
       <Separator className="-mx-4" />

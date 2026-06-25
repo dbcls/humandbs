@@ -36,7 +36,6 @@ import type {
   DatasetTemplateData,
   ResearchTemplateData,
 } from "../../../backend/src/api/types/templates";
-import { $renderMarkdown } from "./markdown";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -416,15 +415,15 @@ export const $getResearchVersions = createServerFn()
 
     for (const version of res.data) {
       if (version.releaseNote.en) {
-        version.releaseNote.en.rawHtml = await $renderMarkdown({
-          data: { raw: version.releaseNote.en.text },
-        });
+        version.releaseNote.en.rawHtml = (
+          await renderMarkdown(version.releaseNote.en.text)
+        ).markup;
       }
 
       if (version.releaseNote.ja) {
-        version.releaseNote.ja.rawHtml = await $renderMarkdown({
-          data: { raw: version.releaseNote.ja.text },
-        });
+        version.releaseNote.ja.rawHtml = (
+          await renderMarkdown(version.releaseNote.ja.text)
+        ).markup;
       }
     }
 
@@ -463,24 +462,24 @@ export const $getResearch = createServerFn()
       });
 
       if (res.data.summary.targets.en) {
-        res.data.summary.targets.en.rawHtml = await $renderMarkdown({
-          data: { raw: res.data.summary.targets.en.text },
-        });
+        res.data.summary.targets.en.rawHtml = (
+          await renderMarkdown(res.data.summary.targets.en.text)
+        ).markup;
       }
       if (res.data.summary.targets.ja) {
-        res.data.summary.targets.ja.rawHtml = await $renderMarkdown({
-          data: { raw: res.data.summary.targets.ja.text },
-        });
+        res.data.summary.targets.ja.rawHtml = (
+          await renderMarkdown(res.data.summary.targets.ja.text)
+        ).markup;
       }
       if (res.data.releaseNote.en) {
-        res.data.releaseNote.en.rawHtml = await $renderMarkdown({
-          data: { raw: res.data.releaseNote.en.text },
-        });
+        res.data.releaseNote.en.rawHtml = (
+          await renderMarkdown(res.data.releaseNote.en.text)
+        ).markup;
       }
       if (res.data.releaseNote.ja) {
-        res.data.releaseNote.ja.rawHtml = await $renderMarkdown({
-          data: { raw: res.data.releaseNote.ja.text },
-        });
+        res.data.releaseNote.ja.rawHtml = (
+          await renderMarkdown(res.data.releaseNote.ja.text)
+        ).markup;
       }
 
       return res;
