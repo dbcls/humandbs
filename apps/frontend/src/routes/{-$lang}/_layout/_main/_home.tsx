@@ -51,8 +51,8 @@ function RouteComponent() {
                 afterIcon={
                   <Button
                     variant="accent"
-                    size="default"
-                    className="pointer-events-auto gap-2 rounded-full px-8 py-3 text-sm"
+                    size="icon"
+                    className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                     onClick={handleSearch}
                   >
                     <Search size={18} />

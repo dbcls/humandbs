@@ -103,8 +103,8 @@ export function SearchCaption({
                 <Button
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
-                  size="default"
-                  className="pointer-events-auto gap-2 rounded-full px-6 py-2 text-sm"
+                  size="icon"
+                  className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
                 >
                   <Search size={18} />
