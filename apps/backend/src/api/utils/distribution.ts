@@ -85,11 +85,25 @@ function buildMetaboBankDistribution(datasetId: string): DistributionItem[] {
 async function buildDraDistribution(
   submission: string,
 ): Promise<DistributionItem[]> {
-  const experiments = await fetchDblinkTargets(
+  // submission → study → experiment の順で辿る
+  // (dblink グラフに submission → experiment の直接リンクがないため)
+  const studies = await fetchDblinkTargets(
     DblinkAccessionType.SRA_SUBMISSION,
     submission,
-    DblinkAccessionType.SRA_EXPERIMENT,
+    DblinkAccessionType.SRA_STUDY,
   )
+  if (studies.length === 0) return []
+
+  const experimentSets = await Promise.all(
+    studies.map((study) =>
+      fetchDblinkTargets(
+        DblinkAccessionType.SRA_STUDY,
+        study,
+        DblinkAccessionType.SRA_EXPERIMENT,
+      ),
+    ),
+  )
+  const experiments = [...new Set(experimentSets.flat())]
   if (experiments.length === 0) return []
 
   const subPrefix = submission.slice(0, 6)
