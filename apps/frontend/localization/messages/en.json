@@ -213,7 +213,12 @@
     "Washing": "Washing",
     "Participant Attributes": "Participant Attributes",
     "Mobile Element Number": "Mobile Element Number",
-    "data-unavailable": "Data unavailable"
+    "data-unavailable": "Data unavailable",
+    "distribution": "Download links",
+    "distribution-button": "View download links",
+    "distribution-empty": "No download links available",
+    "distribution-filter-placeholder": "Filter by name",
+    "distribution-no-matches": "No matching links"
   },
   "Person": {
     "name": "Name",

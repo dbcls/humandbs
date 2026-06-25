@@ -1,27 +1,41 @@
 import { useRouteContext } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { Download, File, Folder, FolderOpen, X } from "lucide-react";
+import { useState } from "react";
 import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
+
+import type { DatasetDocWithMerged } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
+import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
+
+type Distribution = NonNullable<DatasetDocWithMerged["distribution"]>;
 
 export function DatasetVersionCard({
   versionData,
   lang: langOverride,
   showPublicActions = true,
 }: {
-  versionData: DatasetDoc;
+  versionData: DatasetDoc & { distribution?: Distribution };
   lang?: Locale;
   showPublicActions?: boolean;
 }) {
@@ -67,14 +81,17 @@ export function DatasetVersionCard({
       size={"lg"}
       variant={"light"}
       caption={
-        <div>
+
           <CardCaption
             className="flex-1"
             title="NBDC Dataset ID:"
             icon="dataset"
             right={
-              showPublicActions && showAddToCartButton ? (
-                <div className="flex gap-5">
+              <div className="flex gap-5">
+                {versionData.distribution && versionData.distribution.length > 0 && (
+                  <DistributionDialog distribution={versionData.distribution} />
+                )}
+                {showPublicActions && showAddToCartButton && (
                   <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
                     {user ? (
                       isInCart ? (
@@ -88,13 +105,13 @@ export function DatasetVersionCard({
                       t("login-to-add")
                     )}
                   </Button>
-                </div>
-              ) : null
+                )}
+              </div>
             }
           >
             {versionData.datasetId}
           </CardCaption>
-        </div>
+
       }
     >
       <section>
@@ -113,6 +130,71 @@ export function DatasetVersionCard({
         ))}
       </section>
     </CardWithCaption>
+  );
+}
+
+function DistributionDialog({ distribution }: { distribution: Distribution }) {
+  const t = useTranslations("Dataset");
+  const [filter, setFilter] = useState<string>();
+
+  const sorted = distribution
+    .slice()
+    .sort((a, b) => (a.type === b.type ? 0 : a.type === "directory" ? -1 : 1));
+
+  const q = filter?.trim().toLowerCase();
+  const filtered = q
+    ? sorted.filter((item) => item.name.toLowerCase().includes(q))
+    : sorted;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant={"tableAction"} className="border border-white">
+          <Download className="size-5 mr-2" /> {t("distribution-button")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t("distribution")}</DialogTitle>
+        </DialogHeader>
+        <FilterSearchInput
+          value={filter}
+          onChange={setFilter}
+          debounceMs={0}
+          placeholder={t("distribution-filter-placeholder")}
+        />
+        <div className="h-[60vh] overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="py-2 text-muted-foreground text-sm">{t("distribution-no-matches")}</p>
+          ) : (
+            <ul className="space-y-1">
+              {filtered.map((item) => (
+                <li key={item.url}>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-md px-2 py-1.5 no-underline hover:bg-hover"
+                  >
+                    <TextWithIcon
+                      icon={
+                        item.type === "directory" ? (
+                          <FolderOpen className="size-5 shrink-0 self-center text-secondary" />
+                        ) : (
+                          <File className="size-5 shrink-0 self-center text-secondary" />
+                        )
+                      }
+                    >
+                      <span className="break-all text-secondary underline ml-1">{item.name}</span>
+                    </TextWithIcon>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

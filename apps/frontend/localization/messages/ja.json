@@ -213,7 +213,12 @@
     "Washing": "免染工程における洗浄",
     "Participant Attributes": "被験者属性",
     "Mobile Element Number": "Mobile Element 数",
-    "data-unavailable": "データを取得できませんでした"
+    "data-unavailable": "データを取得できませんでした",
+    "distribution": "ダウンロードリンク",
+    "distribution-button": "ダウンロードリンクを表示",
+    "distribution-empty": "ダウンロードリンクはありません",
+    "distribution-filter-placeholder": "名前で絞り込み",
+    "distribution-no-matches": "一致するリンクはありません"
   },
   "Person": {
     "name": "名前",
