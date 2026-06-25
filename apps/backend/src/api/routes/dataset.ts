@@ -67,6 +67,7 @@ import {
 } from "@/api/types"
 import type { DatasetDocWithMerged } from "@/api/types"
 import { createPagination } from "@/api/types/response"
+import { getDistributionSafe } from "@/api/utils/distribution"
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
@@ -444,7 +445,8 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
 
   // Add mergedSearchable (aggregates all experiment searchable fields)
   const datasetWithMerged = addMergedSearchable(dataset)
-  const strippedDataset = maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false)
+  const distribution = await getDistributionSafe(dataset.datasetId, dataset.humId)
+  const strippedDataset = maybeStripRawHtml({ ...datasetWithMerged, distribution }, query.includeRawHtml ?? false)
 
   return singleResponse(c, strippedDataset, datasetWithSeqNo.seqNo, datasetWithSeqNo.primaryTerm)
 })
@@ -580,9 +582,10 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
 
   // Add mergedSearchable (aggregates all experiment searchable fields)
   const datasetWithMerged = addMergedSearchable(dataset)
+  const distribution = await getDistributionSafe(dataset.datasetId, dataset.humId)
 
   // Historical versions are read-only
-  return singleReadOnlyResponse(c, datasetWithMerged)
+  return singleReadOnlyResponse(c, { ...datasetWithMerged, distribution })
 })
 
 // GET /dataset/{datasetId}/research

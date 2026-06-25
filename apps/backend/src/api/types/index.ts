@@ -145,12 +145,14 @@ export type {
 
 // === API View Models ===
 export {
+  DistributionItemSchema,
   ResearchDetailSchema,
   DatasetVersionItemSchema,
   MergedSearchableSchema,
   DatasetDocWithMergedSchema,
 } from "./views"
 export type {
+  DistributionItem,
   ResearchDetail,
   DatasetVersionItem,
   MergedSearchable,

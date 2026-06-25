@@ -166,9 +166,25 @@ export const MergedSearchableSchema = z.object({
 })
 export type MergedSearchable = z.infer<typeof MergedSearchableSchema>
 
+// === Distribution (download links for public datasets) ===
+
+export const DistributionItemSchema = z.object({
+  url: z.string()
+    .describe("Download URL"),
+  name: z.string()
+    .describe("Filename or directory name"),
+  type: z.enum(["directory", "file"])
+    .describe("Whether URL points to a directory listing or a direct file"),
+  encodingFormat: z.string().optional()
+    .describe("Data format hint (e.g., 'FASTQ', 'SRA', 'DATA')"),
+})
+export type DistributionItem = z.infer<typeof DistributionItemSchema>
+
 // === Dataset document with mergedSearchable (for API response) ===
 
 export const DatasetDocWithMergedSchema = EsDatasetSchema.extend({
   mergedSearchable: MergedSearchableSchema.optional(),
+  distribution: z.array(DistributionItemSchema).optional()
+    .describe("Download links for public datasets (GEA, MetaboBank, DRA, NBDC Dataset)"),
 })
 export type DatasetDocWithMerged = z.infer<typeof DatasetDocWithMergedSchema>
