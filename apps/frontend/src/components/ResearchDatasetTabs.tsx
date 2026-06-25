@@ -68,9 +68,9 @@ export function ResearchDatasetTabs() {
 
   // Active / Inactive 用のクラス
   const activeClass =
-    "h-[30px] bg-white text-secondary visited:text-secondary z-10 border-b border-b-white before:bg-white before:border-b before:border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]";
+    "h-[30px] bg-white text-secondary visited:text-secondary hover:text-secondary z-10 border-b border-b-white before:bg-white before:border-b before:border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]";
   const inactiveClass =
-    "h-[29px] -translate-y-[1px] bg-gray-100/90 text-muted-foreground visited:text-muted-foreground hover:bg-gray-50 hover:before:bg-gray-50 z-0 border-b border-b-gray-200 before:bg-gray-100/90 before:border-b before:border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)] before:shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]";
+    "h-[29px] -translate-y-[1px] bg-gray-100/90 text-muted-foreground visited:text-muted-foreground hover:text-muted-foreground hover:bg-gray-50 hover:before:bg-gray-50 z-0 border-b border-b-gray-200 before:bg-gray-100/90 before:border-b before:border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)] before:shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]";
 
   return (
     <nav
