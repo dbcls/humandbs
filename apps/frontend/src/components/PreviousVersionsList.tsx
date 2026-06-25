@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
 import { getTwoDocumentVersionsQueryOptions } from "@/serverFunctions/documentVersion";
-import { revisionLabel, revisionSplatPath } from "@/utils/revision";
+import { revisionSplatPath } from "@/utils/revision";
 
 import { DiffViewer } from "./DiffViewer";
 import { SkeletonLoading } from "./Skeleton";
@@ -36,10 +36,10 @@ export function PreviousVersionsList({
       <h2 className="font-bold text-md text-neutral-800">
         {tCommon("previous-versions", { documentName: name })}
       </h2>
-      <ul>
+      <ul className="space-y-1">
         {versions.map((version, i) => (
           <li className="flex gap-2" key={version.versionNumber}>
-            <span>{revisionLabel(version.versionNumber, tCommon)}</span>
+            <span>ver.{version.versionNumber}</span>
             <Link
               to="/{-$lang}/$"
               params={{
