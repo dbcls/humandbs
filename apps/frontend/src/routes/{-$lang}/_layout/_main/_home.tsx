@@ -45,14 +45,14 @@ function RouteComponent() {
             <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="w-full py-2 pr-0 pl-8"
+                className="w-full h-16 py-2 pr-0 pl-8 [&_input]:text-lg [&_input]:placeholder:text-lg"
                 placeholder={t("search-placeholder")}
                 value={query}
                 afterIcon={
                   <Button
                     variant="accent"
                     size="icon"
-                    className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
+                    className="pointer-events-auto aspect-square h-12 rounded-full p-0 flex items-center justify-center"
                     onClick={handleSearch}
                   >
                     <Search size={18} />

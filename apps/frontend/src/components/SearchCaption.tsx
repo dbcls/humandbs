@@ -107,7 +107,7 @@ export function SearchCaption({
                   className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
                 >
-                  <Search size={18} />
+                  <Search size={16} />
                 </Button>
               </>
             }
