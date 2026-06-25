@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import fc from "fast-check"
 
 import {
+  TtlMapCache,
   buildGeaDistribution,
   buildMetaboBankDistribution,
   detectKind,
+  distributionCache,
   getDistribution,
   getDistributionSafe,
 } from "@/api/utils/distribution"
@@ -102,6 +104,53 @@ describe("getDistribution", () => {
     const result = await getDistribution("MTBKS213", "hum0001")
     expect(result).toHaveLength(1)
     expect(result[0].url).toContain("MTBKS213")
+  })
+})
+
+describe("getDistribution caching", () => {
+  beforeEach(() => {
+    distributionCache.clear()
+  })
+
+  it("caches GEA result on second call", async () => {
+    const r1 = await getDistribution("E-GEAD-1051", "hum0001")
+    const r2 = await getDistribution("E-GEAD-1051", "hum0001")
+    expect(r1).toEqual(r2)
+    expect(distributionCache.size).toBe(1)
+  })
+
+  it("returns different results for different IDs", async () => {
+    await getDistribution("E-GEAD-1051", "hum0001")
+    await getDistribution("MTBKS213", "hum0001")
+    expect(distributionCache.size).toBe(2)
+  })
+})
+
+describe("TtlMapCache", () => {
+  it("returns undefined for missing keys", () => {
+    const cache = new TtlMapCache<string>(1000)
+    expect(cache.get("missing")).toBeUndefined()
+  })
+
+  it("stores and retrieves values", () => {
+    const cache = new TtlMapCache<string>(1000)
+    cache.set("key", "value")
+    expect(cache.get("key")).toBe("value")
+  })
+
+  it("expires entries after TTL", () => {
+    const cache = new TtlMapCache<string>(0)
+    cache.set("key", "value")
+    expect(cache.get("key")).toBeUndefined()
+  })
+
+  it("clears all entries", () => {
+    const cache = new TtlMapCache<string>(60_000)
+    cache.set("a", "1")
+    cache.set("b", "2")
+    expect(cache.size).toBe(2)
+    cache.clear()
+    expect(cache.size).toBe(0)
   })
 })
 

@@ -25,6 +25,8 @@ export const CACHE_TTL = {
   JWKS: 5 * 60 * 1000,
   /** Admin UIDs cache - 1 minute (shorter for faster updates) */
   ADMIN_UIDS: 60 * 1000,
+  /** Distribution cache - 1 hour (dblink relations rarely change) */
+  DISTRIBUTION: parseInt(process.env.HUMANDBS_DISTRIBUTION_CACHE_TTL_MS ?? `${60 * 60 * 1000}`, 10),
 } as const
 
 // === Error Messages ===

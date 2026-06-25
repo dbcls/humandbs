@@ -1,6 +1,7 @@
 import * as nodeFs from "node:fs"
 import { join } from "node:path"
 
+import { CACHE_TTL } from "@/api/constants"
 import {
   DblinkAccessionType,
   fetchDblinkTargets,
@@ -13,6 +14,46 @@ const GEA_BASE = "https://ddbj.nig.ac.jp/public/ddbj_database/gea"
 const METABOBANK_BASE = "https://ddbj.nig.ac.jp/public/metabobank"
 
 const FILES_PATH = process.env.HUMANDBS_FILES_PATH ?? ""
+
+// --- TTL Map Cache ---
+
+interface CacheEntry<T> {
+  value: T
+  expiry: number
+}
+
+class TtlMapCache<T> {
+  private readonly cache = new Map<string, CacheEntry<T>>()
+  private readonly ttl: number
+
+  constructor(ttl: number) {
+    this.ttl = ttl
+  }
+
+  get(key: string): T | undefined {
+    const entry = this.cache.get(key)
+    if (!entry) return undefined
+    if (Date.now() >= entry.expiry) {
+      this.cache.delete(key)
+      return undefined
+    }
+    return entry.value
+  }
+
+  set(key: string, value: T): void {
+    this.cache.set(key, { value, expiry: Date.now() + this.ttl })
+  }
+
+  clear(): void {
+    this.cache.clear()
+  }
+
+  get size(): number {
+    return this.cache.size
+  }
+}
+
+const distributionCache = new TtlMapCache<DistributionItem[]>(CACHE_TTL.DISTRIBUTION)
 
 const GEA_RE = /^E-GEAD-(\d+)$/
 const METABOBANK_RE = /^MTBKS\d+$/
@@ -125,19 +166,31 @@ export async function getDistribution(
   datasetId: string,
   humId: string,
 ): Promise<DistributionItem[]> {
+  const cached = distributionCache.get(datasetId)
+  if (cached) return cached
+
   const kind = detectKind(datasetId)
+  let result: DistributionItem[]
   switch (kind) {
     case "gea":
-      return buildGeaDistribution(datasetId)
+      result = buildGeaDistribution(datasetId)
+      break
     case "metabobank":
-      return buildMetaboBankDistribution(datasetId)
+      result = buildMetaboBankDistribution(datasetId)
+      break
     case "dra":
-      return buildDraDistribution(datasetId)
+      result = await buildDraDistribution(datasetId)
+      break
     case "nbdc-dataset":
-      return buildNbdcDistribution(datasetId, humId)
+      result = await buildNbdcDistribution(datasetId, humId)
+      break
     case "unknown":
-      return []
+      result = []
+      break
   }
+
+  distributionCache.set(datasetId, result)
+  return result
 }
 
 export async function getDistributionSafe(
@@ -156,4 +209,10 @@ export async function getDistributionSafe(
   }
 }
 
-export { detectKind, buildGeaDistribution, buildMetaboBankDistribution }
+export {
+  TtlMapCache,
+  detectKind,
+  buildGeaDistribution,
+  buildMetaboBankDistribution,
+  distributionCache,
+}
