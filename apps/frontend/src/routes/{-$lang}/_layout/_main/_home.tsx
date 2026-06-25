@@ -42,12 +42,10 @@ function RouteComponent() {
           <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
-            <div className="mt-8 grid w-full max-w-full grid-cols-[auto_1fr] grid-rows-2 items-center gap-x-8 rounded-md bg-black/15 p-8 text-base">
-              <p>{tCommon("search")}</p>
-
+            <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="flex-1 py-2 pr-0 pl-8"
+                className="w-full py-2 pr-0 pl-8"
                 placeholder={tCommon("search")}
                 value={query}
                 afterIcon={
@@ -69,7 +67,7 @@ function RouteComponent() {
                   }
                 }}
               />
-              <div className="ga-3 col-start-2 flex gap-4 text-xs">
+              <div className="flex flex-wrap gap-4 px-4 text-xs">
                 {searchSamples[lang]?.map((sample) => (
                   <Button
                     onClick={() => {
