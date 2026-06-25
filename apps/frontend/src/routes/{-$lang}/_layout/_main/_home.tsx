@@ -36,8 +36,8 @@ function SearchIcon({ size = 16, className = "" }: { size?: number; className?: 
       strokeLinejoin="round"
       className={className}
     >
-      <circle cx="9.5" cy="9.5" r="5.5" />
-      <line x1="22" y1="22" x2="13.4" y2="13.4" />
+      <circle cx="10" cy="10" r="6" />
+      <line x1="20.5" y1="20.5" x2="14.24" y2="14.24" />
     </svg>
   );
 }
