@@ -25,6 +25,10 @@ export const CACHE_TTL = {
   JWKS: 5 * 60 * 1000,
   /** Admin UIDs cache - 1 minute (shorter for faster updates) */
   ADMIN_UIDS: 60 * 1000,
+  /** Distribution cache - 1 hour (dblink relations rarely change) */
+  DISTRIBUTION: 60 * 60 * 1000,
+  /** Ownership cache - 1 hour (JGA DB ownership data changes rarely) */
+  OWNERSHIP: 60 * 60 * 1000,
 } as const
 
 // === Error Messages ===

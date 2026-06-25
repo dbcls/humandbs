@@ -145,12 +145,14 @@ export type {
 
 // === API View Models ===
 export {
+  DistributionItemSchema,
   ResearchDetailSchema,
   DatasetVersionItemSchema,
   MergedSearchableSchema,
   DatasetDocWithMergedSchema,
 } from "./views"
 export type {
+  DistributionItem,
   ResearchDetail,
   DatasetVersionItem,
   MergedSearchable,
@@ -212,8 +214,6 @@ export {
   UpdateResearchRequestSchema,
   ResearchWithStatusSchema,
   ResearchResponseSchema,
-  // UIDs API
-  UpdateUidsRequestSchema,
   // Version API
   CreateVersionRequestSchema,
   VersionResponseSchema,
@@ -240,8 +240,8 @@ export {
   // Response schemas for /research routes
   WorkflowDataSchema,
   WorkflowResponseSchema,
-  UidsDataSchema,
-  UidsResponseSchema,
+  OwnersDataSchema,
+  OwnersResponseSchema,
   ResearchDetailResponseSchema,
   ResearchBatchResponseSchema,
   ResearchWithLockResponseSchema,
@@ -270,7 +270,6 @@ export type {
   UpdateResearchRequest,
   ResearchWithStatus,
   ResearchResponse,
-  UpdateUidsRequest,
   CreateVersionRequest,
   VersionResponse,
   CreateDatasetRequest,
@@ -285,8 +284,8 @@ export type {
   // Response types for /research routes
   WorkflowData,
   WorkflowResponse,
-  UidsData,
-  UidsResponse,
+  OwnersData,
+  OwnersResponse,
   ResearchDetailResponse,
   ResearchBatchResponse,
   ResearchWithLockResponse,

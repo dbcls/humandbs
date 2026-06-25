@@ -28,6 +28,15 @@ import { createMockAuthUser, createMockResearchDoc, createMockResearchVersionDoc
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+const mockIsOwner = mock<(username: string, humId: string) => Promise<boolean>>(async () => false)
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
+  refreshOwnershipCache: async () => {},
+  resetOwnershipCacheForTest: () => {},
+}))
+
 // === ES mocks ===
 
 const mockGetResearchWithSeqNo = mock<(humId: string) => Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number } | null>>()
@@ -40,7 +49,6 @@ void mock.module("@/api/es-client/research", () => ({
   createResearch: mock(async () => { throw new Error("createResearch not stubbed in this test") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),
-  updateResearchUids: mock(async () => null),
   deleteResearch: mock(async () => false),
 }))
 
@@ -75,7 +83,7 @@ void mock.module("@/api/es-client/search", () => ({
 
 const { getTestApp } = await import("../../helpers")
 
-const owner = createMockAuthUser({ userId: "owner-1" })
+const owner = createMockAuthUser({ userId: "owner-1", username: "owner-1" })
 const stranger = createMockAuthUser({ userId: "stranger-1" })
 const admin = createMockAuthUser({ userId: "admin-1", isAdmin: true })
 
@@ -84,7 +92,6 @@ const authHeader = (u: AuthUser): Record<string, string> => ({ [TEST_AUTH_HEADER
 const publishedDoc = (): EsResearch => createMockResearchDoc({
   humId: "hum0001",
   status: "published",
-  uids: ["owner-1"],
   latestVersion: "v1",
   draftVersion: null,
 })
@@ -92,7 +99,6 @@ const publishedDoc = (): EsResearch => createMockResearchDoc({
 const draftDoc = (): EsResearch => createMockResearchDoc({
   humId: "hum0001",
   status: "draft",
-  uids: ["owner-1"],
   latestVersion: null,
   draftVersion: "v1",
 })
@@ -100,7 +106,6 @@ const draftDoc = (): EsResearch => createMockResearchDoc({
 const reviewDoc = (): EsResearch => createMockResearchDoc({
   humId: "hum0001",
   status: "review",
-  uids: ["owner-1"],
   latestVersion: null,
   draftVersion: "v1",
 })
@@ -111,6 +116,8 @@ describe("api/routes/research/versions", () => {
     mockGetResearchDetail.mockReset()
     mockCreateResearchVersion.mockReset()
     mockListResearchVersionsSorted.mockReset()
+    mockIsOwner.mockReset()
+    mockIsOwner.mockImplementation(async (_u: string, _h: string) => _u === "owner-1")
   })
 
   // === POST /research/{humId}/versions/new ===
@@ -265,7 +272,6 @@ describe("api/routes/research/versions", () => {
           status: "draft",
           latestVersion: "v2",
           draftVersion: "v3",
-          uids: ["owner-1"],
         }),
         seqNo: 1,
         primaryTerm: 1,
@@ -289,7 +295,6 @@ describe("api/routes/research/versions", () => {
           status: "draft",
           latestVersion: "v2",
           draftVersion: "v3",
-          uids: ["owner-1"],
         }),
         seqNo: 1,
         primaryTerm: 1,

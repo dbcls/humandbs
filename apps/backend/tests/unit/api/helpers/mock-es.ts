@@ -33,7 +33,6 @@ const baseResearchDoc: EsResearch = {
   datePublished: "2024-01-01",
   dateModified: "2024-01-01",
   status: "published",
-  uids: [],
 }
 
 const buildResearchPreset = (preset: ResearchPreset): EsResearch => {

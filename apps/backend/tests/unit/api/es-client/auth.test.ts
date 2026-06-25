@@ -4,8 +4,23 @@
  * Tests buildStatusFilter, canAccessResearchDoc, validateStatusTransition,
  * and canPerformTransition for all authorization levels and Research states.
  */
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
 import fc from "fast-check"
+
+let mockIsOwnerFn: ReturnType<typeof mock>
+let mockGetOwnedHumIdsFn: ReturnType<typeof mock>
+
+mock.module("@/api/services/ownership", () => {
+  mockIsOwnerFn = mock(async () => false)
+  mockGetOwnedHumIdsFn = mock(async () => [])
+  return {
+    getOwnerUsernames: mock(async () => []),
+    getOwnedHumIds: mockGetOwnedHumIdsFn,
+    isOwner: mockIsOwnerFn,
+    refreshOwnershipCache: mock(async () => {}),
+    resetOwnershipCacheForTest: mock(() => {}),
+  }
+})
 
 import {
   buildStatusFilter,
@@ -14,33 +29,52 @@ import {
   checkRequestedStatus,
   validateStatusTransition,
 } from "@/api/es-client/auth"
-import type { AuthUser, EsResearch, ResearchStatus } from "@/api/types"
+import type { AuthUser, ResearchStatus } from "@/api/types"
 
 import { createMockResearchDoc, createMockAuthUser } from "../helpers/mock-es"
 
 // === buildStatusFilter ===
 
 describe("buildStatusFilter", () => {
-  it("returns null for admin (no filter)", () => {
-    const admin = createMockAuthUser({ isAdmin: true })
-    expect(buildStatusFilter(admin)).toBeNull()
+  beforeEach(() => {
+    mockGetOwnedHumIdsFn.mockReset()
+    mockGetOwnedHumIdsFn.mockImplementation(async () => [])
   })
 
-  it("returns latestVersion exists for public", () => {
-    const filter = buildStatusFilter(null)
+  it("returns null for admin (no filter)", async () => {
+    const admin = createMockAuthUser({ isAdmin: true })
+    expect(await buildStatusFilter(admin)).toBeNull()
+  })
+
+  it("returns latestVersion exists for public", async () => {
+    const filter = await buildStatusFilter(null)
     expect(filter).toEqual({
       exists: { field: "latestVersion" },
     })
   })
 
-  it("returns public OR own resources for authenticated", () => {
-    const user = createMockAuthUser({ userId: "user-123" })
-    const filter = buildStatusFilter(user)
+  it("returns public OR own humIds for authenticated user with no owned humIds", async () => {
+    const user = createMockAuthUser({ userId: "user-123", username: "user123" })
+    const filter = await buildStatusFilter(user)
     expect(filter).toEqual({
       bool: {
         should: [
           { exists: { field: "latestVersion" } },
-          { term: { uids: "user-123" } },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("returns public OR own humIds for authenticated user with owned humIds", async () => {
+    mockGetOwnedHumIdsFn.mockImplementation(async () => ["hum0001", "hum0002"])
+    const user = createMockAuthUser({ userId: "user-123", username: "user123" })
+    const filter = await buildStatusFilter(user)
+    expect(filter).toEqual({
+      bool: {
+        should: [
+          { exists: { field: "latestVersion" } },
+          { terms: { humId: ["hum0001", "hum0002"] } },
         ],
         minimum_should_match: 1,
       },
@@ -52,66 +86,68 @@ describe("buildStatusFilter", () => {
 
 describe("canAccessResearchDoc", () => {
   const admin: AuthUser = createMockAuthUser({ isAdmin: true })
-  const owner: AuthUser = createMockAuthUser({ userId: "owner-1" })
-  const otherUser: AuthUser = createMockAuthUser({ userId: "other-1" })
+  const owner: AuthUser = createMockAuthUser({ userId: "owner-1", username: "owner1" })
+  const otherUser: AuthUser = createMockAuthUser({ userId: "other-1", username: "other1" })
 
-  const published: EsResearch = createMockResearchDoc({
+  const published = createMockResearchDoc({
+    humId: "hum0001",
     status: "published",
     latestVersion: "v1",
     draftVersion: null,
-    uids: ["owner-1"],
   })
 
-  const draftFirstTime: EsResearch = createMockResearchDoc({
+  const draftFirstTime = createMockResearchDoc({
+    humId: "hum0001",
     status: "draft",
     latestVersion: null,
     draftVersion: "v1",
-    uids: ["owner-1"],
   })
 
-  const draftWithPublished: EsResearch = createMockResearchDoc({
+  const draftWithPublished = createMockResearchDoc({
+    humId: "hum0001",
     status: "draft",
     latestVersion: "v1",
     draftVersion: "v2",
-    uids: ["owner-1"],
   })
 
-  // Admin can access everything
-  it("admin can access published", () => {
-    expect(canAccessResearchDoc(admin, published)).toBe(true)
-  })
-  it("admin can access draft (first time)", () => {
-    expect(canAccessResearchDoc(admin, draftFirstTime)).toBe(true)
+  beforeEach(() => {
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
   })
 
-  // Public: latestVersion != null
-  it("public can access published", () => {
-    expect(canAccessResearchDoc(null, published)).toBe(true)
+  it("admin can access published", async () => {
+    expect(await canAccessResearchDoc(admin, published)).toBe(true)
   })
-  it("public can access draft with latestVersion (new version in progress)", () => {
-    expect(canAccessResearchDoc(null, draftWithPublished)).toBe(true)
-  })
-  it("public cannot access draft (first time, latestVersion=null)", () => {
-    expect(canAccessResearchDoc(null, draftFirstTime)).toBe(false)
+  it("admin can access draft (first time)", async () => {
+    expect(await canAccessResearchDoc(admin, draftFirstTime)).toBe(true)
   })
 
-  // Owner
-  it("owner can access own draft", () => {
-    expect(canAccessResearchDoc(owner, draftFirstTime)).toBe(true)
+  it("public can access published", async () => {
+    expect(await canAccessResearchDoc(null, published)).toBe(true)
   })
-  it("owner can access own published", () => {
-    expect(canAccessResearchDoc(owner, published)).toBe(true)
+  it("public can access draft with latestVersion", async () => {
+    expect(await canAccessResearchDoc(null, draftWithPublished)).toBe(true)
+  })
+  it("public cannot access draft (first time)", async () => {
+    expect(await canAccessResearchDoc(null, draftFirstTime)).toBe(false)
   })
 
-  // Other authenticated user
-  it("other user can access published", () => {
-    expect(canAccessResearchDoc(otherUser, published)).toBe(true)
+  it("owner can access own draft", async () => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    expect(await canAccessResearchDoc(owner, draftFirstTime)).toBe(true)
   })
-  it("other user cannot access draft (first time, not owner)", () => {
-    expect(canAccessResearchDoc(otherUser, draftFirstTime)).toBe(false)
+  it("owner can access own published", async () => {
+    expect(await canAccessResearchDoc(owner, published)).toBe(true)
   })
-  it("other user can access draft with latestVersion (public visible)", () => {
-    expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
+
+  it("other user can access published", async () => {
+    expect(await canAccessResearchDoc(otherUser, published)).toBe(true)
+  })
+  it("other user cannot access draft (first time)", async () => {
+    expect(await canAccessResearchDoc(otherUser, draftFirstTime)).toBe(false)
+  })
+  it("other user can access draft with latestVersion", async () => {
+    expect(await canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
   })
 })
 
@@ -193,10 +229,15 @@ describe("validateStatusTransition", () => {
 // === canPerformTransition ===
 
 describe("canPerformTransition", () => {
-  const ownerResearch = createMockResearchDoc({ uids: ["owner-id"] })
+  const ownerResearch = createMockResearchDoc({ humId: "hum0001" })
 
-  it("null authUser -> false", () => {
-    expect(canPerformTransition(null, "submit", ownerResearch)).toBe(false)
+  beforeEach(() => {
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
+  })
+
+  it("null authUser -> false", async () => {
+    expect(await canPerformTransition(null, "submit", ownerResearch)).toBe(false)
   })
 
   it.each([
@@ -204,82 +245,90 @@ describe("canPerformTransition", () => {
     "approve" as const,
     "reject" as const,
     "unpublish" as const,
-  ])("admin -> true for %s", (action) => {
+  ])("admin -> true for %s", async (action) => {
     const adminUser = createMockAuthUser({ isAdmin: true, userId: "admin-id" })
-    expect(canPerformTransition(adminUser, action, ownerResearch)).toBe(true)
+    expect(await canPerformTransition(adminUser, action, ownerResearch)).toBe(true)
   })
 
-  it("owner + submit -> true", () => {
-    const ownerUser = createMockAuthUser({ userId: "owner-id" })
-    expect(canPerformTransition(ownerUser, "submit", ownerResearch)).toBe(true)
+  it("owner + submit -> true", async () => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    const ownerUser = createMockAuthUser({ userId: "owner-id", username: "owner" })
+    expect(await canPerformTransition(ownerUser, "submit", ownerResearch)).toBe(true)
   })
 
   it.each([
     "approve" as const,
     "reject" as const,
     "unpublish" as const,
-  ])("owner + %s -> false", (action) => {
-    const ownerUser = createMockAuthUser({ userId: "owner-id" })
-    expect(canPerformTransition(ownerUser, action, ownerResearch)).toBe(false)
+  ])("owner + %s -> false", async (action) => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    const ownerUser = createMockAuthUser({ userId: "owner-id", username: "owner" })
+    expect(await canPerformTransition(ownerUser, action, ownerResearch)).toBe(false)
   })
 
-  it("non-owner + submit -> false", () => {
-    const nonOwner = createMockAuthUser({ userId: "other-id" })
-    expect(canPerformTransition(nonOwner, "submit", ownerResearch)).toBe(false)
+  it("non-owner + submit -> false", async () => {
+    const nonOwner = createMockAuthUser({ userId: "other-id", username: "other" })
+    expect(await canPerformTransition(nonOwner, "submit", ownerResearch)).toBe(false)
   })
 })
 
-// === canAccessResearchDoc as post-filter (defense-in-depth) ===
+// === canAccessResearchDoc as post-filter ===
 
 describe("canAccessResearchDoc as post-filter", () => {
   const admin: AuthUser = createMockAuthUser({ isAdmin: true })
-  const owner: AuthUser = createMockAuthUser({ userId: "owner-1" })
-  const otherUser: AuthUser = createMockAuthUser({ userId: "other-1" })
+  const owner: AuthUser = createMockAuthUser({ userId: "owner-1", username: "owner1" })
+  const otherUser: AuthUser = createMockAuthUser({ userId: "other-1", username: "other1" })
 
-  // Minimal Pick type (simulating post-filter usage with partial fields)
-  const draftNeverPublished = { latestVersion: null, status: "draft" as const, uids: ["owner-1"] }
-  const draftWithPublished = { latestVersion: "v1", status: "draft" as const, uids: ["owner-1"] }
-  const reviewNeverPublished = { latestVersion: null, status: "review" as const, uids: ["owner-1"] }
-  const reviewWithPublished = { latestVersion: "v1", status: "review" as const, uids: ["owner-1"] }
-  const published = { latestVersion: "v1", status: "published" as const, uids: ["owner-1"] }
+  const draftNeverPublished = { humId: "hum0001", latestVersion: null, status: "draft" as const }
+  const draftWithPublished = { humId: "hum0001", latestVersion: "v1", status: "draft" as const }
+  const reviewNeverPublished = { humId: "hum0001", latestVersion: null, status: "review" as const }
+  const reviewWithPublished = { humId: "hum0001", latestVersion: "v1", status: "review" as const }
+  const published = { humId: "hum0001", latestVersion: "v1", status: "published" as const }
 
-  it("admin passes all", () => {
-    expect(canAccessResearchDoc(admin, draftNeverPublished)).toBe(true)
+  beforeEach(() => {
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
   })
 
-  it("public excludes latestVersion=null", () => {
-    expect(canAccessResearchDoc(null, draftNeverPublished)).toBe(false)
+  it("admin passes all", async () => {
+    expect(await canAccessResearchDoc(admin, draftNeverPublished)).toBe(true)
   })
 
-  it("public includes published", () => {
-    expect(canAccessResearchDoc(null, published)).toBe(true)
+  it("public excludes latestVersion=null", async () => {
+    expect(await canAccessResearchDoc(null, draftNeverPublished)).toBe(false)
   })
 
-  it("non-owner excludes draft with latestVersion=null", () => {
-    expect(canAccessResearchDoc(otherUser, draftNeverPublished)).toBe(false)
+  it("public includes published", async () => {
+    expect(await canAccessResearchDoc(null, published)).toBe(true)
   })
 
-  it("owner includes own draft with latestVersion=null", () => {
-    expect(canAccessResearchDoc(owner, draftNeverPublished)).toBe(true)
+  it("non-owner excludes draft with latestVersion=null", async () => {
+    expect(await canAccessResearchDoc(otherUser, draftNeverPublished)).toBe(false)
   })
 
-  it("non-owner includes draft with latestVersion (public visible)", () => {
-    expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
+  it("owner includes own draft with latestVersion=null", async () => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    expect(await canAccessResearchDoc(owner, draftNeverPublished)).toBe(true)
   })
 
-  it("public excludes review with latestVersion=null", () => {
-    expect(canAccessResearchDoc(null, reviewNeverPublished)).toBe(false)
+  it("non-owner includes draft with latestVersion (public visible)", async () => {
+    expect(await canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
   })
 
-  it("non-owner excludes review with latestVersion=null", () => {
-    expect(canAccessResearchDoc(otherUser, reviewNeverPublished)).toBe(false)
+  it("public excludes review with latestVersion=null", async () => {
+    expect(await canAccessResearchDoc(null, reviewNeverPublished)).toBe(false)
   })
 
-  it("owner includes own review with latestVersion=null", () => {
-    expect(canAccessResearchDoc(owner, reviewNeverPublished)).toBe(true)
+  it("non-owner excludes review with latestVersion=null", async () => {
+    expect(await canAccessResearchDoc(otherUser, reviewNeverPublished)).toBe(false)
   })
 
-  it("non-owner includes review with latestVersion (public visible)", () => {
-    expect(canAccessResearchDoc(otherUser, reviewWithPublished)).toBe(true)
+  it("owner includes own review with latestVersion=null", async () => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    expect(await canAccessResearchDoc(owner, reviewNeverPublished)).toBe(true)
+  })
+
+  it("non-owner includes review with latestVersion (public visible)", async () => {
+    expect(await canAccessResearchDoc(otherUser, reviewWithPublished)).toBe(true)
   })
 })

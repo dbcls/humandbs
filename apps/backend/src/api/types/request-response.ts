@@ -152,14 +152,6 @@ export const CreateResearchRequestSchema = z.object({
     .optional()
     .describe("Related publications (papers, preprints)"),
 
-  // Admin assigns owner UIDs (optional, defaults to empty array)
-  uids: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Keycloak user IDs (sub) who can edit this Research. Admin-only field.",
-    ),
-
 })
 export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
@@ -210,29 +202,14 @@ export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
  */
 export const ResearchWithStatusSchema = ResearchSchema.extend({
   status: z.enum(RESEARCH_STATUS),
-  uids: z.array(z.string()).default([]), // Keycloak sub (UUID) of users who can edit this research
+  owners: z.array(z.string()).default([]),
 })
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
-  datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
+  datasets: z.array(ApiDatasetSchema).optional(),
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
-
-// === Research UIDs API ===
-
-/**
- * Update Research UIDs (owner list) request
- * Includes optimistic locking fields
- */
-export const UpdateUidsRequestSchema = z.object({
-  uids: z
-    .array(z.string())
-    .describe("Keycloak sub (UUID) array of users who can edit this research"),
-  _seq_no: z.number().describe("Sequence number for optimistic locking"),
-  _primary_term: z.number().describe("Primary term for optimistic locking"),
-})
-export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
 
 // === Version API ===
 
@@ -485,17 +462,17 @@ export type WorkflowResponse = z.infer<
 >
 
 /**
- * UIDs update response data
+ * Owners response data (GET /research/{humId}/owners, admin only)
  */
-export const UidsDataSchema = z.object({
+export const OwnersDataSchema = z.object({
   humId: z.string(),
-  uids: z.array(z.string()),
+  owners: z.array(z.string()),
 })
-export type UidsData = z.infer<typeof UidsDataSchema>
+export type OwnersData = z.infer<typeof OwnersDataSchema>
 
-export const UidsResponseSchema =
-  createSingleResponseSchema(UidsDataSchema)
-export type UidsResponse = z.infer<typeof UidsResponseSchema>
+export const OwnersResponseSchema =
+  createSingleReadOnlyResponseSchema(OwnersDataSchema)
+export type OwnersResponse = z.infer<typeof OwnersResponseSchema>
 
 /**
  * Research detail response for authenticated users (GET /research/{humId})

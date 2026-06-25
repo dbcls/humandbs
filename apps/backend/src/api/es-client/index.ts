@@ -62,7 +62,6 @@ export {
   createResearch,
   updateResearch,
   updateResearchStatus,
-  updateResearchUids,
   deleteResearch,
 } from "@/api/es-client/research"
 

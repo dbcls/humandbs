@@ -51,10 +51,8 @@ import type {
   ResearchVersionsListResponse,
   ResearchWithLockResponse,
   StatsResponse,
-  UidsResponse,
   UpdateDatasetRequest,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   VersionDetailResponse,
   WorkflowResponse,
@@ -256,7 +254,7 @@ export const exampleStatsSingleResponse = {
   meta: META_READ_ONLY,
 }
 
-// === Research workflow / uids ===
+// === Research workflow ===
 
 /** Default `WorkflowResponse` example (kept as `status: "review"` for the
  * submit transition). Per-action examples below illustrate the actual target
@@ -290,17 +288,6 @@ export const exampleUnpublishResearchResponse: WorkflowResponse = {
   meta: META_WITH_LOCK,
 }
 
-export const exampleUidsResponse: UidsResponse = {
-  data: { humId: HUM_ID, uids: [KEYCLOAK_SUB] },
-  meta: META_WITH_LOCK,
-}
-
-export const exampleUpdateUidsRequest: UpdateUidsRequest = {
-  uids: [KEYCLOAK_SUB],
-  _seq_no: 12,
-  _primary_term: 1,
-}
-
 // === Research request / response ===
 
 export const exampleCreateResearchRequest = {
@@ -310,7 +297,6 @@ export const exampleCreateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
-  uids: [KEYCLOAK_SUB],
   humId: HUM_ID,
 } satisfies CreateResearchRequest
 
@@ -340,7 +326,7 @@ const RESEARCH_BASE = {
   datePublished: ISO_TIMESTAMP,
   dateModified: ISO_TIMESTAMP,
   status: "published" as const,
-  uids: [KEYCLOAK_SUB],
+  owners: ["sample-user"],
 }
 
 /** Single Experiment record for sample Datasets. `data` values are

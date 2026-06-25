@@ -57,6 +57,8 @@ services:
       - HUMANDBS_FRONTEND_PORT=3000
       - HUMANDBS_FRONTEND_PUBLIC_FILES_DIR=${HUMANDBS_FRONTEND_PUBLIC_FILES_DIR:-public-files}
       - HUMANBDS_FRONTEND_DU_APPLICATION_URL=${HUMANBDS_FRONTEND_DU_APPLICATION_URL}
+      - HUMANDBS_FRONTEND_DS_NAVIGATION_URL=${HUMANDBS_FRONTEND_DS_NAVIGATION_URL}
+      - HUMANDBS_FRONTEND_DS_SUBMISSION_URL=${HUMANDBS_FRONTEND_DS_SUBMISSION_URL}
       # Credentials (from .env)
       - HUMANDBS_POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
       - HUMANDBS_POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
@@ -115,12 +117,15 @@ services:
       - HUMANDBS_JGA_DB_SCHEMA=${HUMANDBS_JGA_DB_SCHEMA:-jgasys}
       # Admin UID file
       - HUMANDBS_BACKEND_ADMIN_UID_FILE=${HUMANDBS_BACKEND_ADMIN_UID_FILE:-}
+      # Public files directory (for NBDC Dataset distribution links)
+      - HUMANDBS_FILES_PATH=/humandbs-files
     volumes:
       - .:/app:rw
       - node_modules:/app/node_modules
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
+      - ${HUMANDBS_FILES_DIR}:/humandbs-files:ro
     working_dir: /app/apps/backend
     networks:
       - humandbs-network

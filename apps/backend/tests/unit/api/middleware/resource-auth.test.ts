@@ -7,6 +7,19 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Hono } from "hono"
 
+let mockIsOwnerFn: ReturnType<typeof mock>
+
+mock.module("@/api/services/ownership", () => {
+  mockIsOwnerFn = mock(async () => false)
+  return {
+    getOwnerUsernames: mock(async () => []),
+    getOwnedHumIds: mock(async () => []),
+    isOwner: mockIsOwnerFn,
+    refreshOwnershipCache: mock(async () => {}),
+    resetOwnershipCacheForTest: mock(() => {}),
+  }
+})
+
 import { canModifyResource } from "@/api/middleware/resource-auth"
 import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 
@@ -16,60 +29,51 @@ import { createMockAuthUser, createMockDatasetDoc, createMockResearchDoc } from 
 
 describe("canModifyResource", () => {
   const admin = createMockAuthUser({ isAdmin: true })
-  const owner = createMockAuthUser({ userId: "owner-1" })
-  const otherUser = createMockAuthUser({ userId: "other-1" })
+  const owner = createMockAuthUser({ userId: "owner-1", username: "owner1" })
+  const otherUser = createMockAuthUser({ userId: "other-1", username: "other1" })
 
-  it("admin can modify any resource", () => {
-    const doc = createMockResearchDoc({ uids: ["someone-else"] })
-    expect(canModifyResource(admin, doc)).toBe(true)
+  beforeEach(() => {
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
   })
 
-  it("owner (in uids) can modify own resource", () => {
-    const doc = createMockResearchDoc({ uids: ["owner-1"] })
-    expect(canModifyResource(owner, doc)).toBe(true)
+  it("admin can modify any resource", async () => {
+    const doc = createMockResearchDoc()
+    expect(await canModifyResource(admin, doc)).toBe(true)
   })
 
-  it("owner with multiple uids can modify", () => {
-    const doc = createMockResearchDoc({ uids: ["other-user", "owner-1", "another-user"] })
-    expect(canModifyResource(owner, doc)).toBe(true)
+  it("owner can modify own resource", async () => {
+    mockIsOwnerFn.mockImplementation(async () => true)
+    const doc = createMockResearchDoc()
+    expect(await canModifyResource(owner, doc)).toBe(true)
   })
 
-  it("non-owner authenticated user cannot modify", () => {
-    const doc = createMockResearchDoc({ uids: ["owner-1"] })
-    expect(canModifyResource(otherUser, doc)).toBe(false)
+  it("non-owner authenticated user cannot modify", async () => {
+    const doc = createMockResearchDoc()
+    expect(await canModifyResource(otherUser, doc)).toBe(false)
   })
 
-  it("unauthenticated user cannot modify", () => {
-    const doc = createMockResearchDoc({ uids: ["owner-1"] })
-    expect(canModifyResource(null, doc)).toBe(false)
+  it("unauthenticated user cannot modify", async () => {
+    const doc = createMockResearchDoc()
+    expect(await canModifyResource(null, doc)).toBe(false)
   })
 
-  it("empty uids rejects everyone except admin", () => {
-    const doc = createMockResearchDoc({ uids: [] })
-    expect(canModifyResource(admin, doc)).toBe(true)
-    expect(canModifyResource(owner, doc)).toBe(false)
-    expect(canModifyResource(null, doc)).toBe(false)
-  })
-
-  // Regression: public visibility must NOT grant modify access
-  it("non-owner cannot modify publicly visible draft (latestVersion != null)", () => {
+  it("non-owner cannot modify publicly visible draft (latestVersion != null)", async () => {
     const doc = createMockResearchDoc({
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: "v2",
       status: "draft",
     })
-    expect(canModifyResource(otherUser, doc)).toBe(false)
+    expect(await canModifyResource(otherUser, doc)).toBe(false)
   })
 
-  it("non-owner cannot modify published resource", () => {
+  it("non-owner cannot modify published resource", async () => {
     const doc = createMockResearchDoc({
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: null,
       status: "published",
     })
-    expect(canModifyResource(otherUser, doc)).toBe(false)
+    expect(await canModifyResource(otherUser, doc)).toBe(false)
   })
 })
 
@@ -141,7 +145,6 @@ const authHeader = (user: AuthUser) => ({ "X-Test-Auth": JSON.stringify(user) })
 describe("loadResearchAndAuthorize", () => {
   const ownerDoc = createMockResearchDoc({
     humId: "hum0001",
-    uids: ["owner-1"],
     status: "draft",
     latestVersion: null,
     draftVersion: "v1",
@@ -149,7 +152,6 @@ describe("loadResearchAndAuthorize", () => {
 
   const publishedWithDraftDoc = createMockResearchDoc({
     humId: "hum0001",
-    uids: ["owner-1"],
     status: "draft",
     latestVersion: "v1",
     draftVersion: "v2",
@@ -161,12 +163,15 @@ describe("loadResearchAndAuthorize", () => {
 
   beforeEach(() => {
     mockGetResearchWithSeqNo.mockReset()
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
   })
 
   describe("requireOwnership: true", () => {
     const app = createTestApp({ requireOwnership: true })
 
     it("allows owner to access own resource", async () => {
+      mockIsOwnerFn.mockImplementation(async () => true)
       mockGetResearchWithSeqNo.mockResolvedValue({ doc: ownerDoc, seqNo: 1, primaryTerm: 1 })
 
       const res = await app.request("/hum0001/action", {
@@ -314,21 +319,18 @@ const createDatasetTestApp = (options: {
 describe("loadDatasetAndAuthorize", () => {
   const draftParent = createMockResearchDoc({
     humId: "hum0001",
-    uids: ["owner-1"],
     status: "draft",
     latestVersion: null,
     draftVersion: "v1",
   })
   const publishedParent = createMockResearchDoc({
     humId: "hum0001",
-    uids: ["owner-1"],
     status: "published",
     latestVersion: "v1",
     draftVersion: null,
   })
   const reviewParent = createMockResearchDoc({
     humId: "hum0001",
-    uids: ["owner-1"],
     status: "review",
     latestVersion: null,
     draftVersion: "v1",
@@ -343,6 +345,8 @@ describe("loadDatasetAndAuthorize", () => {
     mockGetDatasetWithSeqNo.mockReset()
     mockGetResearchDoc.mockReset()
     mockResolveLatestDatasetVersion.mockReset()
+    mockIsOwnerFn.mockReset()
+    mockIsOwnerFn.mockImplementation(async () => false)
     // Default: resolve to "v1" so existing tests without ?version= keep their semantics.
     mockResolveLatestDatasetVersion.mockResolvedValue("v1")
   })
@@ -351,6 +355,7 @@ describe("loadDatasetAndAuthorize", () => {
     const app = createDatasetTestApp({ requireOwnership: true, requireParentDraft: true })
 
     it("allows owner on draft-parent dataset and exposes preloaded vars", async () => {
+      mockIsOwnerFn.mockImplementation(async () => true)
       mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 7, primaryTerm: 2 })
       mockGetResearchDoc.mockResolvedValue(draftParent)
 
@@ -420,6 +425,7 @@ describe("loadDatasetAndAuthorize", () => {
     })
 
     it("returns 409 with parent-draft message when parent is in review", async () => {
+      mockIsOwnerFn.mockImplementation(async () => true)
       mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
       mockGetResearchDoc.mockResolvedValue(reviewParent)
 
@@ -461,6 +467,7 @@ describe("loadDatasetAndAuthorize", () => {
     })
 
     it("honors ?version=<v> from raw query (validators have not yet run)", async () => {
+      mockIsOwnerFn.mockImplementation(async () => true)
       mockGetDatasetWithSeqNo.mockResolvedValue({
         doc: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v3", humId: "hum0001" }),
         seqNo: 1,
@@ -478,6 +485,7 @@ describe("loadDatasetAndAuthorize", () => {
     })
 
     it("resolves to the latest dataset version when ?version is malformed", async () => {
+      mockIsOwnerFn.mockImplementation(async () => true)
       mockResolveLatestDatasetVersion.mockResolvedValue("v2")
       mockGetDatasetWithSeqNo.mockResolvedValue({
         doc: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humId: "hum0001" }),

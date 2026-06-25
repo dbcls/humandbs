@@ -289,7 +289,7 @@ export const getPublicStats = async (): Promise<StatsResponse> => {
     must.push({ terms: { humId: publishedHumIds } })
   }
 
-  const publicFilter = buildStatusFilter(null)
+  const publicFilter = await buildStatusFilter(null)
   const researchCount = await esClient.count({
     index: ES_INDEX.research,
     query: publicFilter ?? { match_all: {} },

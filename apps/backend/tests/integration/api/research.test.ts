@@ -317,7 +317,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     const json = (await res.json()) as BatchResponse<ResearchDetail>
     for (const item of json.data) {
       expect(item.status).toBe("published")
-      expect(item.uids).toEqual([])
       expect(item.draftVersion).toBeNull()
     }
   })

@@ -63,7 +63,8 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
+import { getOwnedHumIds } from "@/api/services/ownership"
+import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
 
 // === Constants ===
 
@@ -736,13 +737,18 @@ export const searchResearches = async (
   if (requestedStatus) {
     must.push({ term: { status: requestedStatus } })
 
-    // For non-admin authenticated users requesting non-published status, also filter by uids
+    // For non-admin authenticated users requesting non-published status, filter by owned humIds
     if (authUser && !authUser.isAdmin && requestedStatus !== "published") {
-      must.push({ term: { uids: authUser.userId } })
+      const ownedHumIds = await getOwnedHumIds(authUser.username)
+      if (ownedHumIds.length > 0) {
+        must.push({ terms: { humId: ownedHumIds } })
+      } else {
+        must.push({ term: { humId: "__no_match__" } })
+      }
     }
   } else {
     // No explicit status requested - apply default authorization filter
-    const statusFilter = buildStatusFilter(authUser)
+    const statusFilter = await buildStatusFilter(authUser)
     if (statusFilter) {
       must.push(statusFilter)
     }
@@ -800,7 +806,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, status: true,
     }).parse(doc))
 
   // Defense-in-depth: ES side should have already filtered by latestVersion
@@ -808,17 +814,21 @@ export const searchResearches = async (
   // an error log so the mismatch is observable. `pagination.total` is corrected
   // below so the page count tracks the visible rows; we accept the per-page
   // discrepancy in exchange for surfacing the underlying mapping bug.
-  const base = baseAll.filter(doc => canAccessResearchDoc(authUser, doc))
+  const accessChecks = await Promise.all(baseAll.map(doc => canAccessResearchDoc(authUser, doc)))
+  const base = baseAll.filter((_, i) => accessChecks[i])
   const postFilterExcluded = baseAll.length - base.length
   if (postFilterExcluded > 0) {
     const leakedHumIds = baseAll
-      .filter(doc => !canAccessResearchDoc(authUser, doc))
+      .filter((_, i) => !accessChecks[i])
       .map(doc => doc.humId)
     logger.error(
       `searchResearches post-filter excluded ${postFilterExcluded} document(s) that ES query should have filtered out. Check ES index mapping for latestVersion.`,
       { humIds: leakedHumIds },
     )
   }
+
+  // Pre-resolve ownership for sync checks in the map loop below
+  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
 
   // Fetch version and dataset details
   const rvIds = base.flatMap(doc => doc.versionIds)
@@ -844,7 +854,7 @@ export const searchResearches = async (
   const data: ResearchSummary[] = base.map(d => {
     // For non-owner users, only include versions up to latestVersion
     let effectiveVersionIds = d.versionIds
-    if (!isOwnerOrAdmin(authUser, d.uids ?? []) && d.latestVersion) {
+    if (!isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) && d.latestVersion) {
       const publishedNum = parseVersionNum(d.latestVersion)
       effectiveVersionIds = d.versionIds.filter(id => {
         const version = id.split("-").pop() ?? ""
@@ -882,7 +892,7 @@ export const searchResearches = async (
       targets,
       dataProvider,
       criteria,
-      status: isOwnerOrAdmin(authUser, d.uids ?? []) ? d.status : "published" as const,
+      status: isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) ? d.status : "published" as const,
     }
   })
 

@@ -174,8 +174,6 @@ export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 export const EsResearchSchema = CrawlerResearchSchema.extend({
   status: ResearchStatusSchema
     .describe("Publication status: 'draft', 'review', or 'published'"),
-  uids: z.array(z.string())
-    .describe("Keycloak user IDs (sub) who can edit this Research"),
   draftVersion: z.string().nullable()
     .describe("Version being edited (e.g., 'v2'). Null if no editing in progress."),
 })

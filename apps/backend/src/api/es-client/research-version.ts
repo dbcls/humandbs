@@ -87,7 +87,7 @@ export const listResearchVersions = async (
   const researchDoc = EsResearchSchema.parse(res._source)
 
   // Authorization check: verify user can access this Research
-  if (!canAccessResearchDoc(authUser, researchDoc)) {
+  if (!await canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to hide existence from unauthorized users
   }
 

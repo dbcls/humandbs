@@ -39,7 +39,7 @@ researchRouter.use("/:humId/submit", loadResearchAndAuthorize({ requireOwnership
 researchRouter.use("/:humId/approve", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/reject", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/unpublish", loadResearchAndAuthorize({ requireAdmin: true }))
-researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use("/:humId/owners", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use(
   "/:humId/dataset/new",
   loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),

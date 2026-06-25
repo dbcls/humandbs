@@ -22,10 +22,8 @@ import {
   exampleResearchVersionsListResponse,
   exampleResearchWithLockResponse,
   exampleSubmitResearchResponse,
-  exampleUidsResponse,
   exampleUnpublishResearchResponse,
   exampleUpdateResearchRequest,
-  exampleUpdateUidsRequest,
   exampleVersionCreateResponse,
   exampleVersionDetailResponse,
 } from "@/api/openapi/examples"
@@ -47,12 +45,11 @@ import {
   ResearchVersionsListResponseSchema,
   ResearchWithLockResponseSchema,
   UpdateResearchRequestSchema,
-  UpdateUidsRequestSchema,
-  UidsResponseSchema,
   VersionCreateResponseSchema,
   VersionDetailResponseSchema,
   VersionParamsSchema,
   WorkflowResponseSchema,
+  OwnersResponseSchema,
 } from "@/api/types"
 
 // === CRUD Routes ===
@@ -610,42 +607,33 @@ Returns 409 Conflict if Research is not in published status.`,
   },
 })
 
-// === UIDs Route ===
+// === Owners Route ===
 
-export const updateUidsRoute = createRoute({
-  method: "put",
-  path: "/{humId}/uids",
+export const getOwnersRoute = createRoute({
+  method: "get",
+  path: "/{humId}/owners",
   tags: ["Research"],
-  operationId: "updateResearchUids",
-  summary: "Update Research UIDs",
+  operationId: "getResearchOwners",
+  summary: "Get Research Owners",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
-  description: `Update the UIDs (owner list) of a Research.
+  description: `Get the owner list of a Research, derived from JGA DB (J-DS applications).
 
 **Authorization:** Admin only
 
-**Behavior:**
-- uids is an array of Keycloak sub (UUID) values
-- Users in this list can edit the Research (treated as owners)
-- Empty array means only admins can edit
-
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
+Returns usernames (Keycloak preferred_username) of users associated with this research via J-DS applications (pi_account_id, submitter_account_id, member_account_id).`,
   request: {
     params: HumIdParamsSchema,
-    body: {
-      content: { "application/json": { schema: UpdateUidsRequestSchema, example: exampleUpdateUidsRequest } },
-    },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: UidsResponseSchema, example: exampleUidsResponse } },
-      description: "UIDs updated successfully",
+      content: { "application/json": { schema: OwnersResponseSchema } },
+      description: "Owners retrieved successfully",
     },
-    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
-    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
+

@@ -72,17 +72,15 @@ describe("ResearchDetailSchema (unified)", () => {
     datasets: [],
   }
 
-  it("always includes status, uids, draftVersion", () => {
+  it("always includes status and draftVersion", () => {
     const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
       status: "draft",
-      uids: ["user-1"],
       draftVersion: "v2",
     })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.status).toBe("draft")
-      expect(result.data.uids).toEqual(["user-1"])
       expect(result.data.draftVersion).toBe("v2")
     }
   })
@@ -91,13 +89,11 @@ describe("ResearchDetailSchema (unified)", () => {
     const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
       status: "published",
-      uids: [],
       draftVersion: null,
     })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.status).toBe("published")
-      expect(result.data.uids).toEqual([])
       expect(result.data.draftVersion).toBeNull()
     }
   })
@@ -106,7 +102,6 @@ describe("ResearchDetailSchema (unified)", () => {
     const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
       status: "published",
-      uids: [],
       draftVersion: null,
       versionIds: ["hum0001.v1"],
     })
@@ -120,7 +115,6 @@ describe("ResearchDetailSchema (unified)", () => {
     const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
       status: "published",
-      uids: [],
       draftVersion: null,
       _seq_no: 1,
       _primary_term: 1,

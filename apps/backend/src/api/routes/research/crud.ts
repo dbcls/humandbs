@@ -11,13 +11,13 @@ import {
   NotFoundError,
 } from "@/api/errors"
 import { checkRequestedStatus } from "@/api/es-client/auth"
+import { getOwnerUsernames } from "@/api/services/ownership"
 import {
   createResearch,
   deleteResearch,
   getResearchDetail,
   getResearchWithSeqNo,
   updateResearch,
-  updateResearchUids,
 } from "@/api/es-client/research"
 import { getResearchVersionWithSeqNo, updateResearchVersionReleaseNote } from "@/api/es-client/research-version"
 import { searchResearches } from "@/api/es-client/search"
@@ -27,6 +27,7 @@ import {
   createdResponse,
   searchResponse,
   singleResponse,
+  singleReadOnlyResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
 import { ResearchStatusSchema } from "@/api/types"
@@ -43,7 +44,7 @@ import {
   updateResearchRoute,
   patchResearchRoute,
   deleteResearchRoute,
-  updateUidsRoute,
+  getOwnersRoute,
 } from "./routes"
 
 /**
@@ -92,16 +93,16 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
 
     const data: ResearchDetail[] = []
     const notFound: string[] = []
-    uniqIds.forEach((id, i) => {
+    for (let i = 0; i < uniqIds.length; i++) {
       const detail = details[i]
       if (!detail) {
-        notFound.push(id)
-        return
+        notFound.push(uniqIds[i])
+        continue
       }
       // Match the detail endpoint: value-based masking, then strip rawHtml.
-      const sanitized = sanitizeResearchDetailForUser(detail, authUser)
+      const sanitized = await sanitizeResearchDetailForUser(detail, authUser)
       data.push(maybeStripRawHtml(sanitized, includeRawHtml))
-    })
+    }
 
     return batchResponse(c, data, {
       requested: uniqIds.length,
@@ -125,7 +126,6 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
-      uids: body.uids,
     })
 
     // Get the created research with seqNo for the response
@@ -135,9 +135,11 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     const { status, ...rest } = createResult.research
+    const owners = await getOwnerUsernames(body.humId)
     const responseData = {
       ...rest,
       status: ResearchStatusSchema.parse(status),
+      owners,
       datasets: [],
     }
 
@@ -161,7 +163,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const primaryTerm = lock?.primaryTerm ?? 1
 
     // Value-based access control: owner/admin sees actual values, others see sanitized values
-    const responseData = sanitizeResearchDetailForUser(detail, authUser)
+    const responseData = await sanitizeResearchDetailForUser(detail, authUser)
 
     const strippedDetail = maybeStripRawHtml(responseData, query.includeRawHtml ?? false)
 
@@ -214,9 +216,11 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     const { status: updatedStatus, ...restUpdated } = updated
+    const owners = await getOwnerUsernames(humId)
     const responseData = {
       ...restUpdated,
       status: ResearchStatusSchema.parse(updatedStatus),
+      owners,
       datasets: [],
     }
 
@@ -265,9 +269,11 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     const { status: updatedStatus, ...restUpdated } = updated
+    const patchOwners = await getOwnerUsernames(humId)
     const responseData = {
       ...restUpdated,
       status: ResearchStatusSchema.parse(updatedStatus),
+      owners: patchOwners,
       datasets: [],
     }
 
@@ -289,32 +295,12 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     return c.body(null, 204)
   })
 
-  // PUT /research/{humId}/uids
+  // GET /research/{humId}/owners
   // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
-  router.openapi(updateUidsRoute, async (c) => {
-    // Research is preloaded by middleware with admin check
+  router.openapi(getOwnersRoute, async (c) => {
     const research = c.get("research")
-    const { humId } = research
+    const owners = await getOwnerUsernames(research.humId)
 
-    const body = c.req.valid("json")
-
-    // Use optimistic lock values from request body
-    const updatedUids = await updateResearchUids(humId, body.uids, body._seq_no, body._primary_term)
-    if (!updatedUids) {
-      throw new ConflictError()
-    }
-
-    // Get updated seqNo/primaryTerm
-    const updatedWithSeqNo = await getResearchWithSeqNo(humId)
-    if (!updatedWithSeqNo) {
-      throw new NotFoundError("Updated research not found")
-    }
-
-    const responseData = {
-      humId,
-      uids: updatedUids,
-    }
-
-    return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
+    return singleReadOnlyResponse(c, { humId: research.humId, owners })
   })
 }

@@ -111,12 +111,12 @@ describe("OpenAPI document - per-operation contract", () => {
       "post /research/{humId}/approve",
       "post /research/{humId}/reject",
       "post /research/{humId}/unpublish",
-      "put /research/{humId}/uids",
       "post /dataset/{datasetId}/delete",
       "get /jga-shinsei/ds",
       "get /jga-shinsei/ds/{jdsApplId}",
       "get /jga-shinsei/du",
       "get /jga-shinsei/du/{jduApplId}",
+      "get /research/{humId}/owners",
       "get /templates/research/{jdsApplId}",
       "get /templates/dataset/{externalId}",
     ].map((entry) => {
