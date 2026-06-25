@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-export function SearchIcon({
+export function CustomSearchIcon({
   size = 16,
   className = "",
   ...props
@@ -26,4 +26,3 @@ export function SearchIcon({
     </svg>
   );
 }
-

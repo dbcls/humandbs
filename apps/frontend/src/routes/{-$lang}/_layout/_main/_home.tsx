@@ -7,7 +7,7 @@ import { lazy, Suspense, useState } from "react";
 import { Card } from "@/components/Card";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
-import { SearchIcon } from "@/components/SearchIcon";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
@@ -59,7 +59,7 @@ function RouteComponent() {
                     onClick={handleSearch}
                     aria-label={tCommon("search")}
                   >
-                    <SearchIcon size={18} />
+                    <CustomSearchIcon size={18} />
                   </Button>
                 }
                 onChange={(e) => {

@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
-import { SearchIcon } from "@/components/SearchIcon";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -96,8 +96,10 @@ export function SearchCaption({
                   <Button
                     variant={"plain"}
                     size={"icon"}
+                    type="button"
                     className={"pointer-events-auto text-foreground-light"}
                     onClick={handleResetInput}
+                    aria-label={t("clear")}
                   >
                     <X size={22} />
                   </Button>
@@ -111,7 +113,7 @@ export function SearchCaption({
                   onClick={handleSearch}
                   aria-label={t("search")}
                 >
-                  <SearchIcon size={14} />
+                  <CustomSearchIcon size={14} />
                 </Button>
               </>
             }
