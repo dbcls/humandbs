@@ -49,6 +49,7 @@ import {
   VersionDetailResponseSchema,
   VersionParamsSchema,
   WorkflowResponseSchema,
+  OwnersResponseSchema,
 } from "@/api/types"
 
 // === CRUD Routes ===
@@ -602,6 +603,36 @@ Returns 409 Conflict if Research is not in published status.`,
     403: ErrorSpec403,
     404: ErrorSpec404,
     409: ErrorSpec409,
+    500: ErrorSpec500,
+  },
+})
+
+// === Owners Route ===
+
+export const getOwnersRoute = createRoute({
+  method: "get",
+  path: "/{humId}/owners",
+  tags: ["Research"],
+  operationId: "getResearchOwners",
+  summary: "Get Research Owners",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
+  description: `Get the owner list of a Research, derived from JGA DB (J-DS applications).
+
+**Authorization:** Admin only
+
+Returns usernames (Keycloak preferred_username) of users associated with this research via J-DS applications (pi_account_id, submitter_account_id, member_account_id).`,
+  request: {
+    params: HumIdParamsSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: OwnersResponseSchema } },
+      description: "Owners retrieved successfully",
+    },
+    401: ErrorSpec401,
+    403: ErrorSpec403,
+    404: ErrorSpec404,
     500: ErrorSpec500,
   },
 })

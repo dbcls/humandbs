@@ -116,6 +116,7 @@ describe("OpenAPI document - per-operation contract", () => {
       "get /jga-shinsei/ds/{jdsApplId}",
       "get /jga-shinsei/du",
       "get /jga-shinsei/du/{jduApplId}",
+      "get /research/{humId}/owners",
       "get /templates/research/{jdsApplId}",
       "get /templates/dataset/{externalId}",
     ].map((entry) => {

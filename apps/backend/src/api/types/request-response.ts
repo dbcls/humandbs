@@ -462,6 +462,19 @@ export type WorkflowResponse = z.infer<
 >
 
 /**
+ * Owners response data (GET /research/{humId}/owners, admin only)
+ */
+export const OwnersDataSchema = z.object({
+  humId: z.string(),
+  owners: z.array(z.string()),
+})
+export type OwnersData = z.infer<typeof OwnersDataSchema>
+
+export const OwnersResponseSchema =
+  createSingleReadOnlyResponseSchema(OwnersDataSchema)
+export type OwnersResponse = z.infer<typeof OwnersResponseSchema>
+
+/**
  * Research detail response for authenticated users (GET /research/{humId})
  * `_seq_no`/`_primary_term` live in `meta` (see `singleResponse` helper).
  */

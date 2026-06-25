@@ -27,6 +27,7 @@ import {
   createdResponse,
   searchResponse,
   singleResponse,
+  singleReadOnlyResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
 import { ResearchStatusSchema } from "@/api/types"
@@ -43,6 +44,7 @@ import {
   updateResearchRoute,
   patchResearchRoute,
   deleteResearchRoute,
+  getOwnersRoute,
 } from "./routes"
 
 /**
@@ -291,5 +293,14 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     return c.body(null, 204)
+  })
+
+  // GET /research/{humId}/owners
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
+  router.openapi(getOwnersRoute, async (c) => {
+    const research = c.get("research")
+    const owners = await getOwnerUsernames(research.humId)
+
+    return singleReadOnlyResponse(c, { humId: research.humId, owners })
   })
 }

@@ -240,6 +240,8 @@ export {
   // Response schemas for /research routes
   WorkflowDataSchema,
   WorkflowResponseSchema,
+  OwnersDataSchema,
+  OwnersResponseSchema,
   ResearchDetailResponseSchema,
   ResearchBatchResponseSchema,
   ResearchWithLockResponseSchema,
@@ -282,6 +284,8 @@ export type {
   // Response types for /research routes
   WorkflowData,
   WorkflowResponse,
+  OwnersData,
+  OwnersResponse,
   ResearchDetailResponse,
   ResearchBatchResponse,
   ResearchWithLockResponse,
