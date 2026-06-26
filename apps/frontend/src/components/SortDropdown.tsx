@@ -1,53 +1,58 @@
-import { LucideArrowDownRight, LucideArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Button } from "./ui/button";
 
 interface SortOption {
   label: string;
   value: string;
-  order: "asc" | "desc";
 }
 
 export function SortDropdown({
   onSelect,
   options,
-  value,
+  sort,
+  order,
 }: {
   onSelect: (x: { sort: string; order: "asc" | "desc" }) => void;
   options: SortOption[];
-  value: string | undefined;
+  sort: string | undefined;
+  order: "asc" | "desc" | undefined;
 }) {
-  const currentOrder = value ? (value.split(":")[1] as "asc" | "desc") : "asc";
+  const currentSort = sort || "";
+  const currentOrder = order || "asc";
 
-  const currentLabel = options.find((option) => option.value === value)?.label ?? "Sort";
+  const handleSortChange = (newSort: string) => {
+    onSelect({ sort: newSort, order: currentOrder });
+  };
+
+  const handleOrderToggle = () => {
+    const newOrder = currentOrder === "asc" ? "desc" : "asc";
+    onSelect({ sort: currentSort, order: newOrder });
+  };
 
   return (
-    <Select
-      value={value}
-      onValueChange={(v) => {
-        const [sort, order] = v.split(":");
-        onSelect({ sort, order: order as "asc" | "desc" });
-      }}
-    >
-      <SelectTrigger size="sm" className="h-10 w-auto gap-2 rounded-full text-sm">
-        <SelectValue>
-          <OrderIcon order={currentOrder} />
-          {currentLabel}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {options.map(({ label, value, order }) => (
-          <SelectItem key={`${value}:${order}`} value={`${value}:${order}`}>
-            <OrderIcon order={order} />
-
-            {label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-1.5">
+      <Select value={currentSort} onValueChange={handleSortChange}>
+        <SelectTrigger className="h-fit py-2 px-5 gap-2 rounded-full border border-neutral-300 text-sm font-semibold bg-white/50 hover:bg-white text-foreground shadow-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(({ label, value }) => (
+            <SelectItem key={value} value={value}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="tableAction"
+        className="h-fit px-3 py-2 rounded-full"
+        onClick={handleOrderToggle}
+        title={currentOrder === "asc" ? "Ascending" : "Descending"}
+      >
+        {currentOrder === "asc" ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+      </Button>
+    </div>
   );
-}
-
-function OrderIcon({ order }: { order: "asc" | "desc" }) {
-  return order === "asc" ? <LucideArrowUpRight /> : <LucideArrowDownRight />;
 }

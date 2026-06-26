@@ -292,15 +292,7 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const DATASET_SORT_OPTIONS = [
-  { sort: "datasetId", order: "asc" },
-  { sort: "datasetId", order: "desc" },
-  { sort: "releaseDate", order: "desc" },
-  { sort: "releaseDate", order: "asc" },
-] as const;
-
 function DatasetSortSelect() {
-  const t = useTranslations("common");
   const tD = useTranslations("Dataset");
   const { filters, setFilters } = useFilters(Route.id);
 
@@ -311,20 +303,17 @@ function DatasetSortSelect() {
 
   const currentSort = filters.sort ?? "datasetId";
   const currentOrder = filters.order ?? "asc";
-  // const value = `${currentSort}:${currentOrder}`;
 
-  const sortOptions = DATASET_SORT_OPTIONS.map(({ sort, order }) => ({
-    label: t("sort-by", {
-      field: fieldLabels[sort],
-    }),
-    value: `${sort}:${order}`,
-    order,
-  }));
+  const sortOptions = [
+    { label: fieldLabels.datasetId, value: "datasetId" },
+    { label: fieldLabels.releaseDate, value: "releaseDate" },
+  ];
 
   return (
     <SortDropdown
       options={sortOptions}
-      value={`${currentSort}:${currentOrder}`}
+      sort={currentSort}
+      order={currentOrder}
       onSelect={(newSort) => {
         startTransition(() => {
           setFilters(newSort);
