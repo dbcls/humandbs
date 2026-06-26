@@ -87,7 +87,7 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-12 w-md py-2 pr-0 pl-6"
+            className="h-11 w-md py-2 pr-0 pl-6"
             afterIcon={
               <>
                 {inputValue ? (
@@ -104,10 +104,10 @@ export function SearchCaption({
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
                   size="default"
-                  className="pointer-events-auto gap-2 rounded-full px-5 py-2 text-sm"
+                  className="pointer-events-auto gap-2 rounded-full px-4 h-8 text-xs"
                   onClick={handleSearch}
                 >
-                  <Search size={16} />
+                  <Search size={14} />
                 </Button>
               </>
             }

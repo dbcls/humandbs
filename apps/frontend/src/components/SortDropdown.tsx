@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -33,7 +33,7 @@ export function SortDropdown({
   };
 
   return (
-    <div className="flex items-center rounded-full border border-neutral-300 bg-white/50 text-sm h-fit py-[7px] pl-4 pr-1.5 text-foreground shadow-xs hover:bg-white transition-colors">
+    <div className="flex items-center rounded-full border border-neutral-300 bg-white/50 text-sm h-11 pl-4 pr-1.5 text-foreground shadow-xs hover:bg-white transition-colors">
       <span className="font-semibold text-muted-foreground select-none text-xs mr-2 pr-2 border-r border-neutral-200 uppercase tracking-wider">
         {t("sort")}
       </span>
@@ -52,11 +52,11 @@ export function SortDropdown({
       <div className="w-px h-3.5 bg-neutral-200 mx-1.5" />
       <button
         type="button"
-        className="p-1 hover:bg-neutral-100 active:bg-neutral-200 rounded-full transition-colors text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center size-6 shrink-0"
+        className="p-1 hover:bg-neutral-100 active:bg-neutral-200 rounded-full transition-colors text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center size-8 shrink-0"
         onClick={handleOrderToggle}
         title={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
       >
-        {currentOrder === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+        {currentOrder === "asc" ? <ArrowUpNarrowWide size={16} /> : <ArrowDownWideNarrow size={16} />}
       </button>
     </div>
   );
