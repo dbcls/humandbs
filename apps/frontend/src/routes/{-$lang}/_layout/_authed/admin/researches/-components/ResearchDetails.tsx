@@ -1,6 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { LucideUser2 } from "lucide-react";
 import { IntlProvider } from "use-intl";
 
 import { useState } from "react";
@@ -51,8 +52,6 @@ import {
   researchSaveEndpoint,
 } from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
-import { TagPill } from "@/components/TagPill";
-import { LucideUser2 } from "lucide-react";
 
 /**
  * Top-level research metadata fields rendered as tabs, derived from the schema
@@ -234,11 +233,13 @@ export function ResearchDetails({
       setPrimaryTerm(result.data.meta._primary_term);
       setError(null);
       setIsConflict(false);
-      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
     onError: (err: Error) => {
       setError(err.message ?? "Failed to save research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
   });
 
@@ -343,8 +344,14 @@ export function ResearchDetails({
     mutationFn: () => $approveResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("published"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
@@ -360,8 +367,14 @@ export function ResearchDetails({
     mutationFn: () => $rejectResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("draft"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
@@ -377,8 +390,15 @@ export function ResearchDetails({
     mutationFn: () => $unpublishResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("draft"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+
+        setIsConflict(false);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
@@ -402,8 +422,7 @@ export function ResearchDetails({
   function handleUnpublish() {
     openConfirmation({
       title: "Unpublish research?",
-      description:
-        "This will return the research to draft status and remove it from public view.",
+      description: "This will return the research to draft status and remove it from public view.",
       actionLabel: "Unpublish",
       onAction: () => unpublishResearch(),
     });
@@ -589,12 +608,9 @@ export function ResearchDetails({
             <div className="flex flex-wrap gap-4">
               {owners.map((owner) => (
                 <span key={owner} className="text-neutral-700">
-
-                  <LucideUser2 className="size-6 inline align-text-bottom" />
+                  <LucideUser2 className="inline size-6 align-text-bottom" />
                   {owner}
                 </span>
-
-
               ))}
             </div>
           ) : (
@@ -628,12 +644,7 @@ export function ResearchDetails({
           </Button>
         )}
         {canUnpublish && (
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleUnpublish}
-            disabled={isUnpublishing}
-          >
+          <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
             {isUnpublishing ? "Unpublishing…" : "Unpublish"}
           </Button>
         )}
