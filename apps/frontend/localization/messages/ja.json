@@ -295,8 +295,8 @@
     "experiments": "解析手法"
   },
   "Data-submission": {
-    "to-data-submission": "申請システムへ（仮）",
-    "to-navigation": "登録ナビゲーション（仮）",
+    "to-data-submission": "申請システムへ",
+    "to-navigation": "登録ナビゲーション",
     "data-submission": "データの提供",
     "before-application": "申請システムの前に"
   },

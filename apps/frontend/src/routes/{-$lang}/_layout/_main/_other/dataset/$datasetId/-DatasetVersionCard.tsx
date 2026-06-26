@@ -1,5 +1,5 @@
 import { useRouteContext } from "@tanstack/react-router";
-import { Download, File, Folder, FolderOpen, X } from "lucide-react";
+import { Download, File, FolderOpen, X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
 
@@ -93,16 +93,12 @@ export function DatasetVersionCard({
               )}
               {showPublicActions && showAddToCartButton && (
                 <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
-                  {user ? (
-                    isInCart ? (
-                      <>
-                        <X className="size-5" /> {t("remove-from-cart")}
-                      </>
-                    ) : (
-                      t("add-to-cart")
-                    )
+                  {isInCart ? (
+                    <>
+                      <X className="size-5" /> {t("remove-from-cart")}
+                    </>
                   ) : (
-                    t("login-to-add")
+                    t("add-to-cart")
                   )}
                 </Button>
               )}
