@@ -31,7 +31,13 @@ function calendarSelected(date: Date): Date {
 function mergeDateTime(calendarDay: Date, timeStr: string): Date {
   const [h, m] = timeStr.split(":").map(Number);
   return new Date(
-    Date.UTC(calendarDay.getFullYear(), calendarDay.getMonth(), calendarDay.getDate(), h ?? 0, m ?? 0),
+    Date.UTC(
+      calendarDay.getFullYear(),
+      calendarDay.getMonth(),
+      calendarDay.getDate(),
+      h ?? 0,
+      m ?? 0,
+    ),
   );
 }
 
@@ -43,9 +49,7 @@ export function DateTimePicker({
   onChange: (date: Date | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [timeStr, setTimeStr] = useState<string>(() =>
-    value ? toTimeString(value) : "00:00",
-  );
+  const [timeStr, setTimeStr] = useState<string>(() => (value ? toTimeString(value) : "00:00"));
 
   const handleDaySelect = (day: Date | undefined) => {
     if (!day) return;
@@ -80,12 +84,7 @@ export function DateTimePicker({
           onSelect={handleDaySelect}
         />
         <div className="border-t p-3">
-          <Input
-            type="time"
-            value={timeStr}
-            onChange={handleTimeChange}
-            className="w-full"
-          />
+          <Input type="time" value={timeStr} onChange={handleTimeChange} className="w-full" />
         </div>
       </PopoverContent>
     </Popover>

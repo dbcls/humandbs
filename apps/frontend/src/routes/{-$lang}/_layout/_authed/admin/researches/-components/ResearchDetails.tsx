@@ -1,6 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { LucideUser2 } from "lucide-react";
 import { IntlProvider } from "use-intl";
 
 import { useState } from "react";
@@ -15,6 +16,7 @@ import { FieldControl } from "@/components/form-context/schema-form/FieldControl
 import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
 import { humanize } from "@/components/form-context/schema-form/utils";
 import { StatusTag } from "@/components/StatusTag";
+import { TagPill } from "@/components/TagPill";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
@@ -51,8 +53,6 @@ import {
   researchSaveEndpoint,
 } from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
-import { TagPill } from "@/components/TagPill";
-import { LucideUser2 } from "lucide-react";
 
 /**
  * Top-level research metadata fields rendered as tabs, derived from the schema
@@ -402,8 +402,7 @@ export function ResearchDetails({
   function handleUnpublish() {
     openConfirmation({
       title: "Unpublish research?",
-      description:
-        "This will return the research to draft status and remove it from public view.",
+      description: "This will return the research to draft status and remove it from public view.",
       actionLabel: "Unpublish",
       onAction: () => unpublishResearch(),
     });
@@ -589,12 +588,9 @@ export function ResearchDetails({
             <div className="flex flex-wrap gap-4">
               {owners.map((owner) => (
                 <span key={owner} className="text-neutral-700">
-
-                  <LucideUser2 className="size-6 inline align-text-bottom" />
+                  <LucideUser2 className="inline size-6 align-text-bottom" />
                   {owner}
                 </span>
-
-
               ))}
             </div>
           ) : (
@@ -628,12 +624,7 @@ export function ResearchDetails({
           </Button>
         )}
         {canUnpublish && (
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleUnpublish}
-            disabled={isUnpublishing}
-          >
+          <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
             {isUnpublishing ? "Unpublishing…" : "Unpublish"}
           </Button>
         )}

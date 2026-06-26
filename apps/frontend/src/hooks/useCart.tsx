@@ -44,14 +44,8 @@ export const useCartStore = create<CartDatasetStore>()(
   ),
 );
 
-export function useCartTableHeader({
-  tableDatasets,
-}: {
-  tableDatasets: { datasetId: string }[];
-}) {
-  const cartableIds = tableDatasets
-    .map((ds) => ds.datasetId)
-    .filter(isCartableDatasetId);
+export function useCartTableHeader({ tableDatasets }: { tableDatasets: { datasetId: string }[] }) {
+  const cartableIds = tableDatasets.map((ds) => ds.datasetId).filter(isCartableDatasetId);
 
   const { allInCart, someInCart, add, remove } = useCartStore(
     useShallow((state) => ({

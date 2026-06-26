@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const contentHeaderVariants = cva("font-semibold text-secondary", {
   variants: {
     variant: {
-      default: "mt-10 mb-6 text-3xl",
+      default: "mt-10 mb-2 text-3xl",
       sm: "mb-3 text-2xl",
       block:
         "mb-4 rounded-sm bg-linear-to-r from-secondary-light to-secondary-lighter px-3 py-2 text-white",

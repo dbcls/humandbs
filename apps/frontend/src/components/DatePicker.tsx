@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DateStringRange } from "@/utils/dates";
-import { toDate, toDateRange, toDateString, toDateStringRange, toLocaleDateTimeString } from "@/utils/dates";
+import {
+  toDate,
+  toDateRange,
+  toDateString,
+  toDateStringRange,
+  toLocaleDateTimeString,
+} from "@/utils/dates";
 
 export function DatePicker({
   dateValue,
@@ -44,7 +50,9 @@ export function DatePicker({
 
 // Converts a date-only calendar day (local midnight) to a UTC ISO string with the given time.
 function localDayToUtcIso(day: Date, hours: number, minutes: number): string {
-  return new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hours, minutes)).toISOString();
+  return new Date(
+    Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hours, minutes),
+  ).toISOString();
 }
 
 // Parse an ISO datetime string back to a local-midnight Date for the calendar.

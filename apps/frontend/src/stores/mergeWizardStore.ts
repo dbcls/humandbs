@@ -1,7 +1,10 @@
 import { create } from "zustand";
 
 import type { ResearchTemplateData } from "../../../backend/src/api/types/templates";
-import type { FieldDecision, MergeFieldDescriptor } from "../routes/{-$lang}/_layout/_authed/admin/researches/-components/utils/computeMergeFields";
+import type {
+  FieldDecision,
+  MergeFieldDescriptor,
+} from "../routes/{-$lang}/_layout/_authed/admin/researches/-components/utils/computeMergeFields";
 
 interface MergeWizardState {
   fetchedResearch: ResearchTemplateData | null;

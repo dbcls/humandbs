@@ -142,5 +142,3 @@ export function SearchCaption({
     </div>
   );
 }
-
-

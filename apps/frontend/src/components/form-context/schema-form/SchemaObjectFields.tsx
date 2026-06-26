@@ -3,8 +3,8 @@ import { Label } from "@/components/ui/label";
 import { BilingualTextField } from "../fields/BilingualTextField";
 import { BilingualTextValueField } from "../fields/BilingualTextValueField";
 import URLField from "../research-fields/URLInputPair";
-import { FieldControl } from "./FieldControl";
 import { detectLeaf } from "./detectLeaf";
+import { FieldControl } from "./FieldControl";
 import { getFieldKind } from "./getFieldKind";
 import { humanize } from "./utils";
 
