@@ -10,9 +10,7 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
     <li>
       {newsItem.publishedAt ? (
-        <span className="w-24 shrink-0 text-xs">
-          {newsItem.publishedAt.toLocaleString(lang)}
-        </span>
+        <span className="w-24 shrink-0 text-xs">{newsItem.publishedAt.toLocaleString(lang)}</span>
       ) : null}
 
       <Link

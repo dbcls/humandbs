@@ -400,15 +400,11 @@ export const $getResearchVersions = createServerFn()
 
     for (const version of res.data) {
       if (version.releaseNote.en) {
-        version.releaseNote.en.rawHtml = (
-          await renderMarkdown(version.releaseNote.en.text)
-        ).markup;
+        version.releaseNote.en.rawHtml = (await renderMarkdown(version.releaseNote.en.text)).markup;
       }
 
       if (version.releaseNote.ja) {
-        version.releaseNote.ja.rawHtml = (
-          await renderMarkdown(version.releaseNote.ja.text)
-        ).markup;
+        version.releaseNote.ja.rawHtml = (await renderMarkdown(version.releaseNote.ja.text)).markup;
       }
     }
 

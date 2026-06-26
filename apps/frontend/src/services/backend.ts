@@ -286,11 +286,7 @@ const api: APIService = {
   },
 
   getResearchOwners(humId, accessToken) {
-    return get<OwnersResponse>(
-      `/research/${humId}/owners`,
-      undefined,
-      authHeader(accessToken),
-    );
+    return get<OwnersResponse>(`/research/${humId}/owners`, undefined, authHeader(accessToken));
   },
 
   getDatasetsPaginated(query) {
@@ -355,11 +351,7 @@ const api: APIService = {
   },
 
   patchResearch(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(
-      `/research/${humId}/patch`,
-      body,
-      authHeader(accessToken),
-    );
+    return put<ResearchWithLockResponse>(`/research/${humId}/patch`, body, authHeader(accessToken));
   },
 
   async deleteResearch(humId, accessToken) {
@@ -407,11 +399,7 @@ const api: APIService = {
   },
 
   patchDataset(datasetId, body, accessToken) {
-    return put<DatasetUpdateResponse>(
-      `/dataset/${datasetId}/patch`,
-      body,
-      authHeader(accessToken),
-    );
+    return put<DatasetUpdateResponse>(`/dataset/${datasetId}/patch`, body, authHeader(accessToken));
   },
 
   deleteDataset(datasetId, accessToken) {

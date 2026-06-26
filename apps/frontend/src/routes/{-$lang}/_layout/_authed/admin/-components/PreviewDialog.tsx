@@ -2,13 +2,8 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Locale } from "@/config/i18n";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 /**
  * Shared big-modal shell for admin previews (research, dataset, flowchart).

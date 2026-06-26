@@ -201,7 +201,7 @@ function CardContent() {
 
   return (
     <>
-      <p className="text-muted-foreground mb-2 text-sm">{t("cart-note")}</p>
+      <p className="mb-2 text-muted-foreground text-sm">{t("cart-note")}</p>
       <div
         ref={containerRef}
         style={{ maxHeight }}

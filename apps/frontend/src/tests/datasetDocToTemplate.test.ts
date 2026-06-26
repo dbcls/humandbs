@@ -59,16 +59,12 @@ describe("datasetDocToTemplate – releaseDate / criteria normalization", () => 
 
 describe("datasetDocToTemplate – typeOfData", () => {
   test("{ ja, en } passes through", () => {
-    const result = datasetDocToTemplate(
-      makeDoc({ typeOfData: { ja: "あ", en: "b" } }),
-    );
+    const result = datasetDocToTemplate(makeDoc({ typeOfData: { ja: "あ", en: "b" } }));
     expect(result.typeOfData).toEqual({ ja: "あ", en: "b" });
   });
 
   test("null sides pass through unchanged", () => {
-    const result = datasetDocToTemplate(
-      makeDoc({ typeOfData: { ja: null, en: "b" } }),
-    );
+    const result = datasetDocToTemplate(makeDoc({ typeOfData: { ja: null, en: "b" } }));
     expect(result.typeOfData).toEqual({ ja: null, en: "b" });
   });
 });

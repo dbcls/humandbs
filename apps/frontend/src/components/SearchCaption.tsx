@@ -148,5 +148,3 @@ export function SearchCaption({
     </div>
   );
 }
-
-

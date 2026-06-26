@@ -59,9 +59,9 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
-import { PreviewDialog } from "./-components/PreviewDialog";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { PreviewDialog } from "./-components/PreviewDialog";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/flowcharts")({
   component: RouteComponent,
@@ -625,95 +625,95 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
       {/* Sticky action bar */}
       <div className="flex items-center justify-between px-5 pt-5">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
-                onCheckedChange={(checked) =>
-                  setMeta((p) => ({
-                    ...p,
-                    status: checked
-                      ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
-                      : NAVIGATION_FLOWCHART_STATUS.DRAFT,
-                  }))
-                }
-              />
-              <span className="text-gray-500 text-xs">
-                {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={!isDirty || isSaving}
-              >
-                Reset
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={!isDirty || isSaving}>
-                {isSaving ? "Saving…" : "Save"}
-              </Button>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
+            onCheckedChange={(checked) =>
+              setMeta((p) => ({
+                ...p,
+                status: checked
+                  ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
+                  : NAVIGATION_FLOWCHART_STATUS.DRAFT,
+              }))
+            }
+          />
+          <span className="text-gray-500 text-xs">
+            {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={!isDirty || isSaving}
+          >
+            Reset
+          </Button>
+          <Button type="button" onClick={handleSave} disabled={!isDirty || isSaving}>
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
+
+      {message ? (
+        <AdminStatusMessage variant="success" className="mx-5 mt-4">
+          {message}
+        </AdminStatusMessage>
+      ) : null}
+      {error ? (
+        <AdminStatusMessage className="mx-5 mt-4" preserveWhitespace>
+          {error}
+        </AdminStatusMessage>
+      ) : null}
+
+      {/* Scrollable content */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
+          {/* Flowchart name */}
+          <div className="flex flex-col gap-2">
+            <h3 className="font-medium text-gray-700 text-sm">Name</h3>
+            <LocaleInlineEditor
+              value={{ en: meta.nameEn, ja: meta.nameJa }}
+              onChange={({ en, ja }) => {
+                setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
+                setMetaErrors((p) => ({
+                  ...p,
+                  nameEn: undefined,
+                  nameJa: undefined,
+                }));
+              }}
+              className="font-medium text-sm"
+              required
+            />
+            {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
+            {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
+          </div>
+
+          {/* Entry point */}
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={meta.isEntryPoint}
+              onCheckedChange={(checked) => setMeta((p) => ({ ...p, isEntryPoint: checked }))}
+            />
+            <div>
+              <span className="font-medium text-gray-700 text-sm">Entry point</span>
+              <p className="text-gray-400 text-xs">
+                The entry point flowchart is loaded on the public navigation page. Only one
+                flowchart can be the entry point.
+              </p>
             </div>
           </div>
 
-          {message ? (
-            <AdminStatusMessage variant="success" className="mx-5 mt-4">
-              {message}
-            </AdminStatusMessage>
-          ) : null}
-          {error ? (
-            <AdminStatusMessage className="mx-5 mt-4" preserveWhitespace>
-              {error}
-            </AdminStatusMessage>
-          ) : null}
-
-          {/* Scrollable content */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
-              {/* Flowchart name */}
-              <div className="flex flex-col gap-2">
-                <h3 className="font-medium text-gray-700 text-sm">Name</h3>
-                <LocaleInlineEditor
-                  value={{ en: meta.nameEn, ja: meta.nameJa }}
-                  onChange={({ en, ja }) => {
-                    setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
-                    setMetaErrors((p) => ({
-                      ...p,
-                      nameEn: undefined,
-                      nameJa: undefined,
-                    }));
-                  }}
-                  className="font-medium text-sm"
-                  required
-                />
-                {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
-                {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
-              </div>
-
-              {/* Entry point */}
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={meta.isEntryPoint}
-                  onCheckedChange={(checked) => setMeta((p) => ({ ...p, isEntryPoint: checked }))}
-                />
-                <div>
-                  <span className="font-medium text-gray-700 text-sm">Entry point</span>
-                  <p className="text-gray-400 text-xs">
-                    The entry point flowchart is loaded on the public navigation page. Only one
-                    flowchart can be the entry point.
-                  </p>
-                </div>
-              </div>
-
-              {/* Steps */}
-              <StepList
-                config={configDraft}
-                onChange={setConfigDraft}
-                stepErrors={stepErrors}
-                otherFlowcharts={otherFlowcharts}
-              />
-            </div>
-          </div>
+          {/* Steps */}
+          <StepList
+            config={configDraft}
+            onChange={setConfigDraft}
+            stepErrors={stepErrors}
+            otherFlowcharts={otherFlowcharts}
+          />
+        </div>
+      </div>
     </Card>
   );
 }
@@ -818,7 +818,7 @@ function FlowchartPreview({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
-        <div className="min-w-max px-5 pb-5 pt-4">
+        <div className="min-w-max px-5 pt-4 pb-5">
           <Breadcrumbs items={breadcrumbItems} locale={lang} />
           {currentData ? (
             <NavigationChartInner
