@@ -87,7 +87,7 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-10 w-md py-1 pr-0 pl-5"
+            className="h-12 w-md py-2 pr-0 pl-6"
             afterIcon={
               <>
                 {inputValue ? (
@@ -97,17 +97,17 @@ export function SearchCaption({
                     className={"pointer-events-auto text-foreground-light"}
                     onClick={handleResetInput}
                   >
-                    <X size={16} />
+                    <X size={18} />
                   </Button>
                 ) : null}
                 <Button
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
                   size="default"
-                  className="pointer-events-auto gap-2 rounded-full px-4 py-1 text-xs"
+                  className="pointer-events-auto gap-2 rounded-full px-5 py-2 text-sm"
                   onClick={handleSearch}
                 >
-                  <Search size={14} />
+                  <Search size={16} />
                 </Button>
               </>
             }

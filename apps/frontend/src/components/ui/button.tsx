@@ -13,7 +13,7 @@ export const buttonVariants = cva(
       size: {
         lg: "px-8 py-4 text-sm",
         xl: "px-10 py-5 text-base",
-        tableAction: "px-4 py-1.5 text-xs",
+        tableAction: "px-5 py-2 text-sm",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
         icon: "p-2 text-sm",
