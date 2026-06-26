@@ -234,11 +234,13 @@ export function ResearchDetails({
       setPrimaryTerm(result.data.meta._primary_term);
       setError(null);
       setIsConflict(false);
-      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
     onError: (err: Error) => {
       setError(err.message ?? "Failed to save research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
   });
 
@@ -343,8 +345,14 @@ export function ResearchDetails({
     mutationFn: () => $approveResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("published"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
@@ -360,8 +368,14 @@ export function ResearchDetails({
     mutationFn: () => $rejectResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("draft"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
@@ -377,8 +391,15 @@ export function ResearchDetails({
     mutationFn: () => $unpublishResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("draft"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+
+        setIsConflict(false);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);

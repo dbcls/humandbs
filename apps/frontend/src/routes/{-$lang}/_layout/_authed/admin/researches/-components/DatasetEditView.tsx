@@ -89,7 +89,7 @@ function DatasetEditViewInner({
       const writeDataset = isPublished ? $patchDataset : $updateDataset;
       return writeDataset({ data: { datasetId, body } });
     },
-    onSuccess: (result, submittedValues) => {
+    onSuccess: (result) => {
       if (!result.ok) {
         if (result.code === "CONFLICT") {
           setConflictError(true);
