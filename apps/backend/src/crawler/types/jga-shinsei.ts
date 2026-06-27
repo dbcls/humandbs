@@ -121,7 +121,6 @@ export const StatusHistoryEntrySchema = z.object({
 })
 export type StatusHistoryEntry = z.infer<typeof StatusHistoryEntrySchema>
 
-
 /** 住所 */
 export const AddressSchema = z.object({
   country: z.string().nullable(),

@@ -4,7 +4,9 @@
  * Exercises PUT /dataset/{datasetId}/update and POST /dataset/{datasetId}/delete
  * through the full router so the order
  * (`optionalAuth` → `loadDatasetAndAuthorize` → handler) is part of the
- * regression. Mocks live at the external boundary (es-client) plus the
+ * regression. The update endpoint covers both draft-parent (via updateDataset)
+ * and published-parent (via patchDataset) flows; the handler branches by
+ * parent status. Mocks live at the external boundary (es-client) plus the
  * shared header-based auth mock (`mock-auth.ts`).
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
@@ -28,8 +30,8 @@ void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
   getOwnedHumIds: async () => [],
   isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
-  refreshOwnershipCache: async () => {},
-  resetOwnershipCacheForTest: () => {},
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
 }))
 
 // === ES mocks (external boundary) ===
@@ -181,7 +183,7 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
     expect(mockUpdateDataset).not.toHaveBeenCalled()
   })
 
-  it("409 when parent Research is in 'review' status (owner sees parent-draft check)", async () => {
+  it("409 when parent Research is in 'review' status (owner sees parent-status check)", async () => {
     wireDatasetAndParent({ status: "review", latestVersion: null, draftVersion: "v1" })
     const res = await getTestApp().request("/dataset/JGAD000001/update", {
       method: "PUT",
@@ -190,6 +192,95 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
     })
     expect(res.status).toBe(409)
     expect(mockUpdateDataset).not.toHaveBeenCalled()
+  })
+
+  it("200 when owner updates dataset whose parent is published (patchDataset path)", async () => {
+    const parent = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    const dataset = createMockDatasetDoc({
+      datasetId: "JGAD000001",
+      humId: "hum0001",
+      version: "v1",
+    })
+    mockResolveLatestDatasetVersion.mockResolvedValue(dataset.version)
+    mockGetDataset.mockResolvedValue(dataset)
+    mockGetResearchDoc.mockResolvedValue(parent)
+
+    const patched = { ...dataset, releaseDate: "2024-12-31" }
+    mockUpdateDataset.mockResolvedValue(patched)
+    mockGetDatasetWithSeqNo
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 }) // middleware preload
+      .mockResolvedValueOnce({ doc: patched, seqNo: 2, primaryTerm: 1 }) // post-update fetch
+
+    const res = await getTestApp().request("/dataset/JGAD000001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { meta: { _seq_no: number } }
+    expect(body.meta._seq_no).toBe(2)
+    expect(mockUpdateDataset).toHaveBeenCalled()
+  })
+
+  it("200 when admin updates dataset whose parent is published", async () => {
+    const parent = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    const dataset = createMockDatasetDoc({
+      datasetId: "JGAD000001",
+      humId: "hum0001",
+      version: "v1",
+    })
+    mockResolveLatestDatasetVersion.mockResolvedValue(dataset.version)
+    mockGetDataset.mockResolvedValue(dataset)
+    mockGetResearchDoc.mockResolvedValue(parent)
+
+    const patched = { ...dataset, releaseDate: "2024-12-31" }
+    mockUpdateDataset.mockResolvedValue(patched)
+    mockGetDatasetWithSeqNo
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: patched, seqNo: 2, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/dataset/JGAD000001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...admin },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("409 when patch returns null on published parent (lock mismatch)", async () => {
+    const parent = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    const dataset = createMockDatasetDoc({
+      datasetId: "JGAD000001",
+      humId: "hum0001",
+      version: "v1",
+    })
+    mockResolveLatestDatasetVersion.mockResolvedValue(dataset.version)
+    mockGetDataset.mockResolvedValue(dataset)
+    mockGetResearchDoc.mockResolvedValue(parent)
+    mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+    mockUpdateDataset.mockResolvedValue(null)
+
+    const res = await getTestApp().request("/dataset/JGAD000001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+    expect(res.status).toBe(409)
   })
 
   it("200 with rotated _seq_no when update succeeds", async () => {
@@ -337,106 +428,3 @@ describe("POST /dataset/{datasetId}/delete mutation auth", () => {
   })
 })
 
-// === Patch (published) ===
-
-const wirePublishedDatasetAndParent = (
-  parentOverrides: Partial<EsResearch> = {},
-  datasetOverrides: Partial<EsDataset> = {},
-) => wireDatasetAndParent(
-  { status: "published", latestVersion: "v1", draftVersion: null, ...parentOverrides },
-  datasetOverrides,
-)
-
-const mockPatchDataset = mockUpdateDataset
-
-describe("PUT /dataset/{datasetId}/patch mutation auth", () => {
-  beforeEach(resetMocks)
-
-  it("401 when no auth header", async () => {
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(401)
-    expect(mockPatchDataset).not.toHaveBeenCalled()
-  })
-
-  it("404 when dataset does not exist", async () => {
-    mockResolveLatestDatasetVersion.mockResolvedValue(null)
-    const res = await getTestApp().request("/dataset/JGAD999/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(404)
-    expect(mockPatchDataset).not.toHaveBeenCalled()
-  })
-
-  it("403 when authenticated stranger", async () => {
-    wirePublishedDatasetAndParent()
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...stranger },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(403)
-    expect(mockPatchDataset).not.toHaveBeenCalled()
-  })
-
-  it("409 when parent Research is in draft status", async () => {
-    wireDatasetAndParent()
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(409)
-    expect(mockPatchDataset).not.toHaveBeenCalled()
-  })
-
-  it("200 when owner patches published dataset", async () => {
-    const { dataset } = wirePublishedDatasetAndParent()
-    const updated = { ...dataset, releaseDate: "2024-12-31" }
-    mockPatchDataset.mockResolvedValue(updated)
-    mockGetDatasetWithSeqNo
-      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
-      .mockResolvedValueOnce({ doc: updated, seqNo: 2, primaryTerm: 1 })
-
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(200)
-    const body = await res.json() as { meta: { _seq_no: number } }
-    expect(body.meta._seq_no).toBe(2)
-  })
-
-  it("200 when admin patches published dataset", async () => {
-    const { dataset } = wirePublishedDatasetAndParent()
-    const updated = { ...dataset, releaseDate: "2024-12-31" }
-    mockPatchDataset.mockResolvedValue(updated)
-    mockGetDatasetWithSeqNo
-      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
-      .mockResolvedValueOnce({ doc: updated, seqNo: 2, primaryTerm: 1 })
-
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...admin },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(200)
-  })
-
-  it("409 when patchDataset returns null (lock mismatch)", async () => {
-    wirePublishedDatasetAndParent()
-    mockPatchDataset.mockResolvedValue(null)
-    const res = await getTestApp().request("/dataset/JGAD000001/patch", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...owner },
-      body: JSON.stringify(updateBody),
-    })
-    expect(res.status).toBe(409)
-  })
-})

@@ -32,8 +32,8 @@ void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
   getOwnedHumIds: async () => [],
   isOwner: async () => false,
-  refreshOwnershipCache: async () => {},
-  resetOwnershipCacheForTest: () => {},
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
 }))
 
 void mock.module("@/api/es-client/client", () => ({

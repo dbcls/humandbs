@@ -32,6 +32,9 @@ export const toPersonDoc = (
     jaText = person.displayName
   }
 
+  // `??=` would change behaviour here: an empty string from `filter(Boolean).join(...)`
+  // is a missing value we want to overwrite, but `""` is not nullish.
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   if (!enText && !jaText) {
     enText = person.displayName || null
     jaText = enText
@@ -40,6 +43,7 @@ export const toPersonDoc = (
   } else if (!enText) {
     enText = jaText
   }
+  /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
   return {
     name: { ja: tv(jaText), en: tv(enText) },
@@ -47,9 +51,9 @@ export const toPersonDoc = (
     orcid: person.orcid || null,
     organization: person.affiliation
       ? {
-          name: { ja: tv(person.affiliation), en: tv(person.affiliation) },
-          address: person.country ? { country: person.country } : null,
-        }
+        name: { ja: tv(person.affiliation), en: tv(person.affiliation) },
+        address: person.country ? { country: person.country } : null,
+      }
       : null,
     datasetIds: personHum.datasetIds,
     researchTitle: (person.studyTitle || person.studyTitleEn)

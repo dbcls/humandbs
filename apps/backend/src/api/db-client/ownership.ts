@@ -21,5 +21,5 @@ export const fetchAllOwnership = async (): Promise<OwnershipRow[]> => {
     `)
   })
 
-  return rows as OwnershipRow[]
+  return rows
 }

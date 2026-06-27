@@ -45,6 +45,7 @@ import {
 } from "@/api/es-client/query-helpers"
 import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
+import { getOwnedHumIds } from "@/api/services/ownership"
 import {
   EsDatasetSchema,
   EsResearchSchema,
@@ -63,7 +64,6 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import { getOwnedHumIds } from "@/api/services/ownership"
 import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
 
 // === Constants ===

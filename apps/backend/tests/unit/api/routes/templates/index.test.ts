@@ -34,7 +34,7 @@ void mock.module("@/api/db-client/jga-shinsei", () => ({
   getDuApplication: mock(async () => ({})),
   listDuApplications: mock(async () => ({ hits: [], total: 0 })),
   parseApplIdStr: (s: string) => {
-    const m = s.match(/^(J-D[SU]\d+)-(\d{3})$/)
+    const m = /^(J-D[SU]\d+)-(\d{3})$/.exec(s)
     if (!m) throw new Error(`Invalid applIdStr: ${s}`)
     return { dsDuId: m[1], applVersion: parseInt(m[2], 10) }
   },

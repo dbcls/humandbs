@@ -233,6 +233,7 @@ single-cell spatial transcriptome	Spatial transcriptomics
 single-end	__DELETE__
 single-nucleus ATAC-seq	ATAC-seq
 small RNA-seq	miRNA-seq
+SMART-seq	SMART-seq
 snATAC-seq	ATAC-seq
 SNP array	Genotyping Array
 SNP-chip	Genotyping Array

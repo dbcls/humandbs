@@ -269,10 +269,10 @@ describe("es/load-docs.ts", () => {
       ]
 
       const transform = makeDatasetTransform(rawDocs)
-      const result = transform(rawDocs[0].data as Record<string, unknown>)
+      const result = transform(rawDocs[0].data)
 
       expect(result.dateModified).toBe("2024-01-01")
-      const experiments = result.experiments as Array<Record<string, unknown>>
+      const experiments = result.experiments as Record<string, unknown>[]
       expect(experiments[0].dataText).toContain("BWA")
     })
 
@@ -290,8 +290,8 @@ describe("es/load-docs.ts", () => {
       ]
 
       const transform = makeDatasetTransform(rawDocs)
-      const result = transform(rawDocs[0].data as Record<string, unknown>)
-      const experiments = result.experiments as Array<Record<string, unknown>>
+      const result = transform(rawDocs[0].data)
+      const experiments = result.experiments as Record<string, unknown>[]
       expect(experiments[0].dataText).toBe("")
     })
   })

@@ -67,7 +67,6 @@ const RESEARCH_VERSION = "v1"
 const ISO_DATE = "2025-01-15"
 const ISO_TIMESTAMP = "2025-01-15T08:00:00.000Z"
 const REQUEST_ID = "req_01HZ4K2W3X7Y8Z9A0B1C2D3E4F"
-const KEYCLOAK_SUB = "00000000-0000-0000-0000-000000000001"
 const JDS_ID = "J-DS002494"
 const JDU_ID = "J-DU006498"
 
@@ -726,12 +725,6 @@ const JGA_CONTROL = {
   privateComment: null,
   isDeclareStatement: true,
   isAgreeMailUse: true,
-}
-
-const JGA_STATUS_HISTORY_ENTRY = {
-  status: 60 as const,
-  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
-  date: ISO_DATE,
 }
 
 /** J-DS application body (`DsApplicationTransformedSchema`). */

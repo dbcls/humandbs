@@ -7,21 +7,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import fc from "fast-check"
 
-let mockIsOwnerFn: ReturnType<typeof mock>
-let mockGetOwnedHumIdsFn: ReturnType<typeof mock>
-
-mock.module("@/api/services/ownership", () => {
-  mockIsOwnerFn = mock(async () => false)
-  mockGetOwnedHumIdsFn = mock(async () => [])
-  return {
-    getOwnerUsernames: mock(async () => []),
-    getOwnedHumIds: mockGetOwnedHumIdsFn,
-    isOwner: mockIsOwnerFn,
-    refreshOwnershipCache: mock(async () => {}),
-    resetOwnershipCacheForTest: mock(() => {}),
-  }
-})
-
 import {
   buildStatusFilter,
   canAccessResearchDoc,
@@ -32,6 +17,21 @@ import {
 import type { AuthUser, ResearchStatus } from "@/api/types"
 
 import { createMockResearchDoc, createMockAuthUser } from "../helpers/mock-es"
+
+let mockIsOwnerFn: ReturnType<typeof mock>
+let mockGetOwnedHumIdsFn: ReturnType<typeof mock>
+
+void mock.module("@/api/services/ownership", () => {
+  mockIsOwnerFn = mock(async () => false)
+  mockGetOwnedHumIdsFn = mock(async () => [])
+  return {
+    getOwnerUsernames: mock(async () => []),
+    getOwnedHumIds: mockGetOwnedHumIdsFn,
+    isOwner: mockIsOwnerFn,
+    refreshOwnershipCache: mock(async () => undefined),
+    resetOwnershipCacheForTest: mock(() => undefined),
+  }
+})
 
 // === buildStatusFilter ===
 

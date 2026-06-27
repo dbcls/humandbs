@@ -11,7 +11,6 @@ import {
   NotFoundError,
 } from "@/api/errors"
 import { checkRequestedStatus } from "@/api/es-client/auth"
-import { getOwnerUsernames } from "@/api/services/ownership"
 import {
   createResearch,
   deleteResearch,
@@ -30,6 +29,7 @@ import {
   singleReadOnlyResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
+import { getOwnerUsernames } from "@/api/services/ownership"
 import { ResearchStatusSchema } from "@/api/types"
 import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
@@ -42,7 +42,6 @@ import {
   createResearchRoute,
   getResearchRoute,
   updateResearchRoute,
-  patchResearchRoute,
   deleteResearchRoute,
   getOwnersRoute,
 } from "./routes"
@@ -171,10 +170,10 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/update
-  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true })
+  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftOrPublished: true })
   // — 401 / 403 / 404 / 409 are all surfaced before validators run.
+  // Accepts both draft and published Research; releaseNote target switches accordingly.
   router.openapi(updateResearchRoute, async (c) => {
-    // Research is preloaded by middleware; status === "draft" is guaranteed.
     const research = c.get("research")
     const { humId } = research
 
@@ -196,12 +195,17 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw new ConflictError()
     }
 
-    if (body.releaseNote !== undefined && research.draftVersion) {
-      const draftVersionId = `${humId}-${research.draftVersion}`
-      const versionWithSeq = await getResearchVersionWithSeqNo(draftVersionId)
+    // releaseNote target: draftVersion while in draft cycle, latestVersion when
+    // patching published content in place.
+    const releaseNoteTarget = research.status === "published"
+      ? research.latestVersion
+      : research.draftVersion
+    if (body.releaseNote !== undefined && releaseNoteTarget) {
+      const versionDocId = `${humId}-${releaseNoteTarget}`
+      const versionWithSeq = await getResearchVersionWithSeqNo(versionDocId)
       if (versionWithSeq) {
         const ok = await updateResearchVersionReleaseNote(
-          draftVersionId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
+          versionDocId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
         )
         if (!ok) {
           throw new ConflictError()
@@ -221,59 +225,6 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       ...restUpdated,
       status: ResearchStatusSchema.parse(updatedStatus),
       owners,
-      datasets: [],
-    }
-
-    return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
-  })
-
-  // PUT /research/{humId}/patch
-  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requirePublishedStatus: true })
-  router.openapi(patchResearchRoute, async (c) => {
-    const research = c.get("research")
-    const { humId } = research
-
-    const body = c.req.valid("json")
-    const seqNo = body._seq_no
-    const primaryTerm = body._primary_term
-
-    const updated = await updateResearch(humId, {
-      title: body.title,
-      summary: body.summary,
-      dataProvider: body.dataProvider,
-      researchProject: body.researchProject,
-      grant: body.grant,
-      relatedPublication: body.relatedPublication,
-    }, seqNo, primaryTerm)
-
-    if (!updated) {
-      throw new ConflictError()
-    }
-
-    if (body.releaseNote !== undefined && research.latestVersion) {
-      const latestVersionId = `${humId}-${research.latestVersion}`
-      const versionWithSeq = await getResearchVersionWithSeqNo(latestVersionId)
-      if (versionWithSeq) {
-        const ok = await updateResearchVersionReleaseNote(
-          latestVersionId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
-        )
-        if (!ok) {
-          throw new ConflictError()
-        }
-      }
-    }
-
-    const updatedWithSeqNo = await getResearchWithSeqNo(humId)
-    if (!updatedWithSeqNo) {
-      throw new NotFoundError("Updated research not found")
-    }
-
-    const { status: updatedStatus, ...restUpdated } = updated
-    const patchOwners = await getOwnerUsernames(humId)
-    const responseData = {
-      ...restUpdated,
-      status: ResearchStatusSchema.parse(updatedStatus),
-      owners: patchOwners,
       datasets: [],
     }
 
