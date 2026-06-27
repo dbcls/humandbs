@@ -65,6 +65,8 @@ import type {
   AuthUser,
 } from "@/api/types"
 import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
+import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
+import type { CriteriaCanonical } from "@/es/types"
 
 // === Constants ===
 
@@ -93,6 +95,18 @@ interface ResearchSearchResult {
 
 type QueryContainer = estypes.QueryDslQueryContainer
 type FilterParams = Record<string, unknown>
+
+// === Helpers ===
+
+const CRITERIA_RANK = new Map<CriteriaCanonical, number>(
+  CRITERIA_CANONICAL_ORDER.map((value, idx) => [value, idx]),
+)
+
+/** Dedupe and sort criteria into canonical order (strictest first). */
+export const sortCriteria = (values: CriteriaCanonical[]): CriteriaCanonical[] =>
+  uniq(values).sort(
+    (a, b) => (CRITERIA_RANK.get(a) ?? Infinity) - (CRITERIA_RANK.get(b) ?? Infinity),
+  )
 
 // === Filter Clause Builders ===
 
@@ -878,7 +892,11 @@ export const searchResearches = async (
     const targets = extractText(d.summary?.targets)
     // dataProvider.name is BilingualTextValue, extract text
     const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
-    const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
+    const criteria = sortCriteria(
+      datasets
+        .map(ds => ds.criteria)
+        .filter((x): x is CriteriaCanonical => !!x),
+    )
 
     return {
       humId: d.humId,

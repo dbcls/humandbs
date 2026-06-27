@@ -26,6 +26,7 @@ import {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   CriteriaCanonicalSchema,
+  CRITERIA_CANONICAL_ORDER,
   PolicyCanonicalSchema,
   NormalizedPolicySchema,
   // Searchable schemas
@@ -66,6 +67,7 @@ export {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   CriteriaCanonicalSchema,
+  CRITERIA_CANONICAL_ORDER,
   PolicyCanonicalSchema,
   NormalizedPolicySchema,
   // Searchable schemas

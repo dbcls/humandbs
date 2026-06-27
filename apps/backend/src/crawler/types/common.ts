@@ -64,6 +64,13 @@ export const CriteriaCanonicalSchema = z.enum([
 ])
 export type CriteriaCanonical = z.infer<typeof CriteriaCanonicalSchema>
 
+/** Canonical display order: strictest access first, openest last. */
+export const CRITERIA_CANONICAL_ORDER = [
+  "Controlled-access (Type I)",
+  "Controlled-access (Type II)",
+  "Unrestricted-access",
+] as const satisfies readonly CriteriaCanonical[]
+
 /** Dataset ID type prefixes */
 export type DatasetIdType =
   | "JGAD"

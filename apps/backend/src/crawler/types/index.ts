@@ -34,6 +34,7 @@ export {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   CriteriaCanonicalSchema,
+  CRITERIA_CANONICAL_ORDER,
   PolicyCanonicalSchema,
   NormalizedPolicySchema,
 } from "./common"

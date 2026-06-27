@@ -11,6 +11,7 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
+import { CriteriaCanonicalSchema } from "../../es/types"
 import { BATCH } from "../constants"
 
 import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
@@ -245,8 +246,10 @@ export const ResearchSummarySchema = z.object({
   targets: z.string().describe("Summary of research targets (plain text)"),
   dataProvider: z.array(z.string()).describe("Names of data providers"),
   criteria: z
-    .string()
-    .describe("Data access criteria summary (e.g., 'Controlled-access')"),
+    .array(CriteriaCanonicalSchema)
+    .describe(
+      "Distinct access criteria across the Research's datasets, in canonical order (strictest first)",
+    ),
   status: z.enum(RESEARCH_STATUS)
     .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })

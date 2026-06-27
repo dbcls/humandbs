@@ -447,7 +447,7 @@ const RESEARCH_SUMMARY_ITEM = {
   platforms: ["Illumina HiSeq"],
   targets: SAMPLE_SUMMARY_RESPONSE.targets.ja.text,
   dataProvider: [DATA_PROVIDER_RESPONSE.name.ja.text],
-  criteria: "Controlled-access (Type I)" as const,
+  criteria: ["Controlled-access (Type I)" as const],
   status: "published" as const,
 }
 

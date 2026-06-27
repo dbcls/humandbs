@@ -19,7 +19,7 @@ const validBase = {
   platforms: ["Illumina"],
   targets: "targets text",
   dataProvider: ["Provider A"],
-  criteria: "Controlled-access (Type I)",
+  criteria: ["Controlled-access (Type I)"],
   status: "published" as const,
 }
 
