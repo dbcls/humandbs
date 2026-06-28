@@ -121,8 +121,8 @@ export function SearchCaption({
             ref={filterButtonRef}
             variant="tableAction"
             size="tableAction"
-            className={cn("flex items-center gap-2", {
-              "bg-secondary": isPanelOpen,
+            className={cn("flex items-center gap-2 transition-colors", {
+              "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white": isPanelOpen,
             })}
             onClick={onFilterClick}
             type="button"

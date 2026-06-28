@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { buttonVariants } from "./ui/button";
 
 interface SortOption {
   label: string;
@@ -42,10 +43,11 @@ export function SortDropdown({
       </span>
       <div
         className={cn(
-          "flex items-center rounded-full border text-xs h-11 pl-4 pr-2.5 shadow-xs transition-colors",
+          buttonVariants({ variant: "tableAction", size: "tableAction" }),
+          "cursor-default h-11 pl-4 pr-2.5 font-normal",
           isOpen
-            ? "border-secondary bg-secondary text-white"
-            : "border-secondary-light bg-white text-secondary-light hover:bg-hover",
+            ? "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white"
+            : "hover:text-secondary-light hover:bg-hover",
         )}
       >
         <Select value={currentSort} onValueChange={handleSortChange} onOpenChange={setIsOpen}>
