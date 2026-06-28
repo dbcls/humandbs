@@ -22,8 +22,8 @@ export function SortDropdown({
   order: "asc" | "desc" | undefined;
 }) {
   const t = useTranslations("common");
-  const currentSort = sort || "";
-  const currentOrder = order || "asc";
+  const currentSort = sort ?? options[0]?.value ?? "";
+  const currentOrder = order ?? "asc";
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -41,17 +41,47 @@ export function SortDropdown({
   };
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleOutsideClick(event: PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleOutsideClick);
+    return () => document.removeEventListener("pointerdown", handleOutsideClick);
   }, []);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    const items = containerRef.current?.querySelectorAll('[role="option"]');
+    if (!items || items.length === 0) return;
+
+    const activeEl = document.activeElement;
+    const currentIndex = Array.from(items).indexOf(activeEl as Element);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % items.length;
+      (items[nextIndex] as HTMLElement).focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const nextIndex = (currentIndex - 1 + items.length) % items.length;
+      (items[nextIndex] as HTMLElement).focus();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      containerRef.current?.querySelector("button")?.focus();
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" onKeyDown={handleKeyDown}>
       <span className="font-semibold text-secondary-light select-none text-xs uppercase tracking-wider whitespace-nowrap shrink-0">
         {t("sort")}
       </span>
@@ -100,7 +130,7 @@ export function SortDropdown({
         {isOpen && (
           <div
             role="listbox"
-            className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-sm font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100"
+            className="absolute left-0 z-50 mt-1.5 w-full rounded-xl bg-white py-1.5 shadow-lg text-sm font-semibold animate-in fade-in-0 slide-in-from-top-1 duration-100"
           >
             {options.map(({ label, value }) => {
               const isSelected = value === currentSort;
@@ -119,7 +149,7 @@ export function SortDropdown({
                   }}
                   className={cn(
                     "relative flex w-full cursor-pointer select-none items-center justify-between py-2 px-5 hover:bg-hover hover:text-secondary outline-none focus-visible:bg-hover focus-visible:text-secondary transition-colors first:rounded-t-xl last:rounded-b-xl",
-                    isSelected && "text-secondary font-bold",
+                    isSelected ? "text-secondary font-bold" : "text-neutral-800",
                   )}
                 >
                   <span>{label}</span>
