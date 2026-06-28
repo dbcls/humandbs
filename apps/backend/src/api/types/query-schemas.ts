@@ -37,7 +37,7 @@ export const LangQueryBase = z.object({
 export const ResponseControlQuerySchema = z.object({
   includeFacets: booleanFromString
     .describe("Include facet aggregation counts in response"),
-  includeRawHtml: z.coerce.boolean().default(false)
+  includeRawHtml: booleanFromString.default(false)
     .describe("Include rawHtml fields in response"),
 })
 

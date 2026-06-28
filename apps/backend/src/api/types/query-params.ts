@@ -14,7 +14,7 @@ import { z } from "zod"
 import { CriteriaCanonicalSchema } from "../../es/types"
 import { BATCH } from "../constants"
 
-import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
+import { LANG_TYPES, BilingualTextSchema, VersionStringSchema, booleanFromString } from "./common"
 import {
   PaginationQuerySchema,
   LangQueryBase,
@@ -49,8 +49,7 @@ export const LangVersionQuerySchema = z.object({
     .describe(
       "Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version.",
     ),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
@@ -64,8 +63,7 @@ export const LangQuerySchema = z.object({
     .enum(LANG_TYPES)
     .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
