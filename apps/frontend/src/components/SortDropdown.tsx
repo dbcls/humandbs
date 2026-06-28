@@ -64,12 +64,15 @@ export function SortDropdown({
           )}
         >
           {/* 左側：セレクトトリガー部分 */}
-          <div
+          <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
             className={cn(
-              "flex items-center gap-1.5 h-full pl-4 pr-2.5 cursor-pointer transition-colors text-xs font-semibold select-none",
+              "flex items-center gap-1.5 h-full pl-4 pr-2.5 cursor-pointer transition-colors text-xs font-semibold select-none border-none bg-transparent outline-none focus-visible:bg-hover",
               isOpen
-                ? "bg-secondary text-white"
+                ? "bg-secondary text-white focus-visible:bg-secondary/90"
                 : "text-secondary-light hover:bg-hover",
             )}
           >
@@ -77,7 +80,7 @@ export function SortDropdown({
             <svg className="size-4 fill-current shrink-0" viewBox="0 0 24 24">
               <path d="M12 17l-8-8h16z" />
             </svg>
-          </div>
+          </button>
 
           {/* 仕切り線 */}
           <div className="w-px h-full bg-secondary-light shrink-0" />
@@ -85,24 +88,37 @@ export function SortDropdown({
           {/* 右側：昇降順トグルボタン部分 */}
           <button
             type="button"
-            className="px-3 h-full transition-colors cursor-pointer flex items-center justify-center text-secondary-light hover:text-secondary hover:bg-hover shrink-0"
+            className="px-3 h-full transition-colors cursor-pointer flex items-center justify-center text-secondary-light hover:text-secondary hover:bg-hover shrink-0 focus-visible:bg-hover focus-visible:text-secondary outline-none"
             onClick={handleOrderToggle}
             title={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
+            aria-label={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
           >
             {currentOrder === "asc" ? <ArrowUpNarrowWide size={16} /> : <ArrowDownWideNarrow size={16} />}
           </button>
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-sm font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100">
+          <div
+            role="listbox"
+            className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-sm font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100"
+          >
             {options.map(({ label, value }) => {
               const isSelected = value === currentSort;
               return (
                 <div
                   key={value}
+                  role="option"
+                  aria-selected={isSelected}
+                  tabIndex={0}
                   onClick={() => handleSortChange(value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSortChange(value);
+                    }
+                  }}
                   className={cn(
-                    "relative flex w-full cursor-pointer select-none items-center justify-between py-2 px-5 hover:bg-hover hover:text-secondary transition-colors first:rounded-t-xl last:rounded-b-xl",
+                    "relative flex w-full cursor-pointer select-none items-center justify-between py-2 px-5 hover:bg-hover hover:text-secondary outline-none focus-visible:bg-hover focus-visible:text-secondary transition-colors first:rounded-t-xl last:rounded-b-xl",
                     isSelected && "text-secondary font-bold",
                   )}
                 >
