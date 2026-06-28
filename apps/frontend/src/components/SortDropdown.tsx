@@ -50,7 +50,7 @@ export function SortDropdown({
             ))}
           </SelectContent>
         </Select>
-        <div className="w-px h-3.5 bg-secondary-light mx-1.5" />
+        <div className="w-px h-full bg-secondary-light mx-1.5" />
         <button
           type="button"
           className="p-1 hover:bg-secondary-light/10 active:bg-secondary-light/20 rounded-full transition-colors text-secondary-light hover:text-secondary cursor-pointer flex items-center justify-center size-8 shrink-0"
