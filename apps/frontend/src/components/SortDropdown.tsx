@@ -89,7 +89,7 @@ export function SortDropdown({
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 z-50 mt-1 min-w-[120px] rounded-lg border border-secondary-light bg-white py-1 shadow-md text-xs font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100">
+          <div className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-xs font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100">
             {options.map(({ label, value }) => {
               const isSelected = value === currentSort;
               return (
@@ -97,7 +97,7 @@ export function SortDropdown({
                   key={value}
                   onClick={() => handleSortChange(value)}
                   className={cn(
-                    "relative flex w-full cursor-pointer select-none items-center justify-between py-1.5 px-3 hover:bg-hover hover:text-secondary transition-colors",
+                    "relative flex w-full cursor-pointer select-none items-center justify-between py-2 px-5 hover:bg-hover hover:text-secondary transition-colors first:rounded-t-xl last:rounded-b-xl",
                     isSelected && "text-secondary font-bold",
                   )}
                 >
