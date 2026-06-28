@@ -34,10 +34,10 @@ export function SortDropdown({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="font-semibold text-muted-foreground select-none text-xs uppercase tracking-wider whitespace-nowrap shrink-0">
+      <span className="font-semibold text-secondary-light select-none text-xs uppercase tracking-wider whitespace-nowrap shrink-0">
         {t("sort")}
       </span>
-      <div className="flex items-center rounded-full border border-secondary-light bg-white text-xs h-11 pl-4 pr-1.5 text-secondary-light shadow-xs hover:bg-hover transition-colors">
+      <div className="flex items-center rounded-full border border-secondary-light bg-white text-xs h-11 pl-4 pr-2.5 text-secondary-light shadow-xs hover:bg-hover transition-colors">
         <Select value={currentSort} onValueChange={handleSortChange}>
           <SelectTrigger className="border-none bg-transparent shadow-none p-0 h-fit gap-1 text-xs font-semibold hover:bg-transparent focus:ring-0 focus-visible:ring-0 cursor-pointer pr-1 text-secondary-light [&_svg]:opacity-100 [&_svg]:text-secondary-light">
             <SelectValue />
@@ -50,7 +50,7 @@ export function SortDropdown({
             ))}
           </SelectContent>
         </Select>
-        <div className="w-px h-full bg-secondary-light mx-1.5" />
+        <div className="w-px h-full bg-secondary-light ml-1.5 mr-2.5" />
         <button
           type="button"
           className="p-1 hover:bg-secondary-light/10 active:bg-secondary-light/20 rounded-full transition-colors text-secondary-light hover:text-secondary cursor-pointer flex items-center justify-center size-8 shrink-0"
