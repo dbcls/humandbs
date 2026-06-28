@@ -26,6 +26,9 @@ const humIdWithVersion = z
     return { humId, version };
   });
 
+// Legacy Joomla "latest pointer": /hum<NNNN>-latest(-release)? → /research/:humId
+const humLatestPattern = /^(hum\d+)-latest(?:-release)?$/i;
+
 // Matches "<docId>/version/<N>" where N is a positive integer
 const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
 // Matches "<docId>/version"
@@ -52,6 +55,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       });
     }
 
+    const humLatestMatch = humLatestPattern.exec(params._splat);
+
+    if (humLatestMatch) {
+      throw redirect({
+        to: "/{-$lang}/research/$humId",
+        params: {
+          lang: context.lang,
+          humId: humLatestMatch[1].toLowerCase(),
+        },
+      });
+    }
+
     const parsedHumId = humIdPathSchema.safeParse(params._splat);
 
     if (parsedHumId.success) {
@@ -60,6 +75,16 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         params: {
           lang: context.lang,
           humId: parsedHumId.data,
+        },
+      });
+    }
+
+    /* === Legacy Joomla news index === */
+    if (params._splat === "all-news") {
+      throw redirect({
+        to: "/{-$lang}/news",
+        params: {
+          lang: context.lang,
         },
       });
     }
