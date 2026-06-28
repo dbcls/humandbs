@@ -68,13 +68,13 @@ export function SearchCaption({
       <div className="flex flex-wrap items-center gap-4">
         {sortControl}
         <div className="flex gap-1">
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCopy}>
+          <Button variant={"tableAction"} size={"tableAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCsv}>
+          <Button variant={"tableAction"} size={"tableAction"} onClick={onCsv}>
             CSV
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onExcel}>
+          <Button variant={"tableAction"} size={"tableAction"} onClick={onExcel}>
             Excel
           </Button>
         </div>

@@ -34,7 +34,7 @@ export function SortDropdown({
 
   return (
     <div className="flex items-center rounded-full border border-neutral-300 bg-white/50 text-sm h-11 pl-4 pr-1.5 text-foreground shadow-xs hover:bg-white transition-colors">
-      <span className="font-semibold text-muted-foreground select-none text-xs mr-2 pr-2 border-r border-neutral-200 uppercase tracking-wider">
+      <span className="font-semibold text-muted-foreground select-none text-xs mr-2 pr-2 border-r border-neutral-200 uppercase tracking-wider whitespace-nowrap shrink-0">
         {t("sort")}
       </span>
       <Select value={currentSort} onValueChange={handleSortChange}>
