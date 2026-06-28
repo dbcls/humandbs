@@ -1,4 +1,4 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
@@ -62,23 +62,25 @@ export function SortDropdown({
             buttonVariants({ variant: "tableAction", size: "tableAction" }),
             "cursor-pointer h-11 pl-4 pr-2.5 font-normal select-none transition-colors",
             isOpen
-              ? "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white"
+              ? "border-secondary text-secondary-light bg-white"
               : "hover:text-secondary-light hover:bg-hover",
           )}
         >
           <div className="flex items-center gap-1 text-xs font-semibold pr-1">
             <span>{activeOption ? activeOption.label : ""}</span>
-            <ChevronDown className="size-4 shrink-0 transition-transform duration-200" />
+            <svg className="size-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+              <path d="M12 16l-6-6h12z" />
+            </svg>
           </div>
 
-          <div className={cn("w-px h-full mx-1.5 transition-colors", isOpen ? "bg-white" : "bg-secondary-light")} />
+          <div className="w-px h-full mx-1.5 bg-secondary-light" />
 
           <button
             type="button"
             className={cn(
               "p-1 rounded-full transition-colors cursor-pointer flex items-center justify-center size-8 shrink-0",
               isOpen
-                ? "text-white hover:text-white/80 hover:bg-white/10 active:bg-white/20"
+                ? "bg-secondary text-white hover:bg-secondary/90"
                 : "text-secondary-light hover:text-secondary hover:bg-secondary-light/10 active:bg-secondary-light/20",
             )}
             onClick={handleOrderToggle}
@@ -89,7 +91,7 @@ export function SortDropdown({
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-xs font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100">
+          <div className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg text-sm font-semibold text-secondary-light animate-in fade-in-0 slide-in-from-top-1 duration-100">
             {options.map(({ label, value }) => {
               const isSelected = value === currentSort;
               return (
