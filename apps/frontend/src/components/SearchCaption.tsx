@@ -87,7 +87,7 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-11 w-md py-2 pr-0 pl-6"
+            className="h-11 w-md py-2 pr-0 pl-6 text-xs"
             afterIcon={
               <>
                 {inputValue ? (

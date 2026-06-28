@@ -33,12 +33,12 @@ export function SortDropdown({
   };
 
   return (
-    <div className="flex items-center rounded-full border border-neutral-300 bg-white/50 text-sm h-11 pl-4 pr-1.5 text-foreground shadow-xs hover:bg-white transition-colors">
-      <span className="font-semibold text-muted-foreground select-none text-xs mr-2 pr-2 border-r border-neutral-200 uppercase tracking-wider whitespace-nowrap shrink-0">
+    <div className="flex items-center rounded-full border border-secondary-light bg-white text-xs h-11 pl-4 pr-1.5 text-secondary-light shadow-xs hover:bg-hover transition-colors">
+      <span className="font-semibold text-secondary-light/70 select-none text-xs mr-2 pr-2 border-r border-secondary-light/20 uppercase tracking-wider whitespace-nowrap shrink-0">
         {t("sort")}
       </span>
       <Select value={currentSort} onValueChange={handleSortChange}>
-        <SelectTrigger className="border-none bg-transparent shadow-none p-0 h-fit gap-1 text-sm font-medium hover:bg-transparent focus:ring-0 focus-visible:ring-0 cursor-pointer pr-1">
+        <SelectTrigger className="border-none bg-transparent shadow-none p-0 h-fit gap-1 text-xs font-semibold hover:bg-transparent focus:ring-0 focus-visible:ring-0 cursor-pointer pr-1 text-secondary-light">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -49,10 +49,10 @@ export function SortDropdown({
           ))}
         </SelectContent>
       </Select>
-      <div className="w-px h-3.5 bg-neutral-200 mx-1.5" />
+      <div className="w-px h-3.5 bg-secondary-light/20 mx-1.5" />
       <button
         type="button"
-        className="p-1 hover:bg-neutral-100 active:bg-neutral-200 rounded-full transition-colors text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center size-8 shrink-0"
+        className="p-1 hover:bg-secondary-light/10 active:bg-secondary-light/20 rounded-full transition-colors text-secondary-light hover:text-secondary cursor-pointer flex items-center justify-center size-8 shrink-0"
         onClick={handleOrderToggle}
         title={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
       >
