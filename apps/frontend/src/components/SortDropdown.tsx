@@ -22,16 +22,18 @@ export function SortDropdown({
   order: "asc" | "desc" | undefined;
 }) {
   const t = useTranslations("common");
-  const currentSort = sort ?? options[0]?.value ?? "";
+  const currentSort = sort && options.some((o) => o.value === sort) ? sort : options[0]?.value ?? "";
   const currentOrder = order ?? "asc";
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const activeOption = options.find((o) => o.value === currentSort);
 
   const handleSortChange = (newSort: string) => {
     onSelect({ sort: newSort, order: currentOrder });
     setIsOpen(false);
+    triggerRef.current?.focus();
   };
 
   const handleOrderToggle = (e: React.MouseEvent) => {
@@ -76,7 +78,7 @@ export function SortDropdown({
     } else if (e.key === "Escape") {
       e.preventDefault();
       setIsOpen(false);
-      containerRef.current?.querySelector("button")?.focus();
+      triggerRef.current?.focus();
     }
   };
 
@@ -95,6 +97,7 @@ export function SortDropdown({
         >
           {/* 左側：セレクトトリガー部分 */}
           <button
+            ref={triggerRef}
             type="button"
             onClick={() => setIsOpen(!isOpen)}
             aria-haspopup="listbox"
