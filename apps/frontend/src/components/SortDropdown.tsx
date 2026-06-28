@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "./ui/button";
 
 interface SortOption {
   label: string;
@@ -57,8 +58,9 @@ export function SortDropdown({
       <div className="relative" ref={containerRef}>
         <div
           className={cn(
-            "overflow-hidden border bg-white inline-flex items-center h-11 rounded-full font-normal select-none transition-colors",
-            isOpen ? "border-secondary" : "border-secondary-light",
+            buttonVariants({ variant: "tableAction", size: "tableAction" }),
+            "p-0 overflow-hidden font-normal select-none transition-colors cursor-default",
+            isOpen ? "border-secondary" : "",
           )}
         >
           {/* 左側：セレクトトリガー部分 */}
@@ -78,7 +80,7 @@ export function SortDropdown({
           </div>
 
           {/* 仕切り線 */}
-          <div className="w-px h-5 bg-secondary-light shrink-0" />
+          <div className="w-px h-full bg-secondary-light shrink-0" />
 
           {/* 右側：昇降順トグルボタン部分 */}
           <button
