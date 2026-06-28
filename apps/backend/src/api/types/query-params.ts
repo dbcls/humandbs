@@ -242,6 +242,16 @@ export const ResearchSummarySchema = z.object({
     .array(z.string())
     .describe("Sequencing platforms used (aggregated from datasets)"),
   targets: z.string().describe("Summary of research targets (plain text)"),
+  // Short bilingual summaries for the listing view. Sourced from the Joomla
+  // home article (ja=`/home`, en=`/en/home`). Distinct from the long
+  // `methods`/`typeOfData`/`targets` fields above, which are derived from
+  // detail-page bodies. Null when the humId is not listed on the Joomla home.
+  methodsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the research method, for listing views (Joomla home column '研究方法' / 'Type of Study')"),
+  typeOfDataSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the data type, for listing views (Joomla home column 'データの種類' / 'Type of Data')"),
+  targetsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the target population, for listing views (Joomla home column '参加者（対象集団）' / 'Participants/Materials (Ethnicity)')"),
   dataProvider: z.array(z.string()).describe("Names of data providers"),
   criteria: z
     .array(CriteriaCanonicalSchema)

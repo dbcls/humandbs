@@ -66,7 +66,7 @@ import type {
 } from "@/api/types"
 import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
 import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
-import type { CriteriaCanonical } from "@/es/types"
+import type { BilingualText, BilingualTextValue, CriteriaCanonical } from "@/es/types"
 
 // === Constants ===
 
@@ -808,7 +808,7 @@ export const searchResearches = async (
     size: limit,
     query: researchQuery,
     sort: sortSpec,
-    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids", "status"],
+    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "summaryShort", "uids", "status"],
     track_total_hits: true,
     // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
     ...(includeFacets && !humIdFilter ? {
@@ -820,7 +820,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, status: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, summaryShort: true, status: true,
     }).parse(doc))
 
   // Defense-in-depth: ES side should have already filtered by latestVersion
@@ -863,6 +863,16 @@ export const searchResearches = async (
   const extractStr = (value: { ja: string | null; en: string | null } | null | undefined): string => {
     if (!value) return ""
     return value[lang] ?? value.ja ?? value.en ?? ""
+  }
+
+  // Helper to project ES BilingualTextValue (with rawHtml) down to the
+  // BilingualText shape returned in API responses. Returns null when both
+  // languages are absent so the listing view can render a clear gap.
+  const toBilingualText = (value: BilingualTextValue | null | undefined): BilingualText | null => {
+    if (!value) return null
+    const ja = value.ja?.text ?? null
+    const en = value.en?.text ?? null
+    return ja === null && en === null ? null : { ja, en }
   }
 
   const data: ResearchSummary[] = base.map(d => {
@@ -908,6 +918,9 @@ export const searchResearches = async (
       typeOfData,
       platforms,
       targets,
+      methodsSummary: toBilingualText(d.summaryShort?.methods),
+      typeOfDataSummary: toBilingualText(d.summaryShort?.typeOfData),
+      targetsSummary: toBilingualText(d.summaryShort?.targets),
       dataProvider,
       criteria,
       status: isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) ? d.status : "published" as const,

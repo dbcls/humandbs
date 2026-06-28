@@ -178,6 +178,15 @@ export const EsResearchSchema = CrawlerResearchSchema.extend({
     .describe("Publication status: 'draft', 'review', or 'published'"),
   draftVersion: z.string().nullable()
     .describe("Version being edited (e.g., 'v2'). Null if no editing in progress."),
+  // Short bilingual summaries used by the listing view. Source: Joomla
+  // `humandbs.dbcls.jp/home` (ja article_id=58) and `/en/home` (en=168).
+  // Null when the humId is not listed on the Joomla home page.
+  summaryShort: z.object({
+    methods: BilingualTextValueSchema,
+    typeOfData: BilingualTextValueSchema,
+    targets: BilingualTextValueSchema,
+  }).nullable().optional()
+    .describe("Short bilingual summaries for the listing view (research method / data type / target). Sourced from the Joomla home article."),
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>
 
