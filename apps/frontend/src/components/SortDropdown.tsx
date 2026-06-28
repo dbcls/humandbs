@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "./ui/button";
 
 interface SortOption {
   label: string;
@@ -57,32 +56,34 @@ export function SortDropdown({
       </span>
       <div className="relative" ref={containerRef}>
         <div
-          onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            buttonVariants({ variant: "tableAction", size: "tableAction" }),
-            "cursor-pointer h-11 pl-4 pr-2.5 font-normal select-none transition-colors",
-            isOpen
-              ? "border-secondary text-secondary-light bg-white"
-              : "hover:text-secondary-light hover:bg-hover",
+            "overflow-hidden border bg-white inline-flex items-center h-11 rounded-full font-normal select-none transition-colors",
+            isOpen ? "border-secondary" : "border-secondary-light",
           )}
         >
-          <div className="flex items-center gap-1 text-xs font-semibold pr-1">
+          {/* 左側：セレクトトリガー部分 */}
+          <div
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              "flex items-center gap-1.5 h-full pl-4 pr-2.5 cursor-pointer transition-colors text-xs font-semibold select-none",
+              isOpen
+                ? "bg-secondary text-white"
+                : "text-secondary-light hover:bg-hover",
+            )}
+          >
             <span>{activeOption ? activeOption.label : ""}</span>
-            <svg className="size-3.5 fill-current shrink-0" viewBox="0 0 24 24">
-              <path d="M12 16l-6-6h12z" />
+            <svg className="size-4 fill-current shrink-0" viewBox="0 0 24 24">
+              <path d="M12 17l-8-8h16z" />
             </svg>
           </div>
 
-          <div className="w-px h-full mx-1.5 bg-secondary-light" />
+          {/* 仕切り線 */}
+          <div className="w-px h-5 bg-secondary-light shrink-0" />
 
+          {/* 右側：昇降順トグルボタン部分 */}
           <button
             type="button"
-            className={cn(
-              "p-1 rounded-full transition-colors cursor-pointer flex items-center justify-center size-8 shrink-0",
-              isOpen
-                ? "bg-secondary text-white hover:bg-secondary/90"
-                : "text-secondary-light hover:text-secondary hover:bg-secondary-light/10 active:bg-secondary-light/20",
-            )}
+            className="px-3 h-full transition-colors cursor-pointer flex items-center justify-center text-secondary-light hover:text-secondary hover:bg-hover shrink-0"
             onClick={handleOrderToggle}
             title={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
           >
