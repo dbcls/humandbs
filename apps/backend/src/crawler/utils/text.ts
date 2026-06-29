@@ -106,3 +106,15 @@ export const httpToHttps = (url: string): string => {
   return trimmed.replace(/^http:\/\//i, "https://")
 }
 
+/**
+ * Strip backslash escapes that turndown emits for markdown-reserved characters.
+ *
+ * D11 で BilingualTextValue.text を rawHtml→markdown 化した結果、`[`, `]`, `*`,
+ * `\`, `` ` ``, `_`, `(`, `)`, `#`, `+`, `-`, `.`, `!`, `|`, `<`, `>` 等が
+ * `\X` 形でエスケープされている。markdown として render しない経路 (plain string
+ * の配列要素 / 全文検索 analyzer 投入 / 等) では本関数で undo する。
+ */
+export const unescapeMarkdown = (value: string): string => {
+  return value.replace(/\\([\\`*_{}[\]()#+\-.!|<>~])/g, "$1")
+}
+

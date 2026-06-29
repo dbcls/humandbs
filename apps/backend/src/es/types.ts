@@ -16,6 +16,8 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
+import { unescapeMarkdown } from "@/crawler/utils/text"
+
 import {
   // Common schemas (used locally)
   LANG_TYPES,
@@ -131,14 +133,23 @@ export type {
 
 // === Derived-field helpers ===
 
+/**
+ * Flatten experiment.data into a single string for ES full-text indexing
+ * (`dataText` field, copy_to → all_text).
+ *
+ * D11 made BilingualTextValue.text markdown-shaped, so without undoing
+ * turndown's `\[ \] \* \\` escapes the analyzer would index broken tokens
+ * (`\[DRA016393\]` instead of `DRA016393`). The haystack is plain text, so
+ * undo here.
+ */
 export const extractDataText = (
   data: Record<string, { ja?: { text?: string } | null; en?: { text?: string } | null } | null>,
 ): string => {
   const texts: string[] = []
   for (const value of Object.values(data)) {
     if (value == null) continue
-    if (value.ja?.text) texts.push(value.ja.text)
-    if (value.en?.text) texts.push(value.en.text)
+    if (value.ja?.text) texts.push(unescapeMarkdown(value.ja.text))
+    if (value.en?.text) texts.push(unescapeMarkdown(value.en.text))
   }
   return texts.join(" ")
 }

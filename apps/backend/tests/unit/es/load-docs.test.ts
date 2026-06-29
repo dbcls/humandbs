@@ -240,6 +240,27 @@ describe("es/load-docs.ts", () => {
       const enOnly = { A: { ja: null, en: { text: "English" } } }
       expect(extractDataText(enOnly)).toBe("English")
     })
+
+    // D11 made `text` markdown-shaped. Without undoing turndown escapes here
+    // the ES analyzer would index `\[DRA016393\]` rather than `DRA016393`,
+    // hurting full-text recall on the all_text catch-all.
+    it("strips markdown escapes so the analyzer indexes the bare token", () => {
+      const data = {
+        Platform: {
+          ja: { text: String.raw`Illumina \[HiSeq 2000\]` },
+          en: { text: String.raw`Illumina \[HiSeq 2000\]` },
+        },
+        Accession: {
+          ja: { text: String.raw`\[DRA016393\]` },
+          en: { text: String.raw`\[DRA016393\]` },
+        },
+      }
+      const result = extractDataText(data)
+      expect(result).not.toContain("\\[")
+      expect(result).not.toContain("\\]")
+      expect(result).toContain("Illumina [HiSeq 2000]")
+      expect(result).toContain("[DRA016393]")
+    })
   })
 
   // ===========================================================================

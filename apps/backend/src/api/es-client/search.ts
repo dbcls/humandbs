@@ -65,8 +65,9 @@ import type {
   AuthUser,
 } from "@/api/types"
 import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
+import { unescapeMarkdown } from "@/crawler/utils/text"
 import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
-import type { BilingualText, BilingualTextValue, CriteriaCanonical } from "@/es/types"
+import type { BilingualText, BilingualTextValue, CriteriaCanonical, PlatformInfo } from "@/es/types"
 
 // === Constants ===
 
@@ -107,6 +108,17 @@ export const sortCriteria = (values: CriteriaCanonical[]): CriteriaCanonical[] =
   uniq(values).sort(
     (a, b) => (CRITERIA_RANK.get(a) ?? Infinity) - (CRITERIA_RANK.get(b) ?? Infinity),
   )
+
+/**
+ * Render a structured {vendor, model} as a plain "vendor [model]" string.
+ * Falls back to the present side when one is null; returns "" when both are null.
+ */
+export const formatPlatform = (platform: PlatformInfo): string => {
+  const vendor = platform.vendor?.trim() ?? ""
+  const model = platform.model?.trim() ?? ""
+  if (vendor && model) return `${vendor} [${model}]`
+  return vendor || model
+}
 
 // === Filter Clause Builders ===
 
@@ -894,14 +906,22 @@ export const searchResearches = async (
     const datasetIds = uniq(datasets.map(ds => ds.datasetId))
     // typeOfData is now BilingualText, extract as array with both languages
     const typeOfData = uniq(datasets.map(ds => extractStr(ds.typeOfData)).filter(x => !!x))
+    // Build from searchable.platforms (structured {vendor, model}) instead of
+    // data.Platform.text so the markdown-escaped form (e.g., `Illumina \[HiSeq
+    // 2000\]`) isn't leaked into a plain string[] that the frontend renders
+    // without markdown.
     const platforms = uniq(
       datasets
-        .flatMap(ds => ds.experiments.map(e => extractText(e.data.Platform)))
+        .flatMap(ds => ds.experiments.flatMap(e => e.searchable?.platforms ?? []))
+        .map(formatPlatform)
         .filter(p => !!p),
     )
     const targets = extractText(d.summary?.targets)
-    // dataProvider.name is BilingualTextValue, extract text
-    const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
+    // dataProvider.name is BilingualTextValue.text (markdown). Render path here
+    // is a plain string[] (not markdown), so undo the turndown escapes.
+    const dataProvider = uniq(
+      (d.dataProvider ?? []).map(p => unescapeMarkdown(extractText(p.name))).filter(x => !!x),
+    )
     const criteria = sortCriteria(
       datasets
         .map(ds => ds.criteria)
