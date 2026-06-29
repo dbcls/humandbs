@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-import { LegacyHtmlDialog } from "./LegacyHtmlDialog";
-
 /**
  * Controlled Markdown editor for a single `text` value: a textarea editing the
  * Markdown source, a toggleable live client-rendered preview (reusing the same
@@ -52,7 +50,6 @@ export function MarkdownTextEditor({
           {showPreview ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
           {showPreview ? "Hide preview" : "Preview"}
         </Button>
-        <LegacyHtmlDialog rawHtml={legacyRawHtml} fieldLabel={fieldLabel} />
       </div>
 
       <TextareaAutosize
