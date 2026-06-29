@@ -39,8 +39,9 @@ export function NewVersionDialog({
           releaseNote:
             enText.trim() || jaText.trim()
               ? {
-                  en: enText.trim() ? { text: enText, rawHtml: "" } : null,
-                  ja: jaText.trim() ? { text: jaText, rawHtml: "" } : null,
+                  // Client sends only `text`; `rawHtml` is server-managed legacy data.
+                  en: enText.trim() ? { text: enText } : null,
+                  ja: jaText.trim() ? { text: jaText } : null,
                 }
               : undefined,
         },

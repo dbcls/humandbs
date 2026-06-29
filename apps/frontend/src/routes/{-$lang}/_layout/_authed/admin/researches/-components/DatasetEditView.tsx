@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@ta
 import { ChevronLeft } from "lucide-react";
 import { IntlProvider } from "use-intl";
 
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
@@ -29,7 +29,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
-import { $getDataset, $patchDataset, $updateDataset } from "@/serverFunctions/datasets";
+import { $getDatasetForEdit, $updateDataset } from "@/serverFunctions/datasets";
+import { datasetLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
+import { useDatasetPreviewRenderedHtml } from "@/utils/renderedHtml/usePreviewRenderedHtml";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { PreviewDialog } from "../../-components/PreviewDialog";
@@ -43,7 +45,9 @@ type ResearchData = ResearchDetailResponse["data"];
 function getDatasetEditQueryOptions(datasetId: string, lang: "ja" | "en") {
   return queryOptions({
     queryKey: ["dataset", "edit", datasetId, lang],
-    queryFn: () => $getDataset({ data: { datasetId, lang } }),
+    // "for edit" fn: includeRawHtml: true, no render transform, so the editor
+    // receives the untouched legacy rawHtml for its reference popup.
+    queryFn: () => $getDatasetForEdit({ data: { datasetId, lang } }),
     staleTime: 0, // Always fresh for edit
   });
 }
@@ -72,6 +76,9 @@ function DatasetEditViewInner({
   const { data: datasetResponse } = useSuspenseQuery(getDatasetEditQueryOptions(datasetId, lang));
 
   const dataset = datasetResponse.data;
+  // Legacy rawHtml side-channel: read-only lookup threaded to the experiment data
+  // editors. Never enters submittable form state.
+  const legacyRawHtml = useMemo(() => datasetLegacyRawHtml(datasetResponse), [datasetResponse]);
   const [seqNo, setSeqNo] = useState(datasetResponse.meta._seq_no);
   const [primaryTerm, setPrimaryTerm] = useState(datasetResponse.meta._primary_term);
   const [error, setError] = useState<string | null>(null);
@@ -79,15 +86,13 @@ function DatasetEditViewInner({
 
   const isDraft = research.status === "draft";
   const isPublished = research.status === "published";
-  // Editable when the parent is a draft (→ /update) or published (→ /patch).
+  // Editable when the parent is a draft or published; both save via PUT /dataset/{id}/update.
   const isEditable = isDraft || isPublished;
 
   const { mutateAsync: save, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
       const body = formValuesToDatasetUpdate(values, seqNo, primaryTerm);
-      // Route by parent status: published parent patches in place; draft updates.
-      const writeDataset = isPublished ? $patchDataset : $updateDataset;
-      return writeDataset({ data: { datasetId, body } });
+      return $updateDataset({ data: { datasetId, body } });
     },
     onSuccess: (result) => {
       if (!result.ok) {
@@ -237,6 +242,7 @@ function DatasetEditViewInner({
         )}
         <DatasetForm
           defaultValues={defaultValues}
+          legacyRawHtml={legacyRawHtml}
           readOnly={!isEditable}
           onSubmit={async (values) => {
             await save(values);
@@ -269,18 +275,40 @@ function DatasetEditViewInner({
       >
         <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-            <DatasetVersionCard
-              versionData={datasetFormValuesToPreviewDataset(previewValues, {
+            <DatasetPreviewCard
+              previewData={datasetFormValuesToPreviewDataset(previewValues, {
                 datasetId: dataset.datasetId,
                 version: dataset.version,
               })}
               lang={previewLang}
-              showPublicActions={false}
             />
           </IntlProvider>
         </div>
       </PreviewDialog>
     </TabContentLayout>
+  );
+}
+
+/**
+ * Admin dataset preview: runs the same `addDatasetRenderedHtml` transform used on
+ * the public read path over the live (unsaved) preview values, then feeds the
+ * widened result to the pure public `DatasetVersionCard`. Preview ≡ public output.
+ */
+function DatasetPreviewCard({
+  previewData,
+  lang,
+}: {
+  previewData: ReturnType<typeof datasetFormValuesToPreviewDataset>;
+  lang: "ja" | "en";
+}) {
+  const rendered = useDatasetPreviewRenderedHtml(previewData);
+  if (!rendered) return null;
+  return (
+    <DatasetVersionCard
+      versionData={rendered as Parameters<typeof DatasetVersionCard>[0]["versionData"]}
+      lang={lang}
+      showPublicActions={false}
+    />
   );
 }
 

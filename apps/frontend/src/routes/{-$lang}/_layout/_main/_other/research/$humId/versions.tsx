@@ -1,8 +1,6 @@
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import type { ResearchVersionDoc } from "@humandbs/backend/types";
-
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { DatasetLink } from "@/components/DatasetLink";
@@ -11,6 +9,7 @@ import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
+import type { RenderedResearchVersionItem } from "@/utils/renderedHtml/types";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$humId/versions")({
   component: RouteComponent,
@@ -51,7 +50,7 @@ function RouteComponent() {
   );
 }
 
-function VersionInfo({ version }: { version: ResearchVersionDoc }) {
+function VersionInfo({ version }: { version: RenderedResearchVersionItem }) {
   const { lang } = useRouteContext({ strict: false });
   const tResearch = useTranslations("Research");
 
@@ -81,7 +80,9 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>
           <Markdown
             className="inline-prose"
-            contentHtml={{ markup: version.releaseNote[lang ?? i18n.defaultLocale]?.rawHtml ?? "" }}
+            contentHtml={{
+              markup: version.releaseNote[lang ?? i18n.defaultLocale]?.renderedHtml ?? "",
+            }}
           />
 
           <h4 className="my-4 font-semibold text-secondary text-xs">

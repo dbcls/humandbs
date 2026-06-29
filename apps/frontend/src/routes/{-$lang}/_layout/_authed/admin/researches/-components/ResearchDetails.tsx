@@ -4,16 +4,19 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tansta
 import { LucideUser2 } from "lucide-react";
 import { IntlProvider } from "use-intl";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
 import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { BilingualMarkdownEditorField } from "@/components/form-context/fields/BilingualMarkdownEditorField";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
 import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
+import type { FieldOverride } from "@/components/form-context/schema-form/SchemaObjectFields";
+import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { humanize } from "@/components/form-context/schema-form/utils";
 import { StatusTag } from "@/components/StatusTag";
 import { TagPill } from "@/components/TagPill";
@@ -26,15 +29,16 @@ import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$hu
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
-  $patchResearch,
   $rejectResearch,
   $submitResearch,
   $unpublishResearch,
   $updateResearch,
+  getResearchForEditQueryOptions,
   getResearchOwnersQueryOptions,
-  getResearchQueryOptions,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { researchLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
+import { useResearchPreviewRenderedHtml } from "@/utils/renderedHtml/usePreviewRenderedHtml";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { PreviewDialog } from "../../-components/PreviewDialog";
@@ -44,13 +48,9 @@ import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { researchFieldsConfig } from "./researchFieldsConfig";
-import type { ResearchForm } from "./researchForm";
+import type { ResearchForm, ResearchValues } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
-import {
-  isResearchEditable,
-  isViewingDraftVersion,
-  researchSaveEndpoint,
-} from "./utils/researchEditTarget";
+import { isResearchEditable, isViewingDraftVersion } from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
 
 /**
@@ -124,17 +124,31 @@ export function ResearchDetails({
   const queryClient = useQueryClient();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
-  const { data: initialData } = useSuspenseQuery(getResearchQueryOptions({ humId, lang }));
+  // Uses the "for edit" fn (includeRawHtml: true, no render transform) so legacy
+  // rawHtml survives for the editor's reference popup.
+  const { data: initialData } = useSuspenseQuery(
+    getResearchForEditQueryOptions({ humId, lang, includeRawHtml: true }),
+  );
 
-  const defaultVersion = initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version;
+  const defaultVersion =
+    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version;
   const selectedVersion = selectedVersionProp ?? defaultVersion;
   const setSelectedVersion = onVersionChange ?? (() => {});
 
   // Re-fetch for the selected version
   const { data } = useSuspenseQuery(
-    getResearchQueryOptions({ humId, lang, version: selectedVersion }),
+    getResearchForEditQueryOptions({
+      humId,
+      lang,
+      version: selectedVersion,
+      includeRawHtml: true,
+    }),
   );
   const researchValues = data.data;
+
+  // Legacy rawHtml side-channel: read-only lookup threaded to the field editors.
+  // Never enters submittable form state.
+  const legacyRawHtml = useMemo(() => researchLegacyRawHtml(data), [data]);
 
   const [seqNo, setSeqNo] = useState(data.meta._seq_no);
   const [primaryTerm, setPrimaryTerm] = useState(data.meta._primary_term);
@@ -199,17 +213,9 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      // Route the research write by the viewed version: draft → /update,
-      // published latest → /patch. Editability is guaranteed by the Save button gate.
-      const endpoint = researchSaveEndpoint({
-        selectedVersion,
-        draftVersion: researchValues.draftVersion,
-        latestVersion: researchValues.latestVersion,
-        status: researchValues.status,
-      });
-      const writeResearch = endpoint === "patch" ? $patchResearch : $updateResearch;
-
-      const result = await writeResearch({
+      // Both the draft and the published latest are saved via PUT /research/{humId}/update.
+      // Editability is guaranteed by the Save button gate (isResearchEditable).
+      const result = await $updateResearch({
         data: {
           humId,
           body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
@@ -242,7 +248,6 @@ export function ResearchDetails({
   });
 
   const { openConfirmation } = useConfirmationStore();
-
 
   async function optimisticallySetStatus(targetStatus: ResearchStatus) {
     await queryClient.cancelQueries({ queryKey: ["researches", "byId"] });
@@ -566,10 +571,7 @@ export function ResearchDetails({
       >
         <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-            <VersionCard
-              versionData={previewValues as ResearchDetailResponse["data"]}
-              lang={previewLang}
-            />
+            <ResearchPreviewCard previewValues={previewValues} lang={previewLang} />
           </IntlProvider>
         </div>
       </PreviewDialog>
@@ -596,8 +598,6 @@ export function ResearchDetails({
       {/* Research-wide workflow actions — apply to the research as a whole,
           independent of which tab (metadata/datasets) is active. */}
       <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
-
-
         {isViewingDraft && canSubmit && (
           <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? "Submitting…" : "Submit for review"}
@@ -671,14 +671,16 @@ export function ResearchDetails({
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
-                <form.AppField name="releaseNote">
-                  {(field) => (
-                    <field.BilingualTextValueField
-                      label="Release note"
-                      inputsClassName="flex w-full gap-2"
-                    />
-                  )}
-                </form.AppField>
+                <BilingualMarkdownEditorField
+                  // withForm components take a loosely-typed form; cast matches the
+                  // idiom used by the other schema-driven field components.
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  form={form as any}
+                  baseName="releaseNote"
+                  label="Release note"
+                  legacyFieldKey="releaseNote"
+                  legacyRawHtml={legacyRawHtml}
+                />
               </fieldset>
               <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
@@ -693,7 +695,9 @@ export function ResearchDetails({
                 <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
                   {metadataFields.map((field) => (
                     <TabsContent key={field.key} value={field.key}>
-                      {field.renderer ? (
+                      {field.key === "summary" ? (
+                        <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
+                      ) : field.renderer ? (
                         field.renderer(form)
                       ) : (
                         <form.AppField name={field.key as never}>
@@ -772,4 +776,76 @@ export function ResearchDetails({
       </div>
     </Card>
   );
+}
+
+/**
+ * Summary editor: aims/methods/targets become Markdown editors (with live preview
+ * + legacy popup) via per-key overrides; `url` falls through to the generic
+ * schema-driven rendering. Each Markdown editor edits only `text`.
+ */
+function SummaryMarkdownFields({
+  form,
+  legacyRawHtml,
+}: {
+  form: ResearchForm;
+  legacyRawHtml: ReturnType<typeof researchLegacyRawHtml>;
+}) {
+  const overrides = useMemo<Record<string, FieldOverride>>(() => {
+    const markdownOverride =
+      (legacyFieldKey: string): FieldOverride =>
+      ({ form: fieldForm, name, label }) => (
+        <BilingualMarkdownEditorField
+          form={fieldForm}
+          baseName={name}
+          label={label}
+          legacyFieldKey={legacyFieldKey}
+          legacyRawHtml={legacyRawHtml}
+        />
+      );
+    return {
+      aims: markdownOverride("aims"),
+      methods: markdownOverride("methods"),
+      targets: markdownOverride("targets"),
+    };
+    // Each override reads `ctx.form` (the field-level form), so the outer `form`
+    // is not a dependency — only the legacy lookup is.
+  }, [legacyRawHtml]);
+
+  return (
+    <SchemaObjectFields
+      form={form}
+      baseName="summary"
+      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
+      overrides={overrides}
+    />
+  );
+}
+
+/** Unwrap nullable/optional/default to reach the inner summary object schema. */
+function unwrapSummarySchema(schema: unknown): unknown {
+  let s = schema as { _def?: { type?: string; innerType?: unknown } };
+  for (let i = 0; i < 10; i++) {
+    const t = s?._def?.type;
+    if (t === "nullable" || t === "optional" || t === "default") {
+      s = s._def!.innerType as typeof s;
+    } else break;
+  }
+  return s;
+}
+
+/**
+ * Admin whole-card preview: runs the same `addResearchRenderedHtml` transform used
+ * on the public read path over the live (unsaved) form values, then feeds the
+ * widened result to the pure public `VersionCard`. Preview ≡ public output.
+ */
+function ResearchPreviewCard({
+  previewValues,
+  lang,
+}: {
+  previewValues: ResearchValues;
+  lang: "ja" | "en";
+}) {
+  const rendered = useResearchPreviewRenderedHtml(previewValues);
+  if (!rendered) return null;
+  return <VersionCard versionData={rendered} lang={lang} />;
 }
