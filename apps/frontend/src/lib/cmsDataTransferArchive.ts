@@ -1,6 +1,5 @@
 import type { Dirent } from "node:fs";
 import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 
@@ -19,8 +18,6 @@ import { db } from "@/db/database";
 import {
   alert,
   alertTranslation,
-  contentItem,
-  contentTranslation,
   document,
   documentVersion,
   NAVIGATION_FLOWCHART_STATUS,
@@ -72,6 +69,31 @@ const archiveCountsSchema = z.partialRecord(
   z.number().int().nonnegative(),
 );
 
+// Legacy archives may list categories that are no longer supported (e.g. "content",
+// which was replaced by "documents"). Parse the raw manifest leniently and drop any
+// unsupported categories/counts so such archives still validate and restore, ignoring
+// the dropped data.
+const lenientCategoryArraySchema = z
+  .array(z.union([cmsDataTransferCategorySchema, z.string()]))
+  .transform((categories) =>
+    categories.filter(
+      (category): category is CmsDataTransferCategory =>
+        CMS_DATA_TRANSFER_CATEGORIES.includes(category as CmsDataTransferCategory),
+    ),
+  );
+
+const lenientCountsSchema = z
+  .record(z.string(), z.number().int().nonnegative())
+  .transform((counts) => {
+    const filtered: Partial<Record<CmsDataTransferCategory, number>> = {};
+    for (const [key, value] of Object.entries(counts)) {
+      if (CMS_DATA_TRANSFER_CATEGORIES.includes(key as CmsDataTransferCategory)) {
+        filtered[key as CmsDataTransferCategory] = value;
+      }
+    }
+    return filtered;
+  });
+
 const headerFooterActiveConfigSchema = z.object({
   id: z.string(),
   config: siteNavigationConfigSchema,
@@ -82,28 +104,6 @@ const headerFooterActiveConfigSchema = z.object({
 
 const timestampStringSchema = z.string().min(1);
 const nullableTimestampStringSchema = z.string().min(1).nullable();
-
-const contentItemArchiveRowSchema = z.object({
-  id: z.string().min(1),
-  createdAt: timestampStringSchema,
-  publishedAt: z.string().nullable(),
-  authorId: z.string().min(1),
-  hideTOC: z.boolean().nullable().optional(),
-});
-
-const contentTranslationArchiveRowSchema = z.object({
-  contentId: z.string().min(1),
-  title: z.string(),
-  lang: z.string().min(1),
-  updatedAt: nullableTimestampStringSchema,
-  content: z.string(),
-  status: z.enum(["draft", "published"]),
-});
-
-const contentPayloadSchema = z.object({
-  items: z.array(contentItemArchiveRowSchema),
-  translations: z.array(contentTranslationArchiveRowSchema),
-});
 
 const documentArchiveRowSchema = z.object({
   id: z.string().uuid(),
@@ -211,8 +211,10 @@ const archiveManifestSchema = z
     archiveFormat: z.literal("tar.gz"),
     createdAt: z.string(),
     createdBy: archiveCreatedBySchema,
-    categories: z.array(cmsDataTransferCategorySchema),
-    counts: archiveCountsSchema.default({}),
+    // Lenient parsing: legacy categories (e.g. "content") are silently dropped so
+    // older archives still validate and restore, ignoring the unsupported data.
+    categories: lenientCategoryArraySchema,
+    counts: lenientCountsSchema.default({}),
   })
   .superRefine((manifest, ctx) => {
     const uniqueCategories = new Set(manifest.categories);
@@ -221,15 +223,6 @@ const archiveManifestSchema = z
         code: "custom",
         message: "Manifest categories must be unique.",
       });
-    }
-
-    for (const key of Object.keys(manifest.counts)) {
-      if (!CMS_DATA_TRANSFER_CATEGORIES.includes(key as CmsDataTransferCategory)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Manifest contains unsupported count key "${key}".`,
-        });
-      }
     }
   });
 
@@ -392,8 +385,6 @@ async function createTarGzArchive(files: ArchiveFileInput) {
 
 function getCategoryPayloadPath(category: CmsDataTransferCategory) {
   switch (category) {
-    case "content":
-      return "categories/content.json";
     case "documents":
       return "categories/documents.json";
     case "news":
@@ -437,16 +428,6 @@ function validateCategoryPayload(
   assetFileCount: number,
 ) {
   switch (category) {
-    case "content":
-      if (!entryBytes) {
-        throw new Error('Archive is missing required file "categories/content.json".');
-      }
-      {
-        const payload = parseJsonFile(entryBytes, contentPayloadSchema, "categories/content.json");
-        return {
-          count: payload.items.length + payload.translations.length,
-        };
-      }
     case "documents":
       if (!entryBytes) {
         throw new Error('Archive is missing required file "categories/documents.json".');
@@ -633,7 +614,6 @@ export async function inspectCmsDataTransferArchive(
 }
 
 type ParsedArchivePayloadByCategory = {
-  content: z.infer<typeof contentPayloadSchema>;
   documents: z.infer<typeof documentsPayloadSchema>;
   news: z.infer<typeof newsPayloadSchema>;
   alerts: z.infer<typeof alertsPayloadSchema>;
@@ -705,21 +685,6 @@ async function parseCmsDataTransferArchive(
     const expectedCount = manifest.counts[category] ?? 0;
 
     switch (category) {
-      case "content": {
-        if (!payloadPath || !entries[payloadPath]) {
-          throw new Error('Archive is missing required file "categories/content.json".');
-        }
-        const payload = parseJsonFile(entries[payloadPath], contentPayloadSchema, payloadPath);
-        const actualCount = payload.items.length + payload.translations.length;
-        if (expectedCount !== actualCount) {
-          throw new Error(
-            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
-          );
-        }
-        payloads.content = payload;
-        availableCategories.push(category);
-        break;
-      }
       case "documents": {
         if (!payloadPath || !entries[payloadPath]) {
           throw new Error('Archive is missing required file "categories/documents.json".');
@@ -923,7 +888,9 @@ export function createCmsDataTransferArchiveRestorer({
 
     try {
       if (restoredCategories.includes("assets")) {
-        stagedAssetDirectory = await mkdtemp(path.join(tmpdir(), "cms-data-restore-assets-"));
+        const assetDir = getAssetDir();
+        await mkdir(path.dirname(assetDir), { recursive: true });
+        stagedAssetDirectory = await mkdtemp(path.join(path.dirname(assetDir), ".cms-data-restore-assets-"));
         await writeArchiveAssetsToDirectory(parsedArchive.assetEntries, stagedAssetDirectory);
       }
 
@@ -938,41 +905,6 @@ export function createCmsDataTransferArchiveRestorer({
               role: "admin",
             })
             .onConflictDoNothing();
-        }
-
-        if (restoredCategories.includes("content")) {
-          const payload = parsedArchive.payloads.content;
-          if (!payload) {
-            throw new Error("Content payload is missing from the archive.");
-          }
-
-          await tx.delete(contentTranslation);
-          await tx.delete(contentItem);
-
-          if (payload.items.length > 0) {
-            await tx.insert(contentItem).values(
-              payload.items.map((item) => ({
-                id: item.id,
-                createdAt: new Date(item.createdAt),
-                publishedAt: item.publishedAt,
-                authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
-                hideTOC: item.hideTOC ?? true,
-              })),
-            );
-          }
-
-          if (payload.translations.length > 0) {
-            await tx.insert(contentTranslation).values(
-              payload.translations.map((translation) => ({
-                contentId: translation.contentId,
-                title: translation.title,
-                lang: translation.lang,
-                updatedAt: toDate(translation.updatedAt),
-                content: translation.content,
-                status: translation.status,
-              })),
-            );
-          }
         }
 
         if (restoredCategories.includes("documents")) {
@@ -1189,20 +1121,6 @@ async function buildCategoryPayload(
   count: number;
 }> {
   switch (category) {
-    case "content": {
-      const [items, translations] = await Promise.all([
-        database.select().from(contentItem),
-        database.select().from(contentTranslation),
-      ]);
-
-      return {
-        files: {
-          "categories/content.json": JSON.stringify({ items, translations }, null, 2),
-        },
-        count: items.length + translations.length,
-      };
-    }
-
     case "documents": {
       const [documents, versions] = await Promise.all([
         database.select().from(document),

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
@@ -44,6 +45,7 @@ export function ResearchesList({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const tResearches = useTranslations("admin.researches");
   const { can: canCreate } = useCan({
     resource: "researches",
     action: "create",
@@ -136,8 +138,8 @@ export function ResearchesList({
 
   function handleDelete(humId: string) {
     openConfirmation({
-      title: "Delete Research",
-      description: `Are you really want to delete research \`${humId}\` ? All versions and linked datasets will be deleted.`,
+      title: tResearches("delete-title"),
+      description: tResearches("delete-description", { name: humId }),
       actionLabel: "Delete",
       onAction: () => {
         deleteResearch(humId);
@@ -214,8 +216,10 @@ function ListItems({
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
+  const tResearches = useTranslations("admin.researches");
+
   if (allResearches.length === 0) {
-    return <NoItemsMessage>No researches found</NoItemsMessage>;
+    return <NoItemsMessage>{tResearches("empty")}</NoItemsMessage>;
   }
 
   return (

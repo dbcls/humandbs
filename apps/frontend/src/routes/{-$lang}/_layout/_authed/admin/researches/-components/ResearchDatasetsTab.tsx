@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useMemo, useState } from "react";
 
@@ -24,6 +25,7 @@ interface ResearchDatasetsTabProps {
 export function ResearchDatasetsTab({ research, onSelectDataset }: ResearchDatasetsTabProps) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const tResearches = useTranslations("admin.researches");
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { can: canDelete } = useCan({
@@ -46,8 +48,8 @@ export function ResearchDatasetsTab({ research, onSelectDataset }: ResearchDatas
 
   function handleDelete(datasetId: string) {
     openConfirmation({
-      title: "Delete dataset?",
-      description: `This will permanently delete ${datasetId}. This action cannot be undone.`,
+      title: tResearches("delete-dataset-title"),
+      description: tResearches("delete-dataset-description", { name: datasetId }),
       actionLabel: "Delete",
       onAction: () => deleteDataset(datasetId),
     });
@@ -117,7 +119,7 @@ export function ResearchDatasetsTab({ research, onSelectDataset }: ResearchDatas
       {deleteError ? <AdminStatusMessage>{deleteError}</AdminStatusMessage> : null}
 
       {datasets.length === 0 ? (
-        <p className="text-gray-400 text-sm">No datasets yet.</p>
+        <p className="text-gray-400 text-sm">{tResearches("no-datasets")}</p>
       ) : (
         <div className="overflow-auto">
           <Table

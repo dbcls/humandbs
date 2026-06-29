@@ -1,6 +1,7 @@
 import { evaluate } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import { useEffect, useState } from "react";
 
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/header-foo
 
 function RouteComponent() {
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const tNav = useTranslations("admin.navigation");
   const router = useRouter();
   const queryClient = useQueryClient();
   const {
@@ -96,12 +98,10 @@ function RouteComponent() {
         <div className="flex flex-col gap-4 p-5">
           <div>
             <p className="font-medium text-danger text-sm">
-              Failed to load site navigation config.
+              {tNav("load-failed-short")}
             </p>
             <p className="mt-1 text-foreground-light text-sm">
-              {queryError instanceof Error
-                ? queryError.message
-                : "The CMS config request did not complete successfully."}
+              {queryError instanceof Error ? queryError.message : tNav("load-failed")}
             </p>
           </div>
           <div>
@@ -143,7 +143,7 @@ function RouteComponent() {
     const normalizedDraft = normalizeSiteNavigationConfig(draft);
     const validation = siteNavigationConfigSchema.safeParse(normalizedDraft);
     if (!validation.success) {
-      setError(validation.error.issues[0]?.message ?? "Navigation config is invalid.");
+      setError(validation.error.issues[0]?.message ?? tNav("invalid"));
       return;
     }
     const result = await saveConfig(normalizedDraft);
@@ -153,7 +153,7 @@ function RouteComponent() {
     }
     setDraft(normalizeSiteNavigationConfig(result.data.config));
     setRevision(result.data.revision);
-    setMessage("Navigation saved.");
+    setMessage(tNav("saved"));
     await refreshNavigation();
   }
 
@@ -167,7 +167,7 @@ function RouteComponent() {
     }
     setDraft(normalizeSiteNavigationConfig(result.data.config));
     setRevision(result.data.revision);
-    setMessage("Navigation reset to default.");
+    setMessage(tNav("reset"));
     await refreshNavigation();
   }
 
@@ -533,10 +533,9 @@ function RouteComponent() {
     >
       <div className="flex items-center justify-between px-5 pt-5">
         <div>
-          <p className="font-medium text-sm">Shared structure for both locales</p>
+          <p className="font-medium text-sm">{tNav("shared-structure")}</p>
           <p className="text-foreground-light text-sm">
-            Labels come from document titles and item labels. This editor changes ordering,
-            visibility, priority, and footer grouping.
+            {tNav("shared-structure-hint")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -546,7 +545,7 @@ function RouteComponent() {
             onClick={handleReset}
             disabled={isResetting || isSaving}
           >
-            {isResetting ? "Resetting…" : "Reset to default"}
+            {isResetting ? tNav("resetting") : tNav("reset-to-default")}
           </Button>
 
           <Button
@@ -559,7 +558,7 @@ function RouteComponent() {
           </Button>
 
           <Button type="button" onClick={handleSave} disabled={!isDirty || isSaving || isResetting}>
-            {isSaving ? "Saving…" : "Save"}
+            {isSaving ? tNav("saving") : tNav("save")}
           </Button>
         </div>
       </div>
@@ -578,7 +577,7 @@ function RouteComponent() {
           <section className="rounded-md border border-gray-200 p-4">
             <h2 className="font-medium text-base">Navbar</h2>
             <p className="mt-1 text-foreground-light text-sm">
-              Drag groups to reorder. Drag items between groups to reassign.
+              {tNav("drag-navbar-hint")}
             </p>
             <div className="mt-4">
               <NavbarEditor
@@ -601,8 +600,7 @@ function RouteComponent() {
           <section className="rounded-md border border-gray-200 p-4">
             <h2 className="font-medium text-base">Footer</h2>
             <p className="mt-1 text-foreground-light text-sm">
-              Drag group columns to reorder. Drag items between columns to reassign. Click a group
-              header to rename it.
+              {tNav("drag-footer-hint")}
             </p>
             <div className="mt-4">
               <FooterEditor

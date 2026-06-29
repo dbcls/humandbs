@@ -75,7 +75,7 @@ export default function FrontStatsVisualization() {
   if (error || !stats) {
     return (
       <div className="w-full rounded-xl bg-red-50 p-8 text-red-600">
-        {error || "No data available"}
+        {error || tCommon("no-data")}
       </div>
     );
   }

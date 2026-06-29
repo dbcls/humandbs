@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
@@ -51,6 +52,7 @@ export function NewResearchForm({
   onDiscard: () => void;
 }) {
   const queryClient = useQueryClient();
+  const tResearches = useTranslations("admin.researches");
   const [error, setError] = useState<string | null>(null);
   const [relatedAccessions, setRelatedAccessions] = useState<string[]>([]);
 
@@ -85,7 +87,7 @@ export function NewResearchForm({
       onCreated(result.data.data.humId, relatedAccessions);
     },
     onError: (err: Error) => {
-      setError(err.message ?? "Failed to create research.");
+      setError(err.message ?? tResearches("create-research-failed"));
     },
   });
 

@@ -1,4 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
@@ -35,6 +36,7 @@ export function MarkdownTextEditor({
   modified?: boolean;
   className?: string;
 }) {
+  const tMarkdown = useTranslations("admin.markdown");
   const [showPreview, setShowPreview] = useState(false);
 
   return (
@@ -48,7 +50,7 @@ export function MarkdownTextEditor({
           onClick={() => setShowPreview((v) => !v)}
         >
           {showPreview ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-          {showPreview ? "Hide preview" : "Preview"}
+          {showPreview ? tMarkdown("hide-preview") : tMarkdown("preview")}
         </Button>
       </div>
 

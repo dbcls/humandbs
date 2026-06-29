@@ -90,6 +90,8 @@ export function DocumentVersion({
   version?: number;
   onSelectVersion: (versionNumber: number) => void;
 }) {
+  const tDocs = useTranslations("admin.documents");
+
   const { selectedVersionNumber, versions } = useDocVersionsList(contentId, version);
 
   const { mutate: createVersion, isPending: isCreatingVersion } = useCreateVersion(contentId);
@@ -103,7 +105,7 @@ export function DocumentVersion({
         caption="Document"
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-sm">
-          <p>No versions yet for this document.</p>
+          <p>{tDocs("no-versions")}</p>
           <Button
             variant="accent"
             onClick={() => {
@@ -173,6 +175,8 @@ function DocumentVersionContent({
   );
 
   const t = useTranslations("common");
+  const tDocs = useTranslations("admin.documents");
+  const tCommonAdmin = useTranslations("admin.common");
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
     versionNumber,
@@ -399,7 +403,7 @@ function DocumentVersionContent({
                 value={DOCUMENT_VERSION_STATUS.PUBLISHED}
               >
                 {!selectedVersionContent.translations[loc]?.published?.content ? (
-                  <div>No published content</div>
+                  <div>{tCommonAdmin("no-published-content")}</div>
                 ) : (
                   <>
                     <div className="flex justify-end border-foreground-light border-b pb-2">

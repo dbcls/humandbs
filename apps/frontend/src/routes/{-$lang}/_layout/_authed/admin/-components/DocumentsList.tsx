@@ -136,8 +136,8 @@ export function DocumentsList({
 
   function handleClickDeleteDoc(contentId: string) {
     openConfirmation({
-      title: "Delete Document",
-      description: `Are you sure you want to delete document ${contentId}?`,
+      title: tDocs("delete-title"),
+      description: tDocs("delete-description", { name: contentId }),
       actionLabel: "Delete",
       onAction: () => {
         onSelectDoc(undefined);
@@ -150,8 +150,8 @@ export function DocumentsList({
     if (!renamingId) return;
     const oldId = renamingId;
     openConfirmation({
-      title: "Change ID of the document",
-      description: `Are you sure you want to change ID "${oldId}" to "${newId}"?`,
+      title: tDocs("change-id-title"),
+      description: tDocs("change-id-description"),
       actionLabel: "Rename",
       onAction: () => {
         changeIdOfDocument({ oldId, newId });
@@ -162,22 +162,21 @@ export function DocumentsList({
   const validate = useServerFn($validateEntityId);
 
   const tErrors = useTranslations("Errors");
+  const tDocs = useTranslations("admin.documents");
   return (
     <>
       <div className="mb-3">
         <FilterSearchInput
           value={q}
           onChange={(nextQ) => setFilters({ q: nextQ })}
-          placeholder="Search by title or content…"
+          placeholder={tDocs("search-placeholder")}
         />
       </div>
 
       <InputDialog
         title="Add Document"
         description=<div>
-          <p>Enter content ID in `snake-case`.</p>
-          <p>It can have slashes (`hello/world`).</p>
-          <p>Content ID would become the path to this document</p>
+          <p>{tDocs("new-doc-message")}</p>
         </div>
         label="Content ID"
         trigger={<AddNewButton className="mb-5" />}
@@ -244,6 +243,7 @@ function ListItems({
   const { q } = routeApi.useSearch();
   const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
+  const tDocs = useTranslations("admin.documents");
 
   const groupedDocs = useMemo(() => {
     const groups = new Map<string, DocumentsListItemResponse[]>();
@@ -264,7 +264,7 @@ function ListItems({
   }, [documents]);
 
   if (documents.length === 0) {
-    return <NoItemsMessage>No documents found</NoItemsMessage>;
+    return <NoItemsMessage>{tDocs("no-documents")}</NoItemsMessage>;
   }
   return (
     <ul className="overflow-y-auto" data-testid="documents-list-ul">

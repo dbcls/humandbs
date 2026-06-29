@@ -9,7 +9,6 @@ import {
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 export const CMS_DATA_TRANSFER_CATEGORIES = [
-  "content",
   "documents",
   "news",
   "alerts",
@@ -23,7 +22,6 @@ export type CmsDataTransferCategory = (typeof CMS_DATA_TRANSFER_CATEGORIES)[numb
 export const cmsDataTransferCategorySchema = z.enum(CMS_DATA_TRANSFER_CATEGORIES);
 
 export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<CmsDataTransferCategory, string> = {
-  content: "Content",
   documents: "Documents",
   news: "News",
   alerts: "Alerts",

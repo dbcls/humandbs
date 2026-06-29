@@ -1,3 +1,5 @@
+import { useTranslations } from "use-intl";
+
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ export function JsonImportExport({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const { openConfirmation } = useConfirmationStore();
+  const tResearches = useTranslations("admin.researches");
 
   function handleDownload() {
     const json = JSON.stringify(getValues(), null, 2);
@@ -43,10 +46,9 @@ export function JsonImportExport({
         const parsed = JSON.parse(ev.target?.result as string);
         if (hasData()) {
           openConfirmation({
-            title: "Overwrite form data?",
-            description:
-              "This will overwrite all current form data with the contents of the uploaded file. Continue?",
-            actionLabel: "Overwrite",
+            title: tResearches("overwrite-title"),
+            description: tResearches("overwrite-description"),
+            actionLabel: tResearches("overwrite-action"),
             onAction: () => {
               setImportError(null);
               onImport(parsed);
@@ -57,7 +59,7 @@ export function JsonImportExport({
           onImport(parsed);
         }
       } catch {
-        setImportError("Invalid JSON file. Please upload a valid .json file.");
+        setImportError(tResearches("invalid-json"));
       }
     };
     reader.readAsText(file);

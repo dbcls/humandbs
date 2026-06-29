@@ -14,7 +14,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useLocale } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import type { Ref } from "react";
 import { useRef, useState } from "react";
@@ -76,6 +76,7 @@ function RouteComponent() {
   const [mode, setMode] = useState<EditorMode>("select");
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const tFlowcharts = useTranslations("admin.flowcharts");
   const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
   const { mutateAsync: deleteFlowchart } = useMutation({
@@ -105,8 +106,8 @@ function RouteComponent() {
   function handleDeleteFlowchart(id: string) {
     const fc = allFlowcharts.find((f) => f.id === id);
     openConfirmation({
-      title: "Delete flowchart?",
-      description: `Are you sure you want to delete "${fc?.nameEn ?? id}"? This cannot be undone.`,
+      title: tFlowcharts("delete-title"),
+      description: tFlowcharts("delete-description", { name: fc?.nameEn ?? id }),
       actionLabel: "Delete",
       onAction: async () => {
         const result = await deleteFlowchart(id);
@@ -183,9 +184,10 @@ function FlowchartList({
   onDelete: (id: string) => void;
 }) {
   const { data: flowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
+  const tFlowcharts = useTranslations("admin.flowcharts");
 
   if (flowcharts.length === 0) {
-    return <p className="px-1 text-gray-400 text-sm">No flowcharts yet.</p>;
+    return <p className="px-1 text-gray-400 text-sm">{tFlowcharts("empty")}</p>;
   }
 
   // Build grouped list: each entry point followed by directly linked flowcharts.
@@ -197,10 +199,7 @@ function FlowchartList({
 
   if (entryPoints.length === 0) {
     return (
-      <NoItemsMessage>
-        No entry point flowchart found. Create a flowchart and set it as the entry point to get
-        started.
-      </NoItemsMessage>
+      <NoItemsMessage>{tFlowcharts("no-entry-point")}</NoItemsMessage>
     );
   }
 
@@ -298,6 +297,7 @@ function FlowchartListItemContent({
  */
 function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }) {
   const queryClient = useQueryClient();
+  const tFlowcharts = useTranslations("admin.flowcharts");
   const [nameEn, setNameEn] = useState("");
   const [nameJa, setNameJa] = useState("");
   const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>({});
@@ -328,7 +328,7 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
       });
       onCreated(created.id);
     } catch {
-      setServerError("Failed to create flowchart.");
+      setServerError(tFlowcharts("failed-to-create"));
     }
   }
 
@@ -393,6 +393,7 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
  */
 function EditFlowchartPanel({ id }: { id: string }) {
   const { data: record, isPending, isError } = useQuery(getNavigationFlowchartByIdQueryOptions(id));
+  const tFlowcharts = useTranslations("admin.flowcharts");
 
   if (isPending) {
     return (
@@ -409,7 +410,7 @@ function EditFlowchartPanel({ id }: { id: string }) {
   if (isError || !record) {
     return (
       <Card className="flex flex-1 flex-col gap-0">
-        <div className="p-5 text-red-600 text-sm">Failed to load flowchart.</div>
+        <div className="p-5 text-red-600 text-sm">{tFlowcharts("failed-to-load")}</div>
       </Card>
     );
   }
@@ -451,6 +452,8 @@ interface FlowchartMeta {
 function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const tFlowcharts = useTranslations("admin.flowcharts");
+  const tCommon = useTranslations("admin.common");
   const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
   const [meta, setMeta] = useState<FlowchartMeta>({
@@ -529,7 +532,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     const stepErrors = validateSteps(configDraft);
     if (Object.keys(stepErrors).length > 0) {
       setError(
-        "Some steps have errors (too few options or invalid URLs). Check highlighted steps.",
+        tFlowcharts("steps-errors"),
       );
       return;
     }
@@ -541,8 +544,8 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     if (!result.ok) {
       setError(
         result.code === "CONFLICT"
-          ? "This flowchart was modified by someone else. Reload to get the latest version."
-          : "Failed to save.",
+          ? tFlowcharts("conflict-reload")
+          : tCommon("failed-to-save"),
       );
       return;
     }
@@ -563,8 +566,8 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
     if (isPromotingToEntryPoint && existingEntryPoint) {
       openConfirmation({
-        title: "Change entry point?",
-        description: `"${existingEntryPoint.nameEn}" is currently the entry point. Setting this flowchart as entry point will demote it. Continue?`,
+        title: tFlowcharts("change-entry-point-title"),
+        description: tFlowcharts("change-entry-point-description", { name: existingEntryPoint.nameEn }),
         actionLabel: "Set as entry point",
         onAction: () => commitSave(meta),
       });
@@ -697,10 +700,9 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
               onCheckedChange={(checked) => setMeta((p) => ({ ...p, isEntryPoint: checked }))}
             />
             <div>
-              <span className="font-medium text-gray-700 text-sm">Entry point</span>
+              <span className="font-medium text-gray-700 text-sm">{tFlowcharts("entry-point-label")}</span>
               <p className="text-gray-400 text-xs">
-                The entry point flowchart is loaded on the public navigation page. Only one
-                flowchart can be the entry point.
+                {tFlowcharts("entry-point-description")}
               </p>
             </div>
           </div>
@@ -832,7 +834,7 @@ function FlowchartPreview({
               onNavigateToFlowchart={handleNavigateToFlowchart}
             />
           ) : (
-            <div className="py-8 text-center text-gray-400 text-sm">Loading…</div>
+            <div className="py-8 text-center text-gray-400 text-sm">{tCommon("loading")}</div>
           )}
         </div>
       </div>
@@ -998,6 +1000,7 @@ function StepCard({
   }
 
   const lang = useLocale();
+  const tFlowcharts = useTranslations("admin.flowcharts");
 
   return (
     <div
@@ -1045,7 +1048,7 @@ function StepCard({
           type="button"
           onClick={onDelete}
           disabled={!canDelete}
-          title={canDelete ? "Delete step" : "Cannot delete — another option references this step"}
+          title={canDelete ? tFlowcharts("delete-step") : tFlowcharts("delete-step-disabled")}
           className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Trash2 className="size-3.5" />

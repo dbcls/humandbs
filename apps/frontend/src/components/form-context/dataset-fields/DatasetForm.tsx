@@ -214,6 +214,7 @@ export function DatasetForm({
   );
 
   const t = useTranslations("Dataset");
+  const tCommon = useTranslations("admin.common");
 
   const values = useStore(form.store, (state) => state.values);
   const baseline = cleanValues ?? defaultValues;
@@ -249,7 +250,7 @@ export function DatasetForm({
       )}
       {conflictError && (
         <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 text-sm">
-          <span>Someone else saved a newer version. Reload to continue.</span>
+          <span>{tCommon("conflict-reload")}</span>
           {onReload && (
             <button type="button" onClick={onReload} className="underline hover:no-underline">
               Reload

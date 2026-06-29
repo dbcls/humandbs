@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ export function NewVersionDialog({
   onVersionCreated: (version: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const tResearches = useTranslations("admin.researches");
   const [enText, setEnText] = useState("");
   const [jaText, setJaText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function NewVersionDialog({
       setError(null);
     },
     onError: (err: Error) => {
-      setError(err.message ?? "Failed to create version.");
+      setError(err.message ?? tResearches("create-version-failed"));
     },
   });
 

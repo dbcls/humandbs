@@ -66,6 +66,7 @@ export function ContentList({
   });
 
   const tErrors = useTranslations("Errors");
+  const tContent = useTranslations("admin.content");
 
   return (
     <>
@@ -73,7 +74,7 @@ export function ContentList({
         <FilterSearchInput
           value={q}
           onChange={(nextQ) => setFilters({ q: nextQ })}
-          placeholder="Search by title or content…"
+          placeholder={tContent("search-placeholder")}
         />
       </div>
 
@@ -116,6 +117,7 @@ function ItemsList({
   onSelectContent: (contentId: string | undefined) => void;
 }) {
   const queryClient = useQueryClient();
+  const tContent = useTranslations("admin.content");
 
   const { q } = routeApi.useSearch();
 
@@ -148,8 +150,8 @@ function ItemsList({
 
   function handleClickDeleteContentItem(id: string) {
     openConfirmation({
-      title: "Delete Content page",
-      description: `Are you sure you want to delete content page ${id}?`,
+      title: tContent("delete-title"),
+      description: tContent("delete-description", { name: id }),
       actionLabel: "Delete",
       onAction: () => {
         deleteContent(id);
@@ -159,7 +161,7 @@ function ItemsList({
   }
 
   if (contents.length === 0) {
-    return <NoItemsMessage>No content found</NoItemsMessage>;
+    return <NoItemsMessage>{tContent("no-items")}</NoItemsMessage>;
   }
 
   return (

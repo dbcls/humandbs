@@ -189,6 +189,7 @@ function NewsItemForm({
   onSelectNewsItemId: (id: string) => void;
 }) {
   const t = useTranslations("common");
+
   const { user } = useRouteContext({ from: "__root__" });
   const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
 
@@ -524,6 +525,10 @@ function TagPicker({
   onChange: (ids: string[]) => void;
   onCreateTag: (name: string) => Promise<unknown>;
 }) {
+  const tNews = useTranslations("admin.news");
+
+  const tCommonAdmin = useTranslations("admin.common");
+
   const CREATE_SENTINEL = "__create__";
   const [inputValue, setInputValue] = useState("");
   const anchor = useComboboxAnchor();
@@ -559,7 +564,7 @@ function TagPicker({
         {selectedTags.map((tag) => (
           <ComboboxChip key={tag.id}>{tag.name}</ComboboxChip>
         ))}
-        <ComboboxChipsInput placeholder="Add tag…" />
+        <ComboboxChipsInput placeholder={tNews("add-tag")} />
       </ComboboxChips>
 
       <ComboboxContent anchor={anchor} className={"max-w-96"}>
@@ -578,7 +583,9 @@ function TagPicker({
               Create tag: <span className="font-medium">{inputValue}</span>
             </ComboboxItem>
           )}
-          {filteredTags.length === 0 && !showCreate && <ComboboxEmpty>No tags found</ComboboxEmpty>}
+          {filteredTags.length === 0 && !showCreate && (
+            <ComboboxEmpty>{tCommonAdmin("no-tags-found")}</ComboboxEmpty>
+          )}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>

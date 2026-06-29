@@ -2,7 +2,7 @@ import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { LucideUser2 } from "lucide-react";
-import { IntlProvider } from "use-intl";
+import { IntlProvider, useTranslations } from "use-intl";
 
 import { useMemo, useState } from "react";
 
@@ -19,7 +19,6 @@ import type { FieldOverride } from "@/components/form-context/schema-form/Schema
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { humanize } from "@/components/form-context/schema-form/utils";
 import { StatusTag } from "@/components/StatusTag";
-import { TagPill } from "@/components/TagPill";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
@@ -201,6 +200,8 @@ export function ResearchDetails({
   });
   const owners = ownersResult?.ok ? ownersResult.data.owners : [];
 
+  const tResearches = useTranslations("admin.researches");
+  const tCommon = useTranslations("admin.common");
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -239,7 +240,7 @@ export function ResearchDetails({
       setIsConflict(false);
     },
     onError: (err: Error) => {
-      setError(err.message ?? "Failed to save research.");
+      setError(err.message ?? tResearches("failed-to-save"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -311,7 +312,7 @@ export function ResearchDetails({
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to submit research.");
+      setError(err.message ?? tResearches("failed-to-submit"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -334,7 +335,7 @@ export function ResearchDetails({
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to approve research.");
+      setError(err.message ?? tResearches("failed-to-approve"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -357,7 +358,7 @@ export function ResearchDetails({
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to reject research.");
+      setError(err.message ?? tResearches("failed-to-reject"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -381,7 +382,7 @@ export function ResearchDetails({
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to unpublish research.");
+      setError(err.message ?? tResearches("failed-to-unpublish"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -391,8 +392,8 @@ export function ResearchDetails({
 
   function handleSubmit() {
     openConfirmation({
-      title: "Submit for review?",
-      description: "This will send the research to admins for review.",
+      title: tResearches("submit-title"),
+      description: tResearches("submit-description"),
       actionLabel: "Submit",
       onAction: () => submitResearch(),
     });
@@ -400,8 +401,8 @@ export function ResearchDetails({
 
   function handleUnpublish() {
     openConfirmation({
-      title: "Unpublish research?",
-      description: "This will return the research to draft status and remove it from public view.",
+      title: tResearches("unpublish-title"),
+      description: tResearches("unpublish-description"),
       actionLabel: "Unpublish",
       onAction: () => unpublishResearch(),
     });
@@ -409,8 +410,8 @@ export function ResearchDetails({
 
   function handleApprove() {
     openConfirmation({
-      title: "Approve research?",
-      description: "This will publish the research and make it publicly visible.",
+      title: tResearches("approve-title"),
+      description: tResearches("approve-description"),
       actionLabel: "Approve",
       onAction: () => approveResearch(),
     });
@@ -418,8 +419,8 @@ export function ResearchDetails({
 
   function handleReject() {
     openConfirmation({
-      title: "Reject research?",
-      description: "This will return the research to draft status.",
+      title: tResearches("reject-title"),
+      description: tResearches("reject-description"),
       actionLabel: "Reject",
       onAction: () => rejectResearch(),
     });
@@ -547,7 +548,7 @@ export function ResearchDetails({
       {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
       {isConflict && (
         <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 text-sm">
-          <span>Someone else saved a newer version. Reload to continue.</span>
+          <span>{tCommon("conflict-reload")}</span>
           <Button
             size="slim"
             variant="outline"

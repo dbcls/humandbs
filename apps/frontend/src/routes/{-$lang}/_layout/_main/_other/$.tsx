@@ -1,4 +1,4 @@
-import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createTranslator } from "use-intl";
 import { z } from "zod";
 
@@ -169,16 +169,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           data: { contentId: docId, locale: context.lang },
         }),
       ]);
-      if (!data) {
-        throw notFound();
-      }
 
-      const contentHtml = await renderMarkdown(data.content ?? "");
+      const contentHtml = await renderMarkdown(data?.content ?? "");
 
       return {
         kind: "revision" as const,
         contentHtml,
-        title: data.title,
+        title: data?.title,
         crumbs: [
           ...docCrumbs,
           { label: t("versions"), href: `/${docId}/version` },

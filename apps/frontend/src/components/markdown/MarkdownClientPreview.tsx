@@ -1,3 +1,5 @@
+import { useTranslations } from "use-intl";
+
 import { useEffect, useState } from "react";
 
 import type { MarkdownResult } from "@/utils/markdown";
@@ -15,6 +17,7 @@ export default function MarkdownClientPreview({
   source: string;
   className?: string;
 }) {
+  const tMarkdown = useTranslations("admin.markdown");
   const [contentHtml, setContentHtml] = useState<MarkdownResult>();
 
   const [error, setError] = useState(false);
@@ -27,7 +30,7 @@ export default function MarkdownClientPreview({
       });
   }, [source]);
 
-  if (error) return <div>Some error occurred. Markdown couldn't be previewed </div>;
+  if (error) return <div>{tMarkdown("preview-error")}</div>;
 
   return (
     <section className="w-full">
