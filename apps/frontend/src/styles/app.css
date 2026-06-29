@@ -227,6 +227,13 @@
       @apply text-secondary visited:text-visited font-medium;
     }
 
+    /* DocButton renders as an <a> (asChild) inside the prose, so the prose link
+       rule above would otherwise override its variant text color/weight. Keep
+       the button's own styling. */
+    a.doc-button {
+      @apply font-semibold text-white visited:text-white;
+    }
+
     h1,
     h2,
     h3,
