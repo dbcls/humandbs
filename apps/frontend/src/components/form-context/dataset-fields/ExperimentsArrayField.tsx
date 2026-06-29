@@ -174,7 +174,7 @@ function DataEntriesTable({
       </div>
 
       {entries.length > 0 && (
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-xs">
           <thead>
             <tr className="border-form-divider border-b text-left text-form-sublabel">
               <th className="w-48 pr-3 pb-2 font-medium">Key</th>
