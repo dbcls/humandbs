@@ -73,7 +73,8 @@ export function SortDropdown({
       (items[nextIndex] as HTMLElement).focus();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      const nextIndex = (currentIndex - 1 + items.length) % items.length;
+      const nextIndex =
+        currentIndex === -1 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
       (items[nextIndex] as HTMLElement).focus();
     } else if (e.key === "Escape") {
       e.preventDefault();
@@ -142,7 +143,7 @@ export function SortDropdown({
                   key={value}
                   role="option"
                   aria-selected={isSelected}
-                  tabIndex={0}
+                  tabIndex={isSelected ? 0 : -1}
                   onClick={() => handleSortChange(value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
