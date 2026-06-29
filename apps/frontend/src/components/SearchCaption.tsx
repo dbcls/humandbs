@@ -59,7 +59,7 @@ export function SearchCaption({
 
   return (
     <div className="flex h-fit flex-wrap items-center justify-between">
-      <div className="flex items-baseline gap-10">
+      <div className="flex items-baseline gap-5">
         <h3 className="relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
           {title}
         </h3>
@@ -69,13 +69,13 @@ export function SearchCaption({
       <div className="flex flex-wrap items-center gap-4">
         {sortControl}
         <div className="flex gap-1">
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCopy}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCsv}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCsv}>
             CSV
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onExcel}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onExcel}>
             Excel
           </Button>
         </div>
@@ -101,7 +101,7 @@ export function SearchCaption({
                     onClick={handleResetInput}
                     aria-label={t("clear")}
                   >
-                    <X size={22} />
+                    <X size={18} />
                   </Button>
                 ) : null}
                 <Button
@@ -125,10 +125,10 @@ export function SearchCaption({
           />
           <Button
             ref={filterButtonRef}
-            variant="tableAction"
-            size="tableAction"
-            className={cn("flex items-center gap-2", {
-              "bg-secondary": isPanelOpen,
+            variant="captionAction"
+            size="captionAction"
+            className={cn("flex items-center gap-2 transition-colors", {
+              "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white": isPanelOpen,
             })}
             onClick={onFilterClick}
             type="button"

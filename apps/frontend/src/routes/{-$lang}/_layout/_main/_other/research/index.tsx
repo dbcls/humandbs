@@ -304,17 +304,7 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const RESEARCH_SORT_OPTIONS = [
-  { sort: "dateModified", order: "desc" },
-  { sort: "dateModified", order: "asc" },
-  { sort: "datePublished", order: "desc" },
-  { sort: "datePublished", order: "asc" },
-  { sort: "humId", order: "asc" },
-  { sort: "humId", order: "desc" },
-] as const;
-
 function ResearchSortSelect() {
-  const t = useTranslations("common");
   const tR = useTranslations("Research");
   const { filters, setFilters } = useFilters(Route.id);
 
@@ -327,18 +317,17 @@ function ResearchSortSelect() {
   const currentSort = filters.sort ?? "dateModified";
   const currentOrder = filters.order ?? "desc";
 
-  const sortOptions = RESEARCH_SORT_OPTIONS.map(({ sort, order }) => ({
-    label: t("sort-by", {
-      field: fieldLabels[sort],
-    }),
-    value: `${sort}:${order}`,
-    order,
-  }));
+  const sortOptions = [
+    { label: fieldLabels.dateModified, value: "dateModified" },
+    { label: fieldLabels.datePublished, value: "datePublished" },
+    { label: fieldLabels.humId, value: "humId" },
+  ];
 
   return (
     <SortDropdown
       options={sortOptions}
-      value={`${currentSort}:${currentOrder}`}
+      sort={currentSort}
+      order={currentOrder}
       onSelect={(newSort) => {
         startTransition(() => {
           setFilters(newSort);
