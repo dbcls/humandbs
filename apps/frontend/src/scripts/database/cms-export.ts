@@ -57,18 +57,12 @@ Options:
 
 Environment:
   HUMANDBS_POSTGRES_USER / PASSWORD / HOST / PORT / DB    Required.
-  HUMANDBS_FRONTEND_PUBLIC_FILES_DIR    Subdir name under ./public or ./dist/client
-                                        (default: public-files). Used for "assets" category.
-  NODE_ENV=production                   Resolve asset dir under ./dist/client instead of ./public.
+  HUMANDBS_FRONTEND_PUBLIC_FILES_DIR    Asset subdir name (default: public-files).
+                                        Used for "assets" category.
+  HUMANDBS_FRONTEND_PUBLIC_FILES_BASE   Base dir holding the asset subdir
+                                        (default: ./public in dev, ./data otherwise).
+  NODE_ENV=production                   Use the production asset base (./data).
 `);
-}
-
-function resolveAssetDir(): string {
-  const filesSubdir = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-  return path.resolve(
-    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-    filesSubdir,
-  );
 }
 
 async function main(): Promise<void> {
@@ -80,7 +74,6 @@ async function main(): Promise<void> {
   try {
     const createArchive = createCmsDataTransferArchiveBuilder({
       database: db,
-      getAssetDir: resolveAssetDir,
     });
 
     const { manifest, bytes } = await createArchive({

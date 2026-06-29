@@ -56,6 +56,7 @@ services:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=3000
       - HUMANDBS_FRONTEND_PUBLIC_FILES_DIR=${HUMANDBS_FRONTEND_PUBLIC_FILES_DIR:-public-files}
+      - HUMANDBS_FRONTEND_PUBLIC_FILES_BASE=${HUMANDBS_FRONTEND_PUBLIC_FILES_BASE:-./data}
       - HUMANBDS_FRONTEND_DU_APPLICATION_URL=${HUMANBDS_FRONTEND_DU_APPLICATION_URL}
       - HUMANDBS_FRONTEND_DS_NAVIGATION_URL=${HUMANDBS_FRONTEND_DS_NAVIGATION_URL}
       - HUMANDBS_FRONTEND_DS_SUBMISSION_URL=${HUMANDBS_FRONTEND_DS_SUBMISSION_URL}
@@ -73,6 +74,9 @@ services:
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
+      # Persistent storage for uploaded public-files, kept outside the build
+      # output (dist/) and out of the source tree so rebuilds never wipe it.
+      - public-files-data:/app/apps/frontend/data
     working_dir: /app/apps/frontend
     networks:
       - humandbs-network
@@ -222,6 +226,8 @@ volumes:
     name: humandbs-${HUMANDBS_ENV}-eslint-config-node-modules
   cms-pgdata:
     name: humandbs-${HUMANDBS_ENV}-cms-pgdata
+  public-files-data:
+    name: humandbs-${HUMANDBS_ENV}-public-files-data
   es-data:
     name: humandbs-${HUMANDBS_ENV}-es-data
 
