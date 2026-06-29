@@ -85,12 +85,9 @@ function RouteComponent() {
     });
   };
 
-  const onSelectVersion = useCallback(
-    (versionNumber: number) => {
-      navigate({ search: (prev) => ({ ...prev, selectedVer: versionNumber }) });
-    },
-    [navigate],
-  );
+  const onSelectVersion = (versionNumber: number) => {
+    navigate({ search: (prev) => ({ ...prev, selectedVer: versionNumber }) });
+  }
 
   return (
     <>

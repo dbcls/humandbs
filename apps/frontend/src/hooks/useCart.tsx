@@ -64,5 +64,10 @@ export function useCartTableHeader({ tableDatasets }: { tableDatasets: { dataset
     }
   }, [allInCart, add, remove, cartableIds]);
 
-  return { allInCart, someInCart, handleToggleDatasets };
+  return {
+    allInCart,
+    someInCart,
+    handleToggleDatasets,
+    isSomeIdsAreCartable: cartableIds.length > 0,
+  };
 }

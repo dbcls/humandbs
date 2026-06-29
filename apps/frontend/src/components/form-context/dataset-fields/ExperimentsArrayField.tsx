@@ -22,9 +22,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import useConfirmationStore from "@/stores/confirmationStore";
+import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
+import { experimentDataFieldKey, getLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 import type { DeepOmit } from "@/utils/type-utils";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
+import { MarkdownTextEditor } from "../fields/MarkdownTextEditor";
 import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
@@ -61,12 +64,13 @@ function DataEntriesTable({
   form,
   experimentIndex,
   dataField,
-  initialEntries,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   experimentIndex: number;
   dataField: AnyForm;
   initialEntries: ExperimentDataEntry[];
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
@@ -170,7 +174,7 @@ function DataEntriesTable({
       </div>
 
       {entries.length > 0 && (
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-xs">
           <thead>
             <tr className="border-form-divider border-b text-left text-form-sublabel">
               <th className="w-48 pr-3 pb-2 font-medium">Key</th>
@@ -198,16 +202,22 @@ function DataEntriesTable({
                       </span>
                     )}
                   </td>
-                  <td className="py-2 pr-3 align-middle">
+                  <td className="py-2 pr-3 align-top">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
                       {(f: AnyForm) => (
-                        <div className="relative flex items-center">
-                          <Input
-                            value={f.state.value ?? ""}
-                            onChange={(e) => f.handleChange(e.target.value)}
+                        <div className="relative">
+                          <MarkdownTextEditor
+                            value={(f.state.value as string | undefined) ?? ""}
+                            onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="En"
-                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                            fieldLabel={`${entry.key} (en)`}
+                            modified={isFieldModified(f)}
+                            legacyRawHtml={getLegacyRawHtml(
+                              legacyRawHtml,
+                              experimentDataFieldKey(experimentIndex, entry.key),
+                              "en",
+                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -220,16 +230,22 @@ function DataEntriesTable({
                       )}
                     </form.AppField>
                   </td>
-                  <td className="py-2 pr-3 align-middle">
+                  <td className="py-2 pr-3 align-top">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
                       {(f: AnyForm) => (
-                        <div className="relative flex items-center">
-                          <Input
-                            value={f.state.value ?? ""}
-                            onChange={(e) => f.handleChange(e.target.value)}
+                        <div className="relative">
+                          <MarkdownTextEditor
+                            value={(f.state.value as string | undefined) ?? ""}
+                            onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="Ja"
-                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                            fieldLabel={`${entry.key} (ja)`}
+                            modified={isFieldModified(f)}
+                            legacyRawHtml={getLegacyRawHtml(
+                              legacyRawHtml,
+                              experimentDataFieldKey(experimentIndex, entry.key),
+                              "ja",
+                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -285,10 +301,12 @@ function ExperimentItemForm({
   form,
   index,
   initialItem,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   index: number;
   initialItem: ExperimentItem | undefined;
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   const initialEntries = initialItem?.data ?? [];
 
@@ -349,6 +367,7 @@ function ExperimentItemForm({
             experimentIndex={index}
             dataField={dataField}
             initialEntries={initialEntries}
+            legacyRawHtml={legacyRawHtml}
           />
         )}
       </form.Field>
@@ -368,9 +387,11 @@ function ExperimentItemForm({
 export function ExperimentsArrayField({
   form,
   initialItems,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   initialItems: ExperimentItem[];
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   return (
     <form.Field name="experiments" mode="array">
@@ -385,7 +406,12 @@ export function ExperimentsArrayField({
           duplicateItem={(item) => structuredClone(item)}
           addLabel="+ Add experiment"
           renderItem={({ index, initialItem }) => (
-            <ExperimentItemForm form={form} index={index} initialItem={initialItem} />
+            <ExperimentItemForm
+              form={form}
+              index={index}
+              initialItem={initialItem}
+              legacyRawHtml={legacyRawHtml}
+            />
           )}
         />
       )}

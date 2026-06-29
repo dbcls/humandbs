@@ -1,5 +1,5 @@
 import { useRouteContext } from "@tanstack/react-router";
-import { Download, File, Folder, FolderOpen, X } from "lucide-react";
+import { Download, File, FolderOpen, X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
 
@@ -13,6 +13,7 @@ import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { KeyValueCard } from "@/components/KeyValueCard";
+import { Markdown } from "@/components/markdown";
 import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
 import { TextWithIcon } from "@/components/TextWithIcon";
@@ -28,15 +29,22 @@ import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
+import type { RenderedExperiment } from "@/utils/renderedHtml/types";
 
 type Distribution = NonNullable<DatasetDocWithMerged["distribution"]>;
+
+/** Dataset card data: experiments carry the frontend `renderedHtml` projection. */
+type DatasetCardData = Omit<DatasetDoc, "experiments"> & {
+  experiments: RenderedExperiment[];
+  distribution?: Distribution;
+};
 
 export function DatasetVersionCard({
   versionData,
   lang: langOverride,
   showPublicActions = true,
 }: {
-  versionData: DatasetDoc & { distribution?: Distribution };
+  versionData: DatasetCardData;
   lang?: Locale;
   showPublicActions?: boolean;
 }) {
@@ -93,16 +101,12 @@ export function DatasetVersionCard({
               )}
               {showPublicActions && showAddToCartButton && (
                 <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
-                  {user ? (
-                    isInCart ? (
-                      <>
-                        <X className="size-5" /> {t("remove-from-cart")}
-                      </>
-                    ) : (
-                      t("add-to-cart")
-                    )
+                  {isInCart ? (
+                    <>
+                      <X className="size-5" /> {t("remove-from-cart")}
+                    </>
                   ) : (
-                    t("login-to-add")
+                    t("add-to-cart")
                   )}
                 </Button>
               )}
@@ -195,7 +199,7 @@ function DistributionDialog({ distribution }: { distribution: Distribution }) {
   );
 }
 
-function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][number] }) {
+function Experiment({ experiment }: { experiment: RenderedExperiment }) {
   const t = useTranslations("Dataset");
   const lang = useLocale();
   return (
@@ -205,14 +209,24 @@ function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][numb
       </h2>
 
       <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
-        {Object.entries(experiment.data).map(([title, content]) => (
-          <KeyValueCard
-            key={title}
-            // @ts-expect-error
-            title={t(title)}
-            value={content?.[lang]?.rawHtml}
-          />
-        ))}
+        {Object.entries(experiment.data).map(([title, content]) => {
+          const markup = content?.[lang]?.renderedHtml;
+          return (
+            <KeyValueCard
+              key={title}
+              // @ts-expect-error
+              title={t(title)}
+              // Render through the Markdown pipeline (internal links / images /
+              // callouts) via KeyValueCard's node branch. `undefined` when the
+              // value is empty so the card hides itself.
+              value={
+                markup ? (
+                  <Markdown className="inline-prose text-base" contentHtml={{ markup }} />
+                ) : undefined
+              }
+            />
+          );
+        })}
       </dl>
     </section>
   );

@@ -26,8 +26,15 @@ import { api, mapApiError } from "@/services/backend";
 import { throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
-import { renderMarkdown } from "@/utils/markdown";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
+import {
+  addResearchRenderedHtml,
+  addResearchVersionsRenderedHtml,
+} from "@/utils/renderedHtml/transforms";
+import type {
+  RenderedResearchDetailResponse,
+  RenderedResearchVersionsListResponse,
+} from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
 import type { DsApplicationListResponse, OwnersData } from "../../../backend/src/api/types";
@@ -109,28 +116,6 @@ export const $updateResearch = createServerFn({ method: "POST" })
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to update research.");
-    }
-  });
-
-/**
- * Patches a published research in place (no version bump). Mirrors $updateResearch
- * — same body and lock-bearing response — differing only in the backend endpoint
- * (`/patch` vs `/update`). Trusts backend validation (validator is an identity
- * function, for type safety only); the backend rejects a patch unless the research
- * status is `published`, surfaced here as a CONFLICT.
- */
-export const $patchResearch = createServerFn({ method: "POST" })
-  .inputValidator((data: { humId: string; body: UpdateResearchRequest }) => data)
-  .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-
-    try {
-      const result = await api.patchResearch(data.humId, data.body, accessToken);
-
-      return { ok: true, data: result };
-    } catch (error) {
-      return mapApiError(error, "Failed to patch research.");
     }
   });
 
@@ -389,7 +374,7 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(async ({ data }) => {
+  .handler<Promise<RenderedResearchVersionsListResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
 
     const res = await api.getResearchVersions({
@@ -398,17 +383,9 @@ export const $getResearchVersions = createServerFn()
       accessToken: accessToken ?? undefined,
     });
 
-    for (const version of res.data) {
-      if (version.releaseNote.en) {
-        version.releaseNote.en.rawHtml = (await renderMarkdown(version.releaseNote.en.text)).markup;
-      }
-
-      if (version.releaseNote.ja) {
-        version.releaseNote.ja.rawHtml = (await renderMarkdown(version.releaseNote.ja.text)).markup;
-      }
-    }
-
-    return res;
+    // Render each version's releaseNote `text` into a frontend-only `renderedHtml`
+    // projection. Legacy `rawHtml` is left untouched.
+    return addResearchVersionsRenderedHtml(res);
   });
 
 export function getResearchVersionsQueryOptions(
@@ -430,7 +407,7 @@ export const ResearchQuerySchema = z.object({
 
 export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
-  .handler(async ({ data }) => {
+  .handler<Promise<RenderedResearchDetailResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
@@ -442,28 +419,9 @@ export const $getResearch = createServerFn()
         accessToken: accessToken ?? undefined,
       });
 
-      if (res.data.summary.targets.en) {
-        res.data.summary.targets.en.rawHtml = (
-          await renderMarkdown(res.data.summary.targets.en.text)
-        ).markup;
-      }
-      if (res.data.summary.targets.ja) {
-        res.data.summary.targets.ja.rawHtml = (
-          await renderMarkdown(res.data.summary.targets.ja.text)
-        ).markup;
-      }
-      if (res.data.releaseNote.en) {
-        res.data.releaseNote.en.rawHtml = (
-          await renderMarkdown(res.data.releaseNote.en.text)
-        ).markup;
-      }
-      if (res.data.releaseNote.ja) {
-        res.data.releaseNote.ja.rawHtml = (
-          await renderMarkdown(res.data.releaseNote.ja.text)
-        ).markup;
-      }
-
-      return res;
+      // Render aims/methods/targets + releaseNote `text` into a frontend-only
+      // `renderedHtml` projection. Legacy `rawHtml` is left untouched.
+      return addResearchRenderedHtml(res);
     } catch (error) {
       throwSerializableApiError(error);
     }
