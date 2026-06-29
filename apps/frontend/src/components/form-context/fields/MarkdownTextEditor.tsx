@@ -40,7 +40,7 @@ export function MarkdownTextEditor({
   const [showPreview, setShowPreview] = useState(false);
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex w-full min-w-0 flex-col gap-1.5", className)}>
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -70,7 +70,7 @@ export function MarkdownTextEditor({
       />
 
       {showPreview && (
-        <div className="rounded-lg border border-form-divider bg-muted/40 p-3">
+        <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-form-divider bg-muted/40 p-3">
           <MarkdownClientPreview source={value} />
         </div>
       )}
