@@ -86,10 +86,15 @@ function collectHeadings(headings: MarkdownHeading[]) {
   };
 }
 
+// Directive fence names handled by remarkDirectives (`:::callout`, `:::button`).
+// Each opening fence maps to a custom hast element of the same name.
+const DIRECTIVE_NAMES = ["callout", "button"] as const;
+
 // Ensure blank lines around ::: markers so remark parses them as separate paragraphs.
 function normalizeCalloutFences(content: string): string {
+  const openers = DIRECTIVE_NAMES.join("|");
   return content
-    .replace(/^([ \t]*:::(?:\s*callout.*)?)\s*$/gim, "\n$1\n")
+    .replace(new RegExp(`^([ \\t]*:::(?:\\s*(?:${openers}).*)?)\\s*$`, "gim"), "\n$1\n")
     .replace(/\n{3,}/g, "\n\n");
 }
 
@@ -125,12 +130,16 @@ function removeClosingMarker(node: Node): boolean {
   return false;
 }
 
-function processCalloutChildren(children: Node[]): void {
+// Matches any opening directive fence and captures the directive name + attrs,
+// e.g. `:::callout type="info"` or `:::button href="..."`.
+const OPEN_DIRECTIVE_REGEX = new RegExp(`^:::\\s*(${DIRECTIVE_NAMES.join("|")})\\s*(.*)$`, "i");
+
+function processDirectiveChildren(children: Node[]): void {
   // Recurse into container nodes first
   for (const node of children) {
     const parent = node as Parent;
     if (parent.children && node.type !== "paragraph") {
-      processCalloutChildren(parent.children);
+      processDirectiveChildren(parent.children);
     }
   }
 
@@ -143,13 +152,14 @@ function processCalloutChildren(children: Node[]): void {
     }
 
     const paraText = getMdastText(node).trim();
-    const openMatch = /^:::\s*callout\s*(.*)$/i.exec(paraText);
+    const openMatch = OPEN_DIRECTIVE_REGEX.exec(paraText);
     if (!openMatch) {
       i++;
       continue;
     }
 
-    const attrStr = openMatch[1].trim();
+    const directiveName = openMatch[1].toLowerCase();
+    const attrStr = openMatch[2].trim();
 
     // Remove opening marker and collect remaining siblings
     const remaining = children.splice(i + 1);
@@ -178,8 +188,8 @@ function processCalloutChildren(children: Node[]): void {
       i,
       0,
       {
-        type: "callout",
-        data: { hName: "callout", hProperties: parseTagAttributes(attrStr) },
+        type: directiveName,
+        data: { hName: directiveName, hProperties: parseTagAttributes(attrStr) },
         children: inner,
       } as unknown as Node,
       ...remaining,
@@ -188,8 +198,8 @@ function processCalloutChildren(children: Node[]): void {
   }
 }
 
-function remarkCallouts() {
-  return (tree: Parent) => processCalloutChildren(tree.children);
+function remarkDirectives() {
+  return (tree: Parent) => processDirectiveChildren(tree.children);
 }
 
 // Shared markdown→HAST pipeline (everything except final HTML serialization).
@@ -199,7 +209,7 @@ function markdownToHastProcessor(headings: MarkdownHeading[]) {
   return unified()
     .use(remarkParse) // Parse markdown
     .use(remarkGfm) // Support GitHub Flavored Markdown
-    .use(remarkCallouts) // Convert :::callout blocks to <callout> elements
+    .use(remarkDirectives) // Convert :::callout / :::button blocks to custom elements
     .use(remarkRehype, { allowDangerousHtml: true }) // Convert to HTML AST
     .use(rehypeRaw) // Process raw HTML
     .use(rehypeShiftHeadings) // Shift h1→h2 etc. when content uses h1 as top-level

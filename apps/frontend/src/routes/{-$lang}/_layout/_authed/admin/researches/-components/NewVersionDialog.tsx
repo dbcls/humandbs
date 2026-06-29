@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { MarkdownTextEditor } from "@/components/form-context/fields/MarkdownTextEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TextareaAutosize } from "@/components/ui/textarea";
 import { $createResearchVersion } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
@@ -77,7 +77,7 @@ export function NewVersionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Add new version</DialogTitle>
         </DialogHeader>
@@ -89,26 +89,22 @@ export function NewVersionDialog({
             Optionally add a bilingual release note describing what changed in this version.
           </p>
           <div className="flex gap-2">
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="font-medium text-gray-400 text-xs uppercase">En</label>
-              <TextareaAutosize
-                minRows={4}
-                maxRows={8}
-                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
-                placeholder="Release note (English)"
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="font-medium text-gray-400 text-xs uppercase">En</span>
+              <MarkdownTextEditor
                 value={enText}
-                onChange={(e) => setEnText(e.target.value)}
+                onChange={setEnText}
+                placeholder="Release note (English)"
+                fieldLabel="Release note (en)"
               />
             </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="font-medium text-gray-400 text-xs uppercase">Ja</label>
-              <TextareaAutosize
-                minRows={4}
-                maxRows={8}
-                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
-                placeholder="リリースノート（日本語）"
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="font-medium text-gray-400 text-xs uppercase">Ja</span>
+              <MarkdownTextEditor
                 value={jaText}
-                onChange={(e) => setJaText(e.target.value)}
+                onChange={setJaText}
+                placeholder="リリースノート（日本語）"
+                fieldLabel="Release note (ja)"
               />
             </div>
           </div>
