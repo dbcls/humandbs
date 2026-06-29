@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Download, Search, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { lazy, Suspense, useState } from "react";
@@ -7,6 +7,7 @@ import { lazy, Suspense, useState } from "react";
 import { Card } from "@/components/Card";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
@@ -42,22 +43,23 @@ function RouteComponent() {
           <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
-            <div className="mt-8 grid w-full max-w-full grid-cols-[auto_1fr] grid-rows-2 items-center gap-x-8 rounded-md bg-black/15 p-8 text-base">
-              <p>{tCommon("search")}</p>
-
+            <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="flex-1 py-2 pr-0 pl-8"
-                placeholder={tCommon("search")}
+                className="w-full h-20 py-2 pr-0 pl-8"
+                placeholder={t("search-placeholder")}
+                aria-label={t("search-placeholder")}
                 value={query}
                 afterIcon={
                   <Button
                     variant="accent"
-                    size="default"
-                    className="pointer-events-auto gap-2 rounded-full px-8 py-3 text-sm"
+                    size="icon"
+                    type="button"
+                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
                     onClick={handleSearch}
+                    aria-label={tCommon("search")}
                   >
-                    <Search size={18} />
+                    <CustomSearchIcon size={18} />
                   </Button>
                 }
                 onChange={(e) => {
@@ -69,7 +71,8 @@ function RouteComponent() {
                   }
                 }}
               />
-              <div className="ga-3 col-start-2 flex gap-4 text-xs">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                <span className="font-medium text-muted-foreground">{t("search-keywords")}</span>
                 {searchSamples[lang]?.map((sample) => (
                   <Button
                     onClick={() => {
