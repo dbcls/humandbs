@@ -24,6 +24,7 @@ import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { useMaxHeight } from "@/hooks/useMaxHeight";
@@ -439,28 +440,20 @@ const columns = [
     },
   }),
 
-  columnHelper.accessor("methods", {
+  columnHelper.accessor("methodsSummary", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("Research-list.methods"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
       </ModalCell>
     ),
   }),
-  columnHelper.accessor("typeOfData", {
+  columnHelper.accessor("typeOfDataSummary", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("Research-list.typeOfData"),
     cell: (ctx) => (
-      <ModalCell>
-        <ul className="space-y-4">
-          {ctx.renderValue()?.map((item) => (
-            <li key={item}>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
+      <ModalCell>{ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}</ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
@@ -478,12 +471,14 @@ const columns = [
       </ModalCell>
     ),
   }),
-  columnHelper.accessor("targets", {
+  columnHelper.accessor("targetsSummary", {
     id: "targets",
     header: (ctx) => ctx.table.options.meta?.t("Research-list.targets"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
+        <p className="whitespace-pre-wrap text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+        </p>
       </ModalCell>
     ),
   }),
