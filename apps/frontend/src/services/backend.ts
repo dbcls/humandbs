@@ -207,11 +207,6 @@ interface APIService {
     body: UpdateResearchRequest,
     accessToken: string,
   ): Promise<ResearchWithLockResponse>;
-  patchResearch(
-    humId: string,
-    body: UpdateResearchRequest,
-    accessToken: string,
-  ): Promise<ResearchWithLockResponse>;
   deleteResearch(humId: string, accessToken: string): Promise<void>;
   createResearchVersion(
     humId: string,
@@ -228,11 +223,6 @@ interface APIService {
     accessToken: string,
   ): Promise<DatasetCreateResponse>;
   updateDataset(
-    datasetId: string,
-    body: UpdateDatasetRequest,
-    accessToken: string,
-  ): Promise<DatasetUpdateResponse>;
-  patchDataset(
     datasetId: string,
     body: UpdateDatasetRequest,
     accessToken: string,
@@ -286,11 +276,7 @@ const api: APIService = {
   },
 
   getResearchOwners(humId, accessToken) {
-    return get<OwnersResponse>(
-      `/research/${humId}/owners`,
-      undefined,
-      authHeader(accessToken),
-    );
+    return get<OwnersResponse>(`/research/${humId}/owners`, undefined, authHeader(accessToken));
   },
 
   getDatasetsPaginated(query) {
@@ -354,14 +340,6 @@ const api: APIService = {
     );
   },
 
-  patchResearch(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(
-      `/research/${humId}/patch`,
-      body,
-      authHeader(accessToken),
-    );
-  },
-
   async deleteResearch(humId, accessToken) {
     await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
   },
@@ -401,14 +379,6 @@ const api: APIService = {
   updateDataset(datasetId, body, accessToken) {
     return put<DatasetUpdateResponse>(
       `/dataset/${datasetId}/update`,
-      body,
-      authHeader(accessToken),
-    );
-  },
-
-  patchDataset(datasetId, body, accessToken) {
-    return put<DatasetUpdateResponse>(
-      `/dataset/${datasetId}/patch`,
       body,
       authHeader(accessToken),
     );

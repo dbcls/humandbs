@@ -3,22 +3,11 @@ import path from "node:path";
 import { write } from "bun";
 
 import { queryOptions } from "@tanstack/react-query";
-import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { getAssetDir, getAssetFilesSubdir } from "@/lib/assetDir";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-
-const $$getFilesSubdir = createServerOnlyFn(() => {
-  return process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-});
-
-const $$getAssetDir = createServerOnlyFn(() => {
-  const FILES_SUBDIR = $$getFilesSubdir();
-  return path.resolve(
-    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-    FILES_SUBDIR,
-  );
-});
 
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
@@ -40,7 +29,7 @@ function normalizeRelativeAssetPath(input: string) {
 }
 
 function getAbsoluteAssetPath(relativePath: string) {
-  const ASSET_DIR = $$getAssetDir();
+  const ASSET_DIR = getAssetDir();
   return path.join(ASSET_DIR, relativePath);
 }
 
@@ -66,7 +55,7 @@ async function readAssetFolder(relativePath = ""): Promise<AssetHierarchyFolder>
   const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
 
-  const FILES_SUBDIR = $$getFilesSubdir();
+  const FILES_SUBDIR = getAssetFilesSubdir();
 
   const children = await Promise.all(
     entries
@@ -111,6 +100,10 @@ export const $getAssetHierarchy = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context }) => {
     context.checkPermission("assets", "list");
+
+    // The assets dir may not exist yet (fresh deploy, before any upload). Create it
+    // so listing returns an empty tree instead of throwing ENOENT from readdir.
+    await mkdir(getAssetDir(), { recursive: true });
 
     return readAssetFolder();
   });
@@ -185,7 +178,7 @@ export const $uploadAsset = createServerFn({ method: "POST" })
 
     const { relativePath } = await uploadAssetFileToFolder(file, folderPath);
 
-    const FILES_SUBDIR = $$getFilesSubdir();
+    const FILES_SUBDIR = getAssetFilesSubdir();
 
     return { url: `/${FILES_SUBDIR}/${relativePath}` };
   });

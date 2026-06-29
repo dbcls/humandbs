@@ -65,12 +65,16 @@
 
 import path from "node:path";
 
+import { getAssetDir, getAssetFilesSubdir } from "./src/lib/assetDir";
+
 // Configuration
 const SERVER_PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_DIRECTORY = "./dist/client";
 const SERVER_ENTRY_POINT = "./dist/server/server.js";
-const PUBLIC_FILES_SUBDIR = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-const PUBLIC_FILES_DIR = path.resolve(CLIENT_DIRECTORY, PUBLIC_FILES_SUBDIR);
+// Uploaded assets live OUTSIDE the build output so `vite build` does not wipe them.
+// Resolved via the shared helper so the upload, serve, and restore paths stay in sync.
+const PUBLIC_FILES_SUBDIR = getAssetFilesSubdir();
+const PUBLIC_FILES_DIR = getAssetDir();
 
 // Logging utilities for professional output
 const log = {

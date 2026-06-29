@@ -6,13 +6,11 @@ import type { ResearchStatus } from "@humandbs/backend/types";
  *
  * A research has at most one draft version and one published latest version, which
  * can coexist. Which one is being edited is decided by the selected version:
- *  - viewing the draft version → editable via PUT /research/{humId}/update
- *  - viewing the published latest of a published research → editable via PUT /patch
+ *  - viewing the draft version → editable
+ *  - viewing the published latest of a published research → editable
  * Any other view (e.g. an old published version, or a non-published research's
- * latest) is read-only.
+ * latest) is read-only. Both editable cases save via PUT /research/{humId}/update.
  */
-
-export type ResearchSaveEndpoint = "update" | "patch";
 
 export interface ResearchEditTargetInput {
   selectedVersion: string | null | undefined;
@@ -47,14 +45,4 @@ export function isViewingPublishedLatest({
  */
 export function isResearchEditable(input: ResearchEditTargetInput): boolean {
   return isViewingDraftVersion(input) || isViewingPublishedLatest(input);
-}
-
-/**
- * Which backend endpoint a Save should target, or null when the current view is
- * not editable. Draft → update; published latest → patch.
- */
-export function researchSaveEndpoint(input: ResearchEditTargetInput): ResearchSaveEndpoint | null {
-  if (isViewingDraftVersion(input)) return "update";
-  if (isViewingPublishedLatest(input)) return "patch";
-  return null;
 }

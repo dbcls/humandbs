@@ -14,6 +14,7 @@ export const buttonVariants = cva(
         lg: "px-8 py-4 text-sm",
         xl: "px-10 py-5 text-base",
         tableAction: "px-8 py-3 text-sm",
+        captionAction: "h-11 px-5 text-xs",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
         icon: "p-2 text-sm",
@@ -24,8 +25,9 @@ export const buttonVariants = cva(
         action:
           "bg-linear-to-r from-secondary to-secondary-light text-white transition-[filter] hover:saturate-150 active:saturate-100",
         outline: "border border-tetriary bg-transparent enabled:hover:bg-white/50",
-        tableAction:
-          "rounded-full bg-secondary-light text-white transition-colors hover:bg-secondary",
+        tableAction: "bg-secondary-light rounded-full text-white hover:bg-secondary-light/90",
+        captionAction:
+          "rounded-full border border-secondary-light bg-white text-secondary-light transition-colors hover:bg-hover hover:text-secondary",
         plain: "bg-none",
         "cms-table-action":
           "rounded-xs bg-none active:bg-foreground-light/30 enabled:hover:bg-hover",

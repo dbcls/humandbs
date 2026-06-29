@@ -10,7 +10,10 @@ import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
 import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
-import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
+import {
+  parseSiteNavigationConfig,
+  siteNavigationConfigSchema,
+} from "@/config/site-navigation.schema";
 import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import {
@@ -31,6 +34,7 @@ import {
   siteNavigationConfigRevision,
   user,
 } from "@/db/schema";
+import { getAssetDir as $$getAssetDir } from "@/lib/assetDir";
 import type { CmsDataTransferCategory } from "@/serverFunctions/cmsDataTransfer";
 import {
   CMS_DATA_TRANSFER_CATEGORIES,
@@ -256,14 +260,6 @@ const restoredCmsDataTransferArchiveSchema = z.object({
 });
 
 export type RestoredCmsDataTransferArchive = z.infer<typeof restoredCmsDataTransferArchiveSchema>;
-
-const $$getAssetDir = createServerOnlyFn(() => {
-  const filesSubdir = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-  return path.resolve(
-    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-    filesSubdir,
-  );
-});
 
 async function collectAssetFiles(
   directory: string,
@@ -1099,9 +1095,14 @@ export function createCmsDataTransferArchiveRestorer({
           await tx.delete(siteNavigationConfig);
 
           if (payload.activeConfig) {
+            // The archive's config is a flat parsed object; run it through the same
+            // parser the live write path uses so it gets the SiteNavigationConfig
+            // (discriminated-union) type the column expects.
+            const config = parseSiteNavigationConfig(payload.activeConfig.config);
+
             await tx.insert(siteNavigationConfig).values({
               id: payload.activeConfig.id,
-              config: payload.activeConfig.config,
+              config,
               revision: 1,
               updatedAt: new Date(),
               updatedBy: effectiveUserId,
@@ -1109,7 +1110,7 @@ export function createCmsDataTransferArchiveRestorer({
 
             await tx.insert(siteNavigationConfigRevision).values({
               configId: payload.activeConfig.id,
-              config: payload.activeConfig.config,
+              config,
               revision: 1,
               createdBy: effectiveUserId,
             });

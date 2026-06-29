@@ -20,7 +20,7 @@ export const test = base.extend<Fixtures>({
 
     await documentsPage.goAndWaitForHydration();
 
-    await use(documentsPage)
+    await use(documentsPage);
   },
 });
 

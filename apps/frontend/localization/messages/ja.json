@@ -93,17 +93,18 @@
     "dataset": "データセット"
   },
   "Research-list": {
+    "cart-note": "利用申請したい研究IDまたはJGADデータセットIDのカートアイコンをクリックすると、対象のデータセットがカートに追加されます。",
     "research-list": "研究一覧",
-    "date-published": "公開日",
-    "date-modified": "更新日",
-    "research-id": "研究ID",
+    "datePublished": "公開日",
+    "dateModified": "更新日",
+    "researchId": "研究ID",
     "datasets": "データセット",
     "title": "研究題目",
-    "methods": "研究方法",
-    "type-of-data": "データの種類",
+    "methods": "種別",
+    "typeOfData": "解析手法",
     "platforms": "プラットフォーム",
-    "targets": "対象",
-    "data-provider": "提供者",
+    "targets": "参加者（対象集団）",
+    "dataProvider": "提供者",
     "criteria": "アクセス制限",
     "status": "ステータス"
   },
@@ -128,8 +129,16 @@
     "typeOfData": "データの種類",
     "details": "詳細"
   },
+  "Dataset-list": {
+    "cart-note": "利用申請したいJGADデータセットIDのカートアイコンをクリックすると、対象のデータセットがカートに追加されます。",
+    "datasetId": "データセット ID",
+    "typeOfData": "データの種類",
+    "experiments": "解析手法",
+    "criteria": "アクセス制限",
+    "releaseDate": "公開日",
+    "versionReleaseDate": "更新日"
+  },
   "Dataset": {
-    "cart-note": "利用申請したい研究IDまたはデータセットIDのカートアイコンをクリックして、カートに追加してください。",
     "datasetId": "データセット ID",
     "release-info": "リリース情報",
     "dataset-list": "データセット一覧",
@@ -295,8 +304,8 @@
     "experiments": "解析手法"
   },
   "Data-submission": {
-    "to-data-submission": "申請システムへ（仮）",
-    "to-navigation": "登録ナビゲーション（仮）",
+    "to-data-submission": "申請システムへ",
+    "to-navigation": "登録ナビゲーション",
     "data-submission": "データの提供",
     "before-application": "申請システムの前に"
   },

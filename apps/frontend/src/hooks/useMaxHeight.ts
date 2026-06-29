@@ -19,10 +19,10 @@ export function useMaxHeight(bottomReservedSpace = 130) {
     const updateHeight = () => {
       const rect = el.getBoundingClientRect();
       const topOffset = rect.top;
-      
+
       // Calculate available height: viewport height minus top offset minus space reserved at the bottom
       const calculated = window.innerHeight - topOffset - bottomReservedSpace;
-      
+
       // Set to calculated height, with a safe fallback minimum of 200px
       setMaxHeight(`${Math.max(calculated, 200)}px`);
     };

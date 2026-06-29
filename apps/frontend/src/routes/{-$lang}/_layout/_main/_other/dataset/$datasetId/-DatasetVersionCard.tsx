@@ -1,8 +1,9 @@
 import { useRouteContext } from "@tanstack/react-router";
-import { Download, File, Folder, FolderOpen, X } from "lucide-react";
-import { useState } from "react";
+import { Download, File, FolderOpen, X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
+
+import { useState } from "react";
 
 import type { DatasetDocWithMerged } from "@humandbs/backend/types";
 
@@ -10,8 +11,9 @@ import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
-import { KeyValueCard } from "@/components/KeyValueCard";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
+import { KeyValueCard } from "@/components/KeyValueCard";
+import { Markdown } from "@/components/markdown";
 import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
 import { TextWithIcon } from "@/components/TextWithIcon";
@@ -27,15 +29,22 @@ import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
+import type { RenderedExperiment } from "@/utils/renderedHtml/types";
 
 type Distribution = NonNullable<DatasetDocWithMerged["distribution"]>;
+
+/** Dataset card data: experiments carry the frontend `renderedHtml` projection. */
+type DatasetCardData = Omit<DatasetDoc, "experiments"> & {
+  experiments: RenderedExperiment[];
+  distribution?: Distribution;
+};
 
 export function DatasetVersionCard({
   versionData,
   lang: langOverride,
   showPublicActions = true,
 }: {
-  versionData: DatasetDoc & { distribution?: Distribution };
+  versionData: DatasetCardData;
   lang?: Locale;
   showPublicActions?: boolean;
 }) {
@@ -81,37 +90,31 @@ export function DatasetVersionCard({
       size={"lg"}
       variant={"light"}
       caption={
-
-          <CardCaption
-            className="flex-1"
-            title="NBDC Dataset ID:"
-            icon="dataset"
-            right={
-              <div className="flex gap-5">
-                {versionData.distribution && versionData.distribution.length > 0 && (
-                  <DistributionDialog distribution={versionData.distribution} />
-                )}
-                {showPublicActions && showAddToCartButton && (
-                  <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
-                    {user ? (
-                      isInCart ? (
-                        <>
-                          <X className="size-5" /> {t("remove-from-cart")}
-                        </>
-                      ) : (
-                        t("add-to-cart")
-                      )
-                    ) : (
-                      t("login-to-add")
-                    )}
-                  </Button>
-                )}
-              </div>
-            }
-          >
-            {versionData.datasetId}
-          </CardCaption>
-
+        <CardCaption
+          className="flex-1"
+          title="NBDC Dataset ID:"
+          icon="dataset"
+          right={
+            <div className="flex gap-5">
+              {versionData.distribution && versionData.distribution.length > 0 && (
+                <DistributionDialog distribution={versionData.distribution} />
+              )}
+              {showPublicActions && showAddToCartButton && (
+                <Button variant={"accent"} className="rounded-full" onClick={handleToggleDataset}>
+                  {isInCart ? (
+                    <>
+                      <X className="size-5" /> {t("remove-from-cart")}
+                    </>
+                  ) : (
+                    t("add-to-cart")
+                  )}
+                </Button>
+              )}
+            </div>
+          }
+        >
+          {versionData.datasetId}
+        </CardCaption>
       }
     >
       <section>
@@ -142,15 +145,13 @@ function DistributionDialog({ distribution }: { distribution: Distribution }) {
     .sort((a, b) => (a.type === b.type ? 0 : a.type === "directory" ? -1 : 1));
 
   const q = filter?.trim().toLowerCase();
-  const filtered = q
-    ? sorted.filter((item) => item.name.toLowerCase().includes(q))
-    : sorted;
+  const filtered = q ? sorted.filter((item) => item.name.toLowerCase().includes(q)) : sorted;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button variant={"tableAction"} className="border border-white">
-          <Download className="size-5 mr-2" /> {t("distribution-button")}
+          <Download className="mr-2 size-5" /> {t("distribution-button")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
@@ -185,7 +186,7 @@ function DistributionDialog({ distribution }: { distribution: Distribution }) {
                         )
                       }
                     >
-                      <span className="break-all text-secondary underline ml-1">{item.name}</span>
+                      <span className="ml-1 break-all text-secondary underline">{item.name}</span>
                     </TextWithIcon>
                   </a>
                 </li>
@@ -198,7 +199,7 @@ function DistributionDialog({ distribution }: { distribution: Distribution }) {
   );
 }
 
-function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][number] }) {
+function Experiment({ experiment }: { experiment: RenderedExperiment }) {
   const t = useTranslations("Dataset");
   const lang = useLocale();
   return (
@@ -208,14 +209,24 @@ function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][numb
       </h2>
 
       <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
-        {Object.entries(experiment.data).map(([title, content]) => (
-          <KeyValueCard
-            key={title}
-            // @ts-expect-error
-            title={t(title)}
-            value={content?.[lang]?.rawHtml}
-          />
-        ))}
+        {Object.entries(experiment.data).map(([title, content]) => {
+          const markup = content?.[lang]?.renderedHtml;
+          return (
+            <KeyValueCard
+              key={title}
+              // @ts-expect-error
+              title={t(title)}
+              // Render through the Markdown pipeline (internal links / images /
+              // callouts) via KeyValueCard's node branch. `undefined` when the
+              // value is empty so the card hides itself.
+              value={
+                markup ? (
+                  <Markdown className="inline-prose text-base" contentHtml={{ markup }} />
+                ) : undefined
+              }
+            />
+          );
+        })}
       </dl>
     </section>
   );

@@ -70,16 +70,9 @@ Options:
 
 Restore is destructive: each selected category is replaced with archive contents.
 
-Environment: same as db:cms-export (HUMANDBS_POSTGRES_* + HUMANDBS_FRONTEND_PUBLIC_FILES_DIR).
+Environment: same as db:cms-export
+(HUMANDBS_POSTGRES_* + HUMANDBS_FRONTEND_PUBLIC_FILES_DIR / HUMANDBS_FRONTEND_PUBLIC_FILES_BASE).
 `);
-}
-
-function resolveAssetDir(): string {
-  const filesSubdir = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-  return path.resolve(
-    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-    filesSubdir,
-  );
 }
 
 async function main(): Promise<void> {
@@ -93,7 +86,6 @@ async function main(): Promise<void> {
   try {
     const restore = createCmsDataTransferArchiveRestorer({
       database: db,
-      getAssetDir: resolveAssetDir,
     });
 
     const result = await restore({

@@ -3,17 +3,17 @@ import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import {
-  BilingualTextSchema,
-  BilingualUrlValueSchema,
-  PeriodOfDataUseSchema,
-  UrlValueSchema,
-} from "../../../../../backend/src/crawler/types/common";
-import {
   BilingualTextValueRequestSchema,
   PersonRequestSchema,
   ResearchProjectRequestSchema,
   SummaryRequestSchema,
 } from "../../../../../backend/src/api/types/request-schemas";
+import {
+  BilingualTextSchema,
+  BilingualUrlValueSchema,
+  PeriodOfDataUseSchema,
+  UrlValueSchema,
+} from "../../../../../backend/src/crawler/types/common";
 import { detectLeaf } from "./detectLeaf";
 
 describe("detectLeaf – bilingual leaves", () => {
