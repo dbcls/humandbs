@@ -25,6 +25,8 @@ import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { addDatasetRenderedHtml } from "@/utils/renderedHtml/transforms";
+import type { RenderedDatasetDetailResponse } from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 import type { DeepOmit } from "@/utils/type-utils";
 
@@ -124,14 +126,18 @@ type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
 
 export const $getDataset = createServerFn({ method: "GET" })
   .inputValidator(DatasetQuerySchema)
-  .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
+  .handler<Promise<RenderedDatasetDetailResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
     const { datasetId, ...search } = filterDefined(data);
-    return await api.getDataset({
+    const res = await api.getDataset({
       params: { datasetId },
-      search,
+      search: { ...search, includeRawHtml: false },
       accessToken: accessToken ?? undefined,
     });
+
+    // Render each experiment.data.* `text` into a frontend-only `renderedHtml`
+    // projection (the currently-broken public path). Legacy `rawHtml` untouched.
+    return addDatasetRenderedHtml(res);
   });
 
 export function getDatasetQueryOptions(query: DatasetQuery) {
@@ -139,6 +145,31 @@ export function getDatasetQueryOptions(query: DatasetQuery) {
     queryKey: ["dataset", "byId", query],
     queryFn: () => $getDataset({ data: query }),
     staleTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Admin "for edit" read fn — parallels {@link $getResearchForEdit}. Requests
+ * `includeRawHtml: true` and runs NO render transform, so the editor receives the
+ * untouched legacy `rawHtml` (the side-channel reference admins rewrite from).
+ */
+export const $getDatasetForEdit = createServerFn({ method: "GET" })
+  .inputValidator(DatasetQuerySchema)
+  .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    const { datasetId, ...search } = filterDefined(data);
+    return await api.getDataset({
+      params: { datasetId },
+      search: { ...search, includeRawHtml: true },
+      accessToken: accessToken ?? undefined,
+    });
+  });
+
+export function getDatasetForEditQueryOptions(query: DatasetQuery) {
+  return queryOptions({
+    queryKey: ["dataset", "byId", "edit", query],
+    queryFn: () => $getDatasetForEdit({ data: query }),
+    staleTime: 0,
   });
 }
 
@@ -236,26 +267,6 @@ export const $updateDataset = createServerFn({ method: "POST" })
       return { ok: true, data: updated };
     } catch (error) {
       return mapApiError(error, "Failed to update dataset.");
-    }
-  });
-
-/**
- * Patches a dataset in place when its parent research is published (no version
- * bump). Mirrors $updateDataset — same body and lock-bearing response — differing
- * only in the backend endpoint (`/patch` vs `/update`). The backend rejects a
- * patch unless the parent research status is `published`, surfaced as a CONFLICT.
- */
-export const $patchDataset = createServerFn({ method: "POST" })
-  .inputValidator((data: { datasetId: string; body: UpdateDatasetRequest }) => data)
-  .handler<Promise<UpdateDatasetResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-
-    try {
-      const updated = await api.patchDataset(data.datasetId, data.body, accessToken);
-      return { ok: true, data: updated };
-    } catch (error) {
-      return mapApiError(error, "Failed to patch dataset.");
     }
   });
 
