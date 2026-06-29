@@ -176,9 +176,7 @@ export function DocumentsList({
       <InputDialog
         title="Add Document"
         description=<div>
-          <p>{tDocs("id-hint-1")}</p>
-          <p>{tDocs("id-hint-2")}</p>
-          <p>{tDocs("id-hint-3")}</p>
+          <p>{tDocs("new-doc-message")}</p>
         </div>
         label="Content ID"
         trigger={<AddNewButton className="mb-5" />}

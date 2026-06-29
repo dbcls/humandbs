@@ -624,9 +624,7 @@
       "search-placeholder": "ドキュメントを検索…",
       "no-documents": "ドキュメントが見つかりません",
       "no-versions": "このドキュメントにはまだバージョンがありません。",
-      "id-hint-1": "コンテンツIDを `snake-case` で入力してください。",
-      "id-hint-2": "スラッシュも使用できます（例：`hello/world`）。",
-      "id-hint-3": "コンテンツIDがこのドキュメントへのパスになります"
+      "new-doc-message": "コンテンツIDを `snake-case` で入力してください。スラッシュも使用できます（例：`hello/world`）。コンテンツIDがこのドキュメントへのパスになります"
     },
     "content": {
       "delete-title": "コンテンツを削除しますか？",

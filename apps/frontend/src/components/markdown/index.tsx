@@ -31,9 +31,23 @@ export function Markdown({ contentHtml, className, title }: MarkdownProps) {
         // Customize rendering of specific elements
         if (domNode.name === "a") {
           const href = domNode.attribs.href;
+          const isNginxFileLink = href.startsWith("/files");
+
           if (href?.startsWith("/") && !href.startsWith(`/${PUBLIC_FILES_SUBDIR}/`)) {
+            if (href.startsWith("/files/")) {
+              return (
+                <a href={href} target="_self">
+                  {domToReact(
+                    //@ts-expect-error
+                    domNode.children,
+                    options,
+                  )}
+                </a>
+              );
+            }
+
             return (
-              <Link to={href}>
+              <Link to={href} target={isNginxFileLink ? "_self" : undefined}>
                 {domToReact(
                   //@ts-expect-error
                   domNode.children,
