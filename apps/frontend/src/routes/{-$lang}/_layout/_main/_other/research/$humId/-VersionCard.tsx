@@ -220,7 +220,11 @@ function ResearchDatasetsCartHeaderButton({
 }) {
   const t = useTranslations("common");
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({ tableDatasets });
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
+    tableDatasets,
+  });
+
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle

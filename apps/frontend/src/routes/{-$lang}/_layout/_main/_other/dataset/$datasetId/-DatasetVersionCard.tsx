@@ -1,5 +1,5 @@
 import { useRouteContext } from "@tanstack/react-router";
-import { Download, File, Folder, FolderOpen, X } from "lucide-react";
+import { Download, File, FolderOpen, X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
 

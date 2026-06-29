@@ -41,7 +41,9 @@ export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema
   .extend({
     q: z.string().optional(),
     sort: ResearchSearchBodySchema.shape.sort.unwrap().default("humId"),
-    order: ResearchSearchBodySchema.shape.order.removeDefault().default("desc"),
+    order: ResearchSearchBodySchema.shape.order.unwrap().default("desc"),
+    selectedHumId: z.string().optional(),
+    selectedVersion: z.string().optional(),
   });
 
 export type AuthedResearchesListSearchParams = z.infer<

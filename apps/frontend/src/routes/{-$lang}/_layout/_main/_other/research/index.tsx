@@ -12,6 +12,7 @@ import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
@@ -23,7 +24,7 @@ import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isCartableDatasetId, useCartTableHeader } from "@/hooks/useCart";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -196,12 +197,12 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
-  const t = useTranslations("Research");
+  const t = useTranslations("Research-list");
   const { containerRef, maxHeight } = useMaxHeight(130);
 
   return (
     <>
-      <p className="text-muted-foreground mb-2 text-sm">{t("cart-note")}</p>
+      <InfoBadge>{t("cart-note")}</InfoBadge>
       <div
         ref={containerRef}
         style={{ maxHeight }}
@@ -412,7 +413,7 @@ const columns = [
   }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.research-id"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.researchId"),
     cell: (ctx) => <ResearchLink humId={ctx.getValue()} />,
     size: 15,
   }),
@@ -460,7 +461,7 @@ const columns = [
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.type-of-data"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.typeOfData"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -504,7 +505,7 @@ const columns = [
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.data-provider"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.dataProvider"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -519,7 +520,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.date-published"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.datePublished"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -542,7 +543,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.date-modified"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.dateModified"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -581,17 +582,13 @@ function AddToCartAllDatasetsButton({
 
   const { data } = useQuery(datasetsQO);
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
     tableDatasets:
       // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
       data?.data || tableDatasets,
   });
 
-  const hasCartableDatasets = tableDatasets.some((dataset) =>
-    isCartableDatasetId(dataset.datasetId),
-  );
-
-  if (!hasCartableDatasets) return null;
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle
@@ -610,9 +607,11 @@ function ResearchCartHeaderButton({ tableResearches }: { tableResearches: Resear
     return tableResearches.flatMap((row) => row.datasetIds.map((id) => ({ datasetId: id })));
   }, [tableResearches]);
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
     tableDatasets: allDatasets,
   });
+
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle
