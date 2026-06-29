@@ -16,7 +16,7 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-import { unescapeMarkdown } from "@/crawler/utils/text"
+import { unescapeMarkdown } from "../crawler/utils/text"
 
 import {
   // Common schemas (used locally)
