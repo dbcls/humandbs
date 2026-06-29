@@ -1,5 +1,6 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import { z } from "zod";
 
 import type {
@@ -23,6 +24,7 @@ import {
 import type { Locale } from "@/config/i18n";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
+import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { addDatasetRenderedHtml } from "@/utils/renderedHtml/transforms";
@@ -129,15 +131,24 @@ export const $getDataset = createServerFn({ method: "GET" })
   .handler<Promise<RenderedDatasetDetailResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
     const { datasetId, ...search } = filterDefined(data);
-    const res = await api.getDataset({
-      params: { datasetId },
-      search: { ...search, includeRawHtml: false },
-      accessToken: accessToken ?? undefined,
-    });
 
-    // Render each experiment.data.* `text` into a frontend-only `renderedHtml`
-    // projection (the currently-broken public path). Legacy `rawHtml` untouched.
-    return addDatasetRenderedHtml(res);
+    try {
+      const res = await api.getDataset({
+        params: { datasetId },
+        search: { ...search, includeRawHtml: false },
+        accessToken: accessToken ?? undefined,
+      });
+
+      // Render each experiment.data.* `text` into a frontend-only `renderedHtml`
+      // projection (the currently-broken public path). Legacy `rawHtml` untouched.
+      return addDatasetRenderedHtml(res);
+    } catch (error) {
+      // A missing dataset should render the NotFound component rather than
+      // surfacing a raw API error. `notFound()` is a framework signal the
+      // router (or the route loader) can pick up to render `notFoundComponent`.
+      if (isApiNotFoundError(error)) throw notFound();
+      throwSerializableApiError(error);
+    }
   });
 
 export function getDatasetQueryOptions(query: DatasetQuery) {
