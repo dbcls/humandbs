@@ -23,12 +23,19 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-submis
 
     const contentHtml = await renderMarkdown(data.content ?? "");
 
-    return { contentHtml, versions, title: data.title };
+    const showRevisions = !(data.hideRevisions ?? true);
+
+    return {
+      contentHtml,
+      versions: showRevisions && versions.length ? versions : undefined,
+      title: data.title,
+      hideTOC: data.hideTOC ?? true,
+    };
   },
 });
 
 function RouteComponent() {
-  const { contentHtml, versions, title } = Route.useLoaderData();
+  const { contentHtml, versions, title, hideTOC } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const t = useTranslations();
 
@@ -38,6 +45,7 @@ function RouteComponent() {
       markdownResult={contentHtml}
       previousVersions={versions}
       revisionsBasePath="data-submission"
+      hideTOC={hideTOC}
       beforeContent={
         <div className="my-5 flex justify-center gap-4">
           <Button
