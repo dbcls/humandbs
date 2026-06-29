@@ -114,6 +114,31 @@ bun run src/scripts/database/migrate-content-items-to-documents.ts --overwrite
 - Guideline version archives (`data-sharing-guidelines-v1`, etc.) and revision changelogs (`guideline-revision*`) are skipped — handled by `seed-guideline-versions.ts`
 - Skips items where a document with the same `contentId` already exists; use `--overwrite` to update in place
 
+### `cms-export.ts` / `cms-restore.ts`
+
+CLI mirror of the admin UI Data Transfer page (`/{lang}/admin/data-transfer`). Calls `apps/frontend/src/lib/cmsDataTransferArchive.ts` builder/restorer directly.
+
+```bash
+# Dump all categories (default output: ./cms-data-export-<timestamp>.tar.gz)
+bun run db:cms-export
+
+# Dump selected categories to a specific path
+bun run db:cms-export -- --categories=news,documents --out=./backup.tar.gz
+
+# Restore (destructive; --categories is required)
+bun run db:cms-restore ./backup.tar.gz --categories=news
+bun run db:cms-restore ./backup.tar.gz --categories=news,documents --user=<seed-user-id>
+```
+
+- Output is a `.tar.gz` containing `manifest.json` + `categories/{content,documents,news,alerts,header-footer,flowcharts}.json` + `assets/` (binary)
+- Each category JSON is the Drizzle row shape (`{items, translations}` / `{documents, versions}` / etc.) with 2-space indent
+- Workflow: dump → edit JSON → repack (`tar -czf out.tar.gz manifest.json categories/`) → restore
+- Restore **replaces** all rows in each selected category with archive contents (not additive). To add records, dump the current state, append entries to the JSON, and restore the full set
+- `assets` category includes files under `HUMANDBS_FRONTEND_PUBLIC_FILES_DIR` (default `public-files`). Archive size limit: 500 MB
+- `--user=<id>` records `restoredByUserId` (optional)
+
+Available categories: `content`, `documents`, `news`, `alerts`, `assets`, `header-footer`, `flowcharts`
+
 ### `reset-db.ts`
 
 Drops all tables entirely.

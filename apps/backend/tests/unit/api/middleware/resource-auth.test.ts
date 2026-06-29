@@ -7,23 +7,23 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Hono } from "hono"
 
+import { canModifyResource } from "@/api/middleware/resource-auth"
+import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
+
+import { createMockAuthUser, createMockDatasetDoc, createMockResearchDoc } from "../helpers/mock-es"
+
 let mockIsOwnerFn: ReturnType<typeof mock>
 
-mock.module("@/api/services/ownership", () => {
+void mock.module("@/api/services/ownership", () => {
   mockIsOwnerFn = mock(async () => false)
   return {
     getOwnerUsernames: mock(async () => []),
     getOwnedHumIds: mock(async () => []),
     isOwner: mockIsOwnerFn,
-    refreshOwnershipCache: mock(async () => {}),
-    resetOwnershipCacheForTest: mock(() => {}),
+    refreshOwnershipCache: mock(async () => undefined),
+    resetOwnershipCacheForTest: mock(() => undefined),
   }
 })
-
-import { canModifyResource } from "@/api/middleware/resource-auth"
-import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
-
-import { createMockAuthUser, createMockDatasetDoc, createMockResearchDoc } from "../helpers/mock-es"
 
 // === canModifyResource ===
 

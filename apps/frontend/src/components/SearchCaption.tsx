@@ -1,9 +1,10 @@
-import { Filter, Search, X } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -83,19 +84,22 @@ export function SearchCaption({
           <Input
             type="text"
             placeholder={t("search")}
+            aria-label={t("search")}
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-11 w-md py-2 pr-0 pl-6 text-xs"
+            className="h-14 w-md py-2 pr-0 pl-5"
             afterIcon={
               <>
                 {inputValue ? (
                   <Button
                     variant={"plain"}
                     size={"icon"}
+                    type="button"
                     className={"pointer-events-auto text-foreground-light"}
                     onClick={handleResetInput}
+                    aria-label={t("clear")}
                   >
                     <X size={18} />
                   </Button>
@@ -103,11 +107,13 @@ export function SearchCaption({
                 <Button
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
-                  size="default"
-                  className="pointer-events-auto gap-2 rounded-full px-4 h-8 text-xs"
+                  size="icon"
+                  type="button"
+                  className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
+                  aria-label={t("search")}
                 >
-                  <Search size={14} />
+                  <CustomSearchIcon size={14} />
                 </Button>
               </>
             }
@@ -142,5 +148,3 @@ export function SearchCaption({
     </div>
   );
 }
-
-

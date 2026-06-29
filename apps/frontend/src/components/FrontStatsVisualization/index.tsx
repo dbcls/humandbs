@@ -34,7 +34,7 @@ export default function FrontStatsVisualization() {
 
   useEffect(() => {
     if (!isMounted || !stats) return;
-    
+
     const updateSlider = () => {
       const activeEl = mode === "research" ? researchRef.current : datasetRef.current;
       if (activeEl) {
@@ -120,13 +120,13 @@ export default function FrontStatsVisualization() {
         onValueChange={(val) => {
           if (val) setMode(val as "research" | "dataset");
         }}
-        className="absolute top-6 z-10 flex items-center rounded-full bg-white p-2 gap-2"
+        className="absolute top-6 z-10 flex items-center gap-2 rounded-full bg-white p-2"
       >
         <ToggleGroupItem
           value="research"
           variant="pill"
           ref={researchRef}
-          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent"
+          className="data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent z-10 h-10 cursor-pointer rounded-full px-8 text-center font-bold text-foreground-light text-sm transition-all duration-300 data-[state=on]:text-white"
         >
           {tCommon("research")}
           <span className="ml-2 font-normal text-xs opacity-80">
@@ -137,7 +137,7 @@ export default function FrontStatsVisualization() {
           value="dataset"
           variant="pill"
           ref={datasetRef}
-          className="z-10 h-10 px-8 cursor-pointer rounded-full text-center font-bold text-sm text-foreground-light transition-all duration-300 data-[state=on]:text-white data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent"
+          className="data-[state=on]:!bg-transparent data-[state=off]:!bg-transparent z-10 h-10 cursor-pointer rounded-full px-8 text-center font-bold text-foreground-light text-sm transition-all duration-300 data-[state=on]:text-white"
         >
           {tCommon("dataset")}
           <span className="ml-2 font-normal text-xs opacity-80">
@@ -145,7 +145,7 @@ export default function FrontStatsVisualization() {
           </span>
         </ToggleGroupItem>
         <div
-          className="absolute z-0 top-2 h-10 rounded-full bg-secondary transition-all duration-300 ease-out pointer-events-none"
+          className="pointer-events-none absolute top-2 z-0 h-10 rounded-full bg-secondary transition-all duration-300 ease-out"
           aria-hidden="true"
           style={{
             left: `${sliderStyle.left}px`,

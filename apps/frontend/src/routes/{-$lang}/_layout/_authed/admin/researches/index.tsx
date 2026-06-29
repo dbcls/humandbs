@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
@@ -23,10 +23,26 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/researches
 
 function RouteComponent() {
   const { lang, queryClient } = Route.useRouteContext();
-  const [selectedHumId, setSelectedHumId] = useState<string | null>(null);
+  const { selectedHumId, selectedVersion } = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const setSelectedHumId = (humId: string | null) => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        selectedHumId: humId ?? undefined,
+        selectedVersion: undefined,
+      }),
+    });
+  };
+
+  const setSelectedVersion = (version: string) => {
+    navigate({ search: (prev) => ({ ...prev, selectedVersion: version }) });
+  };
+
   const [pendingAccessions, setPendingAccessions] = useState<string[]>([]);
 
-  const removeDummyResearch = useCallback(() => {
+  const removeDummyResearch = () => {
     queryClient.setQueriesData<{
       pages: Array<{ data: Array<{ humId: string }> }>;
       pageParams: unknown[];
@@ -40,7 +56,7 @@ function RouteComponent() {
         })),
       };
     });
-  }, [queryClient]);
+  };
 
   function handleDiscardNewResearch() {
     removeDummyResearch();
@@ -49,18 +65,19 @@ function RouteComponent() {
   }
 
   // Clean up dummy entry when navigating away from this route
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we are using react compiler, so removeDummyResearch is stable
   useEffect(() => {
     return () => {
       removeDummyResearch();
     };
-  }, [removeDummyResearch]);
+  }, []);
 
   return (
     <>
       <CollapsibleCard title="Researches">
         <ResearchesList
           lang={lang}
-          selectedHumId={selectedHumId}
+          selectedHumId={selectedHumId ?? null}
           onSelectResearch={setSelectedHumId}
         />
       </CollapsibleCard>
@@ -85,14 +102,12 @@ function RouteComponent() {
         >
           <Suspense fallback={<ResearchDetailsFallback humId={selectedHumId} />}>
             <ResearchDetails
-              key={selectedHumId}
+              key={`${selectedHumId}-${selectedVersion ?? ""}`}
               humId={selectedHumId}
               lang={lang}
+              selectedVersion={selectedVersion}
+              onVersionChange={setSelectedVersion}
               initialRelatedAccessions={pendingAccessions}
-              onDeselect={() => {
-                setSelectedHumId(null);
-                setPendingAccessions([]);
-              }}
             />
           </Suspense>
         </ErrorResetBoundary>

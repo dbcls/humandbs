@@ -27,14 +27,21 @@ const research = (status: "draft" | "review" | "published") => ({ status });
 describe("can(researches:update) — admin-only, allows draft and published", () => {
   test("admin can update a draft research", () => {
     expect(
-      can(admin, { resource: "researches", action: "update", params: { research: research("draft") } }).can,
+      can(admin, {
+        resource: "researches",
+        action: "update",
+        params: { research: research("draft") },
+      }).can,
     ).toBe(true);
   });
 
   test("admin can update (patch) a published research", () => {
     expect(
-      can(admin, { resource: "researches", action: "update", params: { research: research("published") } })
-        .can,
+      can(admin, {
+        resource: "researches",
+        action: "update",
+        params: { research: research("published") },
+      }).can,
     ).toBe(true);
   });
 
@@ -50,7 +57,11 @@ describe("can(researches:update) — admin-only, allows draft and published", ()
 
   test("cannot update a research in review status (wrong status)", () => {
     expect(
-      can(admin, { resource: "researches", action: "update", params: { research: research("review") } }).can,
+      can(admin, {
+        resource: "researches",
+        action: "update",
+        params: { research: research("review") },
+      }).can,
     ).toBe(false);
   });
 });
@@ -58,14 +69,21 @@ describe("can(researches:update) — admin-only, allows draft and published", ()
 describe("can(datasets:update) — admin-only, allows draft and published parent", () => {
   test("admin can update a dataset with a draft parent", () => {
     expect(
-      can(admin, { resource: "datasets", action: "update", params: { research: research("draft") } }).can,
+      can(admin, {
+        resource: "datasets",
+        action: "update",
+        params: { research: research("draft") },
+      }).can,
     ).toBe(true);
   });
 
   test("admin can update (patch) a dataset with a published parent", () => {
     expect(
-      can(admin, { resource: "datasets", action: "update", params: { research: research("published") } })
-        .can,
+      can(admin, {
+        resource: "datasets",
+        action: "update",
+        params: { research: research("published") },
+      }).can,
     ).toBe(true);
   });
 
@@ -81,17 +99,28 @@ describe("can(datasets:update) — admin-only, allows draft and published parent
 
   test("cannot update a dataset whose parent is in review (wrong status)", () => {
     expect(
-      can(admin, { resource: "datasets", action: "update", params: { research: research("review") } }).can,
+      can(admin, {
+        resource: "datasets",
+        action: "update",
+        params: { research: research("review") },
+      }).can,
     ).toBe(false);
   });
 
   test("dataset delete still requires a draft parent (unchanged)", () => {
     expect(
-      can(admin, { resource: "datasets", action: "delete", params: { research: research("published") } })
-        .can,
+      can(admin, {
+        resource: "datasets",
+        action: "delete",
+        params: { research: research("published") },
+      }).can,
     ).toBe(false);
     expect(
-      can(admin, { resource: "datasets", action: "delete", params: { research: research("draft") } }).can,
+      can(admin, {
+        resource: "datasets",
+        action: "delete",
+        params: { research: research("draft") },
+      }).can,
     ).toBe(true);
   });
 });

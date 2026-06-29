@@ -15,8 +15,21 @@ export type { LangType, BilingualText } from "../../es/types"
 
 // === Zod Preprocessing Helpers ===
 
+/**
+ * Boolean preprocessor that tolerates query-string values and plain booleans.
+ *
+ * `z.coerce.boolean()` cannot be used here: JavaScript's `Boolean("false")` is
+ * `true`, so `?flag=false` would be parsed as `true`. The preprocessor maps the
+ * literal strings "true"/"false" explicitly and forwards real booleans verbatim
+ * so test callers (which pass booleans directly) keep working.
+ */
 export const booleanFromString = z.preprocess(
-  (v) => v === "true" ? true : v === "false" ? false : undefined,
+  (v) => {
+    if (typeof v === "boolean") return v
+    if (v === "true") return true
+    if (v === "false") return false
+    return undefined
+  },
   z.boolean().optional(),
 )
 

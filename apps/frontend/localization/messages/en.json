@@ -11,6 +11,7 @@
     "versions": "Versions",
     "search": "Search",
     "copy": "Copy",
+    "clear": "Clear",
     "copied": "Copied",
     "more": "{count} more",
     "collapse": "Collapse",
@@ -82,7 +83,9 @@
   "Front": {
     "data-submission-button": "Submit data",
     "data-usage-button": "Use data",
-    "news": "News"
+    "news": "News",
+    "search-placeholder": "Search research",
+    "search-keywords": "Keywords"
   },
   "Data-usage": {
     "header": "List of Available Research Data",
@@ -90,17 +93,18 @@
     "dataset": "Dataset"
   },
   "Research-list": {
+    "cart-note": "Click the cart icon next to the research ID or the JGAD dataset ID you want to apply for to add its datasets to your cart.",
     "research-list": "Research list",
-    "date-published": "Date published",
-    "date-modified": "Date modified",
-    "research-id": "Research ID",
+    "datePublished": "Date published",
+    "dateModified": "Date modified",
+    "researchId": "Research ID",
     "datasets": "Datasets",
     "title": "Title",
-    "methods": "Methods",
-    "type-of-data": "Type of data",
+    "methods": "Category",
+    "typeOfData": "Analysis method",
     "platforms": "Platforms",
-    "targets": "Targets",
-    "data-provider": "Data provider",
+    "targets": "Participants",
+    "dataProvider": "Data provider",
     "criteria": "Access type",
     "status": "Status"
   },
@@ -125,8 +129,16 @@
     "typeOfData": "Type of data",
     "details": "Details"
   },
+  "Dataset-list": {
+    "cart-note": "Click the cart icon next to the JGAD dataset ID you want to apply for to add it to your cart.",
+    "datasetId": "Dataset ID",
+    "typeOfData": "Type of data",
+    "experiments": "Analysis method",
+    "criteria": "Access type",
+    "releaseDate": "Release date",
+    "versionReleaseDate": "Version release date"
+  },
   "Dataset": {
-    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "datasetId": "Dataset ID",
     "release-info": "Release info",
     "dataset-list": "Dataset list",
@@ -235,7 +247,6 @@
     "country": "Country"
   },
   "Research": {
-    "cart-note": "Click the cart icon next to the research ID or dataset ID you want to apply for, and add it to your cart.",
     "research-id": "Research ID",
     "research-list": "List of researches",
     "humId": "Research ID",

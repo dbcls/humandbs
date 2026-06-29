@@ -32,8 +32,8 @@ void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
   getOwnedHumIds: async () => [],
   isOwner: async () => false,
-  refreshOwnershipCache: async () => {},
-  resetOwnershipCacheForTest: () => {},
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
 }))
 
 void mock.module("@/api/es-client/client", () => ({
@@ -226,4 +226,55 @@ describe("searchResearches: explicit status request scoping", () => {
     expect(must.some(c => c.terms?.humId !== undefined || c.term?.humId !== undefined)).toBe(true)
   })
 
+})
+
+describe("searchResearches: summaryShort projection (Joomla home page short-text fields)", () => {
+  it("projects EsResearch.summaryShort.{methods,typeOfData,targets} into ResearchSummary.{methodsSummary,typeOfDataSummary,targetsSummary} as BilingualText", async () => {
+    const doc = createMockResearchDoc({
+      humId: "hum0001",
+      latestVersion: "v1",
+      summaryShort: {
+        methods:    { ja: { text: "配列決定", rawHtml: null },           en: { text: "Sequencing", rawHtml: null } },
+        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null },          en: { text: "NGS (WGS)", rawHtml: null } },
+        targets:    { ja: { text: "SCA31：1 症例（日本人）", rawHtml: null }, en: { text: "1 SCA31 patient (Japanese)", rawHtml: null } },
+      },
+    })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
+    expect(result.data[0].typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
+    expect(result.data[0].targetsSummary).toEqual({ ja: "SCA31：1 症例（日本人）", en: "1 SCA31 patient (Japanese)" })
+  })
+
+  it("returns null for the three *Summary fields when summaryShort is absent (humId not listed on the Joomla home article)", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toBeNull()
+    expect(result.data[0].typeOfDataSummary).toBeNull()
+    expect(result.data[0].targetsSummary).toBeNull()
+  })
+
+  it("when only one language is present in summaryShort, the other side collapses to null (no fallback to the populated language)", async () => {
+    const doc = createMockResearchDoc({
+      humId: "hum0001",
+      latestVersion: "v1",
+      summaryShort: {
+        methods:    { ja: { text: "配列決定", rawHtml: null }, en: null },
+        typeOfData: { ja: null, en: { text: "NGS (WGS)", rawHtml: null } },
+        targets:    { ja: null, en: null },
+      },
+    })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toEqual({ ja: "配列決定", en: null })
+    expect(result.data[0].typeOfDataSummary).toEqual({ ja: null, en: "NGS (WGS)" })
+    expect(result.data[0].targetsSummary).toBeNull()
+  })
 })

@@ -11,9 +11,10 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
+import { CriteriaCanonicalSchema } from "../../es/types"
 import { BATCH } from "../constants"
 
-import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
+import { LANG_TYPES, BilingualTextSchema, VersionStringSchema, booleanFromString } from "./common"
 import {
   PaginationQuerySchema,
   LangQueryBase,
@@ -48,8 +49,7 @@ export const LangVersionQuerySchema = z.object({
     .describe(
       "Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version.",
     ),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
@@ -63,8 +63,7 @@ export const LangQuerySchema = z.object({
     .enum(LANG_TYPES)
     .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
@@ -243,10 +242,22 @@ export const ResearchSummarySchema = z.object({
     .array(z.string())
     .describe("Sequencing platforms used (aggregated from datasets)"),
   targets: z.string().describe("Summary of research targets (plain text)"),
+  // Short bilingual summaries for the listing view. Sourced from the Joomla
+  // home article (ja=`/home`, en=`/en/home`). Distinct from the long
+  // `methods`/`typeOfData`/`targets` fields above, which are derived from
+  // detail-page bodies. Null when the humId is not listed on the Joomla home.
+  methodsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the research method, for listing views (Joomla home column '研究方法' / 'Type of Study')"),
+  typeOfDataSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the data type, for listing views (Joomla home column 'データの種類' / 'Type of Data')"),
+  targetsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the target population, for listing views (Joomla home column '参加者（対象集団）' / 'Participants/Materials (Ethnicity)')"),
   dataProvider: z.array(z.string()).describe("Names of data providers"),
   criteria: z
-    .string()
-    .describe("Data access criteria summary (e.g., 'Controlled-access')"),
+    .array(CriteriaCanonicalSchema)
+    .describe(
+      "Distinct access criteria across the Research's datasets, in canonical order (strictest first)",
+    ),
   status: z.enum(RESEARCH_STATUS)
     .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })

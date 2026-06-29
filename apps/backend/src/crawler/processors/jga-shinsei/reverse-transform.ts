@@ -337,7 +337,7 @@ export const reverseDsApplication = (
   components.push(...reverseUploadedFiles(ds.uploadedFiles))
   components.push(...reverseControl(ds.control))
 
-  const dsMatch = ds.jdsId.match(/^(J-DS\d+)-(\d{3})$/)
+  const dsMatch = /^(J-DS\d+)-(\d{3})$/.exec(ds.jdsId)
 
   return {
     jds_id: dsMatch ? dsMatch[1] : ds.jdsId,
@@ -457,7 +457,7 @@ export const reverseDuApplication = (
   components.push(...reverseUploadedFiles(du.uploadedFiles))
   components.push(...reverseControl(du.control))
 
-  const duMatch = du.jduId.match(/^(J-DU\d+)-(\d{3})$/)
+  const duMatch = /^(J-DU\d+)-(\d{3})$/.exec(du.jduId)
 
   return {
     jdu_id: duMatch ? duMatch[1] : du.jduId,

@@ -11,6 +11,7 @@ import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { DatasetDoc } from "@/lib/types";
+import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
 import type { DeepOmit } from "@/utils/type-utils";
 
 import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
@@ -81,9 +82,9 @@ export function formValuesToDatasetUpdate(
 
 /**
  * Convert form experiment entries into the `DatasetDoc` experiments shape so the
- * preview renders experiments the same way the public-facing page does. Reuses
- * `entriesToExperimentData` for the array→record shape, then mirrors `text` into
- * `rawHtml` (which the data values render through) since the form only stores `text`.
+ * preview can run the same `addDatasetRenderedHtml` transform the public read path
+ * uses. The form only stores `text`; `rawHtml` is set to `null` (no legacy in the
+ * preview). The transform then derives `renderedHtml` from `text`.
  */
 function formExperimentsToPreview(
   experiments: DatasetFormValues["experiments"],
@@ -94,8 +95,8 @@ function formExperimentsToPreview(
       Object.entries(entriesToExperimentData(exp.data)).map(([key, value]) => [
         key,
         {
-          ja: value?.ja ? { ...value.ja, rawHtml: value.ja.text } : null,
-          en: value?.en ? { ...value.en, rawHtml: value.en.text } : null,
+          ja: value?.ja ? { ...value.ja, rawHtml: null } : null,
+          en: value?.en ? { ...value.en, rawHtml: null } : null,
         },
       ]),
     ),
@@ -156,6 +157,8 @@ interface DatasetFormProps {
   defaultValues: DatasetFormValues;
   /** If provided, used as the baseline for modified comparison instead of defaultValues */
   cleanValues?: DatasetFormValues;
+  /** Read-only legacy rawHtml side-channel for the experiment data editors. */
+  legacyRawHtml?: LegacyRawHtmlLookup;
   readOnly: boolean;
   onSubmit: (values: DatasetFormValues) => Promise<void>;
   isSaving: boolean;
@@ -173,6 +176,7 @@ interface DatasetFormProps {
 export function DatasetForm({
   defaultValues,
   cleanValues,
+  legacyRawHtml,
   readOnly,
   onSubmit,
   isSaving,
@@ -300,7 +304,11 @@ export function DatasetForm({
             <Label>{t("experiments")}</Label>
             <ModifiedTag isModified={isExperimentsModified} />
           </div>
-          <ExperimentsArrayField form={form} initialItems={defaultValues.experiments} />
+          <ExperimentsArrayField
+            form={form}
+            initialItems={defaultValues.experiments}
+            legacyRawHtml={legacyRawHtml}
+          />
         </div>
       </fieldset>
 

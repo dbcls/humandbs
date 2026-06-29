@@ -13,6 +13,7 @@ import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { DatasetCartRowButton } from "@/components/DatasetCartRowButton";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -185,12 +186,12 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
-  const t = useTranslations("Dataset");
+  const t = useTranslations("Dataset-list");
   const { containerRef, maxHeight } = useMaxHeight(130);
 
   return (
     <>
-      <p className="text-muted-foreground mb-2 text-sm">{t("cart-note")}</p>
+      <InfoBadge>{t("cart-note")}</InfoBadge>
       <div
         ref={containerRef}
         style={{ maxHeight }}
@@ -325,7 +326,7 @@ function DatasetSortSelect() {
 
 function TableWrapper() {
   const lang = useLocale();
-  const t = useTranslations("Dataset");
+  const t = useTranslations();
 
   const { data, isFetching, isPlaceholderData, transitionType } = useDatasetsSearchQuery();
 
@@ -387,7 +388,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
+    header: (ctx) => ctx.table.options.meta?.t("Dataset-list.datasetId"),
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
@@ -401,13 +402,13 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => {
-      return <p>{ctx.table.options.meta?.t?.("typeOfData")}</p>;
+      return <p>{ctx.table.options.meta?.t?.("Dataset-list.typeOfData")}</p>;
     },
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
-    header: (ctx) => ctx.table.options.meta?.t("experiments"),
+    header: (ctx) => ctx.table.options.meta?.t("Dataset-list.experiments"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -422,17 +423,17 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    header: (ctx) => ctx.table.options.meta?.t("Dataset-list.criteria"),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
-    header: (ctx) => ctx.table.options.meta?.t?.("releaseDate"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Dataset-list.releaseDate"),
   }),
 
   datasetsColumnHelper.accessor("versionReleaseDate", {
     id: "versionReleaseDate",
-    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Dataset-list.versionReleaseDate"),
   }),
 ];
 
@@ -442,10 +443,11 @@ function DatasetsCartHeaderButton({
   tableDatasets: DatasetSearchResponse["data"];
 }) {
   const t = useTranslations("common");
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
     tableDatasets,
   });
 
+  if (!isSomeIdsAreCartable) return null;
   return (
     <AddToCartToggle
       variant={"header"}

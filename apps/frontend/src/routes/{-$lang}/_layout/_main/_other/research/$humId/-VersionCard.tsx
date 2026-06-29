@@ -20,12 +20,13 @@ import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { toDateString } from "@/utils/dates";
+import type { RenderedResearchDetailData } from "@/utils/renderedHtml/types";
 
 export function VersionCard({
   versionData,
   lang: langOverride,
 }: {
-  versionData: ResearchDetailResponse["data"];
+  versionData: RenderedResearchDetailData;
   lang?: Locale;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
@@ -62,23 +63,27 @@ export function VersionCard({
     >
       <article>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <div className="columns-2 [&>p>span]:mr-2 [&>p>span]:font-extrabold [&>p]:mb-4">
-          <p>
-            <span>{t("Research.aims")}:</span>
-            {versionData.summary.aims[lang]?.text}
-          </p>
-          <p>
-            <span>{t("Research.methods")}:</span>
-            {versionData.summary.methods[lang]?.text}
-          </p>
+        <div className="columns-2 [&>div>span]:mr-2 [&>div>span]:font-extrabold [&>div]:mb-4">
+          <div>
+            <span className="font-extrabold">{t("Research.aims")}:</span>
+            <Markdown
+              className="inline-prose text-base"
+              contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
+            />
+          </div>
+          <div>
+            <span className="font-extrabold">{t("Research.methods")}:</span>
+            <Markdown
+              className="inline-prose text-base"
+              contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+            />
+          </div>
           <div className="mb-4">
             <span className="mr-2 font-extrabold">{t("Research.targets")}:</span>
-            {
-              <Markdown
-                className="inline-prose text-base"
-                contentHtml={{ markup: versionData.summary.targets[lang]?.rawHtml ?? "" }}
-              />
-            }
+            <Markdown
+              className="inline-prose text-base"
+              contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+            />
           </div>
         </div>
       </article>
@@ -220,7 +225,11 @@ function ResearchDatasetsCartHeaderButton({
 }) {
   const t = useTranslations("common");
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({ tableDatasets });
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
+    tableDatasets,
+  });
+
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle

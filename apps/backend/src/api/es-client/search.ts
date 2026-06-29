@@ -45,6 +45,7 @@ import {
 } from "@/api/es-client/query-helpers"
 import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
+import { getOwnedHumIds } from "@/api/services/ownership"
 import {
   EsDatasetSchema,
   EsResearchSchema,
@@ -63,8 +64,9 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import { getOwnedHumIds } from "@/api/services/ownership"
 import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
+import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
+import type { BilingualText, BilingualTextValue, CriteriaCanonical } from "@/es/types"
 
 // === Constants ===
 
@@ -93,6 +95,18 @@ interface ResearchSearchResult {
 
 type QueryContainer = estypes.QueryDslQueryContainer
 type FilterParams = Record<string, unknown>
+
+// === Helpers ===
+
+const CRITERIA_RANK = new Map<CriteriaCanonical, number>(
+  CRITERIA_CANONICAL_ORDER.map((value, idx) => [value, idx]),
+)
+
+/** Dedupe and sort criteria into canonical order (strictest first). */
+export const sortCriteria = (values: CriteriaCanonical[]): CriteriaCanonical[] =>
+  uniq(values).sort(
+    (a, b) => (CRITERIA_RANK.get(a) ?? Infinity) - (CRITERIA_RANK.get(b) ?? Infinity),
+  )
 
 // === Filter Clause Builders ===
 
@@ -794,7 +808,7 @@ export const searchResearches = async (
     size: limit,
     query: researchQuery,
     sort: sortSpec,
-    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids", "status"],
+    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "summaryShort", "uids", "status"],
     track_total_hits: true,
     // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
     ...(includeFacets && !humIdFilter ? {
@@ -806,7 +820,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, status: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, summaryShort: true, status: true,
     }).parse(doc))
 
   // Defense-in-depth: ES side should have already filtered by latestVersion
@@ -851,6 +865,16 @@ export const searchResearches = async (
     return value[lang] ?? value.ja ?? value.en ?? ""
   }
 
+  // Helper to project ES BilingualTextValue (with rawHtml) down to the
+  // BilingualText shape returned in API responses. Returns null when both
+  // languages are absent so the listing view can render a clear gap.
+  const toBilingualText = (value: BilingualTextValue | null | undefined): BilingualText | null => {
+    if (!value) return null
+    const ja = value.ja?.text ?? null
+    const en = value.en?.text ?? null
+    return ja === null && en === null ? null : { ja, en }
+  }
+
   const data: ResearchSummary[] = base.map(d => {
     // For non-owner users, only include versions up to latestVersion
     let effectiveVersionIds = d.versionIds
@@ -878,7 +902,11 @@ export const searchResearches = async (
     const targets = extractText(d.summary?.targets)
     // dataProvider.name is BilingualTextValue, extract text
     const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
-    const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
+    const criteria = sortCriteria(
+      datasets
+        .map(ds => ds.criteria)
+        .filter((x): x is CriteriaCanonical => !!x),
+    )
 
     return {
       humId: d.humId,
@@ -890,6 +918,9 @@ export const searchResearches = async (
       typeOfData,
       platforms,
       targets,
+      methodsSummary: toBilingualText(d.summaryShort?.methods),
+      typeOfDataSummary: toBilingualText(d.summaryShort?.typeOfData),
+      targetsSummary: toBilingualText(d.summaryShort?.targets),
       dataProvider,
       criteria,
       status: isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) ? d.status : "published" as const,

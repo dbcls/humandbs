@@ -28,7 +28,7 @@ type ApplicationPrefix = keyof typeof DATA_TYPE
 export const parseApplIdStr = (
   applIdStr: string,
 ): { dsDuId: string; applVersion: number } => {
-  const match = applIdStr.match(/^(J-D[SU]\d+)-(\d{3})$/)
+  const match = /^(J-D[SU]\d+)-(\d{3})$/.exec(applIdStr)
   if (!match) throw new Error(`Invalid applIdStr: ${applIdStr}`)
   return { dsDuId: match[1], applVersion: parseInt(match[2], 10) }
 }

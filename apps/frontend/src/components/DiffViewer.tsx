@@ -61,7 +61,9 @@ function UnchangedGap({ count }: { count: number }) {
   return (
     <div className="flex items-center justify-center gap-2 bg-foreground-light/10 py-1.5 text-foreground-light text-xs">
       <span className="h-px flex-1 bg-foreground-light/30" />
-      <span>⋯ {count} unchanged section{count === 1 ? "" : "s"}</span>
+      <span>
+        ⋯ {count} unchanged section{count === 1 ? "" : "s"}
+      </span>
       <span className="h-px flex-1 bg-foreground-light/30" />
     </div>
   );

@@ -40,6 +40,8 @@ interface ResourceAuthOptions {
   requireDraftStatus?: boolean
   /** Require the Research to be in `published` status (409 otherwise) */
   requirePublishedStatus?: boolean
+  /** Require the Research to be in `draft` OR `published` status (409 otherwise) */
+  requireDraftOrPublished?: boolean
 }
 
 interface DatasetAuthOptions extends ResourceAuthOptions {
@@ -47,6 +49,8 @@ interface DatasetAuthOptions extends ResourceAuthOptions {
   requireParentDraft?: boolean
   /** Require the parent Research to be in `published` status (409 otherwise) */
   requireParentPublished?: boolean
+  /** Require the parent Research to be in `draft` OR `published` status (409 otherwise) */
+  requireParentDraftOrPublished?: boolean
 }
 
 /**
@@ -116,6 +120,12 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
     if (options.requirePublishedStatus && doc.status !== "published") {
       throw new ConflictError(
         `Cannot patch: Research is in '${doc.status}' status, expected 'published'`,
+      )
+    }
+
+    if (options.requireDraftOrPublished && doc.status !== "draft" && doc.status !== "published") {
+      throw new ConflictError(
+        `Cannot mutate: Research is in '${doc.status}' status, expected 'draft' or 'published'`,
       )
     }
 
@@ -215,6 +225,16 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     if (options.requireParentPublished && parentResearch.status !== "published") {
       throw new ConflictError(
         `Cannot patch dataset: parent Research is in '${parentResearch.status}' status, expected 'published'`,
+      )
+    }
+
+    if (
+      options.requireParentDraftOrPublished
+      && parentResearch.status !== "draft"
+      && parentResearch.status !== "published"
+    ) {
+      throw new ConflictError(
+        `Cannot mutate dataset: parent Research is in '${parentResearch.status}' status, expected 'draft' or 'published'`,
       )
     }
 

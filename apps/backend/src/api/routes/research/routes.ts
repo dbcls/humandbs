@@ -196,14 +196,19 @@ export const updateResearchRoute = createRoute({
   operationId: "updateResearch",
   summary: "Update Research",
   security: SECURITY_REQUIRES_AUTH,
-  description: `Update a Research entry (full replacement).
+  description: `Update a Research entry (full replacement). Accepts both draft and published Research.
 
 **Authorization:** Owner (user in uids) or admin
 
+**Precondition:** Research must be in \`draft\` or \`published\` status (409 otherwise — review-state edits are not allowed)
+
+**Behavior by status:**
+- \`draft\`: Edits the current draft ResearchVersion's content; \`releaseNote\` updates the \`draftVersion\`'s release note
+- \`published\`: Directly modifies the published content with no draft/submit/approve cycle and no version bump; \`releaseNote\` updates the \`latestVersion\`'s release note. \`dateModified\` is updated
+
 **Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits. Returns 409 Conflict if the document has been modified since retrieval.
 
-**Note:** humId, url, versionIds, latestVersion, datePublished cannot be modified.
-releaseNote updates the current draft ResearchVersion's release note.`,
+**Note:** humId, url, versionIds, latestVersion, datePublished cannot be modified.`,
   request: {
     params: HumIdParamsSchema,
     body: {
@@ -216,48 +221,6 @@ releaseNote updates the current draft ResearchVersion's release note.`,
         "application/json": { schema: ResearchWithLockResponseSchema, example: exampleResearchWithLockResponse },
       },
       description: "Research updated successfully",
-    },
-    400: ErrorSpec400,
-    401: ErrorSpec401,
-    403: ErrorSpec403,
-    404: ErrorSpec404,
-    409: ErrorSpec409,
-    500: ErrorSpec500,
-  },
-})
-
-export const patchResearchRoute = createRoute({
-  method: "put",
-  path: "/{humId}/patch",
-  tags: ["Research"],
-  operationId: "patchResearch",
-  summary: "Patch Published Research",
-  security: SECURITY_REQUIRES_AUTH,
-  description: `Apply minor fixes to a published Research without creating a new version.
-
-**Authorization:** Owner (user in uids) or admin
-
-**Precondition:** Research must be in published status (409 otherwise)
-
-**Behavior:**
-- Directly modifies the published content (no draft/submit/approve cycle)
-- Version stays the same (no version bump)
-- dateModified is updated
-
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response.
-releaseNote updates the current published ResearchVersion's release note.`,
-  request: {
-    params: HumIdParamsSchema,
-    body: {
-      content: { "application/json": { schema: UpdateResearchRequestSchema, example: exampleUpdateResearchRequest } },
-    },
-  },
-  responses: {
-    200: {
-      content: {
-        "application/json": { schema: ResearchWithLockResponseSchema, example: exampleResearchWithLockResponse },
-      },
-      description: "Research patched successfully",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,

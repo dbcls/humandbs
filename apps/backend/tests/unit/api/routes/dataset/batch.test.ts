@@ -182,5 +182,17 @@ describe("api/routes/dataset GET /dataset/batch", () => {
       const text = await res.text()
       expect(text).toContain("rawHtml")
     })
+
+    // Regression: `z.coerce.boolean()` parses `"false"` as `true` because
+    // JavaScript's Boolean("false") is true. The query schema must treat the
+    // literal string "false" as a strip-rawHtml signal.
+    it("strips rawHtml fields when includeRawHtml=false is given explicitly", async () => {
+      mockGetDataset.mockImplementation(async () => docWithRawHtml())
+
+      const app = getTestApp()
+      const res = await app.request("/dataset/batch?ids=JGAD000001&includeRawHtml=false")
+      const text = await res.text()
+      expect(text).not.toContain("rawHtml")
+    })
   })
 })

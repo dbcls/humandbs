@@ -173,17 +173,17 @@ const updateDatasetRoute = createRoute({
   operationId: "updateDataset",
   summary: "Update Dataset",
   security: SECURITY_REQUIRES_AUTH,
-  description: `Update a Dataset (full replacement).
+  description: `Update a Dataset (full replacement). Accepts both draft-parent and published-parent Datasets.
 
 **Authorization:** Owner (user in parent Research's uids) or admin
 
-**Precondition:** Parent Research must be in draft status
+**Precondition:** Parent Research must be in \`draft\` or \`published\` status (409 otherwise — review-state edits are not allowed)
 
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits.
+**Behavior by parent status:**
+- Parent \`draft\`: First update in a draft cycle creates a new Dataset version; subsequent updates modify the same version until Research is published
+- Parent \`published\`: Directly patches the published Dataset version in place (no version bump); \`dateModified\` is synchronized across versions
 
-**Versioning behavior:**
-- First update in a draft cycle creates a new Dataset version
-- Subsequent updates modify the same version until Research is published`,
+**Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits.`,
   request: {
     params: DatasetIdParamsSchema,
     query: LangVersionQuerySchema,
@@ -193,43 +193,6 @@ const updateDatasetRoute = createRoute({
     200: {
       content: { "application/json": { schema: DatasetUpdateResponseSchema, example: exampleDatasetUpdateResponse } },
       description: "Dataset updated successfully",
-    },
-    400: ErrorSpec400,
-    401: ErrorSpec401,
-    403: ErrorSpec403,
-    404: ErrorSpec404,
-    409: ErrorSpec409,
-    500: ErrorSpec500,
-  },
-})
-
-const patchDatasetRoute = createRoute({
-  method: "put",
-  path: "/{datasetId}/patch",
-  tags: ["Dataset"],
-  operationId: "patchDataset",
-  summary: "Patch Published Dataset",
-  security: SECURITY_REQUIRES_AUTH,
-  description: `Apply minor fixes to a published Dataset without creating a new version.
-
-**Authorization:** Owner (user in parent Research's uids) or admin
-
-**Precondition:** Parent Research must be in published status (409 otherwise)
-
-**Behavior:**
-- Directly modifies the published content (no version bump)
-- dateModified is updated
-
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
-  request: {
-    params: DatasetIdParamsSchema,
-    query: LangVersionQuerySchema,
-    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema, example: exampleUpdateDatasetRequest } } },
-  },
-  responses: {
-    200: {
-      content: { "application/json": { schema: DatasetUpdateResponseSchema, example: exampleDatasetUpdateResponse } },
-      description: "Dataset patched successfully",
     },
     400: ErrorSpec400,
     401: ErrorSpec401,
@@ -359,13 +322,13 @@ datasetRouter.use("*", optionalAuth)
 // Path-specific middleware: run BEFORE zod validators so unauthenticated /
 // non-owner / non-draft-parent callers get 401/403/404 instead of a 400 that
 // would leak the body schema (security).
+// /:datasetId/update is a single endpoint that mutates Dataset for both
+// draft-parent and published-parent Research. The handler branches by parent
+// status to call either updateDataset (draft cycle, may bump version) or
+// patchDataset (in-place published-content patch).
 datasetRouter.use(
   "/:datasetId/update",
-  loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
-)
-datasetRouter.use(
-  "/:datasetId/patch",
-  loadDatasetAndAuthorize({ requireOwnership: true, requireParentPublished: true }),
+  loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraftOrPublished: true }),
 )
 // DELETE uses requireAuth + requireAdmin so the handler can still return
 // idempotent 204 when the dataset is already gone (matching REST DELETE
@@ -452,21 +415,29 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
 })
 
 // PUT /dataset/{datasetId}/update
-// auth / ownership / parent-draft are validated by loadDatasetAndAuthorize before validators run.
+// auth / ownership / parent-draft-or-published validated by loadDatasetAndAuthorize.
+// Branches on parent Research status:
+//   - draft     → updateDataset (may bump version on first edit of a draft cycle)
+//   - published → patchDataset  (in-place; syncs dateModified across versions)
 datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const preloaded = c.get("dataset")
+  const parentResearch = c.get("parentResearch")
   const { datasetId, version } = preloaded
 
   const body = c.req.valid("json")
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
-  const updated = await updateDataset(datasetId, version, {
+  const fields = {
     releaseDate: body.releaseDate,
     criteria: body.criteria,
     typeOfData: body.typeOfData,
     experiments: body.experiments,
-  }, seqNo, primaryTerm)
+  }
+
+  const updated = parentResearch.status === "published"
+    ? await patchDataset(datasetId, version, fields, seqNo, primaryTerm)
+    : await updateDataset(datasetId, version, fields, seqNo, primaryTerm)
 
   if (!updated) {
     throw new ConflictError()
@@ -486,35 +457,6 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   }
 
   return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
-})
-
-// PUT /dataset/{datasetId}/patch
-// auth / ownership / parent-published validated by loadDatasetAndAuthorize
-datasetRouter.openapi(patchDatasetRoute, async (c) => {
-  const preloaded = c.get("dataset")
-  const { datasetId, version } = preloaded
-
-  const body = c.req.valid("json")
-  const seqNo = body._seq_no
-  const primaryTerm = body._primary_term
-
-  const updated = await patchDataset(datasetId, version, {
-    releaseDate: body.releaseDate,
-    criteria: body.criteria,
-    typeOfData: body.typeOfData,
-    experiments: body.experiments,
-  }, seqNo, primaryTerm)
-
-  if (!updated) {
-    throw new ConflictError()
-  }
-
-  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, updated.version)
-  if (!updatedWithSeqNo) {
-    throw new NotFoundError("Updated dataset not found")
-  }
-
-  return singleResponse(c, updated, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
 })
 
 // POST /dataset/{datasetId}/delete

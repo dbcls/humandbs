@@ -94,7 +94,7 @@ export const makeDatasetDateModifiedTransform = (
 type DataValue = { ja?: { text?: string } | null; en?: { text?: string } | null } | null
 
 const stampDataText = (doc: Record<string, unknown>): Record<string, unknown> => {
-  const experiments = doc.experiments as Array<Record<string, unknown>> | undefined
+  const experiments = doc.experiments as Record<string, unknown>[] | undefined
   if (!experiments) return doc
   return {
     ...doc,

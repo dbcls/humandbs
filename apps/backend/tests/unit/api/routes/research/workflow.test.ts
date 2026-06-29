@@ -19,8 +19,8 @@ void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
   getOwnedHumIds: async () => [],
   isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
-  refreshOwnershipCache: async () => {},
-  resetOwnershipCacheForTest: () => {},
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
 }))
 
 const mockUpdateResearchStatus = mock<

@@ -7,19 +7,19 @@
 import { describe, expect, it, mock } from "bun:test"
 import fc from "fast-check"
 
-void mock.module("@/api/services/ownership", () => ({
-  getOwnerUsernames: async () => [],
-  getOwnedHumIds: async () => [],
-  isOwner: async () => false,
-  refreshOwnershipCache: async () => {},
-  resetOwnershipCacheForTest: () => {},
-}))
-
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { computeVersionUpdates } from "@/api/routes/research/workflow"
 import type { StatusAction } from "@/api/types"
 
 import { createMockResearchDoc } from "../helpers/mock-es"
+
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
+}))
 
 describe("version field invariants enforced by computeVersionUpdates", () => {
   // approve transitions a "review" doc to a state where `latestVersion` is the
