@@ -101,6 +101,10 @@ export const $getAssetHierarchy = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     context.checkPermission("assets", "list");
 
+    // The assets dir may not exist yet (fresh deploy, before any upload). Create it
+    // so listing returns an empty tree instead of throwing ENOENT from readdir.
+    await mkdir(getAssetDir(), { recursive: true });
+
     return readAssetFolder();
   });
 
