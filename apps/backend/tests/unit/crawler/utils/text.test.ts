@@ -19,6 +19,7 @@ import {
   normalizeKey,
   normalizeText,
   splitValue,
+  unescapeMarkdown,
 } from "@/crawler/utils/text"
 
 // ===========================================================================
@@ -400,6 +401,71 @@ describe("httpToHttps", () => {
         fc.property(fc.webUrl(), (url) => {
           const result = httpToHttps(url)
           expect(result.toLowerCase().startsWith("http://")).toBe(false)
+        }),
+      )
+    })
+  })
+})
+
+// ===========================================================================
+// unescapeMarkdown
+// ===========================================================================
+describe("unescapeMarkdown", () => {
+  describe("removes turndown-emitted escapes", () => {
+    it.each([
+      [String.raw`Illumina \[HiSeq 2000\]`, "Illumina [HiSeq 2000]", "brackets"],
+      [String.raw`a\*b\*c`, "a*b*c", "asterisks"],
+      [String.raw`backslash \\ kept as single`, "backslash \\ kept as single", "double-backslash"],
+      [String.raw`paren \(x\)`, "paren (x)", "parens"],
+      [String.raw`hash \# tilde \~ pipe \|`, "hash # tilde ~ pipe |", "punctuation"],
+      [String.raw`emph \_x\_`, "emph _x_", "underscores"],
+      [String.raw`code \`x\``, "code `x`", "backticks"],
+    ] as const)("%s -> %s (%s)", (input, expected, _desc) => {
+      expect(unescapeMarkdown(input)).toBe(expected)
+    })
+  })
+
+  describe("preserves non-escaped content", () => {
+    it("leaves bare brackets and punctuation alone", () => {
+      expect(unescapeMarkdown("Illumina [HiSeq 2000]")).toBe("Illumina [HiSeq 2000]")
+    })
+
+    it("leaves a bare trailing backslash (no escapable char follows)", () => {
+      expect(unescapeMarkdown("trailing\\")).toBe("trailing\\")
+    })
+
+    it("does not strip `\\` before non-markdown chars", () => {
+      // turndown only escapes the markdown-reserved set; `\a` stays `\a`.
+      expect(unescapeMarkdown(String.raw`keep \a \b \z`)).toBe(String.raw`keep \a \b \z`)
+    })
+
+    it("handles empty string", () => {
+      expect(unescapeMarkdown("")).toBe("")
+    })
+  })
+
+  describe("multiple escapes in one string", () => {
+    it("strips every occurrence", () => {
+      const input = String.raw`row \[1\] \* row \[2\] \(end\)`
+      expect(unescapeMarkdown(input)).toBe("row [1] * row [2] (end)")
+    })
+  })
+
+  describe("properties (PBT)", () => {
+    it("applied twice equals applied once (idempotent for any input)", () => {
+      fc.assert(
+        fc.property(fc.string(), (input) => {
+          const once = unescapeMarkdown(input)
+          const twice = unescapeMarkdown(once)
+          expect(twice).toBe(once)
+        }),
+      )
+    })
+
+    it("never grows the string (escape removal can only shorten or preserve length)", () => {
+      fc.assert(
+        fc.property(fc.string(), (input) => {
+          expect(unescapeMarkdown(input).length).toBeLessThanOrEqual(input.length)
         }),
       )
     })

@@ -34,6 +34,20 @@ const humVersionReleasePattern = /^(hum\d+)-v\d+-release$/i;
 const humLatestPattern = /^(hum\d+)-latest$/i;
 const humLatestReleasePattern = /^(hum\d+)-latest-release$/i;
 
+// Legacy Joomla versioned-alias / menu-alias redirects:
+//   data-sharing-guidelines[-vN]              → guidelines/data-sharing-guidelines
+//   security-guidelines-for-{users,...}[-vN]  → guidelines/security-guidelines-for-{...}
+//   guideline-revision[N-]*                   → guidelines
+//   policy                                    → nbdc-policy
+const legacyAliasRedirects: { pattern: RegExp; splat: string }[] = [
+  { pattern: /^data-sharing-guidelines(-v[\d-]+)?$/i, splat: "guidelines/data-sharing-guidelines" },
+  { pattern: /^security-guidelines-for-users(-v\d+)?$/i, splat: "guidelines/security-guidelines-for-users" },
+  { pattern: /^security-guidelines-for-submitters(-v\d+)?$/i, splat: "guidelines/security-guidelines-for-submitters" },
+  { pattern: /^security-guidelines-for-dbcenters(-v[\d-]+)?$/i, splat: "guidelines/security-guidelines-for-dbcenters" },
+  { pattern: /^guideline-revision[\d-]*$/i, splat: "guidelines" },
+  { pattern: /^policy$/i, splat: "nbdc-policy" },
+];
+
 // Matches "<docId>/version/<N>" where N is a positive integer
 const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
 // Matches "<docId>/version"
@@ -116,6 +130,19 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           lang: context.lang,
         },
       });
+    }
+
+    /* === Legacy Joomla versioned-alias / menu-alias === */
+    for (const { pattern, splat } of legacyAliasRedirects) {
+      if (pattern.test(params._splat)) {
+        throw redirect({
+          to: "/{-$lang}/$",
+          params: {
+            lang: context.lang,
+            _splat: splat,
+          },
+        });
+      }
     }
 
     /** === Matching documents/content items === */

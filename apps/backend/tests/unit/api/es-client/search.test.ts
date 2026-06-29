@@ -278,3 +278,139 @@ describe("searchResearches: summaryShort projection (Joomla home page short-text
     expect(result.data[0].targetsSummary).toBeNull()
   })
 })
+
+// platforms is rendered as plain string[] by the frontend (no markdown render),
+// so the projection must use the structured `searchable.platforms` (vendor +
+// model) rather than the markdown-shaped `experiments[].data.Platform.text`
+// that D11 introduced.
+describe("searchResearches: platforms projection (structured searchable.platforms, not markdown data.Platform.text)", () => {
+  const buildDatasetWithPlatforms = (
+    platforms: { vendor: string | null; model: string | null }[],
+  ) => ({
+    found: true,
+    _id: "JGAD000001-v1",
+    _source: {
+      datasetId: "JGAD000001",
+      version: "v1",
+      humId: "hum0001",
+      humVersionId: "hum0001-v1",
+      versionReleaseDate: "2024-01-01",
+      releaseDate: "2024-01-01",
+      criteria: "Controlled-access (Type I)",
+      typeOfData: { ja: "NGS(WGS)", en: "NGS(WGS)" },
+      experiments: [
+        {
+          header: {
+            ja: { text: "WGS", rawHtml: "<span>WGS</span>" },
+            en: { text: "WGS", rawHtml: "<span>WGS</span>" },
+          },
+          data: {
+            // D11-shaped markdown text. If the projection mistakenly falls back
+            // to this it'll leak the `\[ \]` escapes into the response.
+            Platform: {
+              ja: { text: String.raw`Illumina \[Should Not Appear\]`, rawHtml: null },
+              en: { text: String.raw`Illumina \[Should Not Appear\]`, rawHtml: null },
+            },
+          },
+          searchable: {
+            subjectCount: null,
+            subjectCountType: null,
+            healthStatus: null,
+            diseases: [],
+            tissues: [],
+            isTumor: null,
+            cellLine: [],
+            population: [],
+            cohorts: [],
+            sex: null,
+            ageGroup: null,
+            assayType: [],
+            libraryKits: [],
+            platforms,
+            readType: null,
+            readLength: null,
+            sequencingDepth: null,
+            targetCoverage: null,
+            referenceGenome: [],
+            variantCounts: null,
+            hasPhenotypeData: null,
+            targets: null,
+            fileTypes: [],
+            processedDataTypes: [],
+            dataVolumeGb: null,
+            policies: [],
+          },
+        },
+      ],
+    },
+  })
+
+  const setupMget = (platforms: { vendor: string | null; model: string | null }[]) => {
+    // 1st mget: research-version index. 2nd mget: dataset index.
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [{
+        found: true,
+        _id: "hum0001-v1",
+        _source: {
+          humId: "hum0001",
+          humVersionId: "hum0001-v1",
+          version: "v1",
+          versionReleaseDate: "2024-01-01",
+          releaseNote: { ja: null, en: null },
+          datasets: [{ datasetId: "JGAD000001", version: "v1" }],
+        },
+      }],
+    }))
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [buildDatasetWithPlatforms(platforms)],
+    }))
+  }
+
+  it("formats `${vendor} [${model}]` from searchable.platforms (ignoring data.Platform.text)", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([{ vendor: "Illumina", model: "HiSeq 2000" }])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
+    // Defence-in-depth: ensure no leaked escapes from data.Platform.text.
+    expect(result.data[0].platforms.some(p => p.includes("\\["))).toBe(false)
+  })
+
+  it("emits the present side bare when one of {vendor, model} is null", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([
+      { vendor: "Illumina", model: null },
+      { vendor: null, model: "HiSeq 2000" },
+    ])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms.sort()).toEqual(["HiSeq 2000", "Illumina"])
+  })
+
+  it("skips entries where both vendor and model are null", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([{ vendor: null, model: null }])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual([])
+  })
+
+  it("dedupes identical platforms across experiments", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([
+      { vendor: "Illumina", model: "HiSeq 2000" },
+      { vendor: "Illumina", model: "HiSeq 2000" },
+    ])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
+  })
+})

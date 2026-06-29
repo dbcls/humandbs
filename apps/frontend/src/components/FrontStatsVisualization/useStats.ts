@@ -10,7 +10,7 @@ export default function useStats() {
     let mounted = true;
     async function load() {
       try {
-        const response = await fetch("https://humandbs-staging.ddbj.nig.ac.jp/api/stats");
+        const response = await fetch("/api/stats");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
