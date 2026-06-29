@@ -88,7 +88,15 @@ export function SortDropdown({
       <span className="font-semibold text-secondary-light select-none text-xs uppercase tracking-wider whitespace-nowrap shrink-0">
         {t("sort")}
       </span>
-      <div className="relative" ref={containerRef}>
+      <div
+        className="relative"
+        ref={containerRef}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsOpen(false);
+          }
+        }}
+      >
         <div
           className={cn(
             buttonVariants({ variant: "captionAction", size: "captionAction" }),
