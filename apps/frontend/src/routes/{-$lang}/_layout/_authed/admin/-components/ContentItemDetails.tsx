@@ -6,6 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useRef, useState } from "react";
 
@@ -213,6 +214,7 @@ function useContentItemDetailsForm({
 export const ContentItemDetails = ({ id }: { id: string }) => {
   const contentItemQO = getContentQueryOptions(id);
   const { data } = useSuspenseQuery(contentItemQO);
+  const tCommonAdmin = useTranslations("admin.common");
 
   const savingStatuses = useMutationState({
     filters: {
@@ -426,7 +428,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                   value={DOCUMENT_VERSION_STATUS.PUBLISHED}
                 >
                   {!data.translations[loc]?.published?.content ? (
-                    <div>No published content</div>
+                    <div>{tCommonAdmin("no-published-content")}</div>
                   ) : (
                     <>
                       <div className="flex justify-end border-foreground-light border-b pb-2">

@@ -1,4 +1,5 @@
 import { Check, RotateCcw } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useEffect, useState } from "react";
 
@@ -37,6 +38,7 @@ export function CopyFromDataset({
   lastAppliedId,
   resetKey,
 }: CopyFromDatasetProps) {
+  const tResearches = useTranslations("admin.researches");
   const [inputValue, setInputValue] = useState("");
   const [state, setState] = useState<Status>({ status: "idle" });
 
@@ -67,7 +69,7 @@ export function CopyFromDataset({
   async function fetchAndApply() {
     const datasetId = inputValue.trim();
     if (!datasetId) {
-      setState({ status: "error", message: "Enter a dataset ID." });
+      setState({ status: "error", message: tResearches("enter-dataset-id") });
       return;
     }
     setState({ status: "loading" });
@@ -77,7 +79,7 @@ export function CopyFromDataset({
     } catch (e) {
       setState({
         status: "error",
-        message: e instanceof Error ? e.message : "Failed to fetch dataset.",
+        message: e instanceof Error ? e.message : tResearches("fetch-dataset-failed"),
       });
     }
   }

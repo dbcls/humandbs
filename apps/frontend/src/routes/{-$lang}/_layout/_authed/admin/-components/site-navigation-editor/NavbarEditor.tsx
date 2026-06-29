@@ -3,6 +3,7 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Check, FileText, GripVertical, Link2, Plus, Trash2, X } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import type { Ref } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -750,6 +751,7 @@ function NavbarPoolLinkCard({
   isDragSource: boolean;
   onDelete: () => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const { ref, isDragSource: isDraggingPoolItem } = useSortable({
     id: "navbar-link-" + item.id,
     index,
@@ -774,7 +776,7 @@ function NavbarPoolLinkCard({
         type="button"
         onClick={onDelete}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Delete link"
+        title={tNav("delete-link")}
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -809,6 +811,7 @@ function NavbarGroupColumn({
   onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
   onDeleteGroup: (groupId: string) => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const [showLinkedAddLink, setShowLinkedAddLink] = useState(false);
   const [showSubAddLink, setShowSubAddLink] = useState(false);
   const [linkedUrl, setLinkedUrl] = useState("");
@@ -947,7 +950,7 @@ function NavbarGroupColumn({
             type="button"
             onClick={() => onDeleteGroup(g.group.id)}
             className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-            title="Delete group"
+            title={tNav("delete-group")}
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -1022,7 +1025,7 @@ function NavbarGroupColumn({
           />
         ) : (
           <div className="px-1 py-2">
-            <p className="text-foreground-light text-xs">Drop a document or link here</p>
+            <p className="text-foreground-light text-xs">{tNav("drop-document-or-link")}</p>
             <button
               type="button"
               onClick={() => setShowLinkedAddLink(true)}
@@ -1081,7 +1084,7 @@ function NavbarGroupColumn({
             />
           ))}
           {g.subItems.length === 0 && (
-            <li className="px-2 py-3 text-foreground-light text-xs">Drop submenu items here</li>
+            <li className="px-2 py-3 text-foreground-light text-xs">{tNav("drop-submenu-items")}</li>
           )}
         </ul>
 
@@ -1130,6 +1133,7 @@ function NavbarLinkedItemRow({
   onSave: (value: { url: string; label: { en: string; ja: string } }) => void;
   onRemove: () => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const { ref, handleRef, isDragSource } = useSortable({
     id: item.id,
     index: 0,
@@ -1172,7 +1176,7 @@ function NavbarLinkedItemRow({
         type="button"
         onClick={onRemove}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Remove item from group"
+        title={tNav("remove-item")}
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -1203,6 +1207,7 @@ function NavbarSubItemRow({
   onRemove: () => void;
   onToggleEnabled: (enabled: boolean) => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const { ref, handleRef, isDragSource } = useSortable({
     id: item.id,
     index: itemIndex,
@@ -1247,7 +1252,7 @@ function NavbarSubItemRow({
         type="button"
         onClick={onRemove}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Remove item from group"
+        title={tNav("remove-item")}
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -1342,6 +1347,8 @@ function NavbarGroupOverlay({
   documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
+  const tNav = useTranslations("admin.navigation");
+
   const groupLabel = g.group.label[lang] ?? g.group.label.en ?? g.group.label.ja ?? "";
   return (
     <div
@@ -1365,7 +1372,7 @@ function NavbarGroupOverlay({
             </span>
           </li>
         ) : (
-          <li className="px-2 py-2 text-foreground-light text-xs">No linked item</li>
+          <li className="px-2 py-2 text-foreground-light text-xs">{tNav("no-linked-item")}</li>
         )}
       </ul>
       <div className="border-gray-100 border-t px-2 py-2">
@@ -1381,7 +1388,7 @@ function NavbarGroupOverlay({
             </li>
           ))}
           {g.subItems.length === 0 && (
-            <li className="px-2 py-2 text-foreground-light text-xs">No submenu items</li>
+            <li className="px-2 py-2 text-foreground-light text-xs">{tNav("no-submenu-items")}</li>
           )}
         </ul>
       </div>

@@ -1,5 +1,6 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { XIcon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { DateRangePicker } from "@/components/DatePicker";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -12,6 +13,7 @@ const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/alerts");
 export function AlertsFiltersBar() {
   const search = routeApi.useSearch();
   const { setFilters } = useFilters(routeApi.id);
+  const tCommonAdmin = useTranslations("admin.common");
 
   const hasActiveFilters = !!(search.q || search.activeFrom || search.activeTo);
 
@@ -28,7 +30,7 @@ export function AlertsFiltersBar() {
       <FilterSearchInput
         value={search.q}
         onChange={(q) => setFilters({ q })}
-        placeholder="Search by content…"
+        placeholder={tCommonAdmin("search-by-content")}
       />
       <DateRangeFilter
         from={search.activeFrom}

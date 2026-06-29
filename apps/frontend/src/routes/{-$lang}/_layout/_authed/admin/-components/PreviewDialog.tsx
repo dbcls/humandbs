@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import { useTranslations } from "use-intl";
+
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Locale } from "@/config/i18n";
@@ -27,6 +29,7 @@ export function PreviewDialog({
   onLangChange: (lang: Locale) => void;
   children: ReactNode;
 }) {
+  const tMd = useTranslations("admin.markdown");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col items-stretch gap-0 p-0">
@@ -37,7 +40,7 @@ export function PreviewDialog({
         <div className="min-h-0 flex-1 overflow-auto">
           <Suspense
             fallback={
-              <div className="px-5 py-8 text-center text-gray-400 text-sm">Loading preview…</div>
+              <div className="px-5 py-8 text-center text-gray-400 text-sm">{tMd("loading-preview")}</div>
             }
           >
             {children}

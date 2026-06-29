@@ -36,8 +36,7 @@
     "created-at": "Created at",
     "updated-at": "Updated-at",
     "published-at": "Published at",
-    "author": "Author",
-    "page-not-found": "The page you are looking for does not exist."
+    "author": "Author"
   },
   "Cart": {
     "naviagte-to-application-form": "Navigate to application form"
@@ -524,5 +523,161 @@
     "RESERVED_PATH_PREFIXES": "This id is conflicting with reserved one",
     "EXISTING_CONTENT": "This id is conflicting with one of existing Content Item IDs",
     "EXISTING_DOCUMENT": "This id is conflicting with one of existing Document IDs"
+  },
+  "News": {
+    "no-items": "No news items found",
+    "no-date": "No date",
+    "search-placeholder": "Search by title or content…"
+  },
+  "admin": {
+    "common": {
+      "failed-to-save": "Failed to save.",
+      "no-published-content": "No published content",
+      "no-date": "No date",
+      "no-tags-found": "No tags found",
+      "search-by-title-or-content": "Search by title or content…",
+      "search-by-content": "Search by content…",
+      "conflict-reload": "Someone else saved a newer version. Reload to continue.",
+      "loading": "Loading…",
+      "select-item": "Select an item to view/edit",
+      "no-data-available": "No data available"
+    },
+    "alerts": {
+      "delete-title": "Delete alert?",
+      "delete-description": "This will permanently remove the alert and its translations.",
+      "no-alerts": "No alerts found",
+      "failed-to-save": "Failed to save alert."
+    },
+    "navigation": {
+      "load-failed": "The CMS config request did not complete successfully.",
+      "load-failed-short": "Failed to load site navigation config.",
+      "invalid": "Navigation config is invalid.",
+      "save": "Save",
+      "saved": "Navigation saved.",
+      "reset": "Navigation reset to default.",
+      "no-documents": "No documents",
+      "no-items": "No items",
+      "no-linked-item": "No linked item",
+      "no-submenu-items": "No submenu items",
+      "delete-link": "Delete link",
+      "delete-group": "Delete group",
+      "remove-item": "Remove item from group",
+      "shared-structure": "Shared structure for both locales",
+      "shared-structure-hint": "Labels come from document titles and item labels. This editor changes ordering, visibility, priority, and footer grouping.",
+      "resetting": "Resetting…",
+      "reset-to-default": "Reset to default",
+      "saving": "Saving…",
+      "drag-navbar-hint": "Drag groups to reorder. Drag items between groups to reassign.",
+      "drag-footer-hint": "Drag group columns to reorder. Drag items between columns to reassign. Click a group header to rename it.",
+      "drop-document-or-link": "Drop a document or link here",
+      "drop-submenu-items": "Drop submenu items here"
+    },
+    "flowcharts": {
+      "failed-to-load": "Failed to load flowchart.",
+      "failed-to-create": "Failed to create flowchart.",
+      "empty": "No flowcharts yet.",
+      "no-entry-point": "No entry point flowchart found. Set one using the entry point toggle.",
+      "steps-errors": "Some steps have errors. Please fix them before saving.",
+      "conflict-reload": "This flowchart was modified by someone else. Please reload.",
+      "change-entry-point-title": "Change entry point?",
+      "change-entry-point-description": "The current entry point is \"{name}\". Do you want to replace it?",
+      "entry-point-label": "Entry point",
+      "entry-point-description": "The entry point flowchart is shown to users at the start of the navigation flow.",
+      "delete-title": "Delete flowchart?",
+      "delete-description": "This will permanently delete \"{name}\". This action cannot be undone.",
+      "delete-step": "Delete step",
+      "delete-step-disabled": "Cannot delete: other steps link to this one"
+    },
+    "data-transfer": {
+      "type-content": "Static CMS page records and translations.",
+      "type-documents": "Document records plus versioned localized content.",
+      "type-news": "News items, translations, and related structure.",
+      "type-alerts": "Alert state, schedule windows, and translations.",
+      "type-assets": "Managed public files under the CMS asset directory.",
+      "type-header-footer": "Active site navigation configuration.",
+      "type-flowcharts": "Navigation flowchart definitions and active state.",
+      "validate-failed": "Failed to validate archive upload.",
+      "generate-failed": "Failed to generate archive.",
+      "download-started": "Archive download started.",
+      "download-failed": "Failed to download archive.",
+      "restore-title": "Restore CMS data from archive?",
+      "restore-description": "Restore will permanently replace the selected CMS categories in this environment: {categories}. This cannot be undone.",
+      "restore-action": "Restore",
+      "restore-completed": "Restore completed for {archiveName}. Replaced categories: {categories}.",
+      "restore-data-button": "Restore data from archive",
+      "download-section-title": "Download CMS data",
+      "download-section-hint": "Choose which CMS categories to include in a portable archive. Export downloads a compressed `.tar.gz` archive built from the current CMS state.",
+      "restore-section-title": "Restore data from archive",
+      "restore-section-hint": "Upload a `.tar.gz` archive, validate its manifest and payloads, review the included categories, and confirm the destructive restore intent.",
+      "supported-categories": "Supported archive categories: {categories}",
+      "download-dialog-title": "Download CMS data",
+      "download-dialog-hint": "Select which CMS categories should be included in the archive. The export is delivered as a compressed `.tar.gz` archive built from the current CMS state."
+    },
+    "documents": {
+      "delete-title": "Delete document?",
+      "delete-description": "This will permanently delete \"{name}\" and all its versions. This action cannot be undone.",
+      "change-id-title": "Change document ID",
+      "change-id-description": "Enter a new ID for this document. This will update all references.",
+      "change-id-hint": "New document ID",
+      "search-placeholder": "Search documents…",
+      "no-documents": "No documents found",
+      "no-versions": "No versions yet for this document.",
+      "id-hint-1": "Enter content ID in `snake-case`.",
+      "id-hint-2": "It can have slashes (`hello/world`).",
+      "id-hint-3": "Content ID would become the path to this document"
+    },
+    "content": {
+      "delete-title": "Delete content item?",
+      "delete-description": "This will permanently delete \"{name}\" and all its versions. This action cannot be undone.",
+      "search-placeholder": "Search content items…",
+      "no-items": "No content items found"
+    },
+    "news": {
+      "empty": "No news items found",
+      "add-tag": "Add tag…"
+    },
+    "researches": {
+      "delete-title": "Delete Research",
+      "delete-description": "Are you really want to delete research `{name}` ? All versions and linked datasets will be deleted.",
+      "empty": "No researches found",
+      "delete-dataset-title": "Delete dataset?",
+      "delete-dataset-description": "This will permanently delete {name}. This action cannot be undone.",
+      "no-datasets": "No datasets yet.",
+      "failed-to-save": "Failed to save research.",
+      "failed-to-submit": "Failed to submit research.",
+      "failed-to-approve": "Failed to approve research.",
+      "failed-to-reject": "Failed to reject research.",
+      "failed-to-unpublish": "Failed to unpublish research.",
+      "submit-title": "Submit for review?",
+      "submit-description": "This will send the research to admins for review.",
+      "unpublish-title": "Unpublish research?",
+      "unpublish-description": "This will return the research to draft status and remove it from public view.",
+      "approve-title": "Approve research?",
+      "approve-description": "This will publish the research and make it publicly visible.",
+      "reject-title": "Reject research?",
+      "reject-description": "This will return the research to draft status.",
+      "invalid-accession": "Must be JGAD or DRA followed by digits.",
+      "accession-duplicate": "Already in list.",
+      "fetch-template-failed": "Failed to fetch template.",
+      "enter-dataset-id": "Enter a dataset ID.",
+      "fetch-dataset-failed": "Failed to fetch dataset.",
+      "overwrite-title": "Overwrite form data?",
+      "overwrite-description": "This will overwrite all current form data with the contents of the uploaded file. Continue?",
+      "overwrite-action": "Overwrite",
+      "invalid-json": "Invalid JSON file. Please upload a valid .json file.",
+      "create-version-failed": "Failed to create version.",
+      "create-research-failed": "Failed to create research."
+    },
+    "markdown": {
+      "preview-error": "Some error occurred. Markdown couldn't be previewed",
+      "loading-preview": "Loading preview…",
+      "hide-preview": "Hide preview",
+      "preview": "Preview",
+      "reset-field": "Reset to initial value"
+    },
+    "merge": {
+      "cmd-enter-hint": "Cmd+Enter to save · Esc to cancel",
+      "click-to-edit-custom": "Click to edit custom value"
+    }
   }
 }

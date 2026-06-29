@@ -23,6 +23,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
 function RouteComponent() {
   const { lang } = Route.useRouteContext();
   const t = useTranslations("Navbar");
+  const tNews = useTranslations("News");
   const search = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
 
@@ -82,7 +83,7 @@ function RouteComponent() {
           value={search.q}
           className="max-w-xl flex-1"
           onChange={(q) => setFilters({ q })}
-          placeholder="Search by title or content…"
+          placeholder={tNews("search-placeholder")}
         />
         <DateTimeRangePicker
           value={
@@ -124,7 +125,7 @@ function RouteComponent() {
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-xs opacity-70">
-                    {item.publishedAt ? item.publishedAt.toLocaleString() : "No date"}
+                    {item.publishedAt ? item.publishedAt.toLocaleString() : tNews("no-date")}
                   </span>
                 </div>
 
@@ -139,7 +140,7 @@ function RouteComponent() {
             );
           })}
           {newsItems.length === 0 && (
-            <li className="py-4 text-center text-muted-foreground text-sm">No news items found</li>
+            <li className="py-4 text-center text-muted-foreground text-sm">{tNews("no-items")}</li>
           )}
           <div ref={sentinelRef} className="h-4 shrink-0">
             {isFetchingNextPage && (

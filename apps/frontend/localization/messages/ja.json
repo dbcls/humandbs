@@ -36,8 +36,7 @@
     "created-at": "作成日時",
     "updated-at": "更新日時",
     "published-at": "公開日時",
-    "author": "作成者",
-    "page-not-found": "ページが見つかりません"
+    "author": "作成者"
   },
   "Cart": {
     "naviagte-to-application-form": "申請フォームへ"
@@ -526,5 +525,161 @@
     "RESERVED_PATH_PREFIXES": "このIDは予約済みのものと競合しています",
     "EXISTING_CONTENT": "このIDは既存のコンテンツアイテムID(「野良ページ」のID)のいずれかと競合しています",
     "EXISTING_DOCUMENT": "このIDは既存のドキュメントIDのいずれかと競合しています"
+  },
+  "News": {
+    "no-items": "ニュースが見つかりません",
+    "no-date": "日付なし",
+    "search-placeholder": "Search by title or content…"
+  },
+  "admin": {
+    "common": {
+      "failed-to-save": "保存に失敗しました。",
+      "no-published-content": "公開済みコンテンツはありません",
+      "no-date": "日付なし",
+      "no-tags-found": "タグが見つかりません",
+      "search-by-title-or-content": "タイトルまたは内容で検索…",
+      "search-by-content": "内容で検索…",
+      "conflict-reload": "他のユーザーが新しいバージョンを保存しました。再読み込みして続けてください。",
+      "loading": "読み込み中…",
+      "select-item": "アイテムを選択して表示・編集",
+      "no-data-available": "データがありません"
+    },
+    "alerts": {
+      "delete-title": "アラートを削除しますか？",
+      "delete-description": "このアラートとその翻訳が完全に削除されます。",
+      "no-alerts": "アラートが見つかりません",
+      "failed-to-save": "アラートの保存に失敗しました。"
+    },
+    "navigation": {
+      "load-failed": "CMS設定の取得に失敗しました。",
+      "load-failed-short": "サイトナビゲーション設定の読み込みに失敗しました。",
+      "invalid": "ナビゲーション設定が無効です。",
+      "save": "保存",
+      "saved": "ナビゲーションを保存しました。",
+      "reset": "ナビゲーションをデフォルトにリセットしました。",
+      "no-documents": "ドキュメントなし",
+      "no-items": "アイテムなし",
+      "no-linked-item": "リンクされたアイテムなし",
+      "no-submenu-items": "サブメニュー項目なし",
+      "delete-link": "リンクを削除",
+      "delete-group": "グループを削除",
+      "remove-item": "グループからアイテムを削除",
+      "shared-structure": "両ロケールで共通の構造",
+      "shared-structure-hint": "ラベルはドキュメントタイトルとアイテムラベルから取得されます。このエディターでは順序、表示、優先度、フッターのグループを変更できます。",
+      "resetting": "リセット中…",
+      "reset-to-default": "デフォルトにリセット",
+      "saving": "保存中…",
+      "drag-navbar-hint": "グループをドラッグして並べ替え。アイテムをグループ間でドラッグして移動。",
+      "drag-footer-hint": "グループ列をドラッグして並べ替え。アイテムを列間でドラッグして移動。グループヘッダーをクリックして名前変更。",
+      "drop-document-or-link": "ドキュメントまたはリンクをここにドロップ",
+      "drop-submenu-items": "サブメニュー項目をここにドロップ"
+    },
+    "flowcharts": {
+      "failed-to-load": "フローチャートの読み込みに失敗しました。",
+      "failed-to-create": "フローチャートの作成に失敗しました。",
+      "empty": "フローチャートがありません。",
+      "no-entry-point": "エントリーポイントのフローチャートが見つかりません。エントリーポイントトグルで設定してください。",
+      "steps-errors": "エラーのあるステップがあります。保存前に修正してください。",
+      "conflict-reload": "このフローチャートは他のユーザーによって変更されました。再読み込みしてください。",
+      "change-entry-point-title": "エントリーポイントを変更しますか？",
+      "change-entry-point-description": "現在のエントリーポイントは「{name}」です。置き換えますか？",
+      "entry-point-label": "エントリーポイント",
+      "entry-point-description": "エントリーポイントのフローチャートはナビゲーションフローの開始時にユーザーに表示されます。",
+      "delete-title": "フローチャートを削除しますか？",
+      "delete-description": "「{name}」を完全に削除します。この操作は元に戻せません。",
+      "delete-step": "ステップを削除",
+      "delete-step-disabled": "削除できません：他のステップがこのステップにリンクしています"
+    },
+    "data-transfer": {
+      "type-content": "CMSの静的ページとその翻訳。",
+      "type-documents": "ドキュメントとバージョン管理されたローカライズコンテンツ。",
+      "type-news": "ニュース記事、翻訳、および関連データ。",
+      "type-alerts": "アラートの状態、スケジュール、および翻訳。",
+      "type-assets": "CMSアセットディレクトリ内の公開ファイル。",
+      "type-header-footer": "サイトナビゲーション設定。",
+      "type-flowcharts": "ナビゲーションフローチャートの定義とアクティブ状態。",
+      "validate-failed": "アーカイブのアップロード検証に失敗しました。",
+      "generate-failed": "アーカイブの生成に失敗しました。",
+      "download-started": "アーカイブのダウンロードを開始しました。",
+      "download-failed": "アーカイブのダウンロードに失敗しました。",
+      "restore-title": "アーカイブからCMSデータを復元しますか？",
+      "restore-description": "選択したCMSカテゴリをこの環境で完全に置き換えます：{categories}。この操作は元に戻せません。",
+      "restore-action": "復元",
+      "restore-completed": "{archiveName} の復元が完了しました。置き換えたカテゴリ：{categories}。",
+      "restore-data-button": "アーカイブからデータを復元",
+      "download-section-title": "CMSデータをダウンロード",
+      "download-section-hint": "ポータブルアーカイブに含めるCMSカテゴリを選択してください。現在のCMS状態から圧縮された `.tar.gz` アーカイブとしてエクスポートされます。",
+      "restore-section-title": "アーカイブからデータを復元",
+      "restore-section-hint": "`.tar.gz` アーカイブをアップロードし、マニフェストとペイロードを検証して、含まれるカテゴリを確認し、破壊的な復元操作を確定してください。",
+      "supported-categories": "サポートされているアーカイブカテゴリ：{categories}",
+      "download-dialog-title": "CMSデータをダウンロード",
+      "download-dialog-hint": "アーカイブに含めるCMSカテゴリを選択してください。現在のCMS状態から圧縮された `.tar.gz` アーカイブとして提供されます。"
+    },
+    "documents": {
+      "delete-title": "ドキュメントを削除しますか？",
+      "delete-description": "「{name}」とそのすべてのバージョンを完全に削除します。この操作は元に戻せません。",
+      "change-id-title": "ドキュメントIDを変更",
+      "change-id-description": "新しいIDを入力してください。すべての参照が更新されます。",
+      "change-id-hint": "新しいドキュメントID",
+      "search-placeholder": "ドキュメントを検索…",
+      "no-documents": "ドキュメントが見つかりません",
+      "no-versions": "このドキュメントにはまだバージョンがありません。",
+      "id-hint-1": "コンテンツIDを `snake-case` で入力してください。",
+      "id-hint-2": "スラッシュも使用できます（例：`hello/world`）。",
+      "id-hint-3": "コンテンツIDがこのドキュメントへのパスになります"
+    },
+    "content": {
+      "delete-title": "コンテンツを削除しますか？",
+      "delete-description": "「{name}」とそのすべてのバージョンを完全に削除します。この操作は元に戻せません。",
+      "search-placeholder": "コンテンツを検索…",
+      "no-items": "コンテンツが見つかりません"
+    },
+    "news": {
+      "empty": "ニュースが見つかりません",
+      "add-tag": "タグを追加…"
+    },
+    "researches": {
+      "delete-title": "研究を削除",
+      "delete-description": "研究「{name}」を本当に削除しますか？すべてのバージョンとリンクされたデータセットが削除されます。",
+      "empty": "研究が見つかりません",
+      "delete-dataset-title": "データセットを削除しますか？",
+      "delete-dataset-description": "{name}を完全に削除します。この操作は元に戻せません。",
+      "no-datasets": "データセットがまだありません。",
+      "failed-to-save": "研究の保存に失敗しました。",
+      "failed-to-submit": "研究の提出に失敗しました。",
+      "failed-to-approve": "研究の承認に失敗しました。",
+      "failed-to-reject": "研究の却下に失敗しました。",
+      "failed-to-unpublish": "研究の非公開に失敗しました。",
+      "submit-title": "レビューに提出しますか？",
+      "submit-description": "研究が管理者にレビュー依頼として送信されます。",
+      "unpublish-title": "研究を非公開にしますか？",
+      "unpublish-description": "研究がドラフト状態に戻り、公開ページから削除されます。",
+      "approve-title": "研究を承認しますか？",
+      "approve-description": "研究が公開され、一般に公開されます。",
+      "reject-title": "研究を却下しますか？",
+      "reject-description": "研究がドラフト状態に戻ります。",
+      "invalid-accession": "JGADまたはDRAの後に数字が続く形式で入力してください。",
+      "accession-duplicate": "すでにリストに追加されています。",
+      "fetch-template-failed": "テンプレートの取得に失敗しました。",
+      "enter-dataset-id": "データセットIDを入力してください。",
+      "fetch-dataset-failed": "データセットの取得に失敗しました。",
+      "overwrite-title": "フォームデータを上書きしますか？",
+      "overwrite-description": "現在のフォームデータがアップロードしたファイルの内容で上書きされます。続行しますか？",
+      "overwrite-action": "上書き",
+      "invalid-json": "無効なJSONファイルです。有効な.jsonファイルをアップロードしてください。",
+      "create-version-failed": "バージョンの作成に失敗しました。",
+      "create-research-failed": "研究の作成に失敗しました。"
+    },
+    "markdown": {
+      "preview-error": "エラーが発生しました。Markdownをプレビューできませんでした",
+      "loading-preview": "プレビューを読み込み中…",
+      "hide-preview": "プレビューを非表示",
+      "preview": "プレビュー",
+      "reset-field": "初期値にリセット"
+    },
+    "merge": {
+      "cmd-enter-hint": "Cmd+Enter で保存 · Esc でキャンセル",
+      "click-to-edit-custom": "クリックしてカスタム値を編集"
+    }
   }
 }

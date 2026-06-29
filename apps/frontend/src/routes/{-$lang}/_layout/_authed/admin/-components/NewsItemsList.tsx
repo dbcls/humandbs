@@ -103,6 +103,8 @@ function ListItems({
 }) {
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
+  const tNews = useTranslations("admin.news");
+  const tCommonAdmin = useTranslations("admin.common");
 
   const queryClient = useQueryClient();
 
@@ -178,7 +180,7 @@ function ListItems({
   }
 
   if (newsItems.length === 0) {
-    return <NoItemsMessage>No news items found</NoItemsMessage>;
+    return <NoItemsMessage>{tNews("empty")}</NoItemsMessage>;
   }
 
   return (
@@ -208,7 +210,7 @@ function ListItems({
                       ? "New news item"
                       : item.publishedAt
                         ? toLocaleDateTimeString(item.publishedAt)
-                        : "No date"
+                        : tCommonAdmin("no-date")
                   }
                   translations={item.translations}
                   meta={

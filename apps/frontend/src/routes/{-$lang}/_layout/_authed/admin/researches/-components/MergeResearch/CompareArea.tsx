@@ -141,7 +141,7 @@ function InlineScalarEditor({
         <Button size="default" type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <span className="text-[10px] text-gray-400">Cmd+Enter to save · Esc to cancel</span>
+        <span className="text-[10px] text-gray-400">{tMerge("cmd-enter-hint")}</span>
       </div>
     </div>
   );
@@ -271,6 +271,7 @@ export function CompareArea({
   onCancelEdit: () => void;
 }) {
   const t = useTranslations("MergeWizard");
+  const tMerge = useTranslations("admin.merge");
   const isScalar = field.dataType === "scalar";
   const isNa = field.status === "na";
   const isSame = field.status === "same";
@@ -453,7 +454,7 @@ export function CompareArea({
               <ArrayCards items={(resultValue as ArrayItem[]) ?? []} dataType={field.dataType} />
             )}
             <div className="text-[10px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
-              Click to edit custom value
+              {tMerge("click-to-edit-custom")}
             </div>
           </button>
         ) : (

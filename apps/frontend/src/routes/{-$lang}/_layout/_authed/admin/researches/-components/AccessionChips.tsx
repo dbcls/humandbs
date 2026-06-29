@@ -1,4 +1,5 @@
 import { Check, RotateCcw, X } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -35,6 +36,7 @@ export function AccessionChips({
   pendingAccession,
   resetKey,
 }: AccessionChipsProps) {
+  const tResearches = useTranslations("admin.researches");
   const [chipStates, setChipStates] = useState<Record<string, ChipState>>({});
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function AccessionChips({
     } catch (e) {
       setChipState(accession, {
         status: "error",
-        message: e instanceof Error ? e.message : "Failed to fetch template.",
+        message: e instanceof Error ? e.message : tResearches("fetch-template-failed"),
       });
     }
   }
@@ -94,11 +96,11 @@ export function AccessionChips({
   function addAccession(raw: string) {
     const trimmed = raw.trim().toUpperCase();
     if (!ACCESSION_REGEX.test(trimmed)) {
-      setInputError("Must be JGAD or DRA followed by digits.");
+      setInputError(tResearches("invalid-accession"));
       return;
     }
     if (accessions.includes(trimmed)) {
-      setInputError("Already in list.");
+      setInputError(tResearches("accession-duplicate"));
       return;
     }
     setInputError(null);

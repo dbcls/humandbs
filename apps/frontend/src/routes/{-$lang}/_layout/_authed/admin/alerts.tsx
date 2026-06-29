@@ -8,6 +8,7 @@ import {
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
 import { Bell, Plus, Trash2Icon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
@@ -136,6 +137,7 @@ function ListItems({
   onSelectAlert: (id?: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const tAlerts = useTranslations("admin.alerts");
 
   const { user } = useRouteContext({ from: "__root__" });
 
@@ -195,8 +197,8 @@ function ListItems({
 
   function handleDeleteAlert(id: string) {
     openConfirmation({
-      title: "Delete alert?",
-      description: "This will permanently remove the alert and its translations.",
+      title: tAlerts("delete-title"),
+      description: tAlerts("delete-description"),
       onAction: async () => {
         const prevAlerts = queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(
           alertsQO.queryKey,
@@ -276,7 +278,7 @@ function ListItems({
     }
   }
 
-  if (listItems.length === 0) return <NoItemsMessage>No alerts found</NoItemsMessage>;
+  if (listItems.length === 0) return <NoItemsMessage>{tAlerts("no-alerts")}</NoItemsMessage>;
 
   return (
     <ul
@@ -389,6 +391,7 @@ function AlertDetails({
   onSelectAlert: (id?: string) => void;
 }) {
   const { user } = useRouteContext({ from: "__root__" });
+  const tAlerts = useTranslations("admin.alerts");
   const canCreate = hasPermission(user, "alerts", "create");
   const canUpdate = hasPermission(user, "alerts", "update");
 
@@ -495,7 +498,7 @@ function AlertDetails({
     },
     onError: (_error, _vars, context) => {
       queryClient.setQueryData(alertsQO.queryKey, context?.prevAlerts);
-      setSaveError(_error instanceof Error ? _error.message : "Failed to save alert.");
+      setSaveError(_error instanceof Error ? _error.message : tAlerts("failed-to-save"));
       if (isNew) {
         onSelectAlert(NEW_ALERT_ID);
       }
