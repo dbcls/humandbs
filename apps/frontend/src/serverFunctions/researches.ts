@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import { z } from "zod";
 
 import type {
@@ -23,7 +24,7 @@ import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
-import { throwSerializableApiError } from "@/utils/errors";
+import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
@@ -423,6 +424,10 @@ export const $getResearch = createServerFn()
       // `renderedHtml` projection. Legacy `rawHtml` is left untouched.
       return addResearchRenderedHtml(res);
     } catch (error) {
+      // A missing research should render the NotFound component rather than
+      // surfacing a raw API error. `notFound()` is a framework signal the
+      // router (or the route loader) can pick up to render `notFoundComponent`.
+      if (isApiNotFoundError(error)) throw notFound();
       throwSerializableApiError(error);
     }
   });
