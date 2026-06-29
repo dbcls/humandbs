@@ -32,7 +32,8 @@ export function PreviousVersionsList({
   const name = documentName ?? versions[0]?.title ?? revisionsBasePath;
 
   return (
-    <div>
+    <div className="mt-20">
+      <hr className="border-neutral-300" />
       <h2 className="font-bold text-md text-neutral-800">
         {tCommon("previous-versions", { documentName: name })}
       </h2>
