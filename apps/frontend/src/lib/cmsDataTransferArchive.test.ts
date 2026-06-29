@@ -20,6 +20,7 @@ const testDb = createTestDb();
 const { db } = testDb;
 
 const AUTHOR_ID = "cms-transfer-test-user";
+const DOC_ID = "11111111-1111-1111-8111-111111111111";
 
 let tempAssetDir: string | null = null;
 let restoreAssetDir: string | null = null;
@@ -54,7 +55,7 @@ async function extractArchiveEntries(
   return done;
 }
 
-async function seedContentFixture() {
+async function seedDocumentsFixture() {
   await db.insert(schema.user).values({
     id: AUTHOR_ID,
     name: "CMS Transfer Tester",
@@ -62,27 +63,29 @@ async function seedContentFixture() {
     role: "admin",
   });
 
-  await db.insert(schema.contentItem).values({
-    id: "faq",
-    authorId: AUTHOR_ID,
-    publishedAt: "2026-05-14",
-    hideTOC: false,
+  await db.insert(schema.document).values({
+    id: DOC_ID,
+    contentId: "faq",
   });
 
-  await db.insert(schema.contentTranslation).values([
+  await db.insert(schema.documentVersion).values([
     {
-      contentId: "faq",
-      title: "FAQ",
-      lang: "en",
-      content: "<p>English FAQ</p>",
+      documentId: DOC_ID,
+      versionNumber: 1,
       status: "published",
+      locale: "en",
+      title: "FAQ",
+      content: "<p>English FAQ</p>",
+      authorId: AUTHOR_ID,
     },
     {
-      contentId: "faq",
-      title: "FAQ JA",
-      lang: "ja",
-      content: "<p>Japanese FAQ</p>",
+      documentId: DOC_ID,
+      versionNumber: 1,
       status: "draft",
+      locale: "ja",
+      title: "FAQ JA",
+      content: "<p>Japanese FAQ</p>",
+      authorId: AUTHOR_ID,
     },
   ]);
 }
@@ -118,7 +121,7 @@ afterEach(async () => {
 
 describe("createCmsDataTransferArchiveBuilder", () => {
   test("builds an archive from injected db and asset directory dependencies", async () => {
-    await seedContentFixture();
+    await seedDocumentsFixture();
     await seedAssetFixture();
 
     const buildArchive = createCmsDataTransferArchiveBuilder({
@@ -127,7 +130,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     const { bytes } = await buildArchive({
-      categories: ["content", "assets"],
+      categories: ["documents", "assets"],
       createdBy: {
         id: AUTHOR_ID,
         email: "cms-transfer@test.local",
@@ -138,7 +141,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     const files = await extractArchiveEntries(bytes);
 
     expect(Object.hasOwn(files, "manifest.json")).toBe(true);
-    expect(Object.hasOwn(files, "categories/content.json")).toBe(true);
+    expect(Object.hasOwn(files, "categories/documents.json")).toBe(true);
     expect(Object.hasOwn(files, "assets/logo.txt")).toBe(true);
     expect(Object.hasOwn(files, "assets/nested/diagram.txt")).toBe(true);
 
@@ -146,30 +149,27 @@ describe("createCmsDataTransferArchiveBuilder", () => {
 
     expect(manifest.schemaVersion).toBe(1);
     expect(manifest.archiveFormat).toBe("tar.gz");
-    expect(manifest.categories).toEqual(["content", "assets"]);
-    expect(manifest.counts.content).toBe(3);
+    expect(manifest.categories).toEqual(["documents", "assets"]);
+    expect(manifest.counts.documents).toBe(3);
     expect(manifest.counts.assets).toBe(2);
     expect(manifest.createdBy?.id).toBe(AUTHOR_ID);
 
-    const contentPayload = JSON.parse(files["categories/content.json"] as string) as {
-      items: Array<{ id: string }>;
-      translations: Array<{ contentId: string; lang: string; status: string }>;
+    const documentsPayload = JSON.parse(files["categories/documents.json"] as string) as {
+      documents: Array<{ id: string; contentId: string }>;
+      versions: Array<{ documentId: string; locale: string; status: string }>;
     };
 
-    expect(contentPayload.items).toHaveLength(1);
-    expect(contentPayload.items[0]?.id).toBe("faq");
-    expect(contentPayload.translations).toHaveLength(2);
-    expect(contentPayload.translations.map((item) => item.status).sort()).toEqual([
-      "draft",
-      "published",
-    ]);
+    expect(documentsPayload.documents).toHaveLength(1);
+    expect(documentsPayload.documents[0]?.contentId).toBe("faq");
+    expect(documentsPayload.versions).toHaveLength(2);
+    expect(documentsPayload.versions.map((v) => v.status).sort()).toEqual(["draft", "published"]);
 
     expect(files["assets/logo.txt"]).toBe("asset-root");
     expect(files["assets/nested/diagram.txt"]).toBe("asset-nested");
   });
 
   test("inspects a valid archive and reports available restore categories", async () => {
-    await seedContentFixture();
+    await seedDocumentsFixture();
     await seedAssetFixture();
 
     const buildArchive = createCmsDataTransferArchiveBuilder({
@@ -178,7 +178,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     const { bytes } = await buildArchive({
-      categories: ["content", "assets"],
+      categories: ["documents", "assets"],
       createdBy: {
         id: AUTHOR_ID,
         email: "cms-transfer@test.local",
@@ -193,10 +193,50 @@ describe("createCmsDataTransferArchiveBuilder", () => {
       bytes,
     });
 
-    expect(result.archive.categories).toEqual(["content", "assets"]);
-    expect(result.archive.availableCategories).toEqual(["content", "assets"]);
-    expect(result.archive.counts.content).toBe(3);
+    expect(result.archive.categories).toEqual(["documents", "assets"]);
+    expect(result.archive.availableCategories).toEqual(["documents", "assets"]);
+    expect(result.archive.counts.documents).toBe(3);
     expect(result.archive.assetFileCount).toBe(2);
+  });
+
+  test("silently ignores legacy 'content' category in old archives", async () => {
+    const legacyManifest = {
+      schemaVersion: 1,
+      archiveFormat: "tar.gz",
+      createdAt: new Date().toISOString(),
+      createdBy: null,
+      categories: ["content"],
+      counts: { content: 0 },
+    };
+
+    const pack = tar.pack();
+    const chunks: Buffer[] = [];
+    const done = new Promise<Uint8Array<ArrayBufferLike>>((resolve, reject) => {
+      pack.on("data", (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      pack.on("error", reject);
+      pack.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
+      });
+    });
+
+    pack.entry({ name: "manifest.json" }, JSON.stringify(legacyManifest));
+    pack.entry({ name: "categories/content.json" }, JSON.stringify({ items: [], translations: [] }));
+    pack.finalize();
+
+    const bytes = await done;
+
+    const result = await inspectCmsDataTransferArchive({
+      fileName: "cms-data-export.tar",
+      fileSize: bytes.byteLength,
+      lastModified: Date.now(),
+      bytes,
+    });
+
+    expect(result.archive.categories).toEqual([]);
+    expect(result.archive.availableCategories).toEqual([]);
   });
 
   test("rejects archives with a missing manifest", async () => {
@@ -217,7 +257,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
             });
           });
 
-          pack.entry({ name: "categories/content.json" }, "{}");
+          pack.entry({ name: "categories/documents.json" }, "{}");
           pack.finalize();
 
           return done;
@@ -226,7 +266,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     const { bytes } = await buildArchive({
-      categories: ["content"],
+      categories: ["documents"],
       createdBy: null,
     });
 
@@ -241,7 +281,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
   });
 
   test("rejects archives when the manifest declares a missing payload file", async () => {
-    await seedContentFixture();
+    await seedDocumentsFixture();
 
     const buildArchive = createCmsDataTransferArchiveBuilder({
       database: db,
@@ -260,7 +300,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
         });
 
         for (const [name, value] of Object.entries(files)) {
-          if (name === "categories/content.json") continue;
+          if (name === "categories/documents.json") continue;
 
           let entryValue = value;
           if (typeof entryValue !== "string") {
@@ -277,7 +317,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     const { bytes } = await buildArchive({
-      categories: ["content"],
+      categories: ["documents"],
       createdBy: {
         id: AUTHOR_ID,
         email: "cms-transfer@test.local",
@@ -292,11 +332,11 @@ describe("createCmsDataTransferArchiveBuilder", () => {
         lastModified: Date.now(),
         bytes,
       }),
-    ).rejects.toThrow('Archive is missing required file "categories/content.json".');
+    ).rejects.toThrow('Archive is missing required file "categories/documents.json".');
   });
 
   test("restores selected categories and replaces the asset directory", async () => {
-    await seedContentFixture();
+    await seedDocumentsFixture();
     await seedAssetFixture();
 
     const buildArchive = createCmsDataTransferArchiveBuilder({
@@ -305,7 +345,7 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     const { bytes } = await buildArchive({
-      categories: ["content", "assets"],
+      categories: ["documents", "assets"],
       createdBy: {
         id: AUTHOR_ID,
         email: "cms-transfer@test.local",
@@ -320,18 +360,20 @@ describe("createCmsDataTransferArchiveBuilder", () => {
       email: "cms-transfer@test.local",
       role: "admin",
     });
-    await db.insert(schema.contentItem).values({
-      id: "stale",
-      authorId: AUTHOR_ID,
-      publishedAt: null,
-      hideTOC: true,
-    });
-    await db.insert(schema.contentTranslation).values({
+
+    const STALE_DOC_ID = "22222222-2222-2222-8222-222222222222";
+    await db.insert(schema.document).values({
+      id: STALE_DOC_ID,
       contentId: "stale",
-      title: "Stale",
-      lang: "en",
-      content: "<p>Stale</p>",
+    });
+    await db.insert(schema.documentVersion).values({
+      documentId: STALE_DOC_ID,
+      versionNumber: 1,
       status: "draft",
+      locale: "en",
+      title: "Stale",
+      content: "<p>Stale</p>",
+      authorId: AUTHOR_ID,
     });
 
     restoreAssetDir = await mkdtemp(path.join(tmpdir(), "cms-restore-assets-"));
@@ -345,25 +387,22 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     const result = await restoreArchive({
       fileName: "cms-data-export.tar.gz",
       bytes,
-      categories: ["content", "assets"],
+      categories: ["documents", "assets"],
       restoredByUserId: AUTHOR_ID,
     });
 
-    expect(result.restoredCategories).toEqual(["content", "assets"]);
-    expect(result.counts.content).toBe(3);
+    expect(result.restoredCategories).toEqual(["documents", "assets"]);
+    expect(result.counts.documents).toBe(3);
     expect(result.counts.assets).toBe(2);
 
-    const items = await db.select().from(schema.contentItem);
-    const translations = await db.select().from(schema.contentTranslation);
+    const documents = await db.select().from(schema.document);
+    const versions = await db.select().from(schema.documentVersion);
 
-    expect(items).toHaveLength(1);
-    expect(items[0]?.id).toBe("faq");
-    expect(translations).toHaveLength(2);
-    expect(translations.map((item) => item.contentId)).toEqual(["faq", "faq"]);
+    expect(documents).toHaveLength(1);
+    expect(documents[0]?.contentId).toBe("faq");
+    expect(versions).toHaveLength(2);
 
-    const restoredFiles = await readdir(restoreAssetDir, {
-      recursive: true,
-    });
+    const restoredFiles = await readdir(restoreAssetDir, { recursive: true });
     expect(restoredFiles).toContain("logo.txt");
     expect(restoredFiles).toContain(path.join("nested", "diagram.txt"));
     expect(restoredFiles).not.toContain("stale.txt");

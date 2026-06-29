@@ -38,7 +38,6 @@ type StatusMessage = {
 } | null;
 
 const CATEGORY_DESCRIPTIONS: Record<CmsDataTransferCategory, string> = {
-  content: "Static CMS page records and translations.",
   documents: "Document records plus versioned localized content.",
   news: "News items, translations, and related structure.",
   alerts: "Alert state, schedule windows, and translations.",
