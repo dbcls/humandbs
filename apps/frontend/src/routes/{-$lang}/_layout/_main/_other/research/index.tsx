@@ -60,6 +60,8 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")
   },
 });
 
+type Row = ResearchSearchResponse["data"][number];
+
 function RouteComponent() {
   const t = useTranslations("Research");
   const search = Route.useSearch();
@@ -68,36 +70,34 @@ function RouteComponent() {
 
   const { data: researchesData } = useResearchesSearchQuery();
 
-  const exportData = useMemo(() => {
-    type Row = ResearchSearchResponse["data"][number];
-    const columns: { header: string; value: (row: Row) => string }[] = [
-      { header: t("research-id"), value: (row) => row.humId },
-      { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
-      { header: t("title"), value: (row) => row.title[lang] ?? "" },
-      {
-        header: t("datePublished"),
-        value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
-      },
-      {
-        header: t("dateModified"),
-        value: (row) =>
-          `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
-      },
-      { header: t("methods"), value: (row) => row.methods ?? "" },
-      { header: t("typeOfData"), value: (row) => row.typeOfData.join(", ") },
-      { header: t("platforms"), value: (row) => row.platforms.join(", ") },
-      { header: t("targets"), value: (row) => row.targets },
-      { header: t("criteria"), value: (row) => row.criteria },
-      {
-        header: t("dataProvider"),
-        value: (row) => row.dataProvider.join(", "),
-      },
-    ];
-    return {
-      headers: columns.map((c) => c.header),
-      rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
-    };
-  }, [researchesData, lang, t]);
+  const columns: { header: string; value: (row: Row) => string }[] = [
+    { header: t("research-id"), value: (row) => row.humId },
+    { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
+    { header: t("title"), value: (row) => row.title[lang] ?? "" },
+    {
+      header: t("datePublished"),
+      value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
+    },
+    {
+      header: t("dateModified"),
+      value: (row) =>
+        `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
+    },
+    { header: t("methods"), value: (row) => row.methods ?? "" },
+    { header: t("typeOfData"), value: (row) => row.typeOfData.join(", ") },
+    { header: t("platforms"), value: (row) => row.platforms.join(", ") },
+    { header: t("targets"), value: (row) => row.targets },
+    { header: t("criteria"), value: (row) => row.criteria.join(", ") },
+    {
+      header: t("dataProvider"),
+      value: (row) => row.dataProvider.join(", "),
+    },
+  ];
+
+  const exportData = {
+    headers: columns.map((c) => c.header),
+    rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
+  };
 
   return (
     <FilterableCard
@@ -490,7 +490,13 @@ const columns = [
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("Research-list.criteria"),
-    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
+    cell: (ctx) => (
+      <>
+        {ctx.row.original.criteria.map((c) => (
+          <AccessCriteriaLabel key={c} criteria={c} />
+        ))}
+      </>
+    ),
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
