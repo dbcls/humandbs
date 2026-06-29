@@ -91,7 +91,7 @@ export function SortDropdown({
       <div className="relative" ref={containerRef}>
         <div
           className={cn(
-            buttonVariants({ variant: "tableAction", size: "tableAction" }),
+            buttonVariants({ variant: "captionAction", size: "captionAction" }),
             "p-0 overflow-hidden font-normal select-none transition-colors cursor-default",
             isOpen ? "border-secondary" : "",
           )}

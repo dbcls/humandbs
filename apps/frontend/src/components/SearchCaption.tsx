@@ -68,13 +68,13 @@ export function SearchCaption({
       <div className="flex flex-wrap items-center gap-4">
         {sortControl}
         <div className="flex gap-1">
-          <Button variant={"tableAction"} size={"tableAction"} onClick={onCopy}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button variant={"tableAction"} size={"tableAction"} onClick={onCsv}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCsv}>
             CSV
           </Button>
-          <Button variant={"tableAction"} size={"tableAction"} onClick={onExcel}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onExcel}>
             Excel
           </Button>
         </div>
@@ -119,8 +119,8 @@ export function SearchCaption({
           />
           <Button
             ref={filterButtonRef}
-            variant="tableAction"
-            size="tableAction"
+            variant="captionAction"
+            size="captionAction"
             className={cn("flex items-center gap-2 transition-colors", {
               "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white": isPanelOpen,
             })}
