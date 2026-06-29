@@ -137,13 +137,15 @@ export function ResearchesList({
   function handleDelete(humId: string) {
     openConfirmation({
       title: "Delete Research",
-      description: `Are you really want to delete research \`${humId}\` ?`,
+      description: `Are you really want to delete research \`${humId}\` ? All versions and linked datasets will be deleted.`,
       actionLabel: "Delete",
       onAction: () => {
         deleteResearch(humId);
       },
     });
   }
+
+
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">

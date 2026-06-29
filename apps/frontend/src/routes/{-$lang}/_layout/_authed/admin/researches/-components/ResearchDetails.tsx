@@ -26,7 +26,6 @@ import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$hu
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
-  $deleteResearch,
   $patchResearch,
   $rejectResearch,
   $submitResearch,
@@ -112,25 +111,26 @@ const topLevelFields = metadataFields.map((f) => f.key);
 export function ResearchDetails({
   humId,
   lang,
-  onDeselect,
   initialRelatedAccessions = [],
+  selectedVersion: selectedVersionProp,
+  onVersionChange,
 }: {
   humId: string;
   lang: Locale;
-  onDeselect?: () => void;
   initialRelatedAccessions?: string[];
+  selectedVersion?: string;
+  onVersionChange?: (v: string) => void;
 }) {
   const queryClient = useQueryClient();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
   const { data: initialData } = useSuspenseQuery(getResearchQueryOptions({ humId, lang }));
 
-  const [selectedVersion, setSelectedVersion] = useState(
-    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version,
-  );
+  const defaultVersion = initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version;
+  const selectedVersion = selectedVersionProp ?? defaultVersion;
+  const setSelectedVersion = onVersionChange ?? (() => {});
 
-  // TODO - clean up so RQ wont fetch same twice
-  // Re-fetch when selectedVersion changes
+  // Re-fetch for the selected version
   const { data } = useSuspenseQuery(
     getResearchQueryOptions({ humId, lang, version: selectedVersion }),
   );
@@ -144,10 +144,7 @@ export function ResearchDetails({
     action: "update",
     params: { research: researchValues },
   });
-  const { can: canDelete } = useCan({
-    resource: "researches",
-    action: "delete",
-  });
+
   const { can: canSubmit } = useCan({
     resource: "researches",
     action: "submit",
@@ -246,30 +243,6 @@ export function ResearchDetails({
 
   const { openConfirmation } = useConfirmationStore();
 
-  const { mutate: deleteResearch } = useMutation({
-    mutationFn: () => $deleteResearch({ data: { humId } }),
-    onSuccess: (result) => {
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      onDeselect?.();
-    },
-    onError: (err: Error) => {
-      setError(err.message ?? "Failed to delete research.");
-    },
-  });
-
-  function handleDelete() {
-    openConfirmation({
-      title: "Mark research as deleted?",
-      description:
-        "This will set the research status to 'deleted'. The data is not permanently removed and can be recovered by an administrator.",
-      actionLabel: "Delete",
-      onAction: () => deleteResearch(),
-    });
-  }
 
   async function optimisticallySetStatus(targetStatus: ResearchStatus) {
     await queryClient.cancelQueries({ queryKey: ["researches", "byId"] });
@@ -623,11 +596,7 @@ export function ResearchDetails({
       {/* Research-wide workflow actions — apply to the research as a whole,
           independent of which tab (metadata/datasets) is active. */}
       <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {canDelete && (
-          <Button type="button" size="lg" onClick={handleDelete}>
-            Delete
-          </Button>
-        )}
+
 
         {isViewingDraft && canSubmit && (
           <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
