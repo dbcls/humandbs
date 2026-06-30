@@ -16,7 +16,7 @@ You must provide these — the app won't work without them.
 | `HUMANDBS_AUTH_ISSUER_URL` | Login provider URL. |
 | `HUMANDBS_AUTH_CLIENT_ID` | Login client id. |
 | `HUMANDBS_AUTH_REDIRECT_URI` | Where the login provider sends users back. |
-| `HUMANBDS_FRONTEND_DU_APPLICATION_URL` | External "data use" application link. |
+| `HUMANDBS_FRONTEND_DU_APPLICATION_URL` | External "data use" application link. |
 | `HUMANDBS_FRONTEND_DS_NAVIGATION_URL` | External submission navigation link. |
 | `HUMANDBS_FRONTEND_DS_SUBMISSION_URL` | External submission link. |
 

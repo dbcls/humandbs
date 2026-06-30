@@ -65,7 +65,7 @@ export default defineConfig(async () => {
         process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
       ),
       DU_APPLICATION_URL: JSON.stringify(
-        process.env.HUMANBDS_FRONTEND_DU_APPLICATION_URL ??
+        process.env.HUMANDBS_FRONTEND_DU_APPLICATION_URL ??
           "https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import",
       ),
       DS_NAVIGATION_URL: JSON.stringify(process.env.HUMANDBS_FRONTEND_DS_NAVIGATION_URL ?? "/"),
