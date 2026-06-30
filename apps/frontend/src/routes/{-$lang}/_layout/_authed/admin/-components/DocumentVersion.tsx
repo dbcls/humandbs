@@ -940,7 +940,6 @@ function useSaveDraft(contentId: string, versionNumber: number) {
             ...old.translations,
             [variables.locale]: {
               ...old.translations[variables.locale],
-              createdAt: data.createdAt,
               updatedAt: data.updatedAt,
               author: data.author,
             },
