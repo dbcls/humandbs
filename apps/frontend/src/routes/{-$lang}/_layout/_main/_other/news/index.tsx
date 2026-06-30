@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
+import { toLocaleDateTimeString } from "@/utils/dates";
 import { newsPublicSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
@@ -125,7 +126,7 @@ function RouteComponent() {
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-xs opacity-70">
-                    {item.publishedAt ? item.publishedAt.toLocaleString() : tNews("no-date")}
+                    {item.publishedAt ? toLocaleDateTimeString(item.publishedAt) : tNews("no-date")}
                   </span>
                 </div>
 
