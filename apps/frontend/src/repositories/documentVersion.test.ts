@@ -8,9 +8,10 @@ import {
   mockDocumentVersions,
 } from "@/tests/fixtures/documents";
 import { createTestDb } from "@/tests/fixtures/test-db";
-import { AUTHOR_ID_1, mockUsers } from "@/tests/fixtures/users";
+import { AUTHOR_ID_1, AUTHOR_ID_2, mockUsers } from "@/tests/fixtures/users";
 
 import { createDocumentRepository } from "./document";
+import type { DocAnyVersionResponseRaw } from "./documentVersion";
 import { createDocumentVersionRepository, groupDocVersion } from "./documentVersion";
 
 const testDb = createTestDb();
@@ -110,6 +111,68 @@ describe("Document versions", () => {
     expect(publishedRow).toBeDefined();
     expect(publishedRow?.title).toBe("");
     expect(publishedRow?.content).toBe("");
+  });
+
+  test("sets authorId on a newly inserted draft so author is not Unknown", async () => {
+    const NEW_DOC_ID = "123e4567-e89b-12d3-a456-426614174088";
+    const NEW_DOC_CONTENTID = "new-document-insert-author";
+
+    await testDb.db.insert(schema.document).values({
+      id: NEW_DOC_ID,
+      contentId: NEW_DOC_CONTENTID,
+      hideFromNav: false,
+      hideRevisions: false,
+      hideTOC: false,
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    });
+
+    const result = await versionsRepo.saveDraft(
+      NEW_DOC_CONTENTID,
+      1,
+      "en",
+      { title: "Fresh draft", content: "Fresh content" },
+      AUTHOR_ID_1,
+    );
+
+    // The returned author is the creator, not Unknown.
+    expect(result.author).not.toBeNull();
+    expect(result.author?.name).toBe(mockUsers[0].name);
+
+    // And the persisted row records authorId so getVersion does not fall back to Unknown.
+    const draftRow = await testDb.db.query.documentVersion.findFirst({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.documentId, NEW_DOC_ID),
+          eq(table.versionNumber, 1),
+          eq(table.locale, "en"),
+          eq(table.status, "draft"),
+        ),
+    });
+    expect(draftRow?.authorId).toBe(AUTHOR_ID_1);
+  });
+
+  test("does not overwrite the original authorId on a subsequent autosave", async () => {
+    // Initial draft is created by AUTHOR_ID_1 (from the fixture).
+    await versionsRepo.saveDraft(
+      DOC_1_CONTENTID,
+      1,
+      "en",
+      { title: "Edited by someone else", content: "..." },
+      AUTHOR_ID_2,
+    );
+
+    const draftRow = await testDb.db.query.documentVersion.findFirst({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.documentId, DOC_1_ID),
+          eq(table.versionNumber, 1),
+          eq(table.locale, "en"),
+          eq(table.status, "draft"),
+        ),
+    });
+    // Creator stays the original author; only updatedBy changes.
+    expect(draftRow?.authorId).toBe(AUTHOR_ID_1);
+    expect(draftRow?.updatedBy).toBe(AUTHOR_ID_2);
   });
 
   test("saves draft edits even when updater user is missing locally", async () => {
@@ -293,5 +356,67 @@ describe("Grouping fn", () => {
         },
       },
     });
+  });
+
+  test("createdAt is version creation date, updatedAt is draft saved date", () => {
+    const baseRow = {
+      contentId: "doc1",
+      hideTOC: false,
+      hideRevisions: false,
+      hideFromNav: false,
+      author: { name: "Author 1", email: "a@a.com" },
+      content: "content",
+      locale: "en" as const,
+      documentId: "doc1-id",
+      versionNumber: 1,
+      document: { hideTOC: false, hideRevisions: false, hideFromNav: false },
+    };
+
+    // Version created 2024-01-01, published (republished) 2024-03-01,
+    // draft last autosaved 2024-02-15.
+    const grouped = groupDocVersion([
+      {
+        ...baseRow,
+        title: "Published",
+        status: "published",
+        createdAt: new Date("2024-01-01T00:00:00Z"),
+        updatedAt: new Date("2024-03-01T00:00:00Z"),
+      },
+      {
+        ...baseRow,
+        title: "Draft",
+        status: "draft",
+        createdAt: new Date("2024-01-01T00:00:00Z"),
+        updatedAt: new Date("2024-02-15T00:00:00Z"),
+      },
+    ]);
+
+    // 作成日時: the version's creation date.
+    expect(grouped.translations.en?.createdAt).toEqual(new Date("2024-01-01T00:00:00Z"));
+    // 更新日時: the draft's last-saved date, not the later publish time.
+    expect(grouped.translations.en?.updatedAt).toEqual(new Date("2024-02-15T00:00:00Z"));
+  });
+
+  test("falls back to published updatedAt when there is no draft row", () => {
+    const rows: DocAnyVersionResponseRaw[] = [
+      {
+        contentId: "doc1",
+        hideTOC: false,
+        hideRevisions: false,
+        hideFromNav: false,
+        author: { name: "Author 1", email: "a@a.com" },
+        content: "content",
+        locale: "en",
+        title: "Published only",
+        versionNumber: 1,
+        status: "published",
+        createdAt: new Date("2024-01-01T00:00:00Z"),
+        updatedAt: new Date("2024-03-01T00:00:00Z"),
+      },
+    ];
+    const grouped = groupDocVersion(rows);
+
+    expect(grouped.translations.en?.createdAt).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(grouped.translations.en?.updatedAt).toEqual(new Date("2024-03-01T00:00:00Z"));
   });
 });

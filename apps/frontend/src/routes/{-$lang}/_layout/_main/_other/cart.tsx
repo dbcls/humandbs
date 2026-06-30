@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { CardWithCaption } from "@/components/Card";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { DatasetLink } from "@/components/DatasetLink";
+import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { SortHeader, Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
@@ -135,11 +136,12 @@ function CartContents({ cartIds }: { cartIds: string[] }) {
         <Button onClick={handleClickCopy}>
           <Copy className="mr-2 inline size-6" /> {copied ? tCommon("copied") : tCommon("copy")}
         </Button>
-        <a href={DU_APPLICATION_URL} className="block">
+        <a href={DU_APPLICATION_URL} className="block" target="_blank" rel="noopener noreferrer">
           {tCart("naviagte-to-application-form")}
           <ExternalLink className="ml-2 inline size-6" />
         </a>
       </div>
+      <InfoBadge>{tCart("instructions")}</InfoBadge>
       <Table columns={cartDatasetColumns} data={datasets} meta={{ t, lang: locale }} />
       <CodeSnippet code={JSON.stringify(payload, null, 2)} lang="json" />
     </>
