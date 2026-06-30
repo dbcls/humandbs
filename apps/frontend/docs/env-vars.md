@@ -7,26 +7,24 @@ the frontend container.
 
 You must provide these — the app won't work without them.
 
-| Variable | What it is |
-| --- | --- |
-| `HUMANDBS_ENV` | Environment name (e.g. `development`, `production`). Used in container/volume names. |
-| `HUMANDBS_POSTGRES_USER` | CMS database user. |
-| `HUMANDBS_POSTGRES_PASSWORD` | CMS database password. |
-| `HUMANDBS_POSTGRES_DB` | CMS database name. |
-| `HUMANDBS_AUTH_ISSUER_URL` | Login provider URL. |
-| `HUMANDBS_AUTH_CLIENT_ID` | Login client id. |
-| `HUMANDBS_AUTH_REDIRECT_URI` | Where the login provider sends users back. |
-| `HUMANDBS_FRONTEND_DU_APPLICATION_URL` | External "data use" application link. |
-| `HUMANDBS_FRONTEND_DS_NAVIGATION_URL` | External submission navigation link. |
-| `HUMANDBS_FRONTEND_DS_SUBMISSION_URL` | External submission link. |
+| Variable                               | What it is                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `HUMANDBS_ENV`                         | Environment name (e.g. `development`, `production`). Used in container/volume names. |
+| `HUMANDBS_POSTGRES_USER`               | CMS database user.                                                                   |
+| `HUMANDBS_POSTGRES_PASSWORD`           | CMS database password.                                                               |
+| `HUMANDBS_POSTGRES_DB`                 | CMS database name.                                                                   |
+| `HUMANDBS_AUTH_ISSUER_URL`             | Login provider URL.                                                                  |
+| `HUMANDBS_AUTH_CLIENT_ID`              | Login client id.                                                                     |
+| `HUMANDBS_AUTH_REDIRECT_URI`           | Where the login provider sends users back.                                           |
+| `HUMANDBS_FRONTEND_DU_APPLICATION_URL` | External "data use" application link.                                                |
 
 ## Optional (have defaults)
 
 Leave unset unless you need to change them.
 
-| Variable | Default | What it is |
-| --- | --- | --- |
-| `HUMANDBS_FRONTEND_PUBLIC_FILES_DIR` | `public-files` | Uploaded-assets folder name / public URL prefix. |
+| Variable                              | Default         | What it is                                                    |
+| ------------------------------------- | --------------- | ------------------------------------------------------------- |
+| `HUMANDBS_FRONTEND_PUBLIC_FILES_DIR`  | `public-files`  | Uploaded-assets folder name / public URL prefix.              |
 | `HUMANDBS_FRONTEND_PUBLIC_FILES_BASE` | `./data` (prod) | Where uploaded assets are stored. See [assets.md](assets.md). |
 
 ## Set automatically by compose (don't touch)
