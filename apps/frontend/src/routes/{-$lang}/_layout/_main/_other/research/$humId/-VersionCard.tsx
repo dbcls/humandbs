@@ -317,16 +317,6 @@ const dataUsedByColumns = [
       </ul>
     ),
   }),
-  dataUsedByColumnsHelper.accessor("periodOfDataUse", {
-    id: "cau.periodOfDataUse",
-    header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
-    cell: (ctx) => {
-      const v = ctx.getValue();
-      if (!v) return null;
-
-      return `${v.startDate} — ${v.endDate || ""}`;
-    },
-  }),
 ];
 
 const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
