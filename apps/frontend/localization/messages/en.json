@@ -36,7 +36,8 @@
     "created-at": "Created at",
     "updated-at": "Updated-at",
     "published-at": "Published at",
-    "author": "Author"
+    "author": "Author",
+    "page-not-found": "Page not found"
   },
   "Cart": {
     "naviagte-to-application-form": "Navigate to application form",
