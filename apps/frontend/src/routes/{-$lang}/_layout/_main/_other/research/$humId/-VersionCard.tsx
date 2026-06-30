@@ -63,27 +63,29 @@ export function VersionCard({
     >
       <article>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <div className="columns-2 [&>div>span]:mr-2 [&>div>span]:font-extrabold [&>div]:mb-4">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0 [&_span]:block [&_span]:font-extrabold">
           <div>
-            <span className="font-extrabold">{t("Research.aims")}:</span>
+            <span>{t("Research.aims")}:</span>
             <Markdown
-              className="inline-prose text-base"
+              className="text-base"
               contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
             />
           </div>
-          <div>
-            <span className="font-extrabold">{t("Research.methods")}:</span>
-            <Markdown
-              className="inline-prose text-base"
-              contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
-            />
-          </div>
-          <div className="mb-4">
-            <span className="mr-2 font-extrabold">{t("Research.targets")}:</span>
-            <Markdown
-              className="inline-prose text-base"
-              contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
-            />
+          <div className="flex flex-col gap-y-4">
+            <div>
+              <span>{t("Research.methods")}:</span>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+              />
+            </div>
+            <div>
+              <span>{t("Research.targets")}:</span>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+              />
+            </div>
           </div>
         </div>
       </article>
@@ -316,16 +318,6 @@ const dataUsedByColumns = [
         ))}
       </ul>
     ),
-  }),
-  dataUsedByColumnsHelper.accessor("periodOfDataUse", {
-    id: "cau.periodOfDataUse",
-    header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
-    cell: (ctx) => {
-      const v = ctx.getValue();
-      if (!v) return null;
-
-      return `${v.startDate} — ${v.endDate || ""}`;
-    },
   }),
 ];
 

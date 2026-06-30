@@ -19,7 +19,8 @@ export const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
   includeFacets: true,
 }).extend({
-  sort: DatasetSearchBodySchema.shape.sort.default("releaseDate"),
+  sort: DatasetSearchBodySchema.shape.sort.default("dateModified"),
+  order: DatasetSearchBodySchema.shape.order.default("desc"),
 });
 
 export type DatasetListQueryParams = z.infer<typeof datasetListQuerySchema>;
@@ -40,7 +41,7 @@ export const authedResearchesListSearchParamsSchema = ResearchListingQuerySchema
   })
   .extend({
     q: z.string().optional(),
-    sort: ResearchSearchBodySchema.shape.sort.unwrap().default("humId"),
+    sort: ResearchSearchBodySchema.shape.sort.unwrap().default("dateModified"),
     order: ResearchSearchBodySchema.shape.order.unwrap().default("desc"),
     selectedHumId: z.string().optional(),
     selectedVersion: z.string().optional(),

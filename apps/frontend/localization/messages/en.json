@@ -147,7 +147,6 @@
     "already-in-cart": "Already in cart",
     "remove-from-cart": "Remove from cart",
     "add-to-cart": "Add to cart",
-    "login-to-add": "Login and add to cart",
     "research": "Research",
     "research-version": "Research version",
     "version": "Version",
@@ -157,7 +156,7 @@
     "typeOfData": "Type of data",
     "criteria": "Access type",
     "experiments": "Analysis method",
-    "Unrestricted-access": "Open (no restrictions)",
+    "Unrestricted-access": "Unrestricted-access",
     "Controlled-access (Type I)": "Controlled-access (Type I)",
     "Controlled-access (Type II)": "Controlled-access (Type II)",
     "Analysis Methods": "Analysis Methods",
@@ -319,7 +318,7 @@
     "criteria": {
       "title": "Access type",
       "options": {
-        "Unrestricted-access": "Open (no restrictions)",
+        "Unrestricted-access": "Unrestricted-access",
         "Controlled-access (Type I)": "Controlled-access (Type I)",
         "Controlled-access (Type II)": "Controlled-access (Type II)"
       }

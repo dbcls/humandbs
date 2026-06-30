@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
+import { toDateString } from "@/utils/dates";
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsItemId")({
@@ -31,8 +31,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsI
 function RouteComponent() {
   const { contentHtml, publishedAt, title } = Route.useLoaderData();
 
-  const lang = useLocale();
-
   return (
     <Card className="min-w-0 flex-1">
       <MarkdownWithTOC
@@ -40,9 +38,7 @@ function RouteComponent() {
           <div className="custom-prose">
             <h1>{title}</h1>
             {publishedAt && (
-              <span className="text-foreground-light text-xs">
-                {publishedAt.toLocaleString(lang)}
-              </span>
+              <span className="text-foreground-light text-xs">{toDateString(publishedAt)}</span>
             )}
           </div>
         }
