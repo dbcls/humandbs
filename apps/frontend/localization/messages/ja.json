@@ -39,7 +39,8 @@
     "author": "作成者"
   },
   "Cart": {
-    "naviagte-to-application-form": "申請フォームへ"
+    "naviagte-to-application-form": "申請フォームへ",
+    "instructions": "データ利用を申請するには、「コピー」ボタンをクリックしてカートの内容をクリップボードにコピーし、「申請フォームへ」リンクをクリックして申請システムに移動してください（新しいタブで開きます）。"
   },
   "Footer": {
     "sitemap": "サイトマップ"

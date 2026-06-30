@@ -39,7 +39,8 @@
     "author": "Author"
   },
   "Cart": {
-    "naviagte-to-application-form": "Navigate to application form"
+    "naviagte-to-application-form": "Navigate to application form",
+    "instructions": "In order to apply for data use, copy contents of the cart into clipboard by clicking the \"Copy\" button, and navigate to the Application system by clicking on the \"Navigate to application form\" link (will open in new tab)."
   },
   "Footer": {
     "sitemap": "Sitemap"

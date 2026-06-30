@@ -317,9 +317,6 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
           locale: lang,
-          // authorId records the creator. It is intentionally left out of
-          // conflictUpdateColumns so it is only set on the initial insert and
-          // never overwritten by subsequent autosaves.
           ...(existingUserId ? { authorId: existingUserId, updatedBy: existingUserId } : {}),
           ...data,
         })
@@ -615,8 +612,9 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
   for (const locale of Object.keys(result.translations) as Locale[]) {
     const translation = result.translations[locale];
     if (!translation) continue;
-    // 更新日時: prefer the draft's last-saved time; fall back to the published row.
-    translation.updatedAt = draftUpdatedAt[locale] ?? publishedUpdatedAt[locale] ?? translation.updatedAt;
+
+    translation.updatedAt =
+      draftUpdatedAt[locale] ?? publishedUpdatedAt[locale] ?? translation.updatedAt;
   }
 
   return result;
