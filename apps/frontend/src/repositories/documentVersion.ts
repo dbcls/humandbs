@@ -317,7 +317,10 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
           locale: lang,
-          ...(existingUserId ? { updatedBy: existingUserId } : {}),
+          // authorId records the creator. It is intentionally left out of
+          // conflictUpdateColumns so it is only set on the initial insert and
+          // never overwritten by subsequent autosaves.
+          ...(existingUserId ? { authorId: existingUserId, updatedBy: existingUserId } : {}),
           ...data,
         })
         .onConflictDoUpdate({
@@ -332,13 +335,13 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         .returning({
           createdAt: documentVersion.createdAt,
           updatedAt: documentVersion.updatedAt,
-          updatedBy: documentVersion.updatedBy,
+          authorId: documentVersion.authorId,
         });
 
       let author: { name: string | null; email: string } | null = null;
-      if (result.updatedBy) {
+      if (result.authorId) {
         const authorRow = await database.query.user.findFirst({
-          where: (table, { eq }) => eq(table.id, result.updatedBy!),
+          where: (table, { eq }) => eq(table.id, result.authorId!),
           columns: { name: true, email: true },
         });
         if (authorRow?.email) {
@@ -559,6 +562,16 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
     translations: {},
   };
 
+  // Per-locale timestamps resolved from specific rows after all rows are seen:
+  // - 作成日時 (createdAt): the version's creation time = earliest createdAt across
+  //   its rows. A version is born as a draft, and publishing preserves that
+  //   createdAt, so the earliest value is the true version-creation date.
+  // - 更新日時 (updatedAt): the draft's last-saved time. The published row's
+  //   updatedAt is bumped at publish time and does not reflect draft autosaves,
+  //   so prefer the draft row's updatedAt when a draft exists.
+  const draftUpdatedAt: Partial<Record<Locale, Date>> = {};
+  const publishedUpdatedAt: Partial<Record<Locale, Date>> = {};
+
   for (const verStatusLang of rawVersion) {
     let translation = result.translations[verStatusLang.locale];
     if (!translation) {
@@ -576,10 +589,16 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
         title: verStatusLang.title ?? "",
         content: verStatusLang.content ?? "",
       };
-      // keep the most recent updatedAt across statuses for this locale
-      if (verStatusLang.updatedAt > translation.updatedAt) {
-        translation.updatedAt = verStatusLang.updatedAt;
+      // keep the earliest createdAt across statuses for this locale
+      if (verStatusLang.createdAt < translation.createdAt) {
+        translation.createdAt = verStatusLang.createdAt;
       }
+    }
+
+    if (verStatusLang.status === DOCUMENT_VERSION_STATUS.DRAFT) {
+      draftUpdatedAt[verStatusLang.locale] = verStatusLang.updatedAt;
+    } else if (verStatusLang.status === DOCUMENT_VERSION_STATUS.PUBLISHED) {
+      publishedUpdatedAt[verStatusLang.locale] = verStatusLang.updatedAt;
     }
 
     // copy published content in draft
@@ -592,5 +611,13 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
 
     result.translations[verStatusLang.locale] = translation;
   }
+
+  for (const locale of Object.keys(result.translations) as Locale[]) {
+    const translation = result.translations[locale];
+    if (!translation) continue;
+    // 更新日時: prefer the draft's last-saved time; fall back to the published row.
+    translation.updatedAt = draftUpdatedAt[locale] ?? publishedUpdatedAt[locale] ?? translation.updatedAt;
+  }
+
   return result;
 }
