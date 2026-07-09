@@ -126,7 +126,6 @@ function Table<T extends Record<string, unknown>>({
 
       <tbody
         className={cn("transition-opacity", {
-          relative: data.length === 0,
           "pointer-events-none opacity-40": isDimmed,
         })}
       >
@@ -162,10 +161,8 @@ function Table<T extends Record<string, unknown>>({
         ))}
         {data.length === 0 ? (
           <tr>
-            <td className="h-10">
-              <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-400">
-                {t("no-data")}
-              </p>
+            <td colSpan={table.getAllLeafColumns().length} className="h-10 text-center text-neutral-400">
+              {t("no-data")}
             </td>
           </tr>
         ) : null}

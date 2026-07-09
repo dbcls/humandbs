@@ -61,32 +61,29 @@ export function VersionCard({
         </CardCaption>
       }
     >
+      {/*grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 */}
       <article>
+        <ContentHeader>{t("Research.title")}</ContentHeader>
+        <h2 className="text">{versionData.title[lang]}</h2>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0 [&_span]:block [&_span]:font-extrabold">
-          <div>
-            <span>{t("Research.aims")}:</span>
-            <Markdown
-              className="text-base"
-              contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
-            />
-          </div>
-          <div className="flex flex-col gap-y-4">
-            <div>
-              <span>{t("Research.methods")}:</span>
-              <Markdown
-                className="text-base"
-                contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
-              />
-            </div>
-            <div>
-              <span>{t("Research.targets")}:</span>
-              <Markdown
-                className="text-base"
-                contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
-              />
-            </div>
-          </div>
+        <div className="sm:columns-2 sm:break-inside-avoid-column [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0">
+          <h3 className="break-inside-avoid font-extrabold">{t("Research.aims")}:</h3>
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
+          />
+
+          <h3 className="break-inside-avoid font-extrabold">{t("Research.methods")}:</h3>
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+          />
+
+          <h3 className="break-inside-avoid font-extrabold">{t("Research.targets")}:</h3>
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+          />
         </div>
       </article>
       <Separator className="-mx-4" />

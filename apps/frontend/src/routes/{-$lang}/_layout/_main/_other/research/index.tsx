@@ -61,6 +61,15 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
   },
+  head: ({ match }) => {
+    return {
+      meta: [
+        {
+          title: `HumanDBs - ${match.context.messages?.Research?.["research-list"]}`,
+        },
+      ],
+    };
+  },
 });
 
 type Row = ResearchSearchResponse["data"][number];

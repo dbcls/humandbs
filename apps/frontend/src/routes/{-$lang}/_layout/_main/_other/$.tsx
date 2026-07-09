@@ -41,9 +41,18 @@ const humLatestReleasePattern = /^(hum\d+)-latest-release$/i;
 //   policy                                    → nbdc-policy
 const legacyAliasRedirects: { pattern: RegExp; splat: string }[] = [
   { pattern: /^data-sharing-guidelines(-v[\d-]+)?$/i, splat: "guidelines/data-sharing-guidelines" },
-  { pattern: /^security-guidelines-for-users(-v\d+)?$/i, splat: "guidelines/security-guidelines-for-users" },
-  { pattern: /^security-guidelines-for-submitters(-v\d+)?$/i, splat: "guidelines/security-guidelines-for-submitters" },
-  { pattern: /^security-guidelines-for-dbcenters(-v[\d-]+)?$/i, splat: "guidelines/security-guidelines-for-dbcenters" },
+  {
+    pattern: /^security-guidelines-for-users(-v\d+)?$/i,
+    splat: "guidelines/security-guidelines-for-users",
+  },
+  {
+    pattern: /^security-guidelines-for-submitters(-v\d+)?$/i,
+    splat: "guidelines/security-guidelines-for-submitters",
+  },
+  {
+    pattern: /^security-guidelines-for-dbcenters(-v[\d-]+)?$/i,
+    splat: "guidelines/security-guidelines-for-dbcenters",
+  },
   { pattern: /^guideline-revision[\d-]*$/i, splat: "guidelines" },
   { pattern: /^policy$/i, splat: "nbdc-policy" },
 ];
@@ -255,6 +264,11 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       hideTOC: contentData.hideTOC ?? true,
       previousVersions: undefined,
       revisionsBasePath: undefined,
+    };
+  },
+  head: ({ loaderData }) => {
+    return {
+      meta: [{ title: `HumanDBs - ${loaderData?.title}` }],
     };
   },
   errorComponent: ({ error }) => (

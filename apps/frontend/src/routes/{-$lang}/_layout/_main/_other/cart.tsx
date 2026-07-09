@@ -22,6 +22,17 @@ import { getBatchedDatasetsQueryOptions } from "@/serverFunctions/datasets";
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
   loader: ({ context }) => ({ crumb: context.messages?.common?.["cart"] }),
+  head: ({ match }) => {
+    const seoTitle = `HumanDBs - ${match.context.messages?.common?.["cart"]}`;
+
+    return {
+      meta: [
+        {
+          title: seoTitle,
+        },
+      ],
+    };
+  },
 });
 
 const cartColumnsHelper = createColumnHelper<DatasetDoc>();
