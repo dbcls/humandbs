@@ -40,14 +40,6 @@ export const $validateEntityId = createServerFn({ method: "GET" })
       };
     }
 
-    const existingContent = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-    });
-
-    if (existingContent) {
-      return { success: false, errors: [{ errorCode: "EXISTING_CONTENT" }] };
-    }
-
     const existingDocument = await db.query.document.findFirst({
       where: (document, { eq }) => eq(document.contentId, contentId),
     });
