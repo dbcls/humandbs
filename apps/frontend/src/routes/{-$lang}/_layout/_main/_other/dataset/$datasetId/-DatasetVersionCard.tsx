@@ -49,7 +49,7 @@ export function DatasetVersionCard({
   showPublicActions?: boolean;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const { user } = useRouteContext({ from: "__root__" });
+
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
   const t = useTranslations("Dataset");
 
@@ -92,7 +92,6 @@ export function DatasetVersionCard({
       caption={
         <CardCaption
           className="flex-1"
-          title="NBDC Dataset ID:"
           icon="dataset"
           right={
             <div className="flex gap-5">

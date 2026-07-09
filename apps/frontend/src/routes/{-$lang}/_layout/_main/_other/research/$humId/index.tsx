@@ -21,6 +21,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
       // `$getResearch` throws `notFound()` for a missing research; react-query
       // re-surfaces it here, so re-throw it as the router notFound signal.
       if (isNotFound(error)) throw notFound();
+
       throw error;
     }
   },

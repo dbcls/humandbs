@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useLocale, useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useMemo, useRef } from "react";
@@ -46,9 +45,10 @@ const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   order: ResearchSearchBodySchema.shape.order.default("desc"),
 });
 
+researchesSearchParamsSchema.shape.sort.def.defaultValue;
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
-  validateSearch: zodValidator(researchesSearchParamsSchema),
+  validateSearch: researchesSearchParamsSchema,
   errorComponent: DefaultCatchBoundary,
   loader: ({ context, location }) => {
     return Promise.all([
