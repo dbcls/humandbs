@@ -16,8 +16,6 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-import { unescapeMarkdown } from "../crawler/utils/text"
-
 import {
   // Common schemas (used locally)
   LANG_TYPES,
@@ -55,6 +53,7 @@ import {
   ResearchVersionSchema as CrawlerResearchVersionSchema,
   SearchableDatasetSchema,
 } from "../crawler/types"
+import { unescapeMarkdown } from "../crawler/utils/text"
 
 // === Re-export Zod schemas from crawler/types (single source of truth) ===
 

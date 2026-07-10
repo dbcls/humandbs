@@ -401,6 +401,7 @@ export const createDatasetForResearchRoute = createRoute({
 
 **Behavior:**
 - datasetId is auto-generated as DRAFT-{humId}-{uuid} if not provided
+- If datasetId is explicitly supplied and already exists (globally, including under other Research), returns 409 Conflict
 - Dataset is automatically added to the draft Research's dataset list
 - Dataset version is finalized when Research is approved`,
   request: {

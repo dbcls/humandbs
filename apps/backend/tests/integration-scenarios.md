@@ -1851,6 +1851,20 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/utils/hydrate-raw-html.test.ts`
 
+### IT-RESEARCH-28: POST /research/{humId}/dataset/new は既存 datasetId を 409 で拒否する
+
+**endpoint**: `POST /research/{humId}/dataset/new` body: `{ datasetId: <既存> }` (owner、親 Research が draft)
+
+**不変条件**:
+- 同一 Research 内で先に作成した Dataset の `datasetId` を再指定すると `status === 409`、`title === "Conflict"`、`detail` に対象 datasetId と `already exists` を含む
+- 別 Research から同じ `datasetId` を指定しても `status === 409` で拒否される
+- 409 応答後、既存 Dataset は不変: `GET /dataset/{datasetId}/versions` の返り値は 1 件のまま、`GET /dataset/{datasetId}` の `humId` / `releaseDate` は初回作成時のまま、親 Research の `GET /research/{humId}/dataset` に不整合エントリが生えていない
+- `datasetId` 未指定 (`body: "{}"`) は従来通り `status === 201` で `DRAFT-{humId}-{uuid}` を自動採番する
+
+**回帰元**: `docs/api-guide.md § Dataset ID の一意性` / `docs/architecture.md § datasetId の一意性`
+
+**関連 unit テスト**: `tests/unit/api/es-client/dataset.test.ts § createDataset`
+
 ### IT-RESEARCH-27: POST /research/new body 全 optional 省略で 201 (default 適用)
 
 **endpoint**: `POST /research/new` body: `{}` (admin)

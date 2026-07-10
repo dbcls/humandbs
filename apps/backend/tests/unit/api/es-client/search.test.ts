@@ -234,9 +234,9 @@ describe("searchResearches: summaryShort projection (Joomla home page short-text
       humId: "hum0001",
       latestVersion: "v1",
       summaryShort: {
-        methods:    { ja: { text: "配列決定", rawHtml: null },           en: { text: "Sequencing", rawHtml: null } },
-        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null },          en: { text: "NGS (WGS)", rawHtml: null } },
-        targets:    { ja: { text: "SCA31：1 症例（日本人）", rawHtml: null }, en: { text: "1 SCA31 patient (Japanese)", rawHtml: null } },
+        methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null }, en: { text: "NGS (WGS)", rawHtml: null } },
+        targets: { ja: { text: "SCA31：1 症例（日本人）", rawHtml: null }, en: { text: "1 SCA31 patient (Japanese)", rawHtml: null } },
       },
     })
     mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))

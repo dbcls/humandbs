@@ -741,6 +741,146 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
+  itWithIsolationIndex("IT-RESEARCH-28-a: POST /research/{humId}/dataset/new with an existing datasetId in the same Research returns 409 and preserves the original", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-a
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const app = getApp()
+
+      const explicitId = `JGAD5${humId.replace(/\D/g, "").slice(-5).padStart(5, "0")}A`
+      const firstBody = JSON.stringify({ datasetId: explicitId, releaseDate: "2001-01-01" })
+      const first = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: firstBody,
+      })
+      expect(first.status).toBe(201)
+      const firstJson = (await first.json()) as { data: { datasetId: string; version: string; releaseDate: string } }
+      expect(firstJson.data.datasetId).toBe(explicitId)
+      expect(firstJson.data.version).toBe("v1")
+
+      const dup = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId, releaseDate: "2099-12-31" }),
+      })
+      expect(dup.status).toBe(409)
+      const dupJson = (await dup.json()) as { title?: string; detail?: string; status?: number }
+      expect(dupJson.status).toBe(409)
+      expect(dupJson.title).toBe("Conflict")
+      expect(dupJson.detail ?? "").toContain(explicitId)
+      expect(dupJson.detail ?? "").toContain("already exists")
+
+      // No v2 doc leaked, and v1 content is intact.
+      const versions = await app.request(url(`/dataset/${explicitId}/versions`), { headers: authHeaders(nonAdmin) })
+      expect(versions.status).toBe(200)
+      const versionsJson = (await versions.json()) as { data: { version: string }[] }
+      expect(versionsJson.data.map(v => v.version)).toEqual(["v1"])
+
+      const getDs = await app.request(url(`/dataset/${explicitId}`), { headers: authHeaders(nonAdmin) })
+      expect(getDs.status).toBe(200)
+      const getJson = (await getDs.json()) as { data: { releaseDate: string; humId: string } }
+      expect(getJson.data.releaseDate).toBe("2001-01-01")
+      expect(getJson.data.humId).toBe(humId)
+
+      // Parent Research still has exactly the one linked Dataset.
+      const linked = await app.request(url(`/research/${humId}/dataset`), { headers: authHeaders(nonAdmin) })
+      expect(linked.status).toBe(200)
+      const linkedJson = (await linked.json()) as { data: { datasetId: string }[] }
+      expect(linkedJson.data.filter(d => d.datasetId === explicitId).length).toBe(1)
+      expect(linkedJson.data.length).toBe(1)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-28-b: POST /research/{humId}/dataset/new with an existing datasetId from another Research returns 409 without stealing", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-b
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humIdA = ""
+    let humIdB = ""
+    try {
+      const createdA = await createDraftResearch(admin)
+      humIdA = createdA.humId
+      await setOwnerUids(admin, humIdA, [sub!])
+      const createdB = await createDraftResearch(admin)
+      humIdB = createdB.humId
+      await setOwnerUids(admin, humIdB, [sub!])
+      const app = getApp()
+
+      const suffix = `${humIdA.replace(/\D/g, "").slice(-5).padStart(5, "0")}B`
+      const explicitId = `JGAD5${suffix}`
+
+      const first = await app.request(url(`/research/${humIdA}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId }),
+      })
+      expect(first.status).toBe(201)
+
+      const cross = await app.request(url(`/research/${humIdB}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId }),
+      })
+      expect(cross.status).toBe(409)
+      const crossJson = (await cross.json()) as { detail?: string }
+      expect(crossJson.detail ?? "").toContain(explicitId)
+
+      // The dataset still belongs to A, not stolen by B.
+      const getDs = await app.request(url(`/dataset/${explicitId}`), { headers: authHeaders(nonAdmin) })
+      expect(getDs.status).toBe(200)
+      const getJson = (await getDs.json()) as { data: { humId: string } }
+      expect(getJson.data.humId).toBe(humIdA)
+
+      // Only one version exists.
+      const versions = await app.request(url(`/dataset/${explicitId}/versions`), { headers: authHeaders(nonAdmin) })
+      const versionsJson = (await versions.json()) as { data: { version: string }[] }
+      expect(versionsJson.data.map(v => v.version)).toEqual(["v1"])
+
+      // A's linked list contains it; B's does not.
+      const linkedA = await app.request(url(`/research/${humIdA}/dataset`), { headers: authHeaders(nonAdmin) })
+      const linkedAJson = (await linkedA.json()) as { data: { datasetId: string }[] }
+      expect(linkedAJson.data.some(d => d.datasetId === explicitId)).toBe(true)
+      const linkedB = await app.request(url(`/research/${humIdB}/dataset`), { headers: authHeaders(nonAdmin) })
+      const linkedBJson = (await linkedB.json()) as { data: { datasetId: string }[] }
+      expect(linkedBJson.data.some(d => d.datasetId === explicitId)).toBe(false)
+    } finally {
+      if (humIdB) await purgeResearch(admin, humIdB)
+      if (humIdA) await purgeResearch(admin, humIdA)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-28-c: POST /research/{humId}/dataset/new without datasetId still auto-generates DRAFT id", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-c
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const app = getApp()
+      const res = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: "{}",
+      })
+      expect(res.status).toBe(201)
+      const json = (await res.json()) as { data: { datasetId: string; version: string } }
+      expect(json.data.datasetId).toMatch(new RegExp(`^DRAFT-${humId}-`))
+      expect(json.data.version).toBe("v1")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
   itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from public listing", async ({ admin, nonAdmin }) => {
     // A Research that was once published and then physically deleted
     // must disappear from the public listing.
