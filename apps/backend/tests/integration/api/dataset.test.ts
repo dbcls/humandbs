@@ -626,7 +626,8 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       expect(tampered.status).toBe(200)
 
       // Parent linkage must be humIdA — the tampered humIdB was silently dropped.
-      const check = await app.request(url(`/dataset/${ds.datasetId}`))
+      // Parent Research is still `draft`, so we must GET as owner (public 404s).
+      const check = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(nonAdmin) })
       expect(check.status).toBe(200)
       const checkJson = (await check.json()) as { data: { humId: string } }
       expect(checkJson.data.humId).toBe(humIdA)
