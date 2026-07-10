@@ -15,6 +15,7 @@ import { FilterableCard } from "@/components/FilterableCard";
 import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { PlatformBadge } from "@/components/PlatformBadge";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { ResearchLink } from "@/components/ResearchLink";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -475,7 +476,7 @@ const columns = [
         <ul className="space-y-4">
           {ctx.renderValue()?.map((item) => (
             <li key={item}>
-              <p>{item}</p>
+              <PlatformBadge platform={item} />
             </li>
           ))}
         </ul>
