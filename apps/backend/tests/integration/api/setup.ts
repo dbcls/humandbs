@@ -106,6 +106,20 @@ export const decodeJwtSub = (token: string): string | null => {
   }
 }
 
+// Ownership match runs on `preferred_username` (see `middleware/auth.ts` → AuthUser.username),
+// so any test that seeds ownership must pin the same key.
+export const decodeJwtPreferredUsername = (token: string): string | null => {
+  const parts = token.split(".")
+  if (parts.length !== 3) return null
+  try {
+    const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const json = JSON.parse(atob(padded)) as { preferred_username?: unknown }
+    return typeof json.preferred_username === "string" ? json.preferred_username : null
+  } catch {
+    return null
+  }
+}
+
 // === Conditional `it` runners ===
 
 const skipLog = (name: string, reason: string): void => {

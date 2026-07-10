@@ -1507,9 +1507,9 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ---
 
-## IT-RESEARCH-*: Research (CRUD + UIDs)
+## IT-RESEARCH-*: Research (CRUD + Ownership)
 
-`GET /research` (list、status フィルタの権限、value-based field control: status/uids/draftVersion)、`POST /research/new` (humId 自動採番、`op_type:create` 重複で 409、3 回リトライ)、`GET /research/{humId}` (バージョン解決、public 範囲)、`PUT /research/{humId}/update` (全置換、rawHtml null 上書き、楽観的ロック)、`POST /research/{humId}/delete` (論理削除＋紐づく Dataset 物理削除)、`PUT /research/{humId}/uids` (admin)。
+`GET /research` (list、status フィルタの権限、value-based field control: status/owners/draftVersion)、`POST /research/new` (humId 自動採番、`op_type:create` 重複で 409、3 回リトライ)、`GET /research/{humId}` (バージョン解決、public 範囲)、`PUT /research/{humId}/update` (全置換、rawHtml null 上書き、楽観的ロック)、`POST /research/{humId}/delete` (論理削除＋紐づく Dataset 物理削除)、`GET /research/{humId}/owners` (admin, JGA DB 由来の owner 一覧を返す)。
 
 ### IT-RESEARCH-01: GET /research 一覧 (public)
 
@@ -1519,7 +1519,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - `status === 200`
 - `data` は `latestVersion !== null AND status !== "deleted"` のみ
 - 各 item の `status === "published"` (value-based)
-- 各 item で `uids` / `draftVersion` / `latestVersion` は **omit** (`ResearchSummary` のシェイプ。詳細との違いに注意)
+- 各 item で `owners` / `draftVersion` / `latestVersion` は **omit** (`ResearchSummary` のシェイプ。詳細との違いに注意)
 - list は item 単位の `_seq_no` / `_primary_term` を**含まない** (含まれるのは detail のみ)
 
 **回帰元**: `architecture.md § 公開条件` / `architecture.md § レスポンスのフィールド制御`
@@ -1771,30 +1771,6 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **回帰元**: `architecture.md § deleted 状態` (humId uniqueness 保持目的)
 
 **関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
-
-### IT-RESEARCH-21: PUT /research/{humId}/uids (admin) で uids 更新
-
-**endpoint**: `PUT /research/{humId}/uids` body: `{ uids: ["uid1", "uid2"], _seq_no, _primary_term }`
-
-**不変条件**:
-- `status === 200`
-- 直後の admin GET で `data.uids === ["uid1", "uid2"]`
-- uid1 ユーザーで update 系 endpoint を叩けるようになる
-
-**回帰元**: `docs/api-guide.md § エンドポイント構成` / `src/api/routes/research/crud.ts`
-
-**関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
-
-### IT-RESEARCH-22: PUT /research/{humId}/uids は非 admin で 403
-
-**endpoint**: `PUT /research/{humId}/uids` (owner だが非 admin)
-
-**不変条件**:
-- `status === 403`
-
-**回帰元**: `architecture.md § 認可マトリクス`
-
-**関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
 ### IT-RESEARCH-23: GET /research/{humId}/dataset (リンク Dataset 一覧)
 

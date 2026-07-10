@@ -26,7 +26,7 @@ import {
 } from "./mutating-helpers"
 import {
   authHeaders,
-  decodeJwtSub,
+  decodeJwtPreferredUsername,
   getApp,
   getFixtures,
   itWithEs,
@@ -154,13 +154,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-02: public sees only versions up to latestVersion; owner/admin see the draft too", async ({ admin, nonAdmin }) => {
     // IT-VERSION-02
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId) // v1 published
       await createNewVersion(nonAdmin, humId) // v2 draft
@@ -183,13 +183,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-06: owner POST /research/{humId}/versions/new on published creates a draft v2", async ({ admin, nonAdmin }) => {
     // IT-VERSION-06
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       const newVersion = await createNewVersion(nonAdmin, humId)
@@ -211,13 +211,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-07: POST /research/{humId}/versions/new on non-published is refused with 409", async ({ admin, nonAdmin }) => {
     // IT-VERSION-07
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       // draft → 409
       const draft = await app.request(url(`/research/${humId}/versions/new`), {
@@ -243,13 +243,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-09: first PUT under a new draft cycle bumps Dataset version v1 → v2", async ({ admin, nonAdmin }) => {
     // IT-VERSION-09
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
@@ -287,13 +287,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-10: second PUT in the same draft cycle stays on the bumped Dataset version", async ({ admin, nonAdmin }) => {
     // IT-VERSION-10
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
@@ -338,13 +338,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-11: new Dataset on a draft Research appears in the parent dataset list", async ({ admin, nonAdmin }) => {
     // IT-VERSION-11
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const listed = await app.request(url(`/research/${humId}/dataset`), { headers: authHeaders(admin) })
@@ -361,13 +361,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
     // create → set uids → create dataset (D1 v1) → submit → approve (publish v1) →
     //   new draft v2 → PUT D1 (v2 bump) → submit → approve (publish v2) →
     // GET /research/{humId}/versions/v1 → datasets[].version === "v1" pinned.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
@@ -410,13 +410,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-13: consecutive publish cycles produce v1, v2, v3 strictly increasing", async ({ admin, nonAdmin }) => {
     // IT-VERSION-13
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const readLatest = async (): Promise<string | null> => {
         const res = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
@@ -443,13 +443,13 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
 
   itWithIsolationIndex("IT-VERSION-14: concurrent POST /versions/new → exactly one wins, the other 409", async ({ admin, nonAdmin }) => {
     // IT-VERSION-14
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       // confirm published before the race so the second 409 is not from state-guard but from the lock.

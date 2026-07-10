@@ -23,7 +23,7 @@ import {
 } from "./mutating-helpers"
 import {
   authHeaders,
-  decodeJwtSub,
+  decodeJwtPreferredUsername,
   getApp,
   itWithAdminToken,
   itWithEs,
@@ -395,13 +395,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
 
   itWithIsolationIndex("IT-DATASET-12: PUT /dataset/{datasetId}/update with stale _seq_no returns 409", async ({ admin, nonAdmin }) => {
     // IT-DATASET-12
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const valid = {
@@ -428,13 +428,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
 
   itWithIsolationIndex("IT-DATASET-13: PUT /dataset/{datasetId}/update with experiments missing header/data returns 400", async ({ admin, nonAdmin }) => {
     // IT-DATASET-13
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const res = await app.request(url(`/dataset/${ds.datasetId}/update`), {
@@ -467,13 +467,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     // SSOT mentions typeOfData; the live UpdateDatasetRequestSchema has typeOfData as bilingual
     // simple strings (no rawHtml). The observable rawHtml-bearing field on a Dataset is
     // experiments[].header / data values, so we exercise the strip via experiments[].header.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const res = await app.request(url(`/dataset/${ds.datasetId}/update`), {
@@ -511,8 +511,8 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
 
   itWithIsolationIndex("IT-DATASET-15: POST /dataset/{datasetId}/delete is admin-only (401/403/403/204)", async ({ admin, nonAdmin }) => {
     // IT-DATASET-15
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
@@ -530,7 +530,7 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       })
       expect(nonOwner.status).toBe(403)
       // 3) authenticated owner (non-admin) → still 403 because delete is admin-only
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ownerNonAdmin = await app.request(url(`/dataset/${ds.datasetId}/delete`), {
         method: "POST",
         headers: authHeaders(nonAdmin),
@@ -553,14 +553,14 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     // Dataset version (`v2`). The orphan-free invariant is what `refresh:
     // "wait_for"` on the compensating delete (es-client/dataset.ts:404) is
     // there to guarantee.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       // 1. Set up a published Research with one Dataset at v1.
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
@@ -621,14 +621,14 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     // before reaching the writer. (humVersionId rotates across draft cycles
     // so it is not compared at the handler boundary; the ES layer pins it
     // from the existing dataset doc + parent.draftVersion regardless.)
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humIdA = ""
     let humIdB = ""
     try {
       const a = await createDraftResearch(admin)
       humIdA = a.humId
-      await setOwnerUids(admin, humIdA, [sub!])
+      await setOwnerUids(admin, humIdA, [username!])
       const b = await createDraftResearch(admin)
       humIdB = b.humId
 
@@ -666,13 +666,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
 
   itWithIsolationIndex("IT-DATASET-16: admin delete removes the Dataset from GET and from the parent dataset list", async ({ admin, nonAdmin }) => {
     // IT-DATASET-16
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const del = await app.request(url(`/dataset/${ds.datasetId}/delete`), {

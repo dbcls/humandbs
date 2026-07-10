@@ -1,111 +1,103 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 
 import { DdbjSearchApiError } from "@/api/external/ddbj-search/client"
-import {
+import type { DblinkResponse } from "@/api/external/ddbj-search/dblink"
+
+const mockFetchDblink = mock<
+  (type: string, id: string, requestId?: string) => Promise<DblinkResponse | null>
+>()
+
+// bun's mock.module replaces the whole module — every real export used by any
+// module in this test file must be surfaced. `fetchDblinkTargets` is pulled in
+// via distribution.ts (loaded transitively by the dataset routes) and must
+// keep working, so it stays as a passthrough over the mocked fetchDblink.
+void mock.module("@/api/external/ddbj-search/dblink", () => {
+  const DblinkAccessionType = {
+    SRA_SUBMISSION: "sra-submission",
+    SRA_STUDY: "sra-study",
+    SRA_EXPERIMENT: "sra-experiment",
+    SRA_RUN: "sra-run",
+    SRA_SAMPLE: "sra-sample",
+    SRA_ANALYSIS: "sra-analysis",
+    JGA_STUDY: "jga-study",
+    JGA_DATASET: "jga-dataset",
+    JGA_DAC: "jga-dac",
+    JGA_POLICY: "jga-policy",
+    BIOPROJECT: "bioproject",
+    BIOSAMPLE: "biosample",
+    HUMANDBS: "humandbs",
+    PUBMED: "pubmed",
+  } as const
+
+  const fetchDblinkTargets = async (
+    type: string,
+    id: string,
+    target: string,
+    requestId?: string,
+  ): Promise<string[]> => {
+    const res = await mockFetchDblink(type, id, requestId)
+    if (!res) return []
+    return res.dbXrefs.filter((x) => x.type === target).map((x) => x.identifier)
+  }
+
+  return {
+    DblinkAccessionType,
+    fetchDblink: mockFetchDblink,
+    fetchDblinkTargets,
+  }
+})
+
+const {
   fetchJgaParentStudyId,
   parentStudyCache,
-} from "@/api/external/ddbj-search/jga-resources"
+} = await import("@/api/external/ddbj-search/jga-resources")
 
-const originalFetch = globalThis.fetch
-
-interface StubOptions {
-  status?: number
-  body?: unknown
-  bodyText?: string
-  throwError?: Error
-}
-
-let capturedRequests: { url: string; headers: Record<string, string> }[] = []
-
-function stubFetch(options: StubOptions | ((url: string) => StubOptions)): void {
-  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : String(input)
-    const headers: Record<string, string> = {}
-    if (init?.headers) {
-      for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
-        headers[k] = v
-      }
-    }
-    capturedRequests.push({ url, headers })
-
-    const opts = typeof options === "function" ? options(url) : options
-    if (opts.throwError) throw opts.throwError
-
-    const status = opts.status ?? 200
-    if (opts.bodyText !== undefined) {
-      return new Response(opts.bodyText, { status })
-    }
-    return new Response(JSON.stringify(opts.body ?? {}), {
-      status,
-      headers: { "content-type": "application/json" },
-    })
-  }) as typeof fetch
-}
+const makeResponse = (dbXrefs: { identifier: string; type: string; url?: string }[]): DblinkResponse => ({
+  identifier: "JGAD000001",
+  type: "jga-dataset",
+  dbXrefs,
+})
 
 describe("fetchJgaParentStudyId", () => {
   beforeEach(() => {
     parentStudyCache.clear()
-    capturedRequests = []
+    mockFetchDblink.mockReset()
   })
 
   afterEach(() => {
-    globalThis.fetch = originalFetch
+    mockFetchDblink.mockReset()
   })
 
   it("returns the first jga-study identifier from dbXrefs", async () => {
-    stubFetch({
-      body: {
-        found: true,
-        _source: {
-          dbXrefs: [
-            { identifier: "JGAP000001", type: "jga-policy" },
-            { identifier: "JGAS000001", type: "jga-study" },
-            { identifier: "JGAS999999", type: "jga-study" },
-          ],
-        },
-      },
-    })
+    mockFetchDblink.mockResolvedValueOnce(makeResponse([
+      { identifier: "JGAP000001", type: "jga-policy" },
+      { identifier: "JGAS000001", type: "jga-study" },
+      { identifier: "JGAS999999", type: "jga-study" },
+    ]))
 
     const result = await fetchJgaParentStudyId("JGAD000001")
     expect(result).toBe("JGAS000001")
-    expect(capturedRequests[0].url).toContain("/jga-dataset/_doc/JGAD000001")
+    expect(mockFetchDblink).toHaveBeenCalledWith("jga-dataset", "JGAD000001", undefined)
   })
 
   it("returns null when no jga-study xref is present", async () => {
-    stubFetch({
-      body: {
-        found: true,
-        _source: { dbXrefs: [{ identifier: "JGAP000001", type: "jga-policy" }] },
-      },
-    })
+    mockFetchDblink.mockResolvedValueOnce(makeResponse([
+      { identifier: "JGAP000001", type: "jga-policy" },
+    ]))
 
     const result = await fetchJgaParentStudyId("JGAD000002")
     expect(result).toBeNull()
   })
 
-  it("returns null when dbXrefs is absent", async () => {
-    stubFetch({ body: { found: true, _source: {} } })
-
-    const result = await fetchJgaParentStudyId("JGAD000003")
-    expect(result).toBeNull()
-  })
-
-  it("returns null when the document is not found (found: false)", async () => {
-    stubFetch({ body: { found: false } })
+  it("returns null when the dblink response is null (404 from DDBJ)", async () => {
+    mockFetchDblink.mockResolvedValueOnce(null)
 
     const result = await fetchJgaParentStudyId("JGAD999999")
     expect(result).toBeNull()
   })
 
-  it("returns null on 404 response", async () => {
-    stubFetch({ status: 404, body: {} })
-
-    const result = await fetchJgaParentStudyId("JGAD999998")
-    expect(result).toBeNull()
-  })
-
-  it("throws DdbjSearchApiError on 500 response", async () => {
-    stubFetch({ status: 500, body: {} })
+  it("propagates DdbjSearchApiError when the underlying client throws (5xx)", async () => {
+    mockFetchDblink.mockRejectedValueOnce(new DdbjSearchApiError("DDBJ 500", 500))
 
     let caught: unknown = null
     try {
@@ -116,8 +108,8 @@ describe("fetchJgaParentStudyId", () => {
     expect(caught).toBeInstanceOf(DdbjSearchApiError)
   })
 
-  it("throws DdbjSearchApiError on network error", async () => {
-    stubFetch({ throwError: new Error("boom") })
+  it("propagates network / arbitrary errors from the underlying client", async () => {
+    mockFetchDblink.mockRejectedValueOnce(new Error("boom"))
 
     let caught: unknown = null
     try {
@@ -125,67 +117,43 @@ describe("fetchJgaParentStudyId", () => {
     } catch (e) {
       caught = e
     }
-    expect(caught).toBeInstanceOf(DdbjSearchApiError)
+    expect(caught).toBeInstanceOf(Error)
   })
 
-  it("throws DdbjSearchApiError on invalid JSON", async () => {
-    stubFetch({ bodyText: "not json" })
-
-    let caught: unknown = null
-    try {
-      await fetchJgaParentStudyId("JGAD000012")
-    } catch (e) {
-      caught = e
-    }
-    expect(caught).toBeInstanceOf(DdbjSearchApiError)
-  })
-
-  it("propagates X-Request-ID header when requestId is provided", async () => {
-    stubFetch({ body: { found: true, _source: { dbXrefs: [] } } })
+  it("forwards requestId to the underlying dblink client", async () => {
+    mockFetchDblink.mockResolvedValueOnce(makeResponse([]))
 
     await fetchJgaParentStudyId("JGAD000020", { requestId: "req-abc" })
-    expect(capturedRequests[0].headers["X-Request-ID"]).toBe("req-abc")
+    expect(mockFetchDblink).toHaveBeenCalledWith("jga-dataset", "JGAD000020", "req-abc")
   })
 
-  it("caches hits so subsequent calls do not hit fetch", async () => {
-    stubFetch({
-      body: {
-        found: true,
-        _source: { dbXrefs: [{ identifier: "JGAS000005", type: "jga-study" }] },
-      },
-    })
+  it("caches hits so subsequent calls do not hit the underlying client", async () => {
+    mockFetchDblink.mockResolvedValueOnce(makeResponse([
+      { identifier: "JGAS000005", type: "jga-study" },
+    ]))
 
     const r1 = await fetchJgaParentStudyId("JGAD000030")
     const r2 = await fetchJgaParentStudyId("JGAD000030")
     expect(r1).toBe("JGAS000005")
     expect(r2).toBe("JGAS000005")
-    expect(capturedRequests).toHaveLength(1)
+    expect(mockFetchDblink).toHaveBeenCalledTimes(1)
   })
 
   it("caches null results (dataset with no parent)", async () => {
-    stubFetch({ body: { found: false } })
+    mockFetchDblink.mockResolvedValueOnce(null)
 
     const r1 = await fetchJgaParentStudyId("JGAD000031")
     const r2 = await fetchJgaParentStudyId("JGAD000031")
     expect(r1).toBeNull()
     expect(r2).toBeNull()
-    expect(capturedRequests).toHaveLength(1)
+    expect(mockFetchDblink).toHaveBeenCalledTimes(1)
   })
 
   it("does NOT cache thrown errors — retries on next call", async () => {
-    let firstCall = true
-    stubFetch(() => {
-      if (firstCall) {
-        firstCall = false
-        return { status: 500, body: {} }
-      }
-      return {
-        body: {
-          found: true,
-          _source: { dbXrefs: [{ identifier: "JGAS000042", type: "jga-study" }] },
-        },
-      }
-    })
+    mockFetchDblink.mockRejectedValueOnce(new DdbjSearchApiError("DDBJ 500", 500))
+    mockFetchDblink.mockResolvedValueOnce(makeResponse([
+      { identifier: "JGAS000042", type: "jga-study" },
+    ]))
 
     let caught: unknown = null
     try {
@@ -197,6 +165,6 @@ describe("fetchJgaParentStudyId", () => {
 
     const retried = await fetchJgaParentStudyId("JGAD000042")
     expect(retried).toBe("JGAS000042")
-    expect(capturedRequests).toHaveLength(2)
+    expect(mockFetchDblink).toHaveBeenCalledTimes(2)
   })
 })

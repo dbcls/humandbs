@@ -98,11 +98,12 @@ Keycloak の管理設定は [keycloak-admin.md](../../../docs/keycloak-admin.md)
 | Update | x | o | x | o |
 | Delete | x | x | x | o |
 
-### Research.uids フィールド
+### Research owners（JGA DB 由来）
 
-- Keycloak の sub (UUID) の配列
-- このリストに含まれるユーザーは、その Research の owner として扱われる
-- admin が `PUT /research/{humId}/uids` で設定
+- ES には owner を保存しない。owner は JGA DB (`nbdc_application` 系) の申請者から動的に取得する（`src/api/services/ownership.ts`）
+- 照合キーは JWT の `preferred_username`（`AuthUser.username`）と JGA DB の `pi_account_id` / `submitter_account_id` / `member_account_id` の一致
+- 参照は `GET /research/{humId}/owners` (admin) と、response の `owners: string[]` field 経由
+- 書き込み API はない（申請情報の書き換えは JGA DB 側の運用で行う）
 
 ### 管理者判定
 

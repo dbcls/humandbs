@@ -1,13 +1,17 @@
 /**
  * Mutating helpers for integration tests.
  *
- * These wrap the `POST /research/new` / `PUT /research/{humId}/uids` /
+ * These wrap the `POST /research/new` /
  * `POST /research/{humId}/{submit,approve,reject,unpublish}` /
  * `POST /research/{humId}/dataset/new` / `POST /research/{humId}/versions/new` /
  * `POST /research/{humId}/delete` paths so each IT can describe its scenario
  * as `arrange → act → assert → cleanup` without re-implementing the
  * boilerplate. All helpers carry `seqNo` / `primaryTerm` in the return value
  * so the caller can chain optimistic-lock-aware actions without an extra GET.
+ *
+ * Ownership assignment (`setOwnerUids`) does not hit an API endpoint; it seeds
+ * the in-process ownership cache in `services/ownership.ts` — production
+ * ownership is read-only from the JGA DB and cannot be mutated by tests.
  *
  * Constraints (see plan): the production indices must never be touched.
  * Callers must already be inside `itWithIsolationIndex`, which verifies that
@@ -19,6 +23,8 @@
  * the test body raised mid-scenario.
  */
 import { expect } from "bun:test"
+
+import { seedOwnershipForTest } from "@/api/services/ownership"
 
 import { authHeaders, getApp, url } from "./setup"
 
@@ -165,61 +171,28 @@ export const getResearchSeqNo = async (
 }
 
 /**
- * Replace the `uids` list of a Research (admin-only). After the write succeeds,
- * we re-GET to verify the new uids are visible in the search index (defends
- * against the eventual-consistency window so subsequent owner-token actions
- * see themselves in `uids`).
+ * Grant the given Keycloak `preferred_username`s ownership over `humId` for
+ * the current test process. Production ownership is derived from JGA DB
+ * `nbdc_application` rows; integration tests cannot insert into that shared
+ * DB, so we seed the in-process ownership cache (`services/ownership.ts`)
+ * directly. The seed is visible to any request served by the same `bun test`
+ * process — which includes `app.request(...)` in the same file.
+ *
+ * The helper's name and shape are preserved so existing IT bodies keep
+ * working; the payload just switched from `sub` (JWT `sub`) to the caller's
+ * `preferred_username` — see `decodeJwtPreferredUsername` in `setup.ts`.
  */
 export const setOwnerUids = async (
   admin: string,
   humId: string,
-  uids: string[],
+  usernames: string[],
 ): Promise<ResearchHandle> => {
-  const app = getApp()
+  seedOwnershipForTest(usernames.map(username => ({ humId, username })))
   const current = await getResearchSeqNo(admin, humId)
-  const res = await app.request(url(`/research/${humId}/uids`), {
-    method: "PUT",
-    headers: { ...authHeaders(admin), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      uids,
-      _seq_no: current.seqNo,
-      _primary_term: current.primaryTerm,
-    }),
-  })
-  expect(res.status).toBe(200)
-  const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
-
-  // Re-GET to confirm the uids landed. The PUT uses `refresh: "wait_for"` and
-  // the `-it` index is pinned to `refresh_interval: "1s"`, so this normally
-  // succeeds on the first read; the retry loop is a defense-in-depth against
-  // cluster-level pauses or CI jitter so we don't get flaky failures.
-  const VERIFY_ATTEMPTS = 5
-  const VERIFY_DELAY_MS = 100
-  let verifyJson: SingleEnvelope<{ uids?: string[] }> | null = null
-  let observed: string[] = []
-  for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt++) {
-    const verify = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
-    verifyJson = (await verify.json()) as SingleEnvelope<{ uids?: string[] }>
-    observed = verifyJson.data.uids ?? []
-    if (uids.every(uid => observed.includes(uid))) break
-    if (attempt < VERIFY_ATTEMPTS - 1) {
-      await new Promise(resolve => setTimeout(resolve, VERIFY_DELAY_MS))
-    }
-  }
-  for (const uid of uids) expect(observed).toContain(uid)
-
-  // Prefer the verify GET's lock fields (they reflect the post-write state).
-  // Fall back to the PUT response only if the verify meta is unusable — both
-  // can't be missing because requireSeqLock would have thrown earlier.
-  if (!verifyJson) throw new Error(`setOwnerUids(${humId}): verify GET produced no JSON`)
-  const verifyLock = typeof verifyJson.meta._seq_no === "number" && typeof verifyJson.meta._primary_term === "number"
-    ? { seqNo: verifyJson.meta._seq_no, primaryTerm: verifyJson.meta._primary_term }
-    : requireSeqLock(json.meta, `setOwnerUids(${humId}) put-response`)
-
   return {
     humId,
-    seqNo: verifyLock.seqNo,
-    primaryTerm: verifyLock.primaryTerm,
+    seqNo: current.seqNo,
+    primaryTerm: current.primaryTerm,
   }
 }
 

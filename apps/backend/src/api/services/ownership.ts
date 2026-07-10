@@ -72,3 +72,32 @@ export const resetOwnershipCacheForTest = (): void => {
   usernameToHumIds = new Map()
   lastRefreshedAt = 0
 }
+
+// Integration tests run inside the backend process, so they share this module's
+// cache. Seeding lets ownership be granted without inserting `nbdc_application`
+// rows into the shared JGA DB. `lastRefreshedAt` is bumped so `ensureCache`
+// won't refresh from JGA DB (which lacks the test humId) and drop the seed.
+export const seedOwnershipForTest = (
+  entries: { humId: string; username: string }[],
+): void => {
+  for (const { humId, username } of entries) {
+    const owners = humIdToOwners.get(humId) ?? []
+    if (!owners.includes(username)) humIdToOwners.set(humId, [...owners, username])
+    const hums = usernameToHumIds.get(username) ?? []
+    if (!hums.includes(humId)) usernameToHumIds.set(username, [...hums, humId])
+  }
+  lastRefreshedAt = Date.now()
+}
+
+export const unseedOwnershipForTest = (
+  entries: { humId: string; username: string }[],
+): void => {
+  for (const { humId, username } of entries) {
+    const owners = (humIdToOwners.get(humId) ?? []).filter(u => u !== username)
+    if (owners.length === 0) humIdToOwners.delete(humId)
+    else humIdToOwners.set(humId, owners)
+    const hums = (usernameToHumIds.get(username) ?? []).filter(h => h !== humId)
+    if (hums.length === 0) usernameToHumIds.delete(username)
+    else usernameToHumIds.set(username, hums)
+  }
+}
