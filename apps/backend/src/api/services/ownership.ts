@@ -101,3 +101,14 @@ export const unseedOwnershipForTest = (
     else usernameToHumIds.set(username, hums)
   }
 }
+
+/**
+ * Remove every seeded owner for a humId. Used by integration cleanup
+ * (`purgeResearch`) so that recycled humIds don't carry ownership from a
+ * previously purged Research.
+ */
+export const unseedAllOwnersForHumIdTest = (humId: string): void => {
+  const owners = humIdToOwners.get(humId) ?? []
+  if (owners.length === 0) return
+  unseedOwnershipForTest(owners.map(username => ({ humId, username })))
+}

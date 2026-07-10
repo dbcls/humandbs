@@ -24,7 +24,7 @@
  */
 import { expect } from "bun:test"
 
-import { seedOwnershipForTest } from "@/api/services/ownership"
+import { seedOwnershipForTest, unseedAllOwnersForHumIdTest } from "@/api/services/ownership"
 
 import { authHeaders, getApp, url } from "./setup"
 
@@ -301,5 +301,10 @@ export const purgeResearch = async (admin: string, humId: string): Promise<void>
     }
   } catch (err) {
     console.warn(`  purgeResearch(${humId}): ${(err as Error).message}`)
+  } finally {
+    // humIds are reusable after physical delete; without this the ownership
+    // cache seed from `setOwnerUids` would leak into the next test that
+    // happens to draw the same humId.
+    unseedAllOwnersForHumIdTest(humId)
   }
 }
