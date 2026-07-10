@@ -65,6 +65,7 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
   - `draftVersion`: 編集中のバージョン（null = 編集なし）。ES 固有フィールド
   - `.describe()` は crawler スキーマ（SSOT）に定義されているため、ES スキーマが継承する
 - **ES → API**: `api/types/es-docs.ts` で re-export。`api/types/views.ts` で API ビューモデル（`ResearchDetail`, `MergedSearchable` 等）を定義
+  - `DatasetDocWithMergedSchema` は `EsDatasetSchema` を `.extend()` して `mergedSearchable` / `distribution` / `parentJgaStudyId` を追加する。これらは ES に保存されないレスポンス時のみの拡張フィールド（`parentJgaStudyId` は DDBJ Search から live 取得。詳細は [api-guide.md § 10](api-guide.md#10-dataset-レスポンスの動的生成フィールド)）
   - API リクエスト用スキーマでは、コンテキストに応じてフィールドを選択的に除外する（`request-response.ts`）:
     - `dataProvider`: `datasetIds`, `researchTitle`, `periodOfDataUse` を除外
     - `controlledAccessUser`: 全フィールドを含む

@@ -9,49 +9,13 @@ import {
 import { logger } from "@/api/logger"
 import type { DistributionItem } from "@/api/types"
 
+import { TtlMapCache } from "./ttl-cache"
+
 const DRA_BASE = "https://ddbj.nig.ac.jp/public/ddbj_database/dra"
 const GEA_BASE = "https://ddbj.nig.ac.jp/public/ddbj_database/gea"
 const METABOBANK_BASE = "https://ddbj.nig.ac.jp/public/metabobank"
 
 const FILES_PATH = process.env.HUMANDBS_FILES_PATH ?? ""
-
-// --- TTL Map Cache ---
-
-interface CacheEntry<T> {
-  value: T
-  expiry: number
-}
-
-class TtlMapCache<T> {
-  private readonly cache = new Map<string, CacheEntry<T>>()
-  private readonly ttl: number
-
-  constructor(ttl: number) {
-    this.ttl = ttl
-  }
-
-  get(key: string): T | undefined {
-    const entry = this.cache.get(key)
-    if (!entry) return undefined
-    if (Date.now() >= entry.expiry) {
-      this.cache.delete(key)
-      return undefined
-    }
-    return entry.value
-  }
-
-  set(key: string, value: T): void {
-    this.cache.set(key, { value, expiry: Date.now() + this.ttl })
-  }
-
-  clear(): void {
-    this.cache.clear()
-  }
-
-  get size(): number {
-    return this.cache.size
-  }
-}
 
 const distributionCache = new TtlMapCache<DistributionItem[]>(CACHE_TTL.DISTRIBUTION)
 
@@ -220,7 +184,6 @@ export async function getDistributionSafe(
 }
 
 export {
-  TtlMapCache,
   detectKind,
   buildGeaDistribution,
   buildMetaboBankDistribution,

@@ -29,6 +29,8 @@ export const CACHE_TTL = {
   DISTRIBUTION: 60 * 60 * 1000,
   /** Ownership cache - 1 hour (JGA DB ownership data changes rarely) */
   OWNERSHIP: 60 * 60 * 1000,
+  /** JGAD → parent JGAS cache - 1 hour (JGA parent relation is stable once assigned) */
+  JGA_PARENT_STUDY: 60 * 60 * 1000,
 } as const
 
 // === Error Messages ===

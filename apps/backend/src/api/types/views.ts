@@ -184,5 +184,11 @@ export const DatasetDocWithMergedSchema = EsDatasetSchema.extend({
   mergedSearchable: MergedSearchableSchema.optional(),
   distribution: z.array(DistributionItemSchema).optional()
     .describe("Download links for public datasets (GEA, MetaboBank, DRA, NBDC Dataset)"),
+  parentJgaStudyId: z.string().nullable()
+    .describe(
+      "Parent JGA Study accession (e.g., 'JGAS000001') for JGAD datasets. " +
+      "Fetched live from DDBJ Search per request. `null` when the dataset is " +
+      "not JGAD, when the parent cannot be resolved, or when DDBJ Search fails.",
+    ),
 })
 export type DatasetDocWithMerged = z.infer<typeof DatasetDocWithMergedSchema>

@@ -37,16 +37,26 @@ void mock.module("@/api/es-client/dataset", () => ({
   getResearchByDatasetId: mock(async () => null),
 }))
 
+const mockGetParentJgaStudyIdSafe = mock<
+  (datasetId: string, requestId?: string) => Promise<string | null>
+>(async () => null)
+
+void mock.module("@/api/utils/parent-jga-study", () => ({
+  getParentJgaStudyIdSafe: mockGetParentJgaStudyIdSafe,
+}))
+
 const { getTestApp } = await import("../../helpers")
 
 interface BatchBody {
-  data: { datasetId: string }[]
+  data: { datasetId: string; parentJgaStudyId: string | null }[]
   meta: { batch: { requested: number; found: number; notFound: string[] } }
 }
 
 describe("api/routes/dataset GET /dataset/batch", () => {
   beforeEach(() => {
     mockGetDataset.mockReset()
+    mockGetParentJgaStudyIdSafe.mockReset()
+    mockGetParentJgaStudyIdSafe.mockImplementation(async () => null)
   })
 
   describe("validation (no ES required)", () => {
@@ -193,6 +203,44 @@ describe("api/routes/dataset GET /dataset/batch", () => {
       const res = await app.request("/dataset/batch?ids=JGAD000001&includeRawHtml=false")
       const text = await res.text()
       expect(text).not.toContain("rawHtml")
+    })
+  })
+
+  describe("parentJgaStudyId", () => {
+    it("populates parentJgaStudyId per item using the safe lookup", async () => {
+      mockGetDataset.mockImplementation(async (id) => createMockDatasetDoc({ datasetId: id }))
+      mockGetParentJgaStudyIdSafe.mockImplementation(async (id) => {
+        if (id === "JGAD000001") return "JGAS000001"
+        if (id === "JGAD000002") return null
+        return null
+      })
+
+      const app = getTestApp()
+      const res = await app.request("/dataset/batch?ids=JGAD000001,JGAD000002,DRA000908")
+      expect(res.status).toBe(200)
+
+      const body = await res.json() as BatchBody
+      const map = new Map(body.data.map(d => [d.datasetId, d.parentJgaStudyId]))
+      expect(map.get("JGAD000001")).toBe("JGAS000001")
+      expect(map.get("JGAD000002")).toBeNull()
+      expect(map.get("DRA000908")).toBeNull()
+      expect(mockGetParentJgaStudyIdSafe).toHaveBeenCalledTimes(3)
+    })
+
+    it("does not affect other items when the safe lookup returns null for one id", async () => {
+      mockGetDataset.mockImplementation(async (id) => createMockDatasetDoc({ datasetId: id }))
+      // First id looks up successfully, second returns null (mirrors DDBJ failure absorbed by safe wrapper).
+      mockGetParentJgaStudyIdSafe.mockImplementation(async (id) =>
+        id === "JGAD000001" ? "JGAS000010" : null)
+
+      const app = getTestApp()
+      const res = await app.request("/dataset/batch?ids=JGAD000001,JGAD000002")
+      expect(res.status).toBe(200)
+
+      const body = await res.json() as BatchBody
+      expect(body.data.find(d => d.datasetId === "JGAD000001")?.parentJgaStudyId).toBe("JGAS000010")
+      expect(body.data.find(d => d.datasetId === "JGAD000002")?.parentJgaStudyId).toBeNull()
+      expect(body.meta.batch).toEqual({ requested: 2, found: 2, notFound: [] })
     })
   })
 })

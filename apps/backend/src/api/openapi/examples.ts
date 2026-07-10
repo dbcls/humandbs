@@ -385,10 +385,13 @@ const SAMPLE_MERGED_SEARCHABLE = {
 }
 
 /** Dataset body with `mergedSearchable` for endpoints that surface
- * `DatasetDocWithMergedSchema` (Dataset detail / version detail). */
+ * `DatasetDocWithMergedSchema` (Dataset detail / version detail / batch).
+ * `parentJgaStudyId` is required-nullable — the field itself is always present,
+ * populated live from DDBJ Search for JGAD datasets. */
 const DATASET_BODY_WITH_MERGED = {
   ...DATASET_BODY,
   mergedSearchable: SAMPLE_MERGED_SEARCHABLE,
+  parentJgaStudyId: "JGAS000001",
 }
 
 /** Detail body for `ResearchDetailResponse` (`ResearchDetailSchema` =

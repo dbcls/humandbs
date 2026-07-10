@@ -29,6 +29,7 @@ import {
   singleResponse,
 } from "@/api/helpers/response"
 import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
+import { getRequestId } from "@/api/middleware/request-id"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
 import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
@@ -69,6 +70,7 @@ import type { DatasetDocWithMerged } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { getDistributionSafe } from "@/api/utils/distribution"
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
+import { getParentJgaStudyIdSafe } from "@/api/utils/parent-jga-study"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 // === Route Definitions ===
@@ -364,11 +366,16 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
 datasetRouter.openapi(batchGetDatasetsRoute, async (c) => {
   const { ids, includeRawHtml } = c.req.valid("query")
   const authUser = c.get("authUser")
+  const requestId = getRequestId(c)
 
   const uniqIds = uniq(ids)
-  // getDataset applies per-ID authorization and version resolution, returning
-  // null for absent or inaccessible Datasets (existence is hidden).
-  const datasets = await Promise.all(uniqIds.map((id) => getDataset(id, {}, authUser)))
+  // Fire dataset lookups and parent-JGAS lookups in parallel. Non-JGAD ids
+  // short-circuit inside getParentJgaStudyIdSafe without hitting DDBJ, so the
+  // fan-out cost stays bounded by the number of JGAD ids in the batch.
+  const [datasets, parentIds] = await Promise.all([
+    Promise.all(uniqIds.map((id) => getDataset(id, {}, authUser))),
+    Promise.all(uniqIds.map((id) => getParentJgaStudyIdSafe(id, requestId))),
+  ])
 
   const data: DatasetDocWithMerged[] = []
   const notFound: string[] = []
@@ -378,8 +385,10 @@ datasetRouter.openapi(batchGetDatasetsRoute, async (c) => {
       notFound.push(id)
       return
     }
-    // Match the detail endpoint: add mergedSearchable, then strip rawHtml.
-    data.push(maybeStripRawHtml(addMergedSearchable(dataset), includeRawHtml))
+    data.push(maybeStripRawHtml(
+      { ...addMergedSearchable(dataset), parentJgaStudyId: parentIds[i] },
+      includeRawHtml,
+    ))
   })
 
   return batchResponse(c, data, {
@@ -394,6 +403,7 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
   const { datasetId } = c.req.valid("param")
   const query = c.req.valid("query")
   const authUser = c.get("authUser")
+  const requestId = getRequestId(c)
 
   const dataset = await getDataset(datasetId, { version: query.version ?? undefined }, authUser)
   if (dataset === null) {
@@ -408,8 +418,14 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
 
   // Add mergedSearchable (aggregates all experiment searchable fields)
   const datasetWithMerged = addMergedSearchable(dataset)
-  const distribution = await getDistributionSafe(dataset.datasetId, dataset.humId)
-  const strippedDataset = maybeStripRawHtml({ ...datasetWithMerged, distribution }, query.includeRawHtml ?? false)
+  const [distribution, parentJgaStudyId] = await Promise.all([
+    getDistributionSafe(dataset.datasetId, dataset.humId),
+    getParentJgaStudyIdSafe(dataset.datasetId, requestId),
+  ])
+  const strippedDataset = maybeStripRawHtml(
+    { ...datasetWithMerged, distribution, parentJgaStudyId },
+    query.includeRawHtml ?? false,
+  )
 
   return singleResponse(c, strippedDataset, datasetWithSeqNo.seqNo, datasetWithSeqNo.primaryTerm)
 })
@@ -516,6 +532,7 @@ datasetRouter.openapi(listVersionsRoute, async (c) => {
 datasetRouter.openapi(getVersionRoute, async (c) => {
   const { datasetId, version } = c.req.valid("param")
   const authUser = c.get("authUser")
+  const requestId = getRequestId(c)
 
   const dataset = await getDataset(datasetId, { version }, authUser)
   if (dataset === null) {
@@ -524,10 +541,13 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
 
   // Add mergedSearchable (aggregates all experiment searchable fields)
   const datasetWithMerged = addMergedSearchable(dataset)
-  const distribution = await getDistributionSafe(dataset.datasetId, dataset.humId)
+  const [distribution, parentJgaStudyId] = await Promise.all([
+    getDistributionSafe(dataset.datasetId, dataset.humId),
+    getParentJgaStudyIdSafe(dataset.datasetId, requestId),
+  ])
 
   // Historical versions are read-only
-  return singleReadOnlyResponse(c, { ...datasetWithMerged, distribution })
+  return singleReadOnlyResponse(c, { ...datasetWithMerged, distribution, parentJgaStudyId })
 })
 
 // GET /dataset/{datasetId}/research

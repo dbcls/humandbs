@@ -19,6 +19,7 @@ ResearchVersion N:M Dataset (datasets で参照)
 - **ライフサイクル連動**: Research 削除時、紐づく Dataset も自動削除される
 - **ResearchVersion.datasets**: そのバージョン時点で紐づく Dataset の ID とバージョンの配列
 - **作成方法**: Dataset は単体では作成できない。必ず `POST /research/{humId}/dataset/new` で親 Research を指定して作成する
+- **JGA 側の親 study**: JGAD dataset の親 JGAS accession は ES には保存しない。detail / version detail / batch レスポンスに `parentJgaStudyId` として動的に付与し、DDBJ Search API から live 取得する（cache 付き、[api-guide.md § 10](api-guide.md#10-dataset-レスポンスの動的生成フィールド)）
 
 ### Dataset の status 依存
 
