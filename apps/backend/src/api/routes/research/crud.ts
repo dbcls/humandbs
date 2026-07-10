@@ -34,7 +34,7 @@ import { ResearchStatusSchema } from "@/api/types"
 import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
-import { sanitizeResearchDetailForUser } from "@/api/utils/version"
+import { isOwnerOrAdmin, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import {
   listResearchRoute,
@@ -161,8 +161,13 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const seqNo = lock?.seqNo ?? 0
     const primaryTerm = lock?.primaryTerm ?? 1
 
-    // Value-based access control: owner/admin sees actual values, others see sanitized values
-    const responseData = await sanitizeResearchDetailForUser(detail, authUser)
+    // Value-based access control: owner/admin sees actual values (including
+    // the JGA-DB-derived owner list); everyone else gets the masked view.
+    const sanitized = await sanitizeResearchDetailForUser(detail, authUser)
+    const owners = await isOwnerOrAdmin(authUser, humId)
+      ? await getOwnerUsernames(humId)
+      : []
+    const responseData = { ...sanitized, owners }
 
     const strippedDetail = maybeStripRawHtml(responseData, query.includeRawHtml ?? false)
 

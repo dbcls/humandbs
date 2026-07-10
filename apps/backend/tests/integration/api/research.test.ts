@@ -458,16 +458,29 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      // setOwnerUids advances _seq_no, so the original created.seqNo is now stale.
-      await setOwnerUids(admin, humId, [username!])
+      // Ownership seed is in-process only (services/ownership.ts) and does not
+      // advance the ES doc's _seq_no. To exercise the stale-lock path, issue a
+      // successful PUT with the current lock — after which the original
+      // `created.seqNo` becomes stale for any follow-up PUT.
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
+      const advance = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: { ja: "advance", en: "advance" },
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
+        }),
+      })
+      expect(advance.status).toBe(200)
       const res = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
         body: JSON.stringify({
           title: { ja: "X", en: "Y" },
-          _seq_no: created.seqNo,
-          _primary_term: created.primaryTerm,
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
         }),
       })
       expect(res.status).toBe(409)

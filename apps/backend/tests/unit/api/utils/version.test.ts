@@ -230,6 +230,7 @@ describe("sanitizeResearchDetailForUser", () => {
       versionReleaseDate: "2024-02-01",
       releaseNote: { ja: { text: "note", rawHtml: null }, en: { text: "note", rawHtml: null } },
       datasets: [],
+      owners: [],
       ...overrides,
     }
   }

@@ -53,6 +53,7 @@ const makeDetail = (overrides: Partial<ResearchDetail> = {}): ResearchDetail => 
     versionReleaseDate: "2024-01-01",
     releaseNote: { ja: { text: "note", rawHtml: null }, en: { text: "note", rawHtml: null } },
     datasets: [],
+    owners: [],
     ...overrides,
   }
 }

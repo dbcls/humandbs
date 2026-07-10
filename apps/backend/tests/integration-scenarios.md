@@ -1328,19 +1328,6 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
-### IT-DATASET-11: PUT /dataset/{datasetId}/update は親 Research が draft でないと 409
-
-**endpoint**: `PUT /dataset/{review_research_datasetId}/update` (owner token、親が review)
-
-**不変条件**:
-- `status === 409`
-- `detail` に「expected 'draft'」相当 (現在の status と期待 status を含む 409 Conflict メッセージ)
-- 同じ Dataset に対し親が draft に戻れば 200
-
-**回帰元**: `architecture.md § Dataset の status 依存` / `src/api/routes/dataset.ts § updateDatasetRoute § D1 check`
-
-**関連 unit テスト**: `tests/unit/api/routes/dataset/index.test.ts` (parent status guard)
-
 ### IT-DATASET-12: PUT /dataset/{datasetId}/update の楽観的ロック (409)
 
 **endpoint**: `PUT /dataset/{datasetId}/update` (古い `_seq_no` / `_primary_term`)

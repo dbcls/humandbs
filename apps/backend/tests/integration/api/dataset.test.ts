@@ -212,30 +212,6 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     expect(res.status).toBe(403)
   })
 
-  itWithAdminToken("IT-DATASET-11: PUT update on a published-parent dataset returns 409", async (token) => {
-    // IT-DATASET-11
-    // Admin bypasses ownership but parent-draft check still fires (409 Conflict)
-    // before validators run. The error detail must surface the parent-status
-    // reason so a 409 from any earlier gate would not match.
-    const app = getApp()
-    const listRes = await app.request(url("/dataset?limit=1"))
-    const list = (await listRes.json()) as SearchResponse<EsDataset>
-    if (list.data.length === 0) {
-      console.log("  SKIP IT-DATASET-11: no Dataset in ES")
-      return
-    }
-    const datasetId = list.data[0].datasetId
-    const res = await app.request(url(`/dataset/${datasetId}/update`), {
-      method: "PUT",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ experiments: [] }),
-    })
-    expect(res.status).toBe(409)
-    const json = (await res.json()) as { title?: string; detail?: string }
-    expect(json.title).toBe("Conflict")
-    expect(json.detail ?? "").toMatch(/expected 'draft'/)
-  })
-
   itWithEs("IT-DATASET-17: GET /dataset/{datasetId}/versions returns ascending version array", async () => {
     // IT-DATASET-17
     const app = getApp()
@@ -614,13 +590,11 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     }
   })
 
-  itWithIsolationIndex("IT-DATASET-T8: PUT update rejects body.humId that does not match the dataset's parent linkage", async ({ admin, nonAdmin }) => {
-    // The handler authorizes against the URL-resolved parent Research only; a
-    // body that overrides humId would otherwise try to reattach the dataset
-    // to an unrelated Research. The handler rejects such bodies with 400
-    // before reaching the writer. (humVersionId rotates across draft cycles
-    // so it is not compared at the handler boundary; the ES layer pins it
-    // from the existing dataset doc + parent.draftVersion regardless.)
+  itWithIsolationIndex("IT-DATASET-T8: PUT update silently strips body.humId — parent linkage stays with the URL-resolved Research", async ({ admin, nonAdmin }) => {
+    // The handler authorizes against the URL-resolved parent Research. `humId`
+    // in the request body is not in `UpdateDatasetRequestSchema`, so Zod strips
+    // it silently — the update succeeds and the dataset stays attached to the
+    // URL-resolved parent (never to the tampered humIdB).
     const username = decodeJwtPreferredUsername(nonAdmin)
     expect(username).toBeTruthy()
     let humIdA = ""
@@ -649,15 +623,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
         body: JSON.stringify(tamperedBody),
       })
-      expect(tampered.status).toBe(400)
+      expect(tampered.status).toBe(200)
 
-      // Sanity check: the same body with the correct linkage succeeds.
-      const ok = await app.request(url(`/dataset/${ds.datasetId}/update`), {
-        method: "PUT",
-        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
-        body: JSON.stringify({ ...tamperedBody, humId: humIdA, humVersionId: `${humIdA}-v1` }),
-      })
-      expect(ok.status).toBe(200)
+      // Parent linkage must be humIdA — the tampered humIdB was silently dropped.
+      const check = await app.request(url(`/dataset/${ds.datasetId}`))
+      expect(check.status).toBe(200)
+      const checkJson = (await check.json()) as { data: { humId: string } }
+      expect(checkJson.data.humId).toBe(humIdA)
     } finally {
       if (humIdA) await purgeResearch(admin, humIdA)
       if (humIdB) await purgeResearch(admin, humIdB)

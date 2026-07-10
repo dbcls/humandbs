@@ -90,15 +90,16 @@ describe("IT-TEMPLATE-*: template endpoints", () => {
   // === Success paths ===
 
   itWithJgaAdmin("IT-TEMPLATE-07: GET /templates/research/{existing jdsId} returns the draft payload", async (token) => {
-    // Probe an existing J-DS via listVersions (returns appl_ids).
-    // We then fetchDsRaw to verify the row exists and extract the master-level
-    // jds_id (e.g. "J-DS002494") which the /templates/research/ route expects.
+    // Probe an existing J-DS application version via listVersions (returns appl_ids).
+    // The /templates/research/ route expects the versioned J-DS applIdStr
+    // (e.g. "J-DS002494-001") — that shape flows to `getDsApplication`
+    // → `parseApplIdStr` for master + version resolution.
     const versions = await listVersions("J-DS", 1, 5)
     let existingJdsId: string | null = null
     for (const applId of versions.applIds) {
       const raws = await fetchDsRaw([applId])
       if (raws.length > 0) {
-        existingJdsId = raws[0].jds_id
+        existingJdsId = `${raws[0].jds_id}-${String(raws[0].appl_version).padStart(3, "0")}`
         break
       }
     }
@@ -121,7 +122,9 @@ describe("IT-TEMPLATE-*: template endpoints", () => {
 
   itWithJgaAdmin("IT-TEMPLATE-08: GET /templates/research/{nonexistent jdsId} returns 404", async (token) => {
     const app = getApp()
-    const res = await app.request(url("/templates/research/J-DS999999999"), { headers: authHeaders(token) })
+    // Well-formed applIdStr (`J-DS<digits>-<3-digit-version>`) that clears
+    // the params regex but has no matching row in the JGA DB → 404.
+    const res = await app.request(url("/templates/research/J-DS999999-999"), { headers: authHeaders(token) })
     expect(res.status).toBe(404)
   })
 

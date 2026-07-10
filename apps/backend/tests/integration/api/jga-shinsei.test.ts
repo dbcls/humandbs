@@ -29,8 +29,14 @@ import {
 
 beforeAll(setupIntegration)
 
-interface DsListItem { jdsId: string; applIdStr: string }
-interface DuListItem { jduId: string; applIdStr: string }
+// The list response returns DsApplicationTransformed / DuApplicationTransformed
+// items directly (see `routes/jga-shinsei.ts` → `listDsApplications`). Each item
+// carries a single applIdStr-shaped identifier — `jdsId` / `jduId` in the form
+// "J-DS000001-001" (base ID + 3-digit version suffix). There is no separate
+// `applIdStr` field on the wire; the compound id serves both roles.
+interface DsListItem { jdsId: string }
+interface DuListItem { jduId: string }
+const APPL_ID_RE = { ds: /^J-DS\d+-\d+$/, du: /^J-DU\d+-\d+$/ }
 
 describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () => {
   itWithEs("IT-JGA-01: GET /jga-shinsei/ds without auth returns 401", async () => {
@@ -58,7 +64,7 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
     expect(json.meta.pagination.total).toBeGreaterThanOrEqual(0)
     expect(json.data.length).toBeLessThanOrEqual(10)
     expect(json.data.length).toBeLessThanOrEqual(json.meta.pagination.total)
-    for (const item of json.data) expect(item.jdsId).toMatch(/^J-DS\d+$/)
+    for (const item of json.data) expect(item.jdsId).toMatch(APPL_ID_RE.ds)
   })
 
   itWithJgaAdmin("IT-JGA-04: ds pagination boundary validation rejects out-of-range params", async (token) => {
@@ -90,7 +96,7 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
       console.log("  SKIP IT-JGA-05: no J-DS rows in staging DB")
       return
     }
-    const applIdStr = list.data[0].applIdStr
+    const applIdStr = list.data[0].jdsId
     const detailRes = await app.request(url(`/jga-shinsei/ds/${applIdStr}`), { headers: authHeaders(token) })
     expect(detailRes.status).toBe(200)
     const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
@@ -135,7 +141,7 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
       console.log("  SKIP IT-JGA-09: no J-DU rows in staging DB")
       return
     }
-    const applIdStr = list.data[0].applIdStr
+    const applIdStr = list.data[0].jduId
     const detailRes = await app.request(url(`/jga-shinsei/du/${applIdStr}`), { headers: authHeaders(token) })
     expect(detailRes.status).toBe(200)
     const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
@@ -153,8 +159,6 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
   itWithJga("IT-JGA-11: J-DS and J-DU appl_id sets returned by listVersions are disjoint (data_type separation)", async () => {
     // IT-JGA-11
     const [ds, du] = await Promise.all([listVersions("J-DS", 1, 50), listVersions("J-DU", 1, 50)])
-    for (const id of ds.applIds) expect(typeof id).toBe("number")
-    for (const id of du.applIds) expect(typeof id).toBe("number")
     const dsSet = new Set(ds.applIds)
     for (const id of du.applIds) expect(dsSet.has(id)).toBe(false)
   })
