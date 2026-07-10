@@ -167,4 +167,33 @@ describe("toPersonDoc", () => {
     )
     expect(doc.name.en?.text).toBe("Tanaka")
   })
+
+  it("maps researchTitle from ja and en", () => {
+    const doc = toPersonDoc(
+      rollup(),
+      person({ studyTitle: "研究題目", studyTitleEn: "Research Title" }),
+    )
+    expect(doc.researchTitle).toEqual({ ja: "研究題目", en: "Research Title" })
+  })
+
+  it("falls back ja to en when studyTitle is empty", () => {
+    const doc = toPersonDoc(
+      rollup(),
+      person({ studyTitle: "", studyTitleEn: "Research Title" }),
+    )
+    expect(doc.researchTitle).toEqual({ ja: "Research Title", en: "Research Title" })
+  })
+
+  it("falls back en to ja when studyTitleEn is empty", () => {
+    const doc = toPersonDoc(
+      rollup(),
+      person({ studyTitle: "研究題目", studyTitleEn: "" }),
+    )
+    expect(doc.researchTitle).toEqual({ ja: "研究題目", en: "研究題目" })
+  })
+
+  it("omits researchTitle when both studyTitle and studyTitleEn are empty", () => {
+    const doc = toPersonDoc(rollup(), person())
+    expect(doc.researchTitle).toBeUndefined()
+  })
 })

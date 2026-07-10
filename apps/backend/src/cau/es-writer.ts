@@ -57,7 +57,10 @@ export const toPersonDoc = (
       : null,
     datasetIds: personHum.datasetIds,
     researchTitle: (person.studyTitle || person.studyTitleEn)
-      ? { ja: person.studyTitle || null, en: person.studyTitleEn || null }
+      ? {
+        ja: person.studyTitle || person.studyTitleEn || null,
+        en: person.studyTitleEn || person.studyTitle || null,
+      }
       : undefined,
     periodOfDataUse: {
       startDate: formatDate(personHum.startDate),

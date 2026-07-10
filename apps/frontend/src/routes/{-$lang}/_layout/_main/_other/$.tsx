@@ -30,9 +30,11 @@ const humIdWithVersion = z
 //   /hum<NNNN>-vN-release    → /research/:humId/versions  (release info page)
 //   /hum<NNNN>-latest        → /research/:humId           (latest research detail)
 //   /hum<NNNN>-latest-release → /research/:humId/versions (release info page)
+//   /hum<NNNN>-data-detail   → /hum<NNNN>-data-summary    (renamed CMS doc slug)
 const humVersionReleasePattern = /^(hum\d+)-v\d+-release$/i;
 const humLatestPattern = /^(hum\d+)-latest$/i;
 const humLatestReleasePattern = /^(hum\d+)-latest-release$/i;
+const humDataDetailPattern = /^(hum\d+)-data-detail$/i;
 
 // Legacy Joomla versioned-alias / menu-alias redirects:
 //   data-sharing-guidelines[-vN]              → guidelines/data-sharing-guidelines
@@ -106,6 +108,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         params: {
           lang: context.lang,
           humId: humLatestMatch[1].toLowerCase(),
+        },
+      });
+    }
+
+    const humDataDetailMatch = humDataDetailPattern.exec(params._splat);
+
+    if (humDataDetailMatch) {
+      throw redirect({
+        to: "/{-$lang}/$",
+        params: {
+          lang: context.lang,
+          _splat: `${humDataDetailMatch[1].toLowerCase()}-data-summary`,
         },
       });
     }
