@@ -269,8 +269,8 @@
     "periodOfDataUse": "Period of data use",
     "grant": {
       "self": "Grants",
-      "title": "Name",
-      "agency": "Title",
+      "title": "Title",
+      "agency": "Name",
       "id": "Project number"
     },
     "researchProject": {

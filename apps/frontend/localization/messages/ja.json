@@ -269,8 +269,8 @@
     "relatedPublication": "関連論文",
     "grant": {
       "self": "助成金情報",
-      "title": "科研費・助成金名",
-      "agency": "助成機関",
+      "title": "タイトル",
+      "agency": "科研費・助成金名",
       "id": "研究課題番号"
     },
     "researchProject": {
