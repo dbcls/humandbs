@@ -1,17 +1,16 @@
+import { evaluate, useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { IntlProvider } from "use-intl";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import type {
-  DatasetFormHandle,
-  DatasetFormValues,
-} from "@/components/form-context/dataset-fields/DatasetForm";
+import type { DatasetFormValues } from "@/components/form-context/dataset-fields/DatasetForm";
 import {
   DatasetForm,
   datasetFormValuesToPreviewDataset,
   getDefaultDatasetFormValues,
+  useDatasetForm,
 } from "@/components/form-context/dataset-fields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/dataset-fields/ExperimentsArrayField";
 import {
@@ -56,33 +55,14 @@ export function DatasetCreateView({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
-  const defaultValues = getDefaultDatasetFormValues(humId);
+  const [defaultValues] = useState(() => getDefaultDatasetFormValues(humId));
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
-  const [previewValues, setPreviewValues] = useState(defaultValues);
   const [pendingTemplate, setPendingTemplate] = useState<{
     data: DatasetTemplateData;
     accession: string;
   } | null>(null);
   const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
   const [chipsResetKey, setChipsResetKey] = useState(0);
-  const currentValuesRef = useRef<DatasetFormValues>(defaultValues);
-  const isApplyingRef = useRef(false);
-  const formRef = useRef<DatasetFormHandle>(null);
-
-  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
-    const merged = mergeDatasetTemplate(currentValuesRef.current, data);
-    isApplyingRef.current = true;
-    formRef.current?.applyValues(merged);
-    setLastAppliedId(accession);
-  }
-
-  function applyTemplate(data: DatasetTemplateData, accession: string) {
-    if (templateWouldOverwrite(currentValuesRef.current, data)) {
-      setPendingTemplate({ data, accession });
-    } else {
-      doApplyTemplate(data, accession);
-    }
-  }
 
   const { mutateAsync: create, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
@@ -123,6 +103,41 @@ export function DatasetCreateView({
     },
   });
 
+  const form = useDatasetForm(defaultValues, async (value) => (await create(value)).ok);
+  const values = useStore(form.store, (state) => state.values);
+  const previousValuesRef = useRef(values);
+  const isApplyingTemplateRef = useRef(false);
+
+  useEffect(() => {
+    if (values === previousValuesRef.current) return;
+    previousValuesRef.current = values;
+    if (isApplyingTemplateRef.current) {
+      isApplyingTemplateRef.current = false;
+      return;
+    }
+    setChipsResetKey((key) => key + 1);
+    setLastAppliedId(null);
+  }, [values]);
+
+  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
+    const merged = mergeDatasetTemplate(form.state.values, data);
+    isApplyingTemplateRef.current = !evaluate(form.state.values, merged);
+    form.setFieldValue("releaseDate", merged.releaseDate);
+    form.setFieldValue("criteria", merged.criteria);
+    form.setFieldValue("typeOfData", merged.typeOfData);
+    form.setFieldValue("datasetId", merged.datasetId);
+    form.setFieldValue("experiments", merged.experiments);
+    setLastAppliedId(accession);
+  }
+
+  function applyTemplate(data: DatasetTemplateData, accession: string) {
+    if (templateWouldOverwrite(form.state.values, data)) {
+      setPendingTemplate({ data, accession });
+    } else {
+      doApplyTemplate(data, accession);
+    }
+  }
+
   const header = (
     <div className="flex items-center gap-2">
       <button
@@ -139,16 +154,7 @@ export function DatasetCreateView({
   );
 
   const actions = (
-    <Button
-      type="button"
-      size="lg"
-      disabled={isSaving}
-      onClick={() => {
-        document
-          .getElementById("dataset-edit-form")
-          ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-      }}
-    >
+    <Button type="submit" size="lg" form="dataset-create-form" disabled={isSaving}>
       {isSaving ? "Creating…" : "Create dataset"}
     </Button>
   );
@@ -204,26 +210,14 @@ export function DatasetCreateView({
           />
         </div>
         <DatasetForm
+          form={form}
+          formId="dataset-create-form"
           defaultValues={defaultValues}
           readOnly={false}
-          onSubmit={async (values) => {
-            await create(values);
-          }}
           isSaving={isSaving}
           error={error}
           showDatasetIdField
-          onValuesChange={(values) => {
-            if (isApplyingRef.current) {
-              isApplyingRef.current = false;
-            } else {
-              setChipsResetKey((k) => k + 1);
-              setLastAppliedId(null);
-            }
-            currentValuesRef.current = values;
-            setPreviewValues(values);
-          }}
           hideSaveButton
-          imperativeRef={formRef}
         />
       </div>
       <PreviewDialog
@@ -236,7 +230,7 @@ export function DatasetCreateView({
         <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
             <DatasetVersionCard
-              versionData={datasetFormValuesToPreviewDataset(previewValues)}
+              versionData={datasetFormValuesToPreviewDataset(values)}
               lang={previewLang}
               showPublicActions={false}
             />

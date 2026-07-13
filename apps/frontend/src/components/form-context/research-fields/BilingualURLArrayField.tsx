@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 
 import { useFieldContext } from "../FormContext";
 import { getFieldDefaultValue } from "../fields/useFieldModified";
+import { getBilingualUrlRowCount } from "./bilingualUrlRows";
 import type { UrlItem } from "./URLInputPair";
 import { URLInputPair } from "./URLInputPair";
 
@@ -17,7 +18,7 @@ type BilingualURLArray = z.infer<typeof urlArraySchema>;
 
 export default function BilingualURLArrayField({ label }: { label?: React.ReactNode }) {
   const field = useFieldContext<BilingualURLArray>();
-  const enItems = field.state.value?.en ?? [];
+  const rowCount = getBilingualUrlRowCount(field.state.value);
   const defaultValue = getFieldDefaultValue(field) as BilingualURLArray | undefined;
 
   function updateItem(lang: "en" | "ja", i: number, next: { text: string; url: string }) {
@@ -41,7 +42,7 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
     <fieldset className="flex flex-col gap-2">
       <Label>{label}</Label>
 
-      {enItems.length > 0 && (
+      {rowCount > 0 && (
         <div className="flex gap-2">
           <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
           <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
@@ -49,7 +50,8 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
         </div>
       )}
 
-      {enItems.map((_, i) => (
+      {Array.from({ length: rowCount }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: locale arrays use the same positional row
         <div key={i} className="flex items-start gap-2">
           <div className="flex-1">
             <URLInputPair

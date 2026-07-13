@@ -18,6 +18,7 @@ import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind
 import type { FieldOverride } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { humanize } from "@/components/form-context/schema-form/utils";
+import { InfoBadge } from "@/components/InfoBadge";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -121,6 +122,8 @@ export function ResearchDetails({
   onVersionChange?: (v: string) => void;
 }) {
   const queryClient = useQueryClient();
+
+  const t = useTranslations();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
   // Uses the "for edit" fn (includeRawHtml: true, no render transform) so legacy
@@ -577,48 +580,50 @@ export function ResearchDetails({
         </div>
       </PreviewDialog>
 
-      {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
-      {isAdmin && (
-        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-muted-foreground">Owners:</span>
-          {owners.length > 0 ? (
-            <div className="flex flex-wrap gap-4">
-              {owners.map((owner) => (
-                <span key={owner} className="text-neutral-700">
-                  <LucideUser2 className="inline size-6 align-text-bottom" />
-                  {owner}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="text-muted-foreground italic">None</span>
+      <div className="flex items-start justify-between gap-5">
+        {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
+        {isAdmin && (
+          <div className="mx-5 mt-5 flex flex-1 flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium text-muted-foreground">Owners:</span>
+            {owners.length > 0 ? (
+              <div className="flex flex-wrap gap-4">
+                {owners.map((owner) => (
+                  <span key={owner} className="text-neutral-700">
+                    <LucideUser2 className="inline size-6 align-text-bottom" />
+                    {owner}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic">None</span>
+            )}
+          </div>
+        )}
+
+        {/* Research-wide workflow actions — apply to the research as a whole,
+          independent of which tab (metadata/datasets) is active. */}
+        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {isViewingDraft && canSubmit && (
+            <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Submitting…" : "Submit for review"}
+            </Button>
+          )}
+          {isViewingDraft && canReject && (
+            <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
+              {isRejecting ? "Rejecting…" : "Reject"}
+            </Button>
+          )}
+          {isViewingDraft && canApprove && (
+            <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
+              {isApproving ? "Approving…" : "Approve"}
+            </Button>
+          )}
+          {canUnpublish && (
+            <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
+              {isUnpublishing ? "Unpublishing…" : "Unpublish"}
+            </Button>
           )}
         </div>
-      )}
-
-      {/* Research-wide workflow actions — apply to the research as a whole,
-          independent of which tab (metadata/datasets) is active. */}
-      <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {isViewingDraft && canSubmit && (
-          <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Submitting…" : "Submit for review"}
-          </Button>
-        )}
-        {isViewingDraft && canReject && (
-          <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-            {isRejecting ? "Rejecting…" : "Reject"}
-          </Button>
-        )}
-        {isViewingDraft && canApprove && (
-          <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-            {isApproving ? "Approving…" : "Approve"}
-          </Button>
-        )}
-        {canUnpublish && (
-          <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
-            {isUnpublishing ? "Unpublishing…" : "Unpublish"}
-          </Button>
-        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -727,17 +732,26 @@ export function ResearchDetails({
           >
             {datasetView === null ? (
               <TabContentLayout
-                header={<span className="font-medium text-sm">Datasets</span>}
+                header={
+                  <div>
+                    <span className="font-medium text-sm">Datasets</span>{" "}
+                  </div>
+                }
                 actions={
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    disabled={!canCreateDataset}
-                    onClick={() => setDatasetView("new")}
-                  >
-                    Add new dataset
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      disabled={!canCreateDataset}
+                      onClick={() => setDatasetView("new")}
+                    >
+                      Add new dataset
+                    </Button>
+                    {!canCreateDataset ? (
+                      <InfoBadge>{t("admin.datasets.must-be-draft-to-add-new")}</InfoBadge>
+                    ) : null}
+                  </div>
                 }
               >
                 <ResearchDatasetsTab

@@ -208,7 +208,7 @@ function Experiment({ experiment }: { experiment: RenderedExperiment }) {
       </h2>
 
       <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
-        {Object.entries(experiment.data).map(([title, content]) => {
+        {Object.entries(experiment.data).sort(([title]) => {}).map(([title, content]) => {
           const markup = content?.[lang]?.renderedHtml;
           return (
             <KeyValueCard

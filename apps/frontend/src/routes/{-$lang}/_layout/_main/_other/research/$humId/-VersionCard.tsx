@@ -12,6 +12,7 @@ import { ContentHeader } from "@/components/ContentHeader";
 import { DatasetLink } from "@/components/DatasetLink";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
+import { ModalCell } from "@/components/ModalCell";
 import { Markdown } from "@/components/markdown";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
@@ -31,7 +32,6 @@ export function VersionCard({
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const t = useTranslations();
-  const tVersionCard = useTranslations("VersionCard");
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
 
   const tableMeta = {
@@ -149,7 +149,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("Research.relatedPublication")}</ContentHeader>
         <Table
-          columns={makePublicationColumns(tVersionCard)}
+          columns={relatedPublicationsColumns}
           data={versionData?.relatedPublication || []}
           className="mt-4 text-sm"
           meta={tableMeta}
@@ -243,41 +243,41 @@ function ResearchDatasetsCartHeaderButton({
 const publicationsColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["relatedPublication"][number]>();
 
-function makePublicationColumns(t: ReturnType<typeof useTranslations<"VersionCard">>) {
-  return [
-    publicationsColumnHelper.accessor("title", {
-      id: "title",
-      header: t("publicationTitle"),
-      cell: (ctx) => (
-        <span className="text-sm">
-          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
-        </span>
-      ),
-    }),
-    publicationsColumnHelper.accessor("doi", {
-      id: "DOI",
-      header: "DOI",
-      cell: (info) => (
-        <a href={info.getValue() ?? undefined} className="break-all text-sm">
-          {info.renderValue()}
-        </a>
-      ),
-    }),
-    publicationsColumnHelper.accessor("datasetIds", {
-      id: "datasetIDs",
-      header: t("publicationDatasets"),
-      cell: (info) => (
-        <ul>
+const relatedPublicationsColumns = [
+  publicationsColumnHelper.accessor("title", {
+    id: "title",
+    header: (ctx) => ctx.table.options.meta?.t("Research.publicationTitle"),
+    cell: (ctx) => (
+      <span className="text-sm">
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+      </span>
+    ),
+  }),
+  publicationsColumnHelper.accessor("doi", {
+    id: "DOI",
+    header: "DOI",
+    cell: (info) => (
+      <a href={info.getValue() ?? undefined} className="break-all text-sm">
+        {info.renderValue()}
+      </a>
+    ),
+  }),
+  publicationsColumnHelper.accessor("datasetIds", {
+    id: "datasetIDs",
+    header: (ctx) => ctx.table.options.meta?.t("Research.publicationDatasets"),
+    cell: (info) => (
+      <ModalCell>
+        <ul className="space-y-4">
           {info.getValue()?.map((datasetId) => (
             <li key={datasetId}>
               <DatasetLink datasetId={datasetId} />
             </li>
           ))}
         </ul>
-      ),
-    }),
-  ];
-}
+      </ModalCell>
+    ),
+  }),
+];
 
 const dataUsedByColumnsHelper =
   createColumnHelper<ResearchDetailResponse["data"]["controlledAccessUser"][number]>();
@@ -307,13 +307,15 @@ const dataUsedByColumns = [
     id: "cau.datasetIds",
     header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
     cell: (ctx) => (
-      <ul>
-        {ctx.getValue()?.map((id) => (
-          <li key={id}>
-            <DatasetLink datasetId={id} />
-          </li>
-        ))}
-      </ul>
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue()?.map((id) => (
+            <li key={id}>
+              <DatasetLink datasetId={id} />
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
 ];

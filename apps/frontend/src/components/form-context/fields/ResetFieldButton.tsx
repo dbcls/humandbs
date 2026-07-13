@@ -20,7 +20,7 @@ export function ResetFieldButton({
       data-type="reset"
       onClick={onClick}
       className={cn(
-        "absolute right-0 text-form-icon-btn hover:text-form-icon-btn-hover",
+        "absolute top-0 right-0 text-form-icon-btn hover:text-form-icon-btn-hover",
         className,
       )}
       title={tMarkdown("reset-field")}

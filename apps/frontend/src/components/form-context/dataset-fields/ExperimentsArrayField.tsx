@@ -1,7 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { compareMoldataKeys } from "@/config/moldataKeyOrder";
 import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import useConfirmationStore from "@/stores/confirmationStore";
 import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
@@ -31,6 +32,8 @@ import { MarkdownTextEditor } from "../fields/MarkdownTextEditor";
 import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
+
+const CREATE_MOLDATA_KEY = "__create-moldata-key__";
 
 /**
  * Experiment data entry: a key-value pair where value is bilingual.
@@ -73,15 +76,36 @@ function DataEntriesTable({
   legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
+  const sortedEntries = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => compareMoldataKeys(left.entry.key, right.entry.key));
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
 
   const availableKeys = ALLOWED_MOLDATA_KEYS.filter((k) => !usedKeys.has(k));
+  const [inputValue, setInputValue] = useState("");
+  const customKey = inputValue.trim();
+  const hasCustomKey = customKey.length > 0 && !usedKeys.has(customKey);
+  const filteredAvailableKeys = availableKeys.filter((key) =>
+    key.toLowerCase().includes(inputValue.toLowerCase()),
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 
   function handleAddKey(key: string) {
-    dataField.pushValue(newDataEntry(key));
+    const normalizedKey = key.trim();
+    if (!normalizedKey || usedKeys.has(normalizedKey)) return;
+    dataField.pushValue(newDataEntry(normalizedKey));
+    setInputValue("");
+  }
+
+  function handleKeySelection(key: string | null) {
+    if (!key) return;
+    if (key === CREATE_MOLDATA_KEY) {
+      handleAddKey(customKey);
+      return;
+    }
+    handleAddKey(key);
   }
 
   function handleDownload() {
@@ -184,7 +208,7 @@ function DataEntriesTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, di) => {
+            {sortedEntries.map(({ entry, index: di }) => {
               const isKnown = (ALLOWED_MOLDATA_KEYS as readonly string[]).includes(entry.key);
 
               return (
@@ -193,14 +217,14 @@ function DataEntriesTable({
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
-                    {isKnown ? (
-                      <span className="font-medium text-form-value">{entry.key}</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1">
+                    {
+                      <span className="inline-flex flex-wrap items-center gap-1">
                         <span className="font-medium text-form-value">{entry.key}</span>
-                        <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
+                        {!isKnown ? (
+                          <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
+                        ) : null}
                       </span>
-                    )}
+                    }
                   </td>
                   <td className="py-2 pr-3 align-top">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
@@ -274,25 +298,30 @@ function DataEntriesTable({
         </table>
       )}
 
-      {availableKeys.length > 0 && (
-        <Combobox
-          items={availableKeys}
-          value={null}
-          onValueChange={(key: string | null) => key && handleAddKey(key)}
-        >
-          <ComboboxInput placeholder="Add a moldata key..." />
-          <ComboboxContent>
-            <ComboboxEmpty>No items found.</ComboboxEmpty>
-            <ComboboxList>
-              {(item) => (
-                <ComboboxItem key={item} value={item}>
-                  {item}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-      )}
+      <Combobox
+        value={null}
+        onValueChange={handleKeySelection}
+        onInputValueChange={(value) => setInputValue(value)}
+      >
+        <ComboboxInput placeholder="Add a moldata key..." />
+        <ComboboxContent>
+          <ComboboxList>
+            {filteredAvailableKeys.map((key) => (
+              <ComboboxItem key={key} value={key}>
+                {key}
+              </ComboboxItem>
+            ))}
+            {hasCustomKey && (
+              <ComboboxItem value={CREATE_MOLDATA_KEY}>
+                Add custom key: <span className="font-medium">{customKey}</span>
+              </ComboboxItem>
+            )}
+            {filteredAvailableKeys.length === 0 && !hasCustomKey && (
+              <ComboboxEmpty>No items found.</ComboboxEmpty>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
     </div>
   );
 }

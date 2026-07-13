@@ -6,6 +6,8 @@ import type {
   RowData,
   SortingState,
   TableMeta,
+  VisibilityColumn,
+  VisibilityState,
 } from "@tanstack/react-table";
 import {
   flexRender,
@@ -48,6 +50,7 @@ function Table<T extends Record<string, unknown>>({
   variant,
   isDimmed,
   stickyColumnCount = 0,
+  columnVisibility,
 }: {
   className?: string;
   columns: ColumnDef<T, any>[];
@@ -59,6 +62,7 @@ function Table<T extends Record<string, unknown>>({
   variant?: VariantProps<typeof tableHeaderRowVariants>["variant"];
   isDimmed?: boolean;
   stickyColumnCount?: 0 | 1 | 2;
+  columnVisibility?: VisibilityState;
 }) {
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
 
@@ -79,6 +83,7 @@ function Table<T extends Record<string, unknown>>({
     state: {
       sorting: isControlledSorting ? sorting : localSorting,
       columnOrder: columnOrder,
+      columnVisibility,
     },
     onSortingChange: isControlledSorting ? onSortingChange : setLocalSorting,
     manualSorting: isControlledSorting,
@@ -161,7 +166,10 @@ function Table<T extends Record<string, unknown>>({
         ))}
         {data.length === 0 ? (
           <tr>
-            <td colSpan={table.getAllLeafColumns().length} className="h-10 text-center text-neutral-400">
+            <td
+              colSpan={table.getAllLeafColumns().length}
+              className="h-10 text-center text-neutral-400"
+            >
               {t("no-data")}
             </td>
           </tr>
