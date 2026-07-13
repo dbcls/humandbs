@@ -88,7 +88,9 @@ export function CopyFromDataset({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-foreground-light text-xs">Copy from existing dataset</span>
+      <span className="text-foreground-light text-xs">
+        {tResearches("copy-from-existing-dataset")}
+      </span>
       <div className="flex items-start gap-1.5">
         <div className="flex flex-1 flex-col gap-0.5">
           <Input
@@ -103,7 +105,7 @@ export function CopyFromDataset({
                 if (!isLoading) fetchAndApply();
               }
             }}
-            placeholder="datasetId (e.g. JGAD000001)"
+            placeholder={tResearches("dataset-id-placeholder")}
             disabled={isLoading}
             className={cn(
               "font-mono text-xs",
@@ -128,7 +130,7 @@ export function CopyFromDataset({
           )}
           {state.status === "done" && <Check className="size-3 text-green-600" />}
           {state.status === "error" && <RotateCcw className="size-3" />}
-          {isLoading ? "Applying…" : "Apply"}
+          {isLoading ? tResearches("applying") : tResearches("apply")}
         </Button>
       </div>
     </div>

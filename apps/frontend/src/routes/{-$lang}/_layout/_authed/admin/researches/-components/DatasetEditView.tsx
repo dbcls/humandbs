@@ -1,7 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
-import { IntlProvider } from "use-intl";
+import { ChevronLeft, LucideRotateCcw, LucideSave } from "lucide-react";
+import { IntlProvider, useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,13 +29,13 @@ import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $getDatasetForEdit, $updateDataset } from "@/serverFunctions/datasets";
+import useConfirmationStore from "@/stores/confirmationStore";
 import { datasetLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 import { useDatasetPreviewRenderedHtml } from "@/utils/renderedHtml/usePreviewRenderedHtml";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { PreviewDialog } from "../../-components/PreviewDialog";
-import { AccessionChips } from "./AccessionChips";
-import { CopyFromDataset } from "./CopyFromDataset";
+import { CopyDataDialog } from "./CopyDataDialog";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -96,14 +96,14 @@ function DatasetEditViewInner({
     typeOfData: dataset.typeOfData,
     experiments: dataset.experiments,
   });
-  const [defaultValues] = useState<DatasetFormValues>(initialFormValues);
+  const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(initialFormValues);
 
   const { mutateAsync: save, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
       const body = formValuesToDatasetUpdate(values, seqNo, primaryTerm);
       return $updateDataset({ data: { datasetId, body } });
     },
-    onSuccess: (result) => {
+    onSuccess: (result, savedValues) => {
       if (!result.ok) {
         if (result.code === "CONFLICT") {
           setConflictError(true);
@@ -115,6 +115,7 @@ function DatasetEditViewInner({
       }
       setSeqNo(result.data.meta._seq_no);
       setPrimaryTerm(result.data.meta._primary_term);
+      setDefaultValues(savedValues);
       setError(null);
       setConflictError(false);
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -142,13 +143,12 @@ function DatasetEditViewInner({
   } | null>(null);
   const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
   const [chipsResetKey, setChipsResetKey] = useState(0);
+  const { openConfirmation } = useConfirmationStore();
+  const tResearches = useTranslations("admin.researches");
   const values = useStore(form.store, (state) => state.values);
   const previousValuesRef = useRef(values);
   const isApplyingTemplateRef = useRef(false);
-  const isDirty = useStore(
-    form.store,
-    (state) => !evaluate(state.values, form.options.defaultValues ?? defaultValues),
-  );
+  const isDirty = !evaluate(values, defaultValues);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -184,6 +184,19 @@ function DatasetEditViewInner({
     }
   }
 
+  function handleReset() {
+    openConfirmation({
+      title: tResearches("reset-dataset-title"),
+      description: tResearches("reset-dataset-description"),
+      actionLabel: tResearches("reset"),
+      onAction: () => {
+        form.reset();
+        setError(null);
+        setConflictError(false);
+      },
+    });
+  }
+
   return (
     <TabContentLayout
       header={
@@ -202,9 +215,36 @@ function DatasetEditViewInner({
       }
       actions={
         isEditable ? (
-          <Button type="submit" size="lg" form="dataset-edit-form" disabled={!isDirty || isSaving}>
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
+          <>
+            {isDraft && (
+              <CopyDataDialog
+                accessions={accessions}
+                onAccessionsChange={setAccessions}
+                onApply={applyTemplate}
+                lastAppliedId={lastAppliedId}
+                pendingTemplateId={pendingTemplate?.accession}
+                resetKey={chipsResetKey}
+              />
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleReset}
+              disabled={!isDirty || isSaving}
+            >
+              <LucideRotateCcw className="mr-2 size-5" /> {tResearches("reset")}
+            </Button>
+            <Button
+              type="submit"
+              size="lg"
+              form="dataset-edit-form"
+              disabled={!isDirty || isSaving}
+            >
+              <LucideSave className="mr-2 size-5" />
+              {isSaving ? tResearches("saving") : tResearches("save")}
+            </Button>
+          </>
         ) : null
       }
     >
@@ -236,41 +276,18 @@ function DatasetEditViewInner({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div>
-        {isDraft && (
-          <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
-            <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
-              Copy data in
-            </span>
-            <AccessionChips
-              accessions={accessions}
-              onAccessionsChange={setAccessions}
-              onApply={applyTemplate}
-              lastAppliedId={lastAppliedId}
-              pendingAccession={pendingTemplate?.accession}
-              resetKey={chipsResetKey}
-            />
-            <CopyFromDataset
-              onApply={applyTemplate}
-              lastAppliedId={lastAppliedId}
-              pendingDatasetId={pendingTemplate?.accession}
-              resetKey={chipsResetKey}
-            />
-          </div>
-        )}
-        <DatasetForm
-          form={form}
-          formId="dataset-edit-form"
-          defaultValues={defaultValues}
-          legacyRawHtml={legacyRawHtml}
-          readOnly={!isEditable}
-          isSaving={isSaving}
-          error={error}
-          conflictError={conflictError}
-          onReload={handleReload}
-          hideSaveButton
-        />
-      </div>
+      <DatasetForm
+        form={form}
+        formId="dataset-edit-form"
+        defaultValues={defaultValues}
+        legacyRawHtml={legacyRawHtml}
+        readOnly={!isEditable}
+        isSaving={isSaving}
+        error={error}
+        conflictError={conflictError}
+        onReload={handleReload}
+        hideSaveButton
+      />
       <PreviewDialog
         open={preview}
         onOpenChange={(open) => onPreviewChange?.(open)}

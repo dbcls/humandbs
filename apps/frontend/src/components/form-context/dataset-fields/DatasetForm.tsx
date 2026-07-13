@@ -195,14 +195,8 @@ export function DatasetForm({
   const t = useTranslations("Dataset");
   const tCommon = useTranslations("admin.common");
 
-  const isExperimentsModified = useStore(
-    form.store,
-    (state) =>
-      !evaluate(
-        state.values.experiments,
-        form.options.defaultValues?.experiments ?? defaultValues.experiments,
-      ),
-  );
+  const experiments = useStore(form.store, (state) => state.values.experiments);
+  const isExperimentsModified = !evaluate(experiments, defaultValues.experiments);
 
   return (
     <form

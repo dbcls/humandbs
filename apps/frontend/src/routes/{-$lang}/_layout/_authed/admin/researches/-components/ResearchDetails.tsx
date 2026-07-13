@@ -1,7 +1,16 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideUser2 } from "lucide-react";
+import {
+  LucideCheck,
+  LucideEye,
+  LucidePlus,
+  LucideRotateCcw,
+  LucideSave,
+  LucideSend,
+  LucideUser2,
+  LucideX,
+} from "lucide-react";
 import { IntlProvider, useTranslations } from "use-intl";
 
 import { useMemo, useState } from "react";
@@ -445,6 +454,20 @@ export function ResearchDetails({
     },
   });
 
+  function handleReset() {
+    openConfirmation({
+      title: tResearches("reset-research-title"),
+      description: tResearches("reset-research-description"),
+      actionLabel: tResearches("reset"),
+      onAction: () => {
+        form.reset();
+        setJdsRelatedAccessions(initialRelatedAccessions);
+        setError(null);
+        setIsConflict(false);
+      },
+    });
+  }
+
   function applyMergedValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
@@ -536,12 +559,12 @@ export function ResearchDetails({
           />
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="slim"
             className="ml-auto"
             onClick={() => setEffectivePreview(true)}
           >
-            {previewLabel}
+            <LucideEye className="mr-2 size-5" /> {previewLabel}
           </Button>
         </>
       }
@@ -605,17 +628,20 @@ export function ResearchDetails({
         <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
           {isViewingDraft && canSubmit && (
             <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Submitting…" : "Submit for review"}
+              <LucideSend className="mr-2 size-5" />
+              {isSubmitting ? tResearches("submitting") : tResearches("submit-for-review")}
             </Button>
           )}
           {isViewingDraft && canReject && (
             <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-              {isRejecting ? "Rejecting…" : "Reject"}
+              <LucideX className="mr-2 size-5" />
+              {isRejecting ? tResearches("rejecting") : tResearches("reject")}
             </Button>
           )}
           {isViewingDraft && canApprove && (
             <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-              {isApproving ? "Approving…" : "Approve"}
+              <LucideCheck className="mr-2 size-5" />
+              {isApproving ? tResearches("approving") : tResearches("approve")}
             </Button>
           )}
           {canUnpublish && (
@@ -666,11 +692,28 @@ export function ResearchDetails({
 
               {isEditable && canUpdate && (
                 <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={handleReset}
+                  disabled={isSaving || !isModified}
+                >
+                  <LucideRotateCcw className="mr-2 size-6" /> {tResearches("reset")}
+                </Button>
+              )}
+
+              {isEditable && canUpdate && (
+                <Button
                   size="lg"
                   onClick={() => form.handleSubmit()}
                   disabled={isSaving || !isModified}
                 >
-                  {isSaving ? "Saving…" : isViewingDraft ? "Save draft" : "Save"}
+                  <LucideSave className="mr-2 size-5" />
+                  {isSaving
+                    ? tResearches("saving")
+                    : isViewingDraft
+                      ? tResearches("save-draft")
+                      : tResearches("save")}
                 </Button>
               )}
             </div>
@@ -746,7 +789,8 @@ export function ResearchDetails({
                       disabled={!canCreateDataset}
                       onClick={() => setDatasetView("new")}
                     >
-                      Add new dataset
+                      <LucidePlus className="mr-2 size-5" />
+                      {tResearches("add-new-dataset")}
                     </Button>
                     {!canCreateDataset ? (
                       <InfoBadge>{t("admin.datasets.must-be-draft-to-add-new")}</InfoBadge>

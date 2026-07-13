@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { LucideMerge } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { useEffect, useState } from "react";
@@ -175,7 +176,7 @@ export function MergeResearchDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={className} size="lg" disabled={disabled}>
-          {t("merge-data")}
+          <LucideMerge className="mr-2 size-6" /> {t("merge-data")}
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[90vh] min-h-[min(85vh,700px)] min-w-[min(95vw,1100px)] flex-col gap-0 overflow-hidden">

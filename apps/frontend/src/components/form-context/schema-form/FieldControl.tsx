@@ -367,7 +367,7 @@ export function ArrayOfObjectsField({
                       fieldKey={`${fieldKey}.${k}`}
                       kind={itemShape[k]!}
                       value={row[k]}
-                      defaultValue={null}
+                      defaultValue={defaultValue[i]?.[k] ?? null}
                       onChange={(v) => updateItem(i, k, v)}
                       disabled={disabled}
                     />

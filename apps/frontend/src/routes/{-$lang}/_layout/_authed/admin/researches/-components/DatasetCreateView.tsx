@@ -1,7 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
-import { IntlProvider } from "use-intl";
+import { ChevronLeft, LucidePlus } from "lucide-react";
+import { IntlProvider, useTranslations } from "use-intl";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -30,8 +30,7 @@ import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
 import { PreviewDialog } from "../../-components/PreviewDialog";
-import { AccessionChips } from "./AccessionChips";
-import { CopyFromDataset } from "./CopyFromDataset";
+import { CopyDataDialog } from "./CopyDataDialog";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -53,6 +52,7 @@ export function DatasetCreateView({
   relatedAccessions: initialAccessions = [],
 }: DatasetCreateViewProps) {
   const queryClient = useQueryClient();
+  const tResearches = useTranslations("admin.researches");
   const [error, setError] = useState<string | null>(null);
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
   const [defaultValues] = useState(() => getDefaultDatasetFormValues(humId));
@@ -154,9 +154,20 @@ export function DatasetCreateView({
   );
 
   const actions = (
-    <Button type="submit" size="lg" form="dataset-create-form" disabled={isSaving}>
-      {isSaving ? "Creating…" : "Create dataset"}
-    </Button>
+    <>
+      <CopyDataDialog
+        accessions={accessions}
+        onAccessionsChange={setAccessions}
+        onApply={applyTemplate}
+        lastAppliedId={lastAppliedId}
+        pendingTemplateId={pendingTemplate?.accession}
+        resetKey={chipsResetKey}
+      />
+      <Button type="submit" size="lg" form="dataset-create-form" disabled={isSaving}>
+        <LucidePlus className="mr-2 size-5" />
+        {isSaving ? tResearches("creating-dataset") : tResearches("create-dataset")}
+      </Button>
+    </>
   );
 
   return (
@@ -189,37 +200,16 @@ export function DatasetCreateView({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div>
-        <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-gray-50 p-3">
-          <span className="font-medium text-foreground-light text-xs uppercase tracking-wide">
-            Copy data in
-          </span>
-          <AccessionChips
-            accessions={accessions}
-            onAccessionsChange={setAccessions}
-            onApply={applyTemplate}
-            lastAppliedId={lastAppliedId}
-            pendingAccession={pendingTemplate?.accession}
-            resetKey={chipsResetKey}
-          />
-          <CopyFromDataset
-            onApply={applyTemplate}
-            lastAppliedId={lastAppliedId}
-            pendingDatasetId={pendingTemplate?.accession}
-            resetKey={chipsResetKey}
-          />
-        </div>
-        <DatasetForm
-          form={form}
-          formId="dataset-create-form"
-          defaultValues={defaultValues}
-          readOnly={false}
-          isSaving={isSaving}
-          error={error}
-          showDatasetIdField
-          hideSaveButton
-        />
-      </div>
+      <DatasetForm
+        form={form}
+        formId="dataset-create-form"
+        defaultValues={defaultValues}
+        readOnly={false}
+        isSaving={isSaving}
+        error={error}
+        showDatasetIdField
+        hideSaveButton
+      />
       <PreviewDialog
         open={preview}
         onOpenChange={(open) => onPreviewChange?.(open)}

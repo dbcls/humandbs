@@ -63,7 +63,8 @@ export function AdminListItem({
               >
                 <span
                   className={cn("truncate text-sm", {
-                    "text-gray-400 italic": translation.status === "draft",
+                    "text-gray-400 italic group-data-[active=true]:text-white":
+                      translation.status === "draft",
                   })}
                 >
                   {translation.title}

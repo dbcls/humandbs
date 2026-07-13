@@ -120,8 +120,9 @@ export function AccessionChips({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-foreground-light text-xs">
-        Related accessions
-        {accessions.length > 0 ? " — click to apply dataset template" : ""}
+        {tResearches(
+          accessions.length > 0 ? "related-accessions-with-apply-hint" : "related-accessions",
+        )}
       </span>
       <div className="flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
         {accessions.map((accession) => {
@@ -152,7 +153,7 @@ export function AccessionChips({
             onBlur={() => {
               if (inputValue.trim()) addAccession(inputValue);
             }}
-            placeholder="JGAD… or DRA…"
+            placeholder={tResearches("accession-placeholder")}
             className="p-0 font-mono text-xs shadow-none focus-visible:ring-0"
           />
           {inputError && <span className="text-red-600 text-xs">{inputError}</span>}
