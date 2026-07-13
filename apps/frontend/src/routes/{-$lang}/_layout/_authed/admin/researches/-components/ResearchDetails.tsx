@@ -675,47 +675,49 @@ export function ResearchDetails({
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Metadata-editing actions — Merge (draft construction) and Save
                 operate on the metadata form, so they stay with this tab. */}
-            <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              {/* Merge is a draft-construction tool — hidden entirely on non-draft
+            <div className="px-5 pt-5">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-b-black pb-5">
+                {/* Merge is a draft-construction tool — hidden entirely on non-draft
                   views (e.g. published patch). The spacer keeps the rest of the
                   action row right-aligned when the button is absent. */}
-              {isViewingDraft ? (
-                <MergeResearchDialog
-                  className="mr-auto"
-                  currentValues={formValues}
-                  disabled={!canUpdate}
-                  onMerge={applyMergedValues}
-                />
-              ) : (
-                <div className="mr-auto" />
-              )}
+                {isViewingDraft ? (
+                  <MergeResearchDialog
+                    className="mr-auto"
+                    currentValues={formValues}
+                    disabled={!canUpdate}
+                    onMerge={applyMergedValues}
+                  />
+                ) : (
+                  <div className="mr-auto" />
+                )}
 
-              {isEditable && canUpdate && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={handleReset}
-                  disabled={isSaving || !isModified}
-                >
-                  <LucideRotateCcw className="mr-2 size-6" /> {tResearches("reset")}
-                </Button>
-              )}
+                {isEditable && canUpdate && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleReset}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideRotateCcw className="mr-2 size-6" /> {tResearches("reset")}
+                  </Button>
+                )}
 
-              {isEditable && canUpdate && (
-                <Button
-                  size="lg"
-                  onClick={() => form.handleSubmit()}
-                  disabled={isSaving || !isModified}
-                >
-                  <LucideSave className="mr-2 size-5" />
-                  {isSaving
-                    ? tResearches("saving")
-                    : isViewingDraft
-                      ? tResearches("save-draft")
-                      : tResearches("save")}
-                </Button>
-              )}
+                {isEditable && canUpdate && (
+                  <Button
+                    size="lg"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideSave className="mr-2 size-5" />
+                    {isSaving
+                      ? tResearches("saving")
+                      : isViewingDraft
+                        ? tResearches("save-draft")
+                        : tResearches("save")}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">

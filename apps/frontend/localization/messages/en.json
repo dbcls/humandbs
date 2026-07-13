@@ -629,6 +629,7 @@
       "search-placeholder": "Search documents…",
       "no-documents": "No documents found",
       "no-versions": "No versions yet for this document.",
+      "edit-this-document": "Edit this document",
       "new-doc-message": "Enter content ID in `snake-case`. It can have slashes (`hello/world`). Content ID would become the path to this document"
     },
     "content": {

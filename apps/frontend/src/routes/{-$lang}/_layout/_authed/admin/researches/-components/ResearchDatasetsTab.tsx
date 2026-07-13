@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "use-intl";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 

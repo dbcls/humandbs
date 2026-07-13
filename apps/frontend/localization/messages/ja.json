@@ -631,6 +631,7 @@
       "search-placeholder": "ドキュメントを検索…",
       "no-documents": "ドキュメントが見つかりません",
       "no-versions": "このドキュメントにはまだバージョンがありません。",
+      "edit-this-document": "このドキュメントを編集",
       "new-doc-message": "コンテンツIDを `snake-case` で入力してください。スラッシュも使用できます（例：`hello/world`）。コンテンツIDがこのドキュメントへのパスになります"
     },
     "content": {

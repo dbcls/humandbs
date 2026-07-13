@@ -1,12 +1,16 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { createTranslator } from "use-intl";
+import { createFileRoute, redirect, useRouteContext } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
+import { createTranslator, useTranslations } from "use-intl";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
+import { Link } from "@/components/Link";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
+import { Button } from "@/components/ui/button";
 import type { Messages } from "@/config/i18n";
+import { useCan } from "@/hooks/useCan";
 import {
   $getDocumentBreadcrumbs,
   $getLatestDocumentOrContent,
@@ -196,6 +200,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         hideTOC: false,
         previousVersions: undefined,
         revisionsBasePath: undefined,
+        documentId: docId,
       };
     }
 
@@ -219,6 +224,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,
+        documentId: docId,
       };
     }
 
@@ -247,6 +253,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         hideTOC: docData.hideTOC ?? true,
         previousVersions: showRevisions && versions.length ? versions : undefined,
         revisionsBasePath: showRevisions && versions.length ? params._splat : undefined,
+        documentId: params._splat,
       };
     }
 
@@ -264,6 +271,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       hideTOC: contentData.hideTOC ?? true,
       previousVersions: undefined,
       revisionsBasePath: undefined,
+      documentId: undefined,
     };
   },
   head: ({ loaderData }) => {
@@ -280,7 +288,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath } =
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const { can: isAdmin } = useCan({ resource: "admin-panel", action: "view-cms" });
+  const tDocuments = useTranslations("admin.documents");
+  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath, documentId } =
     Route.useLoaderData();
 
   if (kind === "revisionList") {
@@ -301,6 +312,21 @@ function RouteComponent() {
       hideTOC={hideTOC}
       previousVersions={previousVersions}
       revisionsBasePath={revisionsBasePath}
+      topRightAction={
+        isAdmin && documentId ? (
+          <Button asChild variant="captionAction" size="captionAction">
+            <Link
+              to="/{-$lang}/admin/documents"
+              params={{ lang }}
+              search={{ selectedId: documentId }}
+              variant="nav"
+            >
+              <Pencil className="mr-2 size-4" />
+              {tDocuments("edit-this-document")}
+            </Link>
+          </Button>
+        ) : undefined
+      }
     />
   );
 }
