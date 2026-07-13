@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
+import type { messages } from "@/config/messages";
+import { compareMoldataKeys } from "@/config/moldataKeyOrder";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
 import type { RenderedExperiment } from "@/utils/renderedHtml/types";
@@ -38,6 +40,9 @@ type DatasetCardData = Omit<DatasetDoc, "experiments"> & {
   experiments: RenderedExperiment[];
   distribution?: Distribution;
 };
+
+type MoldataKey = keyof (typeof messages)["en"]["Dataset"]["moldata-keys"];
+type MoldataTranslationKey = `moldata-keys.${MoldataKey}`;
 
 export function DatasetVersionCard({
   versionData,
@@ -208,24 +213,23 @@ function Experiment({ experiment }: { experiment: RenderedExperiment }) {
       </h2>
 
       <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
-        {Object.entries(experiment.data).sort(([title]) => {}).map(([title, content]) => {
-          const markup = content?.[lang]?.renderedHtml;
-          return (
-            <KeyValueCard
-              key={title}
-              // @ts-expect-error
-              title={t(title)}
-              // Render through the Markdown pipeline (internal links / images /
-              // callouts) via KeyValueCard's node branch. `undefined` when the
-              // value is empty so the card hides itself.
-              value={
-                markup ? (
-                  <Markdown className="inline-prose text-base" contentHtml={{ markup }} />
-                ) : undefined
-              }
-            />
-          );
-        })}
+        {Object.entries(experiment.data)
+          .sort(([left], [right]) => compareMoldataKeys(left, right))
+          .map(([title, content]) => {
+            const markup = content?.[lang]?.renderedHtml;
+            const moldataTranslationKey = `moldata-keys.${title}` as MoldataTranslationKey;
+            return (
+              <KeyValueCard
+                key={title}
+                title={t.has(moldataTranslationKey) ? t(moldataTranslationKey) : title}
+                value={
+                  markup ? (
+                    <Markdown className="inline-prose text-base" contentHtml={{ markup }} />
+                  ) : undefined
+                }
+              />
+            );
+          })}
       </dl>
     </section>
   );

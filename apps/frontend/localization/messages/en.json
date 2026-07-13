@@ -685,6 +685,7 @@
       "accession-placeholder": "JGAD… or DRA…",
       "copy-from-existing-dataset": "Copy from existing dataset",
       "dataset-id-placeholder": "Dataset ID (e.g. JGAD000001)",
+      "dataset-id-required": "Dataset ID is required.",
       "apply": "Apply",
       "applying": "Applying…",
       "invalid-accession": "Must be JGAD or DRA followed by digits.",

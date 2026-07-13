@@ -2,8 +2,9 @@ import { evaluate, useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, LucidePlus } from "lucide-react";
 import { IntlProvider, useTranslations } from "use-intl";
+import { z } from "zod";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { DatasetFormValues } from "@/components/form-context/dataset-fields/DatasetForm";
 import {
@@ -54,6 +55,14 @@ export function DatasetCreateView({
   const queryClient = useQueryClient();
   const tResearches = useTranslations("admin.researches");
   const [error, setError] = useState<string | null>(null);
+  const datasetIdRequiredSchema = useMemo(
+    () =>
+      z
+        .string()
+        .trim()
+        .min(1, { message: tResearches("dataset-id-required") }),
+    [tResearches],
+  );
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
   const [defaultValues] = useState(() => getDefaultDatasetFormValues(humId));
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
@@ -94,7 +103,14 @@ export function DatasetCreateView({
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.error);
+        if (result.code === "CONFLICT") {
+          form.setFieldMeta("datasetId", (prev) => ({
+            ...prev,
+            errorMap: { ...prev.errorMap, onSubmit: result.error },
+          }));
+        } else {
+          setError(result.error);
+        }
         return;
       }
       setError(null);
@@ -103,21 +119,32 @@ export function DatasetCreateView({
     },
   });
 
-  const form = useDatasetForm(defaultValues, async (value) => (await create(value)).ok);
+  const form = useDatasetForm(defaultValues, async (value) => {
+    const datasetId = value.datasetId.trim();
+    setError(null);
+    return (await create({ ...value, datasetId })).ok;
+  });
   const values = useStore(form.store, (state) => state.values);
   const previousValuesRef = useRef(values);
   const isApplyingTemplateRef = useRef(false);
 
   useEffect(() => {
     if (values === previousValuesRef.current) return;
+    const datasetIdChanged = values.datasetId !== previousValuesRef.current.datasetId;
     previousValuesRef.current = values;
+    if (datasetIdChanged) {
+      form.setFieldMeta("datasetId", (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onSubmit: undefined },
+      }));
+    }
     if (isApplyingTemplateRef.current) {
       isApplyingTemplateRef.current = false;
       return;
     }
     setChipsResetKey((key) => key + 1);
     setLastAppliedId(null);
-  }, [values]);
+  }, [values, form.setFieldMeta]);
 
   function doApplyTemplate(data: DatasetTemplateData, accession: string) {
     const merged = mergeDatasetTemplate(form.state.values, data);
@@ -207,6 +234,7 @@ export function DatasetCreateView({
         readOnly={false}
         isSaving={isSaving}
         error={error}
+        datasetIdValidator={datasetIdRequiredSchema}
         showDatasetIdField
         hideSaveButton
       />

@@ -1,6 +1,27 @@
 import { expect, test } from "../fixtures";
 
 test.describe("Admin researches CMS", () => {
+  test("validates a new dataset ID in the field", async ({ researchesPage }) => {
+    const { page } = researchesPage;
+    await researchesPage.selectResearch("hum0580");
+    await researchesPage.datasetsTab.click();
+    await page.getByRole("button", { name: "新しいデータセットを追加" }).click();
+
+    const createForm = page.locator("form#dataset-create-form");
+    const datasetId = createForm.getByRole("textbox").first();
+    const createButton = page.locator('button[form="dataset-create-form"]');
+
+    await expect(createForm).toBeVisible();
+    await createButton.click();
+    await expect(createForm.getByRole("alert")).toHaveText("データセットIDは必須です。");
+
+    await datasetId.fill("JGAD000938");
+    await createButton.click();
+    await expect(createForm.getByRole("alert")).toHaveText(
+      "Dataset with ID 'JGAD000938' already exists",
+    );
+  });
+
   test("does not mark searchable fields as modified when a dataset first loads", async ({
     researchesPage,
   }) => {

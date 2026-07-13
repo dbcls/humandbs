@@ -1,5 +1,6 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { useTranslations } from "use-intl";
+import type { z } from "zod";
 
 import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
@@ -171,6 +172,7 @@ interface DatasetFormProps {
   readOnly: boolean;
   isSaving: boolean;
   error?: string | null;
+  datasetIdValidator?: z.ZodString;
   conflictError?: boolean;
   onReload?: () => void;
   saveLabel?: string;
@@ -186,6 +188,7 @@ export function DatasetForm({
   readOnly,
   isSaving,
   error,
+  datasetIdValidator,
   conflictError,
   onReload,
   saveLabel = "Save",
@@ -232,8 +235,11 @@ export function DatasetForm({
           </div>
           {/* Dataset ID (create only) */}
           {showDatasetIdField && (
-            <form.AppField name="datasetId">
-              {(field) => <field.TextField type="col" label="Dataset ID (optional)" />}
+            <form.AppField
+              name="datasetId"
+              validators={datasetIdValidator ? { onSubmit: datasetIdValidator } : undefined}
+            >
+              {(field) => <field.TextField type="col" label={t("datasetId")} />}
             </form.AppField>
           )}
           {/* Release Date */}

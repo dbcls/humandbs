@@ -687,6 +687,7 @@
       "accession-placeholder": "JGAD… または DRA…",
       "copy-from-existing-dataset": "既存のデータセットから取り込む",
       "dataset-id-placeholder": "データセットID（例: JGAD000001）",
+      "dataset-id-required": "データセットIDは必須です。",
       "apply": "適用",
       "applying": "適用中…",
       "invalid-accession": "JGADまたはDRAの後に数字が続く形式で入力してください。",
