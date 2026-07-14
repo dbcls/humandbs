@@ -921,13 +921,15 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       })
       expect(put.status).toBe(200)
 
+      // Default GET strips rawHtml (maybeStripRawHtml). The hydrator side is
+      // covered by unit tests; here we just check the text round-trips.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(200)
       const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
       expect(detailJson.data.summaryShort).toEqual({
-        methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
-        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null }, en: { text: "NGS (WGS)", rawHtml: null } },
-        targets: { ja: { text: "SCA31：1 症例", rawHtml: null }, en: { text: "1 SCA31 patient", rawHtml: null } },
+        methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+        typeOfData: { ja: { text: "NGS（WGS）" }, en: { text: "NGS (WGS)" } },
+        targets: { ja: { text: "SCA31：1 症例" }, en: { text: "1 SCA31 patient" } },
       })
 
       // Owners see their own draft in the list projection; the flat *Summary fields must appear.
