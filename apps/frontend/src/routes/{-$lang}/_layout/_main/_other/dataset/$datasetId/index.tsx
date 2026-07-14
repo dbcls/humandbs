@@ -25,6 +25,17 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$da
       throw error;
     }
   },
+  head: ({ loaderData, match }) => {
+    const seoTitle = `HumanDBs - ${loaderData?.data.datasetId ?? match.context.messages?.common?.dataset}`;
+
+    return {
+      meta: [
+        {
+          title: seoTitle,
+        },
+      ],
+    };
+  },
   notFoundComponent: () => <NotFound />,
   errorComponent: (ctx) => <div className="text-danger">{ctx.error.message}</div>,
 });

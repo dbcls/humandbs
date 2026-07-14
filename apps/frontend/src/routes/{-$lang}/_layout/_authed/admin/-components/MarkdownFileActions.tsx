@@ -69,7 +69,7 @@ export function MarkdownFileActions({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full items-center justify-end gap-2">
       <Button variant="outline" onClick={handleDownload}>
         <Download className="size-6" />
         MD

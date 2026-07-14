@@ -367,7 +367,7 @@ export function ArrayOfObjectsField({
                       fieldKey={`${fieldKey}.${k}`}
                       kind={itemShape[k]!}
                       value={row[k]}
-                      defaultValue={null}
+                      defaultValue={defaultValue[i]?.[k] ?? null}
                       onChange={(v) => updateItem(i, k, v)}
                       disabled={disabled}
                     />
@@ -431,12 +431,12 @@ export function ObjectField({
     onChange({ ...current, [key]: v });
   }
 
-  const colCount = Object.keys(shape).length;
   return (
-    <div
-      className={`grid gap-1 rounded ${isModified ? "bg-yellow-50 p-1" : ""}`}
-      style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
-    >
+    // <div
+    //   className={`grid gap-1 rounded ${isModified ? "bg-yellow-50 p-1" : ""}`}
+    //   style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+    // >
+    <div className={cn("flex flex-col gap-4")}>
       {Object.entries(shape).map(([key, kind]) => (
         <div key={key} className="flex flex-col gap-0.5">
           <span className="text-form-sublabel text-xs uppercase">{key}</span>

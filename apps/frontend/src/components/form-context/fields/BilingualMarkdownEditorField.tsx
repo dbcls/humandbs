@@ -6,6 +6,8 @@ import { getLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 
 import { withForm } from "../FormContext";
 import { MarkdownTextEditor } from "./MarkdownTextEditor";
+import { ResetFieldButton } from "./ResetFieldButton";
+import { getFieldDefaultValue, isFieldModified } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyName = any;
@@ -31,23 +33,36 @@ export const BilingualMarkdownEditorField = withForm({
         <Label className="text-sm">{label}</Label>
         <div className="flex gap-3">
           {i18n.locales.map((locale) => (
-            <div key={locale} className="flex flex-1 flex-col gap-1">
+            <div key={locale} className="relative flex flex-1 flex-col gap-1">
               <span className="font-medium text-form-label text-xs uppercase">{locale}</span>
               <form.AppField name={`${baseName}.${locale}.text` as AnyName}>
-                {(f: AnyName) => (
-                  <MarkdownTextEditor
-                    value={(f.state.value as string | undefined) ?? ""}
-                    onChange={(next) => f.handleChange(next)}
-                    onBlur={() => f.handleBlur()}
-                    placeholder={capitalize(locale)}
-                    fieldLabel={`${label} (${locale})`}
-                    legacyRawHtml={
-                      legacyFieldKey
-                        ? getLegacyRawHtml(legacyRawHtml, legacyFieldKey, locale)
-                        : undefined
-                    }
-                  />
-                )}
+                {(f: AnyName) => {
+                  const modified = isFieldModified(f);
+                  return (
+                    <>
+                      <MarkdownTextEditor
+                        value={(f.state.value as string | undefined) ?? ""}
+                        onChange={(next) => f.handleChange(next)}
+                        onBlur={() => f.handleBlur()}
+                        placeholder={capitalize(locale)}
+                        fieldLabel={`${label} (${locale})`}
+                        modified={modified}
+                        legacyRawHtml={
+                          legacyFieldKey
+                            ? getLegacyRawHtml(legacyRawHtml, legacyFieldKey, locale)
+                            : undefined
+                        }
+                      />
+                      {modified && (
+                        <ResetFieldButton
+                          onClick={() =>
+                            f.handleChange(getFieldDefaultValue(f) as string | null | undefined)
+                          }
+                        />
+                      )}
+                    </>
+                  );
+                }}
               </form.AppField>
             </div>
           ))}

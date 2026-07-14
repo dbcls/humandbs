@@ -18,6 +18,7 @@ import type {
   LangQuery,
   LangVersionQuery,
   LinkedDatasetsListResponse,
+  LinkedResearchesListResponse,
   ResearchDetailResponse,
   ResearchListingQuery,
   ResearchSearchBody,
@@ -176,6 +177,11 @@ interface APIService {
     search: LangVersionQuery;
     accessToken?: string;
   }): Promise<DatasetDetailResponse>;
+  getDatasetParentResearch(query: {
+    params: DatasetIdParams;
+    search: LangQuery;
+    accessToken?: string;
+  }): Promise<LinkedResearchesListResponse>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
@@ -286,6 +292,14 @@ const api: APIService = {
   getDataset(query) {
     return get<DatasetDetailResponse>(
       `/dataset/${query.params.datasetId}`,
+      query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
+    );
+  },
+
+  getDatasetParentResearch(query) {
+    return get<LinkedResearchesListResponse>(
+      `/dataset/${query.params.datasetId}/research`,
       query.search as Record<string, unknown>,
       query.accessToken ? authHeader(query.accessToken) : undefined,
     );

@@ -2,7 +2,7 @@ import type {
   NavigationGroup,
   NavigationItem,
   SiteNavigationConfig,
-} from "@/config/site-navigation";
+} from "@/config/siteNavigation";
 
 export interface NavbarResolvedItem {
   item: NavigationItem;

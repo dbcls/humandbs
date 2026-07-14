@@ -42,7 +42,7 @@ import type {
   NavigationFlowchartConfig,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
+} from "@/config/navigationFlowchart";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import type {
@@ -62,6 +62,10 @@ import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 import { PreviewDialog } from "./-components/PreviewDialog";
+
+/**
+ * ! Currently not using this Flowcharts section at all. (Using different data submission navigation flow on another website)
+ */
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/flowcharts")({
   component: RouteComponent,
@@ -198,9 +202,7 @@ function FlowchartList({
   const orphans = flowcharts.filter((fc) => !fc.isEntryPoint && !referencedIds.has(fc.id));
 
   if (entryPoints.length === 0) {
-    return (
-      <NoItemsMessage>{tFlowcharts("no-entry-point")}</NoItemsMessage>
-    );
+    return <NoItemsMessage>{tFlowcharts("no-entry-point")}</NoItemsMessage>;
   }
 
   return (
@@ -531,9 +533,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
     const stepErrors = validateSteps(configDraft);
     if (Object.keys(stepErrors).length > 0) {
-      setError(
-        tFlowcharts("steps-errors"),
-      );
+      setError(tFlowcharts("steps-errors"));
       return;
     }
 
@@ -543,9 +543,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     });
     if (!result.ok) {
       setError(
-        result.code === "CONFLICT"
-          ? tFlowcharts("conflict-reload")
-          : tCommon("failed-to-save"),
+        result.code === "CONFLICT" ? tFlowcharts("conflict-reload") : tCommon("failed-to-save"),
       );
       return;
     }
@@ -567,7 +565,9 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     if (isPromotingToEntryPoint && existingEntryPoint) {
       openConfirmation({
         title: tFlowcharts("change-entry-point-title"),
-        description: tFlowcharts("change-entry-point-description", { name: existingEntryPoint.nameEn }),
+        description: tFlowcharts("change-entry-point-description", {
+          name: existingEntryPoint.nameEn,
+        }),
         actionLabel: "Set as entry point",
         onAction: () => commitSave(meta),
       });
@@ -700,10 +700,10 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
               onCheckedChange={(checked) => setMeta((p) => ({ ...p, isEntryPoint: checked }))}
             />
             <div>
-              <span className="font-medium text-gray-700 text-sm">{tFlowcharts("entry-point-label")}</span>
-              <p className="text-gray-400 text-xs">
-                {tFlowcharts("entry-point-description")}
-              </p>
+              <span className="font-medium text-gray-700 text-sm">
+                {tFlowcharts("entry-point-label")}
+              </span>
+              <p className="text-gray-400 text-xs">{tFlowcharts("entry-point-description")}</p>
             </div>
           </div>
 

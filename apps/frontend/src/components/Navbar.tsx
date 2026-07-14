@@ -20,9 +20,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-navigation";
-import { asLinkProps } from "@/config/site-navigation";
+import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/siteNavigation";
+import { asLinkProps } from "@/config/siteNavigation";
 import { useCartStore } from "@/hooks/useCart";
+import { useNavbarItemActive } from "@/hooks/useNavbarItemActive";
 import { cn } from "@/lib/utils";
 import { getNavbarOverflowLayout } from "@/utils/navbar-overflow";
 
@@ -170,6 +171,7 @@ function blurActiveElement() {
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   const navigate = useNavigate();
+  const isActive = useNavbarItemActive(item);
   const wrapperRef = useRef<HTMLLIElement>(null);
   const [alignRight, setAlignRight] = useState(false);
 
@@ -206,7 +208,14 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
     <NavigationMenuItem ref={wrapperRef}>
       {item.children ? (
         <>
-          <NavigationMenuTrigger className="text-sm" onClick={handleClick}>
+          <NavigationMenuTrigger
+            className={cn(
+              "font-medium text-sm",
+              isActive &&
+                "text-secondary hover:text-secondary focus:text-secondary data-[state=open]:text-secondary",
+            )}
+            onClick={handleClick}
+          >
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
           <NavigationMenuContent className={cn("z-10", alignRight && "right-0 left-auto")}>
@@ -216,7 +225,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
                   <NavigationMenuLink asChild>
                     <Link
                       variant="nav"
-                      className="w-full"
+                      className="w-full font-medium"
                       onClick={handleBlur}
                       {...asLinkProps(child.linkOptions)}
                     >
@@ -230,7 +239,11 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
         </>
       ) : item.linkOptions ? (
         <NavigationMenuLink asChild>
-          <Link variant="nav" className="whitespace-nowrap" {...asLinkProps(item.linkOptions)}>
+          <Link
+            variant="nav"
+            className="whitespace-nowrap font-medium"
+            {...asLinkProps(item.linkOptions)}
+          >
             {item.label}
           </Link>
         </NavigationMenuLink>
@@ -301,6 +314,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   const handleBlur = () => {
     blurActiveElement();
   };
+  const isActive = useNavbarItemActive(item);
 
   return (
     <NavigationMenuItem className="flex w-full flex-col">
@@ -309,13 +323,18 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
           <Link
             variant="nav"
             {...asLinkProps(item.linkOptions)}
-            className="w-full rounded-sm px-2 py-2 text-sm"
+            className={cn(
+              "w-full rounded-sm px-2 py-2 font-medium text-sm",
+              isActive && "text-secondary",
+            )}
           >
             {item.label}
           </Link>
         </NavigationMenuLink>
       ) : (
-        <span className="block w-full px-2 py-1.5 text-neutral-400 text-xs">{item.label}</span>
+        <span className="block w-full px-2 py-1.5 font-medium text-neutral-400 text-xs">
+          {item.label}
+        </span>
       )}
       {item.children?.length ? (
         <ul className="flex flex-col gap-1">
@@ -326,7 +345,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
                   variant="nav"
                   onClick={handleBlur}
                   {...asLinkProps(child.linkOptions)}
-                  className="w-full rounded-sm px-2 py-2 text-sm"
+                  className="w-full rounded-sm px-2 py-2 font-medium text-sm"
                 >
                   {child.label}
                 </Link>

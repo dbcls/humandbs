@@ -54,6 +54,15 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
     ]);
   },
   wrapInSuspense: true,
+  head: ({ match }) => {
+    return {
+      meta: [
+        {
+          title: `HumanDBs - ${match.context.messages?.Dataset?.["dataset-list"]}`,
+        },
+      ],
+    };
+  },
   pendingComponent: () => <SkeletonLoading />,
 });
 

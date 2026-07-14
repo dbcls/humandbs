@@ -1,14 +1,14 @@
 import { asc } from "drizzle-orm";
 import { v5 as uuidv5 } from "uuid";
 
+import { normalizeSiteNavigationConfig } from "@/config/site-navigation.schema";
 import type {
   NavigationGroup,
   NavigationItem,
   NavPriority,
   SiteNavigationConfig,
-} from "@/config/site-navigation";
-import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
-import { normalizeSiteNavigationConfig } from "@/config/site-navigation.schema";
+} from "@/config/siteNavigation";
+import { getDefaultSiteNavigationConfig } from "@/config/siteNavigation";
 import type { DB } from "@/db/database";
 import { document } from "@/db/schema";
 

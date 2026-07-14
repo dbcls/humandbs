@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { NavigationItem, SiteNavigationConfig } from "@/config/site-navigation";
+import type { NavigationItem, SiteNavigationConfig } from "@/config/siteNavigation";
 
 const localizedLabelValueSchema = z.string().trim().min(1);
 const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);

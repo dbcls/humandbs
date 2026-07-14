@@ -12,6 +12,7 @@ import type {
   DatasetUpdateResponse,
   DatasetVersionsListResponse,
   LinkedDatasetsListResponse,
+  LinkedResearchesListResponse,
   UpdateDatasetRequest,
 } from "@humandbs/backend/types";
 import {
@@ -125,6 +126,37 @@ const DatasetQuerySchema = z.object({
 });
 
 type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
+
+const DatasetParentResearchQuerySchema = z.object({
+  ...DatasetIdParamsSchema.shape,
+  ...LangQuerySchema.shape,
+});
+
+export type DatasetParentResearchQuery = {
+  datasetId: string;
+  lang: Locale;
+};
+
+/** Gets the one research that owns a dataset. */
+export const $getDatasetParentResearch = createServerFn({ method: "GET" })
+  .inputValidator(DatasetParentResearchQuerySchema)
+  .handler<Promise<LinkedResearchesListResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    return api.getDatasetParentResearch({
+      params: { datasetId: data.datasetId },
+      search: { lang: data.lang, includeRawHtml: false },
+      accessToken: accessToken ?? undefined,
+    });
+  });
+
+export function getDatasetParentResearchQueryOptions(query: DatasetParentResearchQuery) {
+  return queryOptions({
+    queryKey: ["datasets", "parentResearch", query],
+    queryFn: () => $getDatasetParentResearch({ data: { ...query, includeRawHtml: false } }),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+}
 
 export const $getDataset = createServerFn({ method: "GET" })
   .inputValidator(DatasetQuerySchema)

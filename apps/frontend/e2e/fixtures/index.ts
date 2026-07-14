@@ -2,10 +2,12 @@ import { test as base } from "@playwright/test";
 
 import { DocumentsPage } from "./DocumentsPage";
 import { LoggedInPage } from "./LoggedInPage";
+import { ResearchesPage } from "./ResearchesPage";
 
 type Fixtures = {
   loggedInPage: LoggedInPage;
   documentsPage: DocumentsPage;
+  researchesPage: ResearchesPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -21,6 +23,13 @@ export const test = base.extend<Fixtures>({
     await documentsPage.goAndWaitForHydration();
 
     await use(documentsPage);
+  },
+  researchesPage: async ({ loggedInPage }, use) => {
+    const researchesPage = new ResearchesPage(loggedInPage.page);
+
+    await researchesPage.goAndWaitForHydration();
+
+    await use(researchesPage);
   },
 });
 

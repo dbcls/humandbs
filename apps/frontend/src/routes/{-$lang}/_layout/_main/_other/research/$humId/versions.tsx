@@ -62,8 +62,6 @@ function VersionInfo({ version }: { version: RenderedResearchVersionItem }) {
             {version.humVersionId}
           </TextWithIcon>
         </Route.Link>
-
-        <span className="ml-3 text-2xs text-foreground-light">{version.versionReleaseDate}</span>
       </h3>
       <section className="flex items-start gap-5 px-3 py-4 text-sm">
         <div>

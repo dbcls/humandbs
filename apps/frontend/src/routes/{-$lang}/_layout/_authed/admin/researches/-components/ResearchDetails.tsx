@@ -1,7 +1,16 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideUser2 } from "lucide-react";
+import {
+  LucideCheck,
+  LucideEye,
+  LucidePlus,
+  LucideRotateCcw,
+  LucideSave,
+  LucideSend,
+  LucideUser2,
+  LucideX,
+} from "lucide-react";
 import { IntlProvider, useTranslations } from "use-intl";
 
 import { useMemo, useState } from "react";
@@ -18,6 +27,7 @@ import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind
 import type { FieldOverride } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { humanize } from "@/components/form-context/schema-form/utils";
+import { InfoBadge } from "@/components/InfoBadge";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +59,11 @@ import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { researchFieldsConfig } from "./researchFieldsConfig";
 import type { ResearchForm, ResearchValues } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
-import { isResearchEditable, isViewingDraftVersion } from "./utils/researchEditTarget";
+import {
+  isReleaseNoteEditable,
+  isResearchEditable,
+  isViewingDraftVersion,
+} from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
 
 /**
@@ -121,6 +135,8 @@ export function ResearchDetails({
   onVersionChange?: (v: string) => void;
 }) {
   const queryClient = useQueryClient();
+
+  const t = useTranslations();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
   // Uses the "for edit" fn (includeRawHtml: true, no render transform) so legacy
@@ -214,12 +230,25 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      // Both the draft and the published latest are saved via PUT /research/{humId}/update.
-      // Editability is guaranteed by the Save button gate (isResearchEditable).
+      // Metadata is shared by the research and may be updated from any selected
+      // draft/published version. releaseNote is version-specific: omit it when
+      // viewing an older published version so the backend cannot overwrite the
+      // latest version's note (its update endpoint targets latestVersion).
+      const canUpdateReleaseNote = isReleaseNoteEditable({
+        selectedVersion,
+        draftVersion: value.draftVersion,
+        latestVersion: value.latestVersion,
+        status: value.status,
+      });
       const result = await $updateResearch({
         data: {
           humId,
-          body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
+          body: {
+            ...value,
+            ...(canUpdateReleaseNote ? {} : { releaseNote: undefined }),
+            _seq_no: seqNo,
+            _primary_term: primaryTerm,
+          },
         },
       });
       return result;
@@ -442,6 +471,20 @@ export function ResearchDetails({
     },
   });
 
+  function handleReset() {
+    openConfirmation({
+      title: tResearches("reset-research-title"),
+      description: tResearches("reset-research-description"),
+      actionLabel: tResearches("reset"),
+      onAction: () => {
+        form.reset();
+        setJdsRelatedAccessions(initialRelatedAccessions);
+        setError(null);
+        setIsConflict(false);
+      },
+    });
+  }
+
   function applyMergedValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
@@ -477,10 +520,19 @@ export function ResearchDetails({
     draftVersion: researchValues.draftVersion,
   });
 
-  // The edit surface (fieldsets + Save) is unlocked whenever editing is valid:
-  // the draft version, OR the published latest of a published research (patch).
-  // Replaces the former isViewingDraft-only gates so the published view is editable.
+  // Research metadata is editable from any selected draft or published version.
+  // Review remains read-only because the backend rejects updates in that state.
   const isEditable = isResearchEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
+
+  // Release notes remain version-specific: only the active draft and latest
+  // published version can change them. Earlier published versions display the
+  // multilingual field read-only.
+  const isReleaseNoteEditableForSelection = isReleaseNoteEditable({
     selectedVersion,
     draftVersion: researchValues.draftVersion,
     latestVersion: researchValues.latestVersion,
@@ -533,12 +585,12 @@ export function ResearchDetails({
           />
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="slim"
             className="ml-auto"
             onClick={() => setEffectivePreview(true)}
           >
-            {previewLabel}
+            <LucideEye className="mr-2 size-5" /> {previewLabel}
           </Button>
         </>
       }
@@ -577,48 +629,53 @@ export function ResearchDetails({
         </div>
       </PreviewDialog>
 
-      {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
-      {isAdmin && (
-        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-muted-foreground">Owners:</span>
-          {owners.length > 0 ? (
-            <div className="flex flex-wrap gap-4">
-              {owners.map((owner) => (
-                <span key={owner} className="text-neutral-700">
-                  <LucideUser2 className="inline size-6 align-text-bottom" />
-                  {owner}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="text-muted-foreground italic">None</span>
+      <div className="flex items-start justify-between gap-5">
+        {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
+        {isAdmin && (
+          <div className="mx-5 mt-5 flex flex-1 flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium text-muted-foreground">Owners:</span>
+            {owners.length > 0 ? (
+              <div className="flex flex-wrap gap-4">
+                {owners.map((owner) => (
+                  <span key={owner} className="text-neutral-700">
+                    <LucideUser2 className="inline size-6 align-text-bottom" />
+                    {owner}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic">None</span>
+            )}
+          </div>
+        )}
+
+        {/* Research-wide workflow actions — apply to the research as a whole,
+          independent of which tab (metadata/datasets) is active. */}
+        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {isViewingDraft && canSubmit && (
+            <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
+              <LucideSend className="mr-2 size-5" />
+              {isSubmitting ? tResearches("submitting") : tResearches("submit-for-review")}
+            </Button>
+          )}
+          {isViewingDraft && canReject && (
+            <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
+              <LucideX className="mr-2 size-5" />
+              {isRejecting ? tResearches("rejecting") : tResearches("reject")}
+            </Button>
+          )}
+          {isViewingDraft && canApprove && (
+            <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
+              <LucideCheck className="mr-2 size-5" />
+              {isApproving ? tResearches("approving") : tResearches("approve")}
+            </Button>
+          )}
+          {canUnpublish && (
+            <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
+              {isUnpublishing ? "Unpublishing…" : "Unpublish"}
+            </Button>
           )}
         </div>
-      )}
-
-      {/* Research-wide workflow actions — apply to the research as a whole,
-          independent of which tab (metadata/datasets) is active. */}
-      <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {isViewingDraft && canSubmit && (
-          <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Submitting…" : "Submit for review"}
-          </Button>
-        )}
-        {isViewingDraft && canReject && (
-          <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-            {isRejecting ? "Rejecting…" : "Reject"}
-          </Button>
-        )}
-        {isViewingDraft && canApprove && (
-          <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-            {isApproving ? "Approving…" : "Approve"}
-          </Button>
-        )}
-        {canUnpublish && (
-          <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
-            {isUnpublishing ? "Unpublishing…" : "Unpublish"}
-          </Button>
-        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -644,34 +701,56 @@ export function ResearchDetails({
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Metadata-editing actions — Merge (draft construction) and Save
                 operate on the metadata form, so they stay with this tab. */}
-            <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              {/* Merge is a draft-construction tool — hidden entirely on non-draft
+            <div className="px-5 pt-5">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-b-black pb-5">
+                {/* Merge is a draft-construction tool — hidden entirely on non-draft
                   views (e.g. published patch). The spacer keeps the rest of the
                   action row right-aligned when the button is absent. */}
-              {isViewingDraft ? (
-                <MergeResearchDialog
-                  className="mr-auto"
-                  currentValues={formValues}
-                  disabled={!canUpdate}
-                  onMerge={applyMergedValues}
-                />
-              ) : (
-                <div className="mr-auto" />
-              )}
+                {isViewingDraft ? (
+                  <MergeResearchDialog
+                    className="mr-auto"
+                    currentValues={formValues}
+                    disabled={!canUpdate}
+                    onMerge={applyMergedValues}
+                  />
+                ) : (
+                  <div className="mr-auto" />
+                )}
 
-              {isEditable && canUpdate && (
-                <Button
-                  size="lg"
-                  onClick={() => form.handleSubmit()}
-                  disabled={isSaving || !isModified}
-                >
-                  {isSaving ? "Saving…" : isViewingDraft ? "Save draft" : "Save"}
-                </Button>
-              )}
+                {isEditable && canUpdate && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleReset}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideRotateCcw className="mr-2 size-6" /> {tResearches("reset")}
+                  </Button>
+                )}
+
+                {isEditable && canUpdate && (
+                  <Button
+                    size="lg"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideSave className="mr-2 size-5" />
+                    {isSaving
+                      ? tResearches("saving")
+                      : isViewingDraft
+                        ? tResearches("save-draft")
+                        : tResearches("save")}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
+              <fieldset
+                disabled={!isReleaseNoteEditableForSelection || !canUpdate}
+                className="group/fieldset p-5"
+              >
                 <BilingualMarkdownEditorField
                   // withForm components take a loosely-typed form; cast matches the
                   // idiom used by the other schema-driven field components.
@@ -698,6 +777,8 @@ export function ResearchDetails({
                     <TabsContent key={field.key} value={field.key}>
                       {field.key === "summary" ? (
                         <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
+                      ) : field.key === "summaryShort" ? (
+                        <SummaryShortMarkdownFields form={form} />
                       ) : field.renderer ? (
                         field.renderer(form)
                       ) : (
@@ -727,17 +808,27 @@ export function ResearchDetails({
           >
             {datasetView === null ? (
               <TabContentLayout
-                header={<span className="font-medium text-sm">Datasets</span>}
+                header={
+                  <div>
+                    <span className="font-medium text-sm">Datasets</span>{" "}
+                  </div>
+                }
                 actions={
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    disabled={!canCreateDataset}
-                    onClick={() => setDatasetView("new")}
-                  >
-                    Add new dataset
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      disabled={!canCreateDataset}
+                      onClick={() => setDatasetView("new")}
+                    >
+                      <LucidePlus className="mr-2 size-5" />
+                      {tResearches("add-new-dataset")}
+                    </Button>
+                    {!canCreateDataset ? (
+                      <InfoBadge>{t("admin.datasets.must-be-draft-to-add-new")}</InfoBadge>
+                    ) : null}
+                  </div>
                 }
               >
                 <ResearchDatasetsTab
@@ -817,6 +908,35 @@ function SummaryMarkdownFields({
       form={form}
       baseName="summary"
       schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
+      overrides={overrides}
+    />
+  );
+}
+
+/**
+ * Short-summary editor: the listing-specific methods, data-type, and target
+ * fields share Summary's bilingual Markdown editing layout. summaryShort has
+ * no legacy HTML side-channel, so its editors deliberately omit that popup.
+ */
+function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
+  const overrides = useMemo<Record<string, FieldOverride>>(() => {
+    const markdownOverride =
+      (): FieldOverride =>
+      ({ form: fieldForm, name, label }) => (
+        <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
+      );
+    return {
+      methods: markdownOverride(),
+      typeOfData: markdownOverride(),
+      targets: markdownOverride(),
+    };
+  }, []);
+
+  return (
+    <SchemaObjectFields
+      form={form}
+      baseName="summaryShort"
+      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summaryShort)}
       overrides={overrides}
     />
   );

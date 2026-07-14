@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useLocale, useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useMemo, useRef } from "react";
@@ -16,6 +15,7 @@ import { FilterableCard } from "@/components/FilterableCard";
 import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { PlatformBadge } from "@/components/PlatformBadge";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { ResearchLink } from "@/components/ResearchLink";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -46,9 +46,10 @@ const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   order: ResearchSearchBodySchema.shape.order.default("desc"),
 });
 
+researchesSearchParamsSchema.shape.sort.def.defaultValue;
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
-  validateSearch: zodValidator(researchesSearchParamsSchema),
+  validateSearch: researchesSearchParamsSchema,
   errorComponent: DefaultCatchBoundary,
   loader: ({ context, location }) => {
     return Promise.all([
@@ -60,6 +61,15 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")
       ),
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
+  },
+  head: ({ match }) => {
+    return {
+      meta: [
+        {
+          title: `HumanDBs - ${match.context.messages?.Research?.["research-list"]}`,
+        },
+      ],
+    };
   },
 });
 
@@ -466,7 +476,7 @@ const columns = [
         <ul className="space-y-4">
           {ctx.renderValue()?.map((item) => (
             <li key={item}>
-              <p>{item}</p>
+              <PlatformBadge platform={item} />
             </li>
           ))}
         </ul>

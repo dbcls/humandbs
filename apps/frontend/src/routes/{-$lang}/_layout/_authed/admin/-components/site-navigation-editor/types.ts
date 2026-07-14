@@ -1,5 +1,5 @@
-import type { NavigationGroup, NavigationItem } from "@/config/site-navigation";
-import type { NavbarCommittedGroup } from "@/config/site-navigation-admin";
+import type { NavigationGroup, NavigationItem } from "@/config/siteNavigation";
+import type { NavbarCommittedGroup } from "@/config/siteNavigationAdmin";
 
 export type NavbarGroupWithItems = NavbarCommittedGroup;
 

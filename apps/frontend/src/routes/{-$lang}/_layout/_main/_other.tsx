@@ -1,17 +1,12 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { Breadcrumbs } from "@/components/Breadcrumb";
-import { Card } from "@/components/Card";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { ResearchDatasetTabs } from "@/components/ResearchDatasetTabs";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other")({
   component: RouteComponent,
-  errorComponent: ({ error }) => (
-    <Card captionSize={"lg"} caption={<span className="text-danger">Error</span>}>
-      <pre>{error.message}</pre>
-      {error.cause != null && <pre>{String(error.cause)}</pre>}
-    </Card>
-  ),
+  errorComponent: DefaultCatchBoundary,
 });
 
 function onlyHasLangParam(paramsObj: Record<string, string | number>) {

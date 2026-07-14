@@ -1,6 +1,7 @@
 import { Search as SearchIcon } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { Input as SearchInput } from "@/components/Input";
@@ -65,6 +66,7 @@ export function CheckboxFacetItem({
   options,
   facetCounts,
   isFetching,
+  renderOptionLabel,
 }: {
   id: string;
   draftValue: unknown;
@@ -72,6 +74,7 @@ export function CheckboxFacetItem({
   options: string[];
   facetCounts?: { value: string; count: number }[];
   isFetching: boolean;
+  renderOptionLabel?: (optionValue: string, label: string) => ReactNode;
 }) {
   const selectedValues = Array.isArray(draftValue) ? (draftValue as string[]) : [];
   const hasValue = selectedValues.length > 0;
@@ -159,6 +162,7 @@ export function CheckboxFacetItem({
         {filteredOptions.map((optionValue) => {
           const isChecked = selectedValues.includes(optionValue);
           const count = facetCounts?.find((f) => f.value === optionValue)?.count ?? 0;
+          const label = getLabel(optionValue);
 
           return (
             <li key={`${id}-${optionValue}`}>
@@ -175,11 +179,11 @@ export function CheckboxFacetItem({
                   }}
                 />
                 <span
-                  className={cn({
+                  className={cn("text-xs", {
                     "opacity-40": isFetching,
                   })}
                 >
-                  {getLabel(optionValue)}
+                  {renderOptionLabel ? renderOptionLabel(optionValue, label) : label}
                 </span>
                 <span className="text-gray-500">{count}</span>
               </Label>

@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import type { Locale } from "@/config/i18n";
 import { localeSchema } from "@/config/i18n";
-import type { DocumentLabelResolver, DocumentPathResolver } from "@/config/site-navigation";
-import { buildSiteNavigation, getDefaultSiteNavigationConfig } from "@/config/site-navigation";
+import type { DocumentLabelResolver, DocumentPathResolver } from "@/config/siteNavigation";
+import { buildSiteNavigation, getDefaultSiteNavigationConfig } from "@/config/siteNavigation";
 import { db } from "@/db/database";
 import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { siteNavigationConfigUpdateSchema } from "@/db/types";

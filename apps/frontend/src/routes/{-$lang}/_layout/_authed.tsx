@@ -4,7 +4,6 @@ import {
   Bell,
   Cuboid,
   Files,
-  GitBranch,
   LibraryBig,
   Newspaper,
   PanelsTopLeft,
@@ -82,7 +81,7 @@ function buildRedirectTarget(
 }
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
-  beforeLoad: ({ context, matches, location }) => {
+  beforeLoad: ({ context, location }) => {
     if (!context.user) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0 ? `/${context.lang}` : "/";
@@ -171,15 +170,7 @@ function NavPanel() {
                 }
                 tab="header-footer"
               />
-              <PanelItem
-                title={
-                  <span>
-                    <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
-                    Flowcharts
-                  </span>
-                }
-                tab="flowcharts"
-              />
+
               <PanelItem
                 title={
                   <span>

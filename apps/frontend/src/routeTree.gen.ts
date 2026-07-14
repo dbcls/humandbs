@@ -24,7 +24,6 @@ import { Route as Char123LangChar125LayoutMainOtherCartRouteImport } from './rou
 import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
 import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
 import { Route as Char123LangChar125LayoutAuthedAdminHeaderFooterRouteImport } from './routes/{-$lang}/_layout/_authed/admin/header-footer'
-import { Route as Char123LangChar125LayoutAuthedAdminFlowchartsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/flowcharts'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
 import { Route as Char123LangChar125LayoutAuthedAdminDataTransferRouteImport } from './routes/{-$lang}/_layout/_authed/admin/data-transfer'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
@@ -32,20 +31,16 @@ import { Route as Char123LangChar125LayoutAuthedAdminAlertsRouteImport } from '.
 import { Route as Char123LangChar125LayoutMainOtherResearchRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/route'
 import { Route as Char123LangChar125LayoutMainOtherNewsRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/route'
 import { Route as Char123LangChar125LayoutMainOtherDatasetRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/route'
-import { Route as Char123LangChar125LayoutMainOtherDataUseRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/route'
 import { Route as Char123LangChar125LayoutMainOtherResearchIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/index'
 import { Route as Char123LangChar125LayoutMainOtherDatasetIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/index'
-import { Route as Char123LangChar125LayoutMainOtherDataUseIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/index'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/route'
 import { Route as Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/route'
-import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/route'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/index'
 import { Route as Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/index'
-import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/index'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdVersionsRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/versions'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdVersionRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/$version'
 
@@ -131,12 +126,6 @@ const Char123LangChar125LayoutAuthedAdminHeaderFooterRoute =
     path: '/header-footer',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
-const Char123LangChar125LayoutAuthedAdminFlowchartsRoute =
-  Char123LangChar125LayoutAuthedAdminFlowchartsRouteImport.update({
-    id: '/flowcharts',
-    path: '/flowcharts',
-    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
-  } as any)
 const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
   Char123LangChar125LayoutAuthedAdminDocumentsRouteImport.update({
     id: '/documents',
@@ -179,12 +168,6 @@ const Char123LangChar125LayoutMainOtherDatasetRouteRoute =
     path: '/dataset',
     getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
-const Char123LangChar125LayoutMainOtherDataUseRouteRoute =
-  Char123LangChar125LayoutMainOtherDataUseRouteRouteImport.update({
-    id: '/data-use',
-    path: '/data-use',
-    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
-  } as any)
 const Char123LangChar125LayoutMainOtherResearchIndexRoute =
   Char123LangChar125LayoutMainOtherResearchIndexRouteImport.update({
     id: '/',
@@ -202,12 +185,6 @@ const Char123LangChar125LayoutMainOtherDatasetIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => Char123LangChar125LayoutMainOtherDatasetRouteRoute,
-  } as any)
-const Char123LangChar125LayoutMainOtherDataUseIndexRoute =
-  Char123LangChar125LayoutMainOtherDataUseIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => Char123LangChar125LayoutMainOtherDataUseRouteRoute,
   } as any)
 const Char123LangChar125LayoutAuthedAdminResearchesIndexRoute =
   Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport.update({
@@ -241,14 +218,6 @@ const Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRoute =
     path: '/$datasetId',
     getParentRoute: () => Char123LangChar125LayoutMainOtherDatasetRouteRoute,
   } as any)
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport.update(
-    {
-      id: '/data-submission/navigation',
-      path: '/data-submission/navigation',
-      getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
-    } as any,
-  )
 const Char123LangChar125LayoutMainOtherResearchHumIdIndexRoute =
   Char123LangChar125LayoutMainOtherResearchHumIdIndexRouteImport.update({
     id: '/',
@@ -263,15 +232,6 @@ const Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRoute =
     getParentRoute: () =>
       Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRoute,
   } as any)
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport.update(
-    {
-      id: '/',
-      path: '/',
-      getParentRoute: () =>
-        Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute,
-    } as any,
-  )
 const Char123LangChar125LayoutMainOtherResearchHumIdVersionsRoute =
   Char123LangChar125LayoutMainOtherResearchHumIdVersionsRouteImport.update({
     id: '/versions',
@@ -294,7 +254,6 @@ export interface FileRoutesByFullPath {
   '/auth/refresh': typeof AuthRefreshRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
-  '/{-$lang}/data-use': typeof Char123LangChar125LayoutMainOtherDataUseRouteRouteWithChildren
   '/{-$lang}/dataset': typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren
   '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   '/{-$lang}/research': typeof Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren
@@ -302,25 +261,21 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
-  '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/': typeof Char123LangChar125LayoutMainHomeIndexRoute
-  '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/data-use/': typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
   '/{-$lang}/dataset/': typeof Char123LangChar125LayoutMainOtherDatasetIndexRoute
   '/{-$lang}/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
   '/{-$lang}/research/': typeof Char123LangChar125LayoutMainOtherResearchIndexRoute
   '/{-$lang}/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionRoute
   '/{-$lang}/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionsRoute
-  '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/dataset/$datasetId/': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRoute
   '/{-$lang}/research/$humId/': typeof Char123LangChar125LayoutMainOtherResearchHumIdIndexRoute
 }
@@ -335,7 +290,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
-  '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
@@ -343,13 +297,11 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/data-use': typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
   '/{-$lang}/dataset': typeof Char123LangChar125LayoutMainOtherDatasetIndexRoute
   '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
   '/{-$lang}/research': typeof Char123LangChar125LayoutMainOtherResearchIndexRoute
   '/{-$lang}/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionRoute
   '/{-$lang}/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionsRoute
-  '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRoute
   '/{-$lang}/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdIndexRoute
 }
@@ -365,7 +317,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_home': typeof Char123LangChar125LayoutMainHomeRouteWithChildren
   '/{-$lang}/_layout/_main/_other': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
-  '/{-$lang}/_layout/_main/_other/data-use': typeof Char123LangChar125LayoutMainOtherDataUseRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/dataset': typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/research': typeof Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren
@@ -373,25 +324,21 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
-  '/{-$lang}/_layout/_authed/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/_layout/_authed/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
   '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/_layout/_main/_other/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/_layout/_main/_home/': typeof Char123LangChar125LayoutMainHomeIndexRoute
-  '/{-$lang}/_layout/_main/_other/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
   '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/_layout/_main/_other/data-use/': typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
   '/{-$lang}/_layout/_main/_other/dataset/': typeof Char123LangChar125LayoutMainOtherDatasetIndexRoute
   '/{-$lang}/_layout/_main/_other/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
   '/{-$lang}/_layout/_main/_other/research/': typeof Char123LangChar125LayoutMainOtherResearchIndexRoute
   '/{-$lang}/_layout/_main/_other/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionRoute
   '/{-$lang}/_layout/_main/_other/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherResearchHumIdVersionsRoute
-  '/{-$lang}/_layout/_main/_other/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/_layout/_main/_other/dataset/$datasetId/': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRoute
   '/{-$lang}/_layout/_main/_other/research/$humId/': typeof Char123LangChar125LayoutMainOtherResearchHumIdIndexRoute
 }
@@ -404,7 +351,6 @@ export interface FileRouteTypes {
     | '/auth/refresh'
     | '/{-$lang}'
     | '/{-$lang}/admin'
-    | '/{-$lang}/data-use'
     | '/{-$lang}/dataset'
     | '/{-$lang}/news'
     | '/{-$lang}/research'
@@ -412,25 +358,21 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/data-transfer'
     | '/{-$lang}/admin/documents'
-    | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
     | '/{-$lang}/'
-    | '/{-$lang}/data-submission/navigation'
     | '/{-$lang}/dataset/$datasetId'
     | '/{-$lang}/research/$humId'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches/'
-    | '/{-$lang}/data-use/'
     | '/{-$lang}/dataset/'
     | '/{-$lang}/news/'
     | '/{-$lang}/research/'
     | '/{-$lang}/research/$humId/$version'
     | '/{-$lang}/research/$humId/versions'
-    | '/{-$lang}/data-submission/navigation/'
     | '/{-$lang}/dataset/$datasetId/'
     | '/{-$lang}/research/$humId/'
   fileRoutesByTo: FileRoutesByTo
@@ -445,7 +387,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/data-transfer'
     | '/{-$lang}/admin/documents'
-    | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
@@ -453,13 +394,11 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches'
-    | '/{-$lang}/data-use'
     | '/{-$lang}/dataset'
     | '/{-$lang}/news'
     | '/{-$lang}/research'
     | '/{-$lang}/research/$humId/$version'
     | '/{-$lang}/research/$humId/versions'
-    | '/{-$lang}/data-submission/navigation'
     | '/{-$lang}/dataset/$datasetId'
     | '/{-$lang}/research/$humId'
   id:
@@ -474,7 +413,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin'
     | '/{-$lang}/_layout/_main/_home'
     | '/{-$lang}/_layout/_main/_other'
-    | '/{-$lang}/_layout/_main/_other/data-use'
     | '/{-$lang}/_layout/_main/_other/dataset'
     | '/{-$lang}/_layout/_main/_other/news'
     | '/{-$lang}/_layout/_main/_other/research'
@@ -482,25 +420,21 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/data-transfer'
     | '/{-$lang}/_layout/_authed/admin/documents'
-    | '/{-$lang}/_layout/_authed/admin/flowcharts'
     | '/{-$lang}/_layout/_authed/admin/header-footer'
     | '/{-$lang}/_layout/_authed/admin/news'
     | '/{-$lang}/_layout/_main/_other/$'
     | '/{-$lang}/_layout/_main/_other/cart'
     | '/{-$lang}/_layout/_main/_home/'
-    | '/{-$lang}/_layout/_main/_other/data-submission/navigation'
     | '/{-$lang}/_layout/_main/_other/dataset/$datasetId'
     | '/{-$lang}/_layout/_main/_other/research/$humId'
     | '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
     | '/{-$lang}/_layout/_authed/admin/researches/'
-    | '/{-$lang}/_layout/_main/_other/data-use/'
     | '/{-$lang}/_layout/_main/_other/dataset/'
     | '/{-$lang}/_layout/_main/_other/news/'
     | '/{-$lang}/_layout/_main/_other/research/'
     | '/{-$lang}/_layout/_main/_other/research/$humId/$version'
     | '/{-$lang}/_layout/_main/_other/research/$humId/versions'
-    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
     | '/{-$lang}/_layout/_main/_other/dataset/$datasetId/'
     | '/{-$lang}/_layout/_main/_other/research/$humId/'
   fileRoutesById: FileRoutesById
@@ -620,13 +554,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
-    '/{-$lang}/_layout/_authed/admin/flowcharts': {
-      id: '/{-$lang}/_layout/_authed/admin/flowcharts'
-      path: '/flowcharts'
-      fullPath: '/{-$lang}/admin/flowcharts'
-      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminFlowchartsRouteImport
-      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
-    }
     '/{-$lang}/_layout/_authed/admin/documents': {
       id: '/{-$lang}/_layout/_authed/admin/documents'
       path: '/documents'
@@ -676,13 +603,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
-    '/{-$lang}/_layout/_main/_other/data-use': {
-      id: '/{-$lang}/_layout/_main/_other/data-use'
-      path: '/data-use'
-      fullPath: '/{-$lang}/data-use'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUseRouteRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
-    }
     '/{-$lang}/_layout/_main/_other/research/': {
       id: '/{-$lang}/_layout/_main/_other/research/'
       path: '/'
@@ -703,13 +623,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/dataset/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDatasetIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDatasetRouteRoute
-    }
-    '/{-$lang}/_layout/_main/_other/data-use/': {
-      id: '/{-$lang}/_layout/_main/_other/data-use/'
-      path: '/'
-      fullPath: '/{-$lang}/data-use/'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUseIndexRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUseRouteRoute
     }
     '/{-$lang}/_layout/_authed/admin/researches/': {
       id: '/{-$lang}/_layout/_authed/admin/researches/'
@@ -746,13 +659,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDatasetRouteRoute
     }
-    '/{-$lang}/_layout/_main/_other/data-submission/navigation': {
-      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation'
-      path: '/data-submission/navigation'
-      fullPath: '/{-$lang}/data-submission/navigation'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
-    }
     '/{-$lang}/_layout/_main/_other/research/$humId/': {
       id: '/{-$lang}/_layout/_main/_other/research/$humId/'
       path: '/'
@@ -766,13 +672,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/dataset/$datasetId/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRoute
-    }
-    '/{-$lang}/_layout/_main/_other/data-submission/navigation/': {
-      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
-      path: '/'
-      fullPath: '/{-$lang}/data-submission/navigation/'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute
     }
     '/{-$lang}/_layout/_main/_other/research/$humId/versions': {
       id: '/{-$lang}/_layout/_main/_other/research/$humId/versions'
@@ -796,7 +695,6 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminDataTransferRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
-  Char123LangChar125LayoutAuthedAdminFlowchartsRoute: typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   Char123LangChar125LayoutAuthedAdminHeaderFooterRoute: typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
   Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
@@ -813,8 +711,6 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminDataTransferRoute,
     Char123LangChar125LayoutAuthedAdminDocumentsRoute:
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
-    Char123LangChar125LayoutAuthedAdminFlowchartsRoute:
-      Char123LangChar125LayoutAuthedAdminFlowchartsRoute,
     Char123LangChar125LayoutAuthedAdminHeaderFooterRoute:
       Char123LangChar125LayoutAuthedAdminHeaderFooterRoute,
     Char123LangChar125LayoutAuthedAdminNewsRoute:
@@ -858,21 +754,6 @@ const Char123LangChar125LayoutMainHomeRouteChildren: Char123LangChar125LayoutMai
 const Char123LangChar125LayoutMainHomeRouteWithChildren =
   Char123LangChar125LayoutMainHomeRoute._addFileChildren(
     Char123LangChar125LayoutMainHomeRouteChildren,
-  )
-
-interface Char123LangChar125LayoutMainOtherDataUseRouteRouteChildren {
-  Char123LangChar125LayoutMainOtherDataUseIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
-}
-
-const Char123LangChar125LayoutMainOtherDataUseRouteRouteChildren: Char123LangChar125LayoutMainOtherDataUseRouteRouteChildren =
-  {
-    Char123LangChar125LayoutMainOtherDataUseIndexRoute:
-      Char123LangChar125LayoutMainOtherDataUseIndexRoute,
-  }
-
-const Char123LangChar125LayoutMainOtherDataUseRouteRouteWithChildren =
-  Char123LangChar125LayoutMainOtherDataUseRouteRoute._addFileChildren(
-    Char123LangChar125LayoutMainOtherDataUseRouteRouteChildren,
   )
 
 interface Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteChildren {
@@ -965,35 +846,16 @@ const Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren =
     Char123LangChar125LayoutMainOtherResearchRouteRouteChildren,
   )
 
-interface Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren {
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
-}
-
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren =
-  {
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute:
-      Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute,
-  }
-
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute._addFileChildren(
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren,
-  )
-
 interface Char123LangChar125LayoutMainOtherRouteChildren {
-  Char123LangChar125LayoutMainOtherDataUseRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUseRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherDatasetRouteRoute: typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherNewsRouteRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherResearchRouteRoute: typeof Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherSplatRoute: typeof Char123LangChar125LayoutMainOtherSplatRoute
   Char123LangChar125LayoutMainOtherCartRoute: typeof Char123LangChar125LayoutMainOtherCartRoute
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
 }
 
 const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMainOtherRouteChildren =
   {
-    Char123LangChar125LayoutMainOtherDataUseRouteRoute:
-      Char123LangChar125LayoutMainOtherDataUseRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherDatasetRouteRoute:
       Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherNewsRouteRoute:
@@ -1004,8 +866,6 @@ const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMa
       Char123LangChar125LayoutMainOtherSplatRoute,
     Char123LangChar125LayoutMainOtherCartRoute:
       Char123LangChar125LayoutMainOtherCartRoute,
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute:
-      Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren,
   }
 
 const Char123LangChar125LayoutMainOtherRouteWithChildren =

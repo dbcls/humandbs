@@ -13,15 +13,15 @@ import type {
   NavigationItem,
   NavPriority,
   SiteNavigationConfig,
-} from "@/config/site-navigation";
+} from "@/config/siteNavigation";
 import {
   normalizeSiteNavigationConfig,
   siteNavigationConfigSchema,
-} from "@/config/site-navigation.schema";
+} from "@/config/siteNavigation.schema";
 import {
   deriveNavbarCommittedGroups,
   mergeCommittedNavbarGroups,
-} from "@/config/site-navigation-admin";
+} from "@/config/siteNavigationAdmin";
 import { getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $resetSiteNavigationConfig,
@@ -97,9 +97,7 @@ function RouteComponent() {
       <Card className="flex h-full flex-1 flex-col" caption="Site Navigation">
         <div className="flex flex-col gap-4 p-5">
           <div>
-            <p className="font-medium text-danger text-sm">
-              {tNav("load-failed-short")}
-            </p>
+            <p className="font-medium text-danger text-sm">{tNav("load-failed-short")}</p>
             <p className="mt-1 text-foreground-light text-sm">
               {queryError instanceof Error ? queryError.message : tNav("load-failed")}
             </p>
@@ -534,9 +532,7 @@ function RouteComponent() {
       <div className="flex items-center justify-between px-5 pt-5">
         <div>
           <p className="font-medium text-sm">{tNav("shared-structure")}</p>
-          <p className="text-foreground-light text-sm">
-            {tNav("shared-structure-hint")}
-          </p>
+          <p className="text-foreground-light text-sm">{tNav("shared-structure-hint")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -576,9 +572,7 @@ function RouteComponent() {
           {/* Navbar preview */}
           <section className="rounded-md border border-gray-200 p-4">
             <h2 className="font-medium text-base">Navbar</h2>
-            <p className="mt-1 text-foreground-light text-sm">
-              {tNav("drag-navbar-hint")}
-            </p>
+            <p className="mt-1 text-foreground-light text-sm">{tNav("drag-navbar-hint")}</p>
             <div className="mt-4">
               <NavbarEditor
                 groups={navbarGroups}
@@ -599,9 +593,7 @@ function RouteComponent() {
           {/* Footer preview */}
           <section className="rounded-md border border-gray-200 p-4">
             <h2 className="font-medium text-base">Footer</h2>
-            <p className="mt-1 text-foreground-light text-sm">
-              {tNav("drag-footer-hint")}
-            </p>
+            <p className="mt-1 text-foreground-light text-sm">{tNav("drag-footer-hint")}</p>
             <div className="mt-4">
               <FooterEditor
                 groups={footerGroups}

@@ -1,8 +1,6 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { useTranslations } from "use-intl";
-
-import type { Ref } from "react";
-import { useEffect, useImperativeHandle } from "react";
+import type { z } from "zod";
 
 import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
@@ -149,94 +147,63 @@ export function getDefaultDatasetFormValues(humId: string): DatasetFormValues {
   };
 }
 
-export interface DatasetFormHandle {
-  applyValues: (values: Partial<DatasetFormValues>) => void;
+export function useDatasetForm(
+  defaultValues: DatasetFormValues,
+  onSubmit: (values: DatasetFormValues) => Promise<boolean>,
+) {
+  return useAppForm({
+    defaultValues,
+    onSubmit: async ({ value, formApi }) => {
+      if (!(await onSubmit(value))) return;
+      formApi.options.defaultValues = value;
+      formApi.reset(value);
+    },
+  });
 }
 
+type DatasetFormInstance = ReturnType<typeof useDatasetForm>;
+
 interface DatasetFormProps {
+  form: DatasetFormInstance;
+  formId: string;
   defaultValues: DatasetFormValues;
-  /** If provided, used as the baseline for modified comparison instead of defaultValues */
-  cleanValues?: DatasetFormValues;
   /** Read-only legacy rawHtml side-channel for the experiment data editors. */
   legacyRawHtml?: LegacyRawHtmlLookup;
   readOnly: boolean;
-  onSubmit: (values: DatasetFormValues) => Promise<void>;
   isSaving: boolean;
   error?: string | null;
+  datasetIdValidator?: z.ZodString;
   conflictError?: boolean;
   onReload?: () => void;
   saveLabel?: string;
   hideSaveButton?: boolean;
   showDatasetIdField?: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
-  onValuesChange?: (values: DatasetFormValues) => void;
-  imperativeRef?: Ref<DatasetFormHandle>;
 }
 
 export function DatasetForm({
+  form,
+  formId,
   defaultValues,
-  cleanValues,
   legacyRawHtml,
   readOnly,
-  onSubmit,
   isSaving,
   error,
+  datasetIdValidator,
   conflictError,
   onReload,
   saveLabel = "Save",
   hideSaveButton = false,
   showDatasetIdField = false,
-  onDirtyChange,
-  onValuesChange,
-  imperativeRef,
 }: DatasetFormProps) {
-  const form = useAppForm({
-    defaultValues,
-    onSubmit: async ({ value, formApi }) => {
-      await onSubmit(value);
-      formApi.options.defaultValues = value;
-      formApi.reset(value);
-    },
-  });
-
-  useImperativeHandle(
-    imperativeRef,
-    () => ({
-      applyValues(values) {
-        if (values.releaseDate !== undefined) form.setFieldValue("releaseDate", values.releaseDate);
-        if (values.criteria !== undefined) form.setFieldValue("criteria", values.criteria);
-        if (values.typeOfData !== undefined) form.setFieldValue("typeOfData", values.typeOfData);
-        if (values.datasetId !== undefined) form.setFieldValue("datasetId", values.datasetId);
-        if (values.experiments !== undefined) form.setFieldValue("experiments", values.experiments);
-      },
-    }),
-    [form],
-  );
-
   const t = useTranslations("Dataset");
   const tCommon = useTranslations("admin.common");
 
-  const values = useStore(form.store, (state) => state.values);
-  const baseline = cleanValues ?? defaultValues;
-  const isModified = useStore(form.store, (state) => !evaluate(state.values, baseline));
-
-  // Notify parent when dirty state changes
-  useEffect(() => {
-    onDirtyChange?.(isModified);
-  }, [isModified, onDirtyChange]);
-
-  useEffect(() => {
-    onValuesChange?.(values);
-  }, [onValuesChange, values]);
-
-  const isExperimentsModified = useStore(
-    form.store,
-    (state) => !evaluate(state.values.experiments, baseline.experiments),
-  );
+  const experiments = useStore(form.store, (state) => state.values.experiments);
+  const isExperimentsModified = !evaluate(experiments, defaultValues.experiments);
 
   return (
     <form
-      id="dataset-edit-form"
+      id={formId}
       onSubmit={(e) => {
         e.preventDefault();
         form.handleSubmit();
@@ -261,38 +228,38 @@ export function DatasetForm({
 
       <fieldset disabled={readOnly} className="flex flex-col gap-5 disabled:opacity-60">
         {/* Read-only fields */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-start gap-4">
           <div className="flex flex-col gap-1">
             <Label className="text-form-label text-xs">{t("research-version")}</Label>
             <span className="font-mono text-sm">{defaultValues.humVersionId || "—"}</span>
           </div>
-        </div>
-
-        {/* Dataset ID (create only) */}
-        {showDatasetIdField && (
-          <form.AppField name="datasetId">
-            {(field) => <field.TextField type="col" label="Dataset ID (optional)" />}
-          </form.AppField>
-        )}
-
-        {/* Release Date */}
-        <form.AppField name="releaseDate">
-          {(field) => <field.DateField label={t("releaseDate")} />}
-        </form.AppField>
-
-        {/* Criteria */}
-        <form.AppField name="criteria">
-          {(field) => (
-            <field.SelectField
-              label={t("criteria")}
-              type="col"
-              items={CRITERIA_OPTIONS.map((option) => ({
-                label: t(option),
-                value: option,
-              }))}
-            />
+          {/* Dataset ID (create only) */}
+          {showDatasetIdField && (
+            <form.AppField
+              name="datasetId"
+              validators={datasetIdValidator ? { onSubmit: datasetIdValidator } : undefined}
+            >
+              {(field) => <field.TextField type="col" label={t("datasetId")} />}
+            </form.AppField>
           )}
-        </form.AppField>
+          {/* Release Date */}
+          <form.AppField name="releaseDate">
+            {(field) => <field.DateField label={t("releaseDate")} />}
+          </form.AppField>
+          {/* Criteria */}
+          <form.AppField name="criteria">
+            {(field) => (
+              <field.SelectField
+                label={t("criteria")}
+                type="col"
+                items={CRITERIA_OPTIONS.map((option) => ({
+                  label: t(option),
+                  value: option,
+                }))}
+              />
+            )}
+          </form.AppField>
+        </div>
 
         {/* Type of Data */}
         <form.AppField name="typeOfData">

@@ -17,10 +17,12 @@ Textarea.displayName = "Textarea";
 
 function TextareaAutosize({
   className,
+  ref,
   ...props
-}: React.ComponentProps<typeof TextareaAutosizeComponent>) {
+}: React.ComponentPropsWithRef<typeof TextareaAutosizeComponent>) {
   return (
     <TextareaAutosizeComponent
+      ref={ref}
       data-slot="textarea"
       className={cn(textAreaClasses, className)}
       {...props}

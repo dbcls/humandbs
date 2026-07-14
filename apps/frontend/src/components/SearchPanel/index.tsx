@@ -5,6 +5,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import type { RangeFilter } from "@humandbs/backend/types";
 
+import { PlatformBadge } from "@/components/PlatformBadge";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -132,6 +133,11 @@ function AccordionFilterItem({
           options={section.options}
           facetCounts={facetCounts?.[section.id]}
           isFetching={isFetching}
+          renderOptionLabel={
+            section.id === "platform"
+              ? (_optionValue, label) => <PlatformBadge platform={label} />
+              : undefined
+          }
         />
       );
     case "text":

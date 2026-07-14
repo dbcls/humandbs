@@ -13,7 +13,7 @@ import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { Label } from "@/components/ui/label";
-import { PROTECTED_DOC_IDS } from "@/config/routing-config";
+import { PROTECTED_DOC_IDS } from "@/config/routing";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import type { DocumentsListItemResponse } from "@/repositories/document";

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Card } from "@/components/Card";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 import { toDateString } from "@/utils/dates";
@@ -26,6 +27,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsI
       publishedAt: newsItem.newsItem.publishedAt,
     };
   },
+  head: ({ loaderData, match }) => {
+    return {
+      meta: [{ title: `HumanDBs - ${match.context.messages?.Front?.news} - ${loaderData?.title}` }],
+    };
+  },
+  errorComponent: DefaultCatchBoundary,
 });
 
 function RouteComponent() {

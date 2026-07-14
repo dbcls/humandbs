@@ -2,7 +2,7 @@ import type {
   FieldConfig as GenericFieldConfig,
   RendererProps as GenericRendererProps,
 } from "@/components/form-context/schema-form/fieldConfig";
-import type { FacetCategory } from "@/config/facet-config";
+import type { FacetCategory } from "@/config/facets";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 

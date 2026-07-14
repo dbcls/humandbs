@@ -8,7 +8,7 @@ import type {
   NavigationFlowchartData,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
+} from "@/config/navigationFlowchart";
 import { cn } from "@/lib/utils";
 import {
   getNavigationEntryPointQueryOptions,

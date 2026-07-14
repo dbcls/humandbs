@@ -1,7 +1,7 @@
 import { and, desc, eq, ne } from "drizzle-orm";
 
-import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
-import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
+import type { NavigationFlowchartConfig } from "@/config/navigationFlowchart";
+import { parseNavigationFlowchartConfig } from "@/config/navigationFlowchart.schema";
 import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import type { NavigationFlowchartStatus } from "@/db/schema";

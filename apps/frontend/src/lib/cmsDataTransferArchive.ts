@@ -8,11 +8,11 @@ import tar from "tar-stream";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
-import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
+import { navigationFlowchartConfigSchema } from "@/config/navigationFlowchart.schema";
 import {
   parseSiteNavigationConfig,
   siteNavigationConfigSchema,
-} from "@/config/site-navigation.schema";
+} from "@/config/siteNavigation.schema";
 import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import {
@@ -76,9 +76,8 @@ const archiveCountsSchema = z.partialRecord(
 const lenientCategoryArraySchema = z
   .array(z.union([cmsDataTransferCategorySchema, z.string()]))
   .transform((categories) =>
-    categories.filter(
-      (category): category is CmsDataTransferCategory =>
-        CMS_DATA_TRANSFER_CATEGORIES.includes(category as CmsDataTransferCategory),
+    categories.filter((category): category is CmsDataTransferCategory =>
+      CMS_DATA_TRANSFER_CATEGORIES.includes(category as CmsDataTransferCategory),
     ),
   );
 
@@ -890,7 +889,9 @@ export function createCmsDataTransferArchiveRestorer({
       if (restoredCategories.includes("assets")) {
         const assetDir = getAssetDir();
         await mkdir(path.dirname(assetDir), { recursive: true });
-        stagedAssetDirectory = await mkdtemp(path.join(path.dirname(assetDir), ".cms-data-restore-assets-"));
+        stagedAssetDirectory = await mkdtemp(
+          path.join(path.dirname(assetDir), ".cms-data-restore-assets-"),
+        );
         await writeArchiveAssetsToDirectory(parsedArchive.assetEntries, stagedAssetDirectory);
       }
 

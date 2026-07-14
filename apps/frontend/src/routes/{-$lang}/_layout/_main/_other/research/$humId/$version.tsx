@@ -1,6 +1,10 @@
 import { createFileRoute, isNotFound, notFound } from "@tanstack/react-router";
 
 import { NotFound } from "@/components/NotFound";
+import {
+  getExternalDatasetIds,
+  prefetchDatasetParentResearches,
+} from "@/lib/datasetParentResearch";
 import { getResearchQueryOptions } from "@/serverFunctions/researches";
 
 import { VersionCard } from "./-VersionCard";
@@ -14,6 +18,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
           version: params.version,
           lang: context.lang,
         }),
+      );
+      // Warm parent-research links before VersionCard mounts without delaying
+      // the route. VersionCard observes and continues the same query cache.
+      void prefetchDatasetParentResearches(
+        context.queryClient,
+        getExternalDatasetIds(researchInfo.data),
+        context.lang,
       );
       return { crumb: params.version, data: researchInfo.data };
     } catch (error) {

@@ -4,7 +4,7 @@ import type { KeyboardEventHandler, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { Locale } from "@/config/i18n";
-import type { NavigationItem } from "@/config/site-navigation";
+import type { NavigationItem } from "@/config/siteNavigation";
 import { cn } from "@/lib/utils";
 import type { DocumentsListItemResponse } from "@/repositories/document";
 

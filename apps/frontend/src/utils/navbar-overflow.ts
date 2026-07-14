@@ -1,4 +1,4 @@
-import type { NavPriority, ResolvedNavbarItem } from "@/config/site-navigation";
+import type { NavPriority, ResolvedNavbarItem } from "@/config/siteNavigation";
 
 const PRIORITY_RANK: Record<NavPriority, number> = {
   important: 0,

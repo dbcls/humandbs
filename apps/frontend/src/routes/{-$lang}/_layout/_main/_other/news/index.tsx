@@ -7,18 +7,31 @@ import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/Card";
 import { DateTimeRangePicker } from "@/components/DatePicker";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
-import { toLocaleDateTimeString } from "@/utils/dates";
+import { toDateString, toLocaleDateTimeString } from "@/utils/dates";
 import { newsPublicSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
   component: RouteComponent,
   validateSearch: newsPublicSearchParamsSchema,
+  errorComponent: DefaultCatchBoundary,
+  head: ({ match }) => {
+    const seoTitle = `HumanDBs - ${match.context.messages?.Navbar?.["all-news"]}`;
+
+    return {
+      meta: [
+        {
+          title: seoTitle,
+        },
+      ],
+    };
+  },
 });
 
 function RouteComponent() {
@@ -117,18 +130,16 @@ function RouteComponent() {
         </div>
       ) : (
         <ul
-          className={cn("max-h-[50ch] flex-1 overflow-y-auto", {
+          className={cn("max-h-[50ch] flex-1 space-y-3 overflow-y-auto", {
             "opacity-60 transition-opacity": isFetching && !isFetchingNextPage,
           })}
         >
           {newsItems.map((item) => {
             return (
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
-                <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs opacity-70">
-                    {item.publishedAt ? toLocaleDateTimeString(item.publishedAt) : tNews("no-date")}
-                  </span>
-                </div>
+                <span className="text-neutral-500 text-xs">
+                  {item.publishedAt ? toDateString(item.publishedAt) : tNews("no-date")}
+                </span>
 
                 <Link
                   to="/{-$lang}/news/$newsItemId"

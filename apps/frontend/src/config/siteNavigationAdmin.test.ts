@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildSiteNavigation, type SiteNavigationConfig } from "@/config/site-navigation";
+import { buildSiteNavigation, type SiteNavigationConfig } from "@/config/siteNavigation";
 
-import { deriveNavbarCommittedGroups, mergeCommittedNavbarGroups } from "./site-navigation-admin";
+import { deriveNavbarCommittedGroups, mergeCommittedNavbarGroups } from "./siteNavigationAdmin";
 
 describe("deriveNavbarCommittedGroups", () => {
   test("treats the item matching linkedItemId as linked and the rest as submenu items", () => {
