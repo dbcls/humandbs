@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import type { Ref } from "react";
 import { useState } from "react";
 
 import MarkdownClientPreview from "@/components/markdown/MarkdownClientPreview";
@@ -26,6 +27,7 @@ export function MarkdownTextEditor({
   fieldLabel,
   modified = false,
   className,
+  ref,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -35,6 +37,7 @@ export function MarkdownTextEditor({
   fieldLabel?: string;
   modified?: boolean;
   className?: string;
+  ref?: Ref<HTMLTextAreaElement>;
 }) {
   const tMarkdown = useTranslations("admin.markdown");
   const [showPreview, setShowPreview] = useState(false);
@@ -55,6 +58,7 @@ export function MarkdownTextEditor({
       </div>
 
       <TextareaAutosize
+        ref={ref}
         minRows={3}
         maxRows={16}
         value={value}

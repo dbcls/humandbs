@@ -1,7 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getMoldataKeyLabel } from "@/config/moldataKeyLabels";
+import { shouldOfferCustomMoldataKey } from "@/config/moldataKeyMatching";
 import { compareMoldataKeys } from "@/config/moldataKeyOrder";
 import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -83,19 +85,34 @@ function DataEntriesTable({
 
   const availableKeys = ALLOWED_MOLDATA_KEYS.filter((k) => !usedKeys.has(k));
   const [inputValue, setInputValue] = useState("");
+  const [addedKeyToScrollTo, setAddedKeyToScrollTo] = useState<string | null>(null);
   const customKey = inputValue.trim();
-  const hasCustomKey = customKey.length > 0 && !usedKeys.has(customKey);
+  const hasCustomKey = shouldOfferCustomMoldataKey(inputValue, usedKeys, ALLOWED_MOLDATA_KEYS);
   const filteredAvailableKeys = availableKeys.filter((key) =>
     key.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const entryRowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const jaTextareaRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
+
+  useEffect(() => {
+    if (!addedKeyToScrollTo) return;
+
+    const addedRow = entryRowRefs.current.get(addedKeyToScrollTo);
+    if (!addedRow) return;
+
+    addedRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    jaTextareaRefs.current.get(addedKeyToScrollTo)?.focus({ preventScroll: true });
+    setAddedKeyToScrollTo(null);
+  }, [addedKeyToScrollTo]);
 
   function handleAddKey(key: string) {
     const normalizedKey = key.trim();
     if (!normalizedKey || usedKeys.has(normalizedKey)) return;
     dataField.pushValue(newDataEntry(normalizedKey));
+    setAddedKeyToScrollTo(normalizedKey);
     setInputValue("");
   }
 
@@ -214,12 +231,16 @@ function DataEntriesTable({
               return (
                 <tr
                   key={`${experimentIndex}-${entry.key}`}
+                  ref={(row) => {
+                    if (row) entryRowRefs.current.set(entry.key, row);
+                    else entryRowRefs.current.delete(entry.key);
+                  }}
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
                     {
                       <span className="inline-flex flex-wrap items-center gap-1">
-                        <span className="font-medium text-form-value">{entry.key}</span>
+                        <MoldataKeyLabel moldataKey={entry.key} />
                         {!isKnown ? (
                           <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
                         ) : null}
@@ -259,6 +280,10 @@ function DataEntriesTable({
                       {(f: AnyForm) => (
                         <div className="relative">
                           <MarkdownTextEditor
+                            ref={(textarea) => {
+                              if (textarea) jaTextareaRefs.current.set(entry.key, textarea);
+                              else jaTextareaRefs.current.delete(entry.key);
+                            }}
                             value={(f.state.value as string | undefined) ?? ""}
                             onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
@@ -308,7 +333,7 @@ function DataEntriesTable({
           <ComboboxList>
             {filteredAvailableKeys.map((key) => (
               <ComboboxItem key={key} value={key}>
-                {key}
+                <MoldataKeyLabel moldataKey={key} />
               </ComboboxItem>
             ))}
             {hasCustomKey && (
@@ -323,6 +348,18 @@ function DataEntriesTable({
         </ComboboxContent>
       </Combobox>
     </div>
+  );
+}
+
+function MoldataKeyLabel({ moldataKey }: { moldataKey: string }) {
+  const label = getMoldataKeyLabel(moldataKey);
+
+  if (!label) return <span className="font-medium text-form-value">{moldataKey}</span>;
+
+  return (
+    <span className="font-medium text-form-value">
+      {label.en} / <span lang="ja">{label.ja}</span>
+    </span>
   );
 }
 
