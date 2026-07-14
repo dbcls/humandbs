@@ -125,6 +125,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
+      summaryShort: body.summaryShort,
     })
 
     // Get the created research with seqNo for the response
@@ -194,6 +195,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
+      summaryShort: body.summaryShort,
     }, seqNo, primaryTerm)
 
     if (!updated) {

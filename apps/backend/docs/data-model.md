@@ -60,7 +60,7 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
 - **Crawler → ES**: `es/types.ts` は crawler スキーマを `.extend()` で合成し、差分のみ定義する。同一構造のスキーマ（`PersonSchema`, `SummarySchema`, `ResearchVersionSchema` 等）は直接 re-export する
   - `EsDatasetSchema`: `originalMetadata` を `.extend()` で追加
   - `EsResearchSchema`: `status`, `uids`, `draftVersion`, `summaryShort` を `.extend()` で追加
-  - `summaryShort`: 一覧表示用の 1〜2 文の短文要約（`methods` / `typeOfData` / `targets` の 3 つ、各 `BilingualTextValue`）。Joomla 旧サイトの一覧 article（ja=`/home`, en=`/en/home`）由来。crawler を経由しないため `nullable + optional`。未掲載 humId は null
+  - `summaryShort`: 一覧表示用の 1〜2 文の短文要約（`methods` / `typeOfData` / `targets` の 3 つ、各 `BilingualTextValue`）。Joomla 旧サイトの一覧 article（ja=`/home`, en=`/en/home`）由来。crawler を経由しないため `nullable + optional`。未掲載 humId は null。curator による編集は `PUT /research/{humId}/update` の `summaryShort` フィールド経由（`null` を送ると Joomla 一覧から外れたケースを表現）
   - Crawler の `latestVersion` は `z.string()` だが、ES では nullable（未公開時 null）
   - `draftVersion`: 編集中のバージョン（null = 編集なし）。ES 固有フィールド
   - `.describe()` は crawler スキーマ（SSOT）に定義されているため、ES スキーマが継承する

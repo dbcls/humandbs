@@ -233,7 +233,7 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 
 `versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
 
-ResearchSummary の `methodsSummary` / `typeOfDataSummary` / `targetsSummary` は、Joomla 旧サイト一覧 article から取り込んだ短文要約（各 `BilingualText = {ja, en}`）。詳細ページ本文由来の `methods` / `typeOfData` / `targets`（長文）と並列で配信し、一覧 UI ではこちらを表示する想定。Joomla 一覧に未掲載の humId は `null` を返す。全文検索（`all_text`）には流さず、表示専用とする。
+ResearchSummary の `methodsSummary` / `typeOfDataSummary` / `targetsSummary` は、Joomla 旧サイト一覧 article から取り込んだ短文要約（各 `BilingualText = {ja, en}`）。詳細ページ本文由来の `methods` / `typeOfData` / `targets`（長文）と並列で配信し、一覧 UI ではこちらを表示する想定。Joomla 一覧に未掲載の humId は `null` を返す。全文検索（`all_text`）には流さず、表示専用とする。curator が値を維持・修正するときは `PUT /research/{humId}/update` の `summaryShort` フィールドから編集する（ES 側 `summaryShort` を直接更新、ResearchVersion doc には反映しない）。
 
 ### レスポンスのフィールド制御
 

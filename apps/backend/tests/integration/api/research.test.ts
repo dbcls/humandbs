@@ -893,6 +893,104 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
+  itWithIsolationIndex("IT-RESEARCH-29: PUT /research/{humId}/update writes summaryShort and it flows to detail + list projection", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-29
+    // summaryShort is stored as BilingualTextValue on the ES doc and projected
+    // to flat BilingualText (methodsSummary / typeOfDataSummary / targetsSummary)
+    // in the listing view. Both shapes must be observable end-to-end.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const put = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: {
+            methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+            typeOfData: { ja: { text: "NGS（WGS）" }, en: { text: "NGS (WGS)" } },
+            targets: { ja: { text: "SCA31：1 症例" }, en: { text: "1 SCA31 patient" } },
+          },
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
+        }),
+      })
+      expect(put.status).toBe(200)
+
+      const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
+      expect(detail.status).toBe(200)
+      const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
+      expect(detailJson.data.summaryShort).toEqual({
+        methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null }, en: { text: "NGS (WGS)", rawHtml: null } },
+        targets: { ja: { text: "SCA31：1 症例", rawHtml: null }, en: { text: "1 SCA31 patient", rawHtml: null } },
+      })
+
+      // Owners see their own draft in the list projection; the flat *Summary fields must appear.
+      const list = await app.request(url("/research?status=draft&limit=50"), { headers: authHeaders(nonAdmin) })
+      expect(list.status).toBe(200)
+      const listJson = (await list.json()) as SearchResponse<ResearchSummary & {
+        methodsSummary?: { ja: string | null; en: string | null } | null
+        typeOfDataSummary?: { ja: string | null; en: string | null } | null
+        targetsSummary?: { ja: string | null; en: string | null } | null
+      }>
+      const mine = listJson.data.find((r) => r.humId === humId)
+      expect(mine).toBeDefined()
+      expect(mine!.methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
+      expect(mine!.typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
+      expect(mine!.targetsSummary).toEqual({ ja: "SCA31：1 症例", en: "1 SCA31 patient" })
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-30: PUT /research/{humId}/update with summaryShort=null clears the field", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-30
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const seed = await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const seedPut = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: {
+            methods: { ja: { text: "x" }, en: { text: "x" } },
+            typeOfData: { ja: { text: "x" }, en: { text: "x" } },
+            targets: { ja: { text: "x" }, en: { text: "x" } },
+          },
+          _seq_no: seed.seqNo,
+          _primary_term: seed.primaryTerm,
+        }),
+      })
+      expect(seedPut.status).toBe(200)
+      const after = await getResearchSeqNo(admin, humId)
+      const clear = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: null,
+          _seq_no: after.seqNo,
+          _primary_term: after.primaryTerm,
+        }),
+      })
+      expect(clear.status).toBe(200)
+      const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
+      const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
+      expect(detailJson.data.summaryShort).toBeNull()
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
   itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with only humId applies all spec defaults", async ({ admin }) => {
     // IT-RESEARCH-27
     let humId = ""
