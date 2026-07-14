@@ -126,7 +126,7 @@ export type ResearchFieldConfig = {
   order: number;
   hidden?: boolean;
   /** Renders the field body given the live, typed research form. */
-  renderer: (form: ResearchForm) => ReactNode;
+  renderer?: (form: ResearchForm) => ReactNode;
 };
 
 export const researchFieldsConfig: Partial<Record<keyof ResearchValues, ResearchFieldConfig>> = {
@@ -150,24 +150,28 @@ export const researchFieldsConfig: Partial<Record<keyof ResearchValues, Research
       />
     ),
   },
+  summaryShort: {
+    label: "Summary Short",
+    order: 2,
+  },
   dataProvider: {
     label: "Data providers",
-    order: 2,
+    order: 3,
     renderer: (form) => <DataProviderArrayField form={form} />,
   },
   researchProject: {
     label: "Research project",
-    order: 3,
+    order: 4,
     renderer: (form) => <ResearchProjectArrayField form={form} />,
   },
   grant: {
     label: "Grant",
-    order: 4,
+    order: 5,
     renderer: (form) => <GrantArrayField form={form} />,
   },
   relatedPublication: {
     label: "Related publication",
-    order: 5,
+    order: 6,
     renderer: (form) => <RelatedPublicationArrayField form={form} />,
   },
 };

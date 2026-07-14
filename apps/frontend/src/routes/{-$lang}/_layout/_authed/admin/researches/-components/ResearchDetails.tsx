@@ -777,6 +777,8 @@ export function ResearchDetails({
                     <TabsContent key={field.key} value={field.key}>
                       {field.key === "summary" ? (
                         <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
+                      ) : field.key === "summaryShort" ? (
+                        <SummaryShortMarkdownFields form={form} />
                       ) : field.renderer ? (
                         field.renderer(form)
                       ) : (
@@ -906,6 +908,35 @@ function SummaryMarkdownFields({
       form={form}
       baseName="summary"
       schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
+      overrides={overrides}
+    />
+  );
+}
+
+/**
+ * Short-summary editor: the listing-specific methods, data-type, and target
+ * fields share Summary's bilingual Markdown editing layout. summaryShort has
+ * no legacy HTML side-channel, so its editors deliberately omit that popup.
+ */
+function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
+  const overrides = useMemo<Record<string, FieldOverride>>(() => {
+    const markdownOverride =
+      (): FieldOverride =>
+      ({ form: fieldForm, name, label }) => (
+        <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
+      );
+    return {
+      methods: markdownOverride(),
+      typeOfData: markdownOverride(),
+      targets: markdownOverride(),
+    };
+  }, []);
+
+  return (
+    <SchemaObjectFields
+      form={form}
+      baseName="summaryShort"
+      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summaryShort)}
       overrides={overrides}
     />
   );
