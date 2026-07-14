@@ -39,6 +39,14 @@ export const researchSchema = {
   status: f.keyword(),
   draftVersion: f.keyword(),
 
+  // Short bilingual summaries for the listing view. Deliberately excluded from
+  // `all_text` (no `C` argument) — display-only, not part of full-text search.
+  summaryShort: f.object({
+    methods: f.bilingualTextValue(),
+    typeOfData: f.bilingualTextValue(),
+    targets: f.bilingualTextValue(),
+  }),
+
   // Summary section
   summary: f.object({
     aims: f.bilingualTextValue(C),

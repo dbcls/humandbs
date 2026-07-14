@@ -142,6 +142,14 @@ const SAMPLE_SUMMARY_REQUEST = {
   },
 }
 
+/** summaryShort (request-shaped: BilingualTextValue without `rawHtml`).
+ * Source: Joomla `/home` (ja) and `/en/home` (en) listings. */
+const SAMPLE_SUMMARY_SHORT_REQUEST = {
+  methods: bilingualTextRequest("配列決定", "Sequencing"),
+  typeOfData: bilingualTextRequest("NGS（WGS）", "NGS (WGS)"),
+  targets: bilingualTextRequest("SCA31：1 症例（日本人）", "1 SCA31 patient (Japanese)"),
+}
+
 /** dataProvider entry (response-shaped Person). PersonSchema's
  * `name`/`organization.name` are BilingualTextValue, hence `bilingualText`. */
 const DATA_PROVIDER_RESPONSE = {
@@ -296,6 +304,7 @@ export const exampleCreateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
+  summaryShort: SAMPLE_SUMMARY_SHORT_REQUEST,
   humId: HUM_ID,
 } satisfies CreateResearchRequest
 
@@ -306,6 +315,7 @@ export const exampleUpdateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
+  summaryShort: SAMPLE_SUMMARY_SHORT_REQUEST,
   _seq_no: 12,
   _primary_term: 1,
 } satisfies UpdateResearchRequest
@@ -326,6 +336,11 @@ const RESEARCH_BASE = {
   dateModified: ISO_TIMESTAMP,
   status: "published" as const,
   owners: ["sample-user"],
+  summaryShort: {
+    methods: bilingualText("配列決定", "Sequencing"),
+    typeOfData: bilingualText("NGS（WGS）", "NGS (WGS)"),
+    targets: bilingualText("SCA31：1 症例（日本人）", "1 SCA31 patient (Japanese)"),
+  },
 }
 
 /** Single Experiment record for sample Datasets. `data` values are

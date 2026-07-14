@@ -127,6 +127,30 @@ describe("createResearch", () => {
     expect((caught as Error).message).toContain("already exists")
   })
 
+  it("stores summaryShort=null by default and hydrates provided values", async () => {
+    mockEsIndex.mockResolvedValue({})
+
+    const defaultResult = await research.createResearch({ humId: "hum0001" })
+    expect(defaultResult.research.summaryShort).toBeNull()
+
+    mockEsIndex.mockReset()
+    mockEsIndex.mockResolvedValue({})
+
+    const withValueResult = await research.createResearch({
+      humId: "hum0002",
+      summaryShort: {
+        methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+        typeOfData: { ja: { text: "NGS" }, en: { text: "NGS" } },
+        targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
+      },
+    })
+    expect(withValueResult.research.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
+    })
+  })
+
   it("rolls back ResearchVersion if Research index fails", async () => {
     let indexCall = 0
     mockEsIndex.mockImplementation(async () => {
@@ -204,6 +228,77 @@ describe("updateResearch", () => {
       caught = e
     }
     expect(caught).toBeDefined()
+  })
+
+  it("writes hydrated summaryShort with rawHtml=null when provided", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      {
+        summaryShort: {
+          methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+          typeOfData: { ja: { text: "NGS" }, en: { text: "NGS" } },
+          targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
+        },
+      },
+      1,
+      1,
+    )
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(doc.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
+    })
+  })
+
+  it("writes summaryShort=null when null is explicitly passed", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch("hum0001", { summaryShort: null }, 1, 1)
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect("summaryShort" in doc).toBe(true)
+    expect(doc.summaryShort).toBeNull()
+  })
+
+  it("omits summaryShort from the doc when the field is not provided", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch("hum0001", { title: { ja: "t", en: "t" } }, 1, 1)
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect("summaryShort" in doc).toBe(false)
+  })
+
+  it("hydrates per-language nulls in summaryShort (one side present)", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      {
+        summaryShort: {
+          methods: { ja: { text: "配列決定" }, en: null },
+          typeOfData: { ja: null, en: { text: "NGS" } },
+          targets: { ja: null, en: null },
+        },
+      },
+      1,
+      1,
+    )
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(doc.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: null },
+      typeOfData: { ja: null, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: null, en: null },
+    })
   })
 })
 

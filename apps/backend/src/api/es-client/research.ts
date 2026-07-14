@@ -29,6 +29,7 @@ import type {
   UpdateResearchRequest,
 } from "@/api/types"
 import {
+  hydrateBilingualTextValue,
   hydratePerson,
   hydrateResearchProject,
   hydrateSummary,
@@ -171,6 +172,13 @@ export const createResearch = async (
     datePublished: null,
     dateModified: now,
     status: "draft",
+    summaryShort: params.summaryShort
+      ? {
+        methods: hydrateBilingualTextValue(params.summaryShort.methods),
+        typeOfData: hydrateBilingualTextValue(params.summaryShort.typeOfData),
+        targets: hydrateBilingualTextValue(params.summaryShort.targets),
+      }
+      : null,
   }
 
   const versionDoc: ResearchVersion = {
@@ -256,6 +264,15 @@ export const updateResearch = async (
     if (updates.researchProject !== undefined) hydratedDoc.researchProject = updates.researchProject.map(hydrateResearchProject)
     if (updates.grant !== undefined) hydratedDoc.grant = updates.grant
     if (updates.relatedPublication !== undefined) hydratedDoc.relatedPublication = updates.relatedPublication
+    if (updates.summaryShort !== undefined) {
+      hydratedDoc.summaryShort = updates.summaryShort === null
+        ? null
+        : {
+          methods: hydrateBilingualTextValue(updates.summaryShort.methods),
+          typeOfData: hydrateBilingualTextValue(updates.summaryShort.typeOfData),
+          targets: hydrateBilingualTextValue(updates.summaryShort.targets),
+        }
+    }
 
     await esClient.update({
       index: ES_INDEX.research,
