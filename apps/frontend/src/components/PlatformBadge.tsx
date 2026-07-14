@@ -6,11 +6,9 @@ export function PlatformBadge({ platform }: { platform: string }) {
   if (!match) return platform;
 
   return (
-    <span className="inline-flex gap-1 text-xs">
-      <span className="shrink rounded-l-md py-1 pr-1 pl-2 text-secondary">
-        {match.groups?.maker}
-      </span>{" "}
-      <span className="py-1 pr-2 pl-1">{match.groups?.model}</span>
+    <span className="text-xs">
+      <span className="text-secondary">{match.groups?.maker}</span>{" "}
+      <span className="ml-2">{match.groups?.model}</span>
     </span>
   );
 }
