@@ -1,6 +1,6 @@
 import type { DatasetFilters, RangeFilter } from "@humandbs/backend/types";
 
-import type { FACET_TYPES } from "@/config/facet-config";
+import type { FACET_TYPES } from "@/config/facets";
 
 export type StringArrayKeys<T> = {
   [K in keyof T]-?: NonNullable<T[K]> extends string[] ? K : never;

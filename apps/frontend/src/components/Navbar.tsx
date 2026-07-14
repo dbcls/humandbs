@@ -20,8 +20,8 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/site-navigation";
-import { asLinkProps } from "@/config/site-navigation";
+import type { ResolvedNavbarItem, ResolvedSiteNavigation } from "@/config/siteNavigation";
+import { asLinkProps } from "@/config/siteNavigation";
 import { useCartStore } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { getNavbarOverflowLayout } from "@/utils/navbar-overflow";

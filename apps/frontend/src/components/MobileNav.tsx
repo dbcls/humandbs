@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import type { ResolvedSiteNavigation } from "@/config/site-navigation";
-import { asLinkProps } from "@/config/site-navigation";
+import type { ResolvedSiteNavigation } from "@/config/siteNavigation";
+import { asLinkProps } from "@/config/siteNavigation";
 
 import { Link } from "./Link";
 

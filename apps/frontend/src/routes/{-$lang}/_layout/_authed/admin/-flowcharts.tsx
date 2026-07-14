@@ -42,7 +42,7 @@ import type {
   NavigationFlowchartConfig,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
+} from "@/config/navigationFlowchart";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import type {

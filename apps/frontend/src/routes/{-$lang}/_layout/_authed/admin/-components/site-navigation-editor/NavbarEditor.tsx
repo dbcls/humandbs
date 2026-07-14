@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/config/i18n";
-import type { NavigationItem, NavPriority } from "@/config/site-navigation";
+import type { NavigationItem, NavPriority } from "@/config/siteNavigation";
 import type { DocumentsListItemResponse } from "@/repositories/document";
 
 import {

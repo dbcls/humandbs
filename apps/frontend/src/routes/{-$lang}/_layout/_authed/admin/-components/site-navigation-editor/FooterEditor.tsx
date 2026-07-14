@@ -12,7 +12,7 @@ import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/config/i18n";
-import type { NavigationItem } from "@/config/site-navigation";
+import type { NavigationItem } from "@/config/siteNavigation";
 import type { DocumentsListItemResponse } from "@/repositories/document";
 
 import {

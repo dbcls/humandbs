@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
 import { i18n } from "@/config/i18n";
-import { RESERVED_SEGMENTS } from "@/config/routing-config";
-import { getNavbarItems } from "@/config/site-navigation";
+import { RESERVED_SEGMENTS } from "@/config/routing";
+import { getNavbarItems } from "@/config/siteNavigation";
 import { db } from "@/db/database";
 
 export type ValidationResponse =

@@ -1,5 +1,5 @@
 import type { Locale } from "@/config/i18n";
-import { deriveNavbarCommittedGroups } from "@/config/site-navigation-admin";
+import { deriveNavbarCommittedGroups } from "@/config/siteNavigationAdmin";
 
 // ---------------------------------------------------------------------------
 // Core model types

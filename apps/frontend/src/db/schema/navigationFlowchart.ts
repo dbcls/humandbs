@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
+import type { NavigationFlowchartConfig } from "@/config/navigationFlowchart";
 
 import { user } from "./auth-schema";
 

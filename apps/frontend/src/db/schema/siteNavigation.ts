@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-import type { SiteNavigationConfig } from "@/config/site-navigation";
+import type { SiteNavigationConfig } from "@/config/siteNavigation";
 
 import { user } from "./auth-schema";
 

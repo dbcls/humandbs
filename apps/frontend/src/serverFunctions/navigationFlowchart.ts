@@ -8,7 +8,7 @@ import type {
   NavigationFlowchartData,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
+} from "@/config/navigationFlowchart";
 import { navigationFlowchartRepository } from "@/repositories/navigationFlowchart";
 
 // Legacy JSON shape (static fallback files)

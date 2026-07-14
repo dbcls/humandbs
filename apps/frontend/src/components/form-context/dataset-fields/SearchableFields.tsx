@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FACET_CATEGORY } from "@/config/facet-config";
+import { FACET_CATEGORY } from "@/config/facets";
 import POLICY_DEFAULTS from "@/config/policyDefaults.json";
 import { cn } from "@/lib/utils";
 

@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
+import { navigationFlowchartConfigSchema } from "@/config/navigationFlowchart.schema";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {

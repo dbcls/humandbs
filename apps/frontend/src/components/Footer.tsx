@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 
 import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 import { Link } from "@/components/Link";
-import { asLinkProps } from "@/config/site-navigation";
+import { asLinkProps } from "@/config/siteNavigation";
 
 export function Footer() {
   const { siteNavigation } = useRouteContext({ from: "/{-$lang}/_layout" });
