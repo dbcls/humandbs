@@ -1,7 +1,8 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
 import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
+
+import { useMemo } from "react";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
@@ -16,11 +17,13 @@ import { Link } from "@/components/Link";
 import { ModalCell } from "@/components/ModalCell";
 import { Markdown } from "@/components/markdown";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
+import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
 import { SortHeader, Table } from "@/components/Table";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
+import { useDatasetParentHumIds } from "@/hooks/useDatasetParentHumIds";
 import { toDateString } from "@/utils/dates";
 import type { RenderedResearchDetailData } from "@/utils/renderedHtml/types";
 
@@ -34,6 +37,12 @@ export function VersionCard({
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const t = useTranslations();
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
+  const parentHumIds = useDatasetParentHumIds(versionData, lang);
+  const relatedPublicationsColumns = useMemo(
+    () => createRelatedPublicationsColumns(parentHumIds),
+    [parentHumIds],
+  );
+  const dataUsedByColumns = useMemo(() => createDataUsedByColumns(parentHumIds), [parentHumIds]);
 
   const tableMeta = {
     lang,
@@ -240,107 +249,129 @@ function ResearchDatasetsCartHeaderButton({
 const publicationsColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["relatedPublication"][number]>();
 
-const relatedPublicationsColumns = [
-  publicationsColumnHelper.accessor("title", {
-    id: "title",
-    header: (ctx) => ctx.table.options.meta?.t("Research.publicationTitle"),
-    cell: (ctx) => (
-      <span className="text-sm">
-        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
-      </span>
-    ),
-  }),
-  publicationsColumnHelper.accessor("doi", {
-    id: "DOI",
-    header: "DOI",
-    cell: (info) => (
-      <a href={info.getValue() ?? undefined} className="break-all text-sm">
-        {info.renderValue()}
-      </a>
-    ),
-  }),
-  publicationsColumnHelper.accessor("datasetIds", {
-    id: "datasetIDs",
-    header: (ctx) => ctx.table.options.meta?.t("Research.publicationDatasets"),
-    cell: (ctx) => (
-      <ModalCell
-        triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
-          count: ctx.getValue()?.length ?? 0,
-        })}
-      >
-        <ul className="space-y-4">
-          {ctx.getValue()?.map((datasetId) => (
-            <li key={datasetId}>
-              <DatasetLink datasetId={datasetId} />
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
-    ),
-  }),
-];
+function createRelatedPublicationsColumns(parentHumIds: Record<string, string | null>) {
+  return [
+    publicationsColumnHelper.accessor("title", {
+      id: "title",
+      header: (ctx) => ctx.table.options.meta?.t("Research.publicationTitle"),
+      cell: (ctx) => (
+        <span className="text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+        </span>
+      ),
+    }),
+    publicationsColumnHelper.accessor("doi", {
+      id: "DOI",
+      header: "DOI",
+      cell: (info) => (
+        <a href={info.getValue() ?? undefined} className="break-all text-sm">
+          {info.renderValue()}
+        </a>
+      ),
+    }),
+    publicationsColumnHelper.accessor("datasetIds", {
+      id: "datasetIDs",
+      header: (ctx) => ctx.table.options.meta?.t("Research.publicationDatasets"),
+      cell: (ctx) => (
+        <ModalCell
+          triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
+            count: ctx.getValue()?.length ?? 0,
+          })}
+        >
+          <ul className="space-y-4">
+            {ctx.getValue()?.map((datasetId) => (
+              <li key={datasetId}>
+                <DatasetReferenceLink datasetId={datasetId} parentHumId={parentHumIds[datasetId]} />
+              </li>
+            ))}
+          </ul>
+        </ModalCell>
+      ),
+    }),
+  ];
+}
+
+function DatasetReferenceLink({
+  datasetId,
+  parentHumId,
+}: {
+  datasetId: string;
+  parentHumId: string | null | undefined;
+}) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <DatasetLink datasetId={datasetId} />
+      {parentHumId ? (
+        <>
+          <span aria-hidden="true">(</span>
+          <ResearchLink humId={parentHumId} />
+          <span aria-hidden="true">)</span>
+        </>
+      ) : null}
+    </span>
+  );
+}
 
 const dataUsedByColumnsHelper =
   createColumnHelper<ResearchDetailResponse["data"]["controlledAccessUser"][number]>();
 
-const dataUsedByColumns = [
-  dataUsedByColumnsHelper.accessor("name", {
-    id: "cau.name",
-    header: (ctx) => ctx.table.options.meta?.t("Person.name"),
-    cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
-  }),
-  dataUsedByColumnsHelper.accessor("organization.name", {
-    id: "cau.org.name",
-    header: (ctx) => ctx.table.options.meta?.t("Research.organization"),
-    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
-  }),
-  dataUsedByColumnsHelper.accessor("organization.address.country", {
-    id: "cau.org.country",
-    header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
-    cell: (ctx) => ctx.getValue(),
-  }),
-  dataUsedByColumnsHelper.accessor("researchTitle", {
-    id: "cau.research-title",
-    header: (ctx) => ctx.table.options.meta?.t("Research.researchTitle"),
-    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
-  }),
-  dataUsedByColumnsHelper.accessor("periodOfDataUse", {
-    id: "cau.periodOfDataUse",
-    header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
-    cell: (ctx) => (
-      <span className="text-sm">
-        {ctx.getValue()?.startDate && toDateString(ctx.getValue()?.startDate || undefined)} -{" "}
-        {ctx.getValue()?.endDate && toDateString(ctx.getValue()?.endDate || undefined)}
-      </span>
-    ),
-  }),
-  dataUsedByColumnsHelper.accessor("datasetIds", {
-    id: "cau.datasetIds",
-    header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
-    cell: (ctx) => (
-      <ModalCell
-        triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
-          count: ctx.getValue()?.length ?? 0,
-        })}
-      >
-        <ul className="space-y-4">
-          {ctx.getValue()?.map((id) => (
-            <li key={id}>
-              <DatasetLink datasetId={id} />
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
-    ),
-  }),
-];
-
-function MaybeExternalDatasetIdLabel({ datasetId }: { datasetId: string }) {
-  const {} = useQueries();
-}
-
-function useDatasetParentHumId(datasetId: string) {
-  const {} = useQuery(getParent);
+function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
+  return [
+    dataUsedByColumnsHelper.accessor("name", {
+      id: "cau.name",
+      header: (ctx) => ctx.table.options.meta?.t("Person.name"),
+      cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+    }),
+    dataUsedByColumnsHelper.accessor("organization.name", {
+      id: "cau.org.name",
+      header: (ctx) => ctx.table.options.meta?.t("Research.organization"),
+      cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+    }),
+    dataUsedByColumnsHelper.accessor("organization.address.country", {
+      id: "cau.org.country",
+      header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
+      cell: (ctx) => ctx.getValue(),
+    }),
+    dataUsedByColumnsHelper.accessor("researchTitle", {
+      id: "cau.research-title",
+      header: (ctx) => ctx.table.options.meta?.t("Research.researchTitle"),
+      cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
+    }),
+    dataUsedByColumnsHelper.accessor("periodOfDataUse", {
+      id: "cau.periodOfDataUse",
+      header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
+      cell: (ctx) => (
+        <span className="text-nowrap text-sm">
+          <span>
+            {ctx.getValue()?.startDate && toDateString(ctx.getValue()?.startDate || undefined)}
+          </span>
+          <span className="mx-3">—</span>
+          <span>
+            {ctx.getValue()?.endDate && toDateString(ctx.getValue()?.endDate || undefined)}
+          </span>
+        </span>
+      ),
+    }),
+    dataUsedByColumnsHelper.accessor("datasetIds", {
+      id: "cau.datasetIds",
+      header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
+      cell: (ctx) => (
+        <ModalCell
+          triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
+            count: ctx.getValue()?.length ?? 0,
+          })}
+        >
+          <ul className="space-y-4">
+            {ctx.getValue()?.map((id) => (
+              <li key={id}>
+                <DatasetReferenceLink datasetId={id} parentHumId={parentHumIds[id]} />
+              </li>
+            ))}
+          </ul>
+        </ModalCell>
+      ),
+    }),
+  ];
 }
 
 const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
