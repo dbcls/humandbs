@@ -1,3 +1,4 @@
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
@@ -89,18 +90,14 @@ export function VersionCard({
       <Separator className="-mx-4" />
       <section>
         <ContentHeader>{t("Research.datasets")}</ContentHeader>
-        {versionData?.datasets.length === 0 && (
-          <div className="rounded-sm bg-foreground-light/10 p-3"> No data</div>
-        )}
-        {versionData?.datasets.length > 0 && (
-          <Table
-            columns={datasetColumns}
-            data={versionData.datasets}
-            className="mt-4 [&_td]:text-sm"
-            meta={tableMeta}
-            variant="darker"
-          />
-        )}
+
+        <Table
+          columns={datasetColumns}
+          data={versionData.datasets}
+          className="mt-4 [&_td]:text-sm"
+          meta={tableMeta}
+          variant="darker"
+        />
       </section>
       <Separator className="-mx-4" />
       <section>
@@ -265,10 +262,14 @@ const relatedPublicationsColumns = [
   publicationsColumnHelper.accessor("datasetIds", {
     id: "datasetIDs",
     header: (ctx) => ctx.table.options.meta?.t("Research.publicationDatasets"),
-    cell: (info) => (
-      <ModalCell>
+    cell: (ctx) => (
+      <ModalCell
+        triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
+          count: ctx.getValue()?.length ?? 0,
+        })}
+      >
         <ul className="space-y-4">
-          {info.getValue()?.map((datasetId) => (
+          {ctx.getValue()?.map((datasetId) => (
             <li key={datasetId}>
               <DatasetLink datasetId={datasetId} />
             </li>
@@ -303,11 +304,25 @@ const dataUsedByColumns = [
     header: (ctx) => ctx.table.options.meta?.t("Research.researchTitle"),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
+  dataUsedByColumnsHelper.accessor("periodOfDataUse", {
+    id: "cau.periodOfDataUse",
+    header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
+    cell: (ctx) => (
+      <span className="text-sm">
+        {ctx.getValue()?.startDate && toDateString(ctx.getValue()?.startDate || undefined)} -{" "}
+        {ctx.getValue()?.endDate && toDateString(ctx.getValue()?.endDate || undefined)}
+      </span>
+    ),
+  }),
   dataUsedByColumnsHelper.accessor("datasetIds", {
     id: "cau.datasetIds",
     header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
     cell: (ctx) => (
-      <ModalCell>
+      <ModalCell
+        triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
+          count: ctx.getValue()?.length ?? 0,
+        })}
+      >
         <ul className="space-y-4">
           {ctx.getValue()?.map((id) => (
             <li key={id}>
@@ -319,6 +334,14 @@ const dataUsedByColumns = [
     ),
   }),
 ];
+
+function MaybeExternalDatasetIdLabel({ datasetId }: { datasetId: string }) {
+  const {} = useQueries();
+}
+
+function useDatasetParentHumId(datasetId: string) {
+  const {} = useQuery(getParent);
+}
 
 const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["grant"][number]>();
 

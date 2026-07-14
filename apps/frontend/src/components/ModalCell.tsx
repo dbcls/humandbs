@@ -18,10 +18,12 @@ export function ModalCell({
   children,
   maxHeight = 96,
   title,
+  triggerLabel,
 }: {
   children: React.ReactNode;
   maxHeight?: number;
   title?: string;
+  triggerLabel?: string;
 }) {
   const [isOverflowing, setIsOverflowing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -67,13 +69,12 @@ export function ModalCell({
           <DialogTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
               }}
               className="-ml-2 h-auto self-start px-2 py-1.5 text-foreground-light text-xs hover:bg-neutral-100 hover:text-foreground group-hover:bg-gray-50"
             >
-              {t("read-more")}
+              {triggerLabel || t("read-more")}
               <ChevronRight className="ml-1 size-3" />
             </Button>
           </DialogTrigger>

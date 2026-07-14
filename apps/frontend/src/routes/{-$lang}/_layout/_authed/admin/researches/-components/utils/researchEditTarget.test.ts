@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  isReleaseNoteEditable,
   isResearchEditable,
   isViewingDraftVersion,
   isViewingPublishedLatest,
@@ -16,6 +17,7 @@ describe("researchEditTarget", () => {
     };
     expect(isViewingDraftVersion(input)).toBe(true);
     expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(true);
   });
 
   test("published latest of a published research → editable", () => {
@@ -27,6 +29,7 @@ describe("researchEditTarget", () => {
     };
     expect(isViewingPublishedLatest(input)).toBe(true);
     expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(true);
   });
 
   test("draft and published-latest can coexist — draft view is editable", () => {
@@ -38,6 +41,7 @@ describe("researchEditTarget", () => {
     };
     expect(isViewingDraftVersion(input)).toBe(true);
     expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(true);
   });
 
   test("same research, published-latest view is editable", () => {
@@ -49,16 +53,29 @@ describe("researchEditTarget", () => {
     };
     expect(isViewingPublishedLatest(input)).toBe(true);
     expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(true);
   });
 
-  test("an old (non-latest) published version is read-only", () => {
+  test("an old published version allows metadata editing but not release-note editing", () => {
     const input = {
       selectedVersion: "v1",
       draftVersion: null,
       latestVersion: "v2",
       status: "published" as const,
     };
-    expect(isResearchEditable(input)).toBe(false);
+    expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(false);
+  });
+
+  test("a published version remains metadata-editable while a newer draft exists", () => {
+    const input = {
+      selectedVersion: "v1",
+      draftVersion: "v2-draft",
+      latestVersion: "v1",
+      status: "draft" as const,
+    };
+    expect(isResearchEditable(input)).toBe(true);
+    expect(isReleaseNoteEditable(input)).toBe(false);
   });
 
   test("latest version of a NON-published research is not editable", () => {
@@ -70,6 +87,7 @@ describe("researchEditTarget", () => {
     };
     expect(isViewingPublishedLatest(input)).toBe(false);
     expect(isResearchEditable(input)).toBe(false);
+    expect(isReleaseNoteEditable(input)).toBe(false);
   });
 
   test("null/undefined versions are not editable", () => {

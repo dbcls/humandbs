@@ -176,6 +176,10 @@ interface APIService {
     search: LangVersionQuery;
     accessToken?: string;
   }): Promise<DatasetDetailResponse>;
+  getDatasetParentResearch(query: {
+    params: DatasetIdParams;
+    accessToken?: string;
+  }): Promise<ResearchDetailResponse>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
@@ -287,6 +291,14 @@ const api: APIService = {
     return get<DatasetDetailResponse>(
       `/dataset/${query.params.datasetId}`,
       query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
+    );
+  },
+
+  getDatasetParentResearch(query) {
+    return get<ResearchDetailResponse>(
+      `/dataset/${query.params.datasetId}/research`,
+      undefined,
       query.accessToken ? authHeader(query.accessToken) : undefined,
     );
   },

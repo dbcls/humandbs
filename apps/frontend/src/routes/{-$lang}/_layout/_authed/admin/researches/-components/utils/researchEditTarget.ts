@@ -5,11 +5,10 @@ import type { ResearchStatus } from "@humandbs/backend/types";
  * should behave. Kept free of React/network so it can be unit-tested in isolation.
  *
  * A research has at most one draft version and one published latest version, which
- * can coexist. Which one is being edited is decided by the selected version:
- *  - viewing the draft version → editable
- *  - viewing the published latest of a published research → editable
- * Any other view (e.g. an old published version, or a non-published research's
- * latest) is read-only. Both editable cases save via PUT /research/{humId}/update.
+ * can coexist. Research metadata belongs to the research rather than an individual
+ * version, so it may be edited from any selected version while the research is in a
+ * writable status. Release notes are version-specific and have a narrower target:
+ * the current draft or the latest published version.
  */
 
 export interface ResearchEditTargetInput {
@@ -40,9 +39,20 @@ export function isViewingPublishedLatest({
 }
 
 /**
- * The editor surface is editable when viewing the draft, OR the published latest
- * of a published research. Everything else is read-only.
+ * Research metadata is editable from any selected version while the backend permits
+ * updates (draft or published). Review remains read-only because the update endpoint
+ * rejects it.
  */
 export function isResearchEditable(input: ResearchEditTargetInput): boolean {
+  return (
+    input.selectedVersion != null && (input.status === "draft" || input.status === "published")
+  );
+}
+
+/**
+ * Release notes belong to a specific version. They can be changed only on the
+ * current draft or on the latest published version.
+ */
+export function isReleaseNoteEditable(input: ResearchEditTargetInput): boolean {
   return isViewingDraftVersion(input) || isViewingPublishedLatest(input);
 }

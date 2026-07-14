@@ -28,6 +28,7 @@
     "add-all-to-cart": "Add all to cart",
     "add-all-datasets-to-cart": "Add all datasets to cart",
     "read-more": "Read more",
+    "see-all-x-items": "See all {count} items",
     "details": "Details",
     "sort": "Sort",
     "sort-asc": "Ascending",

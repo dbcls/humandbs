@@ -59,7 +59,11 @@ import { ResearchVersionSelector } from "./ResearchVersionSelector";
 import { researchFieldsConfig } from "./researchFieldsConfig";
 import type { ResearchForm, ResearchValues } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
-import { isResearchEditable, isViewingDraftVersion } from "./utils/researchEditTarget";
+import {
+  isReleaseNoteEditable,
+  isResearchEditable,
+  isViewingDraftVersion,
+} from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
 
 /**
@@ -226,12 +230,25 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      // Both the draft and the published latest are saved via PUT /research/{humId}/update.
-      // Editability is guaranteed by the Save button gate (isResearchEditable).
+      // Metadata is shared by the research and may be updated from any selected
+      // draft/published version. releaseNote is version-specific: omit it when
+      // viewing an older published version so the backend cannot overwrite the
+      // latest version's note (its update endpoint targets latestVersion).
+      const canUpdateReleaseNote = isReleaseNoteEditable({
+        selectedVersion,
+        draftVersion: value.draftVersion,
+        latestVersion: value.latestVersion,
+        status: value.status,
+      });
       const result = await $updateResearch({
         data: {
           humId,
-          body: { ...value, _seq_no: seqNo, _primary_term: primaryTerm },
+          body: {
+            ...value,
+            ...(canUpdateReleaseNote ? {} : { releaseNote: undefined }),
+            _seq_no: seqNo,
+            _primary_term: primaryTerm,
+          },
         },
       });
       return result;
@@ -503,10 +520,19 @@ export function ResearchDetails({
     draftVersion: researchValues.draftVersion,
   });
 
-  // The edit surface (fieldsets + Save) is unlocked whenever editing is valid:
-  // the draft version, OR the published latest of a published research (patch).
-  // Replaces the former isViewingDraft-only gates so the published view is editable.
+  // Research metadata is editable from any selected draft or published version.
+  // Review remains read-only because the backend rejects updates in that state.
   const isEditable = isResearchEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
+
+  // Release notes remain version-specific: only the active draft and latest
+  // published version can change them. Earlier published versions display the
+  // multilingual field read-only.
+  const isReleaseNoteEditableForSelection = isReleaseNoteEditable({
     selectedVersion,
     draftVersion: researchValues.draftVersion,
     latestVersion: researchValues.latestVersion,
@@ -721,7 +747,10 @@ export function ResearchDetails({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
+              <fieldset
+                disabled={!isReleaseNoteEditableForSelection || !canUpdate}
+                className="group/fieldset p-5"
+              >
                 <BilingualMarkdownEditorField
                   // withForm components take a loosely-typed form; cast matches the
                   // idiom used by the other schema-driven field components.
