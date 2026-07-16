@@ -19,6 +19,7 @@ import { useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, GripVertical, Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
 import { z } from "zod";
 
 import type { KeyboardEvent } from "react";
@@ -27,6 +28,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
+import { InfoBadge } from "@/components/InfoBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -86,6 +88,7 @@ const catalogEntriesSchema = z
   });
 
 function RouteComponent() {
+  const tMoldataKeys = useTranslations("admin.moldata-keys");
   const queryClient = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery(getMoldataKeyCatalogQueryOptions());
   const sensors = useSensors(
@@ -273,9 +276,9 @@ function RouteComponent() {
 
   function remove(entry: MoldataKeyCatalogEntry) {
     openConfirmation({
-      title: "Delete moldata key?",
-      description: `This removes the catalog label for “${entry.english}” without changing any dataset data.`,
-      actionLabel: "Delete",
+      title: tMoldataKeys("delete-title"),
+      description: tMoldataKeys("delete-description", { name: entry.english }),
+      actionLabel: tMoldataKeys("delete-action"),
       onAction: async () => {
         setError(null);
         const result = await deleteEntry({ data: { id: entry.id, expectedRevision: revision } });
@@ -314,6 +317,7 @@ function RouteComponent() {
       >
         {error && <AdminStatusMessage>{error}</AdminStatusMessage>}
         {message && <AdminStatusMessage variant="success">{message}</AdminStatusMessage>}
+
         <div className="flex justify-end gap-2">
           {error?.includes("updated by another user") && (
             <Button type="button" variant="outline" onClick={reload}>
@@ -324,6 +328,7 @@ function RouteComponent() {
             {isSaving ? "Saving…" : "Save changes"}
           </Button>
         </div>
+        <InfoBadge>Manage moldata keys order and translations</InfoBadge>
         <div className="min-h-0 flex-1 overflow-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorder}>
             <table className="w-full text-sm">
@@ -466,7 +471,11 @@ function SortableCatalogRow({
     !!initial && (initial.english !== entry.english || initial.japanese !== entry.japanese);
 
   return (
-    <tr ref={setNodeRef} style={style} className={cn({ "bg-amber-50/50": isModified })}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={cn("hover:bg-hover", { "bg-amber-50/50": isModified })}
+    >
       <td className="p-2">
         <button
           type="button"

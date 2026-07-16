@@ -1,6 +1,7 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Trash2, Upload } from "lucide-react";
+import { useTranslations } from "use-intl";
 import { z } from "zod";
 
 import { useEffect, useRef, useState } from "react";
@@ -85,6 +86,7 @@ function DataEntriesTable({
   initialEntries: ExperimentDataEntry[];
   legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
+  const tMoldataKeys = useTranslations("admin.moldata-keys");
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
   const queryClient = useQueryClient();
   const { data: catalogData } = useQuery(getMoldataKeyCatalogQueryOptions());
@@ -220,10 +222,9 @@ function DataEntriesTable({
         form.store.state.values?.experiments?.[experimentIndex]?.data ?? [];
       if (currentEntries.length > 0) {
         openConfirmation({
-          title: "Reset moldata entries?",
-          description:
-            "There are existing entries in this list. Are you sure you want to reset existing entries?",
-          actionLabel: "Reset",
+          title: tMoldataKeys("reset-entries-title"),
+          description: tMoldataKeys("reset-entries-description"),
+          actionLabel: tMoldataKeys("reset-entries-action"),
           onAction: () => normalizeImportedKeys(parsed),
         });
       } else {
@@ -478,6 +479,7 @@ function CreateMoldataKeyDialog({
     japanese: string;
   }) => Promise<CreateMoldataKeyCatalogEntryResult>;
 }) {
+  const tMoldataKeys = useTranslations("admin.moldata-keys");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const form = useAppForm({
     defaultValues: { english: initialEnglish, japanese: "" },
@@ -513,10 +515,8 @@ function CreateMoldataKeyDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle className="text-base">Add moldata key</DialogTitle>
-        <DialogDescription>
-          Create a shared bilingual label. It remains available even if this dataset is not saved.
-        </DialogDescription>
+        <DialogTitle className="text-base">{tMoldataKeys("create-title")}</DialogTitle>
+        <DialogDescription>{tMoldataKeys("create-description")}</DialogDescription>
         <form
           className="flex flex-col gap-3"
           onSubmit={(event) => {
@@ -526,15 +526,15 @@ function CreateMoldataKeyDialog({
         >
           <form.AppField
             name="english"
-            validators={{ onSubmit: z.string().trim().min(1, "English is required.") }}
+            validators={{ onSubmit: z.string().trim().min(1, tMoldataKeys("english-required")) }}
           >
-            {(field) => <field.TextField label="English" type="col" />}
+            {(field) => <field.TextField label={tMoldataKeys("english-label")} type="col" />}
           </form.AppField>
           <form.AppField
             name="japanese"
-            validators={{ onSubmit: z.string().trim().min(1, "Japanese is required.") }}
+            validators={{ onSubmit: z.string().trim().min(1, tMoldataKeys("japanese-required")) }}
           >
-            {(field) => <field.TextField label="Japanese" type="col" />}
+            {(field) => <field.TextField label={tMoldataKeys("japanese-label")} type="col" />}
           </form.AppField>
           {submissionError && (
             <p role="alert" className="text-danger text-sm">
@@ -544,7 +544,7 @@ function CreateMoldataKeyDialog({
           <form.Subscribe selector={(state) => state.canSubmit}>
             {(canSubmit) => (
               <Button type="submit" className="self-end" disabled={!canSubmit}>
-                Add key
+                {tMoldataKeys("create-action")}
               </Button>
             )}
           </form.Subscribe>

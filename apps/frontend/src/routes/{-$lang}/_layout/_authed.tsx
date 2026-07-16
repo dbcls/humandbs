@@ -94,11 +94,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
         search: {
           redirect: target,
         },
+        reloadDocument: true,
       });
     }
   },
-  ssr: false,
-
   component: RouteComponent,
 });
 
@@ -192,6 +191,7 @@ function NavPanel() {
             </span>
           }
           tab="researches"
+          exact
         />
         {canViewCms && (
           <div className="pl-5">
@@ -203,12 +203,21 @@ function NavPanel() {
   );
 }
 
-function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
+function PanelItem({
+  tab,
+  title,
+  exact = false,
+}: {
+  tab: TabType;
+  title: React.ReactNode;
+  exact?: boolean;
+}) {
   return (
     <Link
       variant={"nav"}
       className="w-auto rounded-sm px-4 py-2 hover:bg-hover/50 hover:text-accent-foreground data-[status=active]:bg-hover"
       to={`/{-$lang}/admin/${tab}` as never}
+      activeOptions={{ exact }}
     >
       {title}
     </Link>
