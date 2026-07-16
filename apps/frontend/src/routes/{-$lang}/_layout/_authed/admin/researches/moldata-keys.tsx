@@ -23,7 +23,7 @@ import { useTranslations } from "use-intl";
 import { z } from "zod";
 
 import type { KeyboardEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -96,8 +96,10 @@ function RouteComponent() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const [revision, setRevision] = useState(0);
+  const [savedEntries, setSavedEntries] = useState<MoldataKeyCatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const hasInitializedSavedEntries = useRef(false);
   const { openConfirmation } = useConfirmationStore();
 
   const { mutateAsync: createEntry, isPending: isCreating } = useMutation({
@@ -111,10 +113,9 @@ function RouteComponent() {
   });
   const { mutateAsync: deleteEntry } = useMutation({ mutationFn: $deleteMoldataKeyCatalogEntry });
 
-  // `defaultValues` doubles as the baseline for the modified/reset affordances,
-  // so query data and every server round-trip must re-seed it. Keeping this in
-  // sync with the query is essential: TanStack Form reapplies the options from
-  // the latest render after a reset.
+  // Query data hydrates the form. Displayed modified state uses the separate
+  // saved-entry snapshot below, keyed by ID, so it remains stable through form
+  // option updates and reordering.
   const form = useAppForm({
     defaultValues: data ? { entries: data.entries } : emptyCatalogFormValues,
     onSubmit: async ({ value, formApi }) => {
@@ -196,9 +197,13 @@ function RouteComponent() {
   );
 
   const hasLoaded = entries.length > 0 || !!data;
+  const savedEntryById = new Map(savedEntries.map((entry) => [entry.id, entry]));
 
   useEffect(() => {
-    if (data) setRevision(data.revision);
+    if (!data || hasInitializedSavedEntries.current) return;
+    setSavedEntries(data.entries);
+    setRevision(data.revision);
+    hasInitializedSavedEntries.current = true;
   }, [data]);
 
   useEffect(() => {
@@ -216,6 +221,7 @@ function RouteComponent() {
   function resetCatalog(next: MoldataKeyCatalog) {
     queryClient.setQueryData(["moldata-key-catalog"], next);
     form.reset({ entries: next.entries });
+    setSavedEntries(next.entries);
     setRevision(next.revision);
   }
 
@@ -229,6 +235,7 @@ function RouteComponent() {
     queryClient.setQueryData(["moldata-key-catalog"], next);
     form.reset({ entries: next.entries });
     form.setFieldValue("entries", entries);
+    setSavedEntries(next.entries);
     setRevision(next.revision);
   }
 
@@ -356,6 +363,7 @@ function RouteComponent() {
                           key={entry.id}
                           form={form}
                           entry={entry}
+                          savedEntry={savedEntryById.get(entry.id)}
                           index={index}
                           isReordering={isReordering}
                           onDelete={() => remove(entry)}
@@ -387,21 +395,20 @@ function CatalogCell({
   form,
   index,
   field,
+  initialValue,
   isReordering,
   placeholder,
 }: {
   form: AnyForm;
   index: number;
   field: "english" | "japanese";
+  initialValue: string | undefined;
   isReordering: boolean;
   placeholder: string;
 }) {
   return (
     <form.AppField name={`entries[${index}].${field}`}>
       {(f: AnyForm) => {
-        // The row's baseline is whatever the last server response seeded into
-        // `defaultValues`, so this tracks "changed since load" as before.
-        const initialValue = form.options.defaultValues.entries?.[index]?.[field];
         const isModified = f.state.value !== initialValue && initialValue !== undefined;
         const errors: unknown[] = f.state.meta.errors ?? [];
         const errorMessage = errors
@@ -448,12 +455,14 @@ function CatalogCell({
 function SortableCatalogRow({
   form,
   entry,
+  savedEntry,
   index,
   isReordering,
   onDelete,
 }: {
   form: AnyForm;
   entry: MoldataKeyCatalogEntry;
+  savedEntry: MoldataKeyCatalogEntry | undefined;
   index: number;
   isReordering: boolean;
   onDelete: () => void;
@@ -467,9 +476,9 @@ function SortableCatalogRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const initial = form.options.defaultValues.entries?.[index];
   const isModified =
-    !!initial && (initial.english !== entry.english || initial.japanese !== entry.japanese);
+    !!savedEntry &&
+    (savedEntry.english !== entry.english || savedEntry.japanese !== entry.japanese);
 
   return (
     <tr
@@ -494,6 +503,7 @@ function SortableCatalogRow({
           form={form}
           index={index}
           field="english"
+          initialValue={savedEntry?.english}
           isReordering={isReordering}
           placeholder="English"
         />
@@ -503,6 +513,7 @@ function SortableCatalogRow({
           form={form}
           index={index}
           field="japanese"
+          initialValue={savedEntry?.japanese}
           isReordering={isReordering}
           placeholder="Japanese"
         />
