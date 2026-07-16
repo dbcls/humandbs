@@ -318,7 +318,8 @@ function RouteComponent() {
         {error && <AdminStatusMessage>{error}</AdminStatusMessage>}
         {message && <AdminStatusMessage variant="success">{message}</AdminStatusMessage>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          <InfoBadge className="flex-1">{tMoldataKeys("manage-info-badge")}</InfoBadge>
           {error?.includes("updated by another user") && (
             <Button type="button" variant="outline" onClick={reload}>
               Reload catalog
@@ -328,7 +329,7 @@ function RouteComponent() {
             {isSaving ? "Saving…" : "Save changes"}
           </Button>
         </div>
-        <InfoBadge>Manage moldata keys order and translations</InfoBadge>
+
         <div className="min-h-0 flex-1 overflow-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorder}>
             <table className="w-full text-sm">

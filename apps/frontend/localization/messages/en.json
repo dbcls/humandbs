@@ -644,7 +644,8 @@
       "english-label": "English",
       "japanese-label": "Japanese",
       "english-required": "English is required.",
-      "japanese-required": "Japanese is required."
+      "japanese-required": "Japanese is required.",
+      "manage-info-badge": "Manage moldata keys order and translations"
     },
     "datasets": {
       "must-be-draft-to-add-new": "In order to add new Dataset, the parent research must be in draft state"

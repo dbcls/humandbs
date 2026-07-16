@@ -646,7 +646,8 @@
       "english-label": "英語",
       "japanese-label": "日本語",
       "english-required": "英語は必須です。",
-      "japanese-required": "日本語は必須です。"
+      "japanese-required": "日本語は必須です。",
+      "manage-info-badge": "Moldataキーの翻訳・表示順番の管理"
     },
     "datasets": {
       "must-be-draft-to-add-new": "新しいデータセットを追加するには、親研究がドラフト状態である必要があります。"
