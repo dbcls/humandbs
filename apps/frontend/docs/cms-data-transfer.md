@@ -15,6 +15,7 @@ The page supports these categories:
 - `Assets`
 - `Header & Footer`
 - `Flowcharts`
+- `Moldata keys`
 
 ## Export
 
@@ -31,6 +32,7 @@ The archive contains:
 - `categories/alerts.json`
 - `categories/header-footer.json`
 - `categories/flowcharts.json`
+- `categories/moldata-keys.json`
 - `assets/**` when `Assets` is selected
 
 `manifest.json` contains:
@@ -89,6 +91,7 @@ Behavior by category:
 - `Alerts`: replaces `alert` and `alert_translation`
 - `Header & Footer`: replaces the active site navigation config and creates one fresh revision row
 - `Flowcharts`: replaces flowcharts and creates one fresh revision row per restored flowchart
+- `Moldata keys`: replaces only the ordered English/Japanese catalog labels and creates fresh internal IDs with an advanced catalog revision
 - `Assets`: replaces the managed asset directory with the archive contents
 
 Restore preserves business IDs from the archive.

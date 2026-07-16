@@ -61,6 +61,7 @@ export function DataTransferPage() {
     assets: tDT("type-assets"),
     "header-footer": tDT("type-header-footer"),
     flowcharts: tDT("type-flowcharts"),
+    "moldata-keys": tDT("type-moldata-keys"),
   };
 
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);

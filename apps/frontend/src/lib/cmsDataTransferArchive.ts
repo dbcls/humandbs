@@ -4,6 +4,7 @@ import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 
 import { createServerOnlyFn } from "@tanstack/react-start";
+import { asc, eq } from "drizzle-orm";
 import tar from "tar-stream";
 import { z } from "zod";
 
@@ -20,6 +21,8 @@ import {
   alertTranslation,
   document,
   documentVersion,
+  moldataKeyCatalog,
+  moldataKeyCatalogEntry,
   NAVIGATION_FLOWCHART_STATUS,
   navigationFlowchart,
   navigationFlowchartRevision,
@@ -56,7 +59,6 @@ type ArchiveFileInput = Record<string, string | Blob | ArrayBufferView | ArrayBu
 
 type Database = DB;
 
-const looseObjectSchema = z.record(z.string(), z.unknown());
 const archiveCreatedBySchema = z
   .object({
     id: z.string(),
@@ -203,6 +205,23 @@ const flowchartRowSchema = z.object({
 const flowchartsPayloadSchema = z.object({
   flowcharts: z.array(flowchartRowSchema),
 });
+
+const moldataKeysPayloadSchema = z
+  .array(z.tuple([z.string().trim().min(1), z.string().trim().min(1)]))
+  .superRefine((pairs, ctx) => {
+    const seenEnglish = new Set<string>();
+    for (const [index, [english]] of pairs.entries()) {
+      const normalizedEnglish = english.toLowerCase();
+      if (seenEnglish.has(normalizedEnglish)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index, 0],
+          message: "Moldata key English values must be unique case-insensitively.",
+        });
+      }
+      seenEnglish.add(normalizedEnglish);
+    }
+  });
 
 const archiveManifestSchema = z
   .object({
@@ -358,7 +377,9 @@ async function createTarGzArchive(files: ArchiveFileInput) {
   const tarBytesPromise = collectStreamBytes(pack);
 
   for (const name of Object.keys(files).sort()) {
-    const content = await toUint8Array(files[name]!);
+    const file = files[name];
+    if (file === undefined) throw new Error(`Archive file "${name}" is missing.`);
+    const content = await toUint8Array(file);
 
     await new Promise<void>((resolve, reject) => {
       pack.entry({ name, size: content.byteLength }, Buffer.from(content), (error) => {
@@ -394,6 +415,8 @@ function getCategoryPayloadPath(category: CmsDataTransferCategory) {
       return "categories/header-footer.json";
     case "flowcharts":
       return "categories/flowcharts.json";
+    case "moldata-keys":
+      return "categories/moldata-keys.json";
     case "assets":
       return null;
   }
@@ -492,6 +515,18 @@ function validateCategoryPayload(
         return {
           count: payload.flowcharts.length,
         };
+      }
+    case "moldata-keys":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/moldata-keys.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          moldataKeysPayloadSchema,
+          "categories/moldata-keys.json",
+        );
+        return { count: payload.length };
       }
     case "assets":
       return {
@@ -618,6 +653,7 @@ type ParsedArchivePayloadByCategory = {
   alerts: z.infer<typeof alertsPayloadSchema>;
   "header-footer": z.infer<typeof headerFooterPayloadSchema>;
   flowcharts: z.infer<typeof flowchartsPayloadSchema>;
+  "moldata-keys": z.infer<typeof moldataKeysPayloadSchema>;
 };
 
 interface ParsedCmsDataTransferArchive {
@@ -760,6 +796,20 @@ async function parseCmsDataTransferArchive(
           );
         }
         payloads.flowcharts = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "moldata-keys": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error('Archive is missing required file "categories/moldata-keys.json".');
+        }
+        const payload = parseJsonFile(entries[payloadPath], moldataKeysPayloadSchema, payloadPath);
+        if (expectedCount !== payload.length) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${payload.length}.`,
+          );
+        }
+        payloads["moldata-keys"] = payload;
         availableCategories.push(category);
         break;
       }
@@ -1085,6 +1135,38 @@ export function createCmsDataTransferArchiveRestorer({
           }
         }
 
+        if (restoredCategories.includes("moldata-keys")) {
+          const payload = parsedArchive.payloads["moldata-keys"];
+          if (!payload) {
+            throw new Error("Moldata keys payload is missing from the archive.");
+          }
+
+          const [currentCatalog] = await tx
+            .select({ revision: moldataKeyCatalog.revision })
+            .from(moldataKeyCatalog)
+            .where(eq(moldataKeyCatalog.id, "global"))
+            .limit(1);
+
+          await tx.delete(moldataKeyCatalogEntry);
+
+          if (currentCatalog) {
+            await tx
+              .update(moldataKeyCatalog)
+              .set({ revision: currentCatalog.revision + 1 })
+              .where(eq(moldataKeyCatalog.id, "global"));
+          } else {
+            await tx.insert(moldataKeyCatalog).values({ id: "global", revision: 1 });
+          }
+
+          if (payload.length > 0) {
+            await tx
+              .insert(moldataKeyCatalogEntry)
+              .values(
+                payload.map(([english, japanese], position) => ({ english, japanese, position })),
+              );
+          }
+        }
+
         if (restoredCategories.includes("assets")) {
           if (!stagedAssetDirectory) {
             throw new Error("Asset staging directory is missing.");
@@ -1192,6 +1274,24 @@ async function buildCategoryPayload(
           "categories/flowcharts.json": JSON.stringify({ flowcharts }, null, 2),
         },
         count: flowcharts.length,
+      };
+    }
+
+    case "moldata-keys": {
+      const entries = await database
+        .select({
+          english: moldataKeyCatalogEntry.english,
+          japanese: moldataKeyCatalogEntry.japanese,
+        })
+        .from(moldataKeyCatalogEntry)
+        .orderBy(asc(moldataKeyCatalogEntry.position));
+      const pairs = entries.map(({ english, japanese }) => [english, japanese]);
+
+      return {
+        files: {
+          "categories/moldata-keys.json": JSON.stringify(pairs, null, 2),
+        },
+        count: pairs.length,
       };
     }
   }

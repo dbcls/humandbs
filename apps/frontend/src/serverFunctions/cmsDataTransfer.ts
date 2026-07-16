@@ -15,6 +15,7 @@ export const CMS_DATA_TRANSFER_CATEGORIES = [
   "assets",
   "header-footer",
   "flowcharts",
+  "moldata-keys",
 ] as const;
 
 export type CmsDataTransferCategory = (typeof CMS_DATA_TRANSFER_CATEGORIES)[number];
@@ -28,6 +29,7 @@ export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<CmsDataTransferCategory, 
   assets: "Assets",
   "header-footer": "Header & Footer",
   flowcharts: "Flowcharts",
+  "moldata-keys": "Moldata keys",
 };
 
 export const MAX_CMS_ARCHIVE_SIZE_BYTES = 1024 * 1024 * 500; // 500 MB

@@ -321,19 +321,13 @@ function ResearchSortSelect() {
   const tR = useTranslations("Research");
   const { filters, setFilters } = useFilters(Route.id);
 
-  const fieldLabels: Record<string, string> = {
-    dateModified: tR("dateModified"),
-    datePublished: tR("datePublished"),
-    humId: tR("humId"),
-  };
-
   const currentSort = filters.sort ?? "dateModified";
   const currentOrder = filters.order ?? "desc";
 
   const sortOptions = [
-    { label: fieldLabels.dateModified, value: "dateModified" },
-    { label: fieldLabels.datePublished, value: "datePublished" },
-    { label: fieldLabels.humId, value: "humId" },
+    { label: tR("dateModified"), value: "dateModified" },
+    { label: tR("datePublished"), value: "datePublished" },
+    { label: tR("humId"), value: "humId" },
   ];
 
   return (

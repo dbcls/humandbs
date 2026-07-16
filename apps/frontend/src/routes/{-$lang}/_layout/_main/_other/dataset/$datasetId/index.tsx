@@ -2,6 +2,7 @@ import { createFileRoute, isNotFound, notFound } from "@tanstack/react-router";
 
 import { NotFound } from "@/components/NotFound";
 import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
+import { getMoldataKeyCatalogQueryOptions } from "@/serverFunctions/moldataKeyCatalog";
 
 import { DatasetVersionCard } from "./-DatasetVersionCard";
 
@@ -9,15 +10,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$da
   component: RouteComponent,
   loader: async ({ context, params }) => {
     try {
-      const dataset = await context.queryClient.ensureQueryData(
-        getDatasetQueryOptions({
-          lang: context.lang,
-          datasetId: params.datasetId,
-          includeRawHtml: false,
-        }),
-      );
+      const [dataset, moldataKeyCatalog] = await Promise.all([
+        context.queryClient.ensureQueryData(
+          getDatasetQueryOptions({
+            lang: context.lang,
+            datasetId: params.datasetId,
+            includeRawHtml: false,
+          }),
+        ),
+        context.queryClient.ensureQueryData(getMoldataKeyCatalogQueryOptions()),
+      ]);
 
-      return { data: dataset.data };
+      return { data: dataset.data, moldataKeyCatalog };
     } catch (error) {
       // `$getDataset` throws `notFound()` for a missing dataset; react-query
       // re-surfaces it here, so re-throw it as the router notFound signal.
@@ -41,7 +45,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$da
 });
 
 function RouteComponent() {
-  const { data } = Route.useLoaderData();
+  const { data, moldataKeyCatalog } = Route.useLoaderData();
 
-  return <DatasetVersionCard versionData={data} />;
+  return <DatasetVersionCard versionData={data} moldataKeyCatalog={moldataKeyCatalog} />;
 }

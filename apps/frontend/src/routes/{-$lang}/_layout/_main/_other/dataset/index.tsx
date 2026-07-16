@@ -306,17 +306,13 @@ function DatasetSortSelect() {
   const tD = useTranslations("Dataset");
   const { filters, setFilters } = useFilters(Route.id);
 
-  const fieldLabels: Record<string, string> = {
-    datasetId: tD("datasetId"),
-    releaseDate: tD("releaseDate"),
-  };
-
   const currentSort = filters.sort ?? "datasetId";
   const currentOrder = filters.order ?? "asc";
 
   const sortOptions = [
-    { label: fieldLabels.datasetId, value: "datasetId" },
-    { label: fieldLabels.releaseDate, value: "releaseDate" },
+    { label: tD("datasetId"), value: "datasetId" },
+    { label: tD("releaseDate"), value: "releaseDate" },
+    { label: tD("dateModified"), value: "dateModified" },
   ];
 
   return (

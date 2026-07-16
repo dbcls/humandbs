@@ -37,6 +37,7 @@ import { Route as Char123LangChar125LayoutMainOtherDatasetIndexRouteImport } fro
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/moldata-keys'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/route'
 import { Route as Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/route'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/index'
@@ -206,6 +207,12 @@ const Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123ver
       getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
     } as any,
   )
+const Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute =
+  Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRouteImport.update({
+    id: '/researches/moldata-keys',
+    path: '/researches/moldata-keys',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
 const Char123LangChar125LayoutMainOtherResearchHumIdRouteRoute =
   Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteImport.update({
     id: '/$humId',
@@ -268,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/': typeof Char123LangChar125LayoutMainHomeIndexRoute
   '/{-$lang}/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
+  '/{-$lang}/admin/researches/moldata-keys': typeof Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
@@ -294,6 +302,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
+  '/{-$lang}/admin/researches/moldata-keys': typeof Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
@@ -331,6 +340,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_home/': typeof Char123LangChar125LayoutMainHomeIndexRoute
   '/{-$lang}/_layout/_main/_other/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin/researches/moldata-keys': typeof Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute
   '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/'
     | '/{-$lang}/dataset/$datasetId'
     | '/{-$lang}/research/$humId'
+    | '/{-$lang}/admin/researches/moldata-keys'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches/'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
+    | '/{-$lang}/admin/researches/moldata-keys'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches'
@@ -427,6 +439,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_home/'
     | '/{-$lang}/_layout/_main/_other/dataset/$datasetId'
     | '/{-$lang}/_layout/_main/_other/research/$humId'
+    | '/{-$lang}/_layout/_authed/admin/researches/moldata-keys'
     | '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
     | '/{-$lang}/_layout/_authed/admin/researches/'
@@ -645,6 +658,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
+    '/{-$lang}/_layout/_authed/admin/researches/moldata-keys': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/moldata-keys'
+      path: '/researches/moldata-keys'
+      fullPath: '/{-$lang}/admin/researches/moldata-keys'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
     '/{-$lang}/_layout/_main/_other/research/$humId': {
       id: '/{-$lang}/_layout/_main/_other/research/$humId'
       path: '/$humId'
@@ -697,6 +717,7 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   Char123LangChar125LayoutAuthedAdminHeaderFooterRoute: typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
   Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
+  Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute
   Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   Char123LangChar125LayoutAuthedAdminResearchesIndexRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
 }
@@ -715,6 +736,8 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminHeaderFooterRoute,
     Char123LangChar125LayoutAuthedAdminNewsRoute:
       Char123LangChar125LayoutAuthedAdminNewsRoute,
+    Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute:
+      Char123LangChar125LayoutAuthedAdminResearchesMoldataKeysRoute,
     Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route:
       Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route,
     Char123LangChar125LayoutAuthedAdminResearchesIndexRoute:
