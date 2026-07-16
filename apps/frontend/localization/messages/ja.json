@@ -607,6 +607,7 @@
       "type-assets": "CMSアセットディレクトリ内の公開ファイル。",
       "type-header-footer": "サイトナビゲーション設定。",
       "type-flowcharts": "ナビゲーションフローチャートの定義とアクティブ状態。",
+      "type-moldata-keys": "実験データのmoldataキーに対する英語・日本語ラベルと表示順。",
       "validate-failed": "アーカイブのアップロード検証に失敗しました。",
       "generate-failed": "アーカイブの生成に失敗しました。",
       "download-started": "アーカイブのダウンロードを開始しました。",

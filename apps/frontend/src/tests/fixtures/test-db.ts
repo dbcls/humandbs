@@ -8,6 +8,8 @@ import * as schema from "@/db/schema";
 const ALL_TABLES = [
   "navigation_flowchart_revision",
   "navigation_flowchart",
+  "moldata_key_catalog_entry",
+  "moldata_key_catalog",
   "site_navigation_config_revision",
   "site_navigation_config",
   "alert_translation",

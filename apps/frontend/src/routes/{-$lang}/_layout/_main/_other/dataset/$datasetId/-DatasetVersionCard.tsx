@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import { Download, File, FolderOpen, X } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
@@ -27,10 +28,11 @@ import {
 } from "@/components/ui/dialog";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
-import type { messages } from "@/config/messages";
-import { compareMoldataKeys } from "@/config/moldataKeyOrder";
+import { resolveMoldataKeys } from "@/config/moldataKeyCatalog";
 import { isCartableDatasetId, useCartStore } from "@/hooks/useCart";
 import type { DatasetDoc } from "@/lib/types";
+import type { MoldataKeyCatalog } from "@/repositories/moldataKeyCatalog";
+import { getMoldataKeyCatalogQueryOptions } from "@/serverFunctions/moldataKeyCatalog";
 import type { RenderedExperiment } from "@/utils/renderedHtml/types";
 
 type Distribution = NonNullable<DatasetDocWithMerged["distribution"]>;
@@ -42,21 +44,22 @@ type DatasetCardData = Omit<DatasetDoc, "experiments"> & {
   parentJgaStudyId?: string | null;
 };
 
-type MoldataKey = keyof (typeof messages)["en"]["Dataset"]["moldata-keys"];
-type MoldataTranslationKey = `moldata-keys.${MoldataKey}`;
-
 export function DatasetVersionCard({
   versionData,
   lang: langOverride,
   showPublicActions = true,
+  moldataKeyCatalog,
 }: {
   versionData: DatasetCardData;
   lang?: Locale;
   showPublicActions?: boolean;
+  moldataKeyCatalog?: MoldataKeyCatalog;
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const { data: queriedMoldataKeyCatalog } = useQuery(getMoldataKeyCatalogQueryOptions());
 
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
+  const resolvedMoldataKeyCatalog = moldataKeyCatalog ?? queriedMoldataKeyCatalog;
   const t = useTranslations("Dataset");
 
   const infoKeyValues = [
@@ -151,7 +154,11 @@ export function DatasetVersionCard({
         <ContentHeader>{t("experiments")}</ContentHeader>
 
         {versionData.experiments.map((e) => (
-          <Experiment key={`${e.header.en?.text}-${e.header.ja?.text}`} experiment={e} />
+          <Experiment
+            key={`${e.header.en?.text}-${e.header.ja?.text}`}
+            experiment={e}
+            moldataKeyCatalog={resolvedMoldataKeyCatalog}
+          />
         ))}
       </section>
     </CardWithCaption>
@@ -221,8 +228,13 @@ function DistributionDialog({ distribution }: { distribution: Distribution }) {
   );
 }
 
-function Experiment({ experiment }: { experiment: RenderedExperiment }) {
-  const t = useTranslations("Dataset");
+function Experiment({
+  experiment,
+  moldataKeyCatalog = { revision: 0, entries: [] },
+}: {
+  experiment: RenderedExperiment;
+  moldataKeyCatalog?: MoldataKeyCatalog;
+}) {
   const lang = useLocale();
   return (
     <section className="mt-3 first:mt-0">
@@ -231,23 +243,18 @@ function Experiment({ experiment }: { experiment: RenderedExperiment }) {
       </h2>
 
       <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
-        {Object.entries(experiment.data)
-          .sort(([left], [right]) => compareMoldataKeys(left, right))
-          .map(([title, content]) => {
-            const markup = content?.[lang]?.renderedHtml;
-            const moldataTranslationKey = `moldata-keys.${title}` as MoldataTranslationKey;
-            return (
-              <KeyValueCard
-                key={title}
-                title={t.has(moldataTranslationKey) ? t(moldataTranslationKey) : title}
-                value={
-                  markup ? (
-                    <Markdown className="inline-prose text-base" contentHtml={{ markup }} />
-                  ) : undefined
-                }
-              />
-            );
-          })}
+        {resolveMoldataKeys(experiment.data, moldataKeyCatalog, lang).map(({ key, label, value }) => {
+          const markup = value?.[lang]?.renderedHtml;
+          return (
+            <KeyValueCard
+              key={key}
+              title={label}
+              value={
+                markup ? <Markdown className="inline-prose text-base" contentHtml={{ markup }} /> : undefined
+              }
+            />
+          );
+        })}
       </dl>
     </section>
   );

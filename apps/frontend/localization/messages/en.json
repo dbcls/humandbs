@@ -605,6 +605,7 @@
       "type-assets": "Managed public files under the CMS asset directory.",
       "type-header-footer": "Active site navigation configuration.",
       "type-flowcharts": "Navigation flowchart definitions and active state.",
+      "type-moldata-keys": "Ordered English and Japanese labels for experimental moldata keys.",
       "validate-failed": "Failed to validate archive upload.",
       "generate-failed": "Failed to generate archive.",
       "download-started": "Archive download started.",

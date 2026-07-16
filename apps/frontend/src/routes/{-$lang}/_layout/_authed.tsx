@@ -21,6 +21,7 @@ export const tabParamSchema = z.enum([
   "documents",
   "content",
   "researches",
+  "researches/moldata-keys",
   "assets",
   "header-footer",
   "flowcharts",
@@ -192,6 +193,11 @@ function NavPanel() {
           }
           tab="researches"
         />
+        {canViewCms && (
+          <div className="pl-5">
+            <PanelItem title={<span>Moldata keys</span>} tab="researches/moldata-keys" />
+          </div>
+        )}
       </section>
     </CollapsibleCard>
   );

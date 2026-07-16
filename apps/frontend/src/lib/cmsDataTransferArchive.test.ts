@@ -97,6 +97,17 @@ async function seedAssetFixture() {
   await writeFile(path.join(tempAssetDir, "nested", "diagram.txt"), "asset-nested");
 }
 
+async function seedMoldataKeysFixture(revision = 1) {
+  await db.insert(schema.moldataKeyCatalog).values({ id: "global", revision });
+  return db
+    .insert(schema.moldataKeyCatalogEntry)
+    .values([
+      { english: "First key", japanese: "最初のキー", position: 0 },
+      { english: "Second key", japanese: "2番目のキー", position: 1 },
+    ])
+    .returning();
+}
+
 beforeAll(async () => {
   await testDb.setup();
 });
@@ -199,6 +210,64 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(result.archive.assetFileCount).toBe(2);
   });
 
+  test("exports Moldata keys as ordered bilingual pairs and validates the category", async () => {
+    await seedMoldataKeysFixture();
+
+    const buildArchive = createCmsDataTransferArchiveBuilder({ database: db });
+    const { bytes } = await buildArchive({ categories: ["moldata-keys"], createdBy: null });
+    const files = await extractArchiveEntries(bytes);
+    const inspected = await inspectCmsDataTransferArchive({
+      fileName: "cms-data-export.tar.gz",
+      fileSize: bytes.byteLength,
+      lastModified: Date.now(),
+      bytes,
+    });
+
+    expect(JSON.parse(files["categories/moldata-keys.json"] as string)).toEqual([
+      ["First key", "最初のキー"],
+      ["Second key", "2番目のキー"],
+    ]);
+    expect(inspected.archive.availableCategories).toEqual(["moldata-keys"]);
+    expect(inspected.archive.counts["moldata-keys"]).toBe(2);
+  });
+
+  test("rejects an invalid Moldata keys payload during archive inspection", async () => {
+    const pack = tar.pack();
+    const chunks: Buffer[] = [];
+    const bytes = await new Promise<Uint8Array<ArrayBufferLike>>((resolve, reject) => {
+      pack.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      pack.on("error", reject);
+      pack.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
+      });
+      pack.entry(
+        { name: "manifest.json" },
+        JSON.stringify({
+          schemaVersion: 1,
+          archiveFormat: "tar.gz",
+          createdAt: new Date().toISOString(),
+          createdBy: null,
+          categories: ["moldata-keys"],
+          counts: { "moldata-keys": 1 },
+        }),
+      );
+      pack.entry({ name: "categories/moldata-keys.json" }, JSON.stringify([["English", ""]]));
+      pack.finalize();
+    });
+
+    await expect(
+      inspectCmsDataTransferArchive({
+        fileName: "invalid-moldata-keys.tar",
+        fileSize: bytes.byteLength,
+        lastModified: Date.now(),
+        bytes,
+      }),
+    ).rejects.toThrow(
+      'Archive file "categories/moldata-keys.json" does not match the expected schema.',
+    );
+  });
+
   test("silently ignores legacy 'content' category in old archives", async () => {
     const legacyManifest = {
       schemaVersion: 1,
@@ -223,7 +292,10 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     });
 
     pack.entry({ name: "manifest.json" }, JSON.stringify(legacyManifest));
-    pack.entry({ name: "categories/content.json" }, JSON.stringify({ items: [], translations: [] }));
+    pack.entry(
+      { name: "categories/content.json" },
+      JSON.stringify({ items: [], translations: [] }),
+    );
     pack.finalize();
 
     const bytes = await done;
@@ -406,5 +478,52 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(restoredFiles).toContain("logo.txt");
     expect(restoredFiles).toContain(path.join("nested", "diagram.txt"));
     expect(restoredFiles).not.toContain("stale.txt");
+  });
+
+  test("restores Moldata keys only, with fresh IDs and an advanced target revision", async () => {
+    const sourceEntries = await seedMoldataKeysFixture();
+    const buildArchive = createCmsDataTransferArchiveBuilder({ database: db });
+    const { bytes } = await buildArchive({ categories: ["moldata-keys"], createdBy: null });
+
+    await clearTables(db);
+    await db.insert(schema.document).values({
+      id: "33333333-3333-3333-8333-333333333333",
+      contentId: "unrelated-document",
+    });
+    await db.insert(schema.moldataKeyCatalog).values({ id: "global", revision: 7 });
+    await db.insert(schema.moldataKeyCatalogEntry).values({
+      english: "Stale key",
+      japanese: "古いキー",
+      position: 0,
+    });
+
+    const restoreArchive = createCmsDataTransferArchiveRestorer({ database: db });
+    const result = await restoreArchive({
+      fileName: "cms-data-export.tar.gz",
+      bytes,
+      categories: ["moldata-keys"],
+    });
+
+    const [catalog] = await db.select().from(schema.moldataKeyCatalog);
+    const restoredEntries = await db
+      .select()
+      .from(schema.moldataKeyCatalogEntry)
+      .orderBy(schema.moldataKeyCatalogEntry.position);
+    const documents = await db.select().from(schema.document);
+
+    expect(result.restoredCategories).toEqual(["moldata-keys"]);
+    expect(result.counts["moldata-keys"]).toBe(2);
+    expect(catalog?.revision).toBe(8);
+    expect(
+      restoredEntries.map(({ english, japanese, position }) => ({ english, japanese, position })),
+    ).toEqual([
+      { english: "First key", japanese: "最初のキー", position: 0 },
+      { english: "Second key", japanese: "2番目のキー", position: 1 },
+    ]);
+    expect(restoredEntries.map((entry) => entry.id)).not.toEqual(
+      sourceEntries.map((entry) => entry.id),
+    );
+    expect(documents).toHaveLength(1);
+    expect(documents[0]?.contentId).toBe("unrelated-document");
   });
 });
