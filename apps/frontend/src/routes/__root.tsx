@@ -102,8 +102,14 @@ function RootDocument() {
         className="main-bg relative flex h-screen flex-col bg-primary-translucent font-family-sans text-foreground"
       >
         <Outlet />
-        <TanStackDevtools plugins={[formDevtoolsPlugin()]} />
-        <TanStackRouterDevtools position="bottom-left" />
+
+        {process.env.NODE_ENV === "development" ? (
+          <>
+            <TanStackDevtools plugins={[formDevtoolsPlugin()]} />
+            <TanStackRouterDevtools position="bottom-left" />
+          </>
+        ) : null}
+
         <SessionRefreshHandler session={session} />
         <ConfirmationDialog />
         <Scripts />
