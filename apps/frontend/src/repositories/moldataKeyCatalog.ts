@@ -1,6 +1,6 @@
 import { asc, desc, eq, sql } from "drizzle-orm";
 
-import defaultPairsJson from "@/config/moldataKeyCatalog.defaults.json";
+import defaultPairsJson from "@/config/moldataKeyCatalogDefaults.json";
 import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { moldataKeyCatalog, moldataKeyCatalogEntry } from "@/db/schema";
