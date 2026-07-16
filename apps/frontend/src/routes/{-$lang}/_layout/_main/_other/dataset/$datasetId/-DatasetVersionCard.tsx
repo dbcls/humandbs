@@ -39,6 +39,7 @@ type Distribution = NonNullable<DatasetDocWithMerged["distribution"]>;
 type DatasetCardData = Omit<DatasetDoc, "experiments"> & {
   experiments: RenderedExperiment[];
   distribution?: Distribution;
+  parentJgaStudyId?: string | null;
 };
 
 type MoldataKey = keyof (typeof messages)["en"]["Dataset"]["moldata-keys"];
@@ -60,7 +61,7 @@ export function DatasetVersionCard({
 
   const infoKeyValues = [
     { title: t("releaseDate"), value: versionData.releaseDate },
-    { title: t("date-modified"), value: versionData.versionReleaseDate },
+    { title: t("dateModified"), value: versionData.versionReleaseDate },
     {
       title: t("research"),
       value: <ResearchLink humId={versionData.humId} />,
@@ -70,6 +71,23 @@ export function DatasetVersionCard({
       title: t("criteria"),
       value: <AccessCriteriaLabel size={"md"} criteria={versionData.criteria} />,
     },
+    ...(versionData.parentJgaStudyId
+      ? [
+          {
+            title: t("parentJgaStudyId"),
+            value: (
+              <a
+                href={`https://ddbj.nig.ac.jp/search/entry/jga-study/${encodeURIComponent(versionData.parentJgaStudyId)}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-secondary underline"
+              >
+                {versionData.parentJgaStudyId}
+              </a>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const { add, isInCart, remove } = useCartStore(
