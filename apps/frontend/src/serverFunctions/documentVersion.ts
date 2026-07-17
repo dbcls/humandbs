@@ -11,8 +11,6 @@ import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
-import { $getPublishedContentItemTranslation } from "./contentItem";
-
 const documentVersionRepo = createDocumentVersionRepository(db);
 
 // === For CMS ===
@@ -226,14 +224,7 @@ export const $getLatestDocumentOrContent = createServerFn()
 
     if (docVersion) {
       return docVersion;
-    }
-
-    try {
-      const content = await $getPublishedContentItemTranslation({
-        data: { id, lang },
-      });
-      return content;
-    } catch {
+    } else {
       throw notFound();
     }
   });

@@ -15,7 +15,6 @@
     "db:seed-files": "bun ./src/scripts/database/seed-files.ts",
     "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
     "db:seed-news": "bun ./src/scripts/database/seed-news.ts",
-    "db:seed-content": "bun ./src/scripts/database/seed-content.ts",
     "db:seed-guideline-versions": "bun ./src/scripts/database/seed-guideline-versions.ts",
     "db:seed-navigation-flowcharts": "bun ./src/scripts/database/seed-navigation-flowcharts.ts",
     "db:seed-moldata-key-catalog": "bun ./src/scripts/database/seed-moldata-key-catalog.ts",

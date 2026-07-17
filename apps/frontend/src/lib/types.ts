@@ -13,11 +13,11 @@ export type DatasetDoc = StripIndexSignature<ServerDatasetDoc>;
 export type AccessCriteria = DatasetDoc["criteria"];
 
 export type ResearchSummary = Omit<ServerResearchSummary, "criteria"> & {
-  criteria: CriteriaCanonical;
+  criteria: CriteriaCanonical[];
 };
 
 export type ResearchSearchResponseWithTypedCriteria = Omit<ResearchSearchResponse, "data"> & {
   data: (Omit<ResearchSearchResponse["data"][number], "criteria"> & {
-    criteria: CriteriaCanonical;
+    criteria: CriteriaCanonical[];
   })[];
 };
