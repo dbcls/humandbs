@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 import {
   MoldataKeyCatalogConflictError,
   MoldataKeyCatalogDuplicateKeyError,
@@ -37,7 +38,9 @@ export const $createMoldataKeyCatalogEntry = createServerFn({ method: "POST" })
     try {
       return {
         ok: true as const,
-        data: await moldataKeyCatalogRepository.create(data),
+        data: await auditMutation("create", "moldata_key_catalog", undefined, () =>
+          moldataKeyCatalogRepository.create(data),
+        ),
       };
     } catch (error) {
       if (error instanceof MoldataKeyCatalogConflictError) {
@@ -78,7 +81,12 @@ export const $updateMoldataKeyCatalogEntries = createServerFn({ method: "POST" }
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
     try {
-      return { ok: true as const, data: await moldataKeyCatalogRepository.updateEntries(data) };
+      return {
+        ok: true as const,
+        data: await auditMutation("update", "moldata_key_catalog", "global", () =>
+          moldataKeyCatalogRepository.updateEntries(data),
+        ),
+      };
     } catch (error) {
       return catalogMutationResult(error);
     }
@@ -92,7 +100,12 @@ export const $reorderMoldataKeyCatalogEntries = createServerFn({ method: "POST" 
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
     try {
-      return { ok: true as const, data: await moldataKeyCatalogRepository.reorder(data) };
+      return {
+        ok: true as const,
+        data: await auditMutation("update", "moldata_key_catalog", "global", () =>
+          moldataKeyCatalogRepository.reorder(data),
+        ),
+      };
     } catch (error) {
       return catalogMutationResult(error);
     }
@@ -104,7 +117,12 @@ export const $deleteMoldataKeyCatalogEntry = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
     try {
-      return { ok: true as const, data: await moldataKeyCatalogRepository.delete(data) };
+      return {
+        ok: true as const,
+        data: await auditMutation("delete", "moldata_key_catalog", data.id, () =>
+          moldataKeyCatalogRepository.delete(data),
+        ),
+      };
     } catch (error) {
       return catalogMutationResult(error);
     }

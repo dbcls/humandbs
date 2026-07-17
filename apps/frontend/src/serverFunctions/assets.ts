@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { getAssetDir, getAssetFilesSubdir } from "@/lib/assetDir";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
@@ -176,7 +177,9 @@ export const $uploadAsset = createServerFn({ method: "POST" })
       assetFolderPathSchema.parse((data.get("folderPath") as string) ?? ""),
     );
 
-    const { relativePath } = await uploadAssetFileToFolder(file, folderPath);
+    const { relativePath } = await auditMutation("create", "asset", undefined, () =>
+      uploadAssetFileToFolder(file, folderPath),
+    );
 
     const FILES_SUBDIR = getAssetFilesSubdir();
 
@@ -200,9 +203,9 @@ export const $createAssetFolder = createServerFn({ method: "POST" })
 
     const normalizedFolderPath = normalizeRelativeAssetPath(folderPath);
 
-    await mkdir(getAbsoluteAssetPath(normalizedFolderPath), {
-      recursive: false,
-    });
+    await auditMutation("create", "asset_folder", normalizedFolderPath, () =>
+      mkdir(getAbsoluteAssetPath(normalizedFolderPath), { recursive: false }),
+    );
 
     return { path: normalizedFolderPath };
   });
@@ -218,7 +221,7 @@ export const $deleteAssetByPath = createServerFn({ method: "POST" })
     context.checkPermission("assets", "delete");
 
     const assetPath = normalizeRelativeAssetPath(data.assetPath);
-    await rm(getAbsoluteAssetPath(assetPath));
+    await auditMutation("delete", "asset", assetPath, () => rm(getAbsoluteAssetPath(assetPath)));
 
     return { path: assetPath };
   });
@@ -234,7 +237,9 @@ export const $deleteAssetFolder = createServerFn({ method: "POST" })
     context.checkPermission("assets", "delete");
 
     const folderPath = normalizeRelativeAssetPath(data.folderPath);
-    await rm(getAbsoluteAssetPath(folderPath), { recursive: true });
+    await auditMutation("delete", "asset_folder", folderPath, () =>
+      rm(getAbsoluteAssetPath(folderPath), { recursive: true }),
+    );
 
     return { path: folderPath };
   });
@@ -256,7 +261,9 @@ export const $renameAsset = createServerFn({ method: "POST" })
     const newRelativePath = parentDir === "." ? newName : path.posix.join(parentDir, newName);
     const normalizedNewPath = normalizeRelativeAssetPath(newRelativePath);
 
-    await rename(getAbsoluteAssetPath(assetPath), getAbsoluteAssetPath(normalizedNewPath));
+    await auditMutation("move", "asset", assetPath, () =>
+      rename(getAbsoluteAssetPath(assetPath), getAbsoluteAssetPath(normalizedNewPath)),
+    );
 
     return { path: normalizedNewPath };
   });
@@ -278,7 +285,9 @@ export const $renameAssetFolder = createServerFn({ method: "POST" })
     const newRelativePath = parentDir === "." ? newName : path.posix.join(parentDir, newName);
     const normalizedNewPath = normalizeRelativeAssetPath(newRelativePath);
 
-    await rename(getAbsoluteAssetPath(folderPath), getAbsoluteAssetPath(normalizedNewPath));
+    await auditMutation("move", "asset_folder", folderPath, () =>
+      rename(getAbsoluteAssetPath(folderPath), getAbsoluteAssetPath(normalizedNewPath)),
+    );
 
     return { path: normalizedNewPath };
   });

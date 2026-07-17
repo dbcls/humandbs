@@ -11,6 +11,7 @@ import { db } from "@/db/database";
 import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { siteNavigationConfigUpdateSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation, emitError } from "@/observability/server";
 import {
   SiteNavigationConfigConflictError,
   siteNavigationRepository,
@@ -69,7 +70,7 @@ export const $getSiteNavigation = createServerFn({ method: "GET" })
       const config = active?.config ?? getDefaultSiteNavigationConfig();
       return buildSiteNavigation(lang, config, labelResolver, pathResolver);
     } catch (error) {
-      console.error("Failed to load persisted site navigation config, using fallback.", error);
+      emitError("server.unhandled_error", error, { operation: "site_navigation.load" });
       return buildSiteNavigation(lang, getDefaultSiteNavigationConfig());
     }
   });
@@ -111,10 +112,12 @@ export const $saveSiteNavigationConfig = createServerFn({ method: "POST" })
     try {
       return {
         ok: true as const,
-        data: await siteNavigationRepository.save(data.config, {
-          expectedRevision: data.expectedRevision,
-          userId,
-        }),
+        data: await auditMutation("update", "site_navigation", "global", () =>
+          siteNavigationRepository.save(data.config, {
+            expectedRevision: data.expectedRevision,
+            userId,
+          }),
+        ),
       };
     } catch (error) {
       if (error instanceof SiteNavigationConfigConflictError) {
@@ -140,10 +143,12 @@ export const $resetSiteNavigationConfig = createServerFn({ method: "POST" })
     try {
       return {
         ok: true as const,
-        data: await siteNavigationRepository.resetToDefault({
-          expectedRevision: data.expectedRevision,
-          userId,
-        }),
+        data: await auditMutation("reset", "site_navigation", "global", () =>
+          siteNavigationRepository.resetToDefault({
+            expectedRevision: data.expectedRevision,
+            userId,
+          }),
+        ),
       };
     } catch (error) {
       if (error instanceof SiteNavigationConfigConflictError) {

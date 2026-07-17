@@ -23,6 +23,7 @@ import {
 import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { auditMutation } from "@/observability/server";
 import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
 import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
@@ -68,7 +69,9 @@ export const $createResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const result = await api.createResearch(data, accessToken);
+      const result = await auditMutation("create", "research", undefined, () =>
+        api.createResearch(data, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "A research with this humId already exists.", {
@@ -90,7 +93,9 @@ export const $updateResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const result = await api.updateResearch(data.humId, data.body, accessToken);
+      const result = await auditMutation("update", "research", data.humId, () =>
+        api.updateResearch(data.humId, data.body, accessToken),
+      );
 
       return { ok: true, data: result };
     } catch (error) {
@@ -108,9 +113,10 @@ export const $deleteResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
-    console.log("$deleteResearch", data.humId);
     try {
-      await api.deleteResearch(data.humId, accessToken);
+      await auditMutation("delete", "research", data.humId, () =>
+        api.deleteResearch(data.humId, accessToken),
+      );
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete research.");
@@ -169,7 +175,9 @@ export const $submitResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.submitResearch(data.humId, accessToken);
+      const result = await auditMutation("submit", "research", data.humId, () =>
+        api.submitResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to submit research.");
@@ -182,7 +190,9 @@ export const $approveResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.approveResearch(data.humId, accessToken);
+      const result = await auditMutation("approve", "research", data.humId, () =>
+        api.approveResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to approve research.");
@@ -195,7 +205,9 @@ export const $rejectResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.rejectResearch(data.humId, accessToken);
+      const result = await auditMutation("reject", "research", data.humId, () =>
+        api.rejectResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to reject research.");
@@ -208,7 +220,9 @@ export const $unpublishResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.unpublishResearch(data.humId, accessToken);
+      const result = await auditMutation("unpublish", "research", data.humId, () =>
+        api.unpublishResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to unpublish research.");
@@ -237,10 +251,12 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.createResearchVersion(
-        data.humId,
-        { releaseNote: data.releaseNote ?? undefined },
-        accessToken,
+      const result = await auditMutation("create", "research_version", data.humId, () =>
+        api.createResearchVersion(
+          data.humId,
+          { releaseNote: data.releaseNote ?? undefined },
+          accessToken,
+        ),
       );
       return { ok: true, data: result };
     } catch (error) {

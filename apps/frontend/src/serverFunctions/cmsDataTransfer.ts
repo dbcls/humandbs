@@ -7,6 +7,7 @@ import {
   inspectCmsDataTransferArchive,
 } from "@/lib/cmsDataTransferArchive";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 
 export const CMS_DATA_TRANSFER_CATEGORIES = [
   "documents",
@@ -105,16 +106,18 @@ export const $downloadCmsDataArchive = createServerFn({ method: "POST" })
 
     const user = context.user;
 
-    const { bytes } = await $$createCmsDataTransferArchive({
-      categories: data.categories,
-      createdBy: user
-        ? {
-            id: user.id,
-            email: user.email ?? "",
-            name: user.name ?? "",
-          }
-        : null,
-    });
+    const { bytes } = await auditMutation("export", "cms_data_transfer", undefined, () =>
+      $$createCmsDataTransferArchive({
+        categories: data.categories,
+        createdBy: user
+          ? {
+              id: user.id,
+              email: user.email ?? "",
+              name: user.name ?? "",
+            }
+          : null,
+      }),
+    );
 
     const timestamp = new Date()
       .toISOString()
@@ -166,12 +169,14 @@ export const $restoreCmsDataArchive = createServerFn({ method: "POST" })
     }
 
     try {
-      const result = await $$restoreCmsDataTransferArchive({
-        fileName: archive.name,
-        bytes: new Uint8Array(await archive.arrayBuffer()),
-        categories: parsedCategories.data,
-        restoredByUserId: context.user?.id,
-      });
+      const result = await auditMutation("restore", "cms_data_transfer", undefined, async () =>
+        $$restoreCmsDataTransferArchive({
+          fileName: archive.name,
+          bytes: new Uint8Array(await archive.arrayBuffer()),
+          categories: parsedCategories.data,
+          restoredByUserId: context.user?.id,
+        }),
+      );
 
       return {
         ok: true as const,

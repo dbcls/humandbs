@@ -54,6 +54,47 @@ const getBackendBaseUrl = createIsomorphicFn()
       `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}${process.env.HUMANDBS_BACKEND_URL_PREFIX}`,
   );
 
+const reportBackendCall = createIsomorphicFn()
+  .client(() => async () => undefined)
+  .server(
+    () =>
+      async (event: {
+        method: string;
+        route: string;
+        statusCode?: number;
+        durationMs: number;
+        outcome: "success" | "failure";
+        error?: unknown;
+      }) => {
+        const { emitError, emitEvent } = await import("@/observability/server");
+        if (event.error) {
+          emitError("backend.request", event.error, {
+            method: event.method,
+            route: event.route,
+            status_code: event.statusCode,
+            outcome: event.outcome,
+            duration_ms: event.durationMs,
+          });
+          return;
+        }
+        emitEvent(
+          "backend.request",
+          {
+            method: event.method,
+            route: event.route,
+            status_code: event.statusCode,
+            outcome: event.outcome,
+            duration_ms: event.durationMs,
+          },
+          { sampleable: true },
+        );
+      },
+  );
+
+const getBackendRequestId = createIsomorphicFn()
+  .client(async () => undefined)
+  .server(async () => (await import("@/observability/server")).getRequestId());
+
 export class APIError extends Error {
   status: number;
   data: unknown;
@@ -74,7 +115,7 @@ async function request<T>(
   const { params, ...init } = options;
 
   const baseUrl = getBackendBaseUrl();
-  const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const url = new URL(path.replace(/^\//, ""), base);
 
   if (params) {
@@ -99,10 +140,26 @@ async function request<T>(
 
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
+  const requestId = await getBackendRequestId();
+  if (requestId && !headers.has("x-request-id")) headers.set("x-request-id", requestId);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(url.toString(), { ...init, headers });
+  const startedAt = performance.now();
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { ...init, headers });
+  } catch (error) {
+    await (await reportBackendCall())({
+      method,
+      route: url.pathname,
+      durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+      outcome: "failure",
+      error,
+    });
+    throw error;
+  }
+  const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
 
   if (!res.ok) {
     let data: unknown;
@@ -111,14 +168,25 @@ async function request<T>(
     } catch {
       data = undefined;
     }
-    console.error(`API Error: ${method} ${path} - ${res.status}`, {
-      status: res.status,
-      data,
-      body: init?.body,
-      url: path,
+    const error = new APIError(res.status, method, path, data);
+    await (await reportBackendCall())({
+      method,
+      route: url.pathname,
+      statusCode: res.status,
+      durationMs,
+      outcome: "failure",
+      error,
     });
-    throw new APIError(res.status, method, path, data);
+    throw error;
   }
+
+  await (await reportBackendCall())({
+    method,
+    route: url.pathname,
+    statusCode: res.status,
+    durationMs,
+    outcome: "success",
+  });
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

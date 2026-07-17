@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Locale } from "@/config/i18n";
 import { localeSchema } from "@/config/i18n";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 import type { AlertFilters, AlertRecord } from "@/repositories/alert";
 import { alertsRepository, createAlertSchema, updateAlertSchema } from "@/repositories/alert";
 
@@ -65,7 +66,9 @@ export const $createAlert = createServerFn({ method: "POST" })
     context.checkPermission("alerts", "create");
 
     // user?.id should be defined because context.checkPermission here passed
-    const created = await alertsRepository.create(data, context.user?.id);
+    const created = await auditMutation("create", "alert", undefined, () =>
+      alertsRepository.create(data, context.user?.id),
+    );
 
     return created;
   });
@@ -76,7 +79,9 @@ export const $updateAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "update");
 
-    const updated = await alertsRepository.update(data, context.user.id);
+    const updated = await auditMutation("update", "alert", data.id, () =>
+      alertsRepository.update(data, context.user.id),
+    );
 
     return updated;
   });
@@ -87,7 +92,7 @@ export const $deleteAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "delete");
 
-    await alertsRepository.delete(data.id);
+    await auditMutation("delete", "alert", data.id, () => alertsRepository.delete(data.id));
   });
 
 /** Active alerts list for clients */
