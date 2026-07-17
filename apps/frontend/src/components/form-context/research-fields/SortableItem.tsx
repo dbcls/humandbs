@@ -1,6 +1,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Copy, GripVertical, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, GripVertical, Trash2 } from "lucide-react";
+
+import { useState } from "react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ export function SortableItem({
   onDuplicate?: () => void;
   children: React.ReactNode;
 }) {
+  const [isOpen, setIsOpen] = useState(true);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   });
@@ -43,9 +46,23 @@ export function SortableItem({
         >
           <GripVertical className="size-4" />
         </button>
-        <span className="flex-1 font-medium text-sm">
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-label={`${isOpen ? "Collapse" : "Expand"} item ${index + 1}`}
+          onClick={() => setIsOpen((open) => !open)}
+          className="text-form-icon-btn hover:text-form-icon-btn-hover"
+        >
+          {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+        </button>
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((open) => !open)}
+          className="flex-1 cursor-pointer text-left font-medium text-sm"
+        >
           #{index + 1} {title}
-        </span>
+        </button>
         <ModifiedTag isModified={isModified ?? false} />
         {onDuplicate && (
           <Button
@@ -68,7 +85,7 @@ export function SortableItem({
           <Trash2 className="size-4" />
         </Button>
       </div>
-      <div className="p-3">{children}</div>
+      {isOpen && <div className="p-3">{children}</div>}
     </div>
   );
 }
