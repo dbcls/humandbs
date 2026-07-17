@@ -3,6 +3,7 @@ import { Download, Upload } from "lucide-react";
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface MarkdownFileActionsProps {
   filename: string;
@@ -10,6 +11,7 @@ interface MarkdownFileActionsProps {
   title: string;
   lang: string;
   onUpload: (content: string, title?: string) => void;
+  className?: string;
 }
 
 function buildFrontmatter(title: string, lang: string): string {
@@ -38,6 +40,7 @@ export function MarkdownFileActions({
   title,
   lang,
   onUpload,
+  className,
 }: MarkdownFileActionsProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -69,7 +72,7 @@ export function MarkdownFileActions({
   }
 
   return (
-    <div className="flex w-full items-center justify-end gap-2">
+    <div className={cn("flex items-center justify-end gap-2", className)}>
       <Button variant="outline" onClick={handleDownload}>
         <Download className="size-6" />
         MD

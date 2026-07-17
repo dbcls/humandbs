@@ -5,9 +5,9 @@ import { useLocale, useTranslations } from "use-intl";
 import { lazy, Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
-import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
@@ -46,7 +46,7 @@ function RouteComponent() {
             <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="w-full h-20 py-2 pr-0 pl-8"
+                className="h-20 w-full py-2 pr-0 pl-8"
                 placeholder={t("search-placeholder")}
                 aria-label={t("search-placeholder")}
                 value={query}
@@ -55,7 +55,7 @@ function RouteComponent() {
                     variant="accent"
                     size="icon"
                     type="button"
-                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
+                    className="pointer-events-auto mr-1 flex aspect-square h-14 items-center justify-center rounded-full p-0"
                     onClick={handleSearch}
                     aria-label={tCommon("search")}
                   >
@@ -94,9 +94,14 @@ function RouteComponent() {
               <Button
                 variant={"accent"}
                 onClick={() => {
-                  navigate({ to: "/{-$lang}/data-submission" });
+                  navigate({
+                    to: "$",
+                    params: {
+                      _splat: "data-submission",
+                    },
+                  });
                 }}
-                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-108 flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
                 <Upload className="h-10 w-10 shrink-0" />
                 <span>{t("data-submission-button")}</span>
@@ -104,9 +109,9 @@ function RouteComponent() {
 
               <Button
                 variant={"action"}
-                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-108 flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 onClick={() => {
-                  navigate({ to: "/{-$lang}/data-use" });
+                  navigate({ to: "$", params: { _splat: "data-use" } });
                 }}
               >
                 <Download className="h-10 w-10 shrink-0" />
@@ -116,7 +121,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <Card caption={"News"} containerClassName="px-3" className="w-[30rem] shrink-0">
+        <Card caption={"News"} containerClassName="px-3" className="w-120 shrink-0">
           <ErrorResetBoundary getResetKey={() => "reset"}>
             <Suspense fallback={<SkeletonLoading />}>
               <News />

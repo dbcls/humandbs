@@ -1,7 +1,7 @@
 import type { ResearchDetail } from "@humandbs/backend/types";
 
 import type { Document, DocumentVersion } from "@/db/schema";
-import type { Alert, ContentItem, NewsItem } from "@/db/types";
+import type { Alert, NewsItem } from "@/db/types";
 import type { SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
@@ -31,10 +31,7 @@ export interface Permissions {
     dataType: Document;
     action: "view" | "create" | "update" | "delete" | "list";
   };
-  contents: {
-    dataType: ContentItem;
-    action: "list" | "view" | "create" | "update" | "delete";
-  };
+
   documentVersions: {
     dataType: DocumentVersion;
     action: "view" | "publish" | "update" | "create" | "delete" | "list";
@@ -80,13 +77,6 @@ const ROLES = {
       list: true,
     },
 
-    contents: {
-      list: true,
-      view: true,
-      create: true,
-      update: true,
-      delete: true,
-    },
     assets: {
       view: true,
       create: true,

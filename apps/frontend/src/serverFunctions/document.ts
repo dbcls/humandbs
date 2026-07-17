@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db/database";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 import { createDocumentRepository } from "@/repositories/document";
 
 const documentRepo = createDocumentRepository(db);
@@ -56,7 +57,9 @@ export const $createDocument = createServerFn({ method: "POST" })
   .handler(({ context, data }) => {
     context.checkPermission("documents", "create");
 
-    return documentRepo.create(data.contentId, context.user.id);
+    return auditMutation("create", "document", data.contentId, () =>
+      documentRepo.create(data.contentId, context.user.id),
+    );
   });
 
 /** Get a single document by contentId */
@@ -84,7 +87,9 @@ export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await documentRepo.updateSettings(data.contentId, { hideTOC: data.hideTOC });
+    await auditMutation("update", "document", data.contentId, () =>
+      documentRepo.updateSettings(data.contentId, { hideTOC: data.hideTOC }),
+    );
   });
 
 /** Update hideRevisions flag for a document */
@@ -94,7 +99,9 @@ export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await documentRepo.updateSettings(data.contentId, { hideRevisions: data.hideRevisions });
+    await auditMutation("update", "document", data.contentId, () =>
+      documentRepo.updateSettings(data.contentId, { hideRevisions: data.hideRevisions }),
+    );
   });
 
 /** Update hideFromNav flag for a document */
@@ -104,7 +111,9 @@ export const $updateDocumentHideFromNav = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await documentRepo.updateSettings(data.contentId, { hideFromNav: data.hideFromNav });
+    await auditMutation("update", "document", data.contentId, () =>
+      documentRepo.updateSettings(data.contentId, { hideFromNav: data.hideFromNav }),
+    );
   });
 
 /**
@@ -116,7 +125,9 @@ export const $deleteDocument = createServerFn({ method: "POST" })
   .handler(({ context, data }) => {
     context.checkPermission("documents", "delete");
 
-    return documentRepo.delete(data.contentId);
+    return auditMutation("delete", "document", data.contentId, () =>
+      documentRepo.delete(data.contentId),
+    );
   });
 
 /**
@@ -128,5 +139,7 @@ export const $changeIdOfDocument = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "update");
 
-    await documentRepo.changeContentId(data.oldId, data.newId);
+    await auditMutation("update", "document", data.oldId, () =>
+      documentRepo.changeContentId(data.oldId, data.newId),
+    );
   });

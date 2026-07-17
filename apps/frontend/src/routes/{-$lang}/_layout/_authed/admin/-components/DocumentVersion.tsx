@@ -175,7 +175,7 @@ function DocumentVersionContent({
   );
 
   const t = useTranslations("common");
-  const tDocs = useTranslations("admin.documents");
+
   const tCommonAdmin = useTranslations("admin.common");
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
@@ -329,45 +329,47 @@ function DocumentVersionContent({
                 className="flex min-h-0 flex-1 flex-col gap-2"
                 value={DOCUMENT_VERSION_STATUS.DRAFT}
               >
-                <form.Subscribe
-                  selector={(state) => ({
-                    draftContent: state.values.translations[loc]?.draft?.content ?? "",
-                    draftTitle: state.values.translations[loc]?.draft?.title ?? "",
-                  })}
-                >
-                  {({ draftContent, draftTitle }) => (
-                    <MarkdownFileActions
-                      filename={`${contentId}-${loc}-v${versionNumber}`}
-                      content={draftContent}
-                      title={draftTitle}
-                      lang={loc}
-                      onUpload={(text, uploadedTitle) => {
-                        form.setFieldValue(
-                          `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
-                          text,
-                        );
-                        if (uploadedTitle !== undefined) {
+                <div className="flex items-center justify-between gap-5">
+                  <form.AppField
+                    name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
+                    listeners={{
+                      onChange: ({ fieldApi }) => {
+                        fieldApi.form.handleSubmit({ submitAction: "saveDraft", lang: loc });
+                      },
+                      onChangeDebounceMs: 800,
+                    }}
+                  >
+                    {(field) => <field.TextField className="flex-1" label="Title" />}
+                  </form.AppField>
+                  <form.Subscribe
+                    selector={(state) => ({
+                      draftContent: state.values.translations[loc]?.draft?.content ?? "",
+                      draftTitle: state.values.translations[loc]?.draft?.title ?? "",
+                    })}
+                  >
+                    {({ draftContent, draftTitle }) => (
+                      <MarkdownFileActions
+                        filename={`${contentId}-${loc}-v${versionNumber}`}
+                        content={draftContent}
+                        title={draftTitle}
+                        lang={loc}
+                        onUpload={(text, uploadedTitle) => {
                           form.setFieldValue(
-                            `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
-                            uploadedTitle,
+                            `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
+                            text,
                           );
-                        }
-                        form.handleSubmit({ submitAction: "saveDraft", lang: loc });
-                      }}
-                    />
-                  )}
-                </form.Subscribe>
-                <form.AppField
-                  name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
-                  listeners={{
-                    onChange: ({ fieldApi }) => {
-                      fieldApi.form.handleSubmit({ submitAction: "saveDraft", lang: loc });
-                    },
-                    onChangeDebounceMs: 800,
-                  }}
-                >
-                  {(field) => <field.TextField label="Title" />}
-                </form.AppField>
+                          if (uploadedTitle !== undefined) {
+                            form.setFieldValue(
+                              `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
+                              uploadedTitle,
+                            );
+                          }
+                          form.handleSubmit({ submitAction: "saveDraft", lang: loc });
+                        }}
+                      />
+                    )}
+                  </form.Subscribe>
+                </div>
                 <Suspense fallback={<SkeletonLoading />}>
                   <form.AppField
                     name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}

@@ -26,12 +26,16 @@ export default function TextField({
 
   return (
     <Label
-      className={cn("flex-col items-stretch", {
-        "flex-1": !label,
-      })}
+      className={cn(
+        "flex-col items-stretch",
+        {
+          "flex-1": !label,
+        },
+        className,
+      )}
     >
       <div
-        className={cn("flex items-center gap-2", className, {
+        className={cn("flex items-center gap-2", {
           "flex-col items-stretch": type === "col",
         })}
       >

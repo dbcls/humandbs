@@ -1,6 +1,8 @@
 import { evaluate } from "@tanstack/react-form";
 import type { z } from "zod";
 
+import { useState } from "react";
+
 import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
@@ -28,6 +30,14 @@ export default function BilingualTextValueField({
 }) {
   const field = useFieldContext<BilingualTextValue>();
   const initial = getFieldDefaultValue(field) as BilingualTextValue | undefined;
+  const [textareaHeights, setTextareaHeights] = useState<Partial<Record<Locale, number>>>({});
+  const textareaHeight = Math.max(0, ...Object.values(textareaHeights));
+
+  function handleTextareaHeightChange(height: number, locale: Locale) {
+    setTextareaHeights((current) =>
+      current[locale] === height ? current : { ...current, [locale]: height },
+    );
+  }
 
   function handleChangeValue(value: string, locale: Locale) {
     field.handleChange((prev) => ({
@@ -52,8 +62,10 @@ export default function BilingualTextValueField({
             <div key={locale} className="relative flex-1">
               {variant === "textarea" ? (
                 <TextareaAutosize
-                  minRows={5}
-                  maxRows={5}
+                  minRows={3}
+                  maxRows={10}
+                  style={textareaHeight > 0 ? { height: textareaHeight } : undefined}
+                  onHeightChange={(height) => handleTextareaHeightChange(height, locale)}
                   className={cn(
                     "w-full resize-none rounded-lg px-3 py-2 text-sm disabled:opacity-100",
                     "group-disabled/fieldset:disabled-text-field",

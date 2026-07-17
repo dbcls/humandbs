@@ -203,8 +203,9 @@ function DatasetEditViewInner({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            aria-label="Back to all datasets"
             onClick={onBack}
-            className="flex items-center gap-1 text-gray-500 text-sm hover:text-gray-800"
+            className="flex cursor-pointer items-center gap-1 text-gray-500 text-sm hover:text-gray-800"
           >
             <ChevronLeft className="size-4" />
             All datasets

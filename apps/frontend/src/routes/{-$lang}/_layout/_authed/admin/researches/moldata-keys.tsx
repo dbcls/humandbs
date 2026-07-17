@@ -60,6 +60,18 @@ const emptyCatalogFormValues: CatalogFormValues = { entries: [] };
 const requiredEnglish = z.string().trim().min(1, "English is required.");
 const requiredJapanese = z.string().trim().min(1, "Japanese is required.");
 
+function sameEntries(left: MoldataKeyCatalogEntry[], right: MoldataKeyCatalogEntry[]) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (entry, index) =>
+        entry.id === right[index]?.id &&
+        entry.english === right[index]?.english &&
+        entry.japanese === right[index]?.japanese,
+    )
+  );
+}
+
 /**
  * Uniqueness spans rows, so no single field can validate it — it lives on the
  * array as a whole and is mapped back onto the offending rows' `english`
@@ -234,7 +246,10 @@ function RouteComponent() {
 
     queryClient.setQueryData(["moldata-key-catalog"], next);
     form.reset({ entries: next.entries });
-    form.setFieldValue("entries", entries);
+    // Reordering is already persisted by its dedicated mutation. Avoid writing
+    // the identical order back into the form because TanStack marks every
+    // setFieldValue call dirty, even when it matches the reset baseline.
+    if (!sameEntries(entries, next.entries)) form.setFieldValue("entries", entries);
     setSavedEntries(next.entries);
     setRevision(next.revision);
   }

@@ -9,9 +9,8 @@ import { db } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation, emitEvent } from "@/observability/server";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
-
-import { $getPublishedContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
@@ -124,7 +123,9 @@ export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
 
     const { contentId, versionNumber, locale, ...rest } = data;
 
-    return documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest, context.user.id);
+    return auditMutation("update", "document_version", contentId, () =>
+      documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest, context.user.id),
+    );
   });
 
 // === PUBLISH DRAFT
@@ -141,7 +142,9 @@ export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
-    await documentVersionRepo.publish(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("publish", "document_version", data.contentId, () =>
+      documentVersionRepo.publish(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === UNPUBLISH DRAFT
@@ -152,7 +155,9 @@ export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
 
-    await documentVersionRepo.unpublish(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("unpublish", "document_version", data.contentId, () =>
+      documentVersionRepo.unpublish(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === RESET DRAFT
@@ -163,7 +168,9 @@ export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "update");
 
-    await documentVersionRepo.resetDraft(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("reset", "document_version", data.contentId, () =>
+      documentVersionRepo.resetDraft(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === DELETE VERSION
@@ -178,7 +185,9 @@ export const $deleteDocumentVersion = createServerFn({
 
     const { contentId, versionNumber } = data;
 
-    await documentVersionRepo.delete(contentId, versionNumber);
+    await auditMutation("delete", "document_version", contentId, () =>
+      documentVersionRepo.delete(contentId, versionNumber),
+    );
   });
 
 // === CREATE VERSION
@@ -203,7 +212,9 @@ export const $createDocumentVersion = createServerFn({
     // Don't pass dev bypass user ID as it doesn't exist in the user table
     const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
-    const result = await documentVersionRepo.createVersionFromPublished(contentId, userId);
+    const result = await auditMutation("create", "document_version", contentId, () =>
+      documentVersionRepo.createVersionFromPublished(contentId, userId),
+    );
 
     return result;
   });
@@ -226,14 +237,7 @@ export const $getLatestDocumentOrContent = createServerFn()
 
     if (docVersion) {
       return docVersion;
-    }
-
-    try {
-      const content = await $getPublishedContentItemTranslation({
-        data: { id, lang },
-      });
-      return content;
-    } catch {
+    } else {
       throw notFound();
     }
   });
@@ -249,6 +253,11 @@ export const $getLatestPublishedDocumentVersion = createServerFn({
     if (!docVersion) {
       throw new Error("Page not found");
     }
+    emitEvent(
+      "document.view",
+      { document_id: contentId, locale, route: `/${contentId}` },
+      { sampleable: true },
+    );
     return docVersion;
   });
 

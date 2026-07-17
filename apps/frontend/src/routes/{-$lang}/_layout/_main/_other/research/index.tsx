@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
+import type { Translator } from "node_modules/use-intl/dist/types/core/createTranslator";
+import type { Messages } from "use-intl";
 import { useLocale, useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useMemo, useRef } from "react";
 
-import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
+import type { ResearchSearchBody } from "@humandbs/backend/types";
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
@@ -25,12 +27,13 @@ import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
-import type { ResearchSummary } from "@/lib/types";
+import type { ResearchSearchResponseWithTypedCriteria, ResearchSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
@@ -73,16 +76,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")
   },
 });
 
-type Row = ResearchSearchResponse["data"][number];
+type Row = ResearchSearchResponseWithTypedCriteria["data"][number];
 
-function RouteComponent() {
-  const t = useTranslations("Research");
-  const search = Route.useSearch();
-  const { lang } = Route.useRouteContext();
-  const { setFilters, filters } = useFilters(Route.id);
-
-  const { data: researchesData } = useResearchesSearchQuery();
-
+function getRawData(
+  data: ResearchSearchResponseWithTypedCriteria | undefined,
+  t: Translator<Messages, "Research">,
+  lang: Locale,
+) {
   const columns: { header: string; value: (row: Row) => string }[] = [
     { header: t("research-id"), value: (row) => row.humId },
     { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
@@ -107,10 +107,27 @@ function RouteComponent() {
     },
   ];
 
-  const exportData = {
+  return {
     headers: columns.map((c) => c.header),
-    rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
+    rows: (data?.data ?? []).map((row) => columns.map((c) => c.value(row))),
   };
+}
+
+function useGetRawData() {
+  const { data: researchesData } = useResearchesSearchQuery();
+
+  const lang = useLocale();
+  const t = useTranslations("Research");
+
+  return getRawData(researchesData, t, lang);
+}
+
+function RouteComponent() {
+  const t = useTranslations("Research");
+  const search = Route.useSearch();
+  const exportData = useGetRawData();
+
+  const { setFilters, filters } = useFilters(Route.id);
 
   return (
     <FilterableCard

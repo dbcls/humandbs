@@ -24,7 +24,10 @@ import {
 
 import type { Locale } from "@/config/i18n";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { auditMutation } from "@/observability/server";
+import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
+import { makeChunks, mergeBatchResults } from "@/utils/batch-utils";
 import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
@@ -33,31 +36,13 @@ import type { RenderedDatasetDetailResponse } from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 import type { DeepOmit } from "@/utils/type-utils";
 
-import { makeChunks, mergeBatchResults } from "../utils/batch-utils";
-
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+  | ApiErrorResult;
 
-export type UpdateDatasetResult =
-  | { ok: true; data: DatasetUpdateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type UpdateDatasetResult = { ok: true; data: DatasetUpdateResponse } | ApiErrorResult;
 
-export type DeleteDatasetResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type DeleteDatasetResult = { ok: true } | ApiErrorResult;
 
 export const $getDatasetsPaginated = createServerFn()
   .middleware([requestSignalMiddleware])
@@ -286,7 +271,9 @@ export const $createDatasetForResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const created = await api.createDatasetForResearch(data.humId, data.body, accessToken);
+      const created = await auditMutation("create", "dataset", undefined, () =>
+        api.createDatasetForResearch(data.humId, data.body, accessToken),
+      );
       return { ok: true, data: created };
     } catch (error) {
       return mapApiError(error, "Failed to create dataset.");
@@ -306,7 +293,9 @@ export const $updateDataset = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const updated = await api.updateDataset(data.datasetId, data.body, accessToken);
+      const updated = await auditMutation("update", "dataset", data.datasetId, () =>
+        api.updateDataset(data.datasetId, data.body, accessToken),
+      );
       return { ok: true, data: updated };
     } catch (error) {
       return mapApiError(error, "Failed to update dataset.");
@@ -324,7 +313,9 @@ export const $deleteDataset = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      await api.deleteDataset(data.datasetId, accessToken);
+      await auditMutation("delete", "dataset", data.datasetId, () =>
+        api.deleteDataset(data.datasetId, accessToken),
+      );
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete dataset.");

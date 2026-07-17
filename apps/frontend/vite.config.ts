@@ -4,11 +4,43 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
+import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 import tsConfigPaths from "vite-tsconfig-paths";
 
 import packageJson from "./package.json";
+
+function observabilityDevEndpoint(): Plugin {
+  return {
+    name: "humandbs-observability-client-errors",
+    configureServer(server) {
+      server.middlewares.use("/api/observability/client-errors", (request, response, next) => {
+        if (request.method !== "POST") return next();
+        const chunks: Buffer[] = [];
+        request.on("data", (chunk: Buffer) => chunks.push(chunk));
+        request.on("error", () => response.end());
+        request.on("end", async () => {
+          try {
+            const { handleClientErrorReport } = await import("./src/observability/server");
+            const result = await handleClientErrorReport(
+              new Request("http://localhost/api/observability/client-errors", {
+                method: "POST",
+                headers: request.headers as HeadersInit,
+                body: Buffer.concat(chunks),
+              }),
+            );
+            response.statusCode = result.status;
+            response.end();
+          } catch {
+            response.statusCode = 400;
+            response.end();
+          }
+        });
+      });
+    },
+  };
+}
 
 function getCommitHash(): string {
   try {
@@ -43,6 +75,7 @@ export default defineConfig(async () => {
       },
     },
     plugins: [
+      observabilityDevEndpoint(),
       tanstackStart({
         srcDirectory: "src",
         server: {

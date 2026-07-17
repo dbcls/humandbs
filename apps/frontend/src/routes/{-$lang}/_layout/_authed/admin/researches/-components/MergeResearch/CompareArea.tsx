@@ -70,6 +70,7 @@ function InlineScalarEditor({
   onSave: (value: string) => void;
   onCancel: () => void;
 }) {
+  const tMerge = useTranslations("admin.merge");
   function toText(v: unknown): string {
     if (v == null) return "";
     if (typeof v === "object" && "text" in v) return (v as { text: string }).text ?? "";
