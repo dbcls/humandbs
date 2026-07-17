@@ -24,7 +24,9 @@ import {
 
 import type { Locale } from "@/config/i18n";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
+import { makeChunks, mergeBatchResults } from "@/utils/batch-utils";
 import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
@@ -33,31 +35,13 @@ import type { RenderedDatasetDetailResponse } from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 import type { DeepOmit } from "@/utils/type-utils";
 
-import { makeChunks, mergeBatchResults } from "../utils/batch-utils";
-
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+  | ApiErrorResult;
 
-export type UpdateDatasetResult =
-  | { ok: true; data: DatasetUpdateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type UpdateDatasetResult = { ok: true; data: DatasetUpdateResponse } | ApiErrorResult;
 
-export type DeleteDatasetResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type DeleteDatasetResult = { ok: true } | ApiErrorResult;
 
 export const $getDatasetsPaginated = createServerFn()
   .middleware([requestSignalMiddleware])

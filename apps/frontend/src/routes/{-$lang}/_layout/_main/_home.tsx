@@ -94,9 +94,14 @@ function RouteComponent() {
               <Button
                 variant={"accent"}
                 onClick={() => {
-                  navigate({ to: "/{-$lang}/data-submission" });
+                  navigate({
+                    to: "$",
+                    params: {
+                      _splat: "data-submission",
+                    },
+                  });
                 }}
-                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-108 flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
                 <Upload className="h-10 w-10 shrink-0" />
                 <span>{t("data-submission-button")}</span>
@@ -104,9 +109,9 @@ function RouteComponent() {
 
               <Button
                 variant={"action"}
-                className="flex h-32 w-[27rem] flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex h-32 w-108 flex-col items-center gap-1.5 rounded-2xl pt-5 font-bold text-base shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 onClick={() => {
-                  navigate({ to: "/{-$lang}/data-use" });
+                  navigate({ to: "$", params: { _splat: "data-use" } });
                 }}
               >
                 <Download className="h-10 w-10 shrink-0" />
@@ -116,7 +121,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <Card caption={"News"} containerClassName="px-3" className="w-[30rem] shrink-0">
+        <Card caption={"News"} containerClassName="px-3" className="w-120 shrink-0">
           <ErrorResetBoundary getResetKey={() => "reset"}>
             <Suspense fallback={<SkeletonLoading />}>
               <News />

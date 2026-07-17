@@ -23,6 +23,7 @@ import {
 import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
 import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
@@ -46,36 +47,13 @@ import type {
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
-  | { ok: false; error: string; code?: "HUMID_CONFLICT" };
-export type UpdateResearchResult =
-  | { ok: true; data: ResearchWithLockResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type DeleteResearchResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type GetJDSResearchResult =
-  | { ok: true; data: ResearchTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+  | ApiErrorResult<"HUMID_CONFLICT">;
 
-export type GetDatasetTemplateResult =
-  | { ok: true; data: DatasetTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type UpdateResearchResult = { ok: true; data: ResearchWithLockResponse } | ApiErrorResult;
+export type DeleteResearchResult = { ok: true } | ApiErrorResult;
+export type GetJDSResearchResult = { ok: true; data: ResearchTemplateData } | ApiErrorResult;
+
+export type GetDatasetTemplateResult = { ok: true; data: DatasetTemplateData } | ApiErrorResult;
 
 /**
  * Creates a research. Trusts backend validation (validator is just an identity function - to provide only type safety),
@@ -486,13 +464,7 @@ export function getResearchForEditQueryOptions(query: z.infer<typeof ResearchEdi
   });
 }
 
-export type GetResearchOwnersResult =
-  | { ok: true; data: OwnersData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type GetResearchOwnersResult = { ok: true; data: OwnersData } | ApiErrorResult;
 
 /**
  * Fetches the research owners, resolved server-side from the JGA DB

@@ -13,8 +13,11 @@ export function createDummyResearch(lang: string): ResearchSummary {
     typeOfData: [],
     platforms: [],
     targets: "",
+    methodsSummary: null,
+    typeOfDataSummary: null,
+    targetsSummary: null,
     dataProvider: [],
-    criteria: "",
+    criteria: [],
     status: "draft",
   };
 }
