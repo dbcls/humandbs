@@ -5,9 +5,9 @@ import { useLocale, useTranslations } from "use-intl";
 import { lazy, Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
-import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
@@ -46,7 +46,7 @@ function RouteComponent() {
             <div className="mt-8 flex w-full max-w-full flex-col gap-3 text-base">
               <Input
                 type="text"
-                className="w-full h-20 py-2 pr-0 pl-8"
+                className="h-20 w-full py-2 pr-0 pl-8"
                 placeholder={t("search-placeholder")}
                 aria-label={t("search-placeholder")}
                 value={query}
@@ -55,7 +55,7 @@ function RouteComponent() {
                     variant="accent"
                     size="icon"
                     type="button"
-                    className="pointer-events-auto aspect-square h-14 rounded-full p-0 flex items-center justify-center mr-1"
+                    className="pointer-events-auto mr-1 flex aspect-square h-14 items-center justify-center rounded-full p-0"
                     onClick={handleSearch}
                     aria-label={tCommon("search")}
                   >
