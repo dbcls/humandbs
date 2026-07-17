@@ -59,6 +59,15 @@ export function DataProviderArrayField<F extends SectionForm>({ form }: { form: 
       name="dataProvider"
       elementSchema={elementOf("dataProvider")}
       getTitle={(item) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+      overrides={{
+        "organization.name": ({ form, name, label }) => (
+          <form.AppField name={name}>
+            {(field) => (
+              <field.BilingualTextValueField label={label} inputsClassName="flex w-full gap-2" />
+            )}
+          </form.AppField>
+        ),
+      }}
     />
   );
 }
@@ -70,6 +79,15 @@ export function ResearchProjectArrayField<F extends SectionForm>({ form }: { for
       name="researchProject"
       elementSchema={elementOf("researchProject")}
       getTitle={(item) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+      overrides={{
+        name: ({ form, name, label }) => (
+          <form.AppField name={name}>
+            {(field) => (
+              <field.BilingualTextValueField label={label} inputsClassName="flex w-full gap-2" />
+            )}
+          </form.AppField>
+        ),
+      }}
     />
   );
 }
@@ -81,6 +99,18 @@ export function GrantArrayField<F extends SectionForm>({ form }: { form: F }) {
       name="grant"
       elementSchema={elementOf("grant")}
       getTitle={(item) => item?.title?.en ?? item?.title?.ja ?? ""}
+      overrides={{
+        title: ({ form, name, label }) => (
+          <form.AppField name={name}>
+            {(field) => <field.BilingualTextField label={label} variant="textarea" />}
+          </form.AppField>
+        ),
+        "agency.name": ({ form, name, label }) => (
+          <form.AppField name={name}>
+            {(field) => <field.BilingualTextField label={label} variant="textarea" />}
+          </form.AppField>
+        ),
+      }}
     />
   );
 }
@@ -106,6 +136,13 @@ export function RelatedPublicationArrayField<F extends SectionForm>({ form }: { 
           </div>
         ) : null
       }
+      overrides={{
+        title: ({ form, name, label }) => (
+          <form.AppField name={name}>
+            {(field) => <field.BilingualTextField label={label} variant="textarea" />}
+          </form.AppField>
+        ),
+      }}
     />
   );
 }

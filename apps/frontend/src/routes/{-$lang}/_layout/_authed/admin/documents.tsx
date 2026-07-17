@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { FilesIcon } from "lucide-react";
 import { z } from "zod";
 
-import { Suspense, useCallback } from "react";
+import { Suspense } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
@@ -87,7 +87,7 @@ function RouteComponent() {
 
   const onSelectVersion = (versionNumber: number) => {
     navigate({ search: (prev) => ({ ...prev, selectedVer: versionNumber }) });
-  }
+  };
 
   return (
     <>
