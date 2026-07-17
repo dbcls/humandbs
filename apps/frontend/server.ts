@@ -599,6 +599,14 @@ async function initializeServer() {
   });
 
   log.success(`Server listening on http://localhost:${String(server.port)}`);
+
+  const stopServer = async () => {
+    server.stop();
+    await shutdownObservability();
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => void stopServer());
+  process.once("SIGINT", () => void stopServer());
 }
 
 // Initialize the server
@@ -609,5 +617,3 @@ initializeServer().catch((error: unknown) => {
 
 process.on("uncaughtException", (error) => emitError("server.unhandled_error", error));
 process.on("unhandledRejection", (reason) => emitError("server.unhandled_error", reason));
-process.on("SIGTERM", () => void shutdownObservability());
-process.on("SIGINT", () => void shutdownObservability());
