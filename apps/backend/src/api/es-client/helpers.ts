@@ -26,7 +26,7 @@ export type FacetCountField = "datasetId" | "humId"
 export const nestedFacetAgg = (
   field: string,
   countField: FacetCountField,
-  size = 50,
+  size = 500,
 ): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
@@ -49,7 +49,7 @@ export const doubleNestedFacetAgg = (
   innerPath: string,
   field: string,
   countField: FacetCountField,
-  size = 50,
+  size = 500,
 ): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
@@ -72,10 +72,10 @@ export const doubleNestedFacetAgg = (
   },
 })
 
-/** Helper to create platform composite aggregation (vendor + model, double-nested) */
+/** Helper to create platform multi_terms aggregation (vendor + model, double-nested) */
 export const platformFacetAgg = (
   countField: FacetCountField,
-  size = 50,
+  size = 500,
 ): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
@@ -83,11 +83,11 @@ export const platformFacetAgg = (
       nested: { path: "experiments.searchable.platforms" },
       aggs: {
         vendorModel: {
-          composite: {
+          multi_terms: {
             size,
-            sources: [
-              { vendor: { terms: { field: "experiments.searchable.platforms.vendor", missing_bucket: true } } },
-              { model: { terms: { field: "experiments.searchable.platforms.model", missing_bucket: true } } },
+            terms: [
+              { field: "experiments.searchable.platforms.vendor" },
+              { field: "experiments.searchable.platforms.model" },
             ],
           },
           aggs: {

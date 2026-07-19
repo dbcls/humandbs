@@ -7,31 +7,16 @@ import { z } from "zod";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
-import type { DocumentVersionStatus } from "@/db/types";
 import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import type {
-  DocAnyVersionResponseRaw,
-  DocVersionListItemResponseRaw,
-} from "@/repositories/documentVersion";
+import { auditMutation, emitEvent } from "@/observability/server";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
-
-import { $getPublishedContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
 // === For CMS ===
 
 // === LIST VERSIONS
-
-export interface DocVersionListItemResponse {
-  versionNumber: number;
-  contentId: string;
-  translations: {
-    locale: Locale;
-    statuses: { status: DocumentVersionStatus; title: string }[];
-  }[];
-}
 
 const docVersionsRequestSchema = documentSelectSchema;
 /**
@@ -47,9 +32,7 @@ export const $getDocumentVersionList = createServerFn({
 
     const { contentId } = data;
 
-    const versions = await documentVersionRepo.getVersionList(contentId);
-
-    return groupDocumentVersions(versions);
+    return await documentVersionRepo.getVersionList(contentId);
   });
 
 export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: string | null }) =>
@@ -62,49 +45,6 @@ export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: s
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId,
   });
-
-export function groupDocumentVersions(
-  rawVersions: DocVersionListItemResponseRaw[],
-): DocVersionListItemResponse[] {
-  const groupedVersions: DocVersionListItemResponse[] = [];
-
-  for (const version of rawVersions) {
-    const existingVersion = groupedVersions.find(
-      (v) => v.contentId === version.contentId && v.versionNumber === version.versionNumber,
-    );
-
-    if (existingVersion) {
-      const existingTranslation = existingVersion.translations.find(
-        (t) => t.locale === version.locale,
-      );
-
-      if (existingTranslation) {
-        existingTranslation.statuses.push({
-          status: version.status,
-          title: version.title ?? "",
-        });
-      } else {
-        existingVersion.translations.push({
-          locale: version.locale,
-          statuses: [{ status: version.status, title: version.title ?? "" }],
-        });
-      }
-    } else {
-      groupedVersions.push({
-        versionNumber: version.versionNumber,
-        contentId: version.contentId,
-        translations: [
-          {
-            locale: version.locale,
-            statuses: [{ status: version.status, title: version.title ?? "" }],
-          },
-        ],
-      });
-    }
-  }
-
-  return groupedVersions;
-}
 
 // === GET VERSION
 
@@ -143,7 +83,7 @@ export const $getDocumentVersion = createServerFn({
 
     const version = await documentVersionRepo.getVersion(contentId, versionNumber);
 
-    return groupDocVersion(version);
+    return version;
   });
 
 export const getDocumentVersionQueryOptions = ({
@@ -165,62 +105,6 @@ export const getDocumentVersionQueryOptions = ({
     enabled: typeof versionNumber === "number",
   });
 
-/**
- *
- * @param rawVersion raw version return
- * @returns grouped result
- */
-export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVersionResponse {
-  if (rawVersion.length === 0) {
-    return {
-      contentId: "",
-      versionNumber: 0,
-      translations: {},
-    };
-  }
-
-  const result: DocVersionResponse = {
-    contentId: rawVersion[0].contentId,
-    versionNumber: rawVersion[0].versionNumber,
-    translations: {},
-  };
-
-  for (const verStatusLang of rawVersion) {
-    let translation = result.translations[verStatusLang.locale];
-    if (!translation) {
-      translation = {
-        createdAt: verStatusLang.createdAt,
-        updatedAt: verStatusLang.updatedAt,
-        author: verStatusLang.author,
-        [verStatusLang.status]: {
-          title: verStatusLang.title ?? "",
-          content: verStatusLang.content ?? "",
-        },
-      };
-    } else {
-      translation[verStatusLang.status] = {
-        title: verStatusLang.title ?? "",
-        content: verStatusLang.content ?? "",
-      };
-      // keep the most recent updatedAt across statuses for this locale
-      if (verStatusLang.updatedAt > translation.updatedAt) {
-        translation.updatedAt = verStatusLang.updatedAt;
-      }
-    }
-
-    // copy published content in draft
-    if (!translation.draft) {
-      translation.draft = {
-        content: translation.published?.content ?? "",
-        title: translation.published?.title ?? "",
-      };
-    }
-
-    result.translations[verStatusLang.locale] = translation;
-  }
-  return result;
-}
-
 // === SAVE DRAFT
 
 const saveDocVersionDraftRequestSchema = z.object({
@@ -239,7 +123,9 @@ export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
 
     const { contentId, versionNumber, locale, ...rest } = data;
 
-    await documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest);
+    return auditMutation("update", "document_version", contentId, () =>
+      documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest, context.user.id),
+    );
   });
 
 // === PUBLISH DRAFT
@@ -256,7 +142,9 @@ export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
-    await documentVersionRepo.publish(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("publish", "document_version", data.contentId, () =>
+      documentVersionRepo.publish(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === UNPUBLISH DRAFT
@@ -267,7 +155,9 @@ export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
 
-    await documentVersionRepo.unpublish(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("unpublish", "document_version", data.contentId, () =>
+      documentVersionRepo.unpublish(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === RESET DRAFT
@@ -278,7 +168,9 @@ export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "update");
 
-    await documentVersionRepo.resetDraft(data.contentId, data.versionNumber, data.locale);
+    await auditMutation("reset", "document_version", data.contentId, () =>
+      documentVersionRepo.resetDraft(data.contentId, data.versionNumber, data.locale),
+    );
   });
 
 // === DELETE VERSION
@@ -293,7 +185,9 @@ export const $deleteDocumentVersion = createServerFn({
 
     const { contentId, versionNumber } = data;
 
-    await documentVersionRepo.delete(contentId, versionNumber);
+    await auditMutation("delete", "document_version", contentId, () =>
+      documentVersionRepo.delete(contentId, versionNumber),
+    );
   });
 
 // === CREATE VERSION
@@ -318,7 +212,9 @@ export const $createDocumentVersion = createServerFn({
     // Don't pass dev bypass user ID as it doesn't exist in the user table
     const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
-    const result = await documentVersionRepo.createVersionFromPublished(contentId, userId);
+    const result = await auditMutation("create", "document_version", contentId, () =>
+      documentVersionRepo.createVersionFromPublished(contentId, userId),
+    );
 
     return result;
   });
@@ -341,14 +237,7 @@ export const $getLatestDocumentOrContent = createServerFn()
 
     if (docVersion) {
       return docVersion;
-    }
-
-    try {
-      const content = await $getPublishedContentItemTranslation({
-        data: { id, lang },
-      });
-      return content;
-    } catch {
+    } else {
       throw notFound();
     }
   });
@@ -364,6 +253,11 @@ export const $getLatestPublishedDocumentVersion = createServerFn({
     if (!docVersion) {
       throw new Error("Page not found");
     }
+    emitEvent(
+      "document.view",
+      { document_id: contentId, locale, route: `/${contentId}` },
+      { sampleable: true },
+    );
     return docVersion;
   });
 
@@ -385,6 +279,48 @@ export const $getPublishedDocumentVersion = createServerFn({
 
     return docVersion;
   });
+
+/**
+ * For Diff view
+ */
+export function getTwoDocumentVersionsQueryOptions({
+  contentId,
+  versionNumber1,
+  versionNumber2,
+  locale,
+}: {
+  contentId: string;
+  versionNumber1: number;
+  versionNumber2: number;
+  locale: Locale;
+}) {
+  return queryOptions({
+    queryKey: [
+      "documents",
+      contentId,
+      "published-versions",
+      versionNumber1,
+      versionNumber2,
+      locale,
+    ],
+    queryFn: async () => {
+      const [version1, version2] = await Promise.all([
+        $getPublishedDocumentVersion({
+          data: { contentId, versionNumber: versionNumber1, locale },
+        }),
+        $getPublishedDocumentVersion({
+          data: { contentId, versionNumber: versionNumber2, locale },
+        }),
+      ]);
+      return [version1, version2];
+    },
+    staleTime: 5 * 1000 * 60,
+    // versionNumber can legitimately be 0/falsy-adjacent on the smallest version,
+    // so guard on Number.isFinite rather than truthiness.
+    enabled:
+      !!contentId && Number.isFinite(versionNumber1) && Number.isFinite(versionNumber2) && !!locale,
+  });
+}
 
 // === GET PUBLISHED VERSIONS LIST
 

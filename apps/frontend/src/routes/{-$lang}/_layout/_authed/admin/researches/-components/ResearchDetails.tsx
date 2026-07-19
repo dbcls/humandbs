@@ -1,89 +1,169 @@
 import { evaluate, useStore } from "@tanstack/react-form";
 import type { QueryKey } from "@tanstack/react-query";
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
-import { IntlProvider } from "use-intl";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  LucideCheck,
+  LucideEye,
+  LucidePlus,
+  LucideRotateCcw,
+  LucideSave,
+  LucideSend,
+  LucideUser2,
+  LucideX,
+} from "lucide-react";
+import { IntlProvider, useTranslations } from "use-intl";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
+import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { BilingualMarkdownEditorField } from "@/components/form-context/fields/BilingualMarkdownEditorField";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
-import { SummaryForm } from "@/components/form-context/research-fields/SummaryForm";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
+import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
+import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
+import type { FieldOverride } from "@/components/form-context/schema-form/SchemaObjectFields";
+import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
+import { humanize } from "@/components/form-context/schema-form/utils";
+import { InfoBadge } from "@/components/InfoBadge";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { messages } from "@/config/messages";
 import { useCan } from "@/hooks/useCan";
-import { cn } from "@/lib/utils";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
-  $deleteResearch,
   $rejectResearch,
   $submitResearch,
+  $unpublishResearch,
   $updateResearch,
-  $updateResearchUids,
-  getResearchQueryOptions,
+  getResearchForEditQueryOptions,
+  getResearchOwnersQueryOptions,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { researchLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
+import { useResearchPreviewRenderedHtml } from "@/utils/renderedHtml/usePreviewRenderedHtml";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
+import { PreviewDialog } from "../../-components/PreviewDialog";
 import { DatasetCreateView } from "./DatasetCreateView";
 import { DatasetEditView } from "./DatasetEditView";
-import { MergeJDSResearchDialog } from "./MergeJDSResearch/index";
+import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
+import { researchFieldsConfig } from "./researchFieldsConfig";
+import type { ResearchForm, ResearchValues } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
-import type { MergeResearchResult } from "./utils/jdsResearchValues";
+import {
+  isReleaseNoteEditable,
+  isResearchEditable,
+  isViewingDraftVersion,
+} from "./utils/researchEditTarget";
+import type { MergeResearchResult } from "./utils/researchValues";
 
-const topLevelFields = [
-  "title",
-  "summary",
-  "dataProvider",
-  "researchProject",
-  "grant",
-  "relatedPublication",
+/**
+ * Top-level research metadata fields rendered as tabs, derived from the schema
+ * shape (single source of truth) and ordered/labelled via `researchFieldsConfig`.
+ * Fields whose key carries no config entry and resolve to a primitive kind fall
+ * through to the generic schema-driven `FieldControl` — so a new scalar backend
+ * field surfaces automatically with no code change here.
+ *
+ * `releaseNote`, `status`, versions and datasets are handled separately
+ * outside this tabbed loop, so they're excluded.
+ */
+const EXCLUDED_FIELDS = new Set<string>([
+  "humId",
+  "url",
+  "status",
+  "draftVersion",
+  "latestVersion",
+  "version",
+  "versionIds",
+  "humVersionId",
+  "versionReleaseDate",
+  "releaseNote",
+  "datasets",
   "controlledAccessUser",
-] as const;
+  // Optimistic-locking metadata carried by UpdateResearchRequestSchema — not editable fields.
+  "_seq_no",
+  "_primary_term",
+]);
+
+type MetadataField = {
+  key: string;
+  label: string;
+  order: number;
+  kind: ReturnType<typeof getFieldKind>;
+  renderer?: (form: ResearchForm) => React.ReactNode;
+};
+
+const metadataFields: MetadataField[] = Object.entries(UpdateResearchRequestSchema.shape)
+  .filter(([key]) => !EXCLUDED_FIELDS.has(key))
+  .flatMap(([key, schema], schemaIndex): MetadataField[] => {
+    const config = researchFieldsConfig[key as keyof typeof researchFieldsConfig];
+    if (config?.hidden) return [];
+    return [
+      {
+        key,
+        label: config?.label ?? humanize(key),
+        order: config?.order ?? schemaIndex + 1000,
+        kind: getFieldKind(schema as { _def: any }),
+        renderer: config?.renderer,
+      },
+    ];
+  })
+  .sort((a, b) => a.order - b.order);
+
+const topLevelFields = metadataFields.map((f) => f.key);
 
 export function ResearchDetails({
   humId,
   lang,
-  onDeselect,
   initialRelatedAccessions = [],
+  selectedVersion: selectedVersionProp,
+  onVersionChange,
 }: {
   humId: string;
   lang: Locale;
-  onDeselect?: () => void;
   initialRelatedAccessions?: string[];
+  selectedVersion?: string;
+  onVersionChange?: (v: string) => void;
 }) {
   const queryClient = useQueryClient();
 
-  // Initial load — no version param to get the default (draftVersion ?? latestVersion)
-  const { data: initialData } = useSuspenseQuery(getResearchQueryOptions({ humId, lang }));
+  const t = useTranslations();
 
-  const [selectedVersion, setSelectedVersion] = useState(
-    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version,
+  // Initial load — no version param to get the default (draftVersion ?? latestVersion)
+  // Uses the "for edit" fn (includeRawHtml: true, no render transform) so legacy
+  // rawHtml survives for the editor's reference popup.
+  const { data: initialData } = useSuspenseQuery(
+    getResearchForEditQueryOptions({ humId, lang, includeRawHtml: true }),
   );
 
-  // TODO - clean up so RQ wont fetch same twice
-  // Re-fetch when selectedVersion changes
+  const defaultVersion =
+    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version;
+  const selectedVersion = selectedVersionProp ?? defaultVersion;
+  const setSelectedVersion = onVersionChange ?? (() => {});
+
+  // Re-fetch for the selected version
   const { data } = useSuspenseQuery(
-    getResearchQueryOptions({ humId, lang, version: selectedVersion }),
+    getResearchForEditQueryOptions({
+      humId,
+      lang,
+      version: selectedVersion,
+      includeRawHtml: true,
+    }),
   );
   const researchValues = data.data;
+
+  // Legacy rawHtml side-channel: read-only lookup threaded to the field editors.
+  // Never enters submittable form state.
+  const legacyRawHtml = useMemo(() => researchLegacyRawHtml(data), [data]);
 
   const [seqNo, setSeqNo] = useState(data.meta._seq_no);
   const [primaryTerm, setPrimaryTerm] = useState(data.meta._primary_term);
@@ -93,10 +173,7 @@ export function ResearchDetails({
     action: "update",
     params: { research: researchValues },
   });
-  const { can: canDelete } = useCan({
-    resource: "researches",
-    action: "delete",
-  });
+
   const { can: canSubmit } = useCan({
     resource: "researches",
     action: "submit",
@@ -123,15 +200,24 @@ export function ResearchDetails({
     params: { research: researchValues },
   });
 
-  const { can: canUpdateUids } = useCan({
-    resource: "researches",
-    action: "update-uids",
-  });
   const { can: canCreateDataset } = useCan({
     resource: "datasets",
     action: "create",
     params: { research: researchValues },
   });
+
+  // Owners are resolved server-side from the JGA DB and only readable via the
+  // admin-only GET /research/{humId}/owners. Gate the fetch on admin access so
+  // non-admin viewers don't trigger a 403.
+  const { can: isAdmin } = useCan({ resource: "admin-panel", action: "view-cms" });
+  const { data: ownersResult } = useQuery({
+    ...getResearchOwnersQueryOptions(humId),
+    enabled: isAdmin,
+  });
+  const owners = ownersResult?.ok ? ownersResult.data.owners : [];
+
+  const tResearches = useTranslations("admin.researches");
+  const tCommon = useTranslations("admin.common");
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -144,40 +230,28 @@ export function ResearchDetails({
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
-      const calls: Promise<unknown>[] = [
-        $updateResearch({
-          data: {
-            humId,
-            body: {
-              title: value.title,
-              summary: value.summary,
-              dataProvider: value.dataProvider,
-              researchProject: value.researchProject,
-              grant: value.grant,
-              relatedPublication: value.relatedPublication,
-              controlledAccessUser: value.controlledAccessUser,
-              _seq_no: seqNo,
-              _primary_term: primaryTerm,
-            },
+      // Metadata is shared by the research and may be updated from any selected
+      // draft/published version. releaseNote is version-specific: omit it when
+      // viewing an older published version so the backend cannot overwrite the
+      // latest version's note (its update endpoint targets latestVersion).
+      const canUpdateReleaseNote = isReleaseNoteEditable({
+        selectedVersion,
+        draftVersion: value.draftVersion,
+        latestVersion: value.latestVersion,
+        status: value.status,
+      });
+      const result = await $updateResearch({
+        data: {
+          humId,
+          body: {
+            ...value,
+            ...(canUpdateReleaseNote ? {} : { releaseNote: undefined }),
+            _seq_no: seqNo,
+            _primary_term: primaryTerm,
           },
-        }),
-      ];
-      if (canUpdateUids) {
-        calls.push(
-          $updateResearchUids({
-            data: {
-              humId,
-              body: {
-                uids: value.uids ?? [],
-                _seq_no: seqNo,
-                _primary_term: primaryTerm,
-              },
-            },
-          }),
-        );
-      }
-      const [updateResult] = await Promise.all(calls);
-      return updateResult as UpdateResearchResult;
+        },
+      });
+      return result;
     },
     onSuccess: (result: UpdateResearchResult) => {
       if (!result.ok) {
@@ -193,40 +267,17 @@ export function ResearchDetails({
       setPrimaryTerm(result.data.meta._primary_term);
       setError(null);
       setIsConflict(false);
-      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
     onError: (err: Error) => {
-      setError(err.message ?? "Failed to save research.");
+      setError(err.message ?? tResearches("failed-to-save"));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
     },
   });
 
   const { openConfirmation } = useConfirmationStore();
-
-  const { mutate: deleteResearch } = useMutation({
-    mutationFn: () => $deleteResearch({ data: { humId } }),
-    onSuccess: (result) => {
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      onDeselect?.();
-    },
-    onError: (err: Error) => {
-      setError(err.message ?? "Failed to delete research.");
-    },
-  });
-
-  function handleDelete() {
-    openConfirmation({
-      title: "Mark research as deleted?",
-      description:
-        "This will set the research status to 'deleted'. The data is not permanently removed and can be recovered by an administrator.",
-      actionLabel: "Delete",
-      onAction: () => deleteResearch(),
-    });
-  }
 
   async function optimisticallySetStatus(targetStatus: ResearchStatus) {
     await queryClient.cancelQueries({ queryKey: ["researches", "byId"] });
@@ -290,7 +341,7 @@ export function ResearchDetails({
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to submit research.");
+      setError(err.message ?? tResearches("failed-to-submit"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -302,12 +353,18 @@ export function ResearchDetails({
     mutationFn: () => $approveResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("published"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to approve research.");
+      setError(err.message ?? tResearches("failed-to-approve"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -319,12 +376,42 @@ export function ResearchDetails({
     mutationFn: () => $rejectResearch({ data: { humId } }),
     onMutate: () => optimisticallySetStatus("draft"),
     onSuccess: (result) => {
-      if (!result.ok) setError(result.error);
-      else setError(null);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+        setIsConflict(false);
+        setError(null);
+      }
     },
     onError: (err: Error, _v, context) => {
       if (context) rollbackStatus(context.previousById, context.previousList);
-      setError(err.message ?? "Failed to reject research.");
+      setError(err.message ?? tResearches("failed-to-reject"));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+    },
+  });
+
+  const { mutate: unpublishResearch, isPending: isUnpublishing } = useMutation({
+    mutationFn: () => $unpublishResearch({ data: { humId } }),
+    onMutate: () => optimisticallySetStatus("draft"),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+        setSeqNo(result.data.meta._seq_no);
+        setPrimaryTerm(result.data.meta._primary_term);
+
+        setIsConflict(false);
+      }
+    },
+    onError: (err: Error, _v, context) => {
+      if (context) rollbackStatus(context.previousById, context.previousList);
+      setError(err.message ?? tResearches("failed-to-unpublish"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -334,17 +421,26 @@ export function ResearchDetails({
 
   function handleSubmit() {
     openConfirmation({
-      title: "Submit for review?",
-      description: "This will send the research to admins for review.",
+      title: tResearches("submit-title"),
+      description: tResearches("submit-description"),
       actionLabel: "Submit",
       onAction: () => submitResearch(),
     });
   }
 
+  function handleUnpublish() {
+    openConfirmation({
+      title: tResearches("unpublish-title"),
+      description: tResearches("unpublish-description"),
+      actionLabel: "Unpublish",
+      onAction: () => unpublishResearch(),
+    });
+  }
+
   function handleApprove() {
     openConfirmation({
-      title: "Approve research?",
-      description: "This will publish the research and make it publicly visible.",
+      title: tResearches("approve-title"),
+      description: tResearches("approve-description"),
       actionLabel: "Approve",
       onAction: () => approveResearch(),
     });
@@ -352,8 +448,8 @@ export function ResearchDetails({
 
   function handleReject() {
     openConfirmation({
-      title: "Reject research?",
-      description: "This will return the research to draft status.",
+      title: tResearches("reject-title"),
+      description: tResearches("reject-description"),
       actionLabel: "Reject",
       onAction: () => rejectResearch(),
     });
@@ -375,10 +471,21 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedJDSValues(
-    values: MergeResearchResult["values"],
-    relatedAccessions: string[],
-  ) {
+  function handleReset() {
+    openConfirmation({
+      title: tResearches("reset-research-title"),
+      description: tResearches("reset-research-description"),
+      actionLabel: tResearches("reset"),
+      onAction: () => {
+        form.reset();
+        setJdsRelatedAccessions(initialRelatedAccessions);
+        setError(null);
+        setIsConflict(false);
+      },
+    });
+  }
+
+  function applyMergedValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
     form.setFieldValue("dataProvider", values.dataProvider as typeof researchValues.dataProvider);
@@ -400,7 +507,6 @@ export function ResearchDetails({
   const [datasetPreview, setDatasetPreview] = useState(false);
 
   const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
-  const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
   const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
   const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
 
@@ -408,10 +514,34 @@ export function ResearchDetails({
   // researchValues.draftVersion always reflects the current research state —
   // getResearchDetail always spreads the full research doc (incl. draftVersion)
   // regardless of which version was requested.
-  const isViewingDraft = selectedVersion === researchValues.draftVersion;
+  // Draft-only workflow actions (Submit/Reject/Approve, Merge) stay gated on this.
+  const isViewingDraft = isViewingDraftVersion({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+  });
+
+  // Research metadata is editable from any selected draft or published version.
+  // Review remains read-only because the backend rejects updates in that state.
+  const isEditable = isResearchEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
+
+  // Release notes remain version-specific: only the active draft and latest
+  // published version can change them. Earlier published versions display the
+  // multilingual field read-only.
+  const isReleaseNoteEditableForSelection = isReleaseNoteEditable({
+    selectedVersion,
+    draftVersion: researchValues.draftVersion,
+    latestVersion: researchValues.latestVersion,
+    status: researchValues.status,
+  });
 
   // Per-tab dirty state: a tab is dirty if the field value differs from initial
   const formValues = useStore(form.store, (state) => state.values);
+
   const dirtyFields = Object.fromEntries(
     topLevelFields.map((field) => [
       field,
@@ -421,7 +551,21 @@ export function ResearchDetails({
       ),
     ]),
   ) as Record<(typeof topLevelFields)[number], boolean>;
-  const isModified = Object.values(dirtyFields).some(Boolean);
+  // releaseNote is part of the update payload but rendered outside the tabbed
+  // loop (excluded from topLevelFields), so track its dirty state separately to
+  // keep the Save draft button in sync. Compare per-locale text and treat empty
+  // string and undefined as equivalent, so clearing all text in a field that
+  // started empty returns it to the non-modified state.
+  const releaseNoteCurrent = (formValues as Record<string, any>).releaseNote;
+  const releaseNoteDefault = (defaultValues as Record<string, any>).releaseNote;
+  const releaseNoteDirty = (["en", "ja"] as const).some(
+    (locale) =>
+      !evaluate(
+        releaseNoteCurrent?.[locale]?.text || undefined,
+        releaseNoteDefault?.[locale]?.text || undefined,
+      ),
+  );
+  const isModified = Object.values(dirtyFields).some(Boolean) || releaseNoteDirty;
 
   return (
     <Card
@@ -439,14 +583,15 @@ export function ResearchDetails({
             canNewVersion={canNewVersion}
             onVersionChange={setSelectedVersion}
           />
-          <Label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
-            {previewLabel}
-            <Switch
-              checked={effectivePreview}
-              onCheckedChange={setEffectivePreview}
-              className="data-[state=checked]:bg-secondary"
-            />
-          </Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="slim"
+            className="ml-auto"
+            onClick={() => setEffectivePreview(true)}
+          >
+            <LucideEye className="mr-2 size-5" /> {previewLabel}
+          </Button>
         </>
       }
       captionClassName="flex items-center"
@@ -455,7 +600,7 @@ export function ResearchDetails({
       {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
       {isConflict && (
         <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 text-sm">
-          <span>Someone else saved a newer version. Reload to continue.</span>
+          <span>{tCommon("conflict-reload")}</span>
           <Button
             size="slim"
             variant="outline"
@@ -470,21 +615,70 @@ export function ResearchDetails({
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 flex-col overflow-hidden", preview ? "flex" : "hidden")}>
-        <div className="flex shrink-0 items-center gap-2 px-5 pt-3 pb-2">
-          <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <PreviewDialog
+        open={preview}
+        onOpenChange={setPreview}
+        title={`${researchValues.humId} preview`}
+        lang={previewLang}
+        onLangChange={setPreviewLang}
+      >
+        <div className="px-5 py-5">
           <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-            <VersionCard
-              versionData={previewValues as ResearchDetailResponse["data"]}
-              lang={previewLang}
-            />
+            <ResearchPreviewCard previewValues={previewValues} lang={previewLang} />
           </IntlProvider>
+        </div>
+      </PreviewDialog>
+
+      <div className="flex items-start justify-between gap-5">
+        {/* Owners — resolved server-side from the JGA DB (admin-only, read-only) */}
+        {isAdmin && (
+          <div className="mx-5 mt-5 flex flex-1 flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium text-muted-foreground">Owners:</span>
+            {owners.length > 0 ? (
+              <div className="flex flex-wrap gap-4">
+                {owners.map((owner) => (
+                  <span key={owner} className="text-neutral-700">
+                    <LucideUser2 className="inline size-6 align-text-bottom" />
+                    {owner}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic">None</span>
+            )}
+          </div>
+        )}
+
+        {/* Research-wide workflow actions — apply to the research as a whole,
+          independent of which tab (metadata/datasets) is active. */}
+        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {isViewingDraft && canSubmit && (
+            <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
+              <LucideSend className="mr-2 size-5" />
+              {isSubmitting ? tResearches("submitting") : tResearches("submit-for-review")}
+            </Button>
+          )}
+          {isViewingDraft && canReject && (
+            <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
+              <LucideX className="mr-2 size-5" />
+              {isRejecting ? tResearches("rejecting") : tResearches("reject")}
+            </Button>
+          )}
+          {isViewingDraft && canApprove && (
+            <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
+              <LucideCheck className="mr-2 size-5" />
+              {isApproving ? tResearches("approving") : tResearches("approve")}
+            </Button>
+          )}
+          {canUnpublish && (
+            <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
+              {isUnpublishing ? "Unpublishing…" : "Unpublish"}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className={cn("flex min-h-0 flex-1 flex-col", preview && "hidden")}>
+      <div className="flex min-h-0 flex-1 flex-col">
         <Tabs
           defaultValue="metadata"
           value={activeTab}
@@ -505,141 +699,103 @@ export function ResearchDetails({
           </div>
 
           <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
-            {/* Workflow action row */}
-            <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
-              <MergeJDSResearchDialog
-                className="mr-auto"
-                currentValues={formValues}
-                disabled={!isViewingDraft || !canUpdate}
-                onMerge={applyMergedJDSValues}
-              />
+            {/* Metadata-editing actions — Merge (draft construction) and Save
+                operate on the metadata form, so they stay with this tab. */}
+            <div className="px-5 pt-5">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-b-black pb-5">
+                {/* Merge is a draft-construction tool — hidden entirely on non-draft
+                  views (e.g. published patch). The spacer keeps the rest of the
+                  action row right-aligned when the button is absent. */}
+                {isViewingDraft ? (
+                  <MergeResearchDialog
+                    className="mr-auto"
+                    currentValues={formValues}
+                    disabled={!canUpdate}
+                    onMerge={applyMergedValues}
+                  />
+                ) : (
+                  <div className="mr-auto" />
+                )}
 
-              {canDelete && (
-                <Button type="button" size="lg" onClick={handleDelete}>
-                  Delete
-                </Button>
-              )}
+                {isEditable && canUpdate && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleReset}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideRotateCcw className="mr-2 size-6" /> {tResearches("reset")}
+                  </Button>
+                )}
 
-              {isViewingDraft && canSubmit && (
-                <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? "Submitting…" : "Submit for review"}
-                </Button>
-              )}
-              {isViewingDraft && canReject && (
-                <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-                  {isRejecting ? "Rejecting…" : "Reject"}
-                </Button>
-              )}
-              {isViewingDraft && canApprove && (
-                <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-                  {isApproving ? "Approving…" : "Approve"}
-                </Button>
-              )}
-              {canUnpublish && (
-                <Button variant="outline" size="lg">
-                  Unpublish
-                </Button>
-              )}
-
-              {isViewingDraft && canUpdate && (
-                <Button
-                  size="lg"
-                  onClick={() => form.handleSubmit()}
-                  disabled={isSaving || !isModified}
-                >
-                  {isSaving ? "Saving…" : "Save draft"}
-                </Button>
-              )}
+                {isEditable && canUpdate && (
+                  <Button
+                    size="lg"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSaving || !isModified}
+                  >
+                    <LucideSave className="mr-2 size-5" />
+                    {isSaving
+                      ? tResearches("saving")
+                      : isViewingDraft
+                        ? tResearches("save-draft")
+                        : tResearches("save")}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
-
-              {canUpdateUids && (
-                <div className="px-5 pt-5">
-                  <form.AppField name="uids" mode="array">
-                    {(field) => (
-                      <fieldset
-                        disabled={!isViewingDraft || !canUpdate}
-                        className="group/fieldset flex flex-col gap-2"
-                      >
-                        <Label>User IDs (uids)</Label>
-                        <div className="nested-form flex w-full flex-col gap-1">
-                          {field.state.value?.map((_, i) => (
-                            <div key={i} className="flex items-center gap-1">
-                              <form.AppField name={`uids[${i}]`}>
-                                {(f) => <f.TextField className="flex-1" />}
-                              </form.AppField>
-                              <button type="button" onClick={() => field.removeValue(i)}>
-                                <Trash2 className="size-4 text-danger" />
-                              </button>
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="dashed"
-                            size="slim"
-                            className="self-start"
-                            onClick={() => field.pushValue("")}
-                          >
-                            + Add UID
-                          </Button>
-                        </div>
-                      </fieldset>
-                    )}
-                  </form.AppField>
-                </div>
-              )}
-
-              <Tabs defaultValue="title" className="mt-5 flex flex-col">
+              <fieldset
+                disabled={!isReleaseNoteEditableForSelection || !canUpdate}
+                className="group/fieldset p-5"
+              >
+                <BilingualMarkdownEditorField
+                  // withForm components take a loosely-typed form; cast matches the
+                  // idiom used by the other schema-driven field components.
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  form={form as any}
+                  baseName="releaseNote"
+                  label="Release note"
+                  legacyFieldKey="releaseNote"
+                  legacyRawHtml={legacyRawHtml}
+                />
+              </fieldset>
+              <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
                 <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">
-                    <TabsTrigger variant="line" value="title">
-                      <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="summary">
-                      <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="dataProvider">
-                      <TabLabel dirty={dirtyFields.dataProvider}>Data providers</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="researchProject">
-                      <TabLabel dirty={dirtyFields.researchProject}>Research project</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="grant">
-                      <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
-                    </TabsTrigger>
-                    <TabsTrigger variant="line" value="relatedPublication">
-                      <TabLabel dirty={dirtyFields.relatedPublication}>
-                        Related publication
-                      </TabLabel>
-                    </TabsTrigger>
+                    {metadataFields.map((field) => (
+                      <TabsTrigger key={field.key} variant="line" value={field.key}>
+                        <TabLabel dirty={dirtyFields[field.key]}>{field.label}</TabLabel>
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </div>
-                <fieldset
-                  disabled={!isViewingDraft || !canUpdate}
-                  className="group/fieldset px-5 pt-5 pb-5"
-                >
-                  <TabsContent value="title">
-                    <form.AppField name="title">
-                      {(field) => <field.BilingualTextField variant="textarea" />}
-                    </form.AppField>
-                  </TabsContent>
-                  <TabsContent value="summary">
-                    <SummaryForm form={form} fields="summary" />
-                  </TabsContent>
-                  <TabsContent value="dataProvider">
-                    <DataProviderArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="researchProject">
-                    <ResearchProjectArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="grant">
-                    <GrantArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="relatedPublication">
-                    <RelatedPublicationArrayField form={form} />
-                  </TabsContent>
+                <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
+                  {metadataFields.map((field) => (
+                    <TabsContent key={field.key} value={field.key}>
+                      {field.key === "summary" ? (
+                        <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
+                      ) : field.key === "summaryShort" ? (
+                        <SummaryShortMarkdownFields form={form} />
+                      ) : field.renderer ? (
+                        field.renderer(form)
+                      ) : (
+                        <form.AppField name={field.key as never}>
+                          {(f) => (
+                            <FieldControl
+                              fieldKey={field.key}
+                              kind={field.kind}
+                              value={f.state.value}
+                              defaultValue={(defaultValues as Record<string, unknown>)[field.key]}
+                              onChange={(v) => f.handleChange(v as never)}
+                            />
+                          )}
+                        </form.AppField>
+                      )}
+                    </TabsContent>
+                  ))}
                 </fieldset>
               </Tabs>
             </div>
@@ -652,17 +808,27 @@ export function ResearchDetails({
           >
             {datasetView === null ? (
               <TabContentLayout
-                header={<span className="font-medium text-sm">Datasets</span>}
+                header={
+                  <div>
+                    <span className="font-medium text-sm">Datasets</span>{" "}
+                  </div>
+                }
                 actions={
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    disabled={!canCreateDataset}
-                    onClick={() => setDatasetView("new")}
-                  >
-                    Add new dataset
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      disabled={!canCreateDataset}
+                      onClick={() => setDatasetView("new")}
+                    >
+                      <LucidePlus className="mr-2 size-5" />
+                      {tResearches("add-new-dataset")}
+                    </Button>
+                    {!canCreateDataset ? (
+                      <InfoBadge>{t("admin.datasets.must-be-draft-to-add-new")}</InfoBadge>
+                    ) : null}
+                  </div>
                 }
               >
                 <ResearchDatasetsTab
@@ -676,6 +842,7 @@ export function ResearchDetails({
                 lang={lang}
                 research={researchValues}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetDirty(false);
@@ -687,6 +854,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                onPreviewChange={setDatasetPreview}
                 relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);
@@ -702,29 +870,103 @@ export function ResearchDetails({
   );
 }
 
-function ReleaseNoteDisplay({
-  releaseNote,
+/**
+ * Summary editor: aims/methods/targets become Markdown editors (with live preview
+ * + legacy popup) via per-key overrides; `url` falls through to the generic
+ * schema-driven rendering. Each Markdown editor edits only `text`.
+ */
+function SummaryMarkdownFields({
+  form,
+  legacyRawHtml,
 }: {
-  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
+  form: ResearchForm;
+  legacyRawHtml: ReturnType<typeof researchLegacyRawHtml>;
 }) {
-  const en = releaseNote?.en?.text;
-  const ja = releaseNote?.ja?.text;
-  if (!en && !ja) return null;
+  const overrides = useMemo<Record<string, FieldOverride>>(() => {
+    const markdownOverride =
+      (legacyFieldKey: string): FieldOverride =>
+      ({ form: fieldForm, name, label }) => (
+        <BilingualMarkdownEditorField
+          form={fieldForm}
+          baseName={name}
+          label={label}
+          legacyFieldKey={legacyFieldKey}
+          legacyRawHtml={legacyRawHtml}
+        />
+      );
+    return {
+      aims: markdownOverride("aims"),
+      methods: markdownOverride("methods"),
+      targets: markdownOverride("targets"),
+    };
+    // Each override reads `ctx.form` (the field-level form), so the outer `form`
+    // is not a dependency — only the legacy lookup is.
+  }, [legacyRawHtml]);
 
   return (
-    <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
-      {en && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (En)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{en}</p>
-        </div>
-      )}
-      {ja && (
-        <div className="flex-1">
-          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (Ja)</p>
-          <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
-        </div>
-      )}
-    </div>
+    <SchemaObjectFields
+      form={form}
+      baseName="summary"
+      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
+      overrides={overrides}
+    />
   );
+}
+
+/**
+ * Short-summary editor: the listing-specific methods, data-type, and target
+ * fields share Summary's bilingual Markdown editing layout. summaryShort has
+ * no legacy HTML side-channel, so its editors deliberately omit that popup.
+ */
+function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
+  const overrides = useMemo<Record<string, FieldOverride>>(() => {
+    const markdownOverride =
+      (): FieldOverride =>
+      ({ form: fieldForm, name, label }) => (
+        <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
+      );
+    return {
+      methods: markdownOverride(),
+      typeOfData: markdownOverride(),
+      targets: markdownOverride(),
+    };
+  }, []);
+
+  return (
+    <SchemaObjectFields
+      form={form}
+      baseName="summaryShort"
+      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summaryShort)}
+      overrides={overrides}
+    />
+  );
+}
+
+/** Unwrap nullable/optional/default to reach the inner summary object schema. */
+function unwrapSummarySchema(schema: unknown): unknown {
+  let s = schema as { _def?: { type?: string; innerType?: unknown } };
+  for (let i = 0; i < 10; i++) {
+    const t = s?._def?.type;
+    if (t === "nullable" || t === "optional" || t === "default") {
+      s = s._def!.innerType as typeof s;
+    } else break;
+  }
+  return s;
+}
+
+/**
+ * Admin whole-card preview: runs the same `addResearchRenderedHtml` transform used
+ * on the public read path over the live (unsaved) form values, then feeds the
+ * widened result to the pure public `VersionCard`. Preview ≡ public output.
+ */
+function ResearchPreviewCard({
+  previewValues,
+  lang,
+}: {
+  previewValues: ResearchValues;
+  lang: "ja" | "en";
+}) {
+  const rendered = useResearchPreviewRenderedHtml(previewValues);
+  if (!rendered) return null;
+  return <VersionCard versionData={rendered} lang={lang} />;
 }

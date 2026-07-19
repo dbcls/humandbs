@@ -1,32 +1,34 @@
 import { useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
 import type { CreateResearchRequest } from "@humandbs/backend/types";
+import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { DataProviderArrayField } from "@/components/form-context/research-fields/DataProviderArrayField";
-import { GrantArrayField } from "@/components/form-context/research-fields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/research-fields/RelatedPublicationArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/research-fields/ResearchProjectArrayField";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import type { CreateResearchResult } from "@/serverFunctions/researches";
 import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
-import { MergeJDSResearchDialog } from "./MergeJDSResearch/index";
+import { MergeResearchDialog } from "./MergeResearch/index";
+import {
+  DataProviderArrayField,
+  GrantArrayField,
+  RelatedPublicationArrayField,
+  ResearchProjectArrayField,
+} from "./researchFieldsConfig";
 import { DUMMY_HUM_ID } from "./utils/dummyResearch";
-import type { NewResearchMergeValues } from "./utils/jdsResearchValues";
-import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/jdsResearchValues";
+import type { NewResearchMergeValues } from "./utils/researchValues";
+import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
 
 const defaultValues: CreateResearchRequest = {
-  humId: undefined,
+  humId: "",
   title: { ja: "", en: "" },
   summary: {
     aims: { ja: { text: "" }, en: { text: "" } },
@@ -38,11 +40,6 @@ const defaultValues: CreateResearchRequest = {
   researchProject: [],
   grant: [],
   relatedPublication: [],
-  uids: [],
-  initialReleaseNote: {
-    ja: { text: "" },
-    en: { text: "" },
-  },
 };
 
 export function NewResearchForm({
@@ -55,6 +52,7 @@ export function NewResearchForm({
   onDiscard: () => void;
 }) {
   const queryClient = useQueryClient();
+  const tResearches = useTranslations("admin.researches");
   const [error, setError] = useState<string | null>(null);
   const [relatedAccessions, setRelatedAccessions] = useState<string[]>([]);
 
@@ -89,23 +87,23 @@ export function NewResearchForm({
       onCreated(result.data.data.humId, relatedAccessions);
     },
     onError: (err: Error) => {
-      setError(err.message ?? "Failed to create research.");
+      setError(err.message ?? tResearches("create-research-failed"));
     },
   });
 
   const form = useAppForm({
     defaultValues,
+    validators: { onChange: CreateResearchRequestSchema },
 
     onSubmit: async ({ value }) => {
       setError(null);
-      const normalizedHumId =
-        value.humId == null || value.humId.trim() === "" ? undefined : value.humId.trim();
-      await mutateAsync({ ...value, humId: normalizedHumId });
+
+      await mutateAsync({ ...value, humId: value.humId.trim() });
     },
   });
   const formValues = useStore(form.store, (state) => state.values);
 
-  function applyMergedJDSValues(values: NewResearchMergeValues, incoming: string[]) {
+  function applyMergedValues(values: NewResearchMergeValues, incoming: string[]) {
     setRelatedAccessions(incoming);
     if (values.title !== undefined) form.setFieldValue("title", values.title);
     if (values.summary !== undefined) form.setFieldValue("summary", values.summary);
@@ -134,11 +132,11 @@ export function NewResearchForm({
           {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
-            <MergeJDSResearchDialog
+            <MergeResearchDialog
               className="mr-auto"
               currentValues={toResearchValuesForMerge(formValues)}
               onMerge={(values, relatedAccessions) =>
-                applyMergedJDSValues(pickNewResearchMergeValues(values), relatedAccessions)
+                applyMergedValues(pickNewResearchMergeValues(values), relatedAccessions)
               }
             />
             <Button
@@ -156,57 +154,8 @@ export function NewResearchForm({
           </div>
 
           <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
-            <form.AppField
-              name="humId"
-              validators={{
-                onChange: ({ value }) =>
-                  !value || value.trim() === "" ? "Research ID is required" : undefined,
-              }}
-            >
+            <form.AppField name="humId">
               {(field) => <field.TextField type="col" label="Research ID (humId)*" />}
-            </form.AppField>
-
-            <form.AppField name="uids" mode="array">
-              {(field) => (
-                <fieldset className="flex flex-col gap-2">
-                  <Label>User IDs (uids)</Label>
-                  <div className="nested-form flex w-full flex-col gap-1">
-                    {field.state.value?.map((_, i) => (
-                      <div key={i} className="flex items-center gap-1">
-                        <form.AppField name={`uids[${i}]`}>
-                          {(f) => <f.TextField className="flex-1" />}
-                        </form.AppField>
-                        <Button
-                          size="icon"
-                          variant="plain"
-                          type="button"
-                          onClick={() => field.removeValue(i)}
-                        >
-                          <Trash2 className="size-4 text-danger" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="dashed"
-                      size="slim"
-                      className="self-start"
-                      onClick={() => field.pushValue("")}
-                    >
-                      + Add UID
-                    </Button>
-                  </div>
-                </fieldset>
-              )}
-            </form.AppField>
-
-            <form.AppField name="initialReleaseNote">
-              {(field) => (
-                <field.BilingualTextValueField
-                  label="Initial Release Note"
-                  inputsClassName="flex w-full gap-2"
-                />
-              )}
             </form.AppField>
           </div>
 

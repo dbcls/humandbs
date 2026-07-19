@@ -18,6 +18,7 @@ import {
 } from "@/api/errors"
 import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
 import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
+import { isOwner } from "@/api/services/ownership"
 import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 import { VERSION_STRING_REGEX } from "@/api/types/common"
 
@@ -37,11 +38,19 @@ interface ResourceAuthOptions {
   requireAdmin?: boolean
   /** Require the Research to be in `draft` status (409 otherwise) */
   requireDraftStatus?: boolean
+  /** Require the Research to be in `published` status (409 otherwise) */
+  requirePublishedStatus?: boolean
+  /** Require the Research to be in `draft` OR `published` status (409 otherwise) */
+  requireDraftOrPublished?: boolean
 }
 
 interface DatasetAuthOptions extends ResourceAuthOptions {
   /** Require the parent Research to be in `draft` status (403 otherwise) */
   requireParentDraft?: boolean
+  /** Require the parent Research to be in `published` status (409 otherwise) */
+  requireParentPublished?: boolean
+  /** Require the parent Research to be in `draft` OR `published` status (409 otherwise) */
+  requireParentDraftOrPublished?: boolean
 }
 
 /**
@@ -92,14 +101,9 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 
     const { doc, seqNo, primaryTerm } = result
 
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      throw new NotFoundError(ERROR_MESSAGES.NOT_FOUND("Research", humId))
-    }
-
-    // Check ownership permission (admin or owner via uids)
+    // Check ownership permission (admin or owner via JGA DB)
     if (options.requireOwnership && !authUser?.isAdmin) {
-      if (!canModifyResource(authUser, doc)) {
+      if (!await canModifyResource(authUser, doc)) {
         throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN)
       }
     }
@@ -110,6 +114,18 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
     if (options.requireDraftStatus && doc.status !== "draft") {
       throw new ConflictError(
         `Cannot mutate: Research is in '${doc.status}' status, expected 'draft'`,
+      )
+    }
+
+    if (options.requirePublishedStatus && doc.status !== "published") {
+      throw new ConflictError(
+        `Cannot patch: Research is in '${doc.status}' status, expected 'published'`,
+      )
+    }
+
+    if (options.requireDraftOrPublished && doc.status !== "draft" && doc.status !== "published") {
+      throw new ConflictError(
+        `Cannot mutate: Research is in '${doc.status}' status, expected 'draft' or 'published'`,
       )
     }
 
@@ -127,12 +143,12 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 }
 
 /**
- * Check if user can modify the resource (admin or owner)
+ * Check if user can modify the resource (admin or owner via JGA DB)
  */
-export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): boolean => {
+export const canModifyResource = async (authUser: AuthUser | null, doc: Pick<EsResearch, "humId">): Promise<boolean> => {
   if (!authUser) return false
   if (authUser.isAdmin) return true
-  return doc.uids.includes(authUser.userId)
+  return isOwner(authUser.username, doc.humId)
 }
 
 /**
@@ -146,7 +162,7 @@ export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): b
  *  2. admin requirement (ForbiddenError 403 when requireAdmin)
  *  3. Dataset preload via `?version=<v>` (defaults to `v1`, matching the
  *     handler's prior default). Missing dataset → 404.
- *  4. parent Research preload via `getResearchDoc`. Missing or `status="deleted"` → 404.
+ *  4. parent Research preload via `getResearchDoc`. Missing → 404.
  *  5. ownership check (`canModifyResource`) when requireOwnership.
  *  6. parent-draft check (`parentResearch.status === "draft"`) when requireParentDraft.
  *     Surfaced as 409 ConflictError to match `loadResearchAndAuthorize.requireDraftStatus`.
@@ -192,17 +208,33 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     const { doc, seqNo, primaryTerm } = result
 
     const parentResearch = await getResearchDoc(doc.humId)
-    if (!parentResearch || parentResearch.status === "deleted") {
+    if (!parentResearch) {
       throw new NotFoundError(`Parent Research ${doc.humId} not found`)
     }
 
-    if (options.requireOwnership && !canModifyResource(authUser, parentResearch)) {
+    if (options.requireOwnership && !await canModifyResource(authUser, parentResearch)) {
       throw new ForbiddenError("Not authorized to update this dataset")
     }
 
     if (options.requireParentDraft && parentResearch.status !== "draft") {
       throw new ConflictError(
         `Cannot mutate dataset: parent Research is in '${parentResearch.status}' status, expected 'draft'`,
+      )
+    }
+
+    if (options.requireParentPublished && parentResearch.status !== "published") {
+      throw new ConflictError(
+        `Cannot patch dataset: parent Research is in '${parentResearch.status}' status, expected 'published'`,
+      )
+    }
+
+    if (
+      options.requireParentDraftOrPublished
+      && parentResearch.status !== "draft"
+      && parentResearch.status !== "published"
+    ) {
+      throw new ConflictError(
+        `Cannot mutate dataset: parent Research is in '${parentResearch.status}' status, expected 'draft' or 'published'`,
       )
     }
 

@@ -6,10 +6,15 @@
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
 import {
+  ConflictError,
   InternalError,
   NotFoundError,
 } from "@/api/errors"
-import { createDataset, getDatasetWithSeqNo } from "@/api/es-client/dataset"
+import {
+  createDataset,
+  getDatasetWithSeqNo,
+  resolveLatestDatasetVersion,
+} from "@/api/es-client/dataset"
 import { getResearchDetail } from "@/api/es-client/research"
 import { getResearchVersion } from "@/api/es-client/research-version"
 import {
@@ -50,6 +55,17 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
     const research = c.get("research")
     const { humId } = research
     const body = c.req.valid("json")
+
+    // datasetId is globally unique. Without this guard, an existing id would
+    // silently mint a v(N+1) doc via getNextDatasetVersion, and — when the id
+    // belongs to another Research — linkDatasetToResearch would attach that new
+    // version to the calling Research, breaking the 1:N Research→Dataset link.
+    if (body.datasetId !== undefined) {
+      const existing = await resolveLatestDatasetVersion(body.datasetId)
+      if (existing !== null) {
+        throw ConflictError.forDuplicate("Dataset", body.datasetId)
+      }
+    }
 
     // Get latest ResearchVersion to determine humVersionId
     const latestVersion = await getResearchVersion(humId, {})

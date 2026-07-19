@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 
-import type { SiteNavigationConfig } from "@/config/site-navigation";
-import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
-import { parseSiteNavigationConfig } from "@/config/site-navigation.schema";
+import type { SiteNavigationConfig } from "@/config/siteNavigation";
+import { getDefaultSiteNavigationConfig } from "@/config/siteNavigation";
+import { parseSiteNavigationConfig } from "@/config/siteNavigation.schema";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { siteNavigationConfig, siteNavigationConfigRevision } from "@/db/schema";
 
@@ -39,7 +40,7 @@ interface SiteNavigationRepository {
   }) => Promise<SiteNavigationConfigRecord>;
 }
 
-export function createSiteNavigationRepository(database: typeof db): SiteNavigationRepository {
+export function createSiteNavigationRepository(database: DB): SiteNavigationRepository {
   return {
     async getActive() {
       const row = await database.query.siteNavigationConfig.findFirst({

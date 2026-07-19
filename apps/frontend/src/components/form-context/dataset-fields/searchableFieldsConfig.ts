@@ -1,25 +1,16 @@
-import type React from "react";
-
-import type { FacetCategory } from "@/config/facet-config";
+import type {
+  FieldConfig as GenericFieldConfig,
+  RendererProps as GenericRendererProps,
+} from "@/components/form-context/schema-form/fieldConfig";
+import type { FacetCategory } from "@/config/facets";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 
 export type RendererProps<
   K extends keyof SearchableExperimentFields = keyof SearchableExperimentFields,
-> = {
-  fieldKey: K;
-  value: SearchableExperimentFields[K];
-  defaultValue: SearchableExperimentFields[K];
-  onChange: (v: SearchableExperimentFields[K]) => void;
-  disabled?: boolean;
-};
+> = GenericRendererProps<SearchableExperimentFields, K>;
 
-export type FieldConfig = {
-  section?: FacetCategory;
-  order?: number;
-  hidden?: boolean;
-  renderer?: React.ComponentType<RendererProps<any>>;
-};
+export type FieldConfig = GenericFieldConfig<SearchableExperimentFields, FacetCategory>;
 
 export const searchableFieldsConfig: Partial<
   Record<keyof SearchableExperimentFields, FieldConfig>

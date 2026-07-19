@@ -53,16 +53,18 @@ export {
   DatasetIdParamsSchema,
   VersionParamsSchema,
   DatasetVersionParamsSchema,
-  JdsIdParamsSchema,
   JduIdParamsSchema,
+  JdsApplIdParamsSchema,
+  JduApplIdParamsSchema,
 } from "./path-params"
 export type {
   HumIdParams,
   DatasetIdParams,
   VersionParams,
   DatasetVersionParams,
-  JdsIdParams,
   JduIdParams,
+  JdsApplIdParams,
+  JduApplIdParams,
 } from "./path-params"
 
 // === Authentication ===
@@ -143,12 +145,14 @@ export type {
 
 // === API View Models ===
 export {
+  DistributionItemSchema,
   ResearchDetailSchema,
   DatasetVersionItemSchema,
   MergedSearchableSchema,
   DatasetDocWithMergedSchema,
 } from "./views"
 export type {
+  DistributionItem,
   ResearchDetail,
   DatasetVersionItem,
   MergedSearchable,
@@ -168,6 +172,8 @@ export {
   ResearchBatchQuerySchema,
   FacetFilterQuerySchema,
   ResearchSummarySchema,
+  JgaShinseiDsListQuerySchema,
+  JgaShinseiDuListQuerySchema,
 } from "./query-params"
 export type {
   LangVersionQuery,
@@ -180,6 +186,8 @@ export type {
   ResearchBatchQuery,
   FacetFilterQuery,
   ResearchSummary,
+  JgaShinseiDsListQuery,
+  JgaShinseiDuListQuery,
 } from "./query-params"
 
 // === Filters ===
@@ -206,8 +214,6 @@ export {
   UpdateResearchRequestSchema,
   ResearchWithStatusSchema,
   ResearchResponseSchema,
-  // UIDs API
-  UpdateUidsRequestSchema,
   // Version API
   CreateVersionRequestSchema,
   VersionResponseSchema,
@@ -234,8 +240,8 @@ export {
   // Response schemas for /research routes
   WorkflowDataSchema,
   WorkflowResponseSchema,
-  UidsDataSchema,
-  UidsResponseSchema,
+  OwnersDataSchema,
+  OwnersResponseSchema,
   ResearchDetailResponseSchema,
   ResearchBatchResponseSchema,
   ResearchWithLockResponseSchema,
@@ -264,7 +270,6 @@ export type {
   UpdateResearchRequest,
   ResearchWithStatus,
   ResearchResponse,
-  UpdateUidsRequest,
   CreateVersionRequest,
   VersionResponse,
   CreateDatasetRequest,
@@ -279,8 +284,8 @@ export type {
   // Response types for /research routes
   WorkflowData,
   WorkflowResponse,
-  UidsData,
-  UidsResponse,
+  OwnersData,
+  OwnersResponse,
   ResearchDetailResponse,
   ResearchBatchResponse,
   ResearchWithLockResponse,

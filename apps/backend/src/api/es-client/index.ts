@@ -59,11 +59,9 @@ export {
   getResearchDoc,
   getResearchWithSeqNo,
   getResearchDetail,
-  generateNextHumId,
   createResearch,
   updateResearch,
   updateResearchStatus,
-  updateResearchUids,
   deleteResearch,
 } from "@/api/es-client/research"
 

@@ -65,11 +65,9 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDoc: mockGetResearchDoc,
   getResearchWithSeqNo: mock(async () => null),
   getResearchDetail: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mock(async () => { throw new Error("not stubbed") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),
-  updateResearchUids: mock(async () => null),
   deleteResearch: mock(async () => false),
 }))
 
@@ -120,7 +118,7 @@ beforeEach(() => {
 describe("getDataset", () => {
   it("returns the doc for an authorized user (published parent)", async () => {
     mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: createMockDatasetDoc() }] } })
-    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({ humId: "hum0001", status: "published", latestVersion: "v1", uids: [] }))
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({ humId: "hum0001", status: "published", latestVersion: "v1" }))
 
     const result = await dataset.getDataset("JGAD000001", {}, null)
     expect(result?.datasetId).toBe("JGAD000001")
@@ -129,7 +127,7 @@ describe("getDataset", () => {
   it("returns null when parent Research is not accessible to caller (IT-DATASET-07)", async () => {
     mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: createMockDatasetDoc() }] } })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: null, uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: null,
     }))
 
     const result = await dataset.getDataset("JGAD000001", {}, null)
@@ -139,7 +137,7 @@ describe("getDataset", () => {
   it("admin can access drafts (parent is draft, latestVersion=null)", async () => {
     mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: createMockDatasetDoc() }] } })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: null, uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: null,
     }))
 
     const result = await dataset.getDataset("JGAD000001", {}, createMockAuthUser({ isAdmin: true }))
@@ -193,7 +191,7 @@ describe("listDatasetVersions (IT-DATASET-17)", () => {
       hits: { hits: [{ _source: createMockDatasetDoc() }] },
     })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      status: "draft", latestVersion: null, uids: ["owner-1"],
+      status: "draft", latestVersion: null,
     }))
 
     const result = await dataset.listDatasetVersions("JGAD000001", null)
@@ -282,7 +280,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 5, _primary_term: 2 })
     // parent is in first draft cycle: latestVersion is null → bump path not entered
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1", uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1",
     }))
     mockEsUpdate.mockResolvedValueOnce({})
     // 2nd mockEsGet: getDatasetWithSeqNo (post-update reload)
@@ -315,7 +313,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
   it("Path C (in-place ES 409 conflict): returns null", async () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 5, _primary_term: 2 })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1", uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1",
     }))
     mockEsUpdate.mockRejectedValueOnce(optimisticLockError())
 
@@ -328,7 +326,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1" }), _seq_no: 5, _primary_term: 2 })
     // parent has latestVersion=v1 and draftVersion=v2 → bump candidate
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2",
     }))
     // 1st getResearchVersionWithSeqNo: parent.latestVersion ResearchVersion has the dataset pinned at v1
     mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
@@ -374,7 +372,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     // current dataset is v2 (already bumped during the cycle); parent.latestVersion still references v1
     mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humId: "hum0001", humVersionId: "hum0001-v2" }), _seq_no: 7, _primary_term: 2 })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2",
     }))
     // parent.latestVersion ResearchVersion still pins dataset to v1, but current is v2 → no bump
     mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
@@ -399,7 +397,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
   it("Path D (bump rollback on parent ResearchVersion 409): deletes the new dataset doc and returns null", async () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1" }), _seq_no: 5, _primary_term: 2 })
     mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2",
     }))
     mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
       doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
@@ -438,7 +436,7 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
 
         mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001" }), _seq_no: 5, _primary_term: 2 })
         mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
-          humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: `v${maxExisting + 1}`, uids: ["owner-1"],
+          humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: `v${maxExisting + 1}`,
         }))
         mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
           doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),

@@ -17,8 +17,8 @@ import {
   getResearchDetail,
   getResearchWithSeqNo,
   updateResearch,
-  updateResearchUids,
 } from "@/api/es-client/research"
+import { getResearchVersionWithSeqNo, updateResearchVersionReleaseNote } from "@/api/es-client/research-version"
 import { searchResearches } from "@/api/es-client/search"
 import { uniq } from "@/api/es-client/utils"
 import {
@@ -26,13 +26,15 @@ import {
   createdResponse,
   searchResponse,
   singleResponse,
+  singleReadOnlyResponse,
 } from "@/api/helpers"
 import { getAuthenticatedUser } from "@/api/middleware/auth"
+import { getOwnerUsernames } from "@/api/services/ownership"
+import { ResearchStatusSchema } from "@/api/types"
 import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
-import { EditableResearchStatusSchema } from "@/api/types/workflow"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
-import { sanitizeResearchDetailForUser } from "@/api/utils/version"
+import { isOwnerOrAdmin, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import {
   listResearchRoute,
@@ -41,7 +43,7 @@ import {
   getResearchRoute,
   updateResearchRoute,
   deleteResearchRoute,
-  updateUidsRoute,
+  getOwnersRoute,
 } from "./routes"
 
 /**
@@ -90,16 +92,16 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
 
     const data: ResearchDetail[] = []
     const notFound: string[] = []
-    uniqIds.forEach((id, i) => {
+    for (let i = 0; i < uniqIds.length; i++) {
       const detail = details[i]
       if (!detail) {
-        notFound.push(id)
-        return
+        notFound.push(uniqIds[i])
+        continue
       }
       // Match the detail endpoint: value-based masking, then strip rawHtml.
-      const sanitized = sanitizeResearchDetailForUser(detail, authUser)
+      const sanitized = await sanitizeResearchDetailForUser(detail, authUser)
       data.push(maybeStripRawHtml(sanitized, includeRawHtml))
-    })
+    }
 
     return batchResponse(c, data, {
       requested: uniqIds.length,
@@ -123,8 +125,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
-      uids: body.uids,
-      initialReleaseNote: body.initialReleaseNote,
+      summaryShort: body.summaryShort,
     })
 
     // Get the created research with seqNo for the response
@@ -134,9 +135,11 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     const { status, ...rest } = createResult.research
+    const owners = await getOwnerUsernames(body.humId)
     const responseData = {
       ...rest,
-      status: EditableResearchStatusSchema.parse(status),
+      status: ResearchStatusSchema.parse(status),
+      owners,
       datasets: [],
     }
 
@@ -159,8 +162,13 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const seqNo = lock?.seqNo ?? 0
     const primaryTerm = lock?.primaryTerm ?? 1
 
-    // Value-based access control: owner/admin sees actual values, others see sanitized values
-    const responseData = sanitizeResearchDetailForUser(detail, authUser)
+    // Value-based access control: owner/admin sees actual values (including
+    // the JGA-DB-derived owner list); everyone else gets the masked view.
+    const sanitized = await sanitizeResearchDetailForUser(detail, authUser)
+    const owners = await isOwnerOrAdmin(authUser, humId)
+      ? await getOwnerUsernames(humId)
+      : []
+    const responseData = { ...sanitized, owners }
 
     const strippedDetail = maybeStripRawHtml(responseData, query.includeRawHtml ?? false)
 
@@ -168,10 +176,10 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/update
-  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true })
+  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftOrPublished: true })
   // — 401 / 403 / 404 / 409 are all surfaced before validators run.
+  // Accepts both draft and published Research; releaseNote target switches accordingly.
   router.openapi(updateResearchRoute, async (c) => {
-    // Research is preloaded by middleware; status === "draft" is guaranteed.
     const research = c.get("research")
     const { humId } = research
 
@@ -187,11 +195,29 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       researchProject: body.researchProject,
       grant: body.grant,
       relatedPublication: body.relatedPublication,
-      controlledAccessUser: body.controlledAccessUser,
+      summaryShort: body.summaryShort,
     }, seqNo, primaryTerm)
 
     if (!updated) {
       throw new ConflictError()
+    }
+
+    // releaseNote target: draftVersion while in draft cycle, latestVersion when
+    // patching published content in place.
+    const releaseNoteTarget = research.status === "published"
+      ? research.latestVersion
+      : research.draftVersion
+    if (body.releaseNote !== undefined && releaseNoteTarget) {
+      const versionDocId = `${humId}-${releaseNoteTarget}`
+      const versionWithSeq = await getResearchVersionWithSeqNo(versionDocId)
+      if (versionWithSeq) {
+        const ok = await updateResearchVersionReleaseNote(
+          versionDocId, body.releaseNote, versionWithSeq.seqNo, versionWithSeq.primaryTerm,
+        )
+        if (!ok) {
+          throw new ConflictError()
+        }
+      }
     }
 
     // Get updated seqNo/primaryTerm
@@ -201,9 +227,11 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     }
 
     const { status: updatedStatus, ...restUpdated } = updated
+    const owners = await getOwnerUsernames(humId)
     const responseData = {
       ...restUpdated,
-      status: EditableResearchStatusSchema.parse(updatedStatus),
+      status: ResearchStatusSchema.parse(updatedStatus),
+      owners,
       datasets: [],
     }
 
@@ -225,32 +253,12 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     return c.body(null, 204)
   })
 
-  // PUT /research/{humId}/uids
+  // GET /research/{humId}/owners
   // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
-  router.openapi(updateUidsRoute, async (c) => {
-    // Research is preloaded by middleware with admin check
+  router.openapi(getOwnersRoute, async (c) => {
     const research = c.get("research")
-    const { humId } = research
+    const owners = await getOwnerUsernames(research.humId)
 
-    const body = c.req.valid("json")
-
-    // Use optimistic lock values from request body
-    const updatedUids = await updateResearchUids(humId, body.uids, body._seq_no, body._primary_term)
-    if (!updatedUids) {
-      throw new ConflictError()
-    }
-
-    // Get updated seqNo/primaryTerm
-    const updatedWithSeqNo = await getResearchWithSeqNo(humId)
-    if (!updatedWithSeqNo) {
-      throw new NotFoundError("Updated research not found")
-    }
-
-    const responseData = {
-      humId,
-      uids: updatedUids,
-    }
-
-    return singleResponse(c, responseData, updatedWithSeqNo.seqNo, updatedWithSeqNo.primaryTerm)
+    return singleReadOnlyResponse(c, { humId: research.humId, owners })
   })
 }

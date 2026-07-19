@@ -35,10 +35,17 @@ export const researchSchema = {
   datePublished: f.date(),
   dateModified: f.date(),
 
-  // Status and ownership
+  // Status and draft tracking
   status: f.keyword(),
-  uids: f.keyword(),
   draftVersion: f.keyword(),
+
+  // Short bilingual summaries for the listing view. Deliberately excluded from
+  // `all_text` (no `C` argument) — display-only, not part of full-text search.
+  summaryShort: f.object({
+    methods: f.bilingualTextValue(),
+    typeOfData: f.bilingualTextValue(),
+    targets: f.bilingualTextValue(),
+  }),
 
   // Summary section
   summary: f.object({

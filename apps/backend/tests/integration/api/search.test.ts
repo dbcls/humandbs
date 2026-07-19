@@ -667,4 +667,23 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     const dates = json.data.map((d) => d.dateModified).filter((v): v is string => !!v)
     for (let i = 1; i < dates.length; i++) expect(dates[i - 1] >= dates[i]).toBe(true)
   })
+
+  itWithEs("IT-SEARCH-39: POST /dataset/search finds dataset by token from experiments.data via dataText", async () => {
+    // "TrueSeq" appears in the fixture's experiments.data (Library Construction)
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      query: "TrueSeq",
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.datasetId === "JGAD000002")).toBe(true)
+  })
+
+  itWithEs("IT-SEARCH-40: POST /research/search finds parent research by token from child dataset experiments.data", async () => {
+    // "TrueSeq" is only in JGAD000002's experiments.data, not in hum0001's Research fields.
+    // Cross-search should surface hum0001 as the parent.
+    const { status, json } = await postSearch<SearchResponse<ResearchSummary>>("/research/search", {
+      query: "TrueSeq",
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.humId === "hum0001")).toBe(true)
+  })
 })

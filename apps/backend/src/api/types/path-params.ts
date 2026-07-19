@@ -38,16 +38,23 @@ export const DatasetVersionParamsSchema = z.object({
 })
 export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>
 
-export const JdsIdParamsSchema = z.object({
-  jdsId: z.string()
-    .regex(/^J-DS\d+$/)
-    .describe("DS application ID (e.g., 'J-DS002494')"),
-})
-export type JdsIdParams = z.infer<typeof JdsIdParamsSchema>
-
 export const JduIdParamsSchema = z.object({
   jduId: z.string()
     .regex(/^J-DU\d+$/)
     .describe("DU application ID (e.g., 'J-DU006498')"),
 })
 export type JduIdParams = z.infer<typeof JduIdParamsSchema>
+
+export const JdsApplIdParamsSchema = z.object({
+  jdsApplId: z.string()
+    .regex(/^J-DS\d+-\d{3}$/)
+    .describe("DS application version ID (e.g., 'J-DS002494-001')"),
+})
+export type JdsApplIdParams = z.infer<typeof JdsApplIdParamsSchema>
+
+export const JduApplIdParamsSchema = z.object({
+  jduApplId: z.string()
+    .regex(/^J-DU\d+-\d{3}$/)
+    .describe("DU application version ID (e.g., 'J-DU006498-001')"),
+})
+export type JduApplIdParams = z.infer<typeof JduApplIdParamsSchema>

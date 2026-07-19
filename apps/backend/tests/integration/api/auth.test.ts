@@ -23,6 +23,7 @@ import type { SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
   authHeaders,
+  decodeJwtPreferredUsername,
   decodeJwtSub,
   getApp,
   getNonAdminToken,
@@ -38,7 +39,7 @@ beforeAll(setupIntegration)
 interface ResearchSummary {
   humId: string
   status?: string
-  uids?: string[]
+  owners?: string[]
   draftVersion?: string | null
   latestVersion?: string | null
 }
@@ -67,7 +68,7 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     // IT-AUTH-02
     // Public-scope invariants on the ResearchSummary list:
     //   - status === "published" (the only public-visible status)
-    //   - uids / draftVersion / latestVersion are omitted from the list response shape
+    //   - owners / draftVersion / latestVersion are omitted from the list response shape
     //     (verified empirically against staging; the API trims them for lean payloads)
     //   - the `versions` array is non-empty (= the underlying Research has at least one published version)
     const app = getApp()
@@ -76,7 +77,7 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     const json = (await res.json()) as SearchResponse<ResearchSummary & { versions?: { version: string }[] }>
     for (const item of json.data) {
       expect(item.status).toBe("published")
-      expect(item.uids).toBeUndefined()
+      expect(item.owners).toBeUndefined()
       expect(item.draftVersion).toBeUndefined()
       expect(item.latestVersion).toBeUndefined()
       const versions = (item as { versions?: { version: string }[] }).versions ?? []
@@ -199,11 +200,11 @@ describe("IT-AUTH-*: authentication & authorization", () => {
   itWithNonAdminToken("IT-AUTH-17: GET /research?status=draft restricts authenticated users to own resources", async (token) => {
     // IT-AUTH-17
     // Public users get 403 (IT-AUTH-16). Authenticated users get 200, but the result must be restricted
-    // to Research whose `uids` includes the calling user's sub. We accept an empty result (the staging
-    // user may not own anything) but verify the membership invariant on every returned item.
-    const self = decodeJwtSub(token)
+    // to Research whose `owners` includes the calling user's `preferred_username`. We accept an empty
+    // result (the staging user may not own anything) but verify the membership invariant on every returned item.
+    const self = decodeJwtPreferredUsername(token)
     if (!self) {
-      console.log("  SKIP IT-AUTH-17: could not decode sub from non-admin token")
+      console.log("  SKIP IT-AUTH-17: could not decode preferred_username from non-admin token")
       return
     }
     const app = getApp()
@@ -211,13 +212,13 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     expect(res.status).toBe(200)
     const json = (await res.json()) as SearchResponse<ResearchSummary>
     for (const item of json.data) {
-      expect(item.uids ?? []).toContain(self)
+      expect(item.owners ?? []).toContain(self)
     }
   })
 
   // === Value-based field control ===
 
-  itWithEs("IT-AUTH-18: public detail responds with status='published', uids=[], draftVersion=null", async () => {
+  itWithEs("IT-AUTH-18: public detail responds with status='published', owners=[], draftVersion=null", async () => {
     // IT-AUTH-18
     const app = getApp()
     const listRes = await app.request(url("/research?limit=1"))
@@ -233,13 +234,13 @@ describe("IT-AUTH-*: authentication & authorization", () => {
       meta: { _seq_no?: number; _primary_term?: number }
     }
     expect(json.data.status).toBe("published")
-    expect(json.data.uids).toEqual([])
+    expect(json.data.owners).toEqual([])
     expect(json.data.draftVersion).toBeNull()
     expect(typeof json.meta._seq_no).toBe("number")
     expect(typeof json.meta._primary_term).toBe("number")
   })
 
-  itWithAdminToken("IT-AUTH-19: admin detail of a draft Research returns the real status / uids / draftVersion", async (token) => {
+  itWithAdminToken("IT-AUTH-19: admin detail of a draft Research returns the real status / owners / draftVersion", async (token) => {
     // IT-AUTH-19
     // Pull a draft Research that admin can see. If staging has none, skip.
     const app = getApp()
@@ -255,7 +256,7 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     expect(detail.status).toBe(200)
     const json = (await detail.json()) as SingleReadOnlyResponse<ResearchSummary>
     expect(json.data.status).toBe("draft")
-    expect(Array.isArray(json.data.uids)).toBe(true)
+    expect(Array.isArray(json.data.owners)).toBe(true)
     // draftVersion may be null only on a freshly-created Research; on most drafts it is "v<N>".
     if (json.data.draftVersion !== null) {
       expect(typeof json.data.draftVersion).toBe("string")

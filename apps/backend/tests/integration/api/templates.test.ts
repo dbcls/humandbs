@@ -9,7 +9,7 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import { fetchDsRaw, listIds } from "@/api/db-client/jga-shinsei"
+import { fetchDsRaw, listVersions } from "@/api/db-client/jga-shinsei"
 import type { SingleReadOnlyResponse } from "@/api/types"
 
 import {
@@ -90,16 +90,16 @@ describe("IT-TEMPLATE-*: template endpoints", () => {
   // === Success paths ===
 
   itWithJgaAdmin("IT-TEMPLATE-07: GET /templates/research/{existing jdsId} returns the draft payload", async (token) => {
-    // Probe an existing J-DS via the same list endpoint used by IT-JGA-03.
-    // listIds returns "raw" J-DS IDs; we then verify the row actually exists in
-    // the DB before requesting the template (some J-DS IDs in listIds may not
-    // have a usable nbdc_application row).
-    const ids = await listIds("J-DS", 1, 5)
+    // Probe an existing J-DS application version via listVersions (returns appl_ids).
+    // The /templates/research/ route expects the versioned J-DS applIdStr
+    // (e.g. "J-DS002494-001") — that shape flows to `getDsApplication`
+    // → `parseApplIdStr` for master + version resolution.
+    const versions = await listVersions("J-DS", 1, 5)
     let existingJdsId: string | null = null
-    for (const candidate of ids.ids) {
-      const raws = await fetchDsRaw([candidate])
+    for (const applId of versions.applIds) {
+      const raws = await fetchDsRaw([applId])
       if (raws.length > 0) {
-        existingJdsId = candidate
+        existingJdsId = `${raws[0].jds_id}-${String(raws[0].appl_version).padStart(3, "0")}`
         break
       }
     }
@@ -122,7 +122,9 @@ describe("IT-TEMPLATE-*: template endpoints", () => {
 
   itWithJgaAdmin("IT-TEMPLATE-08: GET /templates/research/{nonexistent jdsId} returns 404", async (token) => {
     const app = getApp()
-    const res = await app.request(url("/templates/research/J-DS999999999"), { headers: authHeaders(token) })
+    // Well-formed applIdStr (`J-DS<digits>-<3-digit-version>`) that clears
+    // the params regex but has no matching row in the JGA DB → 404.
+    const res = await app.request(url("/templates/research/J-DS999999-999"), { headers: authHeaders(token) })
     expect(res.status).toBe(404)
   })
 

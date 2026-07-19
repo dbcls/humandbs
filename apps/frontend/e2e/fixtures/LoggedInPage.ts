@@ -18,11 +18,16 @@ export class LoggedInPage {
   async login(username: string, password: string) {
     await this.page.goto("/");
     await this.hydratedSign.waitFor();
-    await this.loginBtn.click();
-    await this.page.waitForURL("https://idp-staging.ddbj.nig.ac.jp/**");
-    await this.loginField.fill(username);
-    await this.passwordField.fill(password);
-    await this.signInBtn.click();
-    await this.page.waitForURL("/admin");
+
+    if (await this.loginBtn.isVisible()) {
+      await this.loginBtn.click();
+      await this.page.waitForURL("https://idp-staging.ddbj.nig.ac.jp/**");
+      await this.loginField.fill(username);
+      await this.passwordField.fill(password);
+      await this.signInBtn.click();
+    }
+
+    await this.page.goto("/admin");
+    await this.page.getByTestId("cms-left-panel").waitFor({ state: "visible" });
   }
 }

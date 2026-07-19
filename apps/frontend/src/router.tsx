@@ -7,7 +7,7 @@ import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
 import type { Locale, Messages } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
-import type { ResolvedSiteNavigation } from "@/config/site-navigation";
+import type { ResolvedSiteNavigation } from "@/config/siteNavigation";
 import { routeTree } from "@/routeTree.gen";
 
 export interface Context {

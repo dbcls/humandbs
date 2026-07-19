@@ -39,8 +39,12 @@ export const UrlArrayField = withForm({
                     {/* Column headers */}
                     {enItems.length > 0 && (
                       <div className="flex gap-2">
-                        <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
-                        <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
+                        <div className="flex-1 font-medium text-form-label text-xs uppercase">
+                          En
+                        </div>
+                        <div className="flex-1 font-medium text-form-label text-xs uppercase">
+                          Ja
+                        </div>
                         <div className="w-8" />
                       </div>
                     )}

@@ -3,7 +3,7 @@
  *
  * This module provides:
  * - Research document retrieval (getResearchDoc, getResearchWithSeqNo, getResearchDetail)
- * - Research creation (createResearch, generateNextHumId)
+ * - Research creation (createResearch)
  * - Research updates (updateResearch, updateResearchStatus, updateResearchUids)
  * - Research deletion (deleteResearch)
  */
@@ -105,12 +105,12 @@ export const getResearchDetail = async (
   if (!researchDoc) return null
 
   // Authorization check: verify user can access this Research
-  if (!canAccessResearchDoc(authUser, researchDoc)) {
+  if (!await canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to hide existence from unauthorized users
   }
 
   // Version resolution (owner/admin gets draft, others get published only)
-  const resolvedVersion = resolveVersionForUser(authUser, researchDoc, version) ?? undefined
+  const resolvedVersion = await resolveVersionForUser(authUser, researchDoc, version) ?? undefined
   if (!resolvedVersion) return null
 
   const researchVersionDoc = await getResearchVersion(humId, { version: resolvedVersion })
@@ -137,62 +137,14 @@ export const getResearchDetail = async (
 // === Research Creation ===
 
 /**
- * Generate next humId
- * humId format: "hum" + 4 (or more) digits (hum0001, hum0002, ..., hum9999, hum10000, ...)
- *
- * The numeric component is treated as an integer, not a string: a plain
- * `humId desc` keyword sort puts `hum9999` ahead of `hum10000` (codepoint
- * order), so we run a Painless aggregation that parses the digits and takes
- * the numeric max.
- *
- * The aggregation is scoped to docs whose `humId` matches `hum[0-9]+` so that
- * a malformed seed doc (missing field, non-`hum`-prefix, empty digits) cannot
- * trigger a Painless shard failure on `Integer.parseInt`.
- */
-export const generateNextHumId = async (): Promise<string> => {
-  const res = await esClient.search({
-    index: ES_INDEX.research,
-    size: 0,
-    track_total_hits: false,
-    query: { regexp: { humId: "hum[0-9]+" } },
-    aggs: {
-      max_hum_num: {
-        max: {
-          script: {
-            source: "Integer.parseInt(doc['humId'].value.substring(3))",
-          },
-        },
-      },
-    },
-  })
-
-  const aggs = res.aggregations as { max_hum_num?: { value: number | null } } | undefined
-  const maxValue = aggs?.max_hum_num?.value
-  if (maxValue == null) {
-    // No existing documents, start from hum0001
-    return "hum0001"
-  }
-
-  const next = Math.floor(maxValue) + 1
-  return `hum${String(next).padStart(4, "0")}`
-}
-
-/**
  * Create Research with initial version (v1)
  * Admin only - creates Research (status=draft) + ResearchVersion (v1)
- *
- * @param params - Research data (title, summary, dataProvider, etc.)
- * @param uids - User IDs (Keycloak sub) who can edit this research
- * @param humId - Optional humId (auto-generated if not provided)
- * @param initialReleaseNote - Optional release note for v1
- * @returns Created Research and ResearchVersion
  */
 export const createResearch = async (
   params: CreateResearchRequest,
 ): Promise<{ research: EsResearch; version: ResearchVersion }> => {
   const now = new Date().toISOString().split("T")[0]
 
-  // Default summary structure
   const defaultSummary = {
     aims: { ja: null, en: null },
     methods: { ja: null, en: null },
@@ -200,107 +152,83 @@ export const createResearch = async (
     url: { ja: [], en: [] },
   }
 
-  // Retry logic for auto-generated humId (race condition prevention)
-  const MAX_RETRIES = 3
-  let lastError: Error | null = null
+  const humId = params.humId
+  const version = "v1"
+  const humVersionId = `${humId}-${version}`
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    // Generate humId if not provided
-    const humId = params.humId ?? await generateNextHumId()
-    const version = "v1"
-    const humVersionId = `${humId}-${version}`
-
-    // Create Research document with defaults for optional fields
-    const researchDoc: EsResearch = {
-      humId,
-      url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
-      title: params.title ?? { ja: null, en: null },
-      summary: params.summary ? hydrateSummary(params.summary) : defaultSummary,
-      dataProvider: params.dataProvider?.map(hydratePerson) ?? [],
-      researchProject: params.researchProject?.map(hydrateResearchProject) ?? [],
-      grant: params.grant ?? [],
-      relatedPublication: params.relatedPublication ?? [],
-      controlledAccessUser: [],
-      versionIds: [humVersionId],
-      latestVersion: null, // Not published yet
-      draftVersion: version, // v1 being edited
-      datePublished: null,
-      dateModified: now,
-      status: "draft",
-      uids: params.uids ?? [],
-    }
-
-    // Create ResearchVersion document (v1)
-    const versionDoc: ResearchVersion = {
-      humId,
-      humVersionId,
-      version,
-      versionReleaseDate: now,
-      datasets: [],
-      releaseNote: params.initialReleaseNote
-        ? hydrateBilingualTextValue(params.initialReleaseNote)
-        : { ja: null, en: null },
-    }
-
-    // Index documents (version first, then research)
-    // Use op_type: "create" to prevent overwriting existing documents
-    try {
-      await esClient.index({
-        index: ES_INDEX.researchVersion,
-        id: humVersionId,
-        body: versionDoc,
-        op_type: "create",
-        refresh: "wait_for",
-      })
-    } catch (error) {
-      if (isDocumentExistsError(error)) {
-        if (params.humId) {
-          // Explicit humId provided - don't retry, throw conflict error
-          throw ConflictError.forDuplicate("ResearchVersion", humVersionId)
-        }
-        // Auto-generated humId - retry with new ID
-        lastError = error as Error
-        continue
+  const researchDoc: EsResearch = {
+    humId,
+    url: { ja: `https://humandbs.dbcls.jp/${humId}`, en: `https://humandbs.dbcls.jp/en/${humId}` },
+    title: params.title ?? { ja: null, en: null },
+    summary: params.summary ? hydrateSummary(params.summary) : defaultSummary,
+    dataProvider: params.dataProvider?.map(hydratePerson) ?? [],
+    researchProject: params.researchProject?.map(hydrateResearchProject) ?? [],
+    grant: params.grant ?? [],
+    relatedPublication: params.relatedPublication ?? [],
+    controlledAccessUser: [],
+    versionIds: [humVersionId],
+    latestVersion: null,
+    draftVersion: version,
+    datePublished: null,
+    dateModified: now,
+    status: "draft",
+    summaryShort: params.summaryShort
+      ? {
+        methods: hydrateBilingualTextValue(params.summaryShort.methods),
+        typeOfData: hydrateBilingualTextValue(params.summaryShort.typeOfData),
+        targets: hydrateBilingualTextValue(params.summaryShort.targets),
       }
-      throw new Error(`Failed to create ResearchVersion: ${error}`)
-    }
-
-    try {
-      await esClient.index({
-        index: ES_INDEX.research,
-        id: humId,
-        body: researchDoc,
-        op_type: "create",
-        refresh: "wait_for",
-      })
-    } catch (error) {
-      // Best effort rollback: delete the version document
-      await esClient.delete({
-        index: ES_INDEX.researchVersion,
-        id: humVersionId,
-      }, { ignore: [404] })
-
-      if (isDocumentExistsError(error)) {
-        if (params.humId) {
-          // Explicit humId provided - don't retry, throw conflict error
-          throw ConflictError.forDuplicate("Research", humId)
-        }
-        // Auto-generated humId - retry with new ID
-        lastError = error as Error
-        continue
-      }
-      throw new Error(`Failed to create Research: ${error}`)
-    }
-
-    // Success - return the created documents
-    return {
-      research: EsResearchSchema.parse(researchDoc),
-      version: ResearchVersionSchema.parse(versionDoc),
-    }
+      : null,
   }
 
-  // All retries exhausted
-  throw lastError ?? new Error("Failed to create Research after retries")
+  const versionDoc: ResearchVersion = {
+    humId,
+    humVersionId,
+    version,
+    versionReleaseDate: now,
+    datasets: [],
+    releaseNote: { ja: null, en: null },
+  }
+
+  try {
+    await esClient.index({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+      body: versionDoc,
+      op_type: "create",
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("ResearchVersion", humVersionId)
+    }
+    throw new Error(`Failed to create ResearchVersion: ${error}`)
+  }
+
+  try {
+    await esClient.index({
+      index: ES_INDEX.research,
+      id: humId,
+      body: researchDoc,
+      op_type: "create",
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    await esClient.delete({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+    }, { ignore: [404] })
+
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("Research", humId)
+    }
+    throw new Error(`Failed to create Research: ${error}`)
+  }
+
+  return {
+    research: EsResearchSchema.parse(researchDoc),
+    version: ResearchVersionSchema.parse(versionDoc),
+  }
 }
 
 // === Research Updates ===
@@ -336,7 +264,15 @@ export const updateResearch = async (
     if (updates.researchProject !== undefined) hydratedDoc.researchProject = updates.researchProject.map(hydrateResearchProject)
     if (updates.grant !== undefined) hydratedDoc.grant = updates.grant
     if (updates.relatedPublication !== undefined) hydratedDoc.relatedPublication = updates.relatedPublication
-    if (updates.controlledAccessUser !== undefined) hydratedDoc.controlledAccessUser = updates.controlledAccessUser.map(hydratePerson)
+    if (updates.summaryShort !== undefined) {
+      hydratedDoc.summaryShort = updates.summaryShort === null
+        ? null
+        : {
+          methods: hydrateBilingualTextValue(updates.summaryShort.methods),
+          typeOfData: hydrateBilingualTextValue(updates.summaryShort.typeOfData),
+          targets: hydrateBilingualTextValue(updates.summaryShort.targets),
+        }
+    }
 
     await esClient.update({
       index: ES_INDEX.research,
@@ -412,51 +348,11 @@ export const updateResearchStatus = async (
   }
 }
 
-/**
- * Update Research UIDs (owner list) with optimistic locking
- * Admin only - changes who can edit this research
- * Returns updated uids on success, null on conflict
- */
-export const updateResearchUids = async (
-  humId: string,
-  uids: string[],
-  seqNo: number,
-  primaryTerm: number,
-): Promise<string[] | null> => {
-  try {
-    const now = new Date().toISOString().split("T")[0]
-
-    await esClient.update({
-      index: ES_INDEX.research,
-      id: humId,
-      if_seq_no: seqNo,
-      if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          uids,
-          dateModified: now,
-        },
-      },
-      refresh: "wait_for",
-    })
-
-    return uids
-  } catch (error: unknown) {
-    if (isConflictError(error)) return null
-    throw createEsError(error,"updateResearchUids", humId)
-  }
-}
-
 // === Research Deletion ===
 
 /**
  * Delete Research (logical deletion) and physically delete linked Datasets
- * Admin only - sets status to "deleted" and removes all linked Dataset documents
- *
- * @param humId - Research ID
- * @param seqNo - Sequence number for optimistic locking
- * @param primaryTerm - Primary term for optimistic locking
- * @returns true on success, false on conflict
+ * Admin only - physically deletes Research, all linked ResearchVersions, and all linked Datasets
  */
 export const deleteResearch = async (
   humId: string,
@@ -464,24 +360,20 @@ export const deleteResearch = async (
   primaryTerm: number,
 ): Promise<boolean> => {
   try {
-    const now = new Date().toISOString().split("T")[0]
-
-    await esClient.update({
+    await esClient.delete({
       index: ES_INDEX.research,
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          status: "deleted",
-          draftVersion: null,
-          dateModified: now,
-        },
-      },
       refresh: "wait_for",
     })
 
-    // Physically delete all linked Datasets
+    await esClient.deleteByQuery({
+      index: ES_INDEX.researchVersion,
+      query: { term: { humId } },
+      refresh: true,
+    })
+
     await esClient.deleteByQuery({
       index: ES_INDEX.dataset,
       query: { term: { humId } },

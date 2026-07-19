@@ -42,7 +42,7 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
     // For non-owner users, filter to only show versions up to latestVersion
     let filteredVersions = versions
     const research = await getResearchWithSeqNo(humId)
-    if (research && !isOwnerOrAdmin(authUser, research.doc.uids) && research.doc.latestVersion) {
+    if (research && !await isOwnerOrAdmin(authUser, research.doc.humId) && research.doc.latestVersion) {
       const publishedNum = parseVersionNum(research.doc.latestVersion)
       filteredVersions = versions.filter(v => parseVersionNum(v.version) <= publishedNum)
     }

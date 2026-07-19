@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
-import { Card } from "@/components/Card";
+import { AddNewButton } from "@/components/AddNewButton";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
@@ -18,7 +18,6 @@ import { $deleteNewsItem, newsItemsInfiniteQueryOptions } from "@/serverFunction
 import useConfirmationStore from "@/stores/confirmationStore";
 import { toLocaleDateTimeString } from "@/utils/dates";
 
-import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { createDraftNewsItem, DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { NewsFiltersBar } from "./NewsFiltersBar";
@@ -104,6 +103,8 @@ function ListItems({
 }) {
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
+  const tNews = useTranslations("admin.news");
+  const tCommonAdmin = useTranslations("admin.common");
 
   const queryClient = useQueryClient();
 
@@ -143,7 +144,7 @@ function ListItems({
     openConfirmation({
       title: t("title"),
       description: t("delete-newsItem-message", {
-        itemName: item.translations[locale]?.title || "Unknown",
+        itemName: item.translations.find((tr) => tr.lang === locale)?.title || "Unknown",
       }),
       onAction: async () => {
         await $deleteNewsItem({ data: { id: item.id } });
@@ -179,7 +180,7 @@ function ListItems({
   }
 
   if (newsItems.length === 0) {
-    return <NoItemsMessage>No news items found</NoItemsMessage>;
+    return <NoItemsMessage>{tNews("empty")}</NoItemsMessage>;
   }
 
   return (
@@ -209,14 +210,9 @@ function ListItems({
                       ? "New news item"
                       : item.publishedAt
                         ? toLocaleDateTimeString(item.publishedAt)
-                        : "No date"
+                        : tCommonAdmin("no-date")
                   }
-                  translations={Object.entries(item.translations ?? {}).map(([lang, tr]) => ({
-                    lang,
-                    statuses: {
-                      published: tr.title,
-                    },
-                  }))}
+                  translations={item.translations}
                   meta={
                     item.tags && item.tags.length > 0 ? (
                       <div className="mt-1 flex flex-wrap gap-1">

@@ -39,10 +39,17 @@ const researchVersionFields = {
  * `_seq_no` / `_primary_term` are surfaced in the response envelope's `meta`
  * (see `ResearchDetailResponseSchema`), not in `data`, matching the Dataset
  * detail pattern (architecture.md § detail レスポンスの meta).
+ *
+ * `owners` is response-only, populated at route time from the JGA DB
+ * (architecture.md § Research owners). Masked to `[]` for non-owner viewers.
  */
 export const ResearchDetailSchema = EsResearchSchema
   .omit({ versionIds: true })
   .extend(researchVersionFields)
+  .extend({
+    owners: z.array(z.string()).default([])
+      .describe("Owner usernames (JGA DB-derived). Empty for non-owner viewers."),
+  })
 export type ResearchDetail = z.infer<typeof ResearchDetailSchema>
 
 // === Dataset Version Item ===
@@ -166,9 +173,29 @@ export const MergedSearchableSchema = z.object({
 })
 export type MergedSearchable = z.infer<typeof MergedSearchableSchema>
 
+// === Distribution (download links for public datasets) ===
+
+export const DistributionItemSchema = z.object({
+  url: z.string()
+    .describe("Download URL"),
+  name: z.string()
+    .describe("Human-readable label (e.g., 'DRX003058 fastq dir', 'DRR003760.sra')"),
+  type: z.enum(["directory", "file"])
+    .describe("Whether URL points to a directory listing or a direct file"),
+})
+export type DistributionItem = z.infer<typeof DistributionItemSchema>
+
 // === Dataset document with mergedSearchable (for API response) ===
 
 export const DatasetDocWithMergedSchema = EsDatasetSchema.extend({
   mergedSearchable: MergedSearchableSchema.optional(),
+  distribution: z.array(DistributionItemSchema).optional()
+    .describe("Download links for public datasets (GEA, MetaboBank, DRA, NBDC Dataset)"),
+  parentJgaStudyId: z.string().nullable()
+    .describe(
+      "Parent JGA Study accession (e.g., 'JGAS000001') for JGAD datasets. " +
+      "Fetched live from DDBJ Search per request. `null` when the dataset is " +
+      "not JGAD, when the parent cannot be resolved, or when DDBJ Search fails.",
+    ),
 })
 export type DatasetDocWithMerged = z.infer<typeof DatasetDocWithMergedSchema>

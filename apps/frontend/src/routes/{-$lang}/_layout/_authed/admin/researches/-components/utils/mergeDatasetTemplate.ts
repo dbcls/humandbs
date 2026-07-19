@@ -40,6 +40,9 @@ export function mergeDatasetTemplate(
         ? incoming.experiments.map((exp) => ({
             header: exp.header,
             data: experimentDataToEntries(exp.data as any),
+            ...((exp as any).searchable !== undefined
+              ? { searchable: (exp as any).searchable }
+              : {}),
           }))
         : current.experiments,
   };

@@ -14,6 +14,15 @@ import { createMockResearchDoc } from "../../helpers/mock-es"
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+const mockIsOwner = mock<(username: string, humId: string) => Promise<boolean>>(async () => false)
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: (username: string, humId: string) => mockIsOwner(username, humId),
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
+}))
+
 const mockUpdateResearchStatus = mock<
   (...args: unknown[]) => Promise<({ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null)>
 >()
@@ -29,8 +38,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
   updateResearch: mock(() => Promise.resolve(null)),
   updateResearchStatus: (...args: unknown[]) => mockUpdateResearchStatus(...args),
-  updateResearchUids: mock(() => Promise.resolve(null)),
-  generateNextHumId: mock(() => Promise.resolve("hum0001")),
 }))
 
 void mock.module("@/api/es-client/search", () => ({
@@ -198,11 +205,13 @@ describe("computeVersionUpdates", () => {
 
 describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing", () => {
   const adminHeaders = { "Content-Type": "application/json", ...adminAuthHeader() }
-  const owner = userAuthHeader({ userId: "owner-1" })
+  const owner = userAuthHeader({ userId: "owner-1", username: "owner-1" })
 
   beforeEach(() => {
     mockGetResearchWithSeqNo.mockReset()
     mockUpdateResearchStatus.mockReset()
+    mockIsOwner.mockReset()
+    mockIsOwner.mockImplementation(async (_u: string) => _u === "owner-1")
   })
 
   const updatedStub = (status: EsResearch["status"], extras: Partial<EsResearch> = {}) => ({
@@ -253,7 +262,6 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
     const draftDoc = createMockResearchDoc({
       humId: "hum0001",
       status: "draft",
-      uids: ["owner-1"],
       latestVersion: null,
       draftVersion: "v1",
     })

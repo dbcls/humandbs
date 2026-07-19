@@ -56,6 +56,8 @@ services:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=3000
       - HUMANDBS_FRONTEND_PUBLIC_FILES_DIR=${HUMANDBS_FRONTEND_PUBLIC_FILES_DIR:-public-files}
+      - HUMANDBS_FRONTEND_PUBLIC_FILES_BASE=${HUMANDBS_FRONTEND_PUBLIC_FILES_BASE:-./data}
+      - HUMANDBS_FRONTEND_DU_APPLICATION_URL=${HUMANDBS_FRONTEND_DU_APPLICATION_URL}
       # Credentials (from .env)
       - HUMANDBS_POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
       - HUMANDBS_POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
@@ -70,6 +72,9 @@ services:
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
+      # Persistent storage for uploaded public-files, kept outside the build
+      # output (dist/) and out of the source tree so rebuilds never wipe it.
+      - public-files-data:/app/apps/frontend/data
     working_dir: /app/apps/frontend
     networks:
       - humandbs-network
@@ -114,12 +119,15 @@ services:
       - HUMANDBS_JGA_DB_SCHEMA=${HUMANDBS_JGA_DB_SCHEMA:-jgasys}
       # Admin UID file
       - HUMANDBS_BACKEND_ADMIN_UID_FILE=${HUMANDBS_BACKEND_ADMIN_UID_FILE:-}
+      # Public files directory (for NBDC Dataset distribution links)
+      - HUMANDBS_FILES_PATH=/humandbs-files
     volumes:
       - .:/app:rw
       - node_modules:/app/node_modules
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
+      - ${HUMANDBS_FILES_DIR}:/humandbs-files:ro
     working_dir: /app/apps/backend
     networks:
       - humandbs-network
@@ -216,6 +224,8 @@ volumes:
     name: humandbs-${HUMANDBS_ENV}-eslint-config-node-modules
   cms-pgdata:
     name: humandbs-${HUMANDBS_ENV}-cms-pgdata
+  public-files-data:
+    name: humandbs-${HUMANDBS_ENV}-public-files-data
   es-data:
     name: humandbs-${HUMANDBS_ENV}-es-data
 

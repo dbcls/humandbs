@@ -8,9 +8,11 @@ import {
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
 import { Bell, Plus, Trash2Icon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { Card } from "@/components/Card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DateRangePicker } from "@/components/DatePicker";
@@ -26,7 +28,7 @@ import { i18n } from "@/config/i18n";
 import { hasPermission } from "@/config/permissions";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
-import type { AlertRecord } from "@/repositories/alert";
+import type { AlertRecord, AlertTranslation } from "@/repositories/alert";
 import {
   $createAlert,
   $deleteAlert,
@@ -38,7 +40,6 @@ import type { DateStringRange } from "@/utils/dates";
 import { toDateString } from "@/utils/dates";
 import { alertsAdminSearchParamsSchema } from "@/utils/query-params";
 
-import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
@@ -136,6 +137,7 @@ function ListItems({
   onSelectAlert: (id?: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const tAlerts = useTranslations("admin.alerts");
 
   const { user } = useRouteContext({ from: "__root__" });
 
@@ -185,7 +187,7 @@ function ListItems({
         updatedBy: { name: user?.name ?? null },
         from: null,
         to: null,
-        translations: {} as Partial<Record<Locale, { content: string }>>,
+        translations: [],
       },
       ...alerts,
     ];
@@ -195,8 +197,8 @@ function ListItems({
 
   function handleDeleteAlert(id: string) {
     openConfirmation({
-      title: "Delete alert?",
-      description: "This will permanently remove the alert and its translations.",
+      title: tAlerts("delete-title"),
+      description: tAlerts("delete-description"),
       onAction: async () => {
         const prevAlerts = queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(
           alertsQO.queryKey,
@@ -257,7 +259,7 @@ function ListItems({
           translations: i18n.locales
             .map((lang) => ({
               lang,
-              content: targetAlert.translations[lang]?.content?.trim() ?? "",
+              content: targetAlert.translations.find((t) => t.lang === lang)?.content?.trim() ?? "",
             }))
             .filter((translation) => translation.content.length > 0),
         },
@@ -276,7 +278,7 @@ function ListItems({
     }
   }
 
-  if (listItems.length === 0) return <NoItemsMessage>No alerts found</NoItemsMessage>;
+  if (listItems.length === 0) return <NoItemsMessage>{tAlerts("no-alerts")}</NoItemsMessage>;
 
   return (
     <ul
@@ -290,7 +292,7 @@ function ListItems({
         const previewTranslations = i18n.locales
           .map((translationLocale) => ({
             locale: translationLocale,
-            content: alert.translations[translationLocale]?.content,
+            content: alert.translations.find((t) => t.lang === translationLocale)?.content,
           }))
           .filter(
             (translation): translation is { locale: Locale; content: string } =>
@@ -311,16 +313,16 @@ function ListItems({
                   previewTranslations.length > 0
                     ? previewTranslations.map((translation) => ({
                         lang: translation.locale,
-                        statuses: {
-                          published: translation.content,
-                        },
+                        status: "published" as const,
+                        title: translation.content,
+                        hasUnpublishedChanges: false,
                       }))
                     : [
                         {
                           lang: i18n.defaultLocale,
-                          statuses: {
-                            published: "Untitled alert",
-                          },
+                          status: "published" as const,
+                          title: "Untitled alert",
+                          hasUnpublishedChanges: false,
                         },
                       ]
                 }
@@ -389,6 +391,7 @@ function AlertDetails({
   onSelectAlert: (id?: string) => void;
 }) {
   const { user } = useRouteContext({ from: "__root__" });
+  const tAlerts = useTranslations("admin.alerts");
   const canCreate = hasPermission(user, "alerts", "create");
   const canUpdate = hasPermission(user, "alerts", "update");
 
@@ -495,7 +498,7 @@ function AlertDetails({
     },
     onError: (_error, _vars, context) => {
       queryClient.setQueryData(alertsQO.queryKey, context?.prevAlerts);
-      setSaveError(_error instanceof Error ? _error.message : "Failed to save alert.");
+      setSaveError(_error instanceof Error ? _error.message : tAlerts("failed-to-save"));
       if (isNew) {
         onSelectAlert(NEW_ALERT_ID);
       }
@@ -633,15 +636,15 @@ function buildInitialValues(alert?: {
   enabled: boolean;
   from: string | null;
   to: string | null;
-  translations: Partial<Record<Locale, { content: string }>>;
+  translations: AlertTranslation[];
 }): AlertFormValues {
   return {
     enabled: alert?.enabled ?? true,
     from: alert?.from ?? null,
     to: alert?.to ?? null,
     translations: {
-      en: alert?.translations.en?.content ?? "",
-      ja: alert?.translations.ja?.content ?? "",
+      en: alert?.translations.find((t) => t.lang === "en")?.content ?? "",
+      ja: alert?.translations.find((t) => t.lang === "ja")?.content ?? "",
     },
   };
 }
@@ -690,12 +693,9 @@ function buildOptimisticAlertRecord({
     },
     from: values.from,
     to: values.to,
-    translations: Object.fromEntries(
-      i18n.locales
-        .map((locale) => [locale, values.translations[locale].trim()])
-        .filter(([, content]) => content.length > 0)
-        .map(([locale, content]) => [locale, { content }]),
-    ) as Partial<Record<Locale, { content: string }>>,
+    translations: i18n.locales
+      .map((locale) => ({ lang: locale, content: values.translations[locale].trim() }))
+      .filter((translation) => translation.content.length > 0),
   };
 }
 

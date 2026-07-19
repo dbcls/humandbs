@@ -209,7 +209,7 @@
   }
 
   .custom-prose {
-    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty wrap-break-word;
 
     table {
       @apply w-full table-auto;
@@ -233,6 +233,13 @@
 
     a {
       @apply text-secondary visited:text-visited font-medium;
+    }
+
+    /* DocButton renders as an <a> (asChild) inside the prose, so the prose link
+       rule above would otherwise override its variant text color/weight. Keep
+       the button's own styling. */
+    a.doc-button {
+      @apply font-semibold text-white visited:text-white;
     }
 
     h1,
@@ -262,6 +269,59 @@
           font-size: 0.75em;
         }
       }
+    }
+  }
+
+  .inline-prose {
+    @apply prose-p:my-3 prose-ul:my-2 prose-li:my-2 text-sm leading-normal text-black;
+  }
+  /* Track-changes markdown diff (see DiffViewer / markdownDiff.ts) */
+  .markdown-diff {
+    ins {
+      @apply rounded-xs bg-green-100 px-0.5 text-green-900 no-underline;
+    }
+
+    del {
+      @apply rounded-xs bg-red-100 px-0.5 text-red-900;
+    }
+
+    [data-diff-node="ins"] {
+      @apply bg-green-50 pl-2 shadow-[inset_3px_0_var(--color-green-500)];
+    }
+
+    [data-diff-node="del"] {
+      @apply bg-red-50 pl-2 shadow-[inset_3px_0_var(--color-red-500)];
+    }
+
+    [data-attr-changed] {
+      @apply outline-1 outline-amber-400 outline-dashed;
+      outline-offset: 2px;
+    }
+
+    .diff-attr-change {
+      @apply mr-1.5 inline-block rounded-xs bg-amber-100 px-1 text-xs text-amber-800;
+    }
+
+    /* placeholder for the empty side of an add/remove pair, so rows stay aligned */
+    [data-empty-side="added"] {
+      @apply bg-green-50/40;
+    }
+
+    [data-empty-side="removed"] {
+      @apply bg-red-50/40;
+    }
+
+    /* Keep list markers visible inside the narrow diff columns. Markers are
+       drawn "outside" the list item, in the list's inline-start padding; if the
+       list sits flush against the column edge they get clipped. Reserve space
+       with BOTH a margin (insets the whole list) and padding (room for the
+       marker, incl. two-digit "10."), and pin list-style-position so a parent
+       prose rule can't switch it. */
+    .custom-prose ol,
+    .custom-prose ul {
+      list-style-position: outside;
+      margin-inline-start: 0.5em;
+      padding-inline-start: 1.75em;
     }
   }
 

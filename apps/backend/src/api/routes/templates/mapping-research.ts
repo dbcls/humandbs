@@ -218,8 +218,6 @@ export const mapDsApplicationToResearchTemplate = async (
     researchProject: [],
     grant: [],
     relatedPublication,
-    uids: [],
-    initialReleaseNote: undefined,
     relatedAccessions: {
       jgad: jds.jgaIds.filter(isJgadAccession),
     },

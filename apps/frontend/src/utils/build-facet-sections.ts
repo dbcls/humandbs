@@ -1,8 +1,8 @@
 import type { DatasetFilters } from "@humandbs/backend/types";
 
 import type { SectionConfig } from "@/components/SearchPanel";
-import type { FacetConfig } from "@/config/facet-config";
-import { DATASET_FACET_CONFIG } from "@/config/facet-config";
+import type { FacetConfig } from "@/config/facets";
+import { DATASET_FACET_CONFIG } from "@/config/facets";
 
 /**
  * Builds SectionConfig[] from DATASET_FACET_CONFIG given the active filter

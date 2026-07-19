@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<StatusCode, BilingualText> = {
   50: { ja: "申請却下", en: "Rejected" },
   60: { ja: "申請承認", en: "Approved" },
   70: { ja: "申請取り下げ", en: "Canceled" },
-  80: { ja: "利用期間終了", en: "Closed" },
+  80: { ja: "破棄", en: "Deleted" },
 }
 
 // === Helper functions ===
@@ -368,6 +368,21 @@ export const buildStatusHistory = (
     date: entry.date,
   }))
 
+export const buildApplIdStr = (dsDuId: string, applVersion: number): string =>
+  `${dsDuId}-${String(applVersion).padStart(3, "0")}`
+
+export const buildLatestStatus = (
+  rawHistory: RawStatusHistoryEntry[],
+): { status: StatusCode | null; statusLabel: BilingualText } => {
+  if (rawHistory.length === 0) return { status: null, statusLabel: { ja: null, en: null } }
+  const last = rawHistory[rawHistory.length - 1]
+  return {
+    status: last.status as StatusCode,
+    statusLabel:
+      STATUS_LABELS[last.status as StatusCode] ?? { ja: null, en: null },
+  }
+}
+
 // === Application transformers ===
 
 export const transformDsApplication = (
@@ -375,8 +390,12 @@ export const transformDsApplication = (
 ): DsApplicationTransformed => {
   const { getValue, getValues } = createHelpers(raw.components)
 
+  const { status, statusLabel } = buildLatestStatus(raw.status_history)
+
   return {
-    jdsId: raw.jds_id,
+    jdsId: buildApplIdStr(raw.jds_id, raw.appl_version),
+    status,
+    statusLabel,
     jsubIds: raw.jsub_ids,
     humIds: raw.hum_ids,
     jgaIds: raw.jga_ids,
@@ -435,7 +454,6 @@ export const transformDsApplication = (
 
     control: buildControl(getValue),
 
-    statusHistory: buildStatusHistory(raw.status_history),
     submitDate: toIsoStringOrEmpty(raw.submit_date),
     createDate: toIsoStringOrEmpty(raw.create_date),
   }
@@ -446,8 +464,12 @@ export const transformDuApplication = (
 ): DuApplicationTransformed => {
   const { getValue, getValues } = createHelpers(raw.components)
 
+  const { status, statusLabel } = buildLatestStatus(raw.status_history)
+
   return {
-    jduId: raw.jdu_id,
+    jduId: buildApplIdStr(raw.jdu_id, raw.appl_version),
+    status,
+    statusLabel,
     jgadIds: raw.jgad_ids,
     jgasIds: raw.jgas_ids,
     humIds: raw.hum_ids,
@@ -531,7 +553,6 @@ export const transformDuApplication = (
 
     control: buildControl(getValue),
 
-    statusHistory: buildStatusHistory(raw.status_history),
     submitDate: toIsoStringOrEmpty(raw.submit_date),
     createDate: toIsoStringOrEmpty(raw.create_date),
   }

@@ -49,7 +49,9 @@ const { mapDsApplicationToResearchTemplate } = await import(
 const buildJds = (
   overrides: Partial<DsApplicationTransformed> = {},
 ): DsApplicationTransformed => ({
-  jdsId: "J-DS002494",
+  jdsId: "J-DS002494-001",
+  status: 60 as const,
+  statusLabel: { ja: "申請承認", en: "Approved" },
   jsubIds: [],
   humIds: [],
   jgaIds: [],
@@ -120,7 +122,6 @@ const buildJds = (
     isDeclareStatement: null,
     isAgreeMailUse: null,
   },
-  statusHistory: [],
   submitDate: "2024-01-01",
   createDate: "2024-01-01",
   ...overrides,

@@ -1,24 +1,22 @@
 /**
  * deleteResearch tests
  *
- * Verifies that logical deletion correctly updates all fields
- * including draftVersion, and physically deletes linked Datasets.
- * ES client is mocked (external boundary).
+ * Verifies that physical deletion removes Research, ResearchVersions,
+ * and linked Datasets. ES client is mocked (external boundary).
  */
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 
-// Mock ES client (external boundary: DB)
-const mockUpdate = mock<(...args: unknown[]) => Promise<unknown>>()
+const mockDelete = mock<(...args: unknown[]) => Promise<unknown>>()
 const mockDeleteByQuery = mock<(...args: unknown[]) => Promise<unknown>>()
 
 void mock.module("@/api/es-client/client", () => ({
   esClient: {
-    update: (...args: unknown[]) => mockUpdate(...args),
+    delete: (...args: unknown[]) => mockDelete(...args),
     deleteByQuery: (...args: unknown[]) => mockDeleteByQuery(...args),
+    update: mock(),
     get: mock(),
     search: mock(),
     index: mock(),
-    delete: mock(),
     count: mock(),
   },
   ES_INDEX: {
@@ -37,53 +35,44 @@ const { deleteResearch } = await import("@/api/es-client/research")
 
 describe("deleteResearch", () => {
   beforeEach(() => {
-    mockUpdate.mockReset()
+    mockDelete.mockReset()
     mockDeleteByQuery.mockReset()
-    mockUpdate.mockResolvedValue({})
+    mockDelete.mockResolvedValue({})
     mockDeleteByQuery.mockResolvedValue({ deleted: 0 })
   })
 
-  it("sets status to 'deleted'", async () => {
+  it("physically deletes the Research document", async () => {
     await deleteResearch("hum0001", 1, 1)
 
-    expect(mockUpdate).toHaveBeenCalledTimes(1)
-    const callArgs = mockUpdate.mock.calls[0][0] as Record<string, unknown>
-    const doc = (callArgs.body as { doc: Record<string, unknown> }).doc
-    expect(doc.status).toBe("deleted")
-  })
-
-  it("clears draftVersion to null", async () => {
-    await deleteResearch("hum0001", 1, 1)
-
-    const callArgs = mockUpdate.mock.calls[0][0] as Record<string, unknown>
-    const doc = (callArgs.body as { doc: Record<string, unknown> }).doc
-    expect(doc.draftVersion).toBeNull()
-  })
-
-  it("updates dateModified", async () => {
-    await deleteResearch("hum0001", 1, 1)
-
-    const callArgs = mockUpdate.mock.calls[0][0] as Record<string, unknown>
-    const doc = (callArgs.body as { doc: Record<string, unknown> }).doc
-    expect(doc.dateModified).toBeString()
-    expect(doc.dateModified).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+    const callArgs = mockDelete.mock.calls[0][0] as Record<string, unknown>
+    expect(callArgs.index).toBe("research")
+    expect(callArgs.id).toBe("hum0001")
   })
 
   it("uses optimistic locking (if_seq_no / if_primary_term)", async () => {
     await deleteResearch("hum0001", 42, 7)
 
-    const callArgs = mockUpdate.mock.calls[0][0] as Record<string, unknown>
+    const callArgs = mockDelete.mock.calls[0][0] as Record<string, unknown>
     expect(callArgs.if_seq_no).toBe(42)
     expect(callArgs.if_primary_term).toBe(7)
+  })
+
+  it("physically deletes linked ResearchVersions", async () => {
+    await deleteResearch("hum0001", 1, 1)
+
+    const versionCall = mockDeleteByQuery.mock.calls[0][0] as Record<string, unknown>
+    expect(versionCall.index).toBe("research-version")
+    expect(versionCall.query).toEqual({ term: { humId: "hum0001" } })
   })
 
   it("physically deletes linked Datasets", async () => {
     await deleteResearch("hum0001", 1, 1)
 
-    expect(mockDeleteByQuery).toHaveBeenCalledTimes(1)
-    const callArgs = mockDeleteByQuery.mock.calls[0][0] as Record<string, unknown>
-    expect(callArgs.index).toBe("dataset")
-    expect(callArgs.query).toEqual({ term: { humId: "hum0001" } })
+    expect(mockDeleteByQuery).toHaveBeenCalledTimes(2)
+    const datasetCall = mockDeleteByQuery.mock.calls[1][0] as Record<string, unknown>
+    expect(datasetCall.index).toBe("dataset")
+    expect(datasetCall.query).toEqual({ term: { humId: "hum0001" } })
   })
 
   it("returns true on success", async () => {
@@ -92,7 +81,7 @@ describe("deleteResearch", () => {
   })
 
   it("returns false on version conflict (409)", async () => {
-    mockUpdate.mockRejectedValue({
+    mockDelete.mockRejectedValue({
       meta: { statusCode: 409 },
     })
 
@@ -100,8 +89,8 @@ describe("deleteResearch", () => {
     expect(result).toBe(false)
   })
 
-  it("does not delete Datasets on version conflict", async () => {
-    mockUpdate.mockRejectedValue({
+  it("does not delete versions or datasets on version conflict", async () => {
+    mockDelete.mockRejectedValue({
       meta: { statusCode: 409 },
     })
 

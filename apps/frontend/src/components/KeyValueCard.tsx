@@ -10,11 +10,11 @@ export function KeyValueCard({ title, value }: { title: string; value?: React.Re
 
   return (
     <div className="break-inside-avoid">
-      <dt className="mb-2 font-normal text-secondary text-sm">{title}</dt>
+      <dt className="mb-0.5 font-normal text-secondary text-sm">{title}</dt>
       {typeof value === "object" || typeof value === "function" ? (
-        <dd className="wrap-break-word pl-4 leading-normal">{value}</dd>
+        <dd className="wrap-break-word leading-normal">{value}</dd>
       ) : (
-        <dd dangerouslySetInnerHTML={{ __html: value! }} className="wrap-break-word pl-4" />
+        <dd dangerouslySetInnerHTML={{ __html: value! }} className="wrap-break-word" />
       )}
     </div>
   );

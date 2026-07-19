@@ -5,8 +5,7 @@
  * - IT-SEARCH-12: a datasetId query resolves to its parent Research via a
  *   secondary Dataset-index query, and the resulting humIds become a `terms
  *   humId` filter on the main Research query (ID route — no all_text).
- * - Public visibility filter is applied when authUser is null (latestVersion
- *   exists AND status != "deleted")
+ * - Public visibility filter is applied when authUser is null (latestVersion exists)
  * - Empty result short-circuit when Dataset filters yield no humIds
  *
  * Mocking strategy:
@@ -28,6 +27,14 @@ interface SearchCall {
 const searchCalls: SearchCall[] = []
 const mockEsSearch = mock<(args: { index: string; query?: unknown; aggs?: unknown }) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
 const mockEsMget = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({ docs: [] }))
+
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
+}))
 
 void mock.module("@/api/es-client/client", () => ({
   ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
@@ -135,16 +142,22 @@ describe("searchResearches: full-text query via Dataset-side resolution (IT-SEAR
     expect(prefixClause?.prefix?.datasetId.case_insensitive).toBe(true)
   })
 
-  it("a humId + word query filters by humId AND matches the word, with no dataset-side resolution", async () => {
+  it("a humId + word query filters by humId AND matches the word, with dataset-side text cross-search", async () => {
+    // Dataset-side text cross-search for "cancer"
+    mockEsSearch.mockImplementationOnce(async () => ({
+      aggregations: { humIds: { buckets: [] } },
+    }))
+    // Research-index query
     mockEsSearch.mockImplementationOnce(async () => ({
       hits: { total: { value: 0 }, hits: [] },
     }))
 
     await searchResearches({ ...baseQuery, q: "hum0001 cancer" }, null)
 
-    // No datasetId token → no secondary Dataset-index query is issued.
-    expect(searchCalls.every(c => c.index !== "dataset")).toBe(true)
-    const s = JSON.stringify(searchCalls[0].query)
+    // Text cross-search issues a Dataset-index query for the text portion
+    expect(searchCalls.some(c => c.index === "dataset")).toBe(true)
+    const researchCall = searchCalls.find(c => c.index === "research")!
+    const s = JSON.stringify(researchCall.query)
     // humId filter (ID extraction) AND the body word matched via all_text (operator:and).
     expect(s).toContain("hum0001")
     expect(s).toContain("all_text")
@@ -159,12 +172,9 @@ describe("searchResearches: visibility filter", () => {
     await searchResearches({ ...baseQuery }, null)
 
     const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const statusFilter = (q.bool.must as { bool?: { must?: unknown[]; must_not?: unknown[] } }[])
-      .find(m => typeof m === "object" && m !== null && "bool" in m && Array.isArray(m.bool?.must_not))
-    expect(statusFilter).toBeDefined()
-    const mustExists = (statusFilter as { bool: { must: { exists?: { field: string } }[]; must_not: { term?: { status: string } }[] } }).bool
-    expect(mustExists.must.some(c => c.exists?.field === "latestVersion")).toBe(true)
-    expect(mustExists.must_not.some(c => c.term?.status === "deleted")).toBe(true)
+    const hasExistsFilter = (q.bool.must as { exists?: { field: string } }[])
+      .some(m => m.exists?.field === "latestVersion")
+    expect(hasExistsFilter).toBe(true)
   })
 
   it("admin: omits the visibility filter so all docs are reachable", async () => {
@@ -174,12 +184,10 @@ describe("searchResearches: visibility filter", () => {
 
     const q = searchCalls[0].query as { bool?: { must: unknown[] } } | { match_all: object }
     if ("bool" in q && Array.isArray(q.bool?.must)) {
-      // If a bool query is built, it must NOT contain the publicFilter
-      const hasPublicFilter = (q.bool.must as { bool?: { must_not?: { term?: { status?: string } }[] } }[])
-        .some(m => m.bool?.must_not?.some(c => c.term?.status === "deleted"))
-      expect(hasPublicFilter).toBe(false)
+      const hasExistsFilter = (q.bool.must as { exists?: { field: string } }[])
+        .some(m => m.exists?.field === "latestVersion")
+      expect(hasExistsFilter).toBe(false)
     }
-    // Otherwise (match_all), nothing more to assert
   })
 })
 
@@ -187,8 +195,8 @@ describe("searchResearches: post-filter defence-in-depth", () => {
   it("excludes a doc with latestVersion=null + empty uids that the ES query should have filtered (public)", async () => {
     // Inject a doc the public ES query "should" never return — to prove the
     // post-filter actually drops it as a backstop and reports via logger.error.
-    const goodDoc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1", uids: [] })
-    const leakedDoc = createMockResearchDoc({ humId: "hum0099", latestVersion: null, uids: [] })
+    const goodDoc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    const leakedDoc = createMockResearchDoc({ humId: "hum0099", latestVersion: null })
     mockEsSearch.mockImplementationOnce(async () => ({
       hits: { total: { value: 2 }, hits: [{ _source: goodDoc }, { _source: leakedDoc }] },
     }))
@@ -212,19 +220,197 @@ describe("searchResearches: explicit status request scoping", () => {
     await searchResearches({ ...baseQuery, status: "draft" }, createMockAuthUser({ userId: "user-1", isAdmin: false }))
 
     const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const must = q.bool.must as { term?: { status?: string; uids?: string } }[]
+    const must = q.bool.must as { term?: { status?: string; humId?: string }; terms?: { humId?: string[] } }[]
     expect(must.some(c => c.term?.status === "draft")).toBe(true)
-    expect(must.some(c => c.term?.uids === "user-1")).toBe(true)
+    // Ownership is now resolved via JGA DB, filtered by humId terms
+    expect(must.some(c => c.terms?.humId !== undefined || c.term?.humId !== undefined)).toBe(true)
   })
 
-  it("admin requesting deleted does NOT add uids filter", async () => {
-    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 0 }, hits: [] } }))
+})
 
-    await searchResearches({ ...baseQuery, status: "deleted" }, createMockAuthUser({ userId: "admin-1", isAdmin: true }))
+describe("searchResearches: summaryShort projection (Joomla home page short-text fields)", () => {
+  it("projects EsResearch.summaryShort.{methods,typeOfData,targets} into ResearchSummary.{methodsSummary,typeOfDataSummary,targetsSummary} as BilingualText", async () => {
+    const doc = createMockResearchDoc({
+      humId: "hum0001",
+      latestVersion: "v1",
+      summaryShort: {
+        methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+        typeOfData: { ja: { text: "NGS（WGS）", rawHtml: null }, en: { text: "NGS (WGS)", rawHtml: null } },
+        targets: { ja: { text: "SCA31：1 症例（日本人）", rawHtml: null }, en: { text: "1 SCA31 patient (Japanese)", rawHtml: null } },
+      },
+    })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
 
-    const q = searchCalls[0].query as { bool: { must: unknown[] } }
-    const must = q.bool.must as { term?: { status?: string; uids?: string } }[]
-    expect(must.some(c => c.term?.status === "deleted")).toBe(true)
-    expect(must.some(c => c.term?.uids === "admin-1")).toBe(false)
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
+    expect(result.data[0].typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
+    expect(result.data[0].targetsSummary).toEqual({ ja: "SCA31：1 症例（日本人）", en: "1 SCA31 patient (Japanese)" })
+  })
+
+  it("returns null for the three *Summary fields when summaryShort is absent (humId not listed on the Joomla home article)", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toBeNull()
+    expect(result.data[0].typeOfDataSummary).toBeNull()
+    expect(result.data[0].targetsSummary).toBeNull()
+  })
+
+  it("when only one language is present in summaryShort, the other side collapses to null (no fallback to the populated language)", async () => {
+    const doc = createMockResearchDoc({
+      humId: "hum0001",
+      latestVersion: "v1",
+      summaryShort: {
+        methods:    { ja: { text: "配列決定", rawHtml: null }, en: null },
+        typeOfData: { ja: null, en: { text: "NGS (WGS)", rawHtml: null } },
+        targets:    { ja: null, en: null },
+      },
+    })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].methodsSummary).toEqual({ ja: "配列決定", en: null })
+    expect(result.data[0].typeOfDataSummary).toEqual({ ja: null, en: "NGS (WGS)" })
+    expect(result.data[0].targetsSummary).toBeNull()
+  })
+})
+
+// platforms is rendered as plain string[] by the frontend (no markdown render),
+// so the projection must use the structured `searchable.platforms` (vendor +
+// model) rather than the markdown-shaped `experiments[].data.Platform.text`
+// that D11 introduced.
+describe("searchResearches: platforms projection (structured searchable.platforms, not markdown data.Platform.text)", () => {
+  const buildDatasetWithPlatforms = (
+    platforms: { vendor: string | null; model: string | null }[],
+  ) => ({
+    found: true,
+    _id: "JGAD000001-v1",
+    _source: {
+      datasetId: "JGAD000001",
+      version: "v1",
+      humId: "hum0001",
+      humVersionId: "hum0001-v1",
+      versionReleaseDate: "2024-01-01",
+      releaseDate: "2024-01-01",
+      criteria: "Controlled-access (Type I)",
+      typeOfData: { ja: "NGS(WGS)", en: "NGS(WGS)" },
+      experiments: [
+        {
+          header: {
+            ja: { text: "WGS", rawHtml: "<span>WGS</span>" },
+            en: { text: "WGS", rawHtml: "<span>WGS</span>" },
+          },
+          data: {
+            // D11-shaped markdown text. If the projection mistakenly falls back
+            // to this it'll leak the `\[ \]` escapes into the response.
+            Platform: {
+              ja: { text: String.raw`Illumina \[Should Not Appear\]`, rawHtml: null },
+              en: { text: String.raw`Illumina \[Should Not Appear\]`, rawHtml: null },
+            },
+          },
+          searchable: {
+            subjectCount: null,
+            subjectCountType: null,
+            healthStatus: null,
+            diseases: [],
+            tissues: [],
+            isTumor: null,
+            cellLine: [],
+            population: [],
+            cohorts: [],
+            sex: null,
+            ageGroup: null,
+            assayType: [],
+            libraryKits: [],
+            platforms,
+            readType: null,
+            readLength: null,
+            sequencingDepth: null,
+            targetCoverage: null,
+            referenceGenome: [],
+            variantCounts: null,
+            hasPhenotypeData: null,
+            targets: null,
+            fileTypes: [],
+            processedDataTypes: [],
+            dataVolumeGb: null,
+            policies: [],
+          },
+        },
+      ],
+    },
+  })
+
+  const setupMget = (platforms: { vendor: string | null; model: string | null }[]) => {
+    // 1st mget: research-version index. 2nd mget: dataset index.
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [{
+        found: true,
+        _id: "hum0001-v1",
+        _source: {
+          humId: "hum0001",
+          humVersionId: "hum0001-v1",
+          version: "v1",
+          versionReleaseDate: "2024-01-01",
+          releaseNote: { ja: null, en: null },
+          datasets: [{ datasetId: "JGAD000001", version: "v1" }],
+        },
+      }],
+    }))
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [buildDatasetWithPlatforms(platforms)],
+    }))
+  }
+
+  it("formats `${vendor} [${model}]` from searchable.platforms (ignoring data.Platform.text)", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([{ vendor: "Illumina", model: "HiSeq 2000" }])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
+    // Defence-in-depth: ensure no leaked escapes from data.Platform.text.
+    expect(result.data[0].platforms.some(p => p.includes("\\["))).toBe(false)
+  })
+
+  it("emits the present side bare when one of {vendor, model} is null", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([
+      { vendor: "Illumina", model: null },
+      { vendor: null, model: "HiSeq 2000" },
+    ])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms.sort()).toEqual(["HiSeq 2000", "Illumina"])
+  })
+
+  it("skips entries where both vendor and model are null", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([{ vendor: null, model: null }])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual([])
+  })
+
+  it("dedupes identical platforms across experiments", async () => {
+    const doc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" })
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMget([
+      { vendor: "Illumina", model: "HiSeq 2000" },
+      { vendor: "Illumina", model: "HiSeq 2000" },
+    ])
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
   })
 })

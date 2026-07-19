@@ -1,10 +1,16 @@
-import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouteContext } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
+import { createTranslator, useTranslations } from "use-intl";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
+import { Link } from "@/components/Link";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { NotFound } from "@/components/NotFound";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
+import { Button } from "@/components/ui/button";
+import type { Messages } from "@/config/i18n";
+import { useCan } from "@/hooks/useCan";
 import {
   $getDocumentBreadcrumbs,
   $getLatestDocumentOrContent,
@@ -24,10 +30,41 @@ const humIdWithVersion = z
     return { humId, version };
   });
 
-// Matches "<docId>/revision/<N>" where N is a positive integer
+// Legacy Joomla URL patterns redirected to canonical シンポータル routes:
+//   /hum<NNNN>-vN-release    → /research/:humId/versions  (release info page)
+//   /hum<NNNN>-latest        → /research/:humId           (latest research detail)
+//   /hum<NNNN>-latest-release → /research/:humId/versions (release info page)
+const humVersionReleasePattern = /^(hum\d+)-v\d+-release$/i;
+const humLatestPattern = /^(hum\d+)-latest$/i;
+const humLatestReleasePattern = /^(hum\d+)-latest-release$/i;
+
+// Legacy Joomla versioned-alias / menu-alias redirects:
+//   data-sharing-guidelines[-vN]              → guidelines/data-sharing-guidelines
+//   security-guidelines-for-{users,...}[-vN]  → guidelines/security-guidelines-for-{...}
+//   guideline-revision[N-]*                   → guidelines
+//   policy                                    → nbdc-policy
+const legacyAliasRedirects: { pattern: RegExp; splat: string }[] = [
+  { pattern: /^data-sharing-guidelines(-v[\d-]+)?$/i, splat: "guidelines/data-sharing-guidelines" },
+  {
+    pattern: /^security-guidelines-for-users(-v\d+)?$/i,
+    splat: "guidelines/security-guidelines-for-users",
+  },
+  {
+    pattern: /^security-guidelines-for-submitters(-v\d+)?$/i,
+    splat: "guidelines/security-guidelines-for-submitters",
+  },
+  {
+    pattern: /^security-guidelines-for-dbcenters(-v[\d-]+)?$/i,
+    splat: "guidelines/security-guidelines-for-dbcenters",
+  },
+  { pattern: /^guideline-revision[\d-]*$/i, splat: "guidelines" },
+  { pattern: /^policy$/i, splat: "nbdc-policy" },
+];
+
+// Matches "<docId>/version/<N>" where N is a positive integer
 const revisionVersionPattern = /^(.+)\/version\/(\d+)$/;
-// Matches "<docId>/revision"
-const revisionListPattern = /^(.+)\/version$/;
+// Matches "<docId>/version"
+const revisionListPattern = /^(.+)\/version/;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -37,6 +74,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   }),
   loader: async ({ params, context }) => {
     /* === Matching humIds === */
+    const humVerReleaseMatch = humVersionReleasePattern.exec(params._splat);
+
+    if (humVerReleaseMatch) {
+      throw redirect({
+        to: "/{-$lang}/research/$humId/versions",
+        params: {
+          lang: context.lang,
+          humId: humVerReleaseMatch[1].toLowerCase(),
+        },
+      });
+    }
+
     const parsedHumIdWithVer = humIdWithVersion.safeParse(params._splat);
 
     if (parsedHumIdWithVer.success) {
@@ -46,6 +95,30 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           lang: context.lang,
           humId: parsedHumIdWithVer.data.humId,
           version: parsedHumIdWithVer.data.version,
+        },
+      });
+    }
+
+    const humLatestReleaseMatch = humLatestReleasePattern.exec(params._splat);
+
+    if (humLatestReleaseMatch) {
+      throw redirect({
+        to: "/{-$lang}/research/$humId/versions",
+        params: {
+          lang: context.lang,
+          humId: humLatestReleaseMatch[1].toLowerCase(),
+        },
+      });
+    }
+
+    const humLatestMatch = humLatestPattern.exec(params._splat);
+
+    if (humLatestMatch) {
+      throw redirect({
+        to: "/{-$lang}/research/$humId",
+        params: {
+          lang: context.lang,
+          humId: humLatestMatch[1].toLowerCase(),
         },
       });
     }
@@ -62,7 +135,36 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       });
     }
 
+    /* === Legacy Joomla news index === */
+    if (params._splat === "all-news") {
+      throw redirect({
+        to: "/{-$lang}/news",
+        params: {
+          lang: context.lang,
+        },
+      });
+    }
+
+    /* === Legacy Joomla versioned-alias / menu-alias === */
+    for (const { pattern, splat } of legacyAliasRedirects) {
+      if (pattern.test(params._splat)) {
+        throw redirect({
+          to: "/{-$lang}/$",
+          params: {
+            lang: context.lang,
+            _splat: splat,
+          },
+        });
+      }
+    }
+
     /** === Matching documents/content items === */
+
+    const t = createTranslator({
+      locale: context.lang,
+      messages: context.messages as Messages,
+      namespace: "common",
+    });
 
     const revisionVersionMatch = revisionVersionPattern.exec(params._splat);
 
@@ -80,27 +182,25 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           data: { contentId: docId, locale: context.lang },
         }),
       ]);
-      if (!data) {
-        throw notFound();
-      }
 
-      const contentHtml = await renderMarkdown(data.content ?? "");
+      const contentHtml = await renderMarkdown(data?.content ?? "");
 
       return {
         kind: "revision" as const,
         contentHtml,
-        title: data.title,
+        title: data?.title,
         crumbs: [
           ...docCrumbs,
-          { label: "Versions", href: `/${docId}/version` },
+          { label: t("versions"), href: `/${docId}/version` },
           {
-            label: String(versionNumber),
+            label: t("version", { n: versionNumber }),
             href: `/${docId}/version/${versionNumber}`,
           },
         ],
         hideTOC: false,
         previousVersions: undefined,
         revisionsBasePath: undefined,
+        documentId: docId,
       };
     }
 
@@ -115,15 +215,16 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
           data: { contentId: docId, locale: context.lang },
         }),
       ]);
-      if (!versions.length) throw new Error("No revisions found");
+      if (!versions.length) throw new Error("No versions found");
       return {
         kind: "revisionList" as const,
         contentHtml: null,
         title: null,
-        crumbs: [...docCrumbs, { label: "Versions", href: `/${docId}/version` }],
+        crumbs: [...docCrumbs, { label: t("versions"), href: `/${docId}/version` }],
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,
+        documentId: docId,
       };
     }
 
@@ -152,6 +253,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         hideTOC: docData.hideTOC ?? true,
         previousVersions: showRevisions && versions.length ? versions : undefined,
         revisionsBasePath: showRevisions && versions.length ? params._splat : undefined,
+        documentId: params._splat,
       };
     }
 
@@ -169,6 +271,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       hideTOC: contentData.hideTOC ?? true,
       previousVersions: undefined,
       revisionsBasePath: undefined,
+      documentId: undefined,
+    };
+  },
+  head: ({ loaderData }) => {
+    return {
+      meta: [{ title: `HumanDBs - ${loaderData?.title}` }],
     };
   },
   errorComponent: ({ error }) => (
@@ -180,7 +288,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath } =
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const { can: isAdmin } = useCan({ resource: "admin-panel", action: "view-cms" });
+  const tDocuments = useTranslations("admin.documents");
+  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath, documentId } =
     Route.useLoaderData();
 
   if (kind === "revisionList") {
@@ -201,6 +312,21 @@ function RouteComponent() {
       hideTOC={hideTOC}
       previousVersions={previousVersions}
       revisionsBasePath={revisionsBasePath}
+      topRightAction={
+        isAdmin && documentId ? (
+          <Button asChild variant="captionAction" size="captionAction">
+            <Link
+              to="/{-$lang}/admin/documents"
+              params={{ lang }}
+              search={{ selectedId: documentId }}
+              variant="nav"
+            >
+              <Pencil className="mr-2 size-4" />
+              {tDocuments("edit-this-document")}
+            </Link>
+          </Button>
+        ) : undefined
+      }
     />
   );
 }

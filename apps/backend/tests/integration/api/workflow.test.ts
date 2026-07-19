@@ -27,7 +27,7 @@ import {
 } from "./mutating-helpers"
 import {
   authHeaders,
-  decodeJwtSub,
+  decodeJwtPreferredUsername,
   getApp,
   itWithAdminToken,
   itWithIsolationIndex,
@@ -164,13 +164,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-01: submit by owner moves draft to review", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-01
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const beforeApp = getApp()
       const beforeRes = await beforeApp.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       const beforeJson = (await beforeRes.json()) as SingleReadOnlyResponse<{ dateModified?: string; latestVersion?: string | null; draftVersion?: string | null }>
@@ -191,13 +191,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-04: approve moves review to published and sets datePublished/datasets pinned", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-04
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       await submitForReview(nonAdmin, humId)
       const approved = await approveResearch(admin, humId)
@@ -225,13 +225,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
   itWithIsolationIndex("IT-WORKFLOW-05: second approve preserves the original datePublished", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-05
     // After approve→unpublish→submit→approve the datePublished must equal the value set by the first approve.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       const app = getApp()
@@ -253,13 +253,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-08: admin reject moves review to draft (versions unchanged)", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-08
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       const app = getApp()
       const before = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
@@ -277,13 +277,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-10: admin unpublish moves latestVersion to draftVersion", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-10
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       const app = getApp()
@@ -314,13 +314,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
     // (status=draft, seq=X). One succeeds; the other gets either an ES optimistic-lock 409
     // (seq mismatch on write) or a state-guard 409 (status is now "review" by the time the
     // second read happens). Either way, the SSOT 不変条件 "2 度目のリクエストが 409" holds.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const [a, b] = await Promise.all([
         app.request(url(`/research/${humId}/submit`), {
@@ -343,13 +343,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-13: unpublished Research is 404 for public but visible to admin as draft", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-13
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       await unpublishResearch(admin, humId)
@@ -394,13 +394,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-15: dateModified is non-decreasing across submit/approve/unpublish/submit", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-15
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const stamps: number[] = []
       const recordFrom = (handle: { dateModified?: string }): void => {
         if (handle.dateModified) stamps.push(Date.parse(handle.dateModified))
@@ -420,13 +420,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
 
   itWithIsolationIndex("IT-WORKFLOW-16: submit→reject→submit cycle leaves Research in review with unchanged versions", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-16
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const stamps: number[] = []
       const r1 = await submitForReview(nonAdmin, humId)
       stamps.push(Date.parse(r1.dateModified ?? "1970-01-01"))

@@ -1328,19 +1328,6 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
-### IT-DATASET-11: PUT /dataset/{datasetId}/update は親 Research が draft でないと 409
-
-**endpoint**: `PUT /dataset/{review_research_datasetId}/update` (owner token、親が review)
-
-**不変条件**:
-- `status === 409`
-- `detail` に「expected 'draft'」相当 (現在の status と期待 status を含む 409 Conflict メッセージ)
-- 同じ Dataset に対し親が draft に戻れば 200
-
-**回帰元**: `architecture.md § Dataset の status 依存` / `src/api/routes/dataset.ts § updateDatasetRoute § D1 check`
-
-**関連 unit テスト**: `tests/unit/api/routes/dataset/index.test.ts` (parent status guard)
-
 ### IT-DATASET-12: PUT /dataset/{datasetId}/update の楽観的ロック (409)
 
 **endpoint**: `PUT /dataset/{datasetId}/update` (古い `_seq_no` / `_primary_term`)
@@ -1507,9 +1494,9 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ---
 
-## IT-RESEARCH-*: Research (CRUD + UIDs)
+## IT-RESEARCH-*: Research (CRUD + Ownership)
 
-`GET /research` (list、status フィルタの権限、value-based field control: status/uids/draftVersion)、`POST /research/new` (humId 自動採番、`op_type:create` 重複で 409、3 回リトライ)、`GET /research/{humId}` (バージョン解決、public 範囲)、`PUT /research/{humId}/update` (全置換、rawHtml null 上書き、楽観的ロック)、`POST /research/{humId}/delete` (論理削除＋紐づく Dataset 物理削除)、`PUT /research/{humId}/uids` (admin)。
+`GET /research` (list、status フィルタの権限、value-based field control: status/owners/draftVersion)、`POST /research/new` (humId 自動採番、`op_type:create` 重複で 409、3 回リトライ)、`GET /research/{humId}` (バージョン解決、public 範囲)、`PUT /research/{humId}/update` (全置換、rawHtml null 上書き、楽観的ロック)、`POST /research/{humId}/delete` (論理削除＋紐づく Dataset 物理削除)、`GET /research/{humId}/owners` (admin, JGA DB 由来の owner 一覧を返す)。
 
 ### IT-RESEARCH-01: GET /research 一覧 (public)
 
@@ -1519,7 +1506,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - `status === 200`
 - `data` は `latestVersion !== null AND status !== "deleted"` のみ
 - 各 item の `status === "published"` (value-based)
-- 各 item で `uids` / `draftVersion` / `latestVersion` は **omit** (`ResearchSummary` のシェイプ。詳細との違いに注意)
+- 各 item で `owners` / `draftVersion` / `latestVersion` は **omit** (`ResearchSummary` のシェイプ。詳細との違いに注意)
 - list は item 単位の `_seq_no` / `_primary_term` を**含まない** (含まれるのは detail のみ)
 
 **回帰元**: `architecture.md § 公開条件` / `architecture.md § レスポンスのフィールド制御`
@@ -1772,30 +1759,6 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
 
-### IT-RESEARCH-21: PUT /research/{humId}/uids (admin) で uids 更新
-
-**endpoint**: `PUT /research/{humId}/uids` body: `{ uids: ["uid1", "uid2"], _seq_no, _primary_term }`
-
-**不変条件**:
-- `status === 200`
-- 直後の admin GET で `data.uids === ["uid1", "uid2"]`
-- uid1 ユーザーで update 系 endpoint を叩けるようになる
-
-**回帰元**: `docs/api-guide.md § エンドポイント構成` / `src/api/routes/research/crud.ts`
-
-**関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
-
-### IT-RESEARCH-22: PUT /research/{humId}/uids は非 admin で 403
-
-**endpoint**: `PUT /research/{humId}/uids` (owner だが非 admin)
-
-**不変条件**:
-- `status === 403`
-
-**回帰元**: `architecture.md § 認可マトリクス`
-
-**関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
-
 ### IT-RESEARCH-23: GET /research/{humId}/dataset (リンク Dataset 一覧)
 
 **endpoint**: `GET /research/{humId}/dataset`
@@ -1850,6 +1813,20 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **回帰元**: `docs/api-guide.md § rawHtml の扱い`
 
 **関連 unit テスト**: `tests/unit/api/utils/hydrate-raw-html.test.ts`
+
+### IT-RESEARCH-28: POST /research/{humId}/dataset/new は既存 datasetId を 409 で拒否する
+
+**endpoint**: `POST /research/{humId}/dataset/new` body: `{ datasetId: <既存> }` (owner、親 Research が draft)
+
+**不変条件**:
+- 同一 Research 内で先に作成した Dataset の `datasetId` を再指定すると `status === 409`、`title === "Conflict"`、`detail` に対象 datasetId と `already exists` を含む
+- 別 Research から同じ `datasetId` を指定しても `status === 409` で拒否される
+- 409 応答後、既存 Dataset は不変: `GET /dataset/{datasetId}/versions` の返り値は 1 件のまま、`GET /dataset/{datasetId}` の `humId` / `releaseDate` は初回作成時のまま、親 Research の `GET /research/{humId}/dataset` に不整合エントリが生えていない
+- `datasetId` 未指定 (`body: "{}"`) は従来通り `status === 201` で `DRAFT-{humId}-{uuid}` を自動採番する
+
+**回帰元**: `docs/api-guide.md § Dataset ID の一意性` / `docs/architecture.md § datasetId の一意性`
+
+**関連 unit テスト**: `tests/unit/api/es-client/dataset.test.ts § createDataset`
 
 ### IT-RESEARCH-27: POST /research/new body 全 optional 省略で 201 (default 適用)
 

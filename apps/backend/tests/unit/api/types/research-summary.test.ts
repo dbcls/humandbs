@@ -18,8 +18,11 @@ const validBase = {
   typeOfData: ["NGS"],
   platforms: ["Illumina"],
   targets: "targets text",
+  methodsSummary: { ja: "配列決定", en: "Sequencing" },
+  typeOfDataSummary: { ja: "NGS（WGS）", en: "NGS (WGS)" },
+  targetsSummary: { ja: "対象", en: "Targets" },
   dataProvider: ["Provider A"],
-  criteria: "Controlled-access (Type I)",
+  criteria: ["Controlled-access (Type I)"],
   status: "published" as const,
 }
 
@@ -108,7 +111,7 @@ describe("ResearchSummarySchema", () => {
     })
 
     it("accepts valid status values", () => {
-      for (const status of ["draft", "review", "published", "deleted"] as const) {
+      for (const status of ["draft", "review", "published"] as const) {
         const result = ResearchSummarySchema.safeParse({ ...withTitle, status })
 
         expect(result.success).toBe(true)

@@ -2,7 +2,7 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 import * as z from "zod";
 
 import { localeSchema } from "@/config/i18n";
-import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
+import { siteNavigationConfigSchema } from "@/config/siteNavigation.schema";
 
 import * as schema from "./schema";
 
@@ -13,6 +13,7 @@ export const documentSelectSchema = createSelectSchema(schema.document).omit({
   createdAt: true,
   hideTOC: true,
   hideRevisions: true,
+  hideFromNav: true,
 });
 
 export const documentVersionSelectSchema = createSelectSchema(schema.documentVersion, {

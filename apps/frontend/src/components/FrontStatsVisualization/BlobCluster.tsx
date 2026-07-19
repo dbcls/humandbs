@@ -101,17 +101,17 @@ export default function BlobCluster({
     const layoutItems = sorted.map((sat) => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       const visualRadius = d3Radius * (particleScale / 260);
-      
+
       // Estimate the text label width (character count * approx letter width)
       const textLen = (sat.value || "").length;
       const estimatedTextWidth = textLen * baseFontSize * 0.65 + 16;
-      
+
       // Enforce cell boundaries so neighbors don't overlap. Add a 4px padding on each side.
       const cellWidth = Math.max(visualRadius * 2, estimatedTextWidth) + 8;
-      
+
       // Enforce cell height: particle diameter + vertical space for 2 lines of text
       const cellHeight = visualRadius * 2 + baseFontSize * 1.85 + 12;
-      
+
       return { sat, d3Radius, visualRadius, cellWidth, cellHeight };
     });
 
@@ -119,10 +119,7 @@ export default function BlobCluster({
     let currentRowWidth = 0;
 
     // Calculate total required area based on cell dimensions
-    const totalArea = layoutItems.reduce(
-      (sum, item) => sum + (item.cellWidth * item.cellHeight),
-      0,
-    );
+    const totalArea = layoutItems.reduce((sum, item) => sum + item.cellWidth * item.cellHeight, 0);
     // Use natural 16:9 aspect ratio width. If very few items, lay them out in a single row.
     const maxRowWidth = layoutItems.length <= 10 ? 9999 : Math.sqrt(totalArea * 1.77) * 1.15;
 
@@ -155,7 +152,7 @@ export default function BlobCluster({
         const cellCenterX = xCursor + item.cellWidth / 2;
         // Position particle such that its bottom edge sits on bottomY
         const particleY = bottomY + item.visualRadius;
-        
+
         layoutResults.set(item.sat.id, { x: cellCenterX, y: particleY, d3Radius: item.d3Radius });
         xCursor += item.cellWidth;
       }
@@ -201,7 +198,14 @@ export default function BlobCluster({
     });
 
     colorsInitializedRef.current = false;
-  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale, debugParams?.particleLabelFontSize]);
+  }, [
+    satellites,
+    mode,
+    paletteIndex,
+    globalMaxCount,
+    particleScale,
+    debugParams?.particleLabelFontSize,
+  ]);
 
   const localGroupRef = useRef<THREE.Group>(null);
   const facetLabelRef = useRef<THREE.Group>(null);
@@ -303,7 +307,7 @@ export default function BlobCluster({
       const dx = pointerLocal.x - (node.x || 0) * currentScale;
       const dy = pointerLocal.y - (node.y || 0) * currentScale;
       const distanceSq = dx * dx + dy * dy;
-      
+
       const hitRadius = Math.max(visualRadius + 4, 18);
       const hitRadiusSq = hitRadius * hitRadius;
 
@@ -499,19 +503,15 @@ export default function BlobCluster({
           instancedMeshRef.current.setColorAt(i, node.baseColor);
         }
 
-          // Adjust label position to place it directly below the bottom edge of the particle.
-          // Since the grid layout algorithm is already bottom-aligned and allocates custom cellWidth/cellHeight,
-          // aligning the labels perfectly in a single row without vertical stagger ensures maximum visual alignment.
-          if (isHovered && labelRefs.current[i]) {
-            const currentScale = localGroupRef.current?.scale.x ?? 1.0;
-            const baseX = (node.x || 0) * currentScale;
-            const baseY = ((node.y || 0) - visualRadius) * currentScale - 8;
-            labelRefs.current[i]!.position.set(
-              baseX,
-              baseY,
-              (node.z || 0) * currentScale,
-            );
-          }
+        // Adjust label position to place it directly below the bottom edge of the particle.
+        // Since the grid layout algorithm is already bottom-aligned and allocates custom cellWidth/cellHeight,
+        // aligning the labels perfectly in a single row without vertical stagger ensures maximum visual alignment.
+        if (isHovered && labelRefs.current[i]) {
+          const currentScale = localGroupRef.current?.scale.x ?? 1.0;
+          const baseX = (node.x || 0) * currentScale;
+          const baseY = ((node.y || 0) - visualRadius) * currentScale - 8;
+          labelRefs.current[i]!.position.set(baseX, baseY, (node.z || 0) * currentScale);
+        }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
       if (needsColorUpdate) {

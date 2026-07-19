@@ -3,11 +3,14 @@ export const seo = ({
   description,
   keywords,
   image,
+  url,
 }: {
   title: string;
   description?: string;
   image?: string;
   keywords?: string;
+  /** Canonical, absolute URL for Open Graph consumers. */
+  url: string;
 }) => {
   const tags = [
     { title },
@@ -15,10 +18,12 @@ export const seo = ({
     { name: "keywords", content: keywords },
     { name: "twitter:title", content: title },
     { name: "twitter:description", content: description },
+    { name: "twitter:url", content: url },
     { name: "og:type", content: "website" },
     { name: "og:title", content: title },
     { name: "og:description", content: description },
     { name: "og:site_name", content: "HumanDBs" },
+    { name: "og:url", content: url },
     ...(image
       ? [
           { name: "twitter:image", content: image },

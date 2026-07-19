@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import type { DB } from "@/db/database";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 
@@ -22,33 +23,105 @@ const MISC_JSON_PATH = path.join(
 //   - data-sharing-guidelines-v4 through v8 shift up by 1 accordingly
 //   - security-guidelines-for-dbcenters-v3-2 (EN) pairs with v4 (JA) — both are Ver. 4.0 content
 const SLUG_TO_VERSION: Record<string, { documentContentId: string; versionNumber: number }> = {
-  "data-sharing-guidelines-v1": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 1 },
-  "data-sharing-guidelines-v2": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 2 },
-  "data-sharing-guidelines-v3": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 3 },
-  "data-sharing-guidelines-v3-1": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 4 },
-  "data-sharing-guidelines-v4": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 5 },
-  "data-sharing-guidelines-v5": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 6 },
-  "data-sharing-guidelines-v6": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 7 },
-  "data-sharing-guidelines-v7": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 8 },
-  "data-sharing-guidelines-v8": { documentContentId: "guidelines/data-sharing-guidelines", versionNumber: 9 },
+  "data-sharing-guidelines-v1": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 1,
+  },
+  "data-sharing-guidelines-v2": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 2,
+  },
+  "data-sharing-guidelines-v3": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 3,
+  },
+  "data-sharing-guidelines-v3-1": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 4,
+  },
+  "data-sharing-guidelines-v4": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 5,
+  },
+  "data-sharing-guidelines-v5": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 6,
+  },
+  "data-sharing-guidelines-v6": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 7,
+  },
+  "data-sharing-guidelines-v7": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 8,
+  },
+  "data-sharing-guidelines-v8": {
+    documentContentId: "guidelines/data-sharing-guidelines",
+    versionNumber: 9,
+  },
 
-  "security-guidelines-for-dbcenters-v1": { documentContentId: "guidelines/security-guidelines-for-dbcenters", versionNumber: 1 },
-  "security-guidelines-for-dbcenters-v2": { documentContentId: "guidelines/security-guidelines-for-dbcenters", versionNumber: 2 },
-  "security-guidelines-for-dbcenters-v3": { documentContentId: "guidelines/security-guidelines-for-dbcenters", versionNumber: 3 },
-  "security-guidelines-for-dbcenters-v3-2": { documentContentId: "guidelines/security-guidelines-for-dbcenters", versionNumber: 4 },
-  "security-guidelines-for-dbcenters-v4": { documentContentId: "guidelines/security-guidelines-for-dbcenters", versionNumber: 4 },
+  "security-guidelines-for-dbcenters-v1": {
+    documentContentId: "guidelines/security-guidelines-for-dbcenters",
+    versionNumber: 1,
+  },
+  "security-guidelines-for-dbcenters-v2": {
+    documentContentId: "guidelines/security-guidelines-for-dbcenters",
+    versionNumber: 2,
+  },
+  "security-guidelines-for-dbcenters-v3": {
+    documentContentId: "guidelines/security-guidelines-for-dbcenters",
+    versionNumber: 3,
+  },
+  "security-guidelines-for-dbcenters-v3-2": {
+    documentContentId: "guidelines/security-guidelines-for-dbcenters",
+    versionNumber: 4,
+  },
+  "security-guidelines-for-dbcenters-v4": {
+    documentContentId: "guidelines/security-guidelines-for-dbcenters",
+    versionNumber: 4,
+  },
 
-  "security-guidelines-for-submitters-v1": { documentContentId: "guidelines/security-guidelines-for-submitters", versionNumber: 1 },
-  "security-guidelines-for-submitters-v2": { documentContentId: "guidelines/security-guidelines-for-submitters", versionNumber: 2 },
-  "security-guidelines-for-submitters-v3": { documentContentId: "guidelines/security-guidelines-for-submitters", versionNumber: 3 },
+  "security-guidelines-for-submitters-v1": {
+    documentContentId: "guidelines/security-guidelines-for-submitters",
+    versionNumber: 1,
+  },
+  "security-guidelines-for-submitters-v2": {
+    documentContentId: "guidelines/security-guidelines-for-submitters",
+    versionNumber: 2,
+  },
+  "security-guidelines-for-submitters-v3": {
+    documentContentId: "guidelines/security-guidelines-for-submitters",
+    versionNumber: 3,
+  },
 
-  "security-guidelines-for-users-v1": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 1 },
-  "security-guidelines-for-users-v2": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 2 },
-  "security-guidelines-for-users-v3": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 3 },
-  "security-guidelines-for-users-v4": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 4 },
-  "security-guidelines-for-users-v5": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 5 },
-  "security-guidelines-for-users-v6": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 6 },
-  "security-guidelines-for-users-v7": { documentContentId: "guidelines/security-guidelines-for-users", versionNumber: 7 },
+  "security-guidelines-for-users-v1": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 1,
+  },
+  "security-guidelines-for-users-v2": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 2,
+  },
+  "security-guidelines-for-users-v3": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 3,
+  },
+  "security-guidelines-for-users-v4": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 4,
+  },
+  "security-guidelines-for-users-v5": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 5,
+  },
+  "security-guidelines-for-users-v6": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 6,
+  },
+  "security-guidelines-for-users-v7": {
+    documentContentId: "guidelines/security-guidelines-for-users",
+    versionNumber: 7,
+  },
 };
 
 // Max historical version number per document — used to compute the offset for pre-existing versions.
@@ -59,7 +132,7 @@ const MAX_HISTORICAL_VERSION: Record<string, number> = {
   "guidelines/security-guidelines-for-users": 7,
 };
 
-type Db = ReturnType<typeof drizzle<typeof schema>>;
+type Db = DB;
 
 async function ensureSystemUser(db: Db): Promise<string> {
   const [existing] = await db
@@ -224,7 +297,9 @@ export async function seedGuidelineVersions(
 
       if (alreadySeeded) {
         skipInsert.add(contentId);
-        console.log(`  ${contentId}: already seeded (found fingerprint at v${alreadySeeded.versionNumber}), skipping`);
+        console.log(
+          `  ${contentId}: already seeded (found fingerprint at v${alreadySeeded.versionNumber}), skipping`,
+        );
         continue;
       }
 
@@ -243,7 +318,9 @@ export async function seedGuidelineVersions(
 
       if (existingVersions.length === 0) {
         versionOffsets.set(contentId, 0);
-        console.log(`  ${contentId}: no existing versions, inserting historical v1–v${historicalMax}`);
+        console.log(
+          `  ${contentId}: no existing versions, inserting historical v1–v${historicalMax}`,
+        );
       } else if (alreadySeeded && overwrite) {
         // Already seeded — overwrite in place without renumbering
         versionOffsets.set(contentId, 0);
@@ -298,6 +375,7 @@ export async function seedGuidelineVersions(
           authorId: authorId,
           ...(createdAt && { createdAt }),
           ...(updatedAt && { updatedAt }),
+          ...(createdAt && { publishedAt: createdAt }),
         };
 
         const query = db.insert(schema.documentVersion).values(values);
@@ -317,12 +395,15 @@ export async function seedGuidelineVersions(
                 authorId: values.authorId,
                 createdAt: createdAt ?? new Date(),
                 updatedAt: updatedAt ?? new Date(),
+                publishedAt: createdAt ?? new Date(),
               },
             })
             .execute();
           inserted++;
         } else {
-          const result = await query.onConflictDoNothing().execute();
+          const result = (await query.onConflictDoNothing().execute()) as {
+            rowCount?: number | null;
+          };
           if ((result.rowCount ?? 0) > 0) {
             inserted++;
           } else {
@@ -330,9 +411,7 @@ export async function seedGuidelineVersions(
           }
         }
 
-        console.log(
-          `  [${page.lang}] ${documentContentId} v${finalVersionNumber} (from ${slug})`,
-        );
+        console.log(`  [${page.lang}] ${documentContentId} v${finalVersionNumber} (from ${slug})`);
       }
     }
 

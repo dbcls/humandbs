@@ -57,15 +57,9 @@ const mockEsSearch = mock(async () => ({
         vendorModel: {
           buckets: [
             {
-              key: { vendor: "Illumina", model: "NovaSeq" },
+              key: ["Illumina", "NovaSeq"],
               doc_count: 20,
               counts: { doc_count: 20, research_count: { value: 4 }, dataset_count: { value: 18 } },
-            },
-            {
-              // missing vendor or model -> skipped per implementation
-              key: { vendor: null, model: "NovaSeq" },
-              doc_count: 1,
-              counts: { doc_count: 1, research_count: { value: 1 }, dataset_count: { value: 1 } },
             },
           ],
         },

@@ -4,15 +4,13 @@ import { useLocale, useTranslations } from "use-intl";
 import { Link } from "@/components/Link";
 import type { NewsTitleResponse } from "@/serverFunctions/news";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
+import { toDateString } from "@/utils/dates";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
-  const lang = useLocale();
   return (
     <li>
       {newsItem.publishedAt ? (
-        <span className="w-24 shrink-0 text-xs">
-          {newsItem.publishedAt.toLocaleString(lang)}
-        </span>
+        <span className="w-24 shrink-0 text-xs">{toDateString(newsItem.publishedAt)}</span>
       ) : null}
 
       <Link
@@ -39,8 +37,8 @@ function News() {
   return (
     <div className="flex flex-col gap-2">
       <ul className="space-y-4">
-        {newsTitles.map((item, index) => (
-          <NewsItem key={index} newsItem={item} />
+        {newsTitles.map((item) => (
+          <NewsItem key={item.id} newsItem={item} />
         ))}
       </ul>
       <Link to="/{-$lang}/news" className="mt-6">

@@ -43,7 +43,7 @@ void mock.module("@/api/db-client/client", () => ({
 }))
 
 const {
-  listIds,
+  listVersions,
   fetchDsRaw,
   fetchDuRaw,
   getDsApplication,
@@ -62,17 +62,17 @@ const plainValues = (call: SqlCall | undefined): unknown[] =>
   )
 
 describe("api/db-client/jga-shinsei", () => {
-  describe("listIds", () => {
+  describe("listVersions", () => {
     it("issues COUNT then SELECT with limit=20 offset=0 for J-DS page 1", async () => {
       queueRows([{ count: 42 }])
-      queueRows([{ ds_du_id: "J-DS000001" }, { ds_du_id: "J-DS000002" }])
+      queueRows([{ appl_id: 1 }, { appl_id: 2 }])
 
-      const result = await listIds("J-DS", 1, 20)
+      const result = await listVersions("J-DS", 1, 20)
 
       expect(result.total).toBe(42)
-      expect(result.ids).toEqual(["J-DS000001", "J-DS000002"])
+      expect(result.applIds).toEqual([1, 2])
 
-      // J-DS → data_type = 1
+      // J-DS → data_type = 1; queries join nbdc_application with nbdc_application_master
       expect(plainValues(findTemplate("COUNT(*)"))).toEqual([1])
       // SELECT bind: dataType, limit, offset
       expect(plainValues(findTemplate("LIMIT"))).toEqual([1, 20, 0])
@@ -82,7 +82,7 @@ describe("api/db-client/jga-shinsei", () => {
       queueRows([{ count: 100 }])
       queueRows([])
 
-      await listIds("J-DS", 3, 10)
+      await listVersions("J-DS", 3, 10)
 
       expect(plainValues(findTemplate("LIMIT"))).toEqual([1, 10, 20])
     })
@@ -91,7 +91,7 @@ describe("api/db-client/jga-shinsei", () => {
       queueRows([{ count: 5 }])
       queueRows([])
 
-      await listIds("J-DU", 1, 10)
+      await listVersions("J-DU", 1, 10)
 
       expect(plainValues(findTemplate("COUNT(*)"))).toEqual([2])
     })
@@ -100,10 +100,10 @@ describe("api/db-client/jga-shinsei", () => {
       queueRows([])
       queueRows([])
 
-      const result = await listIds("J-DS", 1, 10)
+      const result = await listVersions("J-DS", 1, 10)
 
       expect(result.total).toBe(0)
-      expect(result.ids).toEqual([])
+      expect(result.applIds).toEqual([])
     })
   })
 
@@ -117,6 +117,9 @@ describe("api/db-client/jga-shinsei", () => {
     it("issues a single CTE query parameterised with the id list", async () => {
       const fakeRow = {
         jds_id: "J-DS000001",
+        appl_id: 1,
+        appl_version: 1,
+        application_type: 10,
         jsub_ids: [],
         hum_ids: [],
         jga_ids: [],
@@ -127,13 +130,13 @@ describe("api/db-client/jga-shinsei", () => {
       }
       queueRows([fakeRow])
 
-      const result = await fetchDsRaw(["J-DS000001"])
+      const result = await fetchDsRaw([1])
 
       expect(result).toEqual([fakeRow])
       const templates = calls.filter((c) => c.type === "template")
       expect(templates).toHaveLength(1)
-      // jdsIds is bound multiple times across CTEs (jds_base, jds_acc, jds_hum)
-      expect(templates[0]?.values).toContainEqual(["J-DS000001"])
+      // applIds is bound as the parameter to the CTE query
+      expect(templates[0]?.values).toContainEqual([1])
     })
   })
 
@@ -147,6 +150,9 @@ describe("api/db-client/jga-shinsei", () => {
     it("issues a single CTE query parameterised with the id list", async () => {
       const fakeRow = {
         jdu_id: "J-DU000001",
+        appl_id: 1,
+        appl_version: 1,
+        application_type: 20,
         jgad_ids: [],
         jgas_ids: [],
         hum_ids: [],
@@ -157,21 +163,33 @@ describe("api/db-client/jga-shinsei", () => {
       }
       queueRows([fakeRow])
 
-      const result = await fetchDuRaw(["J-DU000001"])
+      const result = await fetchDuRaw([1])
 
       expect(result).toEqual([fakeRow])
       const templates = calls.filter((c) => c.type === "template")
       expect(templates).toHaveLength(1)
-      expect(templates[0]?.values).toContainEqual(["J-DU000001"])
+      expect(templates[0]?.values).toContainEqual([1])
     })
   })
 
   describe("getDsApplication", () => {
-    it("throws NotFoundError when no row is returned", async () => {
+    it("throws NotFoundError when resolveApplId finds no row", async () => {
+      queueRows([]) // resolveApplId returns empty → NotFoundError
+      let caught: unknown
+      try {
+        await getDsApplication("J-DS999999-001")
+      } catch (e) {
+        caught = e
+      }
+      expect((caught as Error | undefined)?.message).toMatch(/Application/)
+    })
+
+    it("throws NotFoundError when fetchDsRaw returns empty", async () => {
+      queueRows([{ appl_id: 999 }]) // resolveApplId succeeds
       queueRows([]) // fetchDsRaw returns empty
       let caught: unknown
       try {
-        await getDsApplication("J-DS999999")
+        await getDsApplication("J-DS999999-001")
       } catch (e) {
         caught = e
       }
@@ -180,11 +198,23 @@ describe("api/db-client/jga-shinsei", () => {
   })
 
   describe("getDuApplication", () => {
-    it("throws NotFoundError when no row is returned", async () => {
-      queueRows([])
+    it("throws NotFoundError when resolveApplId finds no row", async () => {
+      queueRows([]) // resolveApplId returns empty → NotFoundError
       let caught: unknown
       try {
-        await getDuApplication("J-DU999999")
+        await getDuApplication("J-DU999999-001")
+      } catch (e) {
+        caught = e
+      }
+      expect((caught as Error | undefined)?.message).toMatch(/Application/)
+    })
+
+    it("throws NotFoundError when fetchDuRaw returns empty", async () => {
+      queueRows([{ appl_id: 999 }]) // resolveApplId succeeds
+      queueRows([]) // fetchDuRaw returns empty
+      let caught: unknown
+      try {
+        await getDuApplication("J-DU999999-001")
       } catch (e) {
         caught = e
       }

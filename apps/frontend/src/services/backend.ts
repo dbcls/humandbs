@@ -18,6 +18,7 @@ import type {
   LangQuery,
   LangVersionQuery,
   LinkedDatasetsListResponse,
+  LinkedResearchesListResponse,
   ResearchDetailResponse,
   ResearchListingQuery,
   ResearchSearchBody,
@@ -26,7 +27,6 @@ import type {
   ResearchWithLockResponse,
   UpdateDatasetRequest,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   WorkflowResponse,
 } from "@humandbs/backend/types";
@@ -39,6 +39,7 @@ import type { DeepOmit } from "@/utils/type-utils";
 import type {
   DatasetBatchResponse,
   DsApplicationListResponse,
+  OwnersResponse,
 } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateResponse,
@@ -52,6 +53,47 @@ const getBackendBaseUrl = createIsomorphicFn()
       process.env.HUMANDBS_BACKEND_BASE_URL ??
       `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}${process.env.HUMANDBS_BACKEND_URL_PREFIX}`,
   );
+
+const reportBackendCall = createIsomorphicFn()
+  .client(() => async () => undefined)
+  .server(
+    () =>
+      async (event: {
+        method: string;
+        route: string;
+        statusCode?: number;
+        durationMs: number;
+        outcome: "success" | "failure";
+        error?: unknown;
+      }) => {
+        const { emitError, emitEvent } = await import("@/observability/server");
+        if (event.error) {
+          emitError("backend.request", event.error, {
+            method: event.method,
+            route: event.route,
+            status_code: event.statusCode,
+            outcome: event.outcome,
+            duration_ms: event.durationMs,
+          });
+          return;
+        }
+        emitEvent(
+          "backend.request",
+          {
+            method: event.method,
+            route: event.route,
+            status_code: event.statusCode,
+            outcome: event.outcome,
+            duration_ms: event.durationMs,
+          },
+          { sampleable: true },
+        );
+      },
+  );
+
+const getBackendRequestId = createIsomorphicFn()
+  .client(async () => undefined)
+  .server(async () => (await import("@/observability/server")).getRequestId());
 
 export class APIError extends Error {
   status: number;
@@ -73,7 +115,7 @@ async function request<T>(
   const { params, ...init } = options;
 
   const baseUrl = getBackendBaseUrl();
-  const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const url = new URL(path.replace(/^\//, ""), base);
 
   if (params) {
@@ -98,10 +140,26 @@ async function request<T>(
 
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
+  const requestId = await getBackendRequestId();
+  if (requestId && !headers.has("x-request-id")) headers.set("x-request-id", requestId);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(url.toString(), { ...init, headers });
+  const startedAt = performance.now();
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { ...init, headers });
+  } catch (error) {
+    await (await reportBackendCall())({
+      method,
+      route: url.pathname,
+      durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+      outcome: "failure",
+      error,
+    });
+    throw error;
+  }
+  const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
 
   if (!res.ok) {
     let data: unknown;
@@ -110,14 +168,25 @@ async function request<T>(
     } catch {
       data = undefined;
     }
-    console.error(`API Error: ${method} ${path} - ${res.status}`, {
-      status: res.status,
-      data,
-      body: init?.body,
-      url: path,
+    const error = new APIError(res.status, method, path, data);
+    await (await reportBackendCall())({
+      method,
+      route: url.pathname,
+      statusCode: res.status,
+      durationMs,
+      outcome: "failure",
+      error,
     });
-    throw new APIError(res.status, method, path, data);
+    throw error;
   }
+
+  await (await reportBackendCall())({
+    method,
+    route: url.pathname,
+    statusCode: res.status,
+    durationMs,
+    outcome: "success",
+  });
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -169,12 +238,18 @@ interface APIService {
     query: { humId: string },
     accessToken?: string,
   ): Promise<LinkedDatasetsListResponse>;
+  getResearchOwners(humId: string, accessToken: string): Promise<OwnersResponse>;
   getDatasetsPaginated(query: { search: DatasetListingQuery }): Promise<DatasetSearchResponse>;
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
     accessToken?: string;
   }): Promise<DatasetDetailResponse>;
+  getDatasetParentResearch(query: {
+    params: DatasetIdParams;
+    search: LangQuery;
+    accessToken?: string;
+  }): Promise<LinkedResearchesListResponse>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
@@ -207,11 +282,6 @@ interface APIService {
     accessToken: string,
   ): Promise<ResearchWithLockResponse>;
   deleteResearch(humId: string, accessToken: string): Promise<void>;
-  updateResearchUids(
-    humId: string,
-    body: UpdateUidsRequest,
-    accessToken: string,
-  ): Promise<ResearchWithLockResponse>;
   createResearchVersion(
     humId: string,
     body: CreateVersionRequest,
@@ -279,6 +349,10 @@ const api: APIService = {
     );
   },
 
+  getResearchOwners(humId, accessToken) {
+    return get<OwnersResponse>(`/research/${humId}/owners`, undefined, authHeader(accessToken));
+  },
+
   getDatasetsPaginated(query) {
     return get<DatasetSearchResponse>(`/dataset`, query.search as Record<string, unknown>);
   },
@@ -286,6 +360,14 @@ const api: APIService = {
   getDataset(query) {
     return get<DatasetDetailResponse>(
       `/dataset/${query.params.datasetId}`,
+      query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
+    );
+  },
+
+  getDatasetParentResearch(query) {
+    return get<LinkedResearchesListResponse>(
+      `/dataset/${query.params.datasetId}/research`,
       query.search as Record<string, unknown>,
       query.accessToken ? authHeader(query.accessToken) : undefined,
     );
@@ -342,10 +424,6 @@ const api: APIService = {
 
   async deleteResearch(humId, accessToken) {
     await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
-  },
-
-  updateResearchUids(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(`/research/${humId}/uids`, body, authHeader(accessToken));
   },
 
   createResearchVersion(humId, body, accessToken) {
@@ -419,13 +497,19 @@ const api: APIService = {
 
 export { api };
 
-type StandardErrorCode = "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+export type StandardErrorCode = "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+
+export type ApiErrorResult<C extends string = never> = {
+  ok: false;
+  error: string;
+  code: StandardErrorCode | C;
+};
 
 export function mapApiError<C extends string = never>(
   error: unknown,
   fallback: string,
   extraMappings?: Partial<Record<number, C>>,
-): { ok: false; error: string; code: StandardErrorCode | C } {
+): ApiErrorResult<C> {
   if (error instanceof APIError) {
     const detail = (error.data as { detail?: string } | undefined)?.detail ?? fallback;
     const extra = extraMappings?.[error.status];

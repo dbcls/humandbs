@@ -1,6 +1,7 @@
 import { CatchBoundary, createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { IntlProvider } from "use-intl";
 
+import { ClientObservabilityReporter } from "@/components/ClientObservabilityReporter";
 import { Navbar } from "@/components/Navbar";
 import { i18n, localeSchema } from "@/config/i18n";
 import { $getMessages } from "@/serverFunctions/i18n";
@@ -66,6 +67,7 @@ function RouteComponent() {
       messages={messages}
       timeZone={timeZone}
     >
+      <ClientObservabilityReporter />
       <CatchBoundary getResetKey={() => "reset"}>
         <div className="flex min-h-0 flex-1 flex-col">
           <Navbar />

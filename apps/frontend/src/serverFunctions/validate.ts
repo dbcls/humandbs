@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
 import { i18n } from "@/config/i18n";
-import { RESERVED_SEGMENTS } from "@/config/routing-config";
-import { getNavbarItems } from "@/config/site-navigation";
+import { RESERVED_SEGMENTS } from "@/config/routing";
+import { getNavbarItems } from "@/config/siteNavigation";
 import { db } from "@/db/database";
 
 export type ValidationResponse =
@@ -38,14 +38,6 @@ export const $validateEntityId = createServerFn({ method: "GET" })
         success: false,
         errors: [{ errorCode: "RESERVED_PATH_PREFIXES" }],
       };
-    }
-
-    const existingContent = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-    });
-
-    if (existingContent) {
-      return { success: false, errors: [{ errorCode: "EXISTING_CONTENT" }] };
     }
 
     const existingDocument = await db.query.document.findFirst({

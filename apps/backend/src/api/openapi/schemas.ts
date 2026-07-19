@@ -24,7 +24,6 @@ import {
   CreateVersionRequestSchema,
   UpdateDatasetRequestSchema,
   UpdateResearchRequestSchema,
-  UpdateUidsRequestSchema,
 } from "@/api/types/request-response"
 import {
   PaginationSchema,
@@ -171,7 +170,6 @@ export const registerOpenAPISchemas = (app: OpenAPIHono): void => {
   // --- Request bodies ---
   r.register("CreateResearchRequest", CreateResearchRequestSchema)
   r.register("UpdateResearchRequest", UpdateResearchRequestSchema)
-  r.register("UpdateUidsRequest", UpdateUidsRequestSchema)
   r.register("CreateVersionRequest", CreateVersionRequestSchema)
   r.register("CreateDatasetForResearchRequest", CreateDatasetForResearchRequestSchema)
   r.register("UpdateDatasetRequest", UpdateDatasetRequestSchema)

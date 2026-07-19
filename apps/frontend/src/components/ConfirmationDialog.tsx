@@ -27,7 +27,7 @@ function ConfirmationDialog() {
         }
       }}
     >
-      <AlertDialogContent className="bg-primary">
+      <AlertDialogContent className="w-3xl bg-primary">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-sm">{description}</AlertDialogDescription>

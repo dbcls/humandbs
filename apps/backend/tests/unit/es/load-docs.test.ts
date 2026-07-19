@@ -7,7 +7,9 @@ import {
   idDataset,
   transformResearch,
   makeDatasetDateModifiedTransform,
+  makeDatasetTransform,
 } from "@/es/load-docs"
+import { extractDataText } from "@/es/types"
 
 describe("es/load-docs.ts", () => {
   // ===========================================================================
@@ -106,22 +108,10 @@ describe("es/load-docs.ts", () => {
       expect(result.status).toBe("published")
     })
 
-    it("should add default empty uids array when missing", () => {
-      const doc = { humId: "hum0001" }
-      const result = transformResearch(doc)
-      expect(result.uids).toEqual([])
-    })
-
     it("should preserve existing status", () => {
       const doc = { humId: "hum0001", status: "draft" }
       const result = transformResearch(doc)
       expect(result.status).toBe("draft")
-    })
-
-    it("should preserve existing uids", () => {
-      const doc = { humId: "hum0001", uids: ["uid1", "uid2"] }
-      const result = transformResearch(doc)
-      expect(result.uids).toEqual(["uid1", "uid2"])
     })
 
     it("should preserve all other fields", () => {
@@ -198,6 +188,132 @@ describe("es/load-docs.ts", () => {
       expect(result.humId).toBe("hum0001")
       expect(result.versionReleaseDate).toBe("2020-01-01")
       expect(doc).toEqual(original)
+    })
+  })
+
+  // ===========================================================================
+  // extractDataText
+  // ===========================================================================
+  describe("extractDataText", () => {
+    it("concatenates ja and en text from all data entries", () => {
+      const data = {
+        Method: {
+          ja: { text: "マッピング方法 Novoalign" },
+          en: { text: "Mapping method Novoalign" },
+        },
+        Platform: {
+          ja: { text: "Illumina HiSeq" },
+          en: { text: "Illumina HiSeq" },
+        },
+      }
+      const result = extractDataText(data)
+      expect(result).toContain("Novoalign")
+      expect(result).toContain("マッピング方法")
+      expect(result).toContain("Illumina HiSeq")
+    })
+
+    it("skips null values", () => {
+      const data = {
+        Method: null,
+        Platform: { ja: { text: "HiSeq" }, en: null },
+      }
+      const result = extractDataText(data)
+      expect(result).toBe("HiSeq")
+    })
+
+    it("skips entries where text is empty or missing", () => {
+      const data = {
+        A: { ja: { text: "" }, en: { text: "" } },
+        B: { ja: null, en: null },
+      }
+      expect(extractDataText(data)).toBe("")
+    })
+
+    it("returns empty string for empty data object", () => {
+      expect(extractDataText({})).toBe("")
+    })
+
+    it("handles entries with only ja or only en", () => {
+      const jaOnly = { A: { ja: { text: "日本語" }, en: null } }
+      expect(extractDataText(jaOnly)).toBe("日本語")
+
+      const enOnly = { A: { ja: null, en: { text: "English" } } }
+      expect(extractDataText(enOnly)).toBe("English")
+    })
+
+    // D11 made `text` markdown-shaped. Without undoing turndown escapes here
+    // the ES analyzer would index `\[DRA016393\]` rather than `DRA016393`,
+    // hurting full-text recall on the all_text catch-all.
+    it("strips markdown escapes so the analyzer indexes the bare token", () => {
+      const data = {
+        Platform: {
+          ja: { text: String.raw`Illumina \[HiSeq 2000\]` },
+          en: { text: String.raw`Illumina \[HiSeq 2000\]` },
+        },
+        Accession: {
+          ja: { text: String.raw`\[DRA016393\]` },
+          en: { text: String.raw`\[DRA016393\]` },
+        },
+      }
+      const result = extractDataText(data)
+      expect(result).not.toContain("\\[")
+      expect(result).not.toContain("\\]")
+      expect(result).toContain("Illumina [HiSeq 2000]")
+      expect(result).toContain("[DRA016393]")
+    })
+  })
+
+  // ===========================================================================
+  // makeDatasetTransform
+  // ===========================================================================
+  describe("makeDatasetTransform", () => {
+    it("stamps both dateModified and dataText on dataset docs", () => {
+      const rawDocs = [
+        {
+          fileName: "JGAD000001-v1.json",
+          data: {
+            datasetId: "JGAD000001",
+            version: "v1",
+            versionReleaseDate: "2024-01-01",
+            experiments: [
+              {
+                data: {
+                  Method: {
+                    ja: { text: "BWA", rawHtml: null },
+                    en: { text: "BWA", rawHtml: null },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]
+
+      const transform = makeDatasetTransform(rawDocs)
+      const result = transform(rawDocs[0].data)
+
+      expect(result.dateModified).toBe("2024-01-01")
+      const experiments = result.experiments as Record<string, unknown>[]
+      expect(experiments[0].dataText).toContain("BWA")
+    })
+
+    it("handles experiments with empty data", () => {
+      const rawDocs = [
+        {
+          fileName: "JGAD000001-v1.json",
+          data: {
+            datasetId: "JGAD000001",
+            version: "v1",
+            versionReleaseDate: "2024-01-01",
+            experiments: [{ data: {} }],
+          },
+        },
+      ]
+
+      const transform = makeDatasetTransform(rawDocs)
+      const result = transform(rawDocs[0].data)
+      const experiments = result.experiments as Record<string, unknown>[]
+      expect(experiments[0].dataText).toBe("")
     })
   })
 

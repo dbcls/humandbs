@@ -21,13 +21,17 @@ researchRouter.use("*", optionalAuth)
 // POST /research/new — admin-only Research creation. `/:humId` patterns below
 // also fire on path "new", but they're scoped to subpaths (`/:humId/update` etc.)
 // so they don't collide here.
+//
+// /:humId/update is a single endpoint that mutates Research in both draft and
+// published statuses. The handler branches by status to update either the
+// draftVersion's or the latestVersion's releaseNote.
 researchRouter.use("/new", requireAuth, requireAdmin)
 
 // Apply resource authorization middleware to routes that modify research
 // These routes require authentication and ownership check
 researchRouter.use(
   "/:humId/update",
-  loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),
+  loadResearchAndAuthorize({ requireOwnership: true, requireDraftOrPublished: true }),
 )
 researchRouter.use("/:humId/delete", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/versions/new", loadResearchAndAuthorize({ requireOwnership: true }))
@@ -35,7 +39,7 @@ researchRouter.use("/:humId/submit", loadResearchAndAuthorize({ requireOwnership
 researchRouter.use("/:humId/approve", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/reject", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/unpublish", loadResearchAndAuthorize({ requireAdmin: true }))
-researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use("/:humId/owners", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use(
   "/:humId/dataset/new",
   loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),

@@ -98,6 +98,47 @@ bun run db:seed-content -- --overwrite
 - Skips existing items by `contentId`; use `--overwrite` to update in place
 - Exports `seedContent(pages, overwrite?, db?)` for use in tests
 
+### `migrate-content-items-to-documents.ts`
+
+Migrates all `content_item` records into `document` / `document_version` tables. Run after `seed-content.ts`.
+
+```bash
+bun run src/scripts/database/migrate-content-items-to-documents.ts
+bun run src/scripts/database/migrate-content-items-to-documents.ts --overwrite
+```
+
+- Each content item becomes a `document` with `hideFromNav: true` (excluded from the header/footer nav item picker)
+- Each translation (published and draft) becomes a `document_version` at `versionNumber: 1`, preserving the original status
+- `hideTOC` is carried over from the content item
+- `publishedAt` is set from `contentItem.publishedAt` for published translations
+- Guideline version archives (`data-sharing-guidelines-v1`, etc.) and revision changelogs (`guideline-revision*`) are skipped — handled by `seed-guideline-versions.ts`
+- Skips items where a document with the same `contentId` already exists; use `--overwrite` to update in place
+
+### `cms-export.ts` / `cms-restore.ts`
+
+CLI mirror of the admin UI Data Transfer page (`/{lang}/admin/data-transfer`). Calls `apps/frontend/src/lib/cmsDataTransferArchive.ts` builder/restorer directly.
+
+```bash
+# Dump all categories (default output: ./cms-data-export-<timestamp>.tar.gz)
+bun run db:cms-export
+
+# Dump selected categories to a specific path
+bun run db:cms-export -- --categories=news,documents --out=./backup.tar.gz
+
+# Restore (destructive; --categories is required)
+bun run db:cms-restore ./backup.tar.gz --categories=news
+bun run db:cms-restore ./backup.tar.gz --categories=news,documents --user=<seed-user-id>
+```
+
+- Output is a `.tar.gz` containing `manifest.json` + `categories/{content,documents,news,alerts,header-footer,flowcharts}.json` + `assets/` (binary)
+- Each category JSON is the Drizzle row shape (`{items, translations}` / `{documents, versions}` / etc.) with 2-space indent
+- Workflow: dump → edit JSON → repack (`tar -czf out.tar.gz manifest.json categories/`) → restore
+- Restore **replaces** all rows in each selected category with archive contents (not additive). To add records, dump the current state, append entries to the JSON, and restore the full set
+- `assets` category includes files under `HUMANDBS_FRONTEND_PUBLIC_FILES_DIR` (default `public-files`). Archive size limit: 500 MB
+- `--user=<id>` records `restoredByUserId` (optional)
+
+Available categories: `content`, `documents`, `news`, `alerts`, `assets`, `header-footer`, `flowcharts`
+
 ### `reset-db.ts`
 
 Drops all tables entirely.
@@ -130,9 +171,7 @@ bun run db:clear -- --tables=news_item,news_translation
 bun test ./src/scripts/database/tests
 ```
 
-Tests run against a `humandbs_test` database in the existing dev Postgres container. The test setup creates the database, applies the current schema via `drizzle-kit push`, and drops it after all tests complete. `clearTables()` truncates data between tests.
-
-The dev Postgres container must be running and `HUMANDBS_POSTGRES_*` env vars must be set.
+Tests run against an in-memory PGlite database. The test fixture creates a fresh PGlite-backed Drizzle instance per test file, bootstraps the current test schema, and `clearTables()` truncates data between tests.
 
 ## Environment Variables
 

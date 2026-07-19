@@ -3,6 +3,7 @@ export * from "./auth-schema";
 export * from "./contentItem";
 export * from "./document";
 export * from "./documentVersion";
+export * from "./moldataKeyCatalog";
 export * from "./navigationFlowchart";
 export * from "./newsItem";
 export * from "./newsTag";

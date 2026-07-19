@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Database, Download, RefreshCcw, TriangleAlert, Upload } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useMemo, useRef, useState } from "react";
 
@@ -37,16 +38,6 @@ type StatusMessage = {
   text: string;
 } | null;
 
-const CATEGORY_DESCRIPTIONS: Record<CmsDataTransferCategory, string> = {
-  content: "Static CMS page records and translations.",
-  documents: "Document records plus versioned localized content.",
-  news: "News items, translations, and related structure.",
-  alerts: "Alert state, schedule windows, and translations.",
-  assets: "Managed public files under the CMS asset directory.",
-  "header-footer": "Active site navigation configuration.",
-  flowcharts: "Navigation flowchart definitions and active state.",
-};
-
 function formatFileSize(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -61,6 +52,17 @@ export function DataTransferPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { openConfirmation } = useConfirmationStore();
   const queryClient = useQueryClient();
+  const tDT = useTranslations("admin.data-transfer");
+
+  const CATEGORY_DESCRIPTIONS: Record<CmsDataTransferCategory, string> = {
+    documents: tDT("type-documents"),
+    news: tDT("type-news"),
+    alerts: tDT("type-alerts"),
+    assets: tDT("type-assets"),
+    "header-footer": tDT("type-header-footer"),
+    flowcharts: tDT("type-flowcharts"),
+    "moldata-keys": tDT("type-moldata-keys"),
+  };
 
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [selectedExportCategories, setSelectedExportCategories] = useState<
@@ -99,7 +101,7 @@ export function DataTransferPage() {
       setSelectedRestoreCategories([]);
       setPageStatus({
         variant: "error",
-        text: error.message || "Failed to validate archive upload.",
+        text: error.message || tDT("validate-failed"),
       });
     },
   });
@@ -158,7 +160,7 @@ export function DataTransferPage() {
 
       if (!response.ok) {
         const message = await response.text();
-        throw new Error(message || "Failed to generate archive.");
+        throw new Error(message || tDT("generate-failed"));
       }
 
       const blob = await response.blob();
@@ -177,13 +179,13 @@ export function DataTransferPage() {
 
       setPageStatus({
         variant: "success",
-        text: "Archive download started.",
+        text: tDT("download-started"),
       });
       setDownloadDialogOpen(false);
     } catch (error) {
       setPageStatus({
         variant: "error",
-        text: error instanceof Error ? error.message : "Failed to download archive.",
+        text: error instanceof Error ? error.message : tDT("download-failed"),
       });
     }
   }
@@ -198,14 +200,13 @@ export function DataTransferPage() {
       .join(", ");
 
     openConfirmation({
-      title: "Restore CMS data from archive?",
+      title: tDT("restore-title"),
       description: (
         <>
-          Restore will permanently replace the selected CMS categories in this environment:{" "}
-          {categoryLabels}. This cannot be undone.
+          {tDT("restore-description", { categories: categoryLabels })}
         </>
       ),
-      actionLabel: "Restore",
+      actionLabel: tDT("restore-action"),
       onAction: async () => {
         const formData = new FormData();
         formData.set("archive", selectedArchiveFile);
@@ -230,7 +231,7 @@ export function DataTransferPage() {
 
         setPageStatus({
           variant: "success",
-          text: `Restore completed for ${result.result.archiveName}. Replaced categories: ${restoredLabels}.`,
+          text: tDT("restore-completed", { archiveName: result.result.archiveName, categories: restoredLabels }),
         });
         resetUploadState();
       },
@@ -248,37 +249,36 @@ export function DataTransferPage() {
           <section className="space-y-4">
             <div className="space-y-2">
               <TextWithIcon className="font-semibold" icon={<Download className="size-6" />}>
-                Download CMS data
+                {tDT("download-section-title")}
               </TextWithIcon>
 
               <p className="text-foreground-light text-sm">
-                Choose which CMS categories to include in a portable archive. Export downloads a
-                compressed `.tar.gz` archive built from the current CMS state.
+                {tDT("download-section-hint")}
               </p>
             </div>
 
             <Button type="button" className="gap-2" onClick={() => setDownloadDialogOpen(true)}>
               <Archive className="size-4" />
-              Download CMS data
+              {tDT("download-section-title")}
             </Button>
 
             <div className="rounded-sm border border-slate-300 border-dashed p-3 text-slate-600 text-sm">
-              Supported archive categories:{" "}
-              {exportCategories
-                .map((category) => CMS_DATA_TRANSFER_CATEGORY_LABELS[category])
-                .join(", ")}
+              {tDT("supported-categories", {
+                categories: exportCategories
+                  .map((category) => CMS_DATA_TRANSFER_CATEGORY_LABELS[category])
+                  .join(", "),
+              })}
             </div>
           </section>
 
           <section className="space-y-4">
             <div className="space-y-2">
               <TextWithIcon className="font-semibold" icon={<Upload className="size-6" />}>
-                Restore data from archive
+                {tDT("restore-section-title")}
               </TextWithIcon>
 
               <p className="text-foreground-light text-sm">
-                Upload a `.tar.gz` archive, validate its manifest and payloads, review the included
-                categories, and confirm the destructive restore intent.
+                {tDT("restore-section-hint")}
               </p>
             </div>
 
@@ -382,7 +382,7 @@ export function DataTransferPage() {
                     disabled={selectedRestoreCategories.length === 0 || isRestoringArchive}
                   >
                     <TriangleAlert className="mr-2 size-4" />
-                    Restore data from archive
+                    {tDT("restore-data-button")}
                   </Button>
                 </div>
               </div>
@@ -400,10 +400,9 @@ export function DataTransferPage() {
       <Dialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Download CMS data</DialogTitle>
+            <DialogTitle>{tDT("download-dialog-title")}</DialogTitle>
             <DialogDescription>
-              Select which CMS categories should be included in the archive. The export is delivered
-              as a compressed `.tar.gz` archive built from the current CMS state.
+              {tDT("download-dialog-hint")}
             </DialogDescription>
           </DialogHeader>
 

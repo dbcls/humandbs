@@ -22,17 +22,23 @@ import { createMockResearchDoc } from "../../helpers/mock-es"
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async (username: string) => username === "owner-1",
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
+}))
+
 const mockGetResearchDetail = mock<(id: string, opts: { version?: string }, authUser: unknown) => Promise<ResearchDetail | null>>()
 
 void mock.module("@/api/es-client/research", () => ({
   getResearchDetail: mockGetResearchDetail,
   getResearchDoc: mock(async () => null),
   getResearchWithSeqNo: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mock(async () => { throw new Error("createResearch not stubbed in this test") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),
-  updateResearchUids: mock(async () => null),
   deleteResearch: mock(async () => false),
 }))
 
@@ -47,12 +53,13 @@ const makeDetail = (overrides: Partial<ResearchDetail> = {}): ResearchDetail => 
     versionReleaseDate: "2024-01-01",
     releaseNote: { ja: { text: "note", rawHtml: null }, en: { text: "note", rawHtml: null } },
     datasets: [],
+    owners: [],
     ...overrides,
   }
 }
 
 interface BatchBody {
-  data: { humId: string; status: string; uids: string[]; draftVersion: string | null }[]
+  data: { humId: string; status: string; draftVersion: string | null }[]
   meta: { batch: { requested: number; found: number; notFound: string[] } }
 }
 
@@ -151,26 +158,24 @@ describe("api/routes/research GET /research/batch", () => {
     const draftDetail = (id: string) => makeDetail({
       humId: id,
       status: "draft",
-      uids: ["owner-1"],
       latestVersion: "v1",
       draftVersion: "v2",
     })
 
-    it("owner sees actual status/uids/draftVersion", async () => {
+    it("owner sees actual status/draftVersion", async () => {
       mockGetResearchDetail.mockImplementation(async (id) => draftDetail(id))
 
       const app = getTestApp()
       const res = await app.request("/research/batch?ids=hum0001", {
-        headers: userAuthHeader({ userId: "owner-1" }),
+        headers: userAuthHeader({ userId: "owner-1", username: "owner-1" }),
       })
 
       const body = await res.json() as BatchBody
       expect(body.data[0].status).toBe("draft")
-      expect(body.data[0].uids).toEqual(["owner-1"])
       expect(body.data[0].draftVersion).toBe("v2")
     })
 
-    it("admin sees actual status/uids/draftVersion", async () => {
+    it("admin sees actual status/draftVersion", async () => {
       mockGetResearchDetail.mockImplementation(async (id) => draftDetail(id))
 
       const app = getTestApp()
@@ -180,7 +185,6 @@ describe("api/routes/research GET /research/batch", () => {
 
       const body = await res.json() as BatchBody
       expect(body.data[0].status).toBe("draft")
-      expect(body.data[0].uids).toEqual(["owner-1"])
       expect(body.data[0].draftVersion).toBe("v2")
     })
 
@@ -194,7 +198,6 @@ describe("api/routes/research GET /research/batch", () => {
 
       const body = await res.json() as BatchBody
       expect(body.data[0].status).toBe("published")
-      expect(body.data[0].uids).toEqual([])
       expect(body.data[0].draftVersion).toBeNull()
     })
   })

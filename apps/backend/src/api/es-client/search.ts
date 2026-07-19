@@ -34,6 +34,7 @@ import {
   resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
+import type { ParsedFreeTextQuery } from "@/api/es-client/query-builders"
 import {
   nestedTermsQuery,
   nestedTermQuery,
@@ -44,6 +45,7 @@ import {
 } from "@/api/es-client/query-helpers"
 import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
+import { getOwnedHumIds } from "@/api/services/ownership"
 import {
   EsDatasetSchema,
   EsResearchSchema,
@@ -62,7 +64,10 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
+import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
+import { unescapeMarkdown } from "@/crawler/utils/text"
+import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
+import type { BilingualText, BilingualTextValue, CriteriaCanonical, PlatformInfo } from "@/es/types"
 
 // === Constants ===
 
@@ -91,6 +96,29 @@ interface ResearchSearchResult {
 
 type QueryContainer = estypes.QueryDslQueryContainer
 type FilterParams = Record<string, unknown>
+
+// === Helpers ===
+
+const CRITERIA_RANK = new Map<CriteriaCanonical, number>(
+  CRITERIA_CANONICAL_ORDER.map((value, idx) => [value, idx]),
+)
+
+/** Dedupe and sort criteria into canonical order (strictest first). */
+export const sortCriteria = (values: CriteriaCanonical[]): CriteriaCanonical[] =>
+  uniq(values).sort(
+    (a, b) => (CRITERIA_RANK.get(a) ?? Infinity) - (CRITERIA_RANK.get(b) ?? Infinity),
+  )
+
+/**
+ * Render a structured {vendor, model} as a plain "vendor [model]" string.
+ * Falls back to the present side when one is null; returns "" when both are null.
+ */
+export const formatPlatform = (platform: PlatformInfo): string => {
+  const vendor = platform.vendor?.trim() ?? ""
+  const model = platform.model?.trim() ?? ""
+  if (vendor && model) return `${vendor} [${model}]`
+  return vendor || model
+}
 
 // === Filter Clause Builders ===
 
@@ -342,8 +370,8 @@ interface TermsBucket {
   }
 }
 
-interface CompositeBucket {
-  key: { vendor?: string | null; model?: string | null }
+interface MultiTermsBucket {
+  key: (string | number | boolean | null)[]
   doc_count: number
   dataset_count?: {
     doc_count?: number
@@ -366,12 +394,12 @@ const isTermsBucketArray = (value: unknown): value is TermsBucket[] => {
   )
 }
 
-// Type guard for CompositeBucket array
-const isCompositeBucketArray = (value: unknown): value is CompositeBucket[] => {
+// Type guard for MultiTermsBucket array
+const isMultiTermsBucketArray = (value: unknown): value is MultiTermsBucket[] => {
   if (!Array.isArray(value)) return false
   return value.every(item =>
     isRecord(item) &&
-    isRecord(item.key) &&
+    Array.isArray(item.key) &&
     typeof item.doc_count === "number",
   )
 }
@@ -401,15 +429,13 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
         ?? b.doc_count,
     }))
 
-  // Extract platform composite buckets (vendor + model)
+  // Extract platform multi_terms buckets (vendor + model)
   // Format: "{vendor}||{model}" (e.g., "Illumina||NovaSeq 6000")
-  const extractPlatformBuckets = (buckets: CompositeBucket[]) =>
+  const extractPlatformBuckets = (buckets: MultiTermsBucket[]) =>
     buckets
       .map(b => {
-        const vendor = b.key.vendor ?? ""
-        const model = b.key.model ?? ""
-        // Combine vendor and model with "||" separator (no spaces)
-        // Only include if both vendor and model are present
+        const vendor = String(b.key[0] ?? "")
+        const model = String(b.key[1] ?? "")
         if (!vendor || !model) return null
         const value = `${vendor}||${model}`
         return {
@@ -421,19 +447,17 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
       })
       .filter((item): item is { value: string; count: number } => item !== null)
 
-  // Find vendorModel composite aggregation for platform
-  const findPlatformBuckets = (obj: unknown): CompositeBucket[] | null => {
+  // Find vendorModel multi_terms aggregation for platform
+  const findPlatformBuckets = (obj: unknown): MultiTermsBucket[] | null => {
     if (!isRecord(obj)) return null
 
-    // Check for vendorModel composite aggregation
     if ("vendorModel" in obj && isRecord(obj.vendorModel)) {
       const vendorModel = obj.vendorModel
-      if ("buckets" in vendorModel && isCompositeBucketArray(vendorModel.buckets)) {
+      if ("buckets" in vendorModel && isMultiTermsBucketArray(vendorModel.buckets)) {
         return vendorModel.buckets
       }
     }
 
-    // Search nested objects
     for (const [key, val] of Object.entries(obj)) {
       if (key === "doc_count") continue
       if (isRecord(val)) {
@@ -661,6 +685,34 @@ const getHumIdsByDatasetIdQuery = async (q: string): Promise<string[]> => {
   return buckets.map(b => b.key)
 }
 
+const getHumIdsByTextQuery = async (
+  parsed: ParsedFreeTextQuery,
+): Promise<string[]> => {
+  if (parsed.phraseTokens.length === 0 && parsed.bareWords.length === 0) {
+    return []
+  }
+
+  const textClauses = buildDatasetQueryClauses(parsed)
+  if (textClauses.length === 0) return []
+
+  interface HumIdAggs {
+    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
+  }
+
+  const res = await esClient.search<unknown, HumIdAggs>({
+    index: ES_INDEX.dataset,
+    size: 0,
+    query: { bool: { must: textClauses } },
+    aggs: {
+      humIds: { terms: { field: "humId", size: 10000 } },
+    },
+  })
+
+  const buckets = res.aggregations?.humIds.buckets
+  if (!Array.isArray(buckets)) return []
+  return buckets.map(b => b.key)
+}
+
 export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
@@ -711,13 +763,18 @@ export const searchResearches = async (
   if (requestedStatus) {
     must.push({ term: { status: requestedStatus } })
 
-    // For non-admin authenticated users requesting non-published status, also filter by uids
+    // For non-admin authenticated users requesting non-published status, filter by owned humIds
     if (authUser && !authUser.isAdmin && requestedStatus !== "published") {
-      must.push({ term: { uids: authUser.userId } })
+      const ownedHumIds = await getOwnedHumIds(authUser.username)
+      if (ownedHumIds.length > 0) {
+        must.push({ terms: { humId: ownedHumIds } })
+      } else {
+        must.push({ term: { humId: "__no_match__" } })
+      }
     }
   } else {
     // No explicit status requested - apply default authorization filter
-    const statusFilter = buildStatusFilter(authUser)
+    const statusFilter = await buildStatusFilter(authUser)
     if (statusFilter) {
       must.push(statusFilter)
     }
@@ -741,7 +798,8 @@ export const searchResearches = async (
     const resolved = await Promise.all(dsIdTokens.map(getHumIdsByDatasetIdQuery))
     datasetParentHumIds = [...new Set(resolved.flat())]
   }
-  must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds))
+  const datasetTextHumIds = await getHumIdsByTextQuery(parsed)
+  must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds, datasetTextHumIds))
 
   // Date range filters
   must.push(...buildResearchDateRangeFilters({
@@ -762,7 +820,7 @@ export const searchResearches = async (
     size: limit,
     query: researchQuery,
     sort: sortSpec,
-    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids", "status"],
+    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "summaryShort", "uids", "status"],
     track_total_hits: true,
     // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
     ...(includeFacets && !humIdFilter ? {
@@ -774,7 +832,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, summaryShort: true, status: true,
     }).parse(doc))
 
   // Defense-in-depth: ES side should have already filtered by latestVersion
@@ -782,17 +840,21 @@ export const searchResearches = async (
   // an error log so the mismatch is observable. `pagination.total` is corrected
   // below so the page count tracks the visible rows; we accept the per-page
   // discrepancy in exchange for surfacing the underlying mapping bug.
-  const base = baseAll.filter(doc => canAccessResearchDoc(authUser, doc))
+  const accessChecks = await Promise.all(baseAll.map(doc => canAccessResearchDoc(authUser, doc)))
+  const base = baseAll.filter((_, i) => accessChecks[i])
   const postFilterExcluded = baseAll.length - base.length
   if (postFilterExcluded > 0) {
     const leakedHumIds = baseAll
-      .filter(doc => !canAccessResearchDoc(authUser, doc))
+      .filter((_, i) => !accessChecks[i])
       .map(doc => doc.humId)
     logger.error(
       `searchResearches post-filter excluded ${postFilterExcluded} document(s) that ES query should have filtered out. Check ES index mapping for latestVersion.`,
       { humIds: leakedHumIds },
     )
   }
+
+  // Pre-resolve ownership for sync checks in the map loop below
+  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
 
   // Fetch version and dataset details
   const rvIds = base.flatMap(doc => doc.versionIds)
@@ -815,10 +877,20 @@ export const searchResearches = async (
     return value[lang] ?? value.ja ?? value.en ?? ""
   }
 
+  // Helper to project ES BilingualTextValue (with rawHtml) down to the
+  // BilingualText shape returned in API responses. Returns null when both
+  // languages are absent so the listing view can render a clear gap.
+  const toBilingualText = (value: BilingualTextValue | null | undefined): BilingualText | null => {
+    if (!value) return null
+    const ja = value.ja?.text ?? null
+    const en = value.en?.text ?? null
+    return ja === null && en === null ? null : { ja, en }
+  }
+
   const data: ResearchSummary[] = base.map(d => {
     // For non-owner users, only include versions up to latestVersion
     let effectiveVersionIds = d.versionIds
-    if (!isOwnerOrAdmin(authUser, d.uids ?? []) && d.latestVersion) {
+    if (!isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) && d.latestVersion) {
       const publishedNum = parseVersionNum(d.latestVersion)
       effectiveVersionIds = d.versionIds.filter(id => {
         const version = id.split("-").pop() ?? ""
@@ -834,15 +906,27 @@ export const searchResearches = async (
     const datasetIds = uniq(datasets.map(ds => ds.datasetId))
     // typeOfData is now BilingualText, extract as array with both languages
     const typeOfData = uniq(datasets.map(ds => extractStr(ds.typeOfData)).filter(x => !!x))
+    // Build from searchable.platforms (structured {vendor, model}) instead of
+    // data.Platform.text so the markdown-escaped form (e.g., `Illumina \[HiSeq
+    // 2000\]`) isn't leaked into a plain string[] that the frontend renders
+    // without markdown.
     const platforms = uniq(
       datasets
-        .flatMap(ds => ds.experiments.map(e => extractText(e.data.Platform)))
+        .flatMap(ds => ds.experiments.flatMap(e => e.searchable?.platforms ?? []))
+        .map(formatPlatform)
         .filter(p => !!p),
     )
     const targets = extractText(d.summary?.targets)
-    // dataProvider.name is BilingualTextValue, extract text
-    const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
-    const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
+    // dataProvider.name is BilingualTextValue.text (markdown). Render path here
+    // is a plain string[] (not markdown), so undo the turndown escapes.
+    const dataProvider = uniq(
+      (d.dataProvider ?? []).map(p => unescapeMarkdown(extractText(p.name))).filter(x => !!x),
+    )
+    const criteria = sortCriteria(
+      datasets
+        .map(ds => ds.criteria)
+        .filter((x): x is CriteriaCanonical => !!x),
+    )
 
     return {
       humId: d.humId,
@@ -854,9 +938,12 @@ export const searchResearches = async (
       typeOfData,
       platforms,
       targets,
+      methodsSummary: toBilingualText(d.summaryShort?.methods),
+      typeOfDataSummary: toBilingualText(d.summaryShort?.typeOfData),
+      targetsSummary: toBilingualText(d.summaryShort?.targets),
       dataProvider,
       criteria,
-      status: isOwnerOrAdmin(authUser, d.uids ?? []) ? d.status : "published" as const,
+      status: isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) ? d.status : "published" as const,
     }
   })
 

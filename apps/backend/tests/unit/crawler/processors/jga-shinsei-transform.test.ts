@@ -349,6 +349,9 @@ describe("buildStatusHistory", () => {
 describe("transformDsApplication", () => {
   const exampleDs = {
     jds_id: "J-DS002495",
+    appl_id: 1,
+    appl_version: 1,
+    application_type: 10,
     jsub_ids: [] as string[],
     hum_ids: [] as string[],
     jga_ids: [] as string[],
@@ -400,7 +403,7 @@ describe("transformDsApplication", () => {
 
   it("should transform top-level IDs", () => {
     const result = transformDsApplication(exampleDs)
-    expect(result.jdsId).toBe("J-DS002495")
+    expect(result.jdsId).toBe("J-DS002495-001")
     expect(result.jsubIds).toEqual([])
     expect(result.humIds).toEqual([])
     expect(result.jgaIds).toEqual([])
@@ -449,14 +452,10 @@ describe("transformDsApplication", () => {
     expect(result.data[0].fileSize).toBe("100MB")
   })
 
-  it("should transform status history with labels", () => {
+  it("should set status and statusLabel from latest status history entry", () => {
     const result = transformDsApplication(exampleDs)
-    expect(result.statusHistory).toHaveLength(4)
-    expect(result.statusHistory[0].statusLabel).toEqual({
-      ja: "申請書類作成中",
-      en: "Preparing",
-    })
-    expect(result.statusHistory[3].statusLabel).toEqual({
+    expect(result.status).toBe(60)
+    expect(result.statusLabel).toEqual({
       ja: "申請承認",
       en: "Approved",
     })
@@ -493,6 +492,9 @@ describe("transformDsApplication", () => {
 describe("transformDuApplication", () => {
   const exampleDu = {
     jdu_id: "J-DU006529",
+    appl_id: 2,
+    appl_version: 1,
+    application_type: 10,
     jgad_ids: ["JGAD000369"],
     jgas_ids: ["JGAS000001"],
     hum_ids: ["hum0273"],
@@ -543,7 +545,7 @@ describe("transformDuApplication", () => {
 
   it("should transform top-level IDs", () => {
     const result = transformDuApplication(exampleDu)
-    expect(result.jduId).toBe("J-DU006529")
+    expect(result.jduId).toBe("J-DU006529-001")
     expect(result.jgadIds).toEqual(["JGAD000369"])
     expect(result.jgasIds).toEqual(["JGAS000001"])
     expect(result.humIds).toEqual(["hum0273"])
@@ -625,6 +627,9 @@ describe("edge cases", () => {
   it("should handle empty components array", () => {
     const raw = {
       jds_id: "J-DS000001",
+      appl_id: 1,
+      appl_version: 1,
+      application_type: 10,
       jsub_ids: [],
       hum_ids: [],
       jga_ids: [],
@@ -635,7 +640,7 @@ describe("edge cases", () => {
     }
     const result = transformDsApplication(raw)
 
-    expect(result.jdsId).toBe("J-DS000001")
+    expect(result.jdsId).toBe("J-DS000001-001")
     expect(result.studyTitle).toEqual({ ja: null, en: null })
     expect(result.aim).toEqual({ ja: null, en: null })
     expect(result.data).toEqual([])
@@ -647,7 +652,8 @@ describe("edge cases", () => {
       phone: null,
       email: null,
     })
-    expect(result.statusHistory).toEqual([])
+    expect(result.status).toBeNull()
+    expect(result.statusLabel).toEqual({ ja: null, en: null })
   })
 
   it("should handle multiValue group with only one key populated", () => {

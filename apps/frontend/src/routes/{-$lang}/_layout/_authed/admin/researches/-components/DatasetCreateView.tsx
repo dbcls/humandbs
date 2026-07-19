@@ -1,20 +1,19 @@
+import { evaluate, useStore } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
-import { IntlProvider } from "use-intl";
+import { ChevronLeft, LucidePlus } from "lucide-react";
+import { IntlProvider, useTranslations } from "use-intl";
+import { z } from "zod";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type {
-  DatasetFormHandle,
-  DatasetFormValues,
-} from "@/components/form-context/dataset-fields/DatasetForm";
+import type { DatasetFormValues } from "@/components/form-context/dataset-fields/DatasetForm";
 import {
   DatasetForm,
   datasetFormValuesToPreviewDataset,
   getDefaultDatasetFormValues,
+  useDatasetForm,
 } from "@/components/form-context/dataset-fields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/dataset-fields/ExperimentsArrayField";
-import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +26,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/config/messages";
-import { cn } from "@/lib/utils";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 
 import type { DatasetTemplateData } from "../../../../../../../../../backend/src/api/types/templates";
-import { AccessionChips } from "./AccessionChips";
+import { PreviewDialog } from "../../-components/PreviewDialog";
+import { CopyDataDialog } from "./CopyDataDialog";
 import { TabContentLayout } from "./TabContentLayout";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./utils/mergeDatasetTemplate";
 
@@ -41,6 +40,7 @@ interface DatasetCreateViewProps {
   onBack: () => void;
   onCreated: (datasetId: string) => void;
   preview?: boolean;
+  onPreviewChange?: (open: boolean) => void;
   relatedAccessions?: string[];
 }
 
@@ -49,38 +49,29 @@ export function DatasetCreateView({
   onBack,
   onCreated,
   preview = false,
+  onPreviewChange,
   relatedAccessions: initialAccessions = [],
 }: DatasetCreateViewProps) {
   const queryClient = useQueryClient();
+  const tResearches = useTranslations("admin.researches");
   const [error, setError] = useState<string | null>(null);
+  const datasetIdRequiredSchema = useMemo(
+    () =>
+      z
+        .string()
+        .trim()
+        .min(1, { message: tResearches("dataset-id-required") }),
+    [tResearches],
+  );
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
-  const defaultValues = getDefaultDatasetFormValues(humId);
+  const [defaultValues] = useState(() => getDefaultDatasetFormValues(humId));
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
-  const [previewValues, setPreviewValues] = useState(defaultValues);
   const [pendingTemplate, setPendingTemplate] = useState<{
     data: DatasetTemplateData;
     accession: string;
   } | null>(null);
   const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
   const [chipsResetKey, setChipsResetKey] = useState(0);
-  const currentValuesRef = useRef<DatasetFormValues>(defaultValues);
-  const isApplyingRef = useRef(false);
-  const formRef = useRef<DatasetFormHandle>(null);
-
-  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
-    const merged = mergeDatasetTemplate(currentValuesRef.current, data);
-    isApplyingRef.current = true;
-    formRef.current?.applyValues(merged);
-    setLastAppliedId(accession);
-  }
-
-  function applyTemplate(data: DatasetTemplateData, accession: string) {
-    if (templateWouldOverwrite(currentValuesRef.current, data)) {
-      setPendingTemplate({ data, accession });
-    } else {
-      doApplyTemplate(data, accession);
-    }
-  }
 
   const { mutateAsync: create, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
@@ -103,6 +94,7 @@ export function DatasetCreateView({
                 ? values.experiments.map((exp) => ({
                     header: exp.header,
                     data: entriesToExperimentData(exp.data),
+                    ...(exp.searchable !== undefined ? { searchable: exp.searchable } : {}),
                   }))
                 : undefined,
           },
@@ -111,7 +103,14 @@ export function DatasetCreateView({
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.error);
+        if (result.code === "CONFLICT") {
+          form.setFieldMeta("datasetId", (prev) => ({
+            ...prev,
+            errorMap: { ...prev.errorMap, onSubmit: result.error },
+          }));
+        } else {
+          setError(result.error);
+        }
         return;
       }
       setError(null);
@@ -119,6 +118,52 @@ export function DatasetCreateView({
       onCreated(result.data.data.datasetId);
     },
   });
+
+  const form = useDatasetForm(defaultValues, async (value) => {
+    const datasetId = value.datasetId.trim();
+    setError(null);
+    return (await create({ ...value, datasetId })).ok;
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const previousValuesRef = useRef(values);
+  const isApplyingTemplateRef = useRef(false);
+
+  useEffect(() => {
+    if (values === previousValuesRef.current) return;
+    const datasetIdChanged = values.datasetId !== previousValuesRef.current.datasetId;
+    previousValuesRef.current = values;
+    if (datasetIdChanged) {
+      form.setFieldMeta("datasetId", (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onSubmit: undefined },
+      }));
+    }
+    if (isApplyingTemplateRef.current) {
+      isApplyingTemplateRef.current = false;
+      return;
+    }
+    setChipsResetKey((key) => key + 1);
+    setLastAppliedId(null);
+  }, [values, form.setFieldMeta]);
+
+  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
+    const merged = mergeDatasetTemplate(form.state.values, data);
+    isApplyingTemplateRef.current = !evaluate(form.state.values, merged);
+    form.setFieldValue("releaseDate", merged.releaseDate);
+    form.setFieldValue("criteria", merged.criteria);
+    form.setFieldValue("typeOfData", merged.typeOfData);
+    form.setFieldValue("datasetId", merged.datasetId);
+    form.setFieldValue("experiments", merged.experiments);
+    setLastAppliedId(accession);
+  }
+
+  function applyTemplate(data: DatasetTemplateData, accession: string) {
+    if (templateWouldOverwrite(form.state.values, data)) {
+      setPendingTemplate({ data, accession });
+    } else {
+      doApplyTemplate(data, accession);
+    }
+  }
 
   const header = (
     <div className="flex items-center gap-2">
@@ -135,21 +180,21 @@ export function DatasetCreateView({
     </div>
   );
 
-  const actions = preview ? (
-    <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-  ) : (
-    <Button
-      type="button"
-      size="lg"
-      disabled={isSaving}
-      onClick={() => {
-        document
-          .getElementById("dataset-edit-form")
-          ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-      }}
-    >
-      {isSaving ? "Creating…" : "Create dataset"}
-    </Button>
+  const actions = (
+    <>
+      <CopyDataDialog
+        accessions={accessions}
+        onAccessionsChange={setAccessions}
+        onApply={applyTemplate}
+        lastAppliedId={lastAppliedId}
+        pendingTemplateId={pendingTemplate?.accession}
+        resetKey={chipsResetKey}
+      />
+      <Button type="submit" size="lg" form="dataset-create-form" disabled={isSaving}>
+        <LucidePlus className="mr-2 size-5" />
+        {isSaving ? tResearches("creating-dataset") : tResearches("create-dataset")}
+      </Button>
+    </>
   );
 
   return (
@@ -182,57 +227,34 @@ export function DatasetCreateView({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div
-        className={cn({
-          hidden: preview,
-        })}
+      <DatasetForm
+        form={form}
+        formId="dataset-create-form"
+        defaultValues={defaultValues}
+        readOnly={false}
+        isSaving={isSaving}
+        error={error}
+        datasetIdValidator={datasetIdRequiredSchema}
+        showDatasetIdField
+        hideSaveButton
+      />
+      <PreviewDialog
+        open={preview}
+        onOpenChange={(open) => onPreviewChange?.(open)}
+        title="New dataset preview"
+        lang={previewLang}
+        onLangChange={setPreviewLang}
       >
-        <div className="mb-4">
-          <AccessionChips
-            accessions={accessions}
-            onAccessionsChange={setAccessions}
-            onApply={applyTemplate}
-            lastAppliedId={lastAppliedId}
-            pendingAccession={pendingTemplate?.accession}
-            resetKey={chipsResetKey}
-          />
+        <div className="px-5 py-5">
+          <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+            <DatasetVersionCard
+              versionData={datasetFormValuesToPreviewDataset(values)}
+              lang={previewLang}
+              showPublicActions={false}
+            />
+          </IntlProvider>
         </div>
-        <DatasetForm
-          defaultValues={defaultValues}
-          readOnly={false}
-          onSubmit={async (values) => {
-            await create(values);
-          }}
-          isSaving={isSaving}
-          error={error}
-          showDatasetIdField
-          onValuesChange={(values) => {
-            if (isApplyingRef.current) {
-              isApplyingRef.current = false;
-            } else {
-              setChipsResetKey((k) => k + 1);
-              setLastAppliedId(null);
-            }
-            currentValuesRef.current = values;
-            setPreviewValues(values);
-          }}
-          hideSaveButton
-          imperativeRef={formRef}
-        />
-      </div>
-      <div
-        className={cn({
-          hidden: !preview,
-        })}
-      >
-        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues)}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      </div>
+      </PreviewDialog>
     </TabContentLayout>
   );
 }

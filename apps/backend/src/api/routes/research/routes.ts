@@ -22,10 +22,8 @@ import {
   exampleResearchVersionsListResponse,
   exampleResearchWithLockResponse,
   exampleSubmitResearchResponse,
-  exampleUidsResponse,
   exampleUnpublishResearchResponse,
   exampleUpdateResearchRequest,
-  exampleUpdateUidsRequest,
   exampleVersionCreateResponse,
   exampleVersionDetailResponse,
 } from "@/api/openapi/examples"
@@ -47,12 +45,11 @@ import {
   ResearchVersionsListResponseSchema,
   ResearchWithLockResponseSchema,
   UpdateResearchRequestSchema,
-  UpdateUidsRequestSchema,
-  UidsResponseSchema,
   VersionCreateResponseSchema,
   VersionDetailResponseSchema,
   VersionParamsSchema,
   WorkflowResponseSchema,
+  OwnersResponseSchema,
 } from "@/api/types"
 
 // === CRUD Routes ===
@@ -102,8 +99,8 @@ export const createResearchRoute = createRoute({
 
 **Behavior:**
 - Creates Research in draft status
-- humId is auto-generated (hum0001, hum0002, ...) if not provided
-- All fields are optional; defaults are used for missing fields
+- humId is required and must match /^hum\\d{4}$/ (e.g., hum0001)
+- All fields except humId are optional; defaults are used for missing fields
 - Admin can assign uids (owner list) to grant edit access to other users`,
   request: {
     body: {
@@ -199,9 +196,15 @@ export const updateResearchRoute = createRoute({
   operationId: "updateResearch",
   summary: "Update Research",
   security: SECURITY_REQUIRES_AUTH,
-  description: `Update a Research entry (full replacement).
+  description: `Update a Research entry (full replacement). Accepts both draft and published Research.
 
 **Authorization:** Owner (user in uids) or admin
+
+**Precondition:** Research must be in \`draft\` or \`published\` status (409 otherwise — review-state edits are not allowed)
+
+**Behavior by status:**
+- \`draft\`: Edits the current draft ResearchVersion's content; \`releaseNote\` updates the \`draftVersion\`'s release note
+- \`published\`: Directly modifies the published content with no draft/submit/approve cycle and no version bump; \`releaseNote\` updates the \`latestVersion\`'s release note. \`dateModified\` is updated
 
 **Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits. Returns 409 Conflict if the document has been modified since retrieval.
 
@@ -236,14 +239,13 @@ export const deleteResearchRoute = createRoute({
   summary: "Delete Research",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
-  description: `Delete a Research (logical deletion).
+  description: `Delete a Research (physical deletion).
 
 **Authorization:** Admin only
 
 **Behavior:**
-- Sets status to "deleted" (logical deletion to preserve humId uniqueness)
-- All linked Datasets are physically deleted
-- Deleted Research becomes inaccessible (returns 404)`,
+- Physically removes the Research document, all linked ResearchVersions, and all linked Datasets
+- The humId becomes available for reuse`,
   request: {
     params: HumIdParamsSchema,
   },
@@ -399,6 +401,7 @@ export const createDatasetForResearchRoute = createRoute({
 
 **Behavior:**
 - datasetId is auto-generated as DRAFT-{humId}-{uuid} if not provided
+- If datasetId is explicitly supplied and already exists (globally, including under other Research), returns 409 Conflict
 - Dataset is automatically added to the draft Research's dataset list
 - Dataset version is finalized when Research is approved`,
   request: {
@@ -568,42 +571,33 @@ Returns 409 Conflict if Research is not in published status.`,
   },
 })
 
-// === UIDs Route ===
+// === Owners Route ===
 
-export const updateUidsRoute = createRoute({
-  method: "put",
-  path: "/{humId}/uids",
+export const getOwnersRoute = createRoute({
+  method: "get",
+  path: "/{humId}/owners",
   tags: ["Research"],
-  operationId: "updateResearchUids",
-  summary: "Update Research UIDs",
+  operationId: "getResearchOwners",
+  summary: "Get Research Owners",
   security: SECURITY_REQUIRES_AUTH,
   "x-admin-only": true,
-  description: `Update the UIDs (owner list) of a Research.
+  description: `Get the owner list of a Research, derived from JGA DB (J-DS applications).
 
 **Authorization:** Admin only
 
-**Behavior:**
-- uids is an array of Keycloak sub (UUID) values
-- Users in this list can edit the Research (treated as owners)
-- Empty array means only admins can edit
-
-**Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
+Returns usernames (Keycloak preferred_username) of users associated with this research via J-DS applications (pi_account_id, submitter_account_id, member_account_id).`,
   request: {
     params: HumIdParamsSchema,
-    body: {
-      content: { "application/json": { schema: UpdateUidsRequestSchema, example: exampleUpdateUidsRequest } },
-    },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: UidsResponseSchema, example: exampleUidsResponse } },
-      description: "UIDs updated successfully",
+      content: { "application/json": { schema: OwnersResponseSchema } },
+      description: "Owners retrieved successfully",
     },
-    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
-    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
+

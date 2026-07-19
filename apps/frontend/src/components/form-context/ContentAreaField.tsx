@@ -126,7 +126,6 @@ export default function ContentAreaField({
           <div className="min-h-0 flex-1 overflow-hidden">
             <Suspense fallback={<AssetsBrowserFallback />}>
               <AssetsBrowser
-                mode="pick"
                 initialFolderPath={assetFolder}
                 onSelectedFileChange={setSelectedAsset}
               />

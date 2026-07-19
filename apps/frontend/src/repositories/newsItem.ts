@@ -1,9 +1,13 @@
 import { and, desc, eq, exists, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 
 import type { Locale } from "@/config/i18n";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
+
+import type { DocumentListItemTranslation } from "./document";
+import { sortTranslationsByLocale } from "./utils";
 
 export interface NewsTitleItem {
   id: string;
@@ -45,6 +49,15 @@ export interface NewsItemRecord {
   tags: NewsTag[];
 }
 
+export interface NewsListItemRecord {
+  id: string;
+  createdAt: Date;
+  publishedAt: Date | null;
+  author: NewsItemAuthor;
+  translations: DocumentListItemTranslation[];
+  tags: NewsTag[];
+}
+
 export interface NewsItemCreateInput {
   authorId: string;
   publishedAt?: Date | null;
@@ -75,7 +88,7 @@ export interface NewsItemRepository {
     limit?: number;
     offset?: number;
     filters?: NewsItemFilters;
-  }) => Promise<NewsItemRecord[]>;
+  }) => Promise<NewsListItemRecord[]>;
 
   /**
    * Public
@@ -132,8 +145,19 @@ function mapTranslations(
   }, {});
 }
 
+function mapListTranslations(translations: NewsTranslationSelect[]): DocumentListItemTranslation[] {
+  return sortTranslationsByLocale(
+    translations.map((t) => ({
+      status: "published" as const,
+      lang: t.lang as Locale,
+      title: t.title,
+      hasUnpublishedChanges: false,
+    })),
+  );
+}
+
 async function syncTags(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Parameters<Parameters<DB["transaction"]>[0]>[0],
   itemId: string,
   tagIds: string[],
 ) {
@@ -143,7 +167,7 @@ async function syncTags(
   }
 }
 
-export function createNewsItemRepository(database: typeof db): NewsItemRepository {
+export function createNewsItemRepository(database: DB): NewsItemRepository {
   return {
     async listPublishedTitles({ limit = 5, offset = 0, locale, filters = {} }) {
       const conditions = [eq(newsTranslation.lang, locale), lte(newsItem.publishedAt, new Date())];
@@ -228,7 +252,7 @@ export function createNewsItemRepository(database: typeof db): NewsItemRepositor
         },
         columns: { authorId: false },
         orderBy: (table, { desc }) => [desc(table.createdAt)],
-        where: (table, { and, or, exists, notExists }) => {
+        where: (table, { and, or, exists }) => {
           const conditions = [];
 
           if (filters.titleOrContent) {
@@ -280,9 +304,8 @@ export function createNewsItemRepository(database: typeof db): NewsItemRepositor
 
       return news.map((item) => ({
         ...item,
-
         tags: mapTags(item.tags),
-        translations: mapTranslations(item.translations),
+        translations: mapListTranslations(item.translations),
       }));
     },
 

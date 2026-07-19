@@ -9,8 +9,6 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import { esClient, ES_INDEX } from "@/api/es-client"
-import { generateNextHumId } from "@/api/es-client/research"
 import type { BatchResponse, EsResearch, ResearchDetail, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
@@ -24,7 +22,7 @@ import {
 } from "./mutating-helpers"
 import {
   authHeaders,
-  decodeJwtSub,
+  decodeJwtPreferredUsername,
   getApp,
   itWithAdminToken,
   itWithEs,
@@ -49,7 +47,7 @@ beforeAll(setupIntegration)
 interface ResearchSummary {
   humId: string
   status?: string
-  uids?: string[]
+  owners?: string[]
   latestVersion?: string | null
   draftVersion?: string | null
 }
@@ -59,7 +57,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // IT-RESEARCH-01
     // ResearchSummary list shape (empirical staging):
     //   - status === "published"
-    //   - uids / draftVersion / latestVersion are omitted (the list is a lean summary)
+    //   - owners / draftVersion / latestVersion are omitted (the list is a lean summary)
     //   - item-level `_seq_no` / `_primary_term` must NOT leak (those belong to detail)
     //   - `versions` is a non-empty array of `{ version, releaseDate }`
     const app = getApp()
@@ -72,7 +70,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }>
     for (const item of json.data) {
       expect(item.status).toBe("published")
-      expect(item.uids).toBeUndefined()
+      expect(item.owners).toBeUndefined()
       expect(item.draftVersion).toBeUndefined()
       expect(item.latestVersion).toBeUndefined()
       expect(item._seq_no).toBeUndefined()
@@ -89,7 +87,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       { status: "published", expected: 200 },
       { status: "draft", expected: 403 },
       { status: "review", expected: 403 },
-      { status: "deleted", expected: 403 },
     ]
     for (const c of cases) {
       const res = await app.request(url(`/research?status=${c.status}`))
@@ -104,26 +101,11 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
   itWithNonAdminToken("IT-RESEARCH-03: authenticated status=draft restricts to own resources", async (token) => {
     // IT-RESEARCH-03
     // Same as IT-AUTH-17. We keep both because the SSOT maps one IT to one test and integration-scenarios.md
-    // catalogs both. Invariant: every returned Research has the user's sub in `uids`.
+    // catalogs both. Invariant: every returned Research has the user's `preferred_username` in `owners`.
     const app = getApp()
     const res = await app.request(url("/research?status=draft&limit=20"), { headers: authHeaders(token) })
     expect(res.status).toBe(200)
-    // No further assertion here: IT-AUTH-17 owns the uids membership check.
-  })
-
-  itWithNonAdminToken("IT-RESEARCH-T9: authenticated non-admin status=deleted returns 403 on listing and POST search", async (token) => {
-    // architecture.md § deleted 状態: admin のみ閲覧可能 (一覧・詳細・バージョン一覧)。
-    // owner を含むそれ以外のユーザーには 404 を返す。一覧は 403 (permission gate) で弾く。
-    const app = getApp()
-    const list = await app.request(url("/research?status=deleted&limit=10"), { headers: authHeaders(token) })
-    expect(list.status).toBe(403)
-
-    const post = await app.request(url("/research/search"), {
-      method: "POST",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ page: 1, limit: 10, status: "deleted" }),
-    })
-    expect(post.status).toBe(403)
+    // No further assertion here: IT-AUTH-17 owns the owners membership check.
   })
 
   itWithNonAdminToken("IT-RESEARCH-06: POST /research/new by non-admin authenticated returns 403", async (token) => {
@@ -201,24 +183,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       method: "POST",
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
       body: "{}",
-    })
-    expect(res.status).toBe(403)
-  })
-
-  itWithNonAdminToken("IT-RESEARCH-22: PUT /research/{humId}/uids by non-admin returns 403", async (token) => {
-    // IT-RESEARCH-22
-    const app = getApp()
-    const listRes = await app.request(url("/research?limit=1"))
-    const list = (await listRes.json()) as SearchResponse<ResearchSummary>
-    if (list.data.length === 0) {
-      console.log("  SKIP IT-RESEARCH-22: no Research in ES")
-      return
-    }
-    const humId = list.data[0].humId
-    const res = await app.request(url(`/research/${humId}/uids`), {
-      method: "PUT",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ uids: [], _seq_no: 0, _primary_term: 1 }),
     })
     expect(res.status).toBe(403)
   })
@@ -335,7 +299,6 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     const json = (await res.json()) as BatchResponse<ResearchDetail>
     for (const item of json.data) {
       expect(item.status).toBe("published")
-      expect(item.uids).toEqual([])
       expect(item.draftVersion).toBeNull()
     }
   })
@@ -347,34 +310,42 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     expect(res.status).toBe(404)
   })
 
-  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) auto-generates humId in `hum\\d{4,}` format", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-04: POST /research/new (admin) with valid humId creates a draft", async ({ admin }) => {
     // IT-RESEARCH-04
-    // The isolation index already contains hum0001 (seed); a new POST must allocate the next free id.
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
+    const app = getApp()
+    try {
+      const res = await app.request(url("/research/new"), {
+        method: "POST",
+        headers: { ...authHeaders(admin), "Content-Type": "application/json" },
+        body: JSON.stringify({ humId: fixed }),
+      })
+      expect(res.status).toBe(201)
+      const json = (await res.json()) as SingleResearchResponse
+      expect(json.data.humId).toBe(fixed)
+      expect(json.data.status).toBe("draft")
+      expect(json.data.latestVersion).toBeNull()
+      expect(json.data.draftVersion).toBe("v1")
+      expect(typeof json.meta._seq_no).toBe("number")
+      expect(typeof json.meta._primary_term).toBe("number")
+    } finally {
+      await purgeResearch(admin, fixed)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-04b: POST /research/new without humId returns 400", async ({ admin }) => {
     const app = getApp()
     const res = await app.request(url("/research/new"), {
       method: "POST",
       headers: { ...authHeaders(admin), "Content-Type": "application/json" },
       body: "{}",
     })
-    expect(res.status).toBe(201)
-    const json = (await res.json()) as SingleResearchResponse
-    expect(json.data.humId).toMatch(/^hum\d{4,}$/)
-    expect(json.data.status).toBe("draft")
-    expect(json.data.latestVersion).toBeNull()
-    expect(json.data.draftVersion).toBe("v1")
-    expect(typeof json.meta._seq_no).toBe("number")
-    expect(typeof json.meta._primary_term).toBe("number")
-    // Cleanup so the isolation index stays at a known baseline for the next run.
-    const del = await app.request(url(`/research/${json.data.humId}/delete`), {
-      method: "POST",
-      headers: authHeaders(admin),
-    })
-    expect([204, 404]).toContain(del.status)
+    expect(res.status).toBe(400)
   })
 
   itWithIsolationIndex("IT-RESEARCH-05: POST /research/new accepts explicit humId and returns 409 on duplicate", async ({ admin }) => {
     // IT-RESEARCH-05
-    const fixed = `hum${90000 + Math.floor(Math.random() * 9999)}` // 5-digit hum to avoid colliding with reindexed production data
+    const fixed = `hum${9000 + Math.floor(Math.random() * 999)}`
     try {
       const created = await createDraftResearch(admin, { humId: fixed })
       expect(created.humId).toBe(fixed)
@@ -400,13 +371,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-09: owner GET resolves to draftVersion when latestVersion is null", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-09
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const res = await app.request(url(`/research/${humId}`), { headers: authHeaders(nonAdmin) })
       expect(res.status).toBe(200)
@@ -422,13 +393,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-12: PUT /research/{humId}/update by owner returns 200 and increments _seq_no", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-12
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      const owned = await setOwnerUids(admin, humId, [sub!])
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const res = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
@@ -450,13 +421,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-13: PUT /research/{humId}/update on review status returns 409", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-13
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       // After submit the research is in "review", so update must be refused with 409.
       const seq = await getResearchSeqNo(admin, humId)
@@ -481,22 +452,35 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-14: PUT /research/{humId}/update with stale _seq_no returns 409", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-14
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      // setOwnerUids advances _seq_no, so the original created.seqNo is now stale.
-      await setOwnerUids(admin, humId, [sub!])
+      // Ownership seed is in-process only (services/ownership.ts) and does not
+      // advance the ES doc's _seq_no. To exercise the stale-lock path, issue a
+      // successful PUT with the current lock — after which the original
+      // `created.seqNo` becomes stale for any follow-up PUT.
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
+      const advance = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: { ja: "advance", en: "advance" },
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
+        }),
+      })
+      expect(advance.status).toBe(200)
       const res = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
         body: JSON.stringify({
           title: { ja: "X", en: "Y" },
-          _seq_no: created.seqNo,
-          _primary_term: created.primaryTerm,
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
         }),
       })
       expect(res.status).toBe(409)
@@ -509,13 +493,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // IT-RESEARCH-15
     // SSOT target is "any TextValue field" (the request schema does not accept rawHtml).
     // summary.aims is BilingualTextValue-shaped, so its rawHtml is observable via includeRawHtml=true.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      const owned = await setOwnerUids(admin, humId, [sub!])
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const put = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
@@ -547,13 +531,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-16: PUT /research/{humId}/update silently strips rawHtml in body", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-16
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      const owned = await setOwnerUids(admin, humId, [sub!])
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const put = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
@@ -588,13 +572,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-17: PUT /research/{humId}/update silently strips immutable fields", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-17
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      const owned = await setOwnerUids(admin, humId, [sub!])
+      const owned = await setOwnerUids(admin, humId, [username!])
       const app = getApp()
       const put = await app.request(url(`/research/${humId}/update`), {
         method: "PUT",
@@ -630,13 +614,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-18: admin delete makes Research and its Datasets unreachable", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-18
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const dataset = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
       const del = await app.request(url(`/research/${humId}/delete`), {
@@ -644,29 +628,23 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // GET /research/{humId} is 404 for admin too: after delete `draftVersion`
-      // and `latestVersion` are both null, so `resolveVersionForUser` returns
-      // null and the detail handler 404s — independent of the admin bypass in
-      // `canAccessResearchDoc`.
+      // Physical deletion removes the document from ES entirely.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(404)
-      // architecture.md § deleted: admin のみ /versions を 200 で閲覧可、owner 含むそれ以外は 404
       const adminVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(admin) })
-      expect(adminVersions.status).toBe(200)
-      const ownerVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(nonAdmin) })
-      expect(ownerVersions.status).toBe(404)
+      expect(adminVersions.status).toBe(404)
       // Associated Datasets are physically removed by `deleteByQuery`.
       const dsGet = await app.request(url(`/dataset/${dataset.datasetId}`), {
         headers: authHeaders(admin),
       })
       expect(dsGet.status).toBe(404)
-      humId = "" // suppress finally cleanup; already deleted.
+      humId = ""
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-20: humId of a deleted Research cannot be reused", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-20: humId of a physically deleted Research can be reused", async ({ admin }) => {
     // IT-RESEARCH-20
     let humId = ""
     try {
@@ -678,34 +656,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         headers: authHeaders(admin),
       })
       expect(del.status).toBe(204)
-      // Recreating with the same humId must fail with 409 because the deleted doc still occupies the id.
-      const dup = await app.request(url("/research/new"), {
+      // Physical deletion removes the doc from ES, so the same humId is available for reuse.
+      const reuse = await app.request(url("/research/new"), {
         method: "POST",
         headers: { ...authHeaders(admin), "Content-Type": "application/json" },
         body: JSON.stringify({ humId }),
       })
-      expect(dup.status).toBe(409)
-      humId = "" // already deleted; nothing to clean up.
-    } finally {
-      if (humId) await purgeResearch(admin, humId)
-    }
-  })
-
-  itWithIsolationIndex("IT-RESEARCH-21: PUT /research/{humId}/uids by admin updates the owner list", async ({ admin }) => {
-    // IT-RESEARCH-21
-    let humId = ""
-    try {
-      const created = await createDraftResearch(admin)
-      humId = created.humId
-      const target = ["uid-IT-21-A", "uid-IT-21-B"]
-      const after = await setOwnerUids(admin, humId, target)
-      expect(after.seqNo).toBeGreaterThanOrEqual(created.seqNo)
-      // setOwnerUids has already re-GET-and-asserted the uids contain the requested set;
-      // re-verify the exact list shape here for the IT contract.
-      const app = getApp()
-      const get = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
-      const getJson = (await get.json()) as SingleReadOnlyResponse<{ uids?: string[] }>
-      expect(getJson.data.uids).toEqual(target)
+      expect(reuse.status).toBe(201)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
@@ -713,13 +670,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-24: POST /research/{humId}/dataset/new by owner returns 201 with default Dataset shape", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-24
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       expect(ds.datasetId).toMatch(new RegExp(`^DRAFT-${humId}-`))
       // releaseDate defaults to today's ISO 8601 date string.
@@ -734,13 +691,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
 
   itWithIsolationIndex("IT-RESEARCH-25: POST /research/{humId}/dataset/new on published parent is refused", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-25
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       // Parent is now published, so dataset/new must be refused (409 Conflict,
@@ -759,60 +716,156 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-T1: generateNextHumId is robust against malformed humId seeds", async () => {
-    // The Painless aggregation in generateNextHumId calls
-    // `Integer.parseInt(doc['humId'].value.substring(3))`. Without a `humId`
-    // regex filter on the search query, a seed with a non-conforming `humId`
-    // (empty, missing the `hum` prefix, etc.) would crash the shard with a
-    // NumberFormatException. The IT seeds three deliberately malformed docs
-    // and asserts that generateNextHumId still returns a syntactically valid
-    // `hum\d{4,}` id, without bubbling a 500 / shard failure.
-    const seeds: { id: string; doc: Record<string, unknown> }[] = [
-      { id: "__t1_empty__", doc: { humId: "" } },
-      { id: "__t1_nonhum__", doc: { humId: "abc1234" } },
-      { id: "__t1_prefix_only__", doc: { humId: "hum" } },
-    ]
-    try {
-      for (const s of seeds) {
-        await esClient.index({
-          index: ES_INDEX.research,
-          id: s.id,
-          body: s.doc,
-          refresh: "wait_for",
-        })
-      }
-      // Should not throw a Painless shard failure even with the malformed seeds present.
-      const nextId = await generateNextHumId()
-      expect(nextId).toMatch(/^hum\d{4,}$/)
-    } finally {
-      for (const s of seeds) {
-        await esClient.delete({
-          index: ES_INDEX.research,
-          id: s.id,
-          refresh: "wait_for",
-        }, { ignore: [404] })
-      }
-    }
-  })
-
-  itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from public listing", async ({ admin, nonAdmin }) => {
-    // A Research that was once published (latestVersion=v1) and then deleted
-    // (status="deleted") must disappear from the public listing. This exercises
-    // the search post-filter that drops `status === "deleted"` rows.
-    //
-    // `GET /research?humId=<id>` is used because it is the canonical
-    // direct-filter path (`ResearchListingQuerySchema § humId`) and shares the
-    // `searchResearches` post-filter with `POST /research/search`. The POST
-    // search body (`ResearchSearchBodySchema`) does not currently expose a
-    // dedicated `humId` filter, and `query` (full-text) does not match the
-    // `humId` keyword field — so we rely on the GET endpoint here.
-    const sub = decodeJwtSub(nonAdmin)
-    expect(sub).toBeTruthy()
+  itWithIsolationIndex("IT-RESEARCH-28-a: POST /research/{humId}/dataset/new with an existing datasetId in the same Research returns 409 and preserves the original", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-a
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
     let humId = ""
     try {
       const created = await createDraftResearch(admin)
       humId = created.humId
-      await setOwnerUids(admin, humId, [sub!])
+      await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+
+      const explicitId = `JGAD5${humId.replace(/\D/g, "").slice(-5).padStart(5, "0")}A`
+      const firstBody = JSON.stringify({ datasetId: explicitId, releaseDate: "2001-01-01" })
+      const first = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: firstBody,
+      })
+      expect(first.status).toBe(201)
+      const firstJson = (await first.json()) as { data: { datasetId: string; version: string; releaseDate: string } }
+      expect(firstJson.data.datasetId).toBe(explicitId)
+      expect(firstJson.data.version).toBe("v1")
+
+      const dup = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId, releaseDate: "2099-12-31" }),
+      })
+      expect(dup.status).toBe(409)
+      const dupJson = (await dup.json()) as { title?: string; detail?: string; status?: number }
+      expect(dupJson.status).toBe(409)
+      expect(dupJson.title).toBe("Conflict")
+      expect(dupJson.detail ?? "").toContain(explicitId)
+      expect(dupJson.detail ?? "").toContain("already exists")
+
+      // No v2 doc leaked, and v1 content is intact.
+      const versions = await app.request(url(`/dataset/${explicitId}/versions`), { headers: authHeaders(nonAdmin) })
+      expect(versions.status).toBe(200)
+      const versionsJson = (await versions.json()) as { data: { version: string }[] }
+      expect(versionsJson.data.map(v => v.version)).toEqual(["v1"])
+
+      const getDs = await app.request(url(`/dataset/${explicitId}`), { headers: authHeaders(nonAdmin) })
+      expect(getDs.status).toBe(200)
+      const getJson = (await getDs.json()) as { data: { releaseDate: string; humId: string } }
+      expect(getJson.data.releaseDate).toBe("2001-01-01")
+      expect(getJson.data.humId).toBe(humId)
+
+      // Parent Research still has exactly the one linked Dataset.
+      const linked = await app.request(url(`/research/${humId}/dataset`), { headers: authHeaders(nonAdmin) })
+      expect(linked.status).toBe(200)
+      const linkedJson = (await linked.json()) as { data: { datasetId: string }[] }
+      expect(linkedJson.data.filter(d => d.datasetId === explicitId).length).toBe(1)
+      expect(linkedJson.data.length).toBe(1)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-28-b: POST /research/{humId}/dataset/new with an existing datasetId from another Research returns 409 without stealing", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-b
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humIdA = ""
+    let humIdB = ""
+    try {
+      const createdA = await createDraftResearch(admin)
+      humIdA = createdA.humId
+      await setOwnerUids(admin, humIdA, [username!])
+      const createdB = await createDraftResearch(admin)
+      humIdB = createdB.humId
+      await setOwnerUids(admin, humIdB, [username!])
+      const app = getApp()
+
+      const suffix = `${humIdA.replace(/\D/g, "").slice(-5).padStart(5, "0")}B`
+      const explicitId = `JGAD5${suffix}`
+
+      const first = await app.request(url(`/research/${humIdA}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId }),
+      })
+      expect(first.status).toBe(201)
+
+      const cross = await app.request(url(`/research/${humIdB}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId: explicitId }),
+      })
+      expect(cross.status).toBe(409)
+      const crossJson = (await cross.json()) as { detail?: string }
+      expect(crossJson.detail ?? "").toContain(explicitId)
+
+      // The dataset still belongs to A, not stolen by B.
+      const getDs = await app.request(url(`/dataset/${explicitId}`), { headers: authHeaders(nonAdmin) })
+      expect(getDs.status).toBe(200)
+      const getJson = (await getDs.json()) as { data: { humId: string } }
+      expect(getJson.data.humId).toBe(humIdA)
+
+      // Only one version exists.
+      const versions = await app.request(url(`/dataset/${explicitId}/versions`), { headers: authHeaders(nonAdmin) })
+      const versionsJson = (await versions.json()) as { data: { version: string }[] }
+      expect(versionsJson.data.map(v => v.version)).toEqual(["v1"])
+
+      // A's linked list contains it; B's does not.
+      const linkedA = await app.request(url(`/research/${humIdA}/dataset`), { headers: authHeaders(nonAdmin) })
+      const linkedAJson = (await linkedA.json()) as { data: { datasetId: string }[] }
+      expect(linkedAJson.data.some(d => d.datasetId === explicitId)).toBe(true)
+      const linkedB = await app.request(url(`/research/${humIdB}/dataset`), { headers: authHeaders(nonAdmin) })
+      const linkedBJson = (await linkedB.json()) as { data: { datasetId: string }[] }
+      expect(linkedBJson.data.some(d => d.datasetId === explicitId)).toBe(false)
+    } finally {
+      if (humIdB) await purgeResearch(admin, humIdB)
+      if (humIdA) await purgeResearch(admin, humIdA)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-28-c: POST /research/{humId}/dataset/new without datasetId still auto-generates DRAFT id", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-28-c
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const res = await app.request(url(`/research/${humId}/dataset/new`), {
+        method: "POST",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: "{}",
+      })
+      expect(res.status).toBe(201)
+      const json = (await res.json()) as { data: { datasetId: string; version: string } }
+      expect(json.data.datasetId).toMatch(new RegExp(`^DRAFT-${humId}-`))
+      expect(json.data.version).toBe("v1")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from public listing", async ({ admin, nonAdmin }) => {
+    // A Research that was once published and then physically deleted
+    // must disappear from the public listing.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
       // Sanity check: the humId is visible to public via the humId-filtered list.
@@ -828,9 +881,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       })
       expect(del.status).toBe(204)
 
-      // After delete, the humId-filtered list must return 0 hits. This is the
-      // canonical invariant — the same `searchResearches` post-filter that
-      // drops `status === "deleted"` also backs `POST /research/search`.
+      // After physical delete, the humId-filtered list must return 0 hits.
       const filtered = await app.request(url(`/research?humId=${humId}&limit=10`))
       expect(filtered.status).toBe(200)
       const filteredJson = (await filtered.json()) as SearchResponse<{ humId: string }>
@@ -842,7 +893,107 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with empty body applies all spec defaults", async ({ admin }) => {
+  itWithIsolationIndex("IT-RESEARCH-29: PUT /research/{humId}/update writes summaryShort and it flows to detail + list projection", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-29
+    // summaryShort is stored as BilingualTextValue on the ES doc and projected
+    // to flat BilingualText (methodsSummary / typeOfDataSummary / targetsSummary)
+    // in the listing view. Both shapes must be observable end-to-end.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const put = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: {
+            methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+            typeOfData: { ja: { text: "NGS（WGS）" }, en: { text: "NGS (WGS)" } },
+            targets: { ja: { text: "SCA31：1 症例" }, en: { text: "1 SCA31 patient" } },
+          },
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
+        }),
+      })
+      expect(put.status).toBe(200)
+
+      // Default GET strips rawHtml (maybeStripRawHtml). The hydrator side is
+      // covered by unit tests; here we just check the text round-trips.
+      const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
+      expect(detail.status).toBe(200)
+      const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
+      expect(detailJson.data.summaryShort).toEqual({
+        methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+        typeOfData: { ja: { text: "NGS（WGS）" }, en: { text: "NGS (WGS)" } },
+        targets: { ja: { text: "SCA31：1 症例" }, en: { text: "1 SCA31 patient" } },
+      })
+
+      // Owners see their own draft in the list projection; the flat *Summary fields must appear.
+      const list = await app.request(url("/research?status=draft&limit=50"), { headers: authHeaders(nonAdmin) })
+      expect(list.status).toBe(200)
+      const listJson = (await list.json()) as SearchResponse<ResearchSummary & {
+        methodsSummary?: { ja: string | null; en: string | null } | null
+        typeOfDataSummary?: { ja: string | null; en: string | null } | null
+        targetsSummary?: { ja: string | null; en: string | null } | null
+      }>
+      const mine = listJson.data.find((r) => r.humId === humId)
+      expect(mine).toBeDefined()
+      expect(mine!.methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
+      expect(mine!.typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
+      expect(mine!.targetsSummary).toEqual({ ja: "SCA31：1 症例", en: "1 SCA31 patient" })
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-30: PUT /research/{humId}/update with summaryShort=null clears the field", async ({ admin, nonAdmin }) => {
+    // IT-RESEARCH-30
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const seed = await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const seedPut = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: {
+            methods: { ja: { text: "x" }, en: { text: "x" } },
+            typeOfData: { ja: { text: "x" }, en: { text: "x" } },
+            targets: { ja: { text: "x" }, en: { text: "x" } },
+          },
+          _seq_no: seed.seqNo,
+          _primary_term: seed.primaryTerm,
+        }),
+      })
+      expect(seedPut.status).toBe(200)
+      const after = await getResearchSeqNo(admin, humId)
+      const clear = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summaryShort: null,
+          _seq_no: after.seqNo,
+          _primary_term: after.primaryTerm,
+        }),
+      })
+      expect(clear.status).toBe(200)
+      const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
+      const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
+      expect(detailJson.data.summaryShort).toBeNull()
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-27: POST /research/new with only humId applies all spec defaults", async ({ admin }) => {
     // IT-RESEARCH-27
     let humId = ""
     try {
@@ -851,12 +1002,12 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       const app = getApp()
       const get = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(get.status).toBe(200)
-      const json = (await get.json()) as SingleReadOnlyResponse<EsResearch & { uids?: string[] }>
-      // Defaults per the spec: empty bilingual title, no uids, draft/v1.
+      const json = (await get.json()) as SingleReadOnlyResponse<EsResearch & { owners?: string[] }>
+      // Defaults per the spec: empty bilingual title, no owners, draft/v1.
       expect(json.data.status).toBe("draft")
       expect(json.data.latestVersion).toBeNull()
       expect(json.data.draftVersion).toBe("v1")
-      expect(json.data.uids ?? []).toEqual([])
+      expect(json.data.owners ?? []).toEqual([])
       const titleAny = json.data.title as Record<string, unknown> | undefined
       expect(titleAny?.ja).toBeNull()
       expect(titleAny?.en).toBeNull()

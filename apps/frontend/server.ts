@@ -65,29 +65,45 @@
 
 import path from "node:path";
 
+import { getAssetDir, getAssetFilesSubdir } from "./src/lib/assetDir";
+import {
+  emitError,
+  emitEvent,
+  handleClientErrorReport,
+  isValidRequestId,
+  runWithRequestContext,
+  shutdownObservability,
+} from "./src/observability/server";
+
 // Configuration
 const SERVER_PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_DIRECTORY = "./dist/client";
 const SERVER_ENTRY_POINT = "./dist/server/server.js";
-const PUBLIC_FILES_SUBDIR = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-const PUBLIC_FILES_DIR = path.resolve(CLIENT_DIRECTORY, PUBLIC_FILES_SUBDIR);
+// Uploaded assets live OUTSIDE the build output so `vite build` does not wipe them.
+// Resolved via the shared helper so the upload, serve, and restore paths stay in sync.
+const PUBLIC_FILES_SUBDIR = getAssetFilesSubdir();
+const PUBLIC_FILES_DIR = getAssetDir();
 
-// Logging utilities for professional output
+// Server diagnostics use the shared JSON logger. The feature code never writes
+// directly to stdout, which keeps Docker's stdout stream machine-readable.
 const log = {
   info: (message: string) => {
-    console.log(`[INFO] ${message}`);
+    emitEvent("server.startup", { message });
   },
   success: (message: string) => {
-    console.log(`[SUCCESS] ${message}`);
+    emitEvent("server.startup", { message });
   },
   warning: (message: string) => {
-    console.log(`[WARNING] ${message}`);
+    emitEvent("server.startup", { message }, { level: "warn" });
   },
   error: (message: string) => {
-    console.log(`[ERROR] ${message}`);
+    // Startup errors can include library-provided text, so keep their stdout
+    // shape normalized and avoid serializing the raw error message.
+    void message;
+    emitEvent("server.startup_failed", { failure_category: "startup" }, { level: "error" });
   },
   header: (message: string) => {
-    console.log(`\n${message}\n`);
+    emitEvent("server.startup", { message });
   },
 };
 
@@ -279,12 +295,12 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
 
   log.info(`Loading static assets from ${clientDirectory}...`);
   if (VERBOSE) {
-    console.log(`Max preload size: ${(MAX_PRELOAD_BYTES / 1024 / 1024).toFixed(2)} MB`);
+    log.info(`Max preload size: ${(MAX_PRELOAD_BYTES / 1024 / 1024).toFixed(2)} MB`);
     if (INCLUDE_PATTERNS.length > 0) {
-      console.log(`Include patterns: ${process.env.ASSET_PRELOAD_INCLUDE_PATTERNS ?? ""}`);
+      log.info(`Include patterns: ${process.env.ASSET_PRELOAD_INCLUDE_PATTERNS ?? ""}`);
     }
     if (EXCLUDE_PATTERNS.length > 0) {
-      console.log(`Exclude patterns: ${process.env.ASSET_PRELOAD_EXCLUDE_PATTERNS ?? ""}`);
+      log.info(`Exclude patterns: ${process.env.ASSET_PRELOAD_EXCLUDE_PATTERNS ?? ""}`);
     }
   }
 
@@ -383,8 +399,7 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
       };
 
       if (loaded.length > 0) {
-        console.log("\n📁 Preloaded into memory:");
-        console.log("Path                                          │    Size │ Gzip Size");
+        log.info("Preloaded into memory");
         loaded
           .sort((a, b) => a.route.localeCompare(b.route))
           .forEach((file) => {
@@ -392,13 +407,12 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
             const paddedPath = file.route.padEnd(maxPathLength);
             const sizeStr = `${size.padStart(7)} kB`;
             const gzipStr = `${gzip.padStart(7)} kB`;
-            console.log(`${paddedPath} │ ${sizeStr} │  ${gzipStr}`);
+            log.info(`${paddedPath} │ ${sizeStr} │  ${gzipStr}`);
           });
       }
 
       if (skipped.length > 0) {
-        console.log("\n💾 Served on-demand:");
-        console.log("Path                                          │    Size │ Gzip Size");
+        log.info("Assets served on-demand");
         skipped
           .sort((a, b) => a.route.localeCompare(b.route))
           .forEach((file) => {
@@ -406,7 +420,7 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
             const paddedPath = file.route.padEnd(maxPathLength);
             const sizeStr = `${size.padStart(7)} kB`;
             const gzipStr = `${gzip.padStart(7)} kB`;
-            console.log(`${paddedPath} │ ${sizeStr} │  ${gzipStr}`);
+            log.info(`${paddedPath} │ ${sizeStr} │  ${gzipStr}`);
           });
       }
     }
@@ -415,10 +429,7 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
     if (VERBOSE) {
       if (loaded.length > 0 || skipped.length > 0) {
         const allFiles = [...loaded, ...skipped].sort((a, b) => a.route.localeCompare(b.route));
-        console.log("\n📊 Detailed file information:");
-        console.log(
-          "Status       │ Path                            │ MIME Type                    │ Reason",
-        );
+        log.info("Detailed static asset information");
         allFiles.forEach((file) => {
           const isPreloaded = loaded.includes(file);
           const status = isPreloaded ? "MEMORY" : "ON-DEMAND";
@@ -428,18 +439,17 @@ async function initializeStaticRoutes(clientDirectory: string): Promise<PreloadR
               : !isPreloaded
                 ? "filtered"
                 : "preloaded";
-          const route = file.route.length > 30 ? file.route.substring(0, 27) + "..." : file.route;
-          console.log(
+          const route = file.route.length > 30 ? `${file.route.substring(0, 27)}...` : file.route;
+          log.info(
             `${status.padEnd(12)} │ ${route.padEnd(30)} │ ${file.type.padEnd(28)} │ ${reason.padEnd(10)}`,
           );
         });
       } else {
-        console.log("\n📊 No files found to display");
+        log.info("No static files found");
       }
     }
 
     // Log summary after the file list
-    console.log(); // Empty line for separation
     if (loaded.length > 0) {
       log.success(
         `Preloaded ${String(loaded.length)} files (${(totalPreloadedBytes / 1024 / 1024).toFixed(2)} MB) into memory`,
@@ -492,6 +502,19 @@ async function initializeServer() {
     port: SERVER_PORT,
 
     routes: {
+      "/api/observability/client-errors": async (req: Request) => {
+        const incomingId = req.headers.get("x-request-id");
+        const requestId = isValidRequestId(incomingId)
+          ? (incomingId ?? crypto.randomUUID())
+          : crypto.randomUUID();
+        return runWithRequestContext(requestId, async () => {
+          const response = await handleClientErrorReport(req);
+          const headers = new Headers(response.headers);
+          headers.set("x-request-id", requestId);
+          return new Response(response.body, { status: response.status, headers });
+        });
+      },
+
       // Serve static assets (preloaded or on-demand)
       ...routes,
 
@@ -519,28 +542,78 @@ async function initializeServer() {
       },
 
       // Fallback to TanStack Start handler for all other routes
-      "/*": (req: Request) => {
-        try {
-          return handler.fetch(req);
-        } catch (error) {
-          log.error(`Server handler error: ${String(error)}`);
-          return new Response("Internal Server Error", { status: 500 });
-        }
+      "/*": async (req: Request) => {
+        const requestIdHeader = req.headers.get("x-request-id");
+        const requestId = isValidRequestId(requestIdHeader)
+          ? (requestIdHeader ?? crypto.randomUUID())
+          : crypto.randomUUID();
+        const startedAt = performance.now();
+        const normalizedPath = new URL(req.url).pathname;
+
+        return runWithRequestContext(requestId, async () => {
+          let response: Response;
+          try {
+            response = await handler.fetch(req);
+          } catch (error) {
+            emitError("server.unhandled_error", error, {
+              method: req.method,
+              route: normalizedPath,
+            });
+            response = new Response("Internal Server Error", { status: 500 });
+          }
+
+          const headers = new Headers(response.headers);
+          headers.set("x-request-id", requestId);
+          const responseWithRequestId = new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+          });
+          const outcome =
+            response.status >= 300 && response.status < 400
+              ? "redirect"
+              : response.ok
+                ? "success"
+                : "failure";
+          emitEvent(
+            "request.completed",
+            {
+              method: req.method,
+              route: normalizedPath,
+              status_code: response.status,
+              outcome,
+              duration_ms: Math.round((performance.now() - startedAt) * 100) / 100,
+            },
+            { level: outcome === "failure" ? "error" : "info" },
+          );
+          return responseWithRequestId;
+        });
       },
     },
 
     // Global error handler
     error(error) {
-      log.error(`Uncaught server error: ${error instanceof Error ? error.message : String(error)}`);
+      emitError("server.unhandled_error", error);
       return new Response("Internal Server Error", { status: 500 });
     },
   });
 
   log.success(`Server listening on http://localhost:${String(server.port)}`);
+
+  const stopServer = async () => {
+    server.stop();
+    await shutdownObservability();
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => void stopServer());
+  process.once("SIGINT", () => void stopServer());
 }
 
 // Initialize the server
 initializeServer().catch((error: unknown) => {
-  log.error(`Failed to start server: ${String(error)}`);
+  emitError("server.startup_failed", error);
   process.exit(1);
 });
+
+process.on("uncaughtException", (error) => emitError("server.unhandled_error", error));
+process.on("unhandledRejection", (reason) => emitError("server.unhandled_error", reason));

@@ -48,7 +48,7 @@ import {
   ResearchDetailSchema,
   DatasetVersionItemSchema,
 } from "./views"
-import { EditableResearchStatusSchema, RESEARCH_STATUS } from "./workflow"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Response Schemas ===
 
@@ -104,7 +104,7 @@ export const ApiDatasetSchema = z.object({
 // === API-specific Person / Publication schemas ===
 // Person/Publication sub-fields are selectively included based on context:
 // - dataProvider: omit datasetIds, researchTitle, periodOfDataUse (no real data)
-// - controlledAccessUser: all fields included
+// - controlledAccessUser: read-only (written by generate-cau batch, not via API)
 // - relatedPublication: all fields included
 
 /** relatedPublication: datasetIds で論文とデータセットを紐付ける */
@@ -117,23 +117,19 @@ const ApiDataProviderPersonRequestSchema = PersonRequestSchema.omit({
   periodOfDataUse: true,
 })
 
-/** controlledAccessUser (request 用): rawHtml を含まない */
-const ApiControlledAccessUserPersonRequestSchema = PersonRequestSchema
-
 // === Research API ===
 
 /**
  * Create research request
  * Creates Research + initial ResearchVersion (v1) simultaneously
- * Note: humId, versionIds, latestVersion, datePublished, dateModified are auto-generated
- * All fields are optional - defaults will be used for missing fields
+ * Note: versionIds, latestVersion, datePublished, dateModified are auto-generated
+ * All fields except humId are optional - defaults will be used for missing fields
  */
 export const CreateResearchRequestSchema = z.object({
-  // Optional humId - auto-generated if not provided (hum0001, hum0002, ...)
   humId: z
     .string()
-    .optional()
-    .describe("Research ID (e.g., 'hum0001'). Auto-generated if not provided."),
+    .regex(/^hum\d{4}$/, "humId must match hum0000–hum9999")
+    .describe("Research ID (e.g., 'hum0001'). Must match /^hum\\d{4}$/."),
 
   // Research fields - all optional with defaults
   title: BilingualTextSchema.optional().describe(
@@ -155,19 +151,17 @@ export const CreateResearchRequestSchema = z.object({
     .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
-
-  // Admin assigns owner UIDs (optional, defaults to empty array)
-  uids: z
-    .array(z.string())
+  summaryShort: z
+    .object({
+      methods: BilingualTextValueRequestSchema,
+      typeOfData: BilingualTextValueRequestSchema,
+      targets: BilingualTextValueRequestSchema,
+    })
+    .nullable()
     .optional()
     .describe(
-      "Keycloak user IDs (sub) who can edit this Research. Admin-only field.",
+      "Short bilingual summaries for the listing view (research method / data type / target). Typically null at creation until the humId appears on the Joomla home.",
     ),
-
-  // Initial version release note (optional)
-  initialReleaseNote: BilingualTextValueRequestSchema.optional().describe(
-    "Release note for the initial version (v1)",
-  ),
 })
 export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
@@ -197,10 +191,20 @@ export const UpdateResearchRequestSchema = z.object({
     .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
-  controlledAccessUser: z
-    .array(ApiControlledAccessUserPersonRequestSchema)
+  releaseNote: BilingualTextValueRequestSchema.optional().describe(
+    "Release note for the current draft version",
+  ),
+  summaryShort: z
+    .object({
+      methods: BilingualTextValueRequestSchema,
+      typeOfData: BilingualTextValueRequestSchema,
+      targets: BilingualTextValueRequestSchema,
+    })
+    .nullable()
     .optional()
-    .describe("Users with controlled access to the data"),
+    .describe(
+      "Short bilingual summaries for the listing view (research method / data type / target). Null clears the field for humIds no longer listed on the Joomla home. Omit to keep the current value.",
+    ),
   _seq_no: z
     .number()
     .describe(
@@ -219,35 +223,14 @@ export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
  */
 export const ResearchWithStatusSchema = ResearchSchema.extend({
   status: z.enum(RESEARCH_STATUS),
-  uids: z.array(z.string()).default([]), // Keycloak sub (UUID) of users who can edit this research
+  owners: z.array(z.string()).default([]),
 })
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
-/**
- * Research response for POST /research/new and PUT /research/{humId}/update.
- * These endpoints can never observe `status: "deleted"` — deletion is a separate
- * route — so the response status is narrowed to the editable subset.
- */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
-  status: EditableResearchStatusSchema,
-  datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
+  datasets: z.array(ApiDatasetSchema).optional(),
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
-
-// === Research UIDs API ===
-
-/**
- * Update Research UIDs (owner list) request
- * Includes optimistic locking fields
- */
-export const UpdateUidsRequestSchema = z.object({
-  uids: z
-    .array(z.string())
-    .describe("Keycloak sub (UUID) array of users who can edit this research"),
-  _seq_no: z.number().describe("Sequence number for optimistic locking"),
-  _primary_term: z.number().describe("Primary term for optimistic locking"),
-})
-export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
 
 // === Version API ===
 
@@ -298,8 +281,6 @@ export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
  * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateDatasetRequestSchema = z.object({
-  humId: z.string(),
-  humVersionId: z.string(),
   releaseDate: z.string(),
   criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
@@ -502,17 +483,17 @@ export type WorkflowResponse = z.infer<
 >
 
 /**
- * UIDs update response data
+ * Owners response data (GET /research/{humId}/owners, admin only)
  */
-export const UidsDataSchema = z.object({
+export const OwnersDataSchema = z.object({
   humId: z.string(),
-  uids: z.array(z.string()),
+  owners: z.array(z.string()),
 })
-export type UidsData = z.infer<typeof UidsDataSchema>
+export type OwnersData = z.infer<typeof OwnersDataSchema>
 
-export const UidsResponseSchema =
-  createSingleResponseSchema(UidsDataSchema)
-export type UidsResponse = z.infer<typeof UidsResponseSchema>
+export const OwnersResponseSchema =
+  createSingleReadOnlyResponseSchema(OwnersDataSchema)
+export type OwnersResponse = z.infer<typeof OwnersResponseSchema>
 
 /**
  * Research detail response for authenticated users (GET /research/{humId})
@@ -648,7 +629,7 @@ export const LinkedResearchesListResponseSchema =
   createListResponseSchema(ResearchDetailSchema)
 export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>
 
-// JGA Shinsei path params (JdsIdParamsSchema / JduIdParamsSchema) live in `./path-params.ts`.
+// JGA Shinsei path params (JdsApplIdParamsSchema / JduApplIdParamsSchema / JduIdParamsSchema) live in `./path-params.ts`.
 
 // DS
 export const DsApplicationListResponseSchema =

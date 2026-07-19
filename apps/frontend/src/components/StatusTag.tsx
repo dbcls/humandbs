@@ -1,6 +1,8 @@
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 
+import type { ResearchStatus } from "@humandbs/backend/types";
+
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
@@ -66,12 +68,11 @@ const researchTagVariants = cva(
 );
 
 type ResearchTagProps = {
-  tag: string;
+  tag: ResearchStatus;
   size?: "sm" | "md";
   className?: string;
 };
 
 export function Tag({ tag, size = "sm", className }: ResearchTagProps) {
-  const status = tag as "draft" | "review" | "published" | "deleted";
-  return <div className={cn(researchTagVariants({ status, size }), className)}>{tag}</div>;
+  return <div className={cn(researchTagVariants({ status: tag, size }), className)}>{tag}</div>;
 }

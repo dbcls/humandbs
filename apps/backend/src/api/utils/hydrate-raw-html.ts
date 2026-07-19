@@ -21,6 +21,7 @@ import type {
   ResearchProject,
   Summary,
 } from "@/crawler/types/structured"
+import { extractDataText } from "@/es/types"
 
 export const hydrateTextValue = (v: TextValueRequest | null): TextValue | null => {
   if (v === null) return null
@@ -73,6 +74,7 @@ export const hydrateExperiment = (v: ExperimentRequest): Experiment => {
   return {
     header: hydrateBilingualTextValue(v.header),
     data,
+    dataText: extractDataText(data),
     ...(v.searchable !== undefined ? { searchable: v.searchable } : {}),
   }
 }

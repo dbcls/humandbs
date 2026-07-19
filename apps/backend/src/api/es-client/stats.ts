@@ -25,7 +25,7 @@ const statsTopLevelAgg = (field: string, size = 10): estypes.AggregationsAggrega
 })
 
 /** Nested facet agg with both research and dataset cardinality */
-const statsNestedAgg = (field: string, size = 50): estypes.AggregationsAggregationContainer => ({
+const statsNestedAgg = (field: string, size = 500): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
     values: {
@@ -47,7 +47,7 @@ const statsNestedAgg = (field: string, size = 50): estypes.AggregationsAggregati
 const statsDoubleNestedAgg = (
   innerPath: string,
   field: string,
-  size = 50,
+  size = 500,
 ): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
@@ -71,19 +71,19 @@ const statsDoubleNestedAgg = (
   },
 })
 
-/** Platform composite agg with both research and dataset cardinality (double-nested) */
-const statsPlatformAgg = (size = 50): estypes.AggregationsAggregationContainer => ({
+/** Platform multi_terms agg with both research and dataset cardinality (double-nested) */
+const statsPlatformAgg = (size = 500): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
     inner: {
       nested: { path: "experiments.searchable.platforms" },
       aggs: {
         vendorModel: {
-          composite: {
+          multi_terms: {
             size,
-            sources: [
-              { vendor: { terms: { field: "experiments.searchable.platforms.vendor", missing_bucket: true } } },
-              { model: { terms: { field: "experiments.searchable.platforms.model", missing_bucket: true } } },
+            terms: [
+              { field: "experiments.searchable.platforms.vendor" },
+              { field: "experiments.searchable.platforms.model" },
             ],
           },
           aggs: {
@@ -168,8 +168,8 @@ interface StatsBucket {
   }
 }
 
-interface StatsCompositeBucket {
-  key: { vendor?: string | null; model?: string | null }
+interface StatsMultiTermsBucket {
+  key: (string | number | boolean | null)[]
   doc_count: number
   counts?: {
     doc_count: number
@@ -189,10 +189,10 @@ const isStatsBucketArray = (value: unknown): value is StatsBucket[] => {
   })
 }
 
-const isStatsCompositeBucketArray = (value: unknown): value is StatsCompositeBucket[] => {
+const isStatsMultiTermsBucketArray = (value: unknown): value is StatsMultiTermsBucket[] => {
   if (!Array.isArray(value)) return false
   return value.every(item =>
-    isRecord(item) && isRecord(item.key) && typeof item.doc_count === "number",
+    isRecord(item) && Array.isArray(item.key) && typeof item.doc_count === "number",
   )
 }
 
@@ -220,12 +220,12 @@ const extractStatsFacets = (aggs: Record<string, unknown>): Record<string, Recor
     return null
   }
 
-  // Find platform composite buckets
-  const findPlatformBuckets = (obj: unknown): StatsCompositeBucket[] | null => {
+  // Find platform multi_terms buckets
+  const findPlatformBuckets = (obj: unknown): StatsMultiTermsBucket[] | null => {
     if (!isRecord(obj)) return null
     if ("vendorModel" in obj && isRecord(obj.vendorModel)) {
       const vm = obj.vendorModel
-      if ("buckets" in vm && isStatsCompositeBucketArray(vm.buckets)) return vm.buckets
+      if ("buckets" in vm && isStatsMultiTermsBucketArray(vm.buckets)) return vm.buckets
     }
     for (const [key, val] of Object.entries(obj)) {
       if (key === "doc_count") continue
@@ -245,8 +245,8 @@ const extractStatsFacets = (aggs: Record<string, unknown>): Record<string, Recor
       if (buckets) {
         facets[key] = {}
         for (const b of buckets) {
-          const vendor = b.key.vendor ?? ""
-          const model = b.key.model ?? ""
+          const vendor = String(b.key[0] ?? "")
+          const model = String(b.key[1] ?? "")
           if (!vendor || !model) continue
           const value = `${vendor}||${model}`
           facets[key][value] = {
@@ -289,7 +289,7 @@ export const getPublicStats = async (): Promise<StatsResponse> => {
     must.push({ terms: { humId: publishedHumIds } })
   }
 
-  const publicFilter = buildStatusFilter(null)
+  const publicFilter = await buildStatusFilter(null)
   const researchCount = await esClient.count({
     index: ES_INDEX.research,
     query: publicFilter ?? { match_all: {} },

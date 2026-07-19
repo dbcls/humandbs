@@ -1,14 +1,15 @@
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import type { ResearchVersionDoc } from "@humandbs/backend/types";
-
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
+import { DatasetLink } from "@/components/DatasetLink";
+import { Markdown } from "@/components/markdown";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
+import type { RenderedResearchVersionItem } from "@/utils/renderedHtml/types";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$humId/versions")({
   component: RouteComponent,
@@ -49,11 +50,10 @@ function RouteComponent() {
   );
 }
 
-function VersionInfo({ version }: { version: ResearchVersionDoc }) {
+function VersionInfo({ version }: { version: RenderedResearchVersionItem }) {
   const { lang } = useRouteContext({ strict: false });
   const tResearch = useTranslations("Research");
 
-  console.log("version", version);
   return (
     <section className="overflow-clip rounded-sm border border-gray-200">
       <h3 className="flex w-full items-baseline gap-3 bg-linear-to-r from-cyan-900 to-secondary-lighter px-4 py-2">
@@ -62,27 +62,27 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
             {version.humVersionId}
           </TextWithIcon>
         </Route.Link>
-
-        <span className="ml-3 text-2xs text-foreground-light">{version.versionReleaseDate}</span>
       </h3>
       <section className="flex items-start gap-5 px-3 py-4 text-sm">
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("datasets")}</h4>
-          <div className="w-72">
+          <ul className="w-72 space-y-1.5">
             {version.datasets.map((ds) => (
-              <Route.Link
-                key={ds.datasetId}
-                to="/{-$lang}/dataset/$datasetId"
-                params={{ datasetId: ds.datasetId }}
-              >
-                <TextWithIcon icon={FA_ICONS.books}>{ds.datasetId}</TextWithIcon>
-              </Route.Link>
+              <li key={ds.datasetId}>
+                <DatasetLink datasetId={ds.datasetId} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>
-          {version.releaseNote[lang ?? i18n.defaultLocale]?.text}
+          <Markdown
+            className="inline-prose"
+            contentHtml={{
+              markup: version.releaseNote[lang ?? i18n.defaultLocale]?.renderedHtml ?? "",
+            }}
+          />
+
           <h4 className="my-4 font-semibold text-secondary text-xs">
             {tResearch("versionReleaseDate")}
           </h4>

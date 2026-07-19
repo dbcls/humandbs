@@ -9,7 +9,7 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import { fetchDsRaw, fetchDuRaw, listIds } from "@/api/db-client/jga-shinsei"
+import { fetchDsRaw, fetchDuRaw, listVersions } from "@/api/db-client/jga-shinsei"
 import type { SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 import {
   DsApplicationTransformedSchema,
@@ -29,8 +29,14 @@ import {
 
 beforeAll(setupIntegration)
 
+// The list response returns DsApplicationTransformed / DuApplicationTransformed
+// items directly (see `routes/jga-shinsei.ts` → `listDsApplications`). Each item
+// carries a single applIdStr-shaped identifier — `jdsId` / `jduId` in the form
+// "J-DS000001-001" (base ID + 3-digit version suffix). There is no separate
+// `applIdStr` field on the wire; the compound id serves both roles.
 interface DsListItem { jdsId: string }
 interface DuListItem { jduId: string }
+const APPL_ID_RE = { ds: /^J-DS\d+-\d+$/, du: /^J-DU\d+-\d+$/ }
 
 describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () => {
   itWithEs("IT-JGA-01: GET /jga-shinsei/ds without auth returns 401", async () => {
@@ -58,7 +64,7 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
     expect(json.meta.pagination.total).toBeGreaterThanOrEqual(0)
     expect(json.data.length).toBeLessThanOrEqual(10)
     expect(json.data.length).toBeLessThanOrEqual(json.meta.pagination.total)
-    for (const item of json.data) expect(item.jdsId).toMatch(/^J-DS\d+$/)
+    for (const item of json.data) expect(item.jdsId).toMatch(APPL_ID_RE.ds)
   })
 
   itWithJgaAdmin("IT-JGA-04: ds pagination boundary validation rejects out-of-range params", async (token) => {
@@ -90,8 +96,8 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
       console.log("  SKIP IT-JGA-05: no J-DS rows in staging DB")
       return
     }
-    const jdsId = list.data[0].jdsId
-    const detailRes = await app.request(url(`/jga-shinsei/ds/${jdsId}`), { headers: authHeaders(token) })
+    const applIdStr = list.data[0].jdsId
+    const detailRes = await app.request(url(`/jga-shinsei/ds/${applIdStr}`), { headers: authHeaders(token) })
     expect(detailRes.status).toBe(200)
     const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
     DsApplicationTransformedSchema.parse(detail.data)
@@ -103,7 +109,7 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
   itWithJgaAdmin("IT-JGA-06: GET /jga-shinsei/ds/{unknown-jdsId} returns 404", async (token) => {
     // IT-JGA-06
     const app = getApp()
-    const res = await app.request(url("/jga-shinsei/ds/J-DS999999"), { headers: authHeaders(token) })
+    const res = await app.request(url("/jga-shinsei/ds/J-DS999999-001"), { headers: authHeaders(token) })
     expect(res.status).toBe(404)
     const json = (await res.json()) as { title?: string }
     expect(json.title).toBe("Not Found")
@@ -135,8 +141,8 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
       console.log("  SKIP IT-JGA-09: no J-DU rows in staging DB")
       return
     }
-    const jduId = list.data[0].jduId
-    const detailRes = await app.request(url(`/jga-shinsei/du/${jduId}`), { headers: authHeaders(token) })
+    const applIdStr = list.data[0].jduId
+    const detailRes = await app.request(url(`/jga-shinsei/du/${applIdStr}`), { headers: authHeaders(token) })
     expect(detailRes.status).toBe(200)
     const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
     DuApplicationTransformedSchema.parse(detail.data)
@@ -150,12 +156,10 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
     expect(await fetchDuRaw([])).toEqual([])
   })
 
-  itWithJga("IT-JGA-11: J-DS and J-DU id sets returned by listIds are disjoint (data_type separation)", async () => {
+  itWithJga("IT-JGA-11: J-DS and J-DU appl_id sets returned by listVersions are disjoint (data_type separation)", async () => {
     // IT-JGA-11
-    const [ds, du] = await Promise.all([listIds("J-DS", 1, 50), listIds("J-DU", 1, 50)])
-    for (const id of ds.ids) expect(id).toMatch(/^J-DS\d+$/)
-    for (const id of du.ids) expect(id).toMatch(/^J-DU\d+$/)
-    const dsSet = new Set(ds.ids)
-    for (const id of du.ids) expect(dsSet.has(id)).toBe(false)
+    const [ds, du] = await Promise.all([listVersions("J-DS", 1, 50), listVersions("J-DU", 1, 50)])
+    const dsSet = new Set(ds.applIds)
+    for (const id of du.applIds) expect(dsSet.has(id)).toBe(false)
   })
 })

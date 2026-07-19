@@ -3,29 +3,22 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { sql } from "drizzle-orm";
 
 import * as schema from "@/db/schema";
-import {
-  createTestDatabase,
-  createTestDb,
-  dropTestDatabase,
-  pushSchema,
-} from "@/tests/fixtures/test-db";
+import { createTestDb } from "@/tests/fixtures/test-db";
 
 import { createAlertsRepository } from "./alert";
 
-const { db, pool } = createTestDb();
+const testDb = createTestDb();
+const { db } = testDb;
 const repo = createAlertsRepository(db);
 
 const AUTHOR_ID = "test-user";
 
 async function clearAlertTables() {
-  await db.execute(sql`SET session_replication_role = replica`);
   await db.execute(sql`TRUNCATE TABLE alert_translation, alert, "user" RESTART IDENTITY CASCADE`);
-  await db.execute(sql`SET session_replication_role = DEFAULT`);
 }
 
 beforeAll(async () => {
-  await createTestDatabase();
-  await pushSchema();
+  await testDb.setup();
   await db.insert(schema.user).values({
     id: AUTHOR_ID,
     name: "Test User",
@@ -35,8 +28,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.end();
-  await dropTestDatabase();
+  await testDb.close();
 });
 
 afterEach(async () => {
@@ -226,8 +218,10 @@ describe("alertsRepository.list", () => {
 
     const results = await repo.list();
     expect(results).toHaveLength(2);
-    expect(results[0]?.translations.en?.content).toBe("Alert one");
-    expect(results[1]?.translations.en?.content).toBe("Alert two");
+
+    expect(
+      results.map((alert) => alert.translations?.find((t) => t.lang === "en")?.content).sort(),
+    ).toEqual(["Alert one", "Alert two"]);
   });
 
   test("groups translations under one alert id", async () => {
@@ -243,8 +237,12 @@ describe("alertsRepository.list", () => {
 
     const results = await repo.list();
     expect(results).toHaveLength(1);
-    expect(results[0]?.translations.en?.content).toBe("Maintenance scheduled");
-    expect(results[0]?.translations.ja?.content).toBe("メンテナンスの予定");
+    expect(results[0]?.translations.find((t) => t.lang === "en")?.content).toBe(
+      "Maintenance scheduled",
+    );
+    expect(results[0]?.translations.find((t) => t.lang === "ja")?.content).toBe(
+      "メンテナンスの予定",
+    );
     expect(results[0]?.author.name).toBe("Test User");
     expect(results[0]?.updatedBy.name).toBe("Test User");
   });

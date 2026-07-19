@@ -3,6 +3,7 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Check, FileText, GripVertical, Link2, Plus, Trash2, X } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import type { Ref } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -11,8 +12,8 @@ import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/config/i18n";
-import type { NavigationItem } from "@/config/site-navigation";
-import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import type { NavigationItem } from "@/config/siteNavigation";
+import type { DocumentsListItemResponse } from "@/repositories/document";
 
 import {
   CardWithPath,
@@ -449,6 +450,7 @@ function FooterUnassignedPool({
   onCreateLinkItem: (url: string, label: { en: string; ja: string }) => void;
   onDeleteLinkItem: (itemId: string) => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const [showAddLink, setShowAddLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkEn, setLinkEn] = useState("");
@@ -500,24 +502,31 @@ function FooterUnassignedPool({
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
-          {documents.map((doc) => {
-            const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
-            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
-            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
+          {(() => {
+            const navDocuments = documents.filter((doc) => !doc.hideFromNav);
             return (
-              <FooterPoolDocCard
-                key={doc.contentId}
-                doc={doc}
-                lang={lang}
-                isAssigned={isAssigned}
-                groupName={groupName}
-                documentId={doc.id}
-              />
+              <>
+                {navDocuments.map((doc) => {
+                  const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
+                  const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+                  const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
+                  return (
+                    <FooterPoolDocCard
+                      key={doc.contentId}
+                      doc={doc}
+                      lang={lang}
+                      isAssigned={isAssigned}
+                      groupName={groupName}
+                      documentId={doc.id}
+                    />
+                  );
+                })}
+                {navDocuments.length === 0 && (
+                  <li className="py-2 text-foreground-light text-xs">{tNav("no-documents")}</li>
+                )}
+              </>
             );
-          })}
-          {documents.length === 0 && (
-            <li className="py-2 text-foreground-light text-xs">No documents</li>
-          )}
+          })()}
         </ul>
 
         {unassignedLinkItems.length > 0 && (
@@ -681,6 +690,7 @@ function FooterPoolItemCard({
   documentTitleByContentId: Map<string, string>;
   onDelete: () => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const { ref, isDragSource } = useSortable({
     id: "footer-link-" + item.id,
     index,
@@ -705,7 +715,7 @@ function FooterPoolItemCard({
         type="button"
         onClick={onDelete}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Delete link"
+        title={tNav("delete-link")}
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -745,6 +755,7 @@ function FooterGroupColumn({
   onRemoveItem: (itemId: string) => void;
   onToggleItemEnabled: (itemId: string, enabled: boolean) => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const [showAddLink, setShowAddLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkEn, setLinkEn] = useState("");
@@ -820,7 +831,7 @@ function FooterGroupColumn({
           type="button"
           onClick={() => onDeleteGroup(g.group.id)}
           className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-          title="Delete group"
+          title={tNav("delete-group")}
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -843,7 +854,7 @@ function FooterGroupColumn({
           />
         ))}
         {g.items.length === 0 && (
-          <li className="px-2 py-3 text-foreground-light text-xs">No items</li>
+          <li className="px-2 py-3 text-foreground-light text-xs">{tNav("no-items")}</li>
         )}
       </ul>
 
@@ -943,6 +954,7 @@ function FooterItemRow({
   onRemoveItem: (itemId: string) => void;
   onToggleEnabled: (itemId: string, enabled: boolean) => void;
 }) {
+  const tNav = useTranslations("admin.navigation");
   const { ref, handleRef, isDragSource } = useSortable({
     id: item.id,
     index: itemIndex,
@@ -991,7 +1003,7 @@ function FooterItemRow({
         type="button"
         onClick={() => onRemoveItem(item.id)}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Remove item from group"
+        title={tNav("remove-item")}
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -1010,6 +1022,8 @@ function FooterGroupOverlay({
   documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
+  const tNav = useTranslations("admin.navigation");
+
   const groupLabel = g.group.label[lang] ?? g.group.label.en ?? g.group.label.ja ?? "";
   return (
     <div
@@ -1035,7 +1049,7 @@ function FooterGroupOverlay({
           </li>
         ))}
         {g.items.length === 0 && (
-          <li className="px-2 py-3 text-foreground-light text-xs">No items</li>
+          <li className="px-2 py-3 text-foreground-light text-xs">{tNav("no-items")}</li>
         )}
       </ul>
     </div>

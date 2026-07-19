@@ -1,29 +1,18 @@
-import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { evaluate, useStore } from "@tanstack/react-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Trash2, Upload } from "lucide-react";
+import { useTranslations } from "use-intl";
+import { z } from "zod";
 
-import { useId, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useAppForm } from "@/components/form-context/FormContext";
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   getFieldDefaultValue,
   isFieldModified,
 } from "@/components/form-context/fields/useFieldModified";
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { SortableArrayShell } from "@/components/form-context/schema-form/SortableArrayShell";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -33,17 +22,29 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
+import { resolveMoldataKeys } from "@/config/moldataKeyCatalog";
+import { shouldOfferCustomMoldataKey } from "@/config/moldataKeyMatching";
+import type { MoldataKeyCatalog } from "@/repositories/moldataKeyCatalog";
+import {
+  $createMoldataKeyCatalogEntry,
+  getMoldataKeyCatalogQueryOptions,
+} from "@/serverFunctions/moldataKeyCatalog";
 import useConfirmationStore from "@/stores/confirmationStore";
+import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
+import { experimentDataFieldKey, getLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 import type { DeepOmit } from "@/utils/type-utils";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
-import { SortableItem } from "../research-fields/SortableItem";
+import { MarkdownTextEditor } from "../fields/MarkdownTextEditor";
 import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
+
+const CREATE_MOLDATA_KEY = "__create-moldata-key__";
+const EMPTY_CATALOG: MoldataKeyCatalog = { revision: 0, entries: [] };
 
 /**
  * Experiment data entry: a key-value pair where value is bilingual.
@@ -77,23 +78,75 @@ function DataEntriesTable({
   form,
   experimentIndex,
   dataField,
-  initialEntries,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   experimentIndex: number;
   dataField: AnyForm;
   initialEntries: ExperimentDataEntry[];
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
+  const tMoldataKeys = useTranslations("admin.moldata-keys");
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
+  const queryClient = useQueryClient();
+  const { data: catalogData } = useQuery(getMoldataKeyCatalogQueryOptions());
+  const catalog = catalogData ?? EMPTY_CATALOG;
+  const { mutateAsync: createCatalogEntry } = useMutation({
+    mutationFn: $createMoldataKeyCatalogEntry,
+  });
+  const sortedEntries = resolveMoldataKeys(
+    Object.fromEntries(entries.map((entry, index) => [entry.key, { entry, index }])),
+    catalog,
+    "en",
+  ).map(({ value }) => value);
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
 
-  const availableKeys = ALLOWED_MOLDATA_KEYS.filter((k) => !usedKeys.has(k));
+  const availableKeys = catalog.entries.filter((entry) => !usedKeys.has(entry.english));
+  const [inputValue, setInputValue] = useState("");
+  const [addedKeyToScrollTo, setAddedKeyToScrollTo] = useState<string | null>(null);
+  const [customKeyDialogEnglish, setCustomKeyDialogEnglish] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const customKey = inputValue.trim();
+  const hasCustomKey = shouldOfferCustomMoldataKey(
+    inputValue,
+    usedKeys,
+    catalog.entries.map((entry) => entry.english),
+  );
+  const filteredAvailableKeys = availableKeys.filter((entry) =>
+    entry.english.toLowerCase().includes(inputValue.toLowerCase()),
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const entryRowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const jaTextareaRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 
+  useEffect(() => {
+    if (!addedKeyToScrollTo) return;
+
+    const addedRow = entryRowRefs.current.get(addedKeyToScrollTo);
+    if (!addedRow) return;
+
+    addedRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    jaTextareaRefs.current.get(addedKeyToScrollTo)?.focus({ preventScroll: true });
+    setAddedKeyToScrollTo(null);
+  }, [addedKeyToScrollTo]);
+
   function handleAddKey(key: string) {
-    dataField.pushValue(newDataEntry(key));
+    const normalizedKey = key.trim();
+    if (!normalizedKey || usedKeys.has(normalizedKey)) return;
+    dataField.pushValue(newDataEntry(normalizedKey));
+    setAddedKeyToScrollTo(normalizedKey);
+    setInputValue("");
+  }
+
+  function handleKeySelection(key: string | null) {
+    if (!key) return;
+    if (key === CREATE_MOLDATA_KEY) {
+      setCustomKeyDialogEnglish(customKey);
+      return;
+    }
+    handleAddKey(key);
   }
 
   function handleDownload() {
@@ -113,13 +166,49 @@ function DataEntriesTable({
     form.setFieldValue(`experiments[${experimentIndex}].data`, keys.map(newDataEntry));
   }
 
+  async function normalizeImportedKeys(keys: string[]) {
+    let currentCatalog = catalog;
+    const normalizedKeys: string[] = [];
+
+    for (const rawKey of keys) {
+      const english = rawKey.trim();
+      if (!english) continue;
+
+      const existing = currentCatalog.entries.find(
+        (entry) => entry.english.toLowerCase() === english.toLowerCase(),
+      );
+      if (existing) {
+        normalizedKeys.push(existing.english);
+        continue;
+      }
+
+      const result = await createCatalogEntry({
+        data: { english, japanese: english, expectedRevision: currentCatalog.revision },
+      });
+      if (!result.ok) {
+        setImportError(result.error);
+        return;
+      }
+
+      currentCatalog = {
+        revision: result.data.revision,
+        entries: [...currentCatalog.entries, result.data.entry],
+      };
+      normalizedKeys.push(result.data.entry.english);
+    }
+
+    queryClient.setQueryData(["moldata-key-catalog"], currentCatalog);
+    setImportError(null);
+    applyKeys([...new Set(normalizedKeys)]);
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       let parsed: unknown;
       try {
         parsed = JSON.parse(event.target?.result as string);
@@ -129,22 +218,17 @@ function DataEntriesTable({
       if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) {
         return;
       }
-      const validKeys = parsed.filter((k) =>
-        (ALLOWED_MOLDATA_KEYS as readonly string[]).includes(k),
-      );
-
       const currentEntries: ExperimentDataEntry[] =
         form.store.state.values?.experiments?.[experimentIndex]?.data ?? [];
       if (currentEntries.length > 0) {
         openConfirmation({
-          title: "Reset moldata entries?",
-          description:
-            "There are existing entries in this list. Are you sure you want to reset existing entries?",
-          actionLabel: "Reset",
-          onAction: () => applyKeys(validKeys),
+          title: tMoldataKeys("reset-entries-title"),
+          description: tMoldataKeys("reset-entries-description"),
+          actionLabel: tMoldataKeys("reset-entries-action"),
+          onAction: () => normalizeImportedKeys(parsed),
         });
       } else {
-        applyKeys(validKeys);
+        await normalizeImportedKeys(parsed);
       }
     };
     reader.readAsText(file);
@@ -184,9 +268,14 @@ function DataEntriesTable({
           onChange={handleFileChange}
         />
       </div>
+      {importError && (
+        <p role="alert" className="text-danger text-xs">
+          {importError}
+        </p>
+      )}
 
       {entries.length > 0 && (
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-xs">
           <thead>
             <tr className="border-form-divider border-b text-left text-form-sublabel">
               <th className="w-48 pr-3 pb-2 font-medium">Key</th>
@@ -196,34 +285,58 @@ function DataEntriesTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, di) => {
-              const isKnown = (ALLOWED_MOLDATA_KEYS as readonly string[]).includes(entry.key);
+            {sortedEntries.map(({ entry, index: di }) => {
+              const isKnown = catalog.entries.some(
+                (catalogEntry) => catalogEntry.english === entry.key,
+              );
 
               return (
                 <tr
-                  key={`${experimentIndex}-${di}`}
+                  key={`${experimentIndex}-${entry.key}`}
+                  ref={(row) => {
+                    if (row) entryRowRefs.current.set(entry.key, row);
+                    else entryRowRefs.current.delete(entry.key);
+                  }}
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
-                    {isKnown ? (
-                      <span className="font-medium text-form-value">{entry.key}</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="font-medium text-form-value">{entry.key}</span>
-                        <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
+                    {
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <MoldataKeyLabel moldataKey={entry.key} catalog={catalog} />
+                        {!isKnown ? (
+                          <>
+                            <span className="rounded bg-amber-100 px-1 text-amber-700">
+                              unknown
+                            </span>
+                            <Button
+                              type="button"
+                              variant="plain"
+                              className="h-auto px-0 text-xs"
+                              onClick={() => setCustomKeyDialogEnglish(entry.key)}
+                            >
+                              Add to catalog
+                            </Button>
+                          </>
+                        ) : null}
                       </span>
-                    )}
+                    }
                   </td>
-                  <td className="py-2 pr-3 align-middle">
+                  <td className="py-2 pr-3 align-top">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
                       {(f: AnyForm) => (
-                        <div className="relative flex items-center">
-                          <Input
-                            value={f.state.value ?? ""}
-                            onChange={(e) => f.handleChange(e.target.value)}
+                        <div className="relative">
+                          <MarkdownTextEditor
+                            value={(f.state.value as string | undefined) ?? ""}
+                            onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="En"
-                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                            fieldLabel={`${entry.key} (en)`}
+                            modified={isFieldModified(f)}
+                            legacyRawHtml={getLegacyRawHtml(
+                              legacyRawHtml,
+                              experimentDataFieldKey(experimentIndex, entry.key),
+                              "en",
+                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -236,16 +349,26 @@ function DataEntriesTable({
                       )}
                     </form.AppField>
                   </td>
-                  <td className="py-2 pr-3 align-middle">
+                  <td className="py-2 pr-3 align-top">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
                       {(f: AnyForm) => (
-                        <div className="relative flex items-center">
-                          <Input
-                            value={f.state.value ?? ""}
-                            onChange={(e) => f.handleChange(e.target.value)}
+                        <div className="relative">
+                          <MarkdownTextEditor
+                            ref={(textarea) => {
+                              if (textarea) jaTextareaRefs.current.set(entry.key, textarea);
+                              else jaTextareaRefs.current.delete(entry.key);
+                            }}
+                            value={(f.state.value as string | undefined) ?? ""}
+                            onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="Ja"
-                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                            fieldLabel={`${entry.key} (ja)`}
+                            modified={isFieldModified(f)}
+                            legacyRawHtml={getLegacyRawHtml(
+                              legacyRawHtml,
+                              experimentDataFieldKey(experimentIndex, entry.key),
+                              "ja",
+                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -274,26 +397,160 @@ function DataEntriesTable({
         </table>
       )}
 
-      {availableKeys.length > 0 && (
-        <Combobox
-          items={availableKeys}
-          value={null}
-          onValueChange={(key: string | null) => key && handleAddKey(key)}
-        >
-          <ComboboxInput placeholder="Add a moldata key..." />
-          <ComboboxContent>
-            <ComboboxEmpty>No items found.</ComboboxEmpty>
-            <ComboboxList>
-              {(item) => (
-                <ComboboxItem key={item} value={item}>
-                  {item}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-      )}
+      <Combobox
+        value={null}
+        onValueChange={handleKeySelection}
+        onInputValueChange={(value) => setInputValue(value)}
+      >
+        <ComboboxInput placeholder="Add a moldata key..." />
+        <ComboboxContent>
+          <ComboboxList>
+            {filteredAvailableKeys.map((entry) => (
+              <ComboboxItem key={entry.id} value={entry.english}>
+                <MoldataKeyLabel moldataKey={entry.english} catalog={catalog} />
+              </ComboboxItem>
+            ))}
+            {hasCustomKey && (
+              <ComboboxItem value={CREATE_MOLDATA_KEY}>
+                Add custom key: <span className="font-medium">{customKey}</span>
+              </ComboboxItem>
+            )}
+            {filteredAvailableKeys.length === 0 && !hasCustomKey && (
+              <ComboboxEmpty>No items found.</ComboboxEmpty>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <CreateMoldataKeyDialog
+        open={customKeyDialogEnglish !== null}
+        initialEnglish={customKeyDialogEnglish ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setCustomKeyDialogEnglish(null);
+        }}
+        onCreate={async ({ english, japanese }) => {
+          const result = await createCatalogEntry({
+            data: { english, japanese, expectedRevision: catalog.revision },
+          });
+          if (!result.ok) return result;
+
+          queryClient.setQueryData<MoldataKeyCatalog>(["moldata-key-catalog"], (current) => ({
+            revision: result.data.revision,
+            entries: [...(current?.entries ?? catalog.entries), result.data.entry],
+          }));
+          handleAddKey(result.data.entry.english);
+          return result;
+        }}
+      />
     </div>
+  );
+}
+
+function MoldataKeyLabel({
+  moldataKey,
+  catalog,
+}: {
+  moldataKey: string;
+  catalog: MoldataKeyCatalog;
+}) {
+  const label = catalog.entries.find((entry) => entry.english === moldataKey);
+
+  if (!label) return <span className="font-medium text-form-value">{moldataKey}</span>;
+
+  return (
+    <span className="font-medium text-form-value">
+      {label.english} / <span lang="ja">{label.japanese}</span>
+    </span>
+  );
+}
+
+type CreateMoldataKeyCatalogEntryResult = Awaited<ReturnType<typeof $createMoldataKeyCatalogEntry>>;
+
+function CreateMoldataKeyDialog({
+  open,
+  initialEnglish,
+  onOpenChange,
+  onCreate,
+}: {
+  open: boolean;
+  initialEnglish: string;
+  onOpenChange: (open: boolean) => void;
+  onCreate: (values: {
+    english: string;
+    japanese: string;
+  }) => Promise<CreateMoldataKeyCatalogEntryResult>;
+}) {
+  const tMoldataKeys = useTranslations("admin.moldata-keys");
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const form = useAppForm({
+    defaultValues: { english: initialEnglish, japanese: "" },
+    onSubmit: async ({ value }) => {
+      setSubmissionError(null);
+      const result = await onCreate({
+        english: value.english.trim(),
+        japanese: value.japanese.trim(),
+      });
+
+      if (result.ok) {
+        onOpenChange(false);
+        return;
+      }
+
+      if (result.code === "DUPLICATE") {
+        form.setFieldMeta("english", (previous) => ({
+          ...previous,
+          errorMap: { ...previous.errorMap, onSubmit: result.error },
+        }));
+      } else {
+        setSubmissionError(result.error);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setSubmissionError(null);
+    form.reset({ english: initialEnglish, japanese: "" });
+  }, [form, initialEnglish, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle className="text-base">{tMoldataKeys("create-title")}</DialogTitle>
+        <DialogDescription>{tMoldataKeys("create-description")}</DialogDescription>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            form.handleSubmit();
+          }}
+        >
+          <form.AppField
+            name="english"
+            validators={{ onSubmit: z.string().trim().min(1, tMoldataKeys("english-required")) }}
+          >
+            {(field) => <field.TextField label={tMoldataKeys("english-label")} type="col" />}
+          </form.AppField>
+          <form.AppField
+            name="japanese"
+            validators={{ onSubmit: z.string().trim().min(1, tMoldataKeys("japanese-required")) }}
+          >
+            {(field) => <field.TextField label={tMoldataKeys("japanese-label")} type="col" />}
+          </form.AppField>
+          {submissionError && (
+            <p role="alert" className="text-danger text-sm">
+              {submissionError}
+            </p>
+          )}
+          <form.Subscribe selector={(state) => state.canSubmit}>
+            {(canSubmit) => (
+              <Button type="submit" className="self-end" disabled={!canSubmit}>
+                {tMoldataKeys("create-action")}
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -301,10 +558,12 @@ function ExperimentItemForm({
   form,
   index,
   initialItem,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   index: number;
   initialItem: ExperimentItem | undefined;
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   const initialEntries = initialItem?.data ?? [];
 
@@ -365,6 +624,7 @@ function ExperimentItemForm({
             experimentIndex={index}
             dataField={dataField}
             initialEntries={initialEntries}
+            legacyRawHtml={legacyRawHtml}
           />
         )}
       </form.Field>
@@ -375,98 +635,42 @@ function ExperimentItemForm({
   );
 }
 
-function ExperimentsSortableList({
-  form,
-  field,
-  initialItems,
-}: {
-  form: AnyForm;
-  field: AnyForm;
-  initialItems: ExperimentItem[];
-}) {
-  const dndId = useId();
-  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const items: ExperimentItem[] = field.state.value ?? [];
-  const { itemIds, moveItemId, removeItemId, insertItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
-
-  function handleDragEnd(event: DragEndEvent) {
-    if (fieldsetRef.current?.disabled) return;
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = itemIds.indexOf(String(active.id));
-      const newIndex = itemIds.indexOf(String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      moveItemId(oldIndex, newIndex);
-      field.setValue(arrayMove([...items], oldIndex, newIndex));
-    }
-  }
-
-  return (
-    <fieldset ref={fieldsetRef} className="flex flex-col gap-3">
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((item, i) => {
-            const initialItem = initialItems[i];
-            const isModified = i >= initialItems.length || !evaluate(item, initialItem);
-            return (
-              <SortableItem
-                key={itemIds[i]}
-                id={itemIds[i]!}
-                index={i}
-                title={item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
-                isModified={isModified}
-                onDuplicate={() => {
-                  insertItemId(i + 1);
-                  field.insertValue(i + 1, structuredClone(item));
-                }}
-                onRemove={() => {
-                  removeItemId(i);
-                  field.removeValue(i);
-                }}
-              >
-                <ExperimentItemForm form={form} index={i} initialItem={initialItem} />
-              </SortableItem>
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-      <Button
-        type="button"
-        onClick={() => field.pushValue({ ...EMPTY_EXPERIMENT })}
-        variant={"dashed"}
-      >
-        + Add experiment
-      </Button>
-    </fieldset>
-  );
-}
-
+/**
+ * Experiments are a sortable array of bespoke item bodies (header + moldata
+ * table + searchable fields), so the dnd/list scaffolding comes from the shared
+ * `SortableArrayShell` and only the item body (`ExperimentItemForm`) and the
+ * header-title accessor are experiment-specific.
+ */
 export function ExperimentsArrayField({
   form,
   initialItems,
+  legacyRawHtml,
 }: {
   form: AnyForm;
   initialItems: ExperimentItem[];
+  legacyRawHtml?: LegacyRawHtmlLookup;
 }) {
   return (
     <form.Field name="experiments" mode="array">
       {(field: AnyForm) => (
-        <ExperimentsSortableList form={form} field={field} initialItems={initialItems} />
+        <SortableArrayShell<ExperimentItem>
+          form={form}
+          field={field}
+          name="experiments"
+          initialItems={initialItems}
+          getTitle={(item) => item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
+          newItem={() => ({ ...EMPTY_EXPERIMENT })}
+          duplicateItem={(item) => structuredClone(item)}
+          addLabel="+ Add experiment"
+          renderItem={({ index, initialItem }) => (
+            <ExperimentItemForm
+              form={form}
+              index={index}
+              initialItem={initialItem}
+              legacyRawHtml={legacyRawHtml}
+            />
+          )}
+        />
       )}
     </form.Field>
   );

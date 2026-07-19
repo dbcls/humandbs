@@ -1,23 +1,28 @@
+import type { Dirent } from "node:fs";
 import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 
 import { createServerOnlyFn } from "@tanstack/react-start";
+import { asc, eq } from "drizzle-orm";
 import tar from "tar-stream";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
-import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
-import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
+import { navigationFlowchartConfigSchema } from "@/config/navigationFlowchart.schema";
+import {
+  parseSiteNavigationConfig,
+  siteNavigationConfigSchema,
+} from "@/config/siteNavigation.schema";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import {
   alert,
   alertTranslation,
-  contentItem,
-  contentTranslation,
   document,
   documentVersion,
+  moldataKeyCatalog,
+  moldataKeyCatalogEntry,
   NAVIGATION_FLOWCHART_STATUS,
   navigationFlowchart,
   navigationFlowchartRevision,
@@ -29,6 +34,7 @@ import {
   siteNavigationConfigRevision,
   user,
 } from "@/db/schema";
+import { getAssetDir as $$getAssetDir } from "@/lib/assetDir";
 import type { CmsDataTransferCategory } from "@/serverFunctions/cmsDataTransfer";
 import {
   CMS_DATA_TRANSFER_CATEGORIES,
@@ -51,9 +57,8 @@ export interface RestoreCmsDataTransferArchiveParams {
 
 type ArchiveFileInput = Record<string, string | Blob | ArrayBufferView | ArrayBufferLike>;
 
-type Database = typeof db;
+type Database = DB;
 
-const looseObjectSchema = z.record(z.string(), z.unknown());
 const archiveCreatedBySchema = z
   .object({
     id: z.string(),
@@ -66,6 +71,30 @@ const archiveCountsSchema = z.partialRecord(
   z.number().int().nonnegative(),
 );
 
+// Legacy archives may list categories that are no longer supported (e.g. "content",
+// which was replaced by "documents"). Parse the raw manifest leniently and drop any
+// unsupported categories/counts so such archives still validate and restore, ignoring
+// the dropped data.
+const lenientCategoryArraySchema = z
+  .array(z.union([cmsDataTransferCategorySchema, z.string()]))
+  .transform((categories) =>
+    categories.filter((category): category is CmsDataTransferCategory =>
+      CMS_DATA_TRANSFER_CATEGORIES.includes(category as CmsDataTransferCategory),
+    ),
+  );
+
+const lenientCountsSchema = z
+  .record(z.string(), z.number().int().nonnegative())
+  .transform((counts) => {
+    const filtered: Partial<Record<CmsDataTransferCategory, number>> = {};
+    for (const [key, value] of Object.entries(counts)) {
+      if (CMS_DATA_TRANSFER_CATEGORIES.includes(key as CmsDataTransferCategory)) {
+        filtered[key as CmsDataTransferCategory] = value;
+      }
+    }
+    return filtered;
+  });
+
 const headerFooterActiveConfigSchema = z.object({
   id: z.string(),
   config: siteNavigationConfigSchema,
@@ -76,28 +105,6 @@ const headerFooterActiveConfigSchema = z.object({
 
 const timestampStringSchema = z.string().min(1);
 const nullableTimestampStringSchema = z.string().min(1).nullable();
-
-const contentItemArchiveRowSchema = z.object({
-  id: z.string().min(1),
-  createdAt: timestampStringSchema,
-  publishedAt: z.string().nullable(),
-  authorId: z.string().min(1),
-  hideTOC: z.boolean().nullable().optional(),
-});
-
-const contentTranslationArchiveRowSchema = z.object({
-  contentId: z.string().min(1),
-  title: z.string(),
-  lang: z.string().min(1),
-  updatedAt: nullableTimestampStringSchema,
-  content: z.string(),
-  status: z.enum(["draft", "published"]),
-});
-
-const contentPayloadSchema = z.object({
-  items: z.array(contentItemArchiveRowSchema),
-  translations: z.array(contentTranslationArchiveRowSchema),
-});
 
 const documentArchiveRowSchema = z.object({
   id: z.string().uuid(),
@@ -116,6 +123,7 @@ const documentVersionArchiveRowSchema = z.object({
   authorId: z.string().nullable(),
   createdAt: timestampStringSchema,
   updatedAt: timestampStringSchema,
+  publishedAt: nullableTimestampStringSchema.optional(),
 });
 
 const documentsPayloadSchema = z.object({
@@ -198,14 +206,33 @@ const flowchartsPayloadSchema = z.object({
   flowcharts: z.array(flowchartRowSchema),
 });
 
+const moldataKeysPayloadSchema = z
+  .array(z.tuple([z.string().trim().min(1), z.string().trim().min(1)]))
+  .superRefine((pairs, ctx) => {
+    const seenEnglish = new Set<string>();
+    for (const [index, [english]] of pairs.entries()) {
+      const normalizedEnglish = english.toLowerCase();
+      if (seenEnglish.has(normalizedEnglish)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index, 0],
+          message: "Moldata key English values must be unique case-insensitively.",
+        });
+      }
+      seenEnglish.add(normalizedEnglish);
+    }
+  });
+
 const archiveManifestSchema = z
   .object({
     schemaVersion: z.literal(1),
     archiveFormat: z.literal("tar.gz"),
     createdAt: z.string(),
     createdBy: archiveCreatedBySchema,
-    categories: z.array(cmsDataTransferCategorySchema),
-    counts: archiveCountsSchema.default({}),
+    // Lenient parsing: legacy categories (e.g. "content") are silently dropped so
+    // older archives still validate and restore, ignoring the unsupported data.
+    categories: lenientCategoryArraySchema,
+    counts: lenientCountsSchema.default({}),
   })
   .superRefine((manifest, ctx) => {
     const uniqueCategories = new Set(manifest.categories);
@@ -214,15 +241,6 @@ const archiveManifestSchema = z
         code: "custom",
         message: "Manifest categories must be unique.",
       });
-    }
-
-    for (const key of Object.keys(manifest.counts)) {
-      if (!CMS_DATA_TRANSFER_CATEGORIES.includes(key as CmsDataTransferCategory)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Manifest contains unsupported count key "${key}".`,
-        });
-      }
     }
   });
 
@@ -254,14 +272,6 @@ const restoredCmsDataTransferArchiveSchema = z.object({
 
 export type RestoredCmsDataTransferArchive = z.infer<typeof restoredCmsDataTransferArchiveSchema>;
 
-const $$getAssetDir = createServerOnlyFn(() => {
-  const filesSubdir = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-  return path.resolve(
-    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-    filesSubdir,
-  );
-});
-
 async function collectAssetFiles(
   directory: string,
   prefix = "",
@@ -269,7 +279,7 @@ async function collectAssetFiles(
   files: ArchiveFileInput;
   count: number;
 }> {
-  let entries;
+  let entries: Dirent[];
 
   try {
     entries = await readdir(directory, { withFileTypes: true });
@@ -367,7 +377,9 @@ async function createTarGzArchive(files: ArchiveFileInput) {
   const tarBytesPromise = collectStreamBytes(pack);
 
   for (const name of Object.keys(files).sort()) {
-    const content = await toUint8Array(files[name]!);
+    const file = files[name];
+    if (file === undefined) throw new Error(`Archive file "${name}" is missing.`);
+    const content = await toUint8Array(file);
 
     await new Promise<void>((resolve, reject) => {
       pack.entry({ name, size: content.byteLength }, Buffer.from(content), (error) => {
@@ -393,8 +405,6 @@ async function createTarGzArchive(files: ArchiveFileInput) {
 
 function getCategoryPayloadPath(category: CmsDataTransferCategory) {
   switch (category) {
-    case "content":
-      return "categories/content.json";
     case "documents":
       return "categories/documents.json";
     case "news":
@@ -405,6 +415,8 @@ function getCategoryPayloadPath(category: CmsDataTransferCategory) {
       return "categories/header-footer.json";
     case "flowcharts":
       return "categories/flowcharts.json";
+    case "moldata-keys":
+      return "categories/moldata-keys.json";
     case "assets":
       return null;
   }
@@ -438,16 +450,6 @@ function validateCategoryPayload(
   assetFileCount: number,
 ) {
   switch (category) {
-    case "content":
-      if (!entryBytes) {
-        throw new Error('Archive is missing required file "categories/content.json".');
-      }
-      {
-        const payload = parseJsonFile(entryBytes, contentPayloadSchema, "categories/content.json");
-        return {
-          count: payload.items.length + payload.translations.length,
-        };
-      }
     case "documents":
       if (!entryBytes) {
         throw new Error('Archive is missing required file "categories/documents.json".');
@@ -513,6 +515,18 @@ function validateCategoryPayload(
         return {
           count: payload.flowcharts.length,
         };
+      }
+    case "moldata-keys":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/moldata-keys.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          moldataKeysPayloadSchema,
+          "categories/moldata-keys.json",
+        );
+        return { count: payload.length };
       }
     case "assets":
       return {
@@ -634,12 +648,12 @@ export async function inspectCmsDataTransferArchive(
 }
 
 type ParsedArchivePayloadByCategory = {
-  content: z.infer<typeof contentPayloadSchema>;
   documents: z.infer<typeof documentsPayloadSchema>;
   news: z.infer<typeof newsPayloadSchema>;
   alerts: z.infer<typeof alertsPayloadSchema>;
   "header-footer": z.infer<typeof headerFooterPayloadSchema>;
   flowcharts: z.infer<typeof flowchartsPayloadSchema>;
+  "moldata-keys": z.infer<typeof moldataKeysPayloadSchema>;
 };
 
 interface ParsedCmsDataTransferArchive {
@@ -706,21 +720,6 @@ async function parseCmsDataTransferArchive(
     const expectedCount = manifest.counts[category] ?? 0;
 
     switch (category) {
-      case "content": {
-        if (!payloadPath || !entries[payloadPath]) {
-          throw new Error('Archive is missing required file "categories/content.json".');
-        }
-        const payload = parseJsonFile(entries[payloadPath], contentPayloadSchema, payloadPath);
-        const actualCount = payload.items.length + payload.translations.length;
-        if (expectedCount !== actualCount) {
-          throw new Error(
-            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
-          );
-        }
-        payloads.content = payload;
-        availableCategories.push(category);
-        break;
-      }
       case "documents": {
         if (!payloadPath || !entries[payloadPath]) {
           throw new Error('Archive is missing required file "categories/documents.json".');
@@ -797,6 +796,20 @@ async function parseCmsDataTransferArchive(
           );
         }
         payloads.flowcharts = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "moldata-keys": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error('Archive is missing required file "categories/moldata-keys.json".');
+        }
+        const payload = parseJsonFile(entries[payloadPath], moldataKeysPayloadSchema, payloadPath);
+        if (expectedCount !== payload.length) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${payload.length}.`,
+          );
+        }
+        payloads["moldata-keys"] = payload;
         availableCategories.push(category);
         break;
       }
@@ -924,7 +937,11 @@ export function createCmsDataTransferArchiveRestorer({
 
     try {
       if (restoredCategories.includes("assets")) {
-        stagedAssetDirectory = await mkdtemp(path.join(tmpdir(), "cms-data-restore-assets-"));
+        const assetDir = getAssetDir();
+        await mkdir(path.dirname(assetDir), { recursive: true });
+        stagedAssetDirectory = await mkdtemp(
+          path.join(path.dirname(assetDir), ".cms-data-restore-assets-"),
+        );
         await writeArchiveAssetsToDirectory(parsedArchive.assetEntries, stagedAssetDirectory);
       }
 
@@ -939,41 +956,6 @@ export function createCmsDataTransferArchiveRestorer({
               role: "admin",
             })
             .onConflictDoNothing();
-        }
-
-        if (restoredCategories.includes("content")) {
-          const payload = parsedArchive.payloads.content;
-          if (!payload) {
-            throw new Error("Content payload is missing from the archive.");
-          }
-
-          await tx.delete(contentTranslation);
-          await tx.delete(contentItem);
-
-          if (payload.items.length > 0) {
-            await tx.insert(contentItem).values(
-              payload.items.map((item) => ({
-                id: item.id,
-                createdAt: new Date(item.createdAt),
-                publishedAt: item.publishedAt,
-                authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
-                hideTOC: item.hideTOC ?? true,
-              })),
-            );
-          }
-
-          if (payload.translations.length > 0) {
-            await tx.insert(contentTranslation).values(
-              payload.translations.map((translation) => ({
-                contentId: translation.contentId,
-                title: translation.title,
-                lang: translation.lang,
-                updatedAt: toDate(translation.updatedAt),
-                content: translation.content,
-                status: translation.status,
-              })),
-            );
-          }
         }
 
         if (restoredCategories.includes("documents")) {
@@ -1008,6 +990,7 @@ export function createCmsDataTransferArchiveRestorer({
                 authorId: mapRestoredUserId(effectiveUserId, version.authorId),
                 createdAt: new Date(version.createdAt),
                 updatedAt: new Date(version.updatedAt),
+                publishedAt: version.publishedAt ? new Date(version.publishedAt) : null,
               })),
             );
           }
@@ -1095,9 +1078,14 @@ export function createCmsDataTransferArchiveRestorer({
           await tx.delete(siteNavigationConfig);
 
           if (payload.activeConfig) {
+            // The archive's config is a flat parsed object; run it through the same
+            // parser the live write path uses so it gets the SiteNavigationConfig
+            // (discriminated-union) type the column expects.
+            const config = parseSiteNavigationConfig(payload.activeConfig.config);
+
             await tx.insert(siteNavigationConfig).values({
               id: payload.activeConfig.id,
-              config: payload.activeConfig.config,
+              config,
               revision: 1,
               updatedAt: new Date(),
               updatedBy: effectiveUserId,
@@ -1105,7 +1093,7 @@ export function createCmsDataTransferArchiveRestorer({
 
             await tx.insert(siteNavigationConfigRevision).values({
               configId: payload.activeConfig.id,
-              config: payload.activeConfig.config,
+              config,
               revision: 1,
               createdBy: effectiveUserId,
             });
@@ -1147,6 +1135,38 @@ export function createCmsDataTransferArchiveRestorer({
           }
         }
 
+        if (restoredCategories.includes("moldata-keys")) {
+          const payload = parsedArchive.payloads["moldata-keys"];
+          if (!payload) {
+            throw new Error("Moldata keys payload is missing from the archive.");
+          }
+
+          const [currentCatalog] = await tx
+            .select({ revision: moldataKeyCatalog.revision })
+            .from(moldataKeyCatalog)
+            .where(eq(moldataKeyCatalog.id, "global"))
+            .limit(1);
+
+          await tx.delete(moldataKeyCatalogEntry);
+
+          if (currentCatalog) {
+            await tx
+              .update(moldataKeyCatalog)
+              .set({ revision: currentCatalog.revision + 1 })
+              .where(eq(moldataKeyCatalog.id, "global"));
+          } else {
+            await tx.insert(moldataKeyCatalog).values({ id: "global", revision: 1 });
+          }
+
+          if (payload.length > 0) {
+            await tx
+              .insert(moldataKeyCatalogEntry)
+              .values(
+                payload.map(([english, japanese], position) => ({ english, japanese, position })),
+              );
+          }
+        }
+
         if (restoredCategories.includes("assets")) {
           if (!stagedAssetDirectory) {
             throw new Error("Asset staging directory is missing.");
@@ -1184,20 +1204,6 @@ async function buildCategoryPayload(
   count: number;
 }> {
   switch (category) {
-    case "content": {
-      const [items, translations] = await Promise.all([
-        database.select().from(contentItem),
-        database.select().from(contentTranslation),
-      ]);
-
-      return {
-        files: {
-          "categories/content.json": JSON.stringify({ items, translations }, null, 2),
-        },
-        count: items.length + translations.length,
-      };
-    }
-
     case "documents": {
       const [documents, versions] = await Promise.all([
         database.select().from(document),
@@ -1268,6 +1274,24 @@ async function buildCategoryPayload(
           "categories/flowcharts.json": JSON.stringify({ flowcharts }, null, 2),
         },
         count: flowcharts.length,
+      };
+    }
+
+    case "moldata-keys": {
+      const entries = await database
+        .select({
+          english: moldataKeyCatalogEntry.english,
+          japanese: moldataKeyCatalogEntry.japanese,
+        })
+        .from(moldataKeyCatalogEntry)
+        .orderBy(asc(moldataKeyCatalogEntry.position));
+      const pairs = entries.map(({ english, japanese }) => [english, japanese]);
+
+      return {
+        files: {
+          "categories/moldata-keys.json": JSON.stringify(pairs, null, 2),
+        },
+        count: pairs.length,
       };
     }
   }

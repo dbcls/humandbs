@@ -8,7 +8,7 @@ import type {
   NavigationFlowchartData,
   NavigationFlowchartOption,
   NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
+} from "@/config/navigationFlowchart";
 import { cn } from "@/lib/utils";
 import {
   getNavigationEntryPointQueryOptions,
@@ -391,8 +391,17 @@ function NavigationChartInner({
 
   const [enabledStepIndex, setEnabledStepIndex] = useState(computeEnabledIndex);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Skip the scroll on initial mount: scrolling into view on mount bubbles up to
+  // the nearest scrollable ancestor (e.g. when the chart mounts inside a freshly
+  // opened preview dialog), which reads as a full-page blink. Only auto-scroll
+  // once the user advances through steps.
+  const didMountRef = useRef(false);
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     stepRefs.current[enabledStepIndex]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [enabledStepIndex]);
 

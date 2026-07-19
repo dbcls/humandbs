@@ -3,10 +3,18 @@ import z from "zod";
 
 import type { Locale } from "@/config/i18n";
 import { localeSchema } from "@/config/i18n";
+import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { alert, alertTranslation, user } from "@/db/schema";
 
+import { sortTranslationsByLocale } from "./utils";
+
 export interface AlertTranslationInput {
+  lang: Locale;
+  content: string;
+}
+
+export interface AlertTranslation {
   lang: Locale;
   content: string;
 }
@@ -26,7 +34,7 @@ export interface AlertRecord {
   };
   from: string | null;
   to: string | null;
-  translations: Partial<Record<Locale, { content: string }>>;
+  translations: AlertTranslation[];
 }
 
 export interface ActiveAlertItem {
@@ -137,20 +145,21 @@ function mapAlertRows(
         },
         from: row.from,
         to: row.to,
-        translations: {},
+        translations: [],
       };
       grouped.set(row.id, current);
     }
 
-    current.translations[row.locale] = {
+    current.translations.push({
       content: row.content,
-    };
+      lang: row.locale,
+    });
   }
 
   return [...grouped.values()];
 }
 
-export function createAlertsRepository(database: typeof db): AlertsRepository {
+export function createAlertsRepository(database: DB): AlertsRepository {
   return {
     listActive: async ({ lang }) => {
       const now = new Date().toISOString().slice(0, 10);
@@ -234,14 +243,8 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
         },
         from: item.from,
         to: item.to,
-        translations: item.trnanslations.reduce<Partial<Record<Locale, { content: string }>>>(
-          (acc, translation) => {
-            acc[translation.locale] = {
-              content: translation.content,
-            };
-            return acc;
-          },
-          {},
+        translations: sortTranslationsByLocale(
+          item.trnanslations.map((d) => ({ lang: d.locale, content: d.content })),
         ),
       }));
     },

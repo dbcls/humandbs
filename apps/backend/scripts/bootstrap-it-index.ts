@@ -33,6 +33,7 @@ import { datasetMapping } from "@/es/dataset-schema"
 import type { EsMapping } from "@/es/generate-mapping"
 import { researchMapping } from "@/es/research-schema"
 import { researchVersionMapping } from "@/es/research-version-schema"
+import { extractDataText } from "@/es/types"
 
 const ES_HOST = process.env.HUMANDBS_ES_HOST ?? "elasticsearch"
 const ES_PORT = process.env.HUMANDBS_ES_PORT ?? "9200"
@@ -143,6 +144,15 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
     ...research,
   }
 
+  const dataset = readFixture("dataset/JGAD000002-v1.json")
+  type DataValue = { ja?: { text?: string } | null; en?: { text?: string } | null } | null
+  const experiments = dataset.experiments as Array<Record<string, unknown>> | undefined
+  if (experiments) {
+    for (const exp of experiments) {
+      exp.dataText = extractDataText(exp.data as Record<string, DataValue>)
+    }
+  }
+
   return [
     {
       index: RESEARCH_INDEX,
@@ -157,7 +167,7 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
     {
       index: DATASET_INDEX,
       id: "JGAD000002-v1",
-      doc: readFixture("dataset/JGAD000002-v1.json"),
+      doc: dataset,
     },
   ]
 }

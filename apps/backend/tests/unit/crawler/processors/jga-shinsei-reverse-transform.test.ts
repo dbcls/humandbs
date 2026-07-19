@@ -10,7 +10,6 @@ import {
   reverseHead,
   reverseMembers,
   reversePi,
-  reverseStatusHistory,
   reverseSubmitter,
   reverseUploadedFiles,
   reverseUseDatasets,
@@ -27,7 +26,6 @@ import type {
   Head,
   Member,
   Pi,
-  StatusHistoryEntry,
   Submitter,
   UploadedFile,
   UseDataset,
@@ -431,40 +429,14 @@ describe("reverseUseDatasets", () => {
   })
 })
 
-// === reverseStatusHistory ===
-
-describe("reverseStatusHistory", () => {
-  it("should strip statusLabel and keep status + date", () => {
-    const history: StatusHistoryEntry[] = [
-      {
-        status: 10,
-        statusLabel: { ja: "申請書類作成中", en: "Preparing" },
-        date: "2024-12-03T02:12:16.232+00:00",
-      },
-      {
-        status: 60,
-        statusLabel: { ja: "申請承認", en: "Approved" },
-        date: "2024-12-03T02:29:02.957+00:00",
-      },
-    ]
-    const result = reverseStatusHistory(history)
-
-    expect(result).toEqual([
-      { status: 10, date: "2024-12-03T02:12:16.232+00:00" },
-      { status: 60, date: "2024-12-03T02:29:02.957+00:00" },
-    ])
-  })
-
-  it("should return empty array for empty history", () => {
-    expect(reverseStatusHistory([])).toEqual([])
-  })
-})
-
 // === Round-trip: DS application ===
 
 describe("reverseDsApplication (round-trip)", () => {
   const exampleDs = {
     jds_id: "J-DS002495",
+    appl_id: 1,
+    appl_version: 1,
+    application_type: 10,
     jsub_ids: [] as string[],
     hum_ids: [] as string[],
     jga_ids: [] as string[],
@@ -527,6 +499,7 @@ describe("reverseDsApplication (round-trip)", () => {
     const reversed = reverseDsApplication(transformed)
 
     expect(reversed.jds_id).toBe("J-DS002495")
+    expect(reversed.appl_version).toBe(1)
     expect(reversed.jsub_ids).toEqual([])
     expect(reversed.hum_ids).toEqual([])
     expect(reversed.jga_ids).toEqual([])
@@ -540,6 +513,9 @@ describe("reverseDsApplication (round-trip)", () => {
 describe("reverseDuApplication (round-trip)", () => {
   const exampleDu = {
     jdu_id: "J-DU006529",
+    appl_id: 2,
+    appl_version: 1,
+    application_type: 10,
     jgad_ids: ["JGAD000369"],
     jgas_ids: ["JGAS000001"],
     hum_ids: ["hum0273"],
@@ -604,6 +580,7 @@ describe("reverseDuApplication (round-trip)", () => {
     const reversed = reverseDuApplication(transformed)
 
     expect(reversed.jdu_id).toBe("J-DU006529")
+    expect(reversed.appl_version).toBe(1)
     expect(reversed.jgad_ids).toEqual(["JGAD000369"])
     expect(reversed.jgas_ids).toEqual(["JGAS000001"])
     expect(reversed.hum_ids).toEqual(["hum0273"])
@@ -616,7 +593,9 @@ describe("reverseDuApplication (round-trip)", () => {
 
 describe("edge cases", () => {
   const allNullDs: DsApplicationTransformed = {
-    jdsId: "J-DS000001",
+    jdsId: "J-DS000001-001",
+    status: null,
+    statusLabel: { ja: null, en: null },
     jsubIds: [],
     humIds: [],
     jgaIds: [],
@@ -687,7 +666,6 @@ describe("edge cases", () => {
       isDeclareStatement: null,
       isAgreeMailUse: null,
     },
-    statusHistory: [],
     submitDate: "2024-01-01T00:00:00.000+00:00",
     createDate: "2024-01-01T00:00:00.000+00:00",
   }

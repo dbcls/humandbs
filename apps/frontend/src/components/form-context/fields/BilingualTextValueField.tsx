@@ -1,4 +1,5 @@
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 import { withForm } from "../FormContext";
 
@@ -12,12 +13,17 @@ type AnyName = any;
  */
 export const BilingualTextValueField = withForm({
   defaultValues: {} as Record<string, unknown>,
-  props: {} as { baseName: string; label: string },
-  render({ form, baseName, label }) {
+  props: {} as {
+    baseName: string;
+    label: string;
+    className?: string;
+    fieldsContainerClassName?: string;
+  },
+  render({ form, baseName, label, className, fieldsContainerClassName }) {
     return (
-      <fieldset className="flex flex-col gap-1">
+      <fieldset className={cn("flex flex-col gap-1", className)}>
         <Label className="text-sm">{label}</Label>
-        <div className="flex gap-2">
+        <div className={cn("flex gap-2", fieldsContainerClassName)}>
           <div className="flex-1">
             <form.AppField name={`${baseName}.en.text` as AnyName}>
               {(f) => <f.TextField type="col" label="En" />}

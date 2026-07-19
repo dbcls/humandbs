@@ -7,22 +7,37 @@ import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/Card";
 import { DateTimeRangePicker } from "@/components/DatePicker";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
+import { toDateString, toLocaleDateTimeString } from "@/utils/dates";
 import { newsPublicSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
   component: RouteComponent,
   validateSearch: newsPublicSearchParamsSchema,
+  errorComponent: DefaultCatchBoundary,
+  head: ({ match }) => {
+    const seoTitle = `HumanDBs - ${match.context.messages?.Navbar?.["all-news"]}`;
+
+    return {
+      meta: [
+        {
+          title: seoTitle,
+        },
+      ],
+    };
+  },
 });
 
 function RouteComponent() {
   const { lang } = Route.useRouteContext();
   const t = useTranslations("Navbar");
+  const tNews = useTranslations("News");
   const search = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
 
@@ -82,7 +97,7 @@ function RouteComponent() {
           value={search.q}
           className="max-w-xl flex-1"
           onChange={(q) => setFilters({ q })}
-          placeholder="Search by title or content…"
+          placeholder={tNews("search-placeholder")}
         />
         <DateTimeRangePicker
           value={
@@ -115,18 +130,16 @@ function RouteComponent() {
         </div>
       ) : (
         <ul
-          className={cn("max-h-[50ch] flex-1 overflow-y-auto", {
+          className={cn("max-h-[50ch] flex-1 space-y-3 overflow-y-auto", {
             "opacity-60 transition-opacity": isFetching && !isFetchingNextPage,
           })}
         >
           {newsItems.map((item) => {
             return (
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
-                <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs opacity-70">
-                    {item.publishedAt ? item.publishedAt.toLocaleString() : "No date"}
-                  </span>
-                </div>
+                <span className="text-neutral-500 text-xs">
+                  {item.publishedAt ? toDateString(item.publishedAt) : tNews("no-date")}
+                </span>
 
                 <Link
                   to="/{-$lang}/news/$newsItemId"
@@ -139,7 +152,7 @@ function RouteComponent() {
             );
           })}
           {newsItems.length === 0 && (
-            <li className="py-4 text-center text-muted-foreground text-sm">No news items found</li>
+            <li className="py-4 text-center text-muted-foreground text-sm">{tNews("no-items")}</li>
           )}
           <div ref={sentinelRef} className="h-4 shrink-0">
             {isFetchingNextPage && (

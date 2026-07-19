@@ -9,7 +9,6 @@ import {
   LibraryBig,
   Newspaper,
   PanelsTopLeft,
-  PenTool,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -25,6 +24,7 @@ export const tabParamSchema = z.enum([
   "documents",
   "content",
   "researches",
+  "researches/moldata-keys",
   "assets",
   "header-footer",
   "flowcharts",
@@ -85,7 +85,7 @@ function buildRedirectTarget(
 }
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
-  beforeLoad: ({ context, matches, location }) => {
+  beforeLoad: ({ context, location }) => {
     if (!context.user) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0 ? `/${context.lang}` : "/";
@@ -97,11 +97,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
         search: {
           redirect: target,
         },
+        reloadDocument: true,
       });
     }
   },
-  ssr: false,
-
   component: RouteComponent,
 });
 
@@ -127,16 +126,7 @@ function NavPanel() {
           <>
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
-            <div className="flex flex-col items-stretch gap-5 pl-5">
-              <PanelItem
-                title={
-                  <span>
-                    <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
-                    Content
-                  </span>
-                }
-                tab="content"
-              />
+            <div className="flex flex-col items-stretch gap-5 pl-5" data-testid="cms-left-panel">
               <PanelItem
                 title={
                   <span>
@@ -184,15 +174,7 @@ function NavPanel() {
                 }
                 tab="header-footer"
               />
-              <PanelItem
-                title={
-                  <span>
-                    <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
-                    Flowcharts
-                  </span>
-                }
-                tab="flowcharts"
-              />
+
               <PanelItem
                 title={
                   <span>
@@ -224,18 +206,33 @@ function NavPanel() {
             </span>
           }
           tab="researches"
+          exact
         />
+        {canViewCms && (
+          <div className="pl-5">
+            <PanelItem title={<span>Moldata keys</span>} tab="researches/moldata-keys" />
+          </div>
+        )}
       </section>
     </CollapsibleCard>
   );
 }
 
-function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
+function PanelItem({
+  tab,
+  title,
+  exact = false,
+}: {
+  tab: TabType;
+  title: React.ReactNode;
+  exact?: boolean;
+}) {
   return (
     <Link
       variant={"nav"}
       className="w-auto rounded-sm px-4 py-2 hover:bg-hover/50 hover:text-accent-foreground data-[status=active]:bg-hover"
       to={`/{-$lang}/admin/${tab}` as never}
+      activeOptions={{ exact }}
     >
       {title}
     </Link>

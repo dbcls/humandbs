@@ -202,3 +202,7 @@ ai-docs
 
 AGENTS.md
 CLAUDE.md
+
+# frontend crawl results
+apps/frontend/src/scripts/seed-data/**/*
+apps/frontend/src/scripts/crawler/output/**/*

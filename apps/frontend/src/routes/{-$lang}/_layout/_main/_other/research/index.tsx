@@ -1,20 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
+import type { Translator } from "node_modules/use-intl/dist/types/core/createTranslator";
+import type { Messages } from "use-intl";
 import { useLocale, useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useMemo, useRef } from "react";
 
-import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
+import type { ResearchSearchBody } from "@humandbs/backend/types";
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { InfoBadge } from "@/components/InfoBadge";
 import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { PlatformBadge } from "@/components/PlatformBadge";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
+import { ResearchLink } from "@/components/ResearchLink";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
@@ -22,11 +27,13 @@ import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isCartableDatasetId, useCartTableHeader } from "@/hooks/useCart";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
-import type { ResearchSummary } from "@/lib/types";
+import type { ResearchSearchResponseWithTypedCriteria, ResearchSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
@@ -39,8 +46,10 @@ const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   includeFacets: true,
 }).extend({
   sort: ResearchSearchBodySchema.shape.sort.default("dateModified"),
+  order: ResearchSearchBodySchema.shape.order.default("desc"),
 });
 
+researchesSearchParamsSchema.shape.sort.def.defaultValue;
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
@@ -56,46 +65,69 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
   },
+  head: ({ match }) => {
+    return {
+      meta: [
+        {
+          title: `HumanDBs - ${match.context.messages?.Research?.["research-list"]}`,
+        },
+      ],
+    };
+  },
 });
+
+type Row = ResearchSearchResponseWithTypedCriteria["data"][number];
+
+function getRawData(
+  data: ResearchSearchResponseWithTypedCriteria | undefined,
+  t: Translator<Messages, "Research">,
+  lang: Locale,
+) {
+  const columns: { header: string; value: (row: Row) => string }[] = [
+    { header: t("research-id"), value: (row) => row.humId },
+    { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
+    { header: t("title"), value: (row) => row.title[lang] ?? "" },
+    {
+      header: t("datePublished"),
+      value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
+    },
+    {
+      header: t("dateModified"),
+      value: (row) =>
+        `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
+    },
+    { header: t("methods"), value: (row) => row.methods ?? "" },
+    { header: t("typeOfData"), value: (row) => row.typeOfData.join(", ") },
+    { header: t("platforms"), value: (row) => row.platforms.join(", ") },
+    { header: t("targets"), value: (row) => row.targets },
+    { header: t("criteria"), value: (row) => row.criteria.join(", ") },
+    {
+      header: t("dataProvider"),
+      value: (row) => row.dataProvider.join(", "),
+    },
+  ];
+
+  return {
+    headers: columns.map((c) => c.header),
+    rows: (data?.data ?? []).map((row) => columns.map((c) => c.value(row))),
+  };
+}
+
+function useGetRawData() {
+  const { data: researchesData } = useResearchesSearchQuery();
+
+  const lang = useLocale();
+  const t = useTranslations("Research");
+
+  return getRawData(researchesData, t, lang);
+}
 
 function RouteComponent() {
   const t = useTranslations("Research");
   const search = Route.useSearch();
-  const { lang } = Route.useRouteContext();
+  const exportData = useGetRawData();
+
   const { setFilters, filters } = useFilters(Route.id);
-
-  const { data: researchesData } = useResearchesSearchQuery();
-
-  const exportData = useMemo(() => {
-    type Row = ResearchSearchResponse["data"][number];
-    const columns: { header: string; value: (row: Row) => string }[] = [
-      { header: t("research-id"), value: (row) => row.humId },
-      { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
-      { header: t("title"), value: (row) => row.title[lang] ?? "" },
-      {
-        header: t("datePublished"),
-        value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
-      },
-      {
-        header: t("dateModified"),
-        value: (row) =>
-          `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
-      },
-      { header: t("methods"), value: (row) => row.methods ?? "" },
-      { header: t("typeOfData"), value: (row) => row.typeOfData.join(", ") },
-      { header: t("platforms"), value: (row) => row.platforms.join(", ") },
-      { header: t("targets"), value: (row) => row.targets },
-      { header: t("criteria"), value: (row) => row.criteria },
-      {
-        header: t("dataProvider"),
-        value: (row) => row.dataProvider.join(", "),
-      },
-    ];
-    return {
-      headers: columns.map((c) => c.header),
-      rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
-    };
-  }, [researchesData, lang, t]);
 
   return (
     <FilterableCard
@@ -195,10 +227,12 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const t = useTranslations("Research-list");
   const { containerRef, maxHeight } = useMaxHeight(130);
 
   return (
     <>
+      <InfoBadge>{t("cart-note")}</InfoBadge>
       <div
         ref={containerRef}
         style={{ maxHeight }}
@@ -300,41 +334,24 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const RESEARCH_SORT_OPTIONS = [
-  { sort: "dateModified", order: "desc" },
-  { sort: "dateModified", order: "asc" },
-  { sort: "datePublished", order: "desc" },
-  { sort: "datePublished", order: "asc" },
-  { sort: "humId", order: "asc" },
-  { sort: "humId", order: "desc" },
-] as const;
-
 function ResearchSortSelect() {
-  const t = useTranslations("common");
   const tR = useTranslations("Research");
   const { filters, setFilters } = useFilters(Route.id);
-
-  const fieldLabels: Record<string, string> = {
-    dateModified: tR("dateModified"),
-    datePublished: tR("datePublished"),
-    humId: tR("humId"),
-  };
 
   const currentSort = filters.sort ?? "dateModified";
   const currentOrder = filters.order ?? "desc";
 
-  const sortOptions = RESEARCH_SORT_OPTIONS.map(({ sort, order }) => ({
-    label: t("sort-by", {
-      field: fieldLabels[sort],
-    }),
-    value: `${sort}:${order}`,
-    order,
-  }));
+  const sortOptions = [
+    { label: tR("dateModified"), value: "dateModified" },
+    { label: tR("datePublished"), value: "datePublished" },
+    { label: tR("humId"), value: "humId" },
+  ];
 
   return (
     <SortDropdown
       options={sortOptions}
-      value={`${currentSort}:${currentOrder}`}
+      sort={currentSort}
+      order={currentOrder}
       onSelect={(newSort) => {
         startTransition(() => {
           setFilters(newSort);
@@ -346,7 +363,7 @@ function ResearchSortSelect() {
 
 function TableWrapper() {
   const lang = useLocale();
-  const t = useTranslations("Research");
+  const t = useTranslations();
 
   const {
     data: researchesData,
@@ -409,20 +426,13 @@ const columns = [
   }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => ctx.table.options.meta?.t("research-id"),
-
-    cell: function Cell(ctx) {
-      return (
-        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
-          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-        </Route.Link>
-      );
-    },
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.researchId"),
+    cell: (ctx) => <ResearchLink humId={ctx.getValue()} />,
     size: 15,
   }),
   columnHelper.accessor("datasetIds", {
     id: "datasets",
-    header: (ctx) => ctx.table.options.meta?.t("datasets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.datasets"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -443,7 +453,7 @@ const columns = [
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => ctx.table.options.meta?.t?.("title"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.title"),
     cell: function Cell(ctx) {
       return (
         <ModalCell maxHeight={96}>
@@ -453,62 +463,62 @@ const columns = [
     },
   }),
 
-  columnHelper.accessor("methods", {
+  columnHelper.accessor("methodsSummary", {
     id: "methods",
-    header: (ctx) => ctx.table.options.meta?.t("methods"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.methods"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
       </ModalCell>
     ),
   }),
-  columnHelper.accessor("typeOfData", {
+  columnHelper.accessor("typeOfDataSummary", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.typeOfData"),
     cell: (ctx) => (
-      <ModalCell>
-        <ul className="space-y-4">
-          {ctx.renderValue()?.map((item) => (
-            <li key={item}>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
-      </ModalCell>
+      <ModalCell>{ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}</ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
-    header: (ctx) => ctx.table.options.meta?.t("platforms"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.platforms"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
           {ctx.renderValue()?.map((item) => (
             <li key={item}>
-              <p>{item}</p>
+              <PlatformBadge platform={item} />
             </li>
           ))}
         </ul>
       </ModalCell>
     ),
   }),
-  columnHelper.accessor("targets", {
+  columnHelper.accessor("targetsSummary", {
     id: "targets",
-    header: (ctx) => ctx.table.options.meta?.t("targets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.targets"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
+        <p className="whitespace-pre-wrap text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+        </p>
       </ModalCell>
     ),
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.criteria"),
+    cell: (ctx) => (
+      <>
+        {ctx.row.original.criteria.map((c) => (
+          <AccessCriteriaLabel key={c} criteria={c} />
+        ))}
+      </>
+    ),
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.dataProvider"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -523,7 +533,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => ctx.table.options.meta?.t?.("datePublished"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.datePublished"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -546,7 +556,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => ctx.table.options.meta?.t?.("dateModified"),
+    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.dateModified"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -585,17 +595,13 @@ function AddToCartAllDatasetsButton({
 
   const { data } = useQuery(datasetsQO);
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
     tableDatasets:
       // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
       data?.data || tableDatasets,
   });
 
-  const hasCartableDatasets = tableDatasets.some((dataset) =>
-    isCartableDatasetId(dataset.datasetId),
-  );
-
-  if (!hasCartableDatasets) return null;
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle
@@ -614,9 +620,11 @@ function ResearchCartHeaderButton({ tableResearches }: { tableResearches: Resear
     return tableResearches.flatMap((row) => row.datasetIds.map((id) => ({ datasetId: id })));
   }, [tableResearches]);
 
-  const { allInCart, someInCart, handleToggleDatasets } = useCartTableHeader({
+  const { allInCart, someInCart, handleToggleDatasets, isSomeIdsAreCartable } = useCartTableHeader({
     tableDatasets: allDatasets,
   });
+
+  if (!isSomeIdsAreCartable) return null;
 
   return (
     <AddToCartToggle

@@ -1,9 +1,10 @@
-import { Filter, Search, X } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
+import { CustomSearchIcon } from "@/components/CustomSearchIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +59,7 @@ export function SearchCaption({
 
   return (
     <div className="flex h-fit flex-wrap items-center justify-between">
-      <div className="flex items-baseline gap-10">
+      <div className="flex items-baseline gap-5">
         <h3 className="relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
           {title}
         </h3>
@@ -68,13 +69,13 @@ export function SearchCaption({
       <div className="flex flex-wrap items-center gap-4">
         {sortControl}
         <div className="flex gap-1">
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCopy}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onCsv}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onCsv}>
             CSV
           </Button>
-          <Button variant={"tableAction"} className="h-fit" size={"tableAction"} onClick={onExcel}>
+          <Button variant={"captionAction"} size={"captionAction"} onClick={onExcel}>
             Excel
           </Button>
         </div>
@@ -83,31 +84,36 @@ export function SearchCaption({
           <Input
             type="text"
             placeholder={t("search")}
+            aria-label={t("search")}
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-14 w-md py-2 pr-0 pl-8"
+            className="h-14 w-md py-2 pr-0 pl-5"
             afterIcon={
               <>
                 {inputValue ? (
                   <Button
                     variant={"plain"}
                     size={"icon"}
+                    type="button"
                     className={"pointer-events-auto text-foreground-light"}
                     onClick={handleResetInput}
+                    aria-label={t("clear")}
                   >
-                    <X size={22} />
+                    <X size={18} />
                   </Button>
                 ) : null}
                 <Button
                   disabled={inputValue.trim().length === 0}
                   variant="accent"
-                  size="default"
-                  className="pointer-events-auto gap-2 rounded-full px-6 py-2 text-sm"
+                  size="icon"
+                  type="button"
+                  className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
                   onClick={handleSearch}
+                  aria-label={t("search")}
                 >
-                  <Search size={18} />
+                  <CustomSearchIcon size={14} />
                 </Button>
               </>
             }
@@ -119,10 +125,10 @@ export function SearchCaption({
           />
           <Button
             ref={filterButtonRef}
-            variant="tableAction"
-            size="tableAction"
-            className={cn("flex items-center gap-2", {
-              "bg-secondary": isPanelOpen,
+            variant="captionAction"
+            size="captionAction"
+            className={cn("flex items-center gap-2 transition-colors", {
+              "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white": isPanelOpen,
             })}
             onClick={onFilterClick}
             type="button"
@@ -142,5 +148,3 @@ export function SearchCaption({
     </div>
   );
 }
-
-

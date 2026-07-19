@@ -6,16 +6,17 @@ import { useTranslations } from "use-intl";
 
 import { Suspense, useMemo, useState } from "react";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { Label } from "@/components/ui/label";
-import { PROTECTED_DOC_IDS } from "@/config/routing-config";
+import { PROTECTED_DOC_IDS } from "@/config/routing";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
-import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import type { DocumentsListItemResponse } from "@/repositories/document";
 import {
   $changeIdOfDocument,
   $createDocument,
@@ -26,7 +27,6 @@ import type { ValidationResponse } from "@/serverFunctions/validate";
 import { $validateEntityId } from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { NoItemsMessage } from "./NoItemsMessage";
 
@@ -62,9 +62,10 @@ export function DocumentsList({
         (oldData: DocumentsListItemResponse[] | undefined) => {
           const optimisticDocument: DocumentsListItemResponse = {
             contentId,
-            id: "optimistic-id-" + contentId,
-            createdAt: new Date(),
+            id: `optimistic-id-${contentId}`,
+
             latestVersionNumber: null,
+            hideFromNav: true,
             translations: [],
           };
 
@@ -135,8 +136,8 @@ export function DocumentsList({
 
   function handleClickDeleteDoc(contentId: string) {
     openConfirmation({
-      title: "Delete Document",
-      description: `Are you sure you want to delete document ${contentId}?`,
+      title: tDocs("delete-title"),
+      description: tDocs("delete-description", { name: contentId }),
       actionLabel: "Delete",
       onAction: () => {
         onSelectDoc(undefined);
@@ -149,8 +150,8 @@ export function DocumentsList({
     if (!renamingId) return;
     const oldId = renamingId;
     openConfirmation({
-      title: "Change ID of the document",
-      description: `Are you sure you want to change ID "${oldId}" to "${newId}"?`,
+      title: tDocs("change-id-title"),
+      description: tDocs("change-id-description"),
       actionLabel: "Rename",
       onAction: () => {
         changeIdOfDocument({ oldId, newId });
@@ -161,22 +162,21 @@ export function DocumentsList({
   const validate = useServerFn($validateEntityId);
 
   const tErrors = useTranslations("Errors");
+  const tDocs = useTranslations("admin.documents");
   return (
     <>
       <div className="mb-3">
         <FilterSearchInput
           value={q}
           onChange={(nextQ) => setFilters({ q: nextQ })}
-          placeholder="Search by title or content…"
+          placeholder={tDocs("search-placeholder")}
         />
       </div>
 
       <InputDialog
         title="Add Document"
         description=<div>
-          <p>Enter content ID in `snake-case`.</p>
-          <p>It can have slashes (`hello/world`).</p>
-          <p>Content ID would become the path to this document</p>
+          <p>{tDocs("new-doc-message")}</p>
         </div>
         label="Content ID"
         trigger={<AddNewButton className="mb-5" />}
@@ -196,6 +196,7 @@ export function DocumentsList({
         title="Change Document ID"
         description={renamingId ? `Current ID: ${renamingId}` : undefined}
         label="New ID"
+        initialValue={renamingId ?? ""}
         trigger={<span />}
         open={renamingId !== null}
         onOpenChange={(open) => {
@@ -242,6 +243,7 @@ function ListItems({
   const { q } = routeApi.useSearch();
   const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
+  const tDocs = useTranslations("admin.documents");
 
   const groupedDocs = useMemo(() => {
     const groups = new Map<string, DocumentsListItemResponse[]>();
@@ -262,7 +264,7 @@ function ListItems({
   }, [documents]);
 
   if (documents.length === 0) {
-    return <NoItemsMessage>No documents found</NoItemsMessage>;
+    return <NoItemsMessage>{tDocs("no-documents")}</NoItemsMessage>;
   }
   return (
     <ul className="overflow-y-auto" data-testid="documents-list-ul">

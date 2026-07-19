@@ -13,6 +13,8 @@ yarn.lock
 /server/build
 /public/build
 /public/public-files/
+# Persistent uploaded assets (prod base dir, see HUMANDBS_FRONTEND_PUBLIC_FILES_BASE)
+/data/
 # Sentry Config File
 .env.sentry-build-plugin
 /test-results/
@@ -21,6 +23,7 @@ yarn.lock
 /playwright/.cache/
 .tanstack
 
+./data
 
 # Tasks
 

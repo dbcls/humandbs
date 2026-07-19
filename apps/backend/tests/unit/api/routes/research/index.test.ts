@@ -19,12 +19,20 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import type { AuthUser } from "@/api/types"
 
-import { adminAuthHeader, buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
+import { buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
 import { createMockResearchDoc } from "../../helpers/mock-es"
 
 // === Auth mock (shared header-based factory) ===
 
 void mock.module("@/api/middleware/auth", buildMockAuthModule)
+
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
+}))
 
 // === ES mocks ===
 
@@ -39,7 +47,6 @@ const sampleHit = () => createMockResearchDoc({
   humId: "hum0001",
   status: "published",
   latestVersion: "v1",
-  uids: [],
   // dataProvider / versionIds inherit defaults
 })
 
@@ -53,7 +60,6 @@ const mockSearchResearches = mock(async (query: Record<string, unknown>, authUse
       latestVersion: "v1",
       dataProvider: [],
       summary: sampleHit().summary,
-      uids: [],
       status: "published" as const,
       _seq_no: 1,
       _primary_term: 1,
@@ -78,7 +84,6 @@ const mockGetResearchWithSeqNo = mock(async () => null as ({ doc: unknown; seqNo
 const mockCreateResearch = mock(async () => { throw new Error("not stubbed") })
 const mockUpdateResearch = mock(async () => null)
 const mockUpdateResearchStatus = mock(async () => null)
-const mockUpdateResearchUids = mock(async () => null)
 const mockDeleteResearch = mock(async () => false)
 const mockCreateResearchVersion = mock(async () => null)
 
@@ -86,11 +91,9 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: mockGetResearchWithSeqNo,
   getResearchDetail: mock(async () => null),
   getResearchDoc: mock(async () => null),
-  generateNextHumId: mock(async () => "hum0001"),
   createResearch: mockCreateResearch,
   updateResearch: mockUpdateResearch,
   updateResearchStatus: mockUpdateResearchStatus,
-  updateResearchUids: mockUpdateResearchUids,
   deleteResearch: mockDeleteResearch,
 }))
 
@@ -102,12 +105,12 @@ void mock.module("@/api/es-client/research-version", () => ({
   listResearchVersions: mock(async () => []),
   linkDatasetToResearch: mock(async () => undefined),
   unlinkDatasetFromResearch: mock(async () => undefined),
+  updateResearchVersionReleaseNote: mock(async () => true),
 }))
 
 const { getTestApp } = await import("../../helpers")
 
 const userAuth = userAuthHeader
-const adminAuth = adminAuthHeader
 
 beforeEach(() => {
   searchCalls.length = 0
@@ -116,7 +119,6 @@ beforeEach(() => {
   mockCreateResearch.mockClear()
   mockUpdateResearch.mockClear()
   mockUpdateResearchStatus.mockClear()
-  mockUpdateResearchUids.mockClear()
   mockDeleteResearch.mockClear()
   mockCreateResearchVersion.mockClear()
 })
@@ -151,7 +153,6 @@ describe("api/routes/research", () => {
       ["POST", "/research/hum0001/reject"],
       ["POST", "/research/hum0001/unpublish"],
       ["POST", "/research/hum0001/versions/new"],
-      ["PUT", "/research/hum0001/uids"],
     ])("%s %s without Authorization returns 401", async (method, path) => {
       const app = getTestApp()
       const res = await app.request(path, {
@@ -165,7 +166,6 @@ describe("api/routes/research", () => {
       expect(mockCreateResearch).not.toHaveBeenCalled()
       expect(mockUpdateResearch).not.toHaveBeenCalled()
       expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
-      expect(mockUpdateResearchUids).not.toHaveBeenCalled()
       expect(mockDeleteResearch).not.toHaveBeenCalled()
       expect(mockCreateResearchVersion).not.toHaveBeenCalled()
     })
@@ -175,7 +175,6 @@ describe("api/routes/research", () => {
     it.each([
       ["draft", /Public users can only access published/],
       ["review", /Public users can only access published/],
-      ["deleted", /Only admins can access deleted/],
     ] as const)(
       "public requesting status=%s returns 403",
       async (status, detailPattern) => {
@@ -208,14 +207,6 @@ describe("api/routes/research", () => {
       expect(call?.authUser?.userId).toBe("user-1")
     })
 
-    it("admin can request any status including deleted", async () => {
-      const app = getTestApp()
-      const res = await app.request("/research?status=deleted", { headers: adminAuth() })
-      expect(res.status).toBe(200)
-      const call = searchCalls.at(-1)
-      expect(call?.query.status).toBe("deleted")
-      expect(call?.authUser?.isAdmin).toBe(true)
-    })
   })
 
   describe("listing response shape (IT-AUTH-20)", () => {

@@ -2,6 +2,10 @@ import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import type { ErrorRouteComponent } from "@tanstack/react-router";
 import { CatchBoundary } from "@tanstack/react-router";
 
+import { useEffect } from "react";
+
+import { reportClientError } from "@/observability/client";
+
 import { Button } from "./ui/button";
 
 export function ErrorResetBoundary({
@@ -37,6 +41,10 @@ export function ErrorResetBoundary({
 }
 
 export function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    reportClientError(error, "route-boundary");
+  }, [error]);
+
   return (
     <>
       <p className="text-red-500">

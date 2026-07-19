@@ -1,4 +1,5 @@
 import { Check, RotateCcw, X } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -35,6 +36,7 @@ export function AccessionChips({
   pendingAccession,
   resetKey,
 }: AccessionChipsProps) {
+  const tResearches = useTranslations("admin.researches");
   const [chipStates, setChipStates] = useState<Record<string, ChipState>>({});
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function AccessionChips({
     } catch (e) {
       setChipState(accession, {
         status: "error",
-        message: e instanceof Error ? e.message : "Failed to fetch template.",
+        message: e instanceof Error ? e.message : tResearches("fetch-template-failed"),
       });
     }
   }
@@ -94,11 +96,11 @@ export function AccessionChips({
   function addAccession(raw: string) {
     const trimmed = raw.trim().toUpperCase();
     if (!ACCESSION_REGEX.test(trimmed)) {
-      setInputError("Must be JGAD or DRA followed by digits.");
+      setInputError(tResearches("invalid-accession"));
       return;
     }
     if (accessions.includes(trimmed)) {
-      setInputError("Already in list.");
+      setInputError(tResearches("accession-duplicate"));
       return;
     }
     setInputError(null);
@@ -118,8 +120,9 @@ export function AccessionChips({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-foreground-light text-xs">
-        Related accessions
-        {accessions.length > 0 ? " — click to apply dataset template" : ""}
+        {tResearches(
+          accessions.length > 0 ? "related-accessions-with-apply-hint" : "related-accessions",
+        )}
       </span>
       <div className="flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
         {accessions.map((accession) => {
@@ -150,7 +153,7 @@ export function AccessionChips({
             onBlur={() => {
               if (inputValue.trim()) addAccession(inputValue);
             }}
-            placeholder="JGAD… or DRA…"
+            placeholder={tResearches("accession-placeholder")}
             className="p-0 font-mono text-xs shadow-none focus-visible:ring-0"
           />
           {inputError && <span className="text-red-600 text-xs">{inputError}</span>}

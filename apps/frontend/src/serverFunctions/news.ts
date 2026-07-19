@@ -14,6 +14,7 @@ import {
   newsTranslationUpdateSchema,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 import type { NewsTag } from "@/repositories/newsItem";
 import { newsItemRepository } from "@/repositories/newsItem";
 
@@ -216,7 +217,8 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-    return newsItemRepository.list({
+
+    const listItems = await newsItemRepository.list({
       limit: data.limit,
       offset: data.offset,
       filters: {
@@ -226,6 +228,8 @@ export const $getNewsItems = createServerFn({ method: "GET" })
         tagIds: data.tagIds,
       },
     });
+
+    return listItems;
   });
 
 export type NewsItemResponse = Awaited<ReturnType<typeof $getNewsItems>>[number];
@@ -247,6 +251,8 @@ export const $getNewsItem = createServerFn()
     return item;
   });
 
+export type NewsItemDetailResponse = Awaited<ReturnType<typeof $getNewsItem>>;
+
 export function getNewsItemQueryOptions(id: string) {
   return queryOptions({
     queryKey: ["news", "item", id],
@@ -260,12 +266,14 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
   .inputValidator(newsItemUpdateSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "update");
-    await newsItemRepository.update({
-      id: data.id,
-      publishedAt: data.publishedAt,
-      translations: data.translations,
-      tags: data.tags,
-    });
+    await auditMutation("update", "news", data.id, () =>
+      newsItemRepository.update({
+        id: data.id,
+        publishedAt: data.publishedAt,
+        translations: data.translations,
+        tags: data.tags,
+      }),
+    );
   });
 
 const NEWS_ITEMS_PAGE_SIZE = 20;
@@ -276,7 +284,6 @@ export interface NewsItemsFilters {
   publishedTo?: string;
   tagIds?: string[];
 }
-
 
 export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
   return infiniteQueryOptions({
@@ -347,12 +354,14 @@ export const $createNewsItem = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "create");
     const user = context.user;
-    return newsItemRepository.create({
-      authorId: user.id,
-      publishedAt: data.publishedAt,
-      translations: data.translations,
-      tags: data.tags,
-    });
+    return auditMutation("create", "news", undefined, () =>
+      newsItemRepository.create({
+        authorId: user.id,
+        publishedAt: data.publishedAt,
+        translations: data.translations,
+        tags: data.tags,
+      }),
+    );
   });
 
 /**
@@ -392,5 +401,5 @@ export const $deleteNewsItem = createServerFn({ method: "POST" })
   .inputValidator(newsItemUpdateSchema.pick({ id: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
-    await newsItemRepository.delete(data.id);
+    await auditMutation("delete", "news", data.id, () => newsItemRepository.delete(data.id));
   });

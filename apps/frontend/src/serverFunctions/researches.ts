@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import { z } from "zod";
 
 import type {
@@ -9,7 +10,6 @@ import type {
   ResearchSearchBody,
   ResearchWithLockResponse,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   WorkflowResponse,
 } from "@humandbs/backend/types";
@@ -23,14 +23,24 @@ import {
 import { localeSchema } from "@/config/i18n";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { auditMutation } from "@/observability/server";
+import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
-import { throwSerializableApiError } from "@/utils/errors";
+import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/query-params";
+import {
+  addResearchRenderedHtml,
+  addResearchVersionsRenderedHtml,
+} from "@/utils/renderedHtml/transforms";
+import type {
+  RenderedResearchDetailResponse,
+  RenderedResearchVersionsListResponse,
+} from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 
-import type { DsApplicationListResponse } from "../../../backend/src/api/types";
+import type { DsApplicationListResponse, OwnersData } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateData,
   ResearchTemplateData,
@@ -38,43 +48,13 @@ import type {
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
-  | { ok: false; error: string; code?: "HUMID_CONFLICT" };
-export type UpdateResearchResult =
-  | { ok: true; data: ResearchWithLockResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type UpdateResearchUidsResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type DeleteResearchResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
-export type GetJDSResearchResult =
-  | { ok: true; data: ResearchTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+  | ApiErrorResult<"HUMID_CONFLICT">;
 
-export type GetDatasetTemplateResult =
-  | { ok: true; data: DatasetTemplateData }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type UpdateResearchResult = { ok: true; data: ResearchWithLockResponse } | ApiErrorResult;
+export type DeleteResearchResult = { ok: true } | ApiErrorResult;
+export type GetJDSResearchResult = { ok: true; data: ResearchTemplateData } | ApiErrorResult;
+
+export type GetDatasetTemplateResult = { ok: true; data: DatasetTemplateData } | ApiErrorResult;
 
 /**
  * Creates a research. Trusts backend validation (validator is just an identity function - to provide only type safety),
@@ -89,7 +69,9 @@ export const $createResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const result = await api.createResearch(data, accessToken);
+      const result = await auditMutation("create", "research", undefined, () =>
+        api.createResearch(data, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "A research with this humId already exists.", {
@@ -111,31 +93,13 @@ export const $updateResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const result = await api.updateResearch(data.humId, data.body, accessToken);
+      const result = await auditMutation("update", "research", data.humId, () =>
+        api.updateResearch(data.humId, data.body, accessToken),
+      );
 
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to update research.");
-    }
-  });
-
-/**
- * Creates a research uids. Trusts backend validation (validator is just an identity function - to provide only type safety),
- * because it uses some logic other that just zod schema.
- * The zod schema from the backend cannot simply be put in the input validator:
- * it ignores the rawHtml but it is still required by the zod schema
- */
-export const $updateResearchUids = createServerFn({ method: "POST" })
-  .inputValidator((data: { humId: string; body: UpdateUidsRequest }) => data)
-  .handler<Promise<UpdateResearchUidsResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
-
-    try {
-      await api.updateResearchUids(data.humId, data.body, accessToken);
-      return { ok: true };
-    } catch (error) {
-      return mapApiError(error, "Failed to update research uids.");
     }
   });
 
@@ -149,9 +113,10 @@ export const $deleteResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
-    console.log("$deleteResearch", data.humId);
     try {
-      await api.deleteResearch(data.humId, accessToken);
+      await auditMutation("delete", "research", data.humId, () =>
+        api.deleteResearch(data.humId, accessToken),
+      );
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete research.");
@@ -210,7 +175,9 @@ export const $submitResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.submitResearch(data.humId, accessToken);
+      const result = await auditMutation("submit", "research", data.humId, () =>
+        api.submitResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to submit research.");
@@ -223,7 +190,9 @@ export const $approveResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.approveResearch(data.humId, accessToken);
+      const result = await auditMutation("approve", "research", data.humId, () =>
+        api.approveResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to approve research.");
@@ -236,10 +205,27 @@ export const $rejectResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.rejectResearch(data.humId, accessToken);
+      const result = await auditMutation("reject", "research", data.humId, () =>
+        api.rejectResearch(data.humId, accessToken),
+      );
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to reject research.");
+    }
+  });
+
+export const $unpublishResearch = createServerFn({ method: "POST" })
+  .inputValidator(WorkflowActionInputSchema)
+  .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await auditMutation("unpublish", "research", data.humId, () =>
+        api.unpublishResearch(data.humId, accessToken),
+      );
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to unpublish research.");
     }
   });
 
@@ -265,10 +251,12 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.createResearchVersion(
-        data.humId,
-        { releaseNote: data.releaseNote ?? undefined },
-        accessToken,
+      const result = await auditMutation("create", "research_version", data.humId, () =>
+        api.createResearchVersion(
+          data.humId,
+          { releaseNote: data.releaseNote ?? undefined },
+          accessToken,
+        ),
       );
       return { ok: true, data: result };
     } catch (error) {
@@ -306,7 +294,7 @@ export const $listResearches = createServerFn()
 
     const { q, ...rest } = data;
 
-    // if query is humIdm then use search with humId
+    // if query is humId, then use search with humId
     if (q && /^hum\d+/i.test(q)) {
       return api.getResearchListPaginated(
         {
@@ -322,10 +310,10 @@ export const $listResearches = createServerFn()
     } else {
       return api.searchResearches(
         {
+          ...rest,
           query: q,
           includeFacets: false,
           sort: "humId",
-          ...rest,
         },
         accessToken ?? undefined,
       );
@@ -363,7 +351,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
           ...data,
           page: pageParam,
           limit: 20,
-          order: data.order ?? "desc",
+          order: data.order ?? "asc",
         },
       }),
     initialPageParam: 1,
@@ -381,13 +369,18 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(({ data }) => {
+  .handler<Promise<RenderedResearchVersionsListResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
-    return api.getResearchVersions({
+
+    const res = await api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang, includeRawHtml: false },
       accessToken: accessToken ?? undefined,
     });
+
+    // Render each version's releaseNote `text` into a frontend-only `renderedHtml`
+    // projection. Legacy `rawHtml` is left untouched.
+    return addResearchVersionsRenderedHtml(res);
   });
 
 export function getResearchVersionsQueryOptions(
@@ -409,18 +402,26 @@ export const ResearchQuerySchema = z.object({
 
 export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
-  .handler(async ({ data }) => {
+  .handler<Promise<RenderedResearchDetailResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
 
     try {
-      return await api.getResearchDetail({
+      const res = await api.getResearchDetail({
         search: { ...search, includeRawHtml: false },
         params: { humId },
         accessToken: accessToken ?? undefined,
       });
+
+      // Render aims/methods/targets + releaseNote `text` into a frontend-only
+      // `renderedHtml` projection. Legacy `rawHtml` is left untouched.
+      return addResearchRenderedHtml(res);
     } catch (error) {
+      // A missing research should render the NotFound component rather than
+      // surfacing a raw API error. `notFound()` is a framework signal the
+      // router (or the route loader) can pick up to render `notFoundComponent`.
+      if (isApiNotFoundError(error)) throw notFound();
       throwSerializableApiError(error);
     }
   });
@@ -476,5 +477,33 @@ export function getResearchForEditQueryOptions(query: z.infer<typeof ResearchEdi
   return queryOptions({
     queryKey: ["researches", "byId", "edit", query],
     queryFn: () => $getResearchForEdit({ data: query }),
+  });
+}
+
+export type GetResearchOwnersResult = { ok: true; data: OwnersData } | ApiErrorResult;
+
+/**
+ * Fetches the research owners, resolved server-side from the JGA DB
+ * (GET /research/{humId}/owners, admin only). `owners` are Keycloak
+ * `preferred_username` values; empty when no matching J-DS exists.
+ */
+export const $getResearchOwners = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ humId: HumIdParamsSchema.shape.humId }))
+  .handler<Promise<GetResearchOwnersResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.getResearchOwners(data.humId, accessToken);
+      return { ok: true, data: result.data };
+    } catch (error) {
+      return mapApiError(error, "Failed to get research owners.");
+    }
+  });
+
+export function getResearchOwnersQueryOptions(humId: string) {
+  return queryOptions({
+    queryKey: ["researches", "owners", humId],
+    queryFn: () => $getResearchOwners({ data: { humId } }),
+    staleTime: 1000 * 60 * 5,
   });
 }

@@ -162,7 +162,6 @@ export {
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
   CreateVersionRequestSchema,
-  UpdateUidsRequestSchema,
   ExperimentSchemaBase,
   CreateDatasetForResearchRequestSchema,
 } from "../src/api/types";
@@ -170,7 +169,6 @@ export type {
   CreateResearchRequest,
   UpdateResearchRequest,
   CreateVersionRequest,
-  UpdateUidsRequest,
   CreateDatasetForResearchRequest,
 } from "../src/api/types";
 
@@ -186,8 +184,6 @@ export {
   DatasetCreateResponseSchema,
   WorkflowDataSchema,
   WorkflowResponseSchema,
-  UidsDataSchema,
-  UidsResponseSchema,
 } from "../src/api/types";
 export type {
   ResearchDetailResponse,
@@ -200,8 +196,6 @@ export type {
   DatasetCreateResponse,
   WorkflowData,
   WorkflowResponse,
-  UidsData,
-  UidsResponse,
 } from "../src/api/types";
 
 // Dataset document with merged searchable fields - clean names

@@ -2,6 +2,7 @@
   "name": "@humandbs/root",
   "private": true,
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.1",
     "@types/bun": "^1.3.5"
   },
   "peerDependencies": {
@@ -11,5 +12,8 @@
     "apps/*",
     "!apps/frontend/e2e/*",
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "zod": "^4.4.3"
+  }
 }

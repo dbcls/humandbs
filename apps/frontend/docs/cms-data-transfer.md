@@ -15,6 +15,7 @@ The page supports these categories:
 - `Assets`
 - `Header & Footer`
 - `Flowcharts`
+- `Moldata keys`
 
 ## Export
 
@@ -31,6 +32,7 @@ The archive contains:
 - `categories/alerts.json`
 - `categories/header-footer.json`
 - `categories/flowcharts.json`
+- `categories/moldata-keys.json`
 - `assets/**` when `Assets` is selected
 
 `manifest.json` contains:
@@ -89,6 +91,7 @@ Behavior by category:
 - `Alerts`: replaces `alert` and `alert_translation`
 - `Header & Footer`: replaces the active site navigation config and creates one fresh revision row
 - `Flowcharts`: replaces flowcharts and creates one fresh revision row per restored flowchart
+- `Moldata keys`: replaces only the ordered English/Japanese catalog labels and creates fresh internal IDs with an advanced catalog revision
 - `Assets`: replaces the managed asset directory with the archive contents
 
 Restore preserves business IDs from the archive.
@@ -105,14 +108,20 @@ After a successful restore, frontend queries are invalidated so CMS pages reload
 
 `Assets` are not stored in Postgres.
 
-They are read from and restored to the directory resolved from:
+They are read from and restored to the directory resolved as
+`<base>/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>`:
 
-- development: `./public/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>`
-- production: `./dist/client/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>`
+- development: base `./public` (served by Vite)
+- production: base `./data` (kept outside the build output `dist/`)
 
-`HUMANDBS_FRONTEND_PUBLIC_FILES_DIR` controls the asset folder name.
+The base is configurable with `HUMANDBS_FRONTEND_PUBLIC_FILES_BASE`. It must stay
+**outside** `dist/` in production — `bun run build` regenerates `dist/`, so any
+uploaded assets stored there would be wiped on every rebuild. In production this
+directory is backed by a dedicated `public-files-data` Docker volume (see
+`compose.yml`) so uploads persist across rebuilds and redeploys.
 
-If the variable is not set, the default folder name is `public-files`.
+`HUMANDBS_FRONTEND_PUBLIC_FILES_DIR` controls the asset folder name within the base.
+If it is not set, the default folder name is `public-files`.
 
 Restore stages asset files in a temporary directory first, then swaps that directory into place.
 

@@ -51,10 +51,8 @@ import type {
   ResearchVersionsListResponse,
   ResearchWithLockResponse,
   StatsResponse,
-  UidsResponse,
   UpdateDatasetRequest,
   UpdateResearchRequest,
-  UpdateUidsRequest,
   VersionCreateResponse,
   VersionDetailResponse,
   WorkflowResponse,
@@ -69,7 +67,6 @@ const RESEARCH_VERSION = "v1"
 const ISO_DATE = "2025-01-15"
 const ISO_TIMESTAMP = "2025-01-15T08:00:00.000Z"
 const REQUEST_ID = "req_01HZ4K2W3X7Y8Z9A0B1C2D3E4F"
-const KEYCLOAK_SUB = "00000000-0000-0000-0000-000000000001"
 const JDS_ID = "J-DS002494"
 const JDU_ID = "J-DU006498"
 
@@ -145,6 +142,14 @@ const SAMPLE_SUMMARY_REQUEST = {
   },
 }
 
+/** summaryShort (request-shaped: BilingualTextValue without `rawHtml`).
+ * Source: Joomla `/home` (ja) and `/en/home` (en) listings. */
+const SAMPLE_SUMMARY_SHORT_REQUEST = {
+  methods: bilingualTextRequest("配列決定", "Sequencing"),
+  typeOfData: bilingualTextRequest("NGS（WGS）", "NGS (WGS)"),
+  targets: bilingualTextRequest("SCA31：1 症例（日本人）", "1 SCA31 patient (Japanese)"),
+}
+
 /** dataProvider entry (response-shaped Person). PersonSchema's
  * `name`/`organization.name` are BilingualTextValue, hence `bilingualText`. */
 const DATA_PROVIDER_RESPONSE = {
@@ -180,17 +185,6 @@ const DATA_PROVIDER_REQUEST = {
 const CONTROLLED_ACCESS_USER_RESPONSE = {
   ...DATA_PROVIDER_RESPONSE,
   name: bilingualText("佐藤 次郎", "Sato Jiro"),
-  email: "sato@example.org",
-  orcid: "0000-0002-3456-7890",
-  datasetIds: [DATASET_ID],
-  researchTitle: BILINGUAL_TITLE,
-  periodOfDataUse: { startDate: "2025-04-01", endDate: "2027-03-31" },
-}
-
-/** controlledAccessUser entry (request-shaped). */
-const CONTROLLED_ACCESS_USER_REQUEST = {
-  ...DATA_PROVIDER_REQUEST,
-  name: bilingualTextRequest("佐藤 次郎", "Sato Jiro"),
   email: "sato@example.org",
   orcid: "0000-0002-3456-7890",
   datasetIds: [DATASET_ID],
@@ -267,7 +261,7 @@ export const exampleStatsSingleResponse = {
   meta: META_READ_ONLY,
 }
 
-// === Research workflow / uids ===
+// === Research workflow ===
 
 /** Default `WorkflowResponse` example (kept as `status: "review"` for the
  * submit transition). Per-action examples below illustrate the actual target
@@ -301,17 +295,6 @@ export const exampleUnpublishResearchResponse: WorkflowResponse = {
   meta: META_WITH_LOCK,
 }
 
-export const exampleUidsResponse: UidsResponse = {
-  data: { humId: HUM_ID, uids: [KEYCLOAK_SUB] },
-  meta: META_WITH_LOCK,
-}
-
-export const exampleUpdateUidsRequest: UpdateUidsRequest = {
-  uids: [KEYCLOAK_SUB],
-  _seq_no: 12,
-  _primary_term: 1,
-}
-
 // === Research request / response ===
 
 export const exampleCreateResearchRequest = {
@@ -321,8 +304,8 @@ export const exampleCreateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
-  uids: [KEYCLOAK_SUB],
-  initialReleaseNote: bilingualTextRequest("初版リリース", "Initial release"),
+  summaryShort: SAMPLE_SUMMARY_SHORT_REQUEST,
+  humId: HUM_ID,
 } satisfies CreateResearchRequest
 
 export const exampleUpdateResearchRequest = {
@@ -332,7 +315,7 @@ export const exampleUpdateResearchRequest = {
   researchProject: [RESEARCH_PROJECT_REQUEST],
   grant: [SAMPLE_GRANT],
   relatedPublication: [SAMPLE_PUBLICATION],
-  controlledAccessUser: [CONTROLLED_ACCESS_USER_REQUEST],
+  summaryShort: SAMPLE_SUMMARY_SHORT_REQUEST,
   _seq_no: 12,
   _primary_term: 1,
 } satisfies UpdateResearchRequest
@@ -352,7 +335,12 @@ const RESEARCH_BASE = {
   datePublished: ISO_TIMESTAMP,
   dateModified: ISO_TIMESTAMP,
   status: "published" as const,
-  uids: [KEYCLOAK_SUB],
+  owners: ["sample-user"],
+  summaryShort: {
+    methods: bilingualText("配列決定", "Sequencing"),
+    typeOfData: bilingualText("NGS（WGS）", "NGS (WGS)"),
+    targets: bilingualText("SCA31：1 症例（日本人）", "1 SCA31 patient (Japanese)"),
+  },
 }
 
 /** Single Experiment record for sample Datasets. `data` values are
@@ -412,10 +400,13 @@ const SAMPLE_MERGED_SEARCHABLE = {
 }
 
 /** Dataset body with `mergedSearchable` for endpoints that surface
- * `DatasetDocWithMergedSchema` (Dataset detail / version detail). */
+ * `DatasetDocWithMergedSchema` (Dataset detail / version detail / batch).
+ * `parentJgaStudyId` is required-nullable — the field itself is always present,
+ * populated live from DDBJ Search for JGAD datasets. */
 const DATASET_BODY_WITH_MERGED = {
   ...DATASET_BODY,
   mergedSearchable: SAMPLE_MERGED_SEARCHABLE,
+  parentJgaStudyId: "JGAS000001",
 }
 
 /** Detail body for `ResearchDetailResponse` (`ResearchDetailSchema` =
@@ -473,8 +464,11 @@ const RESEARCH_SUMMARY_ITEM = {
   typeOfData: ["WGS データ"],
   platforms: ["Illumina HiSeq"],
   targets: SAMPLE_SUMMARY_RESPONSE.targets.ja.text,
+  methodsSummary: { ja: "配列決定", en: "Sequencing" },
+  typeOfDataSummary: { ja: "NGS（WGS）", en: "NGS (WGS)" },
+  targetsSummary: { ja: "SCA31：1 症例（日本人）", en: "1 SCA31 patient (Japanese)" },
   dataProvider: [DATA_PROVIDER_RESPONSE.name.ja.text],
-  criteria: "Controlled-access (Type I)" as const,
+  criteria: ["Controlled-access (Type I)" as const],
   status: "published" as const,
 }
 
@@ -555,8 +549,6 @@ export const exampleCreateDatasetForResearchRequest = {
 } satisfies CreateDatasetForResearchRequest
 
 export const exampleUpdateDatasetRequest = {
-  humId: HUM_ID,
-  humVersionId: HUM_VERSION_ID,
   releaseDate: ISO_DATE,
   criteria: "Controlled-access (Type I)",
   typeOfData: { ja: "WGS データ", en: "WGS data" },
@@ -756,15 +748,11 @@ const JGA_CONTROL = {
   isAgreeMailUse: true,
 }
 
-const JGA_STATUS_HISTORY_ENTRY = {
-  status: 60 as const,
-  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
-  date: ISO_DATE,
-}
-
 /** J-DS application body (`DsApplicationTransformedSchema`). */
 const DS_APPLICATION_BODY = {
-  jdsId: JDS_ID,
+  jdsId: `${JDS_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jsubIds: ["JSUB000001"],
   humIds: [HUM_ID],
   jgaIds: ["JGAS000001"],
@@ -807,14 +795,15 @@ const DS_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }
 
 /** J-DU application body (`DuApplicationTransformedSchema`). */
 const DU_APPLICATION_BODY = {
-  jduId: JDU_ID,
+  jduId: `${JDU_ID}-001`,
+  status: 60 as const,
+  statusLabel: JGA_BILINGUAL("申請承認", "Approved"),
   jgadIds: [DATASET_ID],
   jgasIds: ["JGAS000001"],
   humIds: [HUM_ID],
@@ -878,7 +867,6 @@ const DU_APPLICATION_BODY = {
   collaborators: [JGA_COLLABORATOR],
   uploadedFiles: [JGA_UPLOADED_FILE],
   control: JGA_CONTROL,
-  statusHistory: [JGA_STATUS_HISTORY_ENTRY],
   submitDate: ISO_DATE,
   createDate: ISO_DATE,
 }

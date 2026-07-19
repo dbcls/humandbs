@@ -2,17 +2,14 @@
  * Research es-client tests
  *
  * Covers:
- * - generateNextHumId: empty index -> hum0001; "hum0099" -> "hum0100"; "hum9999" -> "hum10000"
- * - createResearch (IT-RESEARCH-04, 05, 07, 20):
- *   - auto-generated humId (201)
- *   - explicit humId duplicate -> ConflictError.forDuplicate (op_type: create)
- *   - auto-generated humId retries up to MAX_RETRIES=3, then surfaces last error
+ * - createResearch:
+ *   - creates Research + ResearchVersion v1 in draft status
+ *   - humId duplicate -> ConflictError.forDuplicate (op_type: create)
  *   - rolls back ResearchVersion if Research index fails
  * - updateResearch (IT-RESEARCH-12, 14):
  *   - dateModified is set, optimistic lock failure -> null
- * - deleteResearch (IT-RESEARCH-18 partial):
- *   - sets status=deleted, draftVersion=null, dateModified=today
- *   - deletes linked Datasets by query
+ * - deleteResearch:
+ *   - physically deletes Research, ResearchVersions, and Datasets
  * - updateResearchUids (IT-RESEARCH-21):
  *   - returns updated uids on success, null on conflict
  *
@@ -23,7 +20,6 @@
  *   by getResearchDetail, not the create/update paths here).
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import fc from "fast-check"
 
 const mockEsIndex = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
 const mockEsUpdate = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({}))
@@ -99,81 +95,27 @@ beforeEach(() => {
   mockEsDeleteByQuery.mockReset()
 })
 
-// === generateNextHumId (Painless numeric aggregation) ===
-
-describe("generateNextHumId", () => {
-  it("returns hum0001 when the aggregation has no value (empty index)", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: null } } })
-
-    const id = await research.generateNextHumId()
-    expect(id).toBe("hum0001")
-  })
-
-  it("returns hum0100 when the aggregation max is 99", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 99 } } })
-
-    const id = await research.generateNextHumId()
-    expect(id).toBe("hum0100")
-  })
-
-  it("returns 5-digit hum10000 when the aggregation max is 9999", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 9999 } } })
-
-    const id = await research.generateNextHumId()
-    expect(id).toBe("hum10000")
-  })
-
-  it("returns hum10001 after hum10000 has been allocated", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 10000 } } })
-
-    const id = await research.generateNextHumId()
-    expect(id).toBe("hum10001")
-  })
-})
-
 // === createResearch ===
 
 describe("createResearch", () => {
-  const baseParams = { uids: ["owner-1"] } as Parameters<typeof research.createResearch>[0]
+  const baseParams = { humId: "hum0001" } as Parameters<typeof research.createResearch>[0]
 
-  it("succeeds with auto-generated humId on first attempt (IT-RESEARCH-04)", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 1 } } })
+  it("creates Research + ResearchVersion v1 in draft status", async () => {
     mockEsIndex.mockResolvedValue({})
-    mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
 
     const result = await research.createResearch(baseParams)
-    expect(result.research.humId).toBe("hum0002")
+    expect(result.research.humId).toBe("hum0001")
     expect(result.research.status).toBe("draft")
     expect(result.research.latestVersion).toBe(null)
     expect(result.research.draftVersion).toBe("v1")
     expect(result.research.dateModified).toMatch(ISO_DATE)
     expect(result.version.version).toBe("v1")
-    expect(result.version.humVersionId).toBe("hum0002-v1")
-    // ResearchVersion is indexed first, then Research
+    expect(result.version.humVersionId).toBe("hum0001-v1")
     expect(mockEsIndex).toHaveBeenCalledTimes(2)
   })
 
-  it("throws ConflictError.forDuplicate when explicit humId already exists (IT-RESEARCH-05)", async () => {
-    // First index call (research-version) fails with op_type:create dup
+  it("throws ConflictError when humId already exists", async () => {
     mockEsIndex.mockImplementationOnce(async () => { throw versionConflictError() })
-
-    let caught: unknown
-    try {
-      await research.createResearch({ ...baseParams, humId: "hum0001" })
-    } catch (e) {
-      caught = e
-    }
-    expect(caught).toBeInstanceOf(ConflictError)
-    expect((caught as Error).message).toContain("already exists")
-  })
-
-  it("retries up to MAX_RETRIES=3 with auto-generated humId (IT-RESEARCH-07)", async () => {
-    let attempt = 0
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 1 } } })
-    mockEsIndex.mockImplementation(async () => {
-      attempt += 1
-      throw versionConflictError()
-    })
 
     let caught: unknown
     try {
@@ -181,17 +123,39 @@ describe("createResearch", () => {
     } catch (e) {
       caught = e
     }
-    // Each attempt fails on the first index call (ResearchVersion), so 3 attempts -> 3 calls
-    expect(attempt).toBe(3)
-    expect(caught).toBeDefined()
+    expect(caught).toBeInstanceOf(ConflictError)
+    expect((caught as Error).message).toContain("already exists")
   })
 
-  it("rolls back ResearchVersion if Research index fails (atomicity)", async () => {
+  it("stores summaryShort=null by default and hydrates provided values", async () => {
+    mockEsIndex.mockResolvedValue({})
+
+    const defaultResult = await research.createResearch({ humId: "hum0001" })
+    expect(defaultResult.research.summaryShort).toBeNull()
+
+    mockEsIndex.mockReset()
+    mockEsIndex.mockResolvedValue({})
+
+    const withValueResult = await research.createResearch({
+      humId: "hum0002",
+      summaryShort: {
+        methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+        typeOfData: { ja: { text: "NGS" }, en: { text: "NGS" } },
+        targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
+      },
+    })
+    expect(withValueResult.research.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
+    })
+  })
+
+  it("rolls back ResearchVersion if Research index fails", async () => {
     let indexCall = 0
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 1 } } })
     mockEsIndex.mockImplementation(async () => {
       indexCall += 1
-      if (indexCall === 1) return {} // ResearchVersion: success
+      if (indexCall === 1) return {}
       throw new Error("ES research index failed")
     })
 
@@ -202,24 +166,10 @@ describe("createResearch", () => {
       caught = e
     }
     expect(caught).toBeDefined()
-    // Best-effort rollback delete on the version doc
     expect(mockEsDelete).toHaveBeenCalled()
     const deleteArgs = mockEsDelete.mock.calls[0]?.[0] as { index: string; id: string }
     expect(deleteArgs.index).toBe("research-version")
-    expect(deleteArgs.id).toBe("hum0002-v1")
-  })
-
-  it("rejects re-use of a deleted humId (IT-RESEARCH-20)", async () => {
-    // Even logical-delete keeps the doc in ES, so op_type:create returns 409
-    mockEsIndex.mockImplementationOnce(async () => { throw versionConflictError() })
-
-    let caught: unknown
-    try {
-      await research.createResearch({ ...baseParams, humId: "hum_deleted" })
-    } catch (e) {
-      caught = e
-    }
-    expect(caught).toBeInstanceOf(ConflictError)
+    expect(deleteArgs.id).toBe("hum0001-v1")
   })
 })
 
@@ -246,7 +196,6 @@ describe("updateResearch", () => {
         datePublished: null,
         dateModified: TODAY,
         status: "draft",
-        uids: ["owner-1"],
       },
       _seq_no: 5,
       _primary_term: 1,
@@ -280,23 +229,76 @@ describe("updateResearch", () => {
     }
     expect(caught).toBeDefined()
   })
-})
 
-// === updateResearchUids ===
-
-describe("updateResearchUids (IT-RESEARCH-21)", () => {
-  it("returns the new uids on success", async () => {
+  it("writes hydrated summaryShort with rawHtml=null when provided", async () => {
     mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
 
-    const result = await research.updateResearchUids("hum0001", ["uid1", "uid2"], 1, 1)
-    expect(result).toEqual(["uid1", "uid2"])
+    await research.updateResearch(
+      "hum0001",
+      {
+        summaryShort: {
+          methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+          typeOfData: { ja: { text: "NGS" }, en: { text: "NGS" } },
+          targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
+        },
+      },
+      1,
+      1,
+    )
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(doc.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
+    })
   })
 
-  it("returns null on optimistic-lock failure", async () => {
-    mockEsUpdate.mockRejectedValue(optimisticLockError())
+  it("writes summaryShort=null when null is explicitly passed", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
 
-    const result = await research.updateResearchUids("hum0001", ["uid1"], 0, 0)
-    expect(result).toBeNull()
+    await research.updateResearch("hum0001", { summaryShort: null }, 1, 1)
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect("summaryShort" in doc).toBe(true)
+    expect(doc.summaryShort).toBeNull()
+  })
+
+  it("omits summaryShort from the doc when the field is not provided", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch("hum0001", { title: { ja: "t", en: "t" } }, 1, 1)
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect("summaryShort" in doc).toBe(false)
+  })
+
+  it("hydrates per-language nulls in summaryShort (one side present)", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      {
+        summaryShort: {
+          methods: { ja: { text: "配列決定" }, en: null },
+          typeOfData: { ja: null, en: { text: "NGS" } },
+          targets: { ja: null, en: null },
+        },
+      },
+      1,
+      1,
+    )
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(doc.summaryShort).toEqual({
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: null },
+      typeOfData: { ja: null, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: null, en: null },
+    })
   })
 })
 
@@ -325,7 +327,6 @@ describe("updateResearchStatus", () => {
         datePublished: null,
         dateModified: TODAY,
         status: "review",
-        uids: ["owner-1"],
       },
     })
 
@@ -343,28 +344,29 @@ describe("updateResearchStatus", () => {
   })
 })
 
-// === deleteResearch (IT-RESEARCH-18 partial: ES-side effects) ===
+// === deleteResearch (physical deletion) ===
 
 describe("deleteResearch", () => {
-  it("sets status=deleted and deletes linked datasets by query", async () => {
-    mockEsUpdate.mockResolvedValue({})
+  it("physically deletes Research, versions, and datasets", async () => {
+    mockEsDelete.mockResolvedValue({})
     mockEsDeleteByQuery.mockResolvedValue({})
 
     const ok = await research.deleteResearch("hum0001", 1, 1)
     expect(ok).toBe(true)
 
-    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: { status: string; draftVersion: null; dateModified: string } } }
-    expect(updateArgs.body.doc.status).toBe("deleted")
-    expect(updateArgs.body.doc.draftVersion).toBeNull()
-    expect(updateArgs.body.doc.dateModified).toMatch(ISO_DATE)
+    const deleteArgs = mockEsDelete.mock.calls[0]?.[0] as { index: string; id: string }
+    expect(deleteArgs.index).toBe("research")
+    expect(deleteArgs.id).toBe("hum0001")
 
-    const delQueryArgs = mockEsDeleteByQuery.mock.calls[0]?.[0] as { index: string; query: { term: { humId: string } } }
-    expect(delQueryArgs.index).toBe("dataset")
-    expect(delQueryArgs.query.term.humId).toBe("hum0001")
+    expect(mockEsDeleteByQuery).toHaveBeenCalledTimes(2)
+    const versionArgs = mockEsDeleteByQuery.mock.calls[0]?.[0] as { index: string }
+    expect(versionArgs.index).toBe("research-version")
+    const datasetArgs = mockEsDeleteByQuery.mock.calls[1]?.[0] as { index: string }
+    expect(datasetArgs.index).toBe("dataset")
   })
 
   it("returns false on optimistic-lock failure", async () => {
-    mockEsUpdate.mockRejectedValue(optimisticLockError())
+    mockEsDelete.mockRejectedValue(optimisticLockError())
 
     const ok = await research.deleteResearch("hum0001", 0, 0)
     expect(ok).toBe(false)
@@ -372,138 +374,3 @@ describe("deleteResearch", () => {
   })
 })
 
-// === createResearch humId collision retry (IT-RESEARCH-07 unit-delegated) ===
-
-const humNumericPart = (id: string): number => {
-  if (!id.startsWith("hum")) return NaN
-  const numStr = id.slice(3).split("-")[0]
-  const n = Number(numStr)
-  return Number.isFinite(n) ? n : NaN
-}
-
-describe("createResearch humId collision retry", () => {
-  const baseParams = { uids: ["owner-1"] } as Parameters<typeof research.createResearch>[0]
-
-  it("PBT (a): succeeds on the (n+1)-th attempt with n collisions; throws when n hits MAX_RETRIES", async () => {
-    // collisionCount in [0, 3] covers both the success path (0..2) and the
-    // MAX_RETRIES=3 boundary (3 collisions → no further retries, last error
-    // surfaces). Keeping the success and failure shapes in one property guards
-    // against silent regressions on either side of the boundary.
-    const MAX_RETRIES = 3
-    await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 0, max: MAX_RETRIES }), async (collisionCount) => {
-        mockEsSearch.mockReset()
-        mockEsIndex.mockReset()
-        mockEsDelete.mockReset()
-        mockEsGet.mockReset()
-
-        let aggCall = 0
-        mockEsSearch.mockImplementation(async () => {
-          aggCall += 1
-          return { aggregations: { max_hum_num: { value: aggCall } } }
-        })
-        let versionIndexAttempt = 0
-        mockEsIndex.mockImplementation(async (params) => {
-          const index = (params as { index?: string }).index
-          if (index === "research-version") {
-            versionIndexAttempt += 1
-            if (versionIndexAttempt <= collisionCount) {
-              throw versionConflictError()
-            }
-          }
-          return {}
-        })
-        mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
-
-        if (collisionCount >= MAX_RETRIES) {
-          let caught: unknown
-          try {
-            await research.createResearch(baseParams)
-          } catch (e) {
-            caught = e
-          }
-          return caught !== undefined && versionIndexAttempt === MAX_RETRIES
-        }
-        const result = await research.createResearch(baseParams)
-        const expectedNum = collisionCount + 2
-        const expectedHumId = `hum${String(expectedNum).padStart(4, "0")}`
-        return result.research.humId === expectedHumId
-      }),
-      { numRuns: 20 },
-    )
-  })
-
-  it("3 consecutive ResearchVersion collisions surface the last error (MAX_RETRIES=3)", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 1 } } })
-    let attempt = 0
-    mockEsIndex.mockImplementation(async () => {
-      attempt += 1
-      throw versionConflictError()
-    })
-
-    let caught: unknown
-    try {
-      await research.createResearch(baseParams)
-    } catch (e) {
-      caught = e
-    }
-    expect(caught).toBeDefined()
-    expect(attempt).toBe(3)
-  })
-
-  it("aggregation null → first attempt allocates hum0001", async () => {
-    mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: null } } })
-    mockEsIndex.mockResolvedValue({})
-    mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
-
-    const result = await research.createResearch(baseParams)
-    expect(result.research.humId).toBe("hum0001")
-  })
-
-  it("5-digit humIds remain monotonic across two creates (hum9999 → hum10000 → hum10001)", async () => {
-    mockEsIndex.mockResolvedValue({})
-    mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
-
-    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_hum_num: { value: 9999 } } })
-    const r1 = await research.createResearch(baseParams)
-    expect(r1.research.humId).toBe("hum10000")
-    expect(r1.research.humId).toMatch(/^hum\d{5,}$/)
-
-    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_hum_num: { value: 10000 } } })
-    const r2 = await research.createResearch(baseParams)
-    expect(r2.research.humId).toBe("hum10001")
-  })
-
-  it("PBT (e): the allocated humId is never in the existing humNumber set", async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.uniqueArray(fc.integer({ min: 1, max: 999 }), { minLength: 1, maxLength: 5 }),
-        async (existingHumNumbers) => {
-          mockEsSearch.mockReset()
-          mockEsIndex.mockReset()
-          mockEsDelete.mockReset()
-          mockEsGet.mockReset()
-
-          const existingSet = new Set(existingHumNumbers)
-          let aggCall = Math.max(...existingHumNumbers) - 1
-          mockEsSearch.mockImplementation(async () => {
-            aggCall += 1
-            return { aggregations: { max_hum_num: { value: aggCall } } }
-          })
-          mockEsIndex.mockImplementation(async (params) => {
-            const id = (params as { id?: string }).id ?? ""
-            const n = humNumericPart(id)
-            if (existingSet.has(n)) throw versionConflictError()
-            return {}
-          })
-          mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
-
-          const result = await research.createResearch(baseParams)
-          const newNumPart = Number(result.research.humId.substring(3))
-          return !existingSet.has(newNumPart)
-        },
-      ),
-      { numRuns: 15 },
-    )
-  })
-})

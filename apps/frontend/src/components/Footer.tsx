@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 
 import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 import { Link } from "@/components/Link";
-import { asLinkProps } from "@/config/site-navigation";
+import { asLinkProps } from "@/config/siteNavigation";
 
 export function Footer() {
   const { siteNavigation } = useRouteContext({ from: "/{-$lang}/_layout" });
@@ -20,10 +20,7 @@ export function Footer() {
               <ul className="mt-3 flex flex-col gap-2">
                 {group.items.map((item) => (
                   <li key={item.id} className="min-w-0">
-                    <Link
-                      {...asLinkProps(item.linkOptions)}
-                      className="break-words text-xs"
-                    >
+                    <Link {...asLinkProps(item.linkOptions)} className="break-words text-xs">
                       {item.label}
                     </Link>
                   </li>

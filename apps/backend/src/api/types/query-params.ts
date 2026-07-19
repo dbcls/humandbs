@@ -11,9 +11,10 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
+import { CriteriaCanonicalSchema } from "../../es/types"
 import { BATCH } from "../constants"
 
-import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
+import { LANG_TYPES, BilingualTextSchema, VersionStringSchema, booleanFromString } from "./common"
 import {
   PaginationQuerySchema,
   LangQueryBase,
@@ -48,8 +49,7 @@ export const LangVersionQuerySchema = z.object({
     .describe(
       "Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version.",
     ),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
@@ -63,8 +63,7 @@ export const LangQuerySchema = z.object({
     .enum(LANG_TYPES)
     .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  includeRawHtml: z.coerce
-    .boolean()
+  includeRawHtml: booleanFromString
     .default(false)
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
@@ -129,7 +128,7 @@ export const ResearchListingQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })
@@ -149,7 +148,7 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     status: z.enum(RESEARCH_STATUS).optional()
-      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+      .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
   })
@@ -243,11 +242,37 @@ export const ResearchSummarySchema = z.object({
     .array(z.string())
     .describe("Sequencing platforms used (aggregated from datasets)"),
   targets: z.string().describe("Summary of research targets (plain text)"),
+  // Short bilingual summaries for the listing view. Sourced from the Joomla
+  // home article (ja=`/home`, en=`/en/home`). Distinct from the long
+  // `methods`/`typeOfData`/`targets` fields above, which are derived from
+  // detail-page bodies. Null when the humId is not listed on the Joomla home.
+  methodsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the research method, for listing views (Joomla home column '研究方法' / 'Type of Study')"),
+  typeOfDataSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the data type, for listing views (Joomla home column 'データの種類' / 'Type of Data')"),
+  targetsSummary: BilingualTextSchema.nullable()
+    .describe("Short bilingual summary of the target population, for listing views (Joomla home column '参加者（対象集団）' / 'Participants/Materials (Ethnicity)')"),
   dataProvider: z.array(z.string()).describe("Names of data providers"),
   criteria: z
-    .string()
-    .describe("Data access criteria summary (e.g., 'Controlled-access')"),
+    .array(CriteriaCanonicalSchema)
+    .describe(
+      "Distinct access criteria across the Research's datasets, in canonical order (strictest first)",
+    ),
   status: z.enum(RESEARCH_STATUS)
     .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
+
+// === JGA Shinsei List Query ===
+
+export const JgaShinseiDsListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DS\d+$/).optional()
+    .describe("Filter by master DS ID (e.g., 'J-DS002494'). Returns all versions of this master."),
+})
+export type JgaShinseiDsListQuery = z.infer<typeof JgaShinseiDsListQuerySchema>
+
+export const JgaShinseiDuListQuerySchema = PaginationQuerySchema.extend({
+  dsDuId: z.string().regex(/^J-DU\d+$/).optional()
+    .describe("Filter by master DU ID (e.g., 'J-DU006498'). Returns all versions of this master."),
+})
+export type JgaShinseiDuListQuery = z.infer<typeof JgaShinseiDuListQuerySchema>

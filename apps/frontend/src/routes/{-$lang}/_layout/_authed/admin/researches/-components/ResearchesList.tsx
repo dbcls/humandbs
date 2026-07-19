@@ -1,17 +1,18 @@
 import { useMutation, useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { Suspense, useEffect, useRef } from "react";
 
 import type { ResearchSearchResponse, ResearchSummary } from "@humandbs/backend/types";
 import { ResearchStatusSchema } from "@humandbs/backend/types";
 
+import { AddNewButton } from "@/components/AddNewButton";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { StatusTag } from "@/components/StatusTag";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Locale } from "@/config/i18n";
@@ -33,10 +34,6 @@ type ResearchesInfiniteData = {
   pageParams: unknown[];
 };
 
-function markResearchDeleted(research: ResearchSummary): ResearchSummary {
-  return { ...research, status: "deleted" };
-}
-
 export function ResearchesList({
   lang,
   selectedHumId,
@@ -48,6 +45,7 @@ export function ResearchesList({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const tResearches = useTranslations("admin.researches");
   const { can: canCreate } = useCan({
     resource: "researches",
     action: "create",
@@ -113,18 +111,14 @@ export function ResearchesList({
               ...oldData,
               pages: oldData.pages.map((page) => ({
                 ...page,
-                data: page.data.map((research) =>
-                  research.humId === humId ? markResearchDeleted(research) : research,
-                ),
+                data: page.data.filter((research) => research.humId !== humId),
               })),
             };
           }
 
           return {
             ...oldData,
-            data: oldData.data.map((research) =>
-              research.humId === humId ? markResearchDeleted(research) : research,
-            ),
+            data: oldData.data.filter((research) => research.humId !== humId),
           };
         },
       );
@@ -144,8 +138,8 @@ export function ResearchesList({
 
   function handleDelete(humId: string) {
     openConfirmation({
-      title: "Delete Research",
-      description: `Are you really want to delete research \`${humId}\` ?`,
+      title: tResearches("delete-title"),
+      description: tResearches("delete-description", { name: humId }),
       actionLabel: "Delete",
       onAction: () => {
         deleteResearch(humId);
@@ -153,21 +147,14 @@ export function ResearchesList({
     });
   }
 
+
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex flex-col gap-3">
         <ResearchFilters />
 
-        {canCreate && (
-          <Button
-            variant="accent"
-            className="text-center"
-            disabled={hasDummy}
-            onClick={handleAddNew}
-          >
-            Add New
-          </Button>
-        )}
+        {canCreate && <AddNewButton disabled={hasDummy} onClick={handleAddNew} />}
       </div>
 
       <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
@@ -229,8 +216,10 @@ function ListItems({
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
+  const tResearches = useTranslations("admin.researches");
+
   if (allResearches.length === 0) {
-    return <NoItemsMessage>No researches found</NoItemsMessage>;
+    return <NoItemsMessage>{tResearches("empty")}</NoItemsMessage>;
   }
 
   return (
@@ -247,8 +236,9 @@ function ListItems({
             const isDummy = isDummyResearch(research.humId);
 
             const translations = Object.entries(research.title).map(([lang, title]) => ({
-              lang,
-              statuses: { [research.status]: title },
+              lang: lang as Locale,
+              status: research.status,
+              title: title ?? undefined,
             }));
 
             return (

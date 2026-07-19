@@ -70,7 +70,6 @@ const baseResearch = (overrides: Record<string, unknown> = {}) => ({
   datePublished: "2024-01-01",
   dateModified: "2024-01-01",
   status: "published",
-  uids: ["owner-1"],
   ...overrides,
 })
 

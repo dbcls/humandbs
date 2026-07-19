@@ -39,5 +39,11 @@ COPY . .
 ENV HOME=/home/app
 RUN mkdir -p /home/app && chmod 777 /home/app
 
+# Pre-create the assets base dir so the named volume mounted on top of it
+# inherits world-writable perms on first creation. Otherwise Podman may
+# initialize the volume as container-root, blocking the runtime UID
+# (keep-id) from mkdir/write inside it.
+RUN mkdir -p /app/apps/frontend/data && chmod 777 /app/apps/frontend/data
+
 ENTRYPOINT [""]
 CMD ["sleep", "infinity"]

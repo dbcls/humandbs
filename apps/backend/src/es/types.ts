@@ -26,6 +26,7 @@ import {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   CriteriaCanonicalSchema,
+  CRITERIA_CANONICAL_ORDER,
   PolicyCanonicalSchema,
   NormalizedPolicySchema,
   // Searchable schemas
@@ -52,6 +53,7 @@ import {
   ResearchVersionSchema as CrawlerResearchVersionSchema,
   SearchableDatasetSchema,
 } from "../crawler/types"
+import { unescapeMarkdown } from "../crawler/utils/text"
 
 // === Re-export Zod schemas from crawler/types (single source of truth) ===
 
@@ -66,6 +68,7 @@ export {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   CriteriaCanonicalSchema,
+  CRITERIA_CANONICAL_ORDER,
   PolicyCanonicalSchema,
   NormalizedPolicySchema,
   // Searchable schemas
@@ -127,6 +130,29 @@ export type {
   SearchableDataset,
 } from "../crawler/types"
 
+// === Derived-field helpers ===
+
+/**
+ * Flatten experiment.data into a single string for ES full-text indexing
+ * (`dataText` field, copy_to → all_text).
+ *
+ * D11 made BilingualTextValue.text markdown-shaped, so without undoing
+ * turndown's `\[ \] \* \\` escapes the analyzer would index broken tokens
+ * (`\[DRA016393\]` instead of `DRA016393`). The haystack is plain text, so
+ * undo here.
+ */
+export const extractDataText = (
+  data: Record<string, { ja?: { text?: string } | null; en?: { text?: string } | null } | null>,
+): string => {
+  const texts: string[] = []
+  for (const value of Object.values(data)) {
+    if (value == null) continue
+    if (value.ja?.text) texts.push(unescapeMarkdown(value.ja.text))
+    if (value.en?.text) texts.push(unescapeMarkdown(value.en.text))
+  }
+  return texts.join(" ")
+}
+
 // === ES-specific schemas (extensions for ES documents) ===
 // Schemas with differences use .extend() for composition.
 
@@ -154,17 +180,23 @@ export const ResearchStatusSchema = z.enum([
   "draft",
   "review",
   "published",
-  "deleted",
 ])
 export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 
 export const EsResearchSchema = CrawlerResearchSchema.extend({
   status: ResearchStatusSchema
-    .describe("Publication status: 'draft', 'review', 'published', or 'deleted'"),
-  uids: z.array(z.string())
-    .describe("Keycloak user IDs (sub) who can edit this Research"),
+    .describe("Publication status: 'draft', 'review', or 'published'"),
   draftVersion: z.string().nullable()
     .describe("Version being edited (e.g., 'v2'). Null if no editing in progress."),
+  // Short bilingual summaries used by the listing view. Source: Joomla
+  // `humandbs.dbcls.jp/home` (ja article_id=58) and `/en/home` (en=168).
+  // Null when the humId is not listed on the Joomla home page.
+  summaryShort: z.object({
+    methods: BilingualTextValueSchema,
+    typeOfData: BilingualTextValueSchema,
+    targets: BilingualTextValueSchema,
+  }).nullable().optional()
+    .describe("Short bilingual summaries for the listing view (research method / data type / target). Sourced from the Joomla home article."),
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>
 

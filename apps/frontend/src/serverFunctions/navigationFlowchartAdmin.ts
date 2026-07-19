@@ -2,9 +2,10 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
+import { navigationFlowchartConfigSchema } from "@/config/navigationFlowchart.schema";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { auditMutation } from "@/observability/server";
 import {
   NavigationFlowchartConflictError,
   navigationFlowchartRepository,
@@ -62,15 +63,17 @@ export const $saveNavigationFlowchartConfig = createServerFn({ method: "POST" })
     try {
       return {
         ok: true as const,
-        data: await navigationFlowchartRepository.save(data.id, {
-          nameEn: data.nameEn,
-          nameJa: data.nameJa,
-          isEntryPoint: data.isEntryPoint,
-          status: data.status,
-          config: data.config,
-          expectedRevision: data.expectedRevision,
-          userId,
-        }),
+        data: await auditMutation("update", "navigation_flowchart", data.id, () =>
+          navigationFlowchartRepository.save(data.id, {
+            nameEn: data.nameEn,
+            nameJa: data.nameJa,
+            isEntryPoint: data.isEntryPoint,
+            status: data.status,
+            config: data.config,
+            expectedRevision: data.expectedRevision,
+            userId,
+          }),
+        ),
       };
     } catch (error) {
       if (error instanceof NavigationFlowchartConflictError) {
@@ -97,13 +100,15 @@ export const $createNavigationFlowchart = createServerFn({ method: "POST" })
 
     const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
-    return navigationFlowchartRepository.create({
-      nameEn: data.nameEn,
-      nameJa: data.nameJa,
-      isEntryPoint: false,
-      config: { steps: [] },
-      userId,
-    });
+    return auditMutation("create", "navigation_flowchart", undefined, () =>
+      navigationFlowchartRepository.create({
+        nameEn: data.nameEn,
+        nameJa: data.nameJa,
+        isEntryPoint: false,
+        config: { steps: [] },
+        userId,
+      }),
+    );
   });
 
 export const $deleteNavigationFlowchart = createServerFn({ method: "POST" })
@@ -117,6 +122,8 @@ export const $deleteNavigationFlowchart = createServerFn({ method: "POST" })
       return { ok: false as const, code: "HAS_DEPENDENTS" as const, deps };
     }
 
-    await navigationFlowchartRepository.delete(data.id);
+    await auditMutation("delete", "navigation_flowchart", data.id, () =>
+      navigationFlowchartRepository.delete(data.id),
+    );
     return { ok: true as const };
   });

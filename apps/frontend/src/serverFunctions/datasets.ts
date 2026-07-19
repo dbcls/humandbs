@@ -1,5 +1,6 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/router-core";
 import { z } from "zod";
 
 import type {
@@ -11,6 +12,7 @@ import type {
   DatasetUpdateResponse,
   DatasetVersionsListResponse,
   LinkedDatasetsListResponse,
+  LinkedResearchesListResponse,
   UpdateDatasetRequest,
 } from "@humandbs/backend/types";
 import {
@@ -22,37 +24,25 @@ import {
 
 import type { Locale } from "@/config/i18n";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { auditMutation } from "@/observability/server";
+import type { ApiErrorResult } from "@/services/backend";
 import { api, mapApiError } from "@/services/backend";
+import { makeChunks, mergeBatchResults } from "@/utils/batch-utils";
+import { isApiNotFoundError, throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filter-defined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { addDatasetRenderedHtml } from "@/utils/renderedHtml/transforms";
+import type { RenderedDatasetDetailResponse } from "@/utils/renderedHtml/types";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/search-signals";
 import type { DeepOmit } from "@/utils/type-utils";
 
-import { makeChunks, mergeBatchResults } from "../utils/batch-utils";
-
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+  | ApiErrorResult;
 
-export type UpdateDatasetResult =
-  | { ok: true; data: DatasetUpdateResponse }
-  | {
-      ok: false;
-      error: string;
-      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type UpdateDatasetResult = { ok: true; data: DatasetUpdateResponse } | ApiErrorResult;
 
-export type DeleteDatasetResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
-    };
+export type DeleteDatasetResult = { ok: true } | ApiErrorResult;
 
 export const $getDatasetsPaginated = createServerFn()
   .middleware([requestSignalMiddleware])
@@ -122,16 +112,60 @@ const DatasetQuerySchema = z.object({
 
 type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
 
-export const $getDataset = createServerFn({ method: "GET" })
-  .inputValidator(DatasetQuerySchema)
-  .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
+const DatasetParentResearchQuerySchema = z.object({
+  ...DatasetIdParamsSchema.shape,
+  ...LangQuerySchema.shape,
+});
+
+export type DatasetParentResearchQuery = {
+  datasetId: string;
+  lang: Locale;
+};
+
+/** Gets the one research that owns a dataset. */
+export const $getDatasetParentResearch = createServerFn({ method: "GET" })
+  .inputValidator(DatasetParentResearchQuerySchema)
+  .handler<Promise<LinkedResearchesListResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
-    const { datasetId, ...search } = filterDefined(data);
-    return await api.getDataset({
-      params: { datasetId },
-      search,
+    return api.getDatasetParentResearch({
+      params: { datasetId: data.datasetId },
+      search: { lang: data.lang, includeRawHtml: false },
       accessToken: accessToken ?? undefined,
     });
+  });
+
+export function getDatasetParentResearchQueryOptions(query: DatasetParentResearchQuery) {
+  return queryOptions({
+    queryKey: ["datasets", "parentResearch", query],
+    queryFn: () => $getDatasetParentResearch({ data: { ...query, includeRawHtml: false } }),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+}
+
+export const $getDataset = createServerFn({ method: "GET" })
+  .inputValidator(DatasetQuerySchema)
+  .handler<Promise<RenderedDatasetDetailResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    const { datasetId, ...search } = filterDefined(data);
+
+    try {
+      const res = await api.getDataset({
+        params: { datasetId },
+        search: { ...search, includeRawHtml: false },
+        accessToken: accessToken ?? undefined,
+      });
+
+      // Render each experiment.data.* `text` into a frontend-only `renderedHtml`
+      // projection (the currently-broken public path). Legacy `rawHtml` untouched.
+      return addDatasetRenderedHtml(res);
+    } catch (error) {
+      // A missing dataset should render the NotFound component rather than
+      // surfacing a raw API error. `notFound()` is a framework signal the
+      // router (or the route loader) can pick up to render `notFoundComponent`.
+      if (isApiNotFoundError(error)) throw notFound();
+      throwSerializableApiError(error);
+    }
   });
 
 export function getDatasetQueryOptions(query: DatasetQuery) {
@@ -139,6 +173,31 @@ export function getDatasetQueryOptions(query: DatasetQuery) {
     queryKey: ["dataset", "byId", query],
     queryFn: () => $getDataset({ data: query }),
     staleTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Admin "for edit" read fn — parallels {@link $getResearchForEdit}. Requests
+ * `includeRawHtml: true` and runs NO render transform, so the editor receives the
+ * untouched legacy `rawHtml` (the side-channel reference admins rewrite from).
+ */
+export const $getDatasetForEdit = createServerFn({ method: "GET" })
+  .inputValidator(DatasetQuerySchema)
+  .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    const { datasetId, ...search } = filterDefined(data);
+    return await api.getDataset({
+      params: { datasetId },
+      search: { ...search, includeRawHtml: true },
+      accessToken: accessToken ?? undefined,
+    });
+  });
+
+export function getDatasetForEditQueryOptions(query: DatasetQuery) {
+  return queryOptions({
+    queryKey: ["dataset", "byId", "edit", query],
+    queryFn: () => $getDatasetForEdit({ data: query }),
+    staleTime: 0,
   });
 }
 
@@ -212,7 +271,9 @@ export const $createDatasetForResearch = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const created = await api.createDatasetForResearch(data.humId, data.body, accessToken);
+      const created = await auditMutation("create", "dataset", undefined, () =>
+        api.createDatasetForResearch(data.humId, data.body, accessToken),
+      );
       return { ok: true, data: created };
     } catch (error) {
       return mapApiError(error, "Failed to create dataset.");
@@ -232,7 +293,9 @@ export const $updateDataset = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const updated = await api.updateDataset(data.datasetId, data.body, accessToken);
+      const updated = await auditMutation("update", "dataset", data.datasetId, () =>
+        api.updateDataset(data.datasetId, data.body, accessToken),
+      );
       return { ok: true, data: updated };
     } catch (error) {
       return mapApiError(error, "Failed to update dataset.");
@@ -250,7 +313,9 @@ export const $deleteDataset = createServerFn({ method: "POST" })
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      await api.deleteDataset(data.datasetId, accessToken);
+      await auditMutation("delete", "dataset", data.datasetId, () =>
+        api.deleteDataset(data.datasetId, accessToken),
+      );
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete dataset.");

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { XIcon } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { DateTimeRangePicker } from "@/components/DatePicker";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -76,11 +77,12 @@ function TextSearchFilter({
   value: string | undefined;
   onChange: (q: string | undefined) => void;
 }) {
+  const tCommonAdmin = useTranslations("admin.common");
   return (
     <FilterSearchInput
       value={value}
       onChange={onChange}
-      placeholder="Search by title or content…"
+      placeholder={tCommonAdmin("search-by-title-or-content")}
     />
   );
 }
@@ -108,6 +110,7 @@ function DateRangeFilter({
 function TagFilter({ value, onChange }: { value: string[]; onChange: (tagIds: string[]) => void }) {
   const { data: allTags = [] } = useQuery(getTagsQueryOptions());
   const anchor = useComboboxAnchor();
+  const tCommonAdmin = useTranslations("admin.common");
 
   return (
     <Combobox multiple value={value} onValueChange={onChange}>
@@ -126,7 +129,7 @@ function TagFilter({ value, onChange }: { value: string[]; onChange: (tagIds: st
       <ComboboxContent anchor={anchor}>
         <ComboboxList>
           {allTags.length === 0 ? (
-            <div className="py-2 text-center text-muted-foreground text-sm">No tags found</div>
+            <div className="py-2 text-center text-muted-foreground text-sm">{tCommonAdmin("no-tags-found")}</div>
           ) : (
             allTags.map((tag) => (
               <ComboboxItem key={tag.id} value={tag.id}>

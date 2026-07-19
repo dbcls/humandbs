@@ -37,7 +37,7 @@ const canAccessDataset = async (
   const researchDoc = await getResearchDoc(dataset.humId)
   if (!researchDoc) return false
 
-  return canAccessResearchDoc(authUser, researchDoc)
+  return await canAccessResearchDoc(authUser, researchDoc)
 }
 
 export const getDataset = async (
@@ -146,7 +146,7 @@ export const listDatasetVersions = async (
   // Authorization check: verify user can access parent Research (all versions share same humId)
   const firstRow = rows[0]
   const researchDoc = await getResearchDoc(firstRow.humId)
-  if (!researchDoc || !canAccessResearchDoc(authUser, researchDoc)) {
+  if (!researchDoc || !await canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to indicate not found/unauthorized
   }
 
@@ -356,6 +356,46 @@ export const updateDataset = async (
       },
       refresh: "wait_for",
     })
+
+    const result = await getDatasetWithSeqNo(datasetId, version)
+    return result?.doc ?? null
+  } catch (error: unknown) {
+    if (isConflictError(error)) return null
+    throw error
+  }
+}
+
+/**
+ * Patch a published Dataset in-place (no version bump).
+ *
+ * @returns Updated Dataset document, null on conflict
+ */
+export const patchDataset = async (
+  datasetId: string,
+  version: string,
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term" | "humId" | "humVersionId">>,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsDataset | null> => {
+  const esId = `${datasetId}-${version}`
+
+  const hydratedDoc: Record<string, unknown> = {}
+  if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
+  if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
+  if (updates.typeOfData !== undefined) hydratedDoc.typeOfData = updates.typeOfData
+  if (updates.experiments !== undefined) hydratedDoc.experiments = updates.experiments.map(hydrateExperiment)
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.dataset,
+      id: esId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: { doc: hydratedDoc },
+      refresh: "wait_for",
+    })
+
+    await syncDatasetDateModified(datasetId)
 
     const result = await getDatasetWithSeqNo(datasetId, version)
     return result?.doc ?? null
