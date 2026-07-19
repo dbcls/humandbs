@@ -45,7 +45,7 @@ services:
       - ./apps/assitant-api/.env
     volumes:
       - ./apps/assitant-api:/workspace/humandbs-assistant
-      - ./apps/assitant-api/humandbs-assistant-311257b52266.json:/root/.config/gcp/service-account.json:ro
+      - ./apps/assitant-api/gcp-service-account.json:/root/.config/gcp/service-account.json:ro
       - ./admin_uids.json:/workspace/humandbs-assistant/admin_uids.json:ro
     working_dir: /workspace/humandbs-assistant
     command: python -m src.app

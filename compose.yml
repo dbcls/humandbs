@@ -140,6 +140,34 @@ services:
     restart: always
     init: true
 
+  assistant-api:
+    build:
+      context: ./apps/assitant-api
+      dockerfile: Dockerfile
+    container_name: humandbs-${HUMANDBS_ENV}-assistant-api
+    ports:
+      - 3001:8000
+    environment:
+      - TZ=${HUMANDBS_TZ}
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcp/service-account.json
+    env_file:
+      - ./apps/assitant-api/.env
+    volumes:
+      - ./apps/assitant-api:/workspace/humandbs-assistant
+      - ./apps/assitant-api/gcp-service-account.json:/root/.config/gcp/service-account.json:ro
+      - ./admin_uids.json:/workspace/humandbs-assistant/admin_uids.json:ro
+    working_dir: /workspace/humandbs-assistant
+    command: python -m src.app
+    networks:
+      - humandbs-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+    restart: always
+    init: true
+
   elasticsearch:
     build:
       context: docker/elasticsearch
