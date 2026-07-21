@@ -76,25 +76,34 @@ export function VersionCard({
         <ContentHeader>{t("Research.title")}</ContentHeader>
         <h2 className="text">{versionData.title[lang]}</h2>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <div className="sm:columns-2 sm:break-inside-avoid-column [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0">
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.aims")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
-          />
+        <dl className="sm:columns-2 sm:break-inside-avoid-column [&>_div]:break-inside-avoid [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0 [&_dt]:font-extrabold">
+          <div>
+            <dt>{t("Research.aims")}:</dt>
+            <dd>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
+              />
+            </dd>
+          </div>
+          <div>
+            <dt>{t("Research.methods")}:</dt>
+            <dd>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+              />
+            </dd>
+          </div>
 
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.methods")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
-          />
-
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.targets")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
-          />
-        </div>
+          <div>
+            <dt>{t("Research.targets")}:</dt>
+            <Markdown
+              className="text-base"
+              contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+            />
+          </div>
+        </dl>
       </article>
       <Separator className="-mx-4" />
       <section>
