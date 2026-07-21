@@ -414,3 +414,89 @@ describe("searchResearches: platforms projection (structured searchable.platform
     expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
   })
 })
+
+// V-new-version draft rv have `versionReleaseDate: null`. Before the schema
+// widen this made `searchResearches` throw when a draft rv appeared in the
+// top-N result set (`order=desc` in production). The two tests below lock in
+// the two invariants that fix touches: (1) the mget parse no longer throws,
+// (2) the response projection still drops draft versions for anonymous
+// viewers (draft-release.md invariant "一般ユーザーには見えない状態を保証する").
+describe("searchResearches: V-draft rv (versionReleaseDate=null) handling", () => {
+  const buildResearchWithDraftVersion = () => createMockResearchDoc({
+    humId: "hum0006",
+    latestVersion: "v5",
+    draftVersion: "v8",
+    status: "draft",
+    versionIds: ["hum0006-v1", "hum0006-v5", "hum0006-v8"],
+  })
+
+  const setupMgetWithDraftRv = () => {
+    // 1st mget: research-version index — 2 published + 1 draft (null rd).
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [
+        {
+          found: true,
+          _id: "hum0006-v1",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v1",
+            version: "v1",
+            versionReleaseDate: "2020-01-01",
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+        {
+          found: true,
+          _id: "hum0006-v5",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v5",
+            version: "v5",
+            versionReleaseDate: "2024-01-01",
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+        {
+          found: true,
+          _id: "hum0006-v8",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v8",
+            version: "v8",
+            versionReleaseDate: null, // ← draft
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+      ],
+    }))
+    // 2nd mget: dataset index — empty.
+    mockEsMget.mockImplementationOnce(async () => ({ docs: [] }))
+  }
+
+  it("does not throw when a top-N Research owns a draft rv (500 regression)", async () => {
+    const doc = buildResearchWithDraftVersion()
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMgetWithDraftRv()
+
+    const result = await searchResearches({ ...baseQuery, order: "desc" as const, sort: "dateModified" as const }, null)
+
+    expect(result.data).toHaveLength(1)
+  })
+
+  it("drops draft version from response.versions[] for anonymous viewer", async () => {
+    const doc = buildResearchWithDraftVersion()
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMgetWithDraftRv()
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    const versions = result.data[0].versions.map(v => v.version)
+    expect(versions).toEqual(["v1", "v5"])
+    expect(versions).not.toContain("v8")
+    // status is downgraded to published for anonymous viewers
+    expect(result.data[0].status).toBe("published")
+  })
+})

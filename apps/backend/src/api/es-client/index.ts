@@ -13,6 +13,7 @@ export {
   buildStatusFilter,
   canAccessResearchDoc,
   getPublishedHumIds,
+  getAccessibleHumsWithLatest,
   checkRequestedStatus,
   validateStatusTransition,
   canPerformTransition,

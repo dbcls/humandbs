@@ -24,8 +24,8 @@ const researchVersionFields = {
     .describe("Research version identifier (e.g., 'hum0001-v1')"),
   version: z.string()
     .describe("Version number (e.g., 'v1', 'v2')"),
-  versionReleaseDate: z.string()
-    .describe("ISO 8601 date when this version was released"),
+  versionReleaseDate: z.string().nullable()
+    .describe("ISO 8601 date when this version was released. Null for drafts."),
   releaseNote: BilingualTextValueSchema
     .describe("Bilingual release note describing changes in this version"),
   datasets: z.array(EsDatasetSchema)

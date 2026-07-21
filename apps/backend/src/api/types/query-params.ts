@@ -227,7 +227,8 @@ export const ResearchSummarySchema = z.object({
         version: z.string().describe("Version identifier (e.g., 'v1', 'v2')"),
         releaseDate: z
           .string()
-          .describe("ISO 8601 date when this version was released"),
+          .nullable()
+          .describe("ISO 8601 date when this version was released. Null for drafts."),
       }),
     )
     .describe("Available versions of this Research"),

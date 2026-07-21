@@ -206,6 +206,81 @@ describe("listDatasetVersions (IT-DATASET-17)", () => {
   })
 })
 
+// V-new-version draft (draft-release.md) leak regression: parent Research has
+// a published latestVersion (say v5) plus a draft v8. Dataset docs attached
+// to the draft rv carry `humVersionId=hum{NNNN}-v8` — anonymous viewers must
+// NOT see those. Owner/admin still see everything.
+describe("V-draft dataset leak (draft-release.md invariant)", () => {
+  const publishedDataset = createMockDatasetDoc({
+    datasetId: "JGAD000004",
+    version: "v5",
+    humId: "hum0006",
+    humVersionId: "hum0006-v5",
+  })
+  const draftDataset = createMockDatasetDoc({
+    datasetId: "JGAD000004",
+    version: "v6",
+    humId: "hum0006",
+    humVersionId: "hum0006-v8",
+  })
+  const parentWithDraft = createMockResearchDoc({
+    humId: "hum0006", status: "draft", latestVersion: "v5", draftVersion: "v8",
+  })
+
+  it("getDataset (no version): skips draft, returns latest visible for anonymous", async () => {
+    // ES returns draft first (versionSortSpec desc), published second.
+    mockEsSearch.mockResolvedValueOnce({
+      hits: { hits: [{ _source: draftDataset }, { _source: publishedDataset }] },
+    })
+    // canAccessDataset is called twice (once per inner_hit loop iteration).
+    mockGetResearchDoc.mockResolvedValue(parentWithDraft)
+
+    const result = await dataset.getDataset("JGAD000004", {}, null)
+
+    expect(result?.version).toBe("v5")
+    expect(result?.humVersionId).toBe("hum0006-v5")
+  })
+
+  it("getDataset (specific draft version): returns null for anonymous", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: draftDataset })
+    mockGetResearchDoc.mockResolvedValueOnce(parentWithDraft)
+
+    const result = await dataset.getDataset("JGAD000004", { version: "v6" }, null)
+
+    expect(result).toBeNull()
+  })
+
+  it("getDataset (specific draft version): admin sees the draft", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: draftDataset })
+
+    const result = await dataset.getDataset("JGAD000004", { version: "v6" }, createMockAuthUser({ isAdmin: true }))
+
+    expect(result?.version).toBe("v6")
+  })
+
+  it("listDatasetVersions: filters out draft version for anonymous", async () => {
+    mockEsSearch.mockResolvedValueOnce({
+      hits: { hits: [{ _source: draftDataset }, { _source: publishedDataset }] },
+    })
+    mockGetResearchDoc.mockResolvedValueOnce(parentWithDraft)
+
+    const result = await dataset.listDatasetVersions("JGAD000004", null)
+
+    expect(result?.map(v => v.version)).toEqual(["v5"])
+  })
+
+  it("listDatasetVersions: admin sees draft version too", async () => {
+    mockEsSearch.mockResolvedValueOnce({
+      hits: { hits: [{ _source: draftDataset }, { _source: publishedDataset }] },
+    })
+    mockGetResearchDoc.mockResolvedValueOnce(parentWithDraft)
+
+    const result = await dataset.listDatasetVersions("JGAD000004", createMockAuthUser({ isAdmin: true }))
+
+    expect(result?.map(v => v.version)).toEqual(["v6", "v5"])
+  })
+})
+
 // === createDataset ===
 
 describe("createDataset", () => {

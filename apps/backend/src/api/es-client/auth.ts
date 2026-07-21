@@ -121,6 +121,45 @@ export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<str
   return buckets.map(b => b.key)
 }
 
+/**
+ * Like `getPublishedHumIds`, but also returns each accessible Research's
+ * `latestVersion`. The caller uses this to gate Dataset visibility per
+ * humVersionId (draft-release drafts have `humVersionId > latestVersion`
+ * and must stay hidden even though their parent Research is otherwise
+ * publicly visible).
+ *
+ * - admin: returns `null` (no filter, all Datasets visible)
+ * - public/authenticated non-admin: `Map<humId, latestVersion | null>`
+ *   - For N-new-hum drafts owned by the caller, `latestVersion` is `null`;
+ *     `isHumVersionAccessible` will hide them from non-owner viewers via a
+ *     separate ownership check upstream.
+ */
+export const getAccessibleHumsWithLatest = async (
+  authUser: AuthUser | null,
+): Promise<Map<string, string | null> | null> => {
+  if (authUser?.isAdmin) return null
+
+  const statusFilter = await buildStatusFilter(authUser)
+  if (!statusFilter) return null
+
+  // ES `_search` with `_source: ["humId", "latestVersion"]` — bounded at 10k
+  // Research docs (production has ~500). No pagination needed.
+  const res = await esClient.search<Pick<EsResearch, "humId" | "latestVersion">>({
+    index: ES_INDEX.research,
+    size: 10000,
+    query: statusFilter,
+    _source: ["humId", "latestVersion"],
+    track_total_hits: false,
+  })
+
+  const map = new Map<string, string | null>()
+  for (const hit of res.hits.hits) {
+    if (!hit._source) continue
+    map.set(hit._source.humId, hit._source.latestVersion ?? null)
+  }
+  return map
+}
+
 // === Status Transition Validation ===
 
 /**

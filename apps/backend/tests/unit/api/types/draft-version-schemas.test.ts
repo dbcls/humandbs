@@ -7,7 +7,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { ResearchDetailSchema } from "@/api/types/views"
-import { EsResearchSchema } from "@/es/types"
+import { EsResearchSchema, ResearchVersionSchema } from "@/es/types"
 
 import { createMockResearchDoc } from "../helpers/mock-es"
 
@@ -42,6 +42,43 @@ describe("EsResearchSchema draftVersion", () => {
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.latestVersion).toBeNull()
+    }
+  })
+})
+
+describe("ResearchVersionSchema versionReleaseDate", () => {
+  // Draft ResearchVersion docs (produced by .claude/draft-release.md ingest)
+  // carry `versionReleaseDate: null` because the version has not yet been
+  // released. Widening the schema to accept null is what lets
+  // `searchResearches` mget over versionIds without throwing when a draft
+  // rv lands in the top-N — the original 500-on-order=desc bug.
+  const baseVersion = {
+    humId: "hum0006",
+    humVersionId: "hum0006-v8",
+    version: "v8",
+    datasets: [],
+    releaseNote: { ja: null, en: null },
+  }
+
+  it("accepts versionReleaseDate as string (published rv)", () => {
+    const result = ResearchVersionSchema.safeParse({
+      ...baseVersion,
+      versionReleaseDate: "2024-01-01",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.versionReleaseDate).toBe("2024-01-01")
+    }
+  })
+
+  it("accepts versionReleaseDate as null (draft rv)", () => {
+    const result = ResearchVersionSchema.safeParse({
+      ...baseVersion,
+      versionReleaseDate: null,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.versionReleaseDate).toBeNull()
     }
   })
 })
