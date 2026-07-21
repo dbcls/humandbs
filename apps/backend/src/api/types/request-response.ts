@@ -80,7 +80,8 @@ export const ApiDatasetSchema = z.object({
     .describe("Parent Research version identifier (e.g., 'hum0001-v1')"),
   releaseDate: z
     .string()
-    .describe("ISO 8601 date when the dataset was first released"),
+    .nullable()
+    .describe("ISO 8601 date when the dataset was first released. Null for drafts."),
   criteria: CriteriaCanonicalSchema.describe(
     "Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'",
   ),
