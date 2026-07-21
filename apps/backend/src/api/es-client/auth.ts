@@ -12,6 +12,7 @@ import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { getOwnedHumIds, isOwner } from "@/api/services/ownership"
 import type { AuthUser, EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
+import { parseVersionNum } from "@/api/utils/version"
 
 // === Authorization Filters ===
 
@@ -158,6 +159,44 @@ export const getAccessibleHumsWithLatest = async (
     map.set(hit._source.humId, hit._source.latestVersion ?? null)
   }
   return map
+}
+
+/**
+ * Build a Dataset-side visibility filter from `humLatestMap` + `ownedHumIdSet`.
+ *
+ * Enumerates every accessible humVersionId as a `terms` filter so pagination
+ * (`from + size`) and cardinality (`uniq_ids`) stay accurate — the previous
+ * post-filter approach dropped whole collapse groups after ES had already
+ * counted them, inflating `pagination.total` and thinning deep pages.
+ *
+ * Rules:
+ * - owner humId → `terms: humId` (all versions visible, no need to enumerate)
+ * - non-owner humId with `latestVersion != null` → enumerate `v1..latestVersion`
+ * - non-owner humId with `latestVersion == null` (N-new-hum draft) → excluded
+ *
+ * Returns a `__no_match__` sentinel when nothing is accessible so the query
+ * fails closed (same idiom used at search.ts around the requestedStatus branch).
+ */
+export const buildAccessibleVersionFilter = (
+  humLatestMap: Map<string, string | null>,
+  ownedHumIdSet: Set<string>,
+): estypes.QueryDslQueryContainer => {
+  const humVersionIds: string[] = []
+  const ownedHumIds: string[] = []
+  for (const [humId, latestVersion] of humLatestMap) {
+    if (ownedHumIdSet.has(humId)) {
+      ownedHumIds.push(humId)
+      continue
+    }
+    if (latestVersion === null) continue
+    const latestN = parseVersionNum(latestVersion)
+    for (let v = 1; v <= latestN; v++) humVersionIds.push(`${humId}-v${v}`)
+  }
+  const should: estypes.QueryDslQueryContainer[] = []
+  if (humVersionIds.length > 0) should.push({ terms: { humVersionId: humVersionIds } })
+  if (ownedHumIds.length > 0) should.push({ terms: { humId: ownedHumIds } })
+  if (should.length === 0) return { term: { humId: "__no_match__" } }
+  return { bool: { should, minimum_should_match: 1 } }
 }
 
 // === Status Transition Validation ===

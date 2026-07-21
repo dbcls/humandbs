@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildStatusFilter, canAccessResearchDoc, getAccessibleHumsWithLatest } from "@/api/es-client/auth"
+import { buildAccessibleVersionFilter, buildStatusFilter, canAccessResearchDoc, getAccessibleHumsWithLatest } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -64,7 +64,7 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import { isHumVersionAccessible, isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
+import { isOwnerOrAdminSync, parseVersionNum } from "@/api/utils/version"
 import { unescapeMarkdown } from "@/crawler/utils/text"
 import { CRITERIA_CANONICAL_ORDER } from "@/es/types"
 import type { BilingualText, BilingualTextValue, CriteriaCanonical, PlatformInfo } from "@/es/types"
@@ -555,12 +555,13 @@ export const searchDatasets = async (
   // Build query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
-  // Apply authorization filter: Dataset visibility depends on parent Research status.
-  // Fetch each accessible Research's `latestVersion` at the same time so we can
-  // ceiling-filter Dataset collapse groups per-humId below (draft-release drafts
-  // sit on humVersionId > latestVersion; parent Research is public but drafts
-  // must stay hidden). Admin: map is null (no filter).
+  // Apply authorization filter: Dataset visibility depends on parent Research
+  // status. Fetch each accessible Research's `latestVersion` at the same time
+  // so we can ceiling-filter Dataset docs at query time — draft-release drafts
+  // sit on humVersionId > latestVersion and must stay hidden. Admin gets no
+  // filter (map is null).
   const humLatestMap = await getAccessibleHumsWithLatest(authUser)
+  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
   if (humLatestMap !== null) {
     if (humLatestMap.size === 0) {
       // No accessible Research, return empty result
@@ -570,7 +571,11 @@ export const searchDatasets = async (
         facets: includeFacets ? {} : undefined,
       }
     }
-    must.push({ terms: { humId: Array.from(humLatestMap.keys()) } })
+    // Enumerate accessible humVersionIds so `from + size` pagination and
+    // `uniq_ids` cardinality both see the exact same document set. Post-
+    // filtering the collapse's inner_hits would drop groups after ES had
+    // already sized/counted them, thinning deep pages and inflating total.
+    must.push(buildAccessibleVersionFilter(humLatestMap, ownedHumIdSet))
   }
 
   must.push(...buildDatasetFilterClauses(params))
@@ -586,12 +591,6 @@ export const searchDatasets = async (
     [key: string]: estypes.AggregationsAggregate
   }
 
-  // `inner_hits.size` needs headroom over 1 so that when the top version by
-  // `versionSortSpec("desc")` is a draft (humVersionId > parent.latestVersion),
-  // we still have older accessible versions in-hand to pick as the collapse
-  // representative. 30 is well above the observed per-datasetId version depth.
-  const INNER_HITS_SIZE = humLatestMap === null ? 1 : 30
-
   const res = await esClient.search<EsDataset, Aggs>({
     index: ES_INDEX.dataset,
     from,
@@ -601,7 +600,7 @@ export const searchDatasets = async (
       field: "datasetId",
       inner_hits: {
         name: "latest",
-        size: INNER_HITS_SIZE,
+        size: 1,
         sort: [
           versionSortSpec("desc"),
           { releaseDate: { order: "desc" as const } },
@@ -621,35 +620,14 @@ export const searchDatasets = async (
   interface InnerHit { _id: string; _source?: EsDataset }
   interface Hit { inner_hits?: { latest?: { hits: { hits: InnerHit[] } } } }
 
-  // Owner: their own drafts must remain visible in their own search results.
-  // Compute the owned-humId set once and use `isOwnerOrAdminSync` per collapse
-  // group to select the ownership bit passed into `isHumVersionAccessible`.
-  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
-
-  // Pick the top *accessible* inner_hit per collapse group. For admin
-  // (humLatestMap === null) the group's first hit — the raw latest — is used
-  // directly, preserving prior behaviour. Groups where every inner_hit is a
-  // draft (draft_only JGADs) are dropped from the result for non-owner viewers.
+  // Access filter is applied query-side, so the one inner_hit per collapse group
+  // is guaranteed accessible (sort picks the latest visible version).
   const hits = (res.hits.hits as Hit[]).flatMap(hit => {
-    const innerHits = hit.inner_hits?.latest?.hits.hits ?? []
-    for (const inner of innerHits) {
-      if (!inner._source) continue
-      const dataset = EsDatasetSchema.parse(inner._source)
-      if (humLatestMap === null) return [dataset]
-      const latestVersion = humLatestMap.get(dataset.humId) ?? null
-      const ownerOrAdmin = isOwnerOrAdminSync(authUser, ownedHumIdSet, dataset.humId)
-      if (isHumVersionAccessible(dataset.humVersionId, latestVersion, ownerOrAdmin)) return [dataset]
-    }
-    return []
+    const inner = hit.inner_hits?.latest?.hits.hits[0]
+    if (!inner?._source) return []
+    return [EsDatasetSchema.parse(inner._source)]
   })
 
-  // NOTE: `total` = distinct datasetIds matching the ES query, which slightly
-  // overcounts by the number of draft_only JGADs (a datasetId whose *only*
-  // versions live in a draft ResearchVersion). This is the trade-off for
-  // hiding drafts via post-filter rather than a query-time humVersionId
-  // ceiling: `uniq_ids` cardinality cannot see the post-filter. The gap is
-  // bounded by the number of draft_only JGADs (~158 across all V-drafts) and
-  // stays cosmetic (visible items are correct, only the count is inflated).
   const total = esTotal(res.aggregations?.uniq_ids?.value ?? 0)
   const facets = includeFacets ? extractFacets(res.aggregations) : undefined
 
