@@ -178,7 +178,8 @@ async def get_application_status(task_id: str):
 
         status = "completed" if result.get("assessment") else "processing"
         assessment = await create_assessment_report(result)
-        return {"status": status, "assessment": assessment, **result}
+        # Keep derived status authoritative even when YAML still has old status.
+        return {**result, "status": status, "assessment": assessment}
 
     # Still processing
     return {"status": "processing", "task_id": task_id}
