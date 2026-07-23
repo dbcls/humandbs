@@ -171,12 +171,12 @@ services:
       - DDBJ_SEARCH_API_BASE_URL=${ASSISTANT_DDBJ_SEARCH_API_BASE_URL:-}
       - HUMANDBS_AUTH_ISSUER_URL=${ASSISTANT_HUMANDBS_AUTH_ISSUER_URL:-${HUMANDBS_AUTH_ISSUER_URL:-}}
       - HUMANDBS_AUTH_CLIENT_ID=${ASSISTANT_HUMANDBS_AUTH_CLIENT_ID:-${HUMANDBS_AUTH_CLIENT_ID:-}}
-      - HUMANDBS_BACKEND_ADMIN_UID_FILE=${ASSISTANT_HUMANDBS_BACKEND_ADMIN_UID_FILE:-/workspace/humandbs-assistant/admin_uids.json}
+      - HUMANDBS_BACKEND_ADMIN_UID_FILE=/workspace/humandbs-assistant/admin_uids.json
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcp/service-account.json
     volumes:
       - ./apps/assistant-api:/workspace/humandbs-assistant
       - ./apps/assistant-api/gcp-service-account.json:/root/.config/gcp/service-account.json:ro
-      - ./admin_uids.json:/workspace/humandbs-assistant/admin_uids.json:ro
+      - ${HUMANDBS_ADMIN_UID_FILE:-./admin_uids.json}:/workspace/humandbs-assistant/admin_uids.json:ro
     working_dir: /workspace/humandbs-assistant
     command: python -m src.app
     networks:
