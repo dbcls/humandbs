@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds } from "@/api/es-client/auth"
+import { buildAccessibleVersionFilter, buildStatusFilter, canAccessResearchDoc, getAccessibleHumsWithLatest } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -555,11 +555,15 @@ export const searchDatasets = async (
   // Build query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
-  // Apply authorization filter: Dataset visibility depends on parent Research status
-  // Get humIds of accessible Research, then filter Datasets by those humIds
-  const accessibleHumIds = await getPublishedHumIds(authUser)
-  if (accessibleHumIds !== null) {
-    if (accessibleHumIds.length === 0) {
+  // Apply authorization filter: Dataset visibility depends on parent Research
+  // status. Fetch each accessible Research's `latestVersion` at the same time
+  // so we can ceiling-filter Dataset docs at query time — draft-release drafts
+  // sit on humVersionId > latestVersion and must stay hidden. Admin gets no
+  // filter (map is null).
+  const humLatestMap = await getAccessibleHumsWithLatest(authUser)
+  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
+  if (humLatestMap !== null) {
+    if (humLatestMap.size === 0) {
       // No accessible Research, return empty result
       return {
         data: [],
@@ -567,7 +571,11 @@ export const searchDatasets = async (
         facets: includeFacets ? {} : undefined,
       }
     }
-    must.push({ terms: { humId: accessibleHumIds } })
+    // Enumerate accessible humVersionIds so `from + size` pagination and
+    // `uniq_ids` cardinality both see the exact same document set. Post-
+    // filtering the collapse's inner_hits would drop groups after ES had
+    // already sized/counted them, thinning deep pages and inflating total.
+    must.push(buildAccessibleVersionFilter(humLatestMap, ownedHumIdSet))
   }
 
   must.push(...buildDatasetFilterClauses(params))
@@ -612,11 +620,13 @@ export const searchDatasets = async (
   interface InnerHit { _id: string; _source?: EsDataset }
   interface Hit { inner_hits?: { latest?: { hits: { hits: InnerHit[] } } } }
 
-  const hits = (res.hits.hits as Hit[])
-    .flatMap(hit => hit.inner_hits?.latest?.hits.hits ?? [])
-    .map(inner => inner._source)
-    .filter((src): src is EsDataset => !!src)
-    .map(src => EsDatasetSchema.parse(src))
+  // Access filter is applied query-side, so the one inner_hit per collapse group
+  // is guaranteed accessible (sort picks the latest visible version).
+  const hits = (res.hits.hits as Hit[]).flatMap(hit => {
+    const inner = hit.inner_hits?.latest?.hits.hits[0]
+    if (!inner?._source) return []
+    return [EsDatasetSchema.parse(inner._source)]
+  })
 
   const total = esTotal(res.aggregations?.uniq_ids?.value ?? 0)
   const facets = includeFacets ? extractFacets(res.aggregations) : undefined

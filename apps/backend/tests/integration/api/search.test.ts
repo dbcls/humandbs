@@ -295,6 +295,8 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
     })
     expect(status).toBe(200)
     expect(json.meta.pagination.page).toBe(1)
+    // Post-fix pagination invariant: data slice size equals min(limit, total).
+    expect(json.data.length).toBe(Math.min(5, json.meta.pagination.total))
   })
 
   itWithEs("IT-SEARCH-18: POST /dataset/search filters AND across fields shrinks the result vs single-filter OR", async () => {
