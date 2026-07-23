@@ -15,6 +15,7 @@ import {
   approveResearch,
   createDatasetForResearch,
   createDraftResearch,
+  createNewVersion,
   getResearchSeqNo,
   purgeResearch,
   setOwnerUids,
@@ -1011,6 +1012,212 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       const titleAny = json.data.title as Record<string, unknown> | undefined
       expect(titleAny?.ja).toBeNull()
       expect(titleAny?.en).toBeNull()
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+})
+
+// ============================================================================
+// IT-RESEARCH-LEAK-*: draft-of-published edits must not leak to public viewers
+// ============================================================================
+//
+// Regression suite for the pre-2026-07 bug where PUT /research/{humId}/update
+// wrote content fields (title / summary / dataProvider / researchProject /
+// grant / relatedPublication) straight onto the Research root doc — the same
+// doc merged into every public GET response — so a v2 draft edit surfaced
+// against v1 for non-owner viewers. Fix: content is a per-version snapshot
+// on the RV doc; the Research root only mirrors `latestVersion`.
+//
+// Setup shared by these tests: create → own → submit → approve v1 with a
+// distinct v1 title/summary, then versions/new + PUT v2 with a *different*
+// title/summary. Public reads must still return the v1 content.
+
+describe("IT-RESEARCH-LEAK-*: draft content isolation", () => {
+  const V1_TITLE = { ja: "v1 の公開タイトル", en: "v1 published title" }
+  const V1_SUMMARY = {
+    aims: { ja: { text: "v1 の目的" }, en: { text: "v1 aim" } },
+    methods: { ja: { text: "v1 の方法" }, en: { text: "v1 method" } },
+    targets: { ja: { text: "v1 の対象" }, en: { text: "v1 target" } },
+    url: { ja: [], en: [] },
+  }
+  const V2_DRAFT_TITLE = { ja: "v2 draft 編集中", en: "v2 draft in progress" }
+  const V2_DRAFT_SUMMARY = {
+    aims: { ja: { text: "v2 draft の目的" }, en: { text: "v2 draft aim" } },
+    methods: { ja: { text: "v2 draft の方法" }, en: { text: "v2 draft method" } },
+    targets: { ja: { text: "v2 draft の対象" }, en: { text: "v2 draft target" } },
+    url: { ja: [], en: [] },
+  }
+
+  const put = async (
+    token: string,
+    humId: string,
+    body: Record<string, unknown>,
+    seqNo: number,
+    primaryTerm: number,
+  ): Promise<Response> => {
+    return getApp().request(url(`/research/${humId}/update`), {
+      method: "PUT",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, _seq_no: seqNo, _primary_term: primaryTerm }),
+    })
+  }
+
+  /**
+   * Arrange: v1 published with V1_TITLE/V1_SUMMARY, then v2 draft with
+   * V2_DRAFT_TITLE/V2_DRAFT_SUMMARY sitting on top of it.
+   */
+  const setupPublishedV1WithDraftV2Edits = async (admin: string, nonAdmin: string, ownerUsername: string): Promise<string> => {
+    const created = await createDraftResearch(admin)
+    const humId = created.humId
+    const owned = await setOwnerUids(admin, humId, [ownerUsername])
+
+    // Populate v1 content on the draft, then submit/approve to publish it.
+    const putV1 = await put(nonAdmin, humId, { title: V1_TITLE, summary: V1_SUMMARY }, owned.seqNo, owned.primaryTerm)
+    expect(putV1.status).toBe(200)
+    await submitForReview(nonAdmin, humId)
+    await approveResearch(admin, humId)
+
+    // Cut v2 draft and edit it — this is the write that used to leak.
+    await createNewVersion(nonAdmin, humId)
+    const v2Seq = await getResearchSeqNo(admin, humId)
+    const putV2 = await put(nonAdmin, humId, { title: V2_DRAFT_TITLE, summary: V2_DRAFT_SUMMARY }, v2Seq.seqNo, v2Seq.primaryTerm)
+    expect(putV2.status).toBe(200)
+
+    return humId
+  }
+
+  itWithIsolationIndex("IT-RESEARCH-LEAK-01: public GET /research/{humId} returns v1 content while v2 is being edited", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      humId = await setupPublishedV1WithDraftV2Edits(admin, nonAdmin, username!)
+
+      const res = await getApp().request(url(`/research/${humId}?includeRawHtml=true`))
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(json.data.version).toBe("v1")
+      expect(json.data.title).toEqual(V1_TITLE)
+      expect(json.data.summary.aims.ja?.text).toBe("v1 の目的")
+      expect(json.data.summary.aims.en?.text).toBe("v1 aim")
+      // The draft edits must NOT be observable through the public view.
+      expect(json.data.title.ja).not.toBe(V2_DRAFT_TITLE.ja)
+      expect(json.data.summary.aims.ja?.text).not.toBe(V2_DRAFT_SUMMARY.aims.ja.text)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-LEAK-02: public GET /research/{humId}?version=v1 returns v1's historical content", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      humId = await setupPublishedV1WithDraftV2Edits(admin, nonAdmin, username!)
+
+      const res = await getApp().request(url(`/research/${humId}?version=v1`))
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(json.data.version).toBe("v1")
+      expect(json.data.title).toEqual(V1_TITLE)
+      expect(json.data.summary.methods.ja?.text).toBe("v1 の方法")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-LEAK-03: public GET /research/batch returns v1 content (no draft leak)", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      humId = await setupPublishedV1WithDraftV2Edits(admin, nonAdmin, username!)
+
+      const res = await getApp().request(url(`/research/batch?ids=${humId}`))
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as BatchResponse<ResearchDetail>
+      const row = json.data.find((r) => r.humId === humId)
+      expect(row).toBeDefined()
+      expect(row!.version).toBe("v1")
+      expect(row!.title).toEqual(V1_TITLE)
+      expect(row!.summary.targets.en?.text).toBe("v1 target")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-LEAK-04: owner sees the draft content on the draft view (control)", async ({ admin, nonAdmin }) => {
+    // Sanity check: the draft is not disappearing — the owner still sees the
+    // v2 draft edits when they hit the detail endpoint with no ?version.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      humId = await setupPublishedV1WithDraftV2Edits(admin, nonAdmin, username!)
+
+      const res = await getApp().request(url(`/research/${humId}`), { headers: authHeaders(nonAdmin) })
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(json.data.version).toBe("v2")
+      expect(json.data.title).toEqual(V2_DRAFT_TITLE)
+      expect(json.data.summary.aims.ja?.text).toBe("v2 draft の目的")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-CONTENT-01: approve of v2 promotes the draft content to the public view", async ({ admin, nonAdmin }) => {
+    // After approving v2, public GET must switch from v1 content to v2
+    // content — proving the root snapshot syncs on approve.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      humId = await setupPublishedV1WithDraftV2Edits(admin, nonAdmin, username!)
+
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      const res = await getApp().request(url(`/research/${humId}`))
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(json.data.version).toBe("v2")
+      expect(json.data.title).toEqual(V2_DRAFT_TITLE)
+      expect(json.data.summary.methods.en?.text).toBe("v2 draft method")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-CONTENT-02: patch (published PUT) updates both root and latestVersion RV", async ({ admin, nonAdmin }) => {
+    // With status=published (no v2 draft), a PUT is treated as an in-place
+    // patch: content lands on both the Research root and RV[latestVersion=v1].
+    // Public detail (default) and ?version=v1 must both return the patched
+    // content — proving they share a source.
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+      const putV1 = await put(nonAdmin, humId, { title: V1_TITLE, summary: V1_SUMMARY }, owned.seqNo, owned.primaryTerm)
+      expect(putV1.status).toBe(200)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      // Patch the published version in place.
+      const patchTitle = { ja: "patch 適用後", en: "patched" }
+      const patchSeq = await getResearchSeqNo(admin, humId)
+      const patch = await put(nonAdmin, humId, { title: patchTitle }, patchSeq.seqNo, patchSeq.primaryTerm)
+      expect(patch.status).toBe(200)
+
+      // Root path (default GET) returns the patched title.
+      const rootRes = await getApp().request(url(`/research/${humId}`))
+      const rootJson = (await rootRes.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(rootJson.data.title).toEqual(patchTitle)
+
+      // Explicit ?version=v1 (reads via RV) also returns the patched title
+      // — proving the RV was updated in the same operation.
+      const rvRes = await getApp().request(url(`/research/${humId}?version=v1`))
+      const rvJson = (await rvRes.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
+      expect(rvJson.data.title).toEqual(patchTitle)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

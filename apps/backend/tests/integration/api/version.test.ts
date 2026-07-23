@@ -474,4 +474,98 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
       if (humId) await purgeResearch(admin, humId)
     }
   })
+
+  // ==========================================================================
+  // IT-VERSION-CONTENT-*: per-version content snapshot invariants
+  // ==========================================================================
+  //
+  // versions/new must copy the current published RV's content onto the new
+  // draft RV so the draft starts from the published snapshot without perturbing
+  // the Research root. Historical version reads (?version=v1) must keep
+  // returning v1's content even after v2 draft edits.
+
+  itWithIsolationIndex("IT-VERSION-CONTENT-01: versions/new copies content from the current latestVersion RV", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+
+      // Populate v1 with content and publish it.
+      const app = getApp()
+      const v1Title = { ja: "v1 のタイトル", en: "v1 title" }
+      const v1Aims = { ja: { text: "v1 の目的" }, en: { text: "v1 aim" } }
+      const putV1 = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: v1Title,
+          summary: { aims: v1Aims, methods: { ja: null, en: null }, targets: { ja: null, en: null }, url: { ja: [], en: [] } },
+          _seq_no: owned.seqNo,
+          _primary_term: owned.primaryTerm,
+        }),
+      })
+      expect(putV1.status).toBe(200)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      // Cut v2 draft — content should mirror v1.
+      const created2 = await createNewVersion(nonAdmin, humId)
+      expect(created2.draftVersion).toBe("v2")
+
+      // Owner GET default → draftVersion=v2 → RV v2, which inherits v1 content.
+      const draftGet = await app.request(url(`/research/${humId}`), { headers: authHeaders(nonAdmin) })
+      const draftJson = (await draftGet.json()) as SingleReadOnlyResponse<{ version: string; title: unknown; summary: { aims: { ja: { text: string } | null } } }>
+      expect(draftJson.data.version).toBe("v2")
+      expect(draftJson.data.title).toEqual(v1Title)
+      expect(draftJson.data.summary.aims.ja?.text).toBe("v1 の目的")
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-VERSION-CONTENT-02: GET /research/{humId}?version=v1 keeps returning v1 content even after v2 draft edits", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+      const v1Title = { ja: "v1 の履歴", en: "v1 historical" }
+      const app = getApp()
+      const putV1 = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ title: v1Title, _seq_no: owned.seqNo, _primary_term: owned.primaryTerm }),
+      })
+      expect(putV1.status).toBe(200)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      // v2 draft with a different title.
+      await createNewVersion(nonAdmin, humId)
+      const v2Seq = await getResearchSeqNo(admin, humId)
+      const putV2 = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: { ja: "v2 draft", en: "v2 draft" },
+          _seq_no: v2Seq.seqNo,
+          _primary_term: v2Seq.primaryTerm,
+        }),
+      })
+      expect(putV2.status).toBe(200)
+
+      // ?version=v1 must still return the historical v1 title (RV[v1] is
+      // untouched by the v2 PUT).
+      const rvGet = await app.request(url(`/research/${humId}?version=v1`), { headers: authHeaders(admin) })
+      const rvJson = (await rvGet.json()) as SingleReadOnlyResponse<{ version: string; title: unknown }>
+      expect(rvJson.data.version).toBe("v1")
+      expect(rvJson.data.title).toEqual(v1Title)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
 })

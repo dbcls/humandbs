@@ -68,6 +68,50 @@ export const transformResearch = (doc: Record<string, unknown>): Record<string, 
 })
 
 /**
+ * ResearchVersion transform: fan-out per-version content from sibling Research
+ * docs. `structured-json/research-version/*.json` only carries version
+ * metadata (releaseNote, datasets, dates), so this transform pulls the
+ * six content fields (title / summary / dataProvider / researchProject /
+ * grant / relatedPublication) from `structured-json/research/{humId}.json`
+ * and stamps them on every RV doc for the same humId. Historical versions
+ * inherit the current published content — the same limitation the
+ * production backfill has.
+ *
+ * Fields already present on the RV doc are left untouched, so a future
+ * per-version source layout (RV JSONs that carry their own content) can
+ * override the fan-out per doc without changing this pipeline.
+ */
+export const makeResearchVersionContentTransform = (
+  researchRaw: { fileName: string; data: unknown }[],
+): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
+  const contentByHumId = new Map<string, Record<string, unknown>>()
+  for (const { data } of researchRaw) {
+    const r = data as Record<string, unknown> | null | undefined
+    if (!r || typeof r.humId !== "string") continue
+    contentByHumId.set(r.humId, {
+      title: r.title,
+      summary: r.summary,
+      dataProvider: r.dataProvider,
+      researchProject: r.researchProject,
+      grant: r.grant,
+      relatedPublication: r.relatedPublication,
+    })
+  }
+
+  return (doc) => {
+    const humId = doc.humId
+    if (typeof humId !== "string") return doc
+    const content = contentByHumId.get(humId)
+    if (!content) return doc
+    const out: Record<string, unknown> = { ...doc }
+    for (const key of ["title", "summary", "dataProvider", "researchProject", "grant", "relatedPublication"]) {
+      if (out[key] === undefined) out[key] = content[key]
+    }
+    return out
+  }
+}
+
+/**
  * Build a Dataset transform that stamps `dateModified` (the max
  * versionReleaseDate across a datasetId's versions) onto every version doc.
  * Denormalizing this version-invariant date lets the collapsed dataset listing
@@ -292,8 +336,12 @@ const main = async () => {
 
   // Index documents (no lang suffix in IDs)
   await bulkIndex("research", researchRaw, EsResearchSchema, (d) => idResearch(d.humId), transformResearch)
-  await bulkIndex("researchVersion", researchVersionRaw, ResearchVersionSchema, (d) =>
-    idResearchVersion(d.humId, d.version),
+  await bulkIndex(
+    "researchVersion",
+    researchVersionRaw,
+    ResearchVersionSchema,
+    (d) => idResearchVersion(d.humId, d.version),
+    makeResearchVersionContentTransform(researchRaw),
   )
   await bulkIndex(
     "dataset",

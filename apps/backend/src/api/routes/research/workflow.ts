@@ -8,7 +8,7 @@ import type { Context } from "hono"
 
 import { ConflictError } from "@/api/errors"
 import { validateStatusTransition } from "@/api/es-client/auth"
-import { updateResearchStatus } from "@/api/es-client/research"
+import { syncResearchRootFromVersion, updateResearchStatus } from "@/api/es-client/research"
 import { singleResponse } from "@/api/helpers/response"
 import type { EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 
@@ -80,6 +80,16 @@ const createStatusTransitionHandler = (
     const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm, versionUpdates)
     if (!updated) {
       throw new ConflictError()
+    }
+
+    // On approve, sync the Research root content from the newly-published RV
+    // so search / listing / public detail all serve the just-approved version.
+    // Non-atomic with the status update: if this throws, status has already
+    // flipped and the root still holds the previous latestVersion content —
+    // safe from a public-visibility standpoint (no draft leak), and the sync
+    // can be re-run manually to catch up.
+    if (action === "approve" && versionUpdates?.latestVersion) {
+      await syncResearchRootFromVersion(humId, versionUpdates.latestVersion)
     }
 
     const responseData = {

@@ -24,6 +24,24 @@ import type {
 import type { BilingualTextValueRequest } from "@/api/types/request-schemas"
 import { hydrateBilingualTextValue } from "@/api/utils/hydrate-raw-html"
 
+/**
+ * Extract per-version content snapshot from either a ResearchVersion
+ * (SSOT after migration) or the Research root (fallback for pre-migration
+ * RV docs whose content fields are null). Prefer the RV when populated so
+ * a v2 draft doesn't clobber v1's snapshot with root's current state.
+ */
+const pickContentForNewVersion = (
+  latestRv: ResearchVersion | null,
+  research: EsResearch,
+) => ({
+  title: latestRv?.title ?? research.title,
+  summary: latestRv?.summary ?? research.summary,
+  dataProvider: latestRv?.dataProvider ?? research.dataProvider,
+  researchProject: latestRv?.researchProject ?? research.researchProject,
+  grant: latestRv?.grant ?? research.grant,
+  relatedPublication: latestRv?.relatedPublication ?? research.relatedPublication,
+})
+
 // === ResearchVersion Retrieval ===
 
 export const getResearchVersion = async (
@@ -148,14 +166,16 @@ export const createResearchVersion = async (
   const newVersion = `v${currentVersionNum + 1}`
   const newHumVersionId = `${humId}-${newVersion}`
 
-  // If datasets not provided, copy from latest version
-  let datasetsToUse = datasets
-  if (datasetsToUse === undefined) {
-    const latestVersion = await getResearchVersion(humId, {})
-    datasetsToUse = latestVersion?.datasets ?? []
-  }
+  // Fetch the current latest RV (source of both dataset refs and content
+  // snapshot). `getResearchVersion(humId, {})` picks the highest-version doc,
+  // which is the published one before we mint the new draft.
+  const latestRv = await getResearchVersion(humId, {})
+  const datasetsToUse = datasets ?? latestRv?.datasets ?? []
+  const content = pickContentForNewVersion(latestRv, research)
 
-  // Create new ResearchVersion document
+  // Create new ResearchVersion document — carries the copied content so the
+  // draft starts from the published version's snapshot and PUT /update writes
+  // land on this RV doc without perturbing the Research root.
   const versionDoc: ResearchVersion = {
     humId,
     humVersionId: newHumVersionId,
@@ -163,6 +183,7 @@ export const createResearchVersion = async (
     versionReleaseDate: now,
     datasets: datasetsToUse,
     releaseNote: hydrateBilingualTextValue(releaseNote),
+    ...content,
   }
 
   // Index the version document first

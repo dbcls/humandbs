@@ -96,8 +96,27 @@ export {
   SearchableDatasetSchema,
 }
 
-// Re-export ResearchVersionSchema (identical to crawler)
-export const ResearchVersionSchema = CrawlerResearchVersionSchema
+// ResearchVersionSchema extends the crawler shape with per-version content
+// snapshots so that content fields (title, summary, dataProvider,
+// researchProject, grant, relatedPublication) live on the version doc and
+// stop leaking between versions on the Research root. Fields are
+// `nullable().optional()` so pre-migration RV docs (produced by the crawler
+// with no content) still validate; the loader's `transformResearchVersion`
+// backfills them from the sibling Research JSON.
+export const ResearchVersionSchema = CrawlerResearchVersionSchema.extend({
+  title: BilingualTextSchema.nullable().optional()
+    .describe("Per-version snapshot of the Research title. Null on RV docs indexed before per-version content was introduced."),
+  summary: SummarySchema.nullable().optional()
+    .describe("Per-version snapshot of the Research summary (aims / methods / targets / url)."),
+  dataProvider: z.array(PersonSchema).nullable().optional()
+    .describe("Per-version snapshot of the Research data providers."),
+  researchProject: z.array(ResearchProjectSchema).nullable().optional()
+    .describe("Per-version snapshot of the related research projects."),
+  grant: z.array(GrantSchema).nullable().optional()
+    .describe("Per-version snapshot of the funding grants."),
+  relatedPublication: z.array(PublicationSchema).nullable().optional()
+    .describe("Per-version snapshot of the related publications."),
+})
 export type ResearchVersion = z.infer<typeof ResearchVersionSchema>
 
 // Re-export types for convenience

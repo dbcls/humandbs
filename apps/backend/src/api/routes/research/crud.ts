@@ -188,15 +188,21 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const seqNo = body._seq_no
     const primaryTerm = body._primary_term
 
-    const updated = await updateResearch(humId, {
-      title: body.title,
-      summary: body.summary,
-      dataProvider: body.dataProvider,
-      researchProject: body.researchProject,
-      grant: body.grant,
-      relatedPublication: body.relatedPublication,
-      summaryShort: body.summaryShort,
-    }, seqNo, primaryTerm)
+    const updated = await updateResearch(
+      humId,
+      { status: research.status, latestVersion: research.latestVersion, draftVersion: research.draftVersion },
+      {
+        title: body.title,
+        summary: body.summary,
+        dataProvider: body.dataProvider,
+        researchProject: body.researchProject,
+        grant: body.grant,
+        relatedPublication: body.relatedPublication,
+        summaryShort: body.summaryShort,
+      },
+      seqNo,
+      primaryTerm,
+    )
 
     if (!updated) {
       throw new ConflictError()

@@ -90,6 +90,7 @@ import {
   ReadTypeSchema,
   ResearchProjectSchema,
   ResearchStatusSchema,
+  ResearchVersionSchema,
   SearchableDatasetSchema,
   SearchableExperimentFieldsSchema,
   SexSchema,
@@ -148,6 +149,7 @@ export const registerOpenAPISchemas = (app: OpenAPIHono): void => {
   r.register("Dataset", CrawlerDatasetSchema)
   r.register("SearchableDataset", SearchableDatasetSchema)
   r.register("EsResearch", EsResearchSchema)
+  r.register("EsResearchVersion", ResearchVersionSchema)
   r.register("EsDataset", EsDatasetSchema)
 
   // --- API views ---

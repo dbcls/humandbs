@@ -148,6 +148,18 @@ published 済み Research の draft cycle 中に **初めて** Dataset を更新
 | `GET /research/{humId}/versions/{version}` | パス指定版 |
 | `PUT /dataset/{datasetId}/update` （version 未指定） | 親 Research の draft cycle に応じて bump |
 
+### per-version content
+
+`title` / `summary` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` は per-version snapshot を持つ ([data-model.md § Research と ResearchVersion のフィールド分担](data-model.md))。
+
+- `GET /research/{humId}?version=vN` と `GET /research/{humId}/versions/{version}` は指定 version の historical content を返す (RV[vN] の snapshot)。v2 draft の編集は v1 view には反映されない
+- `GET /research/{humId}` (version 未指定) は上のバージョン解決に従い、public には latestVersion の content を返す
+- `PUT /research/{humId}/update` は状態別に書き分ける ([data-model.md § 書き分けルール](data-model.md)):
+  - draft, `latestVersion!=null`: content は RV[draftVersion] のみに書き込み、Research root は不変
+  - published: content は Research root と RV[latestVersion] 両方に書き込み (in-place patch)
+- `POST /research/{humId}/versions/new` は latestVersion の RV content を新 draft RV に copy し、draft の開始状態を作る
+- `POST /research/{humId}/approve` は RV[新 latestVersion] の content を Research root に copy し、search / listing を最新に揃える
+
 ### 関連 OpenAPI 参照
 
 - tag: `Research Versions`, `Dataset Versions`
