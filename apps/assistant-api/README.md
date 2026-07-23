@@ -23,16 +23,16 @@
 
 - ルートの `.env`
   - `cp env.development .env`
-- `apps/assitant-api/.env`
-  - `apps/assitant-api/.env.example` を元に作成
-- `apps/assitant-api/gcp-service-account.json`
+- `apps/assistant-api/.env`
+  - `apps/assistant-api/.env.example` を元に作成
+- `apps/assistant-api/gcp-service-account.json`
   - Document AI などで使用する GCP サービスアカウント
 - ルートの `admin_uids.json`
   - `admin_uids.template.json` を元に作成
 
 ## キャッシュを削除する
 
-LLM 応答キャッシュを消して再評価したい場合は、`apps/assitant-api` で次を実行する。
+LLM 応答キャッシュを消して再評価したい場合は、`apps/assis1tant-api` で次を実行する。
 
 ```bash
 rm -f langchain_cache.db

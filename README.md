@@ -49,7 +49,7 @@
 ```plaintext
 apps/
 ├── backend/       # REST API + クローラー
-├── assitant-api/  # 申請支援ワークフロー API
+├── assistant-api/  # 申請支援ワークフロー API
 └── frontend/      # React フロントエンド
 packages/
 └── eslint-config/ # 共有 ESLint 設定
@@ -57,7 +57,7 @@ packages/
 
 | ディレクトリ     | 説明                  | README                            |
 | ---------------- | --------------------- | --------------------------------- |
-| `apps/assitant-api/` | 申請支援アシスタントAI API | [README](apps/assitant-api/README.md) |
+| `apps/assistant-api/` | 申請支援アシスタントAI API | [README](apps/assistant-api/README.md) |
 | `apps/backend/`  | REST API + クローラー | [README](apps/backend/README.md)  |
 | `apps/frontend/` | React フロントエンド  | [README](apps/frontend/README.md) |
 

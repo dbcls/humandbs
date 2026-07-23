@@ -50,7 +50,7 @@ def _get_admin_uid_file() -> str | None:
     if configured:
         return configured
 
-    # auth.py -> src -> assitant-api -> apps -> monorepo root
+    # auth.py -> src -> assistant-api -> apps -> monorepo root
     fallback = Path(__file__).resolve().parents[3] / "admin_uids.json"
     if fallback.exists():
         return str(fallback)
