@@ -1,45 +1,46 @@
-# Human Database Submission Assistant
+# HumanDBs Assistant API
 
-FastAPI implementation of the Human Database Submission Assistant workflow, which automates the evaluation of human database access applications.
+申請ワークフローの支援を行う Python / FastAPI サブプロジェクト。申請書 PDF と添付資料を解析し、Web検索を伴うLLMを使って評価結果を生成する。
 
-## Features
+## 主な機能
 
-- PDF document extraction to parse application forms
-- Web scraping integration with HumanDBS to retrieve dataset information
-- CrossRef API integration for analyzing research publications
-- AI-powered evaluation of application compatibility
-- Asynchronous processing with background tasks
+- 申請書 PDF / 添付書類の抽出と構造化
+- HumanDBs のデータセット情報取得
+- 文献・研究者情報の補助調査
+- LLM を使った申請内容の評価とレポート生成
 
-## Update
+## リポジトリ内での位置づけ
+- Compose サービス名: `assistant-api`
+- コンテナ内ポート: `8000`
+- ホスト公開ポート: `3001`
+- Frontend からは `http://assistant-api:8000/api` を経由して利用する
 
-- To update the application with the latest changes, use the following command:
+全体の開発環境セットアップはリポジトリルートの `README.md` を参照。この README は assistant-api 固有の補足に絞る。
 
-  ```
-  git pull origin <branch-name>
-  ```
+## 開発環境で起動する
 
-- Remove cached LLM responses to ensure that the application uses the latest logic:
+### 前提ファイル
 
-  ```
-  rm langchain_cache.db
-  rm -r google_genai_cache
-  ```
+- ルートの `.env`
+  - `cp env.development .env`
+- `apps/assitant-api/.env`
+  - `apps/assitant-api/.env.example` を元に作成
+- `apps/assitant-api/gcp-service-account.json`
+  - Document AI などで使用する GCP サービスアカウント
+- ルートの `admin_uids.json`
+  - `admin_uids.template.json` を元に作成
 
-- Rebuild and restart the application:
-  ```
-  docker compose up --build -d
-  ```
+## キャッシュを削除する
 
-## API Endpoints
+LLM 応答キャッシュを消して再評価したい場合は、`apps/assitant-api` で次を実行する。
 
-See http://localhost:3001/docs for details on available endpoints.
+```bash
+rm -f langchain_cache.db
+rm -rf google_genai_cache
+```
 
-## Debugging
+必要ならその後にリポジトリルートで再起動する。
 
-- To run the application in debug mode, use the following command:
-
-  ```
-  bash start_debugger.sh
-  ```
-
-- This will start the application with debugpy. To start debugging, open VS Code and attach to the debugger using `Docker (FastAPI)` configuration.
+```bash
+docker compose up -d assistant-api
+```
