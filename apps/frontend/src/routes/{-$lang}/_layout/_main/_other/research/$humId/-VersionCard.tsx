@@ -71,7 +71,6 @@ export function VersionCard({
         </CardCaption>
       }
     >
-      {/*grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 */}
       <article>
         <ContentHeader>{t("Research.title")}</ContentHeader>
         <h2 className="text">{versionData.title[lang]}</h2>
@@ -423,17 +422,16 @@ const researchProjectsColumns = [
   researchProjectsColumnsHelper.accessor("url", {
     id: "researchProjectId",
     header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.URL"),
-    cell: (ctx) => (
-      <a
-        href={
-          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ?? undefined
-        }
-        className="break-all text-sm"
-      >
-        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ||
-          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ||
-          "URL"}
-      </a>
-    ),
+    cell: (ctx) => {
+      const url = ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url;
+      if (!url) return null;
+      return (
+        <a href={url} className="break-all text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ||
+            url ||
+            "URL"}
+        </a>
+      );
+    },
   }),
 ];
