@@ -32,6 +32,22 @@ export function toDateString(date: Date | string | undefined): string | undefine
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+export function toDateStringInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export function toDate(dateString: string | undefined | null): Date | undefined {
   if (!dateString) return undefined;
   const [year, month, day] = dateString.split("-").map(Number);
