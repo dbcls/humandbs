@@ -29,6 +29,11 @@ function normalizeRelativeAssetPath(input: string) {
   return normalized;
 }
 
+export function normalizeAssetFolderPath(input: string) {
+  const folderPath = input.trim();
+  return folderPath ? normalizeRelativeAssetPath(folderPath) : "";
+}
+
 function getAbsoluteAssetPath(relativePath: string) {
   const ASSET_DIR = getAssetDir();
   return path.join(ASSET_DIR, relativePath);
@@ -173,7 +178,7 @@ export const $uploadAsset = createServerFn({ method: "POST" })
       throw new Error("Invalid file");
     }
 
-    const folderPath = normalizeRelativeAssetPath(
+    const folderPath = normalizeAssetFolderPath(
       assetFolderPathSchema.parse((data.get("folderPath") as string) ?? ""),
     );
 
