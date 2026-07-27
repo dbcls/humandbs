@@ -129,13 +129,14 @@ function RouteComponent() {
           </ErrorResetBoundary>
         </Card>
       </section>
-      <div className="w-full">
-        {/*<Suspense
+      {/*<div className="w-full">
+       <Suspense
           fallback={<div className="flex h-40 w-full items-center justify-center">Loading...</div>}
         >
           <LazyFrontStats />
-        </Suspense>*/}
+        </Suspense>
       </div>
+      */}
     </section>
   );
 }
