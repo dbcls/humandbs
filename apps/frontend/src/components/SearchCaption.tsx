@@ -3,8 +3,8 @@ import { useTranslations } from "use-intl";
 
 import { startTransition, useEffect, useState } from "react";
 
-import { Input } from "@/components/Input";
 import { CustomSearchIcon } from "@/components/CustomSearchIcon";
+import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ export function SearchCaption({
   onCopy,
   onCsv,
   onExcel,
+  isExporting = false,
   filterButtonRef,
   sortControl,
 }: {
@@ -32,6 +33,7 @@ export function SearchCaption({
   onCopy?: () => void;
   onCsv?: () => void;
   onExcel?: () => void;
+  isExporting?: boolean;
   filterButtonRef?: React.Ref<HTMLButtonElement>;
   sortControl?: React.ReactNode;
 }) {
@@ -69,13 +71,28 @@ export function SearchCaption({
       <div className="flex flex-wrap items-center gap-4">
         {sortControl}
         <div className="flex gap-1">
-          <Button variant={"captionAction"} size={"captionAction"} onClick={onCopy}>
+          <Button
+            variant={"captionAction"}
+            size={"captionAction"}
+            onClick={onCopy}
+            disabled={isExporting}
+          >
             {t("copy")}
           </Button>
-          <Button variant={"captionAction"} size={"captionAction"} onClick={onCsv}>
+          <Button
+            variant={"captionAction"}
+            size={"captionAction"}
+            onClick={onCsv}
+            disabled={isExporting}
+          >
             CSV
           </Button>
-          <Button variant={"captionAction"} size={"captionAction"} onClick={onExcel}>
+          <Button
+            variant={"captionAction"}
+            size={"captionAction"}
+            onClick={onExcel}
+            disabled={isExporting}
+          >
             Excel
           </Button>
         </div>
@@ -109,7 +126,7 @@ export function SearchCaption({
                   variant="accent"
                   size="icon"
                   type="button"
-                  className="pointer-events-auto aspect-square h-10 rounded-full p-0 flex items-center justify-center"
+                  className="pointer-events-auto flex aspect-square h-10 items-center justify-center rounded-full p-0"
                   onClick={handleSearch}
                   aria-label={t("search")}
                 >
@@ -128,7 +145,8 @@ export function SearchCaption({
             variant="captionAction"
             size="captionAction"
             className={cn("flex items-center gap-2 transition-colors", {
-              "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white": isPanelOpen,
+              "border-secondary bg-secondary text-white hover:bg-secondary hover:text-white":
+                isPanelOpen,
             })}
             onClick={onFilterClick}
             type="button"

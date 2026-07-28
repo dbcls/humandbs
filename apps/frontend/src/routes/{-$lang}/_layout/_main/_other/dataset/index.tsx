@@ -4,7 +4,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useLocale, useTranslations } from "use-intl";
 
-import { startTransition, useEffect, useMemo, useRef } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
 
@@ -31,8 +31,9 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
+import { $exportDatasets } from "@/serverFunctions/searchExports";
 import { buildFacetSections } from "@/utils/build-facet-sections";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/export-table";
+import { copyExportResponse, downloadExportResponse } from "@/utils/export-table";
 import { isCancelledError } from "@/utils/is-cancelled-error";
 import { datasetListQuerySchema } from "@/utils/query-params";
 
@@ -71,32 +72,28 @@ function RouteComponent() {
   const { lang } = Route.useRouteContext();
   const { filters, setFilters } = useFilters(Route.id);
 
-  const { data } = useDatasetsSearchQuery();
+  const [isExporting, setIsExporting] = useState(false);
 
-  const exportData = useMemo(() => {
-    type Row = DatasetSearchResponse["data"][number];
-    const columns: { header: string; value: (row: Row) => string }[] = [
-      { header: t("datasetId"), value: (row) => row.datasetId },
-      { header: t("releaseDate"), value: (row) => row.releaseDate ?? "" },
-      {
-        header: t("typeOfData"),
-        value: (row) => row.typeOfData?.[lang] ?? "",
-      },
-      {
-        header: t("experiments"),
-        value: (row) =>
-          row.experiments
-            .map((e) => e.header?.[lang]?.text ?? "")
-            .filter(Boolean)
-            .join("; "),
-      },
-      { header: t("criteria"), value: (row) => row.criteria ?? "" },
-    ];
-    return {
-      headers: columns.map((c) => c.header),
-      rows: (data?.data ?? []).map((row) => columns.map((c) => c.value(row))),
-    };
-  }, [data, lang, t]);
+  async function exportAll(format: "copy" | "csv" | "excel") {
+    if (isExporting) return;
+
+    const { page: _page, limit: _limit, ...exportSearch } = search;
+    setIsExporting(true);
+    try {
+      const response = await $exportDatasets({
+        data: { format, search: { ...exportSearch, lang } },
+      });
+      if (format === "copy") {
+        await copyExportResponse(response);
+      } else {
+        await downloadExportResponse(response);
+      }
+    } catch (error) {
+      console.error("Failed to export dataset table:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   const filtersCount = Object.keys(filters.filters || {}).length;
   return (
@@ -114,16 +111,17 @@ function RouteComponent() {
           resultsCount={<ResultsCount />}
           filtersCount={filtersCount}
           isPanelOpen={isOpen}
+          isExporting={isExporting}
           onFilterClick={onFilterClick}
           sortControl={<DatasetSortSelect />}
           onCopy={() => {
-            copyTableData(exportData);
+            void exportAll("copy");
           }}
           onCsv={() => {
-            downloadCsv(exportData, "dataset-list");
+            void exportAll("csv");
           }}
           onExcel={() => {
-            downloadExcel(exportData, "dataset-list");
+            void exportAll("excel");
           }}
         />
       )}
