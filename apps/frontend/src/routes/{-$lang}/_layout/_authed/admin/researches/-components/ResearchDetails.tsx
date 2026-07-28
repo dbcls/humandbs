@@ -3,6 +3,8 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   LucideCheck,
+  LucideChevronDown,
+  LucideCopy,
   LucideEye,
   LucidePlus,
   LucideRotateCcw,
@@ -13,7 +15,7 @@ import {
 } from "lucide-react";
 import { IntlProvider, useTranslations } from "use-intl";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
 import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
@@ -30,10 +32,17 @@ import { humanize } from "@/components/form-context/schema-form/utils";
 import { InfoBadge } from "@/components/InfoBadge";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { messages } from "@/config/messages";
 import { useCan } from "@/hooks/useCan";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
@@ -48,6 +57,8 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 import { researchLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 import { useResearchPreviewRenderedHtml } from "@/utils/renderedHtml/usePreviewRenderedHtml";
+import type { ReviewLinkTarget } from "@/utils/reviewLink";
+import { buildReviewLink } from "@/utils/reviewLink";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { PreviewDialog } from "../../-components/PreviewDialog";
@@ -218,6 +229,11 @@ export function ResearchDetails({
 
   const tResearches = useTranslations("admin.researches");
   const tCommon = useTranslations("admin.common");
+  const tSharedCommon = useTranslations("common");
+  const [, copy] = useCopyToClipboard();
+  const [isCopyingReviewLink, setIsCopyingReviewLink] = useState(false);
+  const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
+  const copyLabelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -455,6 +471,22 @@ export function ResearchDetails({
     });
   }
 
+  async function handleCopyReviewLink(target: ReviewLinkTarget) {
+    setError(null);
+    setIsCopyingReviewLink(true);
+
+    try {
+      const didCopy = await copy(buildReviewLink(window.location.origin, humId, target));
+      if (!didCopy) return;
+
+      if (copyLabelTimerRef.current) clearTimeout(copyLabelTimerRef.current);
+      setReviewLinkCopied(true);
+      copyLabelTimerRef.current = setTimeout(() => setReviewLinkCopied(false), 2000);
+    } finally {
+      setIsCopyingReviewLink(false);
+    }
+  }
+
   const [defaultValues, setDefaultValues] = useState(() => researchValues);
 
   const form = useAppForm({
@@ -651,29 +683,85 @@ export function ResearchDetails({
 
         {/* Research-wide workflow actions — apply to the research as a whole,
           independent of which tab (metadata/datasets) is active. */}
-        <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {isViewingDraft && canSubmit && (
-            <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
-              <LucideSend className="mr-2 size-5" />
-              {isSubmitting ? tResearches("submitting") : tResearches("submit-for-review")}
-            </Button>
-          )}
-          {isViewingDraft && canReject && (
-            <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
-              <LucideX className="mr-2 size-5" />
-              {isRejecting ? tResearches("rejecting") : tResearches("reject")}
-            </Button>
-          )}
-          {isViewingDraft && canApprove && (
-            <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
-              <LucideCheck className="mr-2 size-5" />
-              {isApproving ? tResearches("approving") : tResearches("approve")}
-            </Button>
-          )}
-          {canUnpublish && (
-            <Button variant="outline" size="lg" onClick={handleUnpublish} disabled={isUnpublishing}>
-              {isUnpublishing ? "Unpublishing…" : "Unpublish"}
-            </Button>
+        <div className="mx-5 mt-5 flex shrink-0 flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isViewingDraft && canSubmit && (
+              <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
+                <LucideSend className="mr-2 size-5" />
+                {isSubmitting ? tResearches("submitting") : tResearches("submit-for-review")}
+              </Button>
+            )}
+            {isViewingDraft && canReject && (
+              <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
+                <LucideX className="mr-2 size-5" />
+                {isRejecting ? tResearches("rejecting") : tResearches("reject")}
+              </Button>
+            )}
+            {isViewingDraft && canApprove && (
+              <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
+                <LucideCheck className="mr-2 size-5" />
+                {isApproving ? tResearches("approving") : tResearches("approve")}
+              </Button>
+            )}
+            {canUnpublish && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleUnpublish}
+                disabled={isUnpublishing}
+              >
+                {isUnpublishing ? "Unpublishing…" : "Unpublish"}
+              </Button>
+            )}
+          </div>
+          {researchValues.status === "review" && canApprove && (
+            <div className="inline-flex">
+              <Button
+                variant="outline"
+                size="default"
+                className="rounded-r-none border-r-0 px-3 py-1.5"
+                onClick={() => void handleCopyReviewLink("detail")}
+                disabled={isCopyingReviewLink}
+              >
+                <LucideCopy className="mr-1.5 size-4" />
+                <span className="grid">
+                  <span className="invisible col-start-1 row-start-1">
+                    {tResearches("copy-review-link")}
+                  </span>
+                  <span className="col-start-1 row-start-1">
+                    {isCopyingReviewLink
+                      ? tResearches("copying-review-link")
+                      : reviewLinkCopied
+                        ? tSharedCommon("copied")
+                        : tResearches("copy-review-link")}
+                  </span>
+                </span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="rounded-l-none px-2 py-1.5"
+                    aria-label={tResearches("copy-review-link")}
+                    disabled={isCopyingReviewLink}
+                  >
+                    <LucideChevronDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => void handleCopyReviewLink("detail")}>
+                    {tResearches("copy-research-detail-link")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleCopyReviewLink("list")}>
+                    {tResearches("copy-research-list-link")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleCopyReviewLink("releases")}>
+                    {tResearches("copy-research-releases-link")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>
