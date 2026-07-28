@@ -255,8 +255,9 @@ describe("linkDatasetToResearch (IT-VERSION-11)", () => {
     const result = await rv.linkDatasetToResearch("hum0001", "JGAD000003", "v1")
 
     expect(result).toEqual([{ datasetId: "JGAD000003", version: "v1" }])
-    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: { datasets: { datasetId: string; version: string }[] } } }
+    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: { datasets: { datasetId: string; version: string }[] }; detect_noop?: boolean } }
     expect(updateArgs.body.doc.datasets).toEqual([{ datasetId: "JGAD000003", version: "v1" }])
+    expect(updateArgs.body.detect_noop).toBe(false)
   })
 
   it("is idempotent when the dataset is already linked", async () => {

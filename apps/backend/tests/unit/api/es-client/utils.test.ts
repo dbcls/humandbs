@@ -4,7 +4,7 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
-import { escapeEsWildcard } from "@/api/es-client/utils"
+import { escapeEsWildcard, lockedUpdateBody } from "@/api/es-client/utils"
 
 describe("escapeEsWildcard", () => {
   it("escapes `*`, `?`, and `\\`", () => {
@@ -111,5 +111,17 @@ describe("escapeEsWildcard", () => {
       ),
       { numRuns: 500 },
     )
+  })
+})
+
+describe("lockedUpdateBody", () => {
+  it("wraps the partial doc unchanged", () => {
+    const doc = { dateModified: "2026-07-28", title: { ja: "T", en: "T" } }
+
+    expect(lockedUpdateBody(doc).doc).toBe(doc)
+  })
+
+  it("disables noop detection so a diff-free write still advances _seq_no", () => {
+    expect(lockedUpdateBody({ dateModified: "2026-07-28" }).detect_noop).toBe(false)
   })
 })

@@ -17,6 +17,7 @@ import {
   linkDatasetToResearch,
   unlinkDatasetFromResearch,
 } from "@/api/es-client/research-version"
+import { lockedUpdateBody } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
 import { EsDatasetSchema } from "@/api/types"
 import type { AuthUser, CreateDatasetRequest, DatasetVersionItem, EsDataset, ResearchDetail, UpdateDatasetRequest } from "@/api/types"
@@ -379,9 +380,7 @@ export const updateDataset = async (
       id: esId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: hydratedDoc,
-      },
+      body: lockedUpdateBody(hydratedDoc),
       refresh: "wait_for",
     })
 
@@ -419,7 +418,7 @@ export const patchDataset = async (
       id: esId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: { doc: hydratedDoc },
+      body: lockedUpdateBody(hydratedDoc),
       refresh: "wait_for",
     })
 
@@ -491,7 +490,7 @@ const bumpDatasetVersion = async (
       id: draftHumVersionId,
       if_seq_no: parentSeqNo,
       if_primary_term: parentPrimaryTerm,
-      body: { doc: { datasets: newDatasets } },
+      body: lockedUpdateBody({ datasets: newDatasets }),
       refresh: "wait_for",
     })
   } catch (error) {

@@ -11,7 +11,7 @@ import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
 import { getResearchVersion } from "@/api/es-client/research-version"
-import { mgetMap } from "@/api/es-client/utils"
+import { lockedUpdateBody, mgetMap } from "@/api/es-client/utils"
 import {
   EsDatasetSchema,
   EsResearchSchema,
@@ -394,7 +394,7 @@ export const updateResearch = async (
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: { doc: rootDoc },
+      body: lockedUpdateBody(rootDoc),
       refresh: "wait_for",
     })
   } catch (error: unknown) {
@@ -508,9 +508,7 @@ export const updateResearchStatus = async (
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: updateDoc,
-      },
+      body: lockedUpdateBody(updateDoc),
       refresh: "wait_for",
     })
 

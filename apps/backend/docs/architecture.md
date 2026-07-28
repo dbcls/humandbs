@@ -364,6 +364,11 @@ version bump 経路（`bumpDatasetVersion`）は published 済み Research の d
 1. GET でリソースを取得すると、レスポンスの `meta` に `_seq_no` と `_primary_term` が含まれる
 2. 更新リクエスト（PUT）時に、取得時の値を送信する
 3. サーバー側で値を照合し、不一致の場合は `409 Conflict` を返す
+4. 照合を通った更新は、書き込む内容が既存ドキュメントと同一でも ES に書き込み、`_seq_no` を必ず進める
+
+最後の 1 点は ES の noop 検出（差分ゼロの update をスキップする挙動）を切ることで満たす。スキップされると `_seq_no` が据え置かれ、使い終わったロック値が次の更新でも照合を通ってしまうため、同時編集が両方成功してしまう。Research の draft 編集は root ドキュメントに日付粒度の `dateModified` しか書かない（本文は ResearchVersion 側に書く）ので、同日 2 回目以降の編集は常にこの状態に当たる。
+
+この責務は `es-client/utils.ts § lockedUpdateBody` に集約し、`if_seq_no` を伴う update はすべてこれを経由する。
 
 ## エラーレスポンス
 

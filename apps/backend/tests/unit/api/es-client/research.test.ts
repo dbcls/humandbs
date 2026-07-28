@@ -220,6 +220,43 @@ describe("updateResearch", () => {
     expect(updateArgs.if_primary_term).toBe(1)
   })
 
+  it("advances the lock on a draft edit whose root write is identical to the stored doc", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({
+      found: true,
+      _source: {
+        humId: "hum0001",
+        url: { ja: "u", en: "u" },
+        title: { ja: "T", en: "T" },
+        summary: { aims: { ja: null, en: null }, methods: { ja: null, en: null }, targets: { ja: null, en: null }, url: { ja: [], en: [] } },
+        dataProvider: [],
+        researchProject: [],
+        grant: [],
+        relatedPublication: [],
+        controlledAccessUser: [],
+        versionIds: ["hum0001-v1"],
+        latestVersion: null,
+        draftVersion: "v1",
+        datePublished: null,
+        dateModified: TODAY,
+        status: "draft",
+      },
+      _seq_no: 5,
+      _primary_term: 1,
+    })
+
+    await research.updateResearch("hum0001", nNewCtx, { title: { ja: "new", en: "new" } }, 4, 1)
+
+    // Draft content goes to the RV doc, so the root write carries date-granular
+    // dateModified alone — already equal to the stored value on a same-day edit.
+    // ES must still write it, otherwise _seq_no stalls and the spent lock keeps
+    // validating.
+    const rootUpdate = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown>; detect_noop?: boolean } }
+    expect(Object.keys(rootUpdate.body.doc)).toEqual(["dateModified"])
+    expect(rootUpdate.body.doc.dateModified).toBe(TODAY)
+    expect(rootUpdate.body.detect_noop).toBe(false)
+  })
+
   it("returns null on optimistic-lock failure (IT-RESEARCH-14)", async () => {
     mockEsUpdate.mockRejectedValue(optimisticLockError())
 

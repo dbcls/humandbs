@@ -365,10 +365,12 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     expect(result).not.toBeNull()
     expect(result?.version).toBe("v1")
 
-    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { if_seq_no: number; if_primary_term: number; body: { doc: Record<string, unknown> } }
+    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { if_seq_no: number; if_primary_term: number; body: { doc: Record<string, unknown>; detect_noop?: boolean } }
     expect(updateArgs.if_seq_no).toBe(5)
     expect(updateArgs.if_primary_term).toBe(2)
     expect(updateArgs.body.doc.releaseDate).toBe("2024-09-01")
+    // A re-save with unchanged values must still advance the lock.
+    expect(updateArgs.body.detect_noop).toBe(false)
     // bump path not taken: no index() / no parent ResearchVersion seq fetch
     expect(mockEsIndex).not.toHaveBeenCalled()
     expect(mockGetResearchVersionWithSeqNo).not.toHaveBeenCalled()

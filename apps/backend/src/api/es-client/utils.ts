@@ -4,6 +4,7 @@
  * This module provides:
  * - Common utility functions for ES operations
  * - Batch retrieval helpers
+ * - Optimistic-locked write helpers
  */
 import { esClient } from "@/api/es-client/client"
 
@@ -36,6 +37,18 @@ export const escapeEsWildcard = (value: string): string => {
 export const uniq = <T>(arr: T[]): T[] => {
   return Array.from(new Set(arr))
 }
+
+/**
+ * Request body for a partial update guarded by `if_seq_no` / `if_primary_term`.
+ *
+ * `detect_noop: false` keeps ES from skipping a write whose `doc` already equals
+ * the stored source. A skipped write returns `result: "noop"` and leaves
+ * `_seq_no` untouched, so the lock value the caller just spent stays valid and
+ * their next update passes the guard instead of being rejected — two concurrent
+ * editors would both succeed. Updates carrying only the date-granular
+ * `dateModified` hit that on every same-day edit.
+ */
+export const lockedUpdateBody = <T>(doc: T) => ({ doc, detect_noop: false })
 
 /**
  * Batch get documents by IDs and return as Map

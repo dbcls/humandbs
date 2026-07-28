@@ -11,7 +11,7 @@ import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
 import { versionSortSpec } from "@/api/es-client/query-builders"
-import { mgetMap } from "@/api/es-client/utils"
+import { lockedUpdateBody, mgetMap } from "@/api/es-client/utils"
 import {
   EsResearchSchema,
   ResearchVersionSchema,
@@ -211,14 +211,12 @@ export const createResearchVersion = async (
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          versionIds: [...research.versionIds, newHumVersionId],
-          draftVersion: newVersion,
-          status: "draft",
-          dateModified: now,
-        },
-      },
+      body: lockedUpdateBody({
+        versionIds: [...research.versionIds, newHumVersionId],
+        draftVersion: newVersion,
+        status: "draft",
+        dateModified: now,
+      }),
       refresh: "wait_for",
     })
   } catch (error: unknown) {
@@ -284,11 +282,7 @@ export const linkDatasetToResearch = async (
       id: humVersionId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          datasets: newDatasets,
-        },
-      },
+      body: lockedUpdateBody({ datasets: newDatasets }),
       refresh: "wait_for",
     })
 
@@ -345,11 +339,7 @@ export const unlinkDatasetFromResearch = async (
       id: humVersionId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          datasets: newDatasets,
-        },
-      },
+      body: lockedUpdateBody({ datasets: newDatasets }),
       refresh: "wait_for",
     })
 
@@ -374,11 +364,7 @@ export const updateResearchVersionReleaseNote = async (
       id: humVersionId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: {
-          releaseNote: hydrateBilingualTextValue(releaseNote),
-        },
-      },
+      body: lockedUpdateBody({ releaseNote: hydrateBilingualTextValue(releaseNote) }),
       refresh: "wait_for",
     })
     return true
