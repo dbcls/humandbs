@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Card } from "@/components/Card";
+import { ClientLocalDate } from "@/components/ClientLocalDate";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { MarkdownWithTOC } from "@/components/markdown/MarkdownWithTOC";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
-import { toDateString } from "@/utils/dates";
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsItemId")({
@@ -45,7 +45,9 @@ function RouteComponent() {
           <div className="custom-prose">
             <h1>{title}</h1>
             {publishedAt && (
-              <span className="text-foreground-light text-xs">{toDateString(publishedAt)}</span>
+              <span className="text-foreground-light text-xs">
+                <ClientLocalDate date={publishedAt} />
+              </span>
             )}
           </div>
         }

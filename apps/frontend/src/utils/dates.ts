@@ -6,11 +6,11 @@ export interface DateStringRange {
 export function toLocaleDateTimeString(date: Date | string | undefined | null): string | undefined {
   if (!date) return undefined;
   const d = typeof date === "string" ? new Date(date) : date;
-  const yyyy = d.getUTCFullYear();
-  const mm = `${d.getUTCMonth() + 1}`.padStart(2, "0");
-  const dd = `${d.getUTCDate()}`.padStart(2, "0");
-  const h = `${d.getUTCHours()}`.padStart(2, "0");
-  const min = `${d.getUTCMinutes()}`.padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  const h = `${d.getHours()}`.padStart(2, "0");
+  const min = `${d.getMinutes()}`.padStart(2, "0");
   return `${yyyy}-${mm}-${dd} ${h}:${min}`;
 }
 
@@ -40,9 +40,7 @@ export function toDateStringInTimeZone(date: Date, timeZone: string): string {
     day: "2-digit",
   }).formatToParts(date);
   const values = Object.fromEntries(
-    parts
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
+    parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
   );
 
   return `${values.year}-${values.month}-${values.day}`;
