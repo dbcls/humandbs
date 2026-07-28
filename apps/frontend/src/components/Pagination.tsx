@@ -201,7 +201,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
               </label>
               <Input
                 aria-label={t("pageNumber")}
-                className="w-16 text-center"
+                className="w-24 text-center"
                 id="pagination-page"
                 max={pagination.totalPages}
                 min="1"
