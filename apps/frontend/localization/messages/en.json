@@ -424,7 +424,10 @@
   "Pagination": {
     "itemsPerPage": "Items per page",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "page": "Page",
+    "pageNumber": "Page number",
+    "go": "Go"
   },
   "MergeWizard": {
     "field-status-conflict": "Values differ",

@@ -71,30 +71,38 @@ export function VersionCard({
         </CardCaption>
       }
     >
-      {/*grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 */}
       <article>
         <ContentHeader>{t("Research.title")}</ContentHeader>
         <h2 className="text">{versionData.title[lang]}</h2>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <div className="sm:columns-2 sm:break-inside-avoid-column [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0">
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.aims")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
-          />
+        <dl className="sm:columns-2 sm:break-inside-avoid-column [&>_div]:break-inside-avoid [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0 [&_dt]:font-extrabold">
+          <div>
+            <dt>{t("Research.aims")}:</dt>
+            <dd>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
+              />
+            </dd>
+          </div>
+          <div>
+            <dt>{t("Research.methods")}:</dt>
+            <dd>
+              <Markdown
+                className="text-base"
+                contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+              />
+            </dd>
+          </div>
 
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.methods")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
-          />
-
-          <h3 className="break-inside-avoid font-extrabold">{t("Research.targets")}:</h3>
-          <Markdown
-            className="text-base"
-            contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
-          />
-        </div>
+          <div>
+            <dt>{t("Research.targets")}:</dt>
+            <Markdown
+              className="text-base"
+              contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+            />
+          </div>
+        </dl>
       </article>
       <Separator className="-mx-4" />
       <section>
@@ -414,17 +422,16 @@ const researchProjectsColumns = [
   researchProjectsColumnsHelper.accessor("url", {
     id: "researchProjectId",
     header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.URL"),
-    cell: (ctx) => (
-      <a
-        href={
-          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ?? undefined
-        }
-        className="break-all text-sm"
-      >
-        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ||
-          ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url ||
-          "URL"}
-      </a>
-    ),
+    cell: (ctx) => {
+      const url = ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url;
+      if (!url) return null;
+      return (
+        <a href={url} className="break-all text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ||
+            url ||
+            "URL"}
+        </a>
+      );
+    },
   }),
 ];

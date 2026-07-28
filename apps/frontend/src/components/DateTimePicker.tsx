@@ -7,39 +7,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-function toTimeString(date: Date): string {
-  const h = `${date.getUTCHours()}`.padStart(2, "0");
-  const m = `${date.getUTCMinutes()}`.padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function formatDisplay(date: Date): string {
-  const yyyy = date.getUTCFullYear();
-  const mm = `${date.getUTCMonth() + 1}`.padStart(2, "0");
-  const dd = `${date.getUTCDate()}`.padStart(2, "0");
-  const h = `${date.getUTCHours()}`.padStart(2, "0");
-  const min = `${date.getUTCMinutes()}`.padStart(2, "0");
-  return `${yyyy}-${mm}-${dd} ${h}:${min}`;
-}
-
-function calendarSelected(date: Date): Date {
-  // react-day-picker works in local time; shift UTC date into local so the calendar
-  // highlights the correct day regardless of timezone.
-  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
-
-function mergeDateTime(calendarDay: Date, timeStr: string): Date {
-  const [h, m] = timeStr.split(":").map(Number);
-  return new Date(
-    Date.UTC(
-      calendarDay.getFullYear(),
-      calendarDay.getMonth(),
-      calendarDay.getDate(),
-      h ?? 0,
-      m ?? 0,
-    ),
-  );
-}
+import {
+  calendarSelected,
+  formatDisplay,
+  mergeDateTime,
+  toTimeString,
+} from "./dateTimePicker-utils";
 
 export function DateTimePicker({
   value,

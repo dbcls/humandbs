@@ -129,15 +129,17 @@ function RouteComponent() {
           </ErrorResetBoundary>
         </Card>
       </section>
-      <div className="w-full">
-        <Suspense
+      {/*<div className="w-full">
+       <Suspense
           fallback={<div className="flex h-40 w-full items-center justify-center">Loading...</div>}
         >
           <LazyFrontStats />
         </Suspense>
       </div>
+      */}
     </section>
   );
 }
 
-const LazyFrontStats = lazy(() => import("@/components/FrontStatsVisualization/index"));
+// Temporary remove stats from front page
+// const LazyFrontStats = lazy(() => import("@/components/FrontStatsVisualization/index"));

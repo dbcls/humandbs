@@ -6,6 +6,7 @@ import { localeSchema } from "@/config/i18n";
 import type { DB } from "@/db/database";
 import { db } from "@/db/database";
 import { alert, alertTranslation, user } from "@/db/schema";
+import { toDateStringInTimeZone } from "@/utils/dates";
 
 import { sortTranslationsByLocale } from "./utils";
 
@@ -162,7 +163,7 @@ function mapAlertRows(
 export function createAlertsRepository(database: DB): AlertsRepository {
   return {
     listActive: async ({ lang }) => {
-      const now = new Date().toISOString().slice(0, 10);
+      const now = toDateStringInTimeZone(new Date(), process.env.TZ ?? "Asia/Tokyo");
       const alertTranslations = await database
         .select({
           id: alert.id,

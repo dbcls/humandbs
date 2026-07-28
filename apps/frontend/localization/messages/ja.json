@@ -426,7 +426,10 @@
   "Pagination": {
     "itemsPerPage": "1ページあたりのアイテム数",
     "previous": "前へ",
-    "next": "次へ"
+    "next": "次へ",
+    "page": "ページ",
+    "pageNumber": "ページ番号",
+    "go": "移動"
   },
   "MergeWizard": {
     "field-status-conflict": "値が異なります",

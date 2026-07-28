@@ -571,7 +571,7 @@ function RouteComponent() {
         <div className="flex flex-col gap-5 px-5 pt-5 pb-5">
           {/* Navbar preview */}
           <section className="rounded-md border border-gray-200 p-4">
-            <h2 className="font-medium text-base">Navbar</h2>
+            <h2 className="font-medium text-base">Header</h2>
             <p className="mt-1 text-foreground-light text-sm">{tNav("drag-navbar-hint")}</p>
             <div className="mt-4">
               <NavbarEditor

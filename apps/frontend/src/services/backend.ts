@@ -45,6 +45,7 @@ import type {
   DatasetTemplateResponse,
   ResearchTemplateResponse,
 } from "../../../backend/src/api/types/templates";
+import { collectAllPages, createAllSearchPage } from "./search-all";
 
 const getBackendBaseUrl = createIsomorphicFn()
   .client(() => `/api`)
@@ -217,6 +218,9 @@ function authHeader(accessToken: string): HeadersInit {
   return { Authorization: `Bearer ${accessToken}` };
 }
 
+type ResearchSearchAllConditions = Omit<ResearchSearchBody, "page" | "limit" | "includeFacets">;
+type DatasetSearchAllConditions = Omit<DatasetSearchBody, "page" | "limit" | "includeFacets">;
+
 interface APIService {
   getResearchListPaginated(
     query: {
@@ -266,11 +270,21 @@ interface APIService {
     accessToken?: string,
     signal?: AbortSignal,
   ): Promise<ResearchSearchResponseWithTypedCriteria>;
+  searchResearchesAll(
+    query: ResearchSearchAllConditions,
+    accessToken?: string,
+    signal?: AbortSignal,
+  ): Promise<ResearchSearchResponseWithTypedCriteria["data"]>;
   searchDatasets(
     query: DatasetSearchBody,
     accessToken?: string,
     signal?: AbortSignal,
   ): Promise<DatasetSearchResponse>;
+  searchDatasetsAll(
+    query: DatasetSearchAllConditions,
+    accessToken?: string,
+    signal?: AbortSignal,
+  ): Promise<DatasetSearchResponse["data"]>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
   createResearch(
     body: CreateResearchRequest,
@@ -397,12 +411,24 @@ const api: APIService = {
     );
   },
 
+  searchResearchesAll(query, accessToken, signal) {
+    return collectAllPages((page) =>
+      api.searchResearches(createAllSearchPage(query, page), accessToken, signal),
+    );
+  },
+
   searchDatasets(query, accessToken, signal) {
     return post<DatasetSearchResponse>(
       `/dataset/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,
       signal,
+    );
+  },
+
+  searchDatasetsAll(query, accessToken, signal) {
+    return collectAllPages((page) =>
+      api.searchDatasets(createAllSearchPage(query, page), accessToken, signal),
     );
   },
 
