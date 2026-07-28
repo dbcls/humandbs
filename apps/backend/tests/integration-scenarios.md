@@ -181,7 +181,7 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 
 ## IT-STATS-*: 統計情報
 
-`GET /stats` (`src/api/routes/stats.ts`)。published Research と紐づく Dataset のみを対象に、totals + 全 18 ファセットの research/dataset cardinality を返す。認証不要。
+`GET /stats` (`src/api/routes/stats.ts`)。published Research と、その公開 version に紐づく Dataset のみを対象に、totals + 全 18 ファセットの research/dataset cardinality を返す。認証不要。
 
 ### IT-STATS-01: 正常応答 (公開リソース集計)
 
@@ -251,6 +251,21 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 **回帰元**: `app.ts § onError` (未捕捉エラーの 500 分岐)
 
 **関連 unit テスト**: なし
+
+### IT-STATS-06: totals が対応する一覧の pagination.total と一致する
+
+**endpoint**: `GET /stats` + `POST /dataset/search` + `POST /research/search`
+
+**不変条件**:
+- `data.dataset.total === POST /dataset/search` の `meta.pagination.total`
+- `data.research.total === POST /research/search` の `meta.pagination.total`
+- 認証なし (public) で比較する
+
+Stats と一覧が可視性を同一に解決していることの確認。特に Dataset は親 Research の `latestVersion` を humVersionId の上限とするため、両者が同じ ceiling を掛けていないとトップページが一覧に出せない件数を表示する。
+
+**回帰元**: `src/api/es-client/stats.ts § getPublicStats` / `src/api/es-client/auth.ts § buildDatasetVisibilityFilter`
+
+**関連 unit テスト**: `tests/unit/api/routes/stats.test.ts`、`tests/unit/api/es-client/auth.test.ts`
 
 ---
 

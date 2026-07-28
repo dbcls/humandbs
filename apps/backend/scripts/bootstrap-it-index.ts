@@ -144,6 +144,20 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
     ...research,
   }
 
+  // RV fixtures predate per-version content (title / summary / etc.). Fan-out
+  // the same content the loader uses so integration tests that call the
+  // version-aware read paths see populated content on the RV doc.
+  const rvBase = readFixture("research-version/hum0001-v1.json")
+  const rvWithContent = {
+    ...rvBase,
+    title: rvBase.title ?? research.title,
+    summary: rvBase.summary ?? research.summary,
+    dataProvider: rvBase.dataProvider ?? research.dataProvider,
+    researchProject: rvBase.researchProject ?? research.researchProject,
+    grant: rvBase.grant ?? research.grant,
+    relatedPublication: rvBase.relatedPublication ?? research.relatedPublication,
+  }
+
   const dataset = readFixture("dataset/JGAD000002-v1.json")
   type DataValue = { ja?: { text?: string } | null; en?: { text?: string } | null } | null
   const experiments = dataset.experiments as Array<Record<string, unknown>> | undefined
@@ -162,7 +176,7 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
     {
       index: RESEARCH_VERSION_INDEX,
       id: "hum0001-v1",
-      doc: readFixture("research-version/hum0001-v1.json"),
+      doc: rvWithContent,
     },
     {
       index: DATASET_INDEX,

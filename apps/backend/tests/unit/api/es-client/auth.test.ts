@@ -8,6 +8,8 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import fc from "fast-check"
 
 import {
+  buildAccessibleVersionFilter,
+  buildDatasetVisibilityFilter,
   buildStatusFilter,
   canAccessResearchDoc,
   canPerformTransition,
@@ -32,6 +34,17 @@ void mock.module("@/api/services/ownership", () => {
     resetOwnershipCacheForTest: mock(() => undefined),
   }
 })
+
+// Only `buildDatasetVisibilityFilter` reaches Elasticsearch (via
+// getAccessibleHumsWithLatest); the rest of this file's subjects are pure.
+const mockEsSearch = mock<(args: unknown) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
+
+void mock.module("@/api/es-client/client", () => ({
+  ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
+  esClient: { search: mockEsSearch },
+  isConflictError: () => false,
+  isDocumentExistsError: () => false,
+}))
 
 // === buildStatusFilter ===
 
@@ -79,6 +92,177 @@ describe("buildStatusFilter", () => {
         minimum_should_match: 1,
       },
     })
+  })
+})
+
+// === buildAccessibleVersionFilter ===
+
+describe("buildAccessibleVersionFilter", () => {
+  it("owner humId collapses to a single humId terms clause", () => {
+    const map = new Map<string, string | null>([["hum0001", "v3"]])
+    const owned = new Set(["hum0001"])
+    expect(buildAccessibleVersionFilter(map, owned)).toEqual({
+      bool: {
+        should: [{ terms: { humId: ["hum0001"] } }],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("non-owner + latestVersion enumerates v1..latestVersion", () => {
+    const map = new Map<string, string | null>([["hum0002", "v3"]])
+    expect(buildAccessibleVersionFilter(map, new Set())).toEqual({
+      bool: {
+        should: [{ terms: { humVersionId: ["hum0002-v1", "hum0002-v2", "hum0002-v3"] } }],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("non-owner + N-new-hum draft (latestVersion=null) is excluded", () => {
+    const map = new Map<string, string | null>([["hum0003", null]])
+    expect(buildAccessibleVersionFilter(map, new Set())).toEqual({
+      term: { humId: "__no_match__" },
+    })
+  })
+
+  it("empty map fails closed", () => {
+    expect(buildAccessibleVersionFilter(new Map(), new Set())).toEqual({
+      term: { humId: "__no_match__" },
+    })
+  })
+
+  it("owner (all versions) + non-owner (up to latestVersion) mixed", () => {
+    const map = new Map<string, string | null>([
+      ["hum0001", "v3"],
+      ["hum0002", "v2"],
+      ["hum0004", null],
+    ])
+    const owned = new Set(["hum0001"])
+    expect(buildAccessibleVersionFilter(map, owned)).toEqual({
+      bool: {
+        should: [
+          { terms: { humVersionId: ["hum0002-v1", "hum0002-v2"] } },
+          { terms: { humId: ["hum0001"] } },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("throws on malformed latestVersion for non-owner (fails loud, no silent skip)", () => {
+    const map = new Map<string, string | null>([["hum0001", "draft"]])
+    expect(() => buildAccessibleVersionFilter(map, new Set())).toThrow(/Invalid version format/)
+  })
+
+  it("PBT: enumerated humVersionId count = sum of parseVersionNum over non-owner entries", () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.tuple(
+            fc.stringMatching(/^hum\d{4}$/),
+            fc.oneof(fc.constant(null), fc.integer({ min: 1, max: 20 }).map(n => `v${n}`)),
+            fc.boolean(),
+          ),
+          { minLength: 0, maxLength: 30 },
+        ),
+        (entries) => {
+          const map = new Map<string, string | null>()
+          const owned = new Set<string>()
+          for (const [humId, latest, isOwned] of entries) {
+            map.set(humId, latest)
+            if (isOwned) owned.add(humId)
+          }
+          const filter = buildAccessibleVersionFilter(map, owned)
+          const expectedVersionCount = Array.from(map.entries())
+            .filter(([humId, latest]) => !owned.has(humId) && latest !== null)
+            .reduce((sum, [, latest]) => sum + parseInt(latest!.slice(1), 10), 0)
+          if ("term" in filter) return expectedVersionCount === 0 && Array.from(map.keys()).every(h => !owned.has(h))
+          const should = filter.bool?.should as { terms?: { humVersionId?: string[]; humId?: string[] } }[] | undefined
+          const humVids = should?.flatMap(s => s.terms?.humVersionId ?? []) ?? []
+          return humVids.length === expectedVersionCount
+        },
+      ),
+    )
+  })
+
+  it("PBT: owner humIds never appear on the humVersionId side", () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.tuple(
+            fc.stringMatching(/^hum\d{4}$/),
+            fc.integer({ min: 1, max: 10 }).map(n => `v${n}`),
+          ),
+          { minLength: 1, maxLength: 20 },
+        ),
+        (entries) => {
+          const map = new Map<string, string | null>(entries)
+          const owned = new Set(Array.from(map.keys()))
+          const filter = buildAccessibleVersionFilter(map, owned)
+          if ("term" in filter) return false
+          const should = filter.bool?.should as { terms?: { humVersionId?: string[]; humId?: string[] } }[] | undefined
+          const humVids = should?.flatMap(s => s.terms?.humVersionId ?? []) ?? []
+          return humVids.length === 0
+        },
+      ),
+    )
+  })
+})
+
+// === buildDatasetVisibilityFilter ===
+
+describe("buildDatasetVisibilityFilter", () => {
+  beforeEach(() => {
+    mockEsSearch.mockReset()
+    mockEsSearch.mockResolvedValue({ hits: { hits: [] } })
+    mockGetOwnedHumIdsFn.mockReset()
+    mockGetOwnedHumIdsFn.mockImplementation(async () => [])
+  })
+
+  const withResearch = (docs: { humId: string; latestVersion: string | null }[]) => {
+    mockEsSearch.mockResolvedValue({ hits: { hits: docs.map(_source => ({ _source })) } })
+  }
+
+  it("returns null for admin without touching Elasticsearch", async () => {
+    const admin = createMockAuthUser({ isAdmin: true })
+    expect(await buildDatasetVisibilityFilter(admin)).toBeNull()
+    expect(mockEsSearch).not.toHaveBeenCalled()
+  })
+
+  it("caps a public viewer at each Research's latestVersion", async () => {
+    withResearch([
+      { humId: "hum0001", latestVersion: "v2" },
+      { humId: "hum0002", latestVersion: "v1" },
+    ])
+    expect(await buildDatasetVisibilityFilter(null)).toEqual({
+      bool: {
+        should: [{ terms: { humVersionId: ["hum0001-v1", "hum0001-v2", "hum0002-v1"] } }],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("lifts the ceiling only on the caller's own Research", async () => {
+    withResearch([
+      { humId: "hum0001", latestVersion: "v2" },
+      { humId: "hum0002", latestVersion: "v1" },
+    ])
+    mockGetOwnedHumIdsFn.mockImplementation(async () => ["hum0001"])
+
+    expect(await buildDatasetVisibilityFilter(createMockAuthUser({ username: "owner1" }))).toEqual({
+      bool: {
+        should: [
+          { terms: { humVersionId: ["hum0002-v1"] } },
+          { terms: { humId: ["hum0001"] } },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("fails closed when no Research is accessible", async () => {
+    expect(await buildDatasetVisibilityFilter(null)).toEqual({ term: { humId: "__no_match__" } })
   })
 })
 

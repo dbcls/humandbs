@@ -20,12 +20,18 @@ import {
 } from "@/api/types"
 import type {
   AuthUser,
+  BilingualText,
   CreateResearchRequest,
   EsDataset,
   EsResearch,
+  Grant,
+  Person,
+  Publication,
+  ResearchProject,
   ResearchVersion,
   ResearchDetail,
   ResearchStatus,
+  Summary,
   UpdateResearchRequest,
 } from "@/api/types"
 import {
@@ -122,10 +128,17 @@ export const getResearchDetail = async (
   const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetSchema.parse(doc))
   const datasets = dsIds.map(id => dsMap.get(id)).filter((x): x is EsDataset => !!x)
 
+  // Content SSOT: the resolved RV doc. Root content is a `latestVersion`
+  // snapshot only, so overlay per-version fields on top of the root spread.
+  // `pickVersionContent` falls back to root values for pre-migration RVs
+  // whose content fields are still null.
+  const content = pickVersionContent(researchVersionDoc, extractResearchContent(researchDoc))
+
   const { versionIds: _versionIds, ...researchDocRest } = researchDoc
 
   return ResearchDetailSchema.parse({
     ...researchDocRest,
+    ...content,
     humVersionId: researchVersionDoc.humVersionId,
     version: researchVersionDoc.version,
     versionReleaseDate: researchVersionDoc.versionReleaseDate,
@@ -134,37 +147,115 @@ export const getResearchDetail = async (
   })
 }
 
+// === Content field helpers ===
+
+/**
+ * Content fields that live on ResearchVersion as the per-version SSOT and are
+ * mirrored on the Research root only as the `latestVersion` snapshot for
+ * search / listing. Splitting them out prevents draft edits from leaking to
+ * public viewers via the Research root.
+ *
+ * `summaryShort` and `controlledAccessUser` are NOT here: `summaryShort` is a
+ * per-humId Joomla-derived listing snippet, `controlledAccessUser` is
+ * accumulated across versions by the CAU pipeline. Both stay Research-only.
+ */
+export interface ResearchContentSnapshot {
+  title: BilingualText
+  summary: Summary
+  dataProvider: Person[]
+  researchProject: ResearchProject[]
+  grant: Grant[]
+  relatedPublication: Publication[]
+}
+
+const DEFAULT_SUMMARY: Summary = {
+  aims: { ja: null, en: null },
+  methods: { ja: null, en: null },
+  targets: { ja: null, en: null },
+  url: { ja: [], en: [] },
+}
+
+/** Hydrate an UpdateResearchRequest / CreateResearchRequest into a full content snapshot with sensible defaults. */
+export const buildContentSnapshot = (
+  updates: Pick<UpdateResearchRequest, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+): ResearchContentSnapshot => ({
+  title: updates.title ?? { ja: null, en: null },
+  summary: updates.summary ? hydrateSummary(updates.summary) : DEFAULT_SUMMARY,
+  dataProvider: updates.dataProvider?.map(hydratePerson) ?? [],
+  researchProject: updates.researchProject?.map(hydrateResearchProject) ?? [],
+  grant: updates.grant ?? [],
+  relatedPublication: updates.relatedPublication ?? [],
+})
+
+/**
+ * Extract only the content fields the caller sent (for partial updates).
+ * Empty object when no content field is present — signals "no RV content write".
+ */
+const buildContentUpdate = (
+  updates: Pick<UpdateResearchRequest, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+): Partial<ResearchContentSnapshot> => {
+  const out: Partial<ResearchContentSnapshot> = {}
+  if (updates.title !== undefined) out.title = updates.title
+  if (updates.summary !== undefined) out.summary = hydrateSummary(updates.summary)
+  if (updates.dataProvider !== undefined) out.dataProvider = updates.dataProvider.map(hydratePerson)
+  if (updates.researchProject !== undefined) out.researchProject = updates.researchProject.map(hydrateResearchProject)
+  if (updates.grant !== undefined) out.grant = updates.grant
+  if (updates.relatedPublication !== undefined) out.relatedPublication = updates.relatedPublication
+  return out
+}
+
+/**
+ * Pick per-version content out of a ResearchVersion doc, falling back to the
+ * Research root when a field is null/undefined (pre-migration RV docs).
+ * Used by `createResearchVersion` when seeding a new version, and by
+ * `getResearchDetail` when merging the response.
+ */
+export const pickVersionContent = (
+  rv: Pick<ResearchVersion, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+  fallback: ResearchContentSnapshot,
+): ResearchContentSnapshot => ({
+  title: rv.title ?? fallback.title,
+  summary: rv.summary ?? fallback.summary,
+  dataProvider: rv.dataProvider ?? fallback.dataProvider,
+  researchProject: rv.researchProject ?? fallback.researchProject,
+  grant: rv.grant ?? fallback.grant,
+  relatedPublication: rv.relatedPublication ?? fallback.relatedPublication,
+})
+
+const extractResearchContent = (research: EsResearch): ResearchContentSnapshot => ({
+  title: research.title,
+  summary: research.summary,
+  dataProvider: research.dataProvider,
+  researchProject: research.researchProject,
+  grant: research.grant,
+  relatedPublication: research.relatedPublication,
+})
+
 // === Research Creation ===
 
 /**
  * Create Research with initial version (v1)
  * Admin only - creates Research (status=draft) + ResearchVersion (v1)
+ *
+ * Both the Research root doc and the v1 RV doc carry the same content
+ * snapshot so subsequent draft edits (which target the RV only) start from a
+ * consistent state.
  */
 export const createResearch = async (
   params: CreateResearchRequest,
 ): Promise<{ research: EsResearch; version: ResearchVersion }> => {
   const now = new Date().toISOString().split("T")[0]
 
-  const defaultSummary = {
-    aims: { ja: null, en: null },
-    methods: { ja: null, en: null },
-    targets: { ja: null, en: null },
-    url: { ja: [], en: [] },
-  }
-
   const humId = params.humId
   const version = "v1"
   const humVersionId = `${humId}-${version}`
 
+  const content = buildContentSnapshot(params)
+
   const researchDoc: EsResearch = {
     humId,
     url: { ja: `https://humandbs.dbcls.jp/${humId}`, en: `https://humandbs.dbcls.jp/en/${humId}` },
-    title: params.title ?? { ja: null, en: null },
-    summary: params.summary ? hydrateSummary(params.summary) : defaultSummary,
-    dataProvider: params.dataProvider?.map(hydratePerson) ?? [],
-    researchProject: params.researchProject?.map(hydrateResearchProject) ?? [],
-    grant: params.grant ?? [],
-    relatedPublication: params.relatedPublication ?? [],
+    ...content,
     controlledAccessUser: [],
     versionIds: [humVersionId],
     latestVersion: null,
@@ -188,6 +279,7 @@ export const createResearch = async (
     versionReleaseDate: now,
     datasets: [],
     releaseNote: { ja: null, en: null },
+    ...content,
   }
 
   try {
@@ -234,61 +326,151 @@ export const createResearch = async (
 // === Research Updates ===
 
 /**
- * Update Research document with optimistic locking
- * Owner or admin can update
+ * Update Research document with optimistic locking.
+ * Owner or admin can update. Handles both draft edits and published patches.
  *
- * @param humId - Research ID
- * @param updates - Fields to update
- * @param seqNo - Sequence number for optimistic locking
- * @param primaryTerm - Primary term for optimistic locking
- * @returns Updated Research document, null on conflict
+ * ## Write routing
+ *
+ * Content fields (title / summary / dataProvider / researchProject / grant /
+ * relatedPublication) live on the RV doc as the per-version SSOT and mirror
+ * onto the Research root only as the `latestVersion` snapshot. The router:
+ *
+ * - Always writes content updates to `RV[draftVersion ?? latestVersion]`.
+ * - Additionally writes them to the Research root iff the target version is
+ *   the currently published `latestVersion` — i.e. an in-place patch. Draft
+ *   edits (V-new-version draft where `latestVersion != null`) never touch
+ *   root content, so public viewers keep seeing the published snapshot.
+ * - For N-new-hum drafts (`latestVersion == null`) the Research is not
+ *   publicly visible, so writing content to root would be safe — but we keep
+ *   the invariant "root content = latestVersion snapshot" by NOT writing to
+ *   root and letting `approve` sync it. Root retains the creation-time
+ *   content, which is fine (nobody public can read it yet).
+ *
+ * `summaryShort` and `url` stay Research-root-only (see contentSnapshot doc
+ * above); they update on every call.
+ *
+ * @param research   Preloaded root doc — status / latestVersion / draftVersion
+ *                   drive the write routing above.
+ * @returns Updated Research root doc; null on optimistic-lock conflict.
  */
 export const updateResearch = async (
   humId: string,
-  updates: Omit<UpdateResearchRequest, "_seq_no" | "_primary_term"> & {
+  research: Pick<EsResearch, "status" | "latestVersion" | "draftVersion">,
+  updates: Omit<UpdateResearchRequest, "_seq_no" | "_primary_term" | "releaseNote"> & {
     url?: { ja: string | null; en: string | null }
   },
   seqNo: number,
   primaryTerm: number,
 ): Promise<EsResearch | null> => {
+  const now = new Date().toISOString().split("T")[0]
+
+  const contentUpdate = buildContentUpdate(updates)
+  const hasContent = Object.keys(contentUpdate).length > 0
+
+  // Root-only fields (never per-version).
+  const rootDoc: Record<string, unknown> = { dateModified: now }
+  if (updates.url !== undefined) rootDoc.url = updates.url
+  if (updates.summaryShort !== undefined) {
+    rootDoc.summaryShort = updates.summaryShort === null
+      ? null
+      : {
+        methods: hydrateBilingualTextValue(updates.summaryShort.methods),
+        typeOfData: hydrateBilingualTextValue(updates.summaryShort.typeOfData),
+        targets: hydrateBilingualTextValue(updates.summaryShort.targets),
+      }
+  }
+
+  // RV write target and whether root should also carry the content update.
+  const targetVersion = research.draftVersion ?? research.latestVersion
+  if (hasContent && !targetVersion) {
+    throw new Error(`updateResearch: Research ${humId} has no draftVersion or latestVersion`)
+  }
+  const shouldMirrorRoot = hasContent && targetVersion === research.latestVersion
+  if (shouldMirrorRoot) Object.assign(rootDoc, contentUpdate)
+
   try {
-    const now = new Date().toISOString().split("T")[0]
-
-    const hydratedDoc: Record<string, unknown> = {
-      dateModified: now,
-    }
-    if (updates.url !== undefined) hydratedDoc.url = updates.url
-    if (updates.title !== undefined) hydratedDoc.title = updates.title
-    if (updates.summary !== undefined) hydratedDoc.summary = hydrateSummary(updates.summary)
-    if (updates.dataProvider !== undefined) hydratedDoc.dataProvider = updates.dataProvider.map(hydratePerson)
-    if (updates.researchProject !== undefined) hydratedDoc.researchProject = updates.researchProject.map(hydrateResearchProject)
-    if (updates.grant !== undefined) hydratedDoc.grant = updates.grant
-    if (updates.relatedPublication !== undefined) hydratedDoc.relatedPublication = updates.relatedPublication
-    if (updates.summaryShort !== undefined) {
-      hydratedDoc.summaryShort = updates.summaryShort === null
-        ? null
-        : {
-          methods: hydrateBilingualTextValue(updates.summaryShort.methods),
-          typeOfData: hydrateBilingualTextValue(updates.summaryShort.typeOfData),
-          targets: hydrateBilingualTextValue(updates.summaryShort.targets),
-        }
-    }
-
     await esClient.update({
       index: ES_INDEX.research,
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
-      body: {
-        doc: hydratedDoc,
-      },
+      body: { doc: rootDoc },
       refresh: "wait_for",
     })
-
-    return await getResearchDoc(humId)
   } catch (error: unknown) {
     if (isConflictError(error)) return null
-    throw createEsError(error,"updateResearch", humId)
+    throw createEsError(error, "updateResearch", humId)
+  }
+
+  // RV content update runs only after the root update succeeds — the root's
+  // optimistic lock is the concurrency gate. A network failure here leaves
+  // root.dateModified bumped without RV content changing; the caller retries.
+  if (hasContent && targetVersion) {
+    try {
+      await esClient.update({
+        index: ES_INDEX.researchVersion,
+        id: `${humId}-${targetVersion}`,
+        body: { doc: contentUpdate },
+        refresh: "wait_for",
+      })
+    } catch (error: unknown) {
+      throw createEsError(error, "updateResearch(RV)", humId)
+    }
+  }
+
+  const refreshed = await getResearchDoc(humId)
+  if (!refreshed) return null
+
+  // For V-new-version draft edits, content was written only to RV[draftVersion]
+  // — the root doc's content is still the stale latestVersion snapshot. Return
+  // the caller their fresh edit by overlaying RV content on the root when the
+  // edit went somewhere other than the latestVersion RV.
+  if (hasContent && targetVersion && targetVersion !== refreshed.latestVersion) {
+    const rv = await getResearchVersion(humId, { version: targetVersion })
+    if (rv) {
+      const content = pickVersionContent(rv, extractResearchContent(refreshed))
+      return { ...refreshed, ...content }
+    }
+  }
+  return refreshed
+}
+
+/**
+ * Copy content from `RV[version]` back onto the Research root. Called by
+ * `approve` (draft → published) so the Research root snapshot tracks the
+ * newly-published version. Idempotent: repeating the sync is a no-op when
+ * root and RV are already in sync.
+ *
+ * Only fields present (non-null) on the RV are written — a pre-migration RV
+ * with null content fields keeps the root's current values instead of
+ * wiping them.
+ */
+export const syncResearchRootFromVersion = async (
+  humId: string,
+  version: string,
+): Promise<void> => {
+  const rv = await getResearchVersion(humId, { version })
+  if (!rv) {
+    throw new Error(`syncResearchRootFromVersion: RV ${humId}-${version} not found`)
+  }
+  const doc: Record<string, unknown> = {}
+  if (rv.title != null) doc.title = rv.title
+  if (rv.summary != null) doc.summary = rv.summary
+  if (rv.dataProvider != null) doc.dataProvider = rv.dataProvider
+  if (rv.researchProject != null) doc.researchProject = rv.researchProject
+  if (rv.grant != null) doc.grant = rv.grant
+  if (rv.relatedPublication != null) doc.relatedPublication = rv.relatedPublication
+  if (Object.keys(doc).length === 0) return
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      body: { doc },
+      refresh: "wait_for",
+    })
+  } catch (error: unknown) {
+    throw createEsError(error, "syncResearchRootFromVersion", humId)
   }
 }
 

@@ -193,6 +193,8 @@ latestVersion != null
 
 v2 を編集中（draft/review）でも、`latestVersion` が v1 なら public API には v1 が返り続ける。
 
+**content の per-version 分離**: `title` / `summary` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` は ResearchVersion doc に per-version の snapshot として保存される (`data-model.md § Research と ResearchVersion のフィールド分担`)。draft 編集 (`updateResearch` の V-new-version 分岐) は RV[draftVersion] にのみ書き込み、Research root は latestVersion の snapshot のまま。したがって v2 draft のどんな content 編集も v1 を見ている public 側には反映されない。approve が呼ぶ `syncResearchRootFromVersion` は RV[新 latestVersion] の content を root へ atomically に copy し、search / listing / public detail の一致を保つ。regression は `IT-RESEARCH-LEAK-*` (`tests/integration/api/research.test.ts`) がガードする。
+
 ### バージョン解決ルール
 
 #### 詳細取得（`GET /research/{humId}`）

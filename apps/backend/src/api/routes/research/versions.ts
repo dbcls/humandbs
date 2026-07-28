@@ -58,7 +58,9 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
     const { humId, version } = c.req.valid("param")
     const authUser = c.get("authUser")
 
-    // Use getResearchDetail with specific version
+    // Use getResearchDetail with specific version — content fields come from
+    // the RV doc (per-version SSOT), so this endpoint returns the historical
+    // content snapshot for the requested version, not the current root state.
     const detail = await getResearchDetail(humId, { version }, authUser)
     if (!detail) {
       throw new NotFoundError(`Research version ${humId}/${version} not found`)
@@ -72,6 +74,12 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
       versionReleaseDate: detail.versionReleaseDate,
       releaseNote: detail.releaseNote,
       datasets: detail.datasets,
+      title: detail.title,
+      summary: detail.summary,
+      dataProvider: detail.dataProvider,
+      researchProject: detail.researchProject,
+      grant: detail.grant,
+      relatedPublication: detail.relatedPublication,
     }
 
     return singleReadOnlyResponse(c, responseData)

@@ -130,8 +130,14 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     expect((updateArgs.body.doc.versionIds as string[])).toEqual(["hum0001-v1", "hum0001-v2"])
   })
 
-  it("uses the datasets arg when provided (does not consult latest version)", async () => {
-    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"] }) })
+  it("uses the datasets arg when provided (still consults latest version for content snapshot)", async () => {
+    // createResearchVersion always fetches the latest RV to copy the per-version
+    // content snapshot (title / summary / dataProvider / …). The datasets arg
+    // only overrides the datasets field, not the content copy.
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"], latestVersion: "v1" }) })
+    mockEsSearch.mockResolvedValueOnce({
+      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }] }) }] },
+    })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockResolvedValue({})
 
@@ -139,7 +145,9 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, explicit, 1, 1)
 
     expect(result?.datasets).toEqual(explicit)
-    expect(mockEsSearch).not.toHaveBeenCalled()
+    // Search was called to fetch the latest RV for the content copy, even
+    // though datasets was explicit.
+    expect(mockEsSearch).toHaveBeenCalledTimes(1)
   })
 
   it("throws ConflictError when the new humVersionId already exists (op_type:create dup)", async () => {
@@ -169,6 +177,55 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     expect(mockEsDelete).toHaveBeenCalled()
     const deleteArgs = mockEsDelete.mock.calls[0]?.[0] as { id: string }
     expect(deleteArgs.id).toBe("hum0001-v2")
+  })
+
+  it("copies per-version content snapshot from the latest RV (draft-leak fix)", async () => {
+    const latestContent = {
+      title: { ja: "v1-title", en: "v1-title" },
+      summary: { aims: { ja: { text: "v1-aim", rawHtml: null }, en: null }, methods: { ja: null, en: null }, targets: { ja: null, en: null }, url: { ja: [], en: [] } },
+      dataProvider: [{ name: { ja: null, en: null }, email: null, orcid: null, organization: null, datasetIds: [], researchTitle: undefined, periodOfDataUse: null }],
+      researchProject: [{ name: { ja: null, en: null }, url: null }],
+      grant: [{ id: ["g1"], title: { ja: null, en: null }, agency: { name: { ja: null, en: null } } }],
+      relatedPublication: [{ title: { ja: null, en: null }, doi: null, datasetIds: [] }],
+    }
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"], latestVersion: "v1" }) })
+    mockEsSearch.mockResolvedValueOnce({
+      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }], ...latestContent }) }] },
+    })
+    mockEsIndex.mockResolvedValue({})
+    mockEsUpdate.mockResolvedValue({})
+
+    const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, undefined, 1, 1)
+
+    expect(result).not.toBeNull()
+    // Content snapshot on the new RV mirrors the latest RV.
+    expect(result?.title).toEqual(latestContent.title)
+    expect(result?.summary).toEqual(latestContent.summary)
+    expect(result?.dataProvider).toEqual(latestContent.dataProvider)
+    expect(result?.researchProject).toEqual(latestContent.researchProject)
+    expect(result?.grant).toEqual(latestContent.grant)
+    expect(result?.relatedPublication).toEqual(latestContent.relatedPublication)
+
+    // The indexed doc carries the snapshot as well.
+    const indexArgs = mockEsIndex.mock.calls[0]?.[0] as { body: Record<string, unknown> }
+    expect(indexArgs.body.title).toEqual(latestContent.title)
+  })
+
+  it("falls back to Research root content when the latest RV has no snapshot (pre-migration)", async () => {
+    const researchWithContent = baseResearch({
+      versionIds: ["hum0001-v1"],
+      latestVersion: "v1",
+      title: { ja: "root-title", en: "root-title" },
+    })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: researchWithContent })
+    // Latest RV has no content fields (pre-migration doc)
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
+    mockEsIndex.mockResolvedValue({})
+    mockEsUpdate.mockResolvedValue({})
+
+    const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, undefined, 1, 1)
+
+    expect(result?.title).toEqual({ ja: "root-title", en: "root-title" })
   })
 
   it("throws when research doc is missing (preconditions)", async () => {

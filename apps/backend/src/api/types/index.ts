@@ -112,6 +112,8 @@ export type {
   Grant,
   Publication,
   Summary,
+  ResearchProject,
+  BilingualText,
 } from "./es-docs"
 
 // === JGA Shinsei (sourced directly from crawler/types) ===

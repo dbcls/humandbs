@@ -9,7 +9,7 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
-import type { SingleReadOnlyResponse, StatsResponse } from "@/api/types"
+import type { SearchResponse, SingleReadOnlyResponse, StatsResponse } from "@/api/types"
 
 import { getApp, itWithEs, setupIntegration, url } from "./setup"
 
@@ -97,5 +97,32 @@ describe("IT-STATS-*: stats endpoint", () => {
     }
     expect(keys).not.toContain("total_research")
     expect(keys).not.toContain("total_dataset")
+  })
+
+  itWithEs("IT-STATS-06: totals equal the corresponding listing's pagination.total", async () => {
+    // IT-STATS-06
+    // Stats and the listings must resolve visibility identically — including the
+    // humVersionId ceiling that hides draft-release Datasets — or the front page
+    // advertises a count the Dataset listing cannot show.
+    const app = getApp()
+
+    const statsRes = await app.request(url("/stats"))
+    const stats = (await statsRes.json()) as SingleReadOnlyResponse<StatsResponse>
+
+    const postSearch = async (path: string): Promise<SearchResponse<unknown>> => {
+      const res = await app.request(url(path), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 1, lang: "ja" }),
+      })
+      expect(res.status).toBe(200)
+      return (await res.json()) as SearchResponse<unknown>
+    }
+
+    const datasets = await postSearch("/dataset/search")
+    const researches = await postSearch("/research/search")
+
+    expect(stats.data.dataset.total).toBe(datasets.meta.pagination.total)
+    expect(stats.data.research.total).toBe(researches.meta.pagination.total)
   })
 })

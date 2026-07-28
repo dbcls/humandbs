@@ -8,7 +8,7 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
-import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
+import { buildDatasetVisibilityFilter, buildStatusFilter } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
 import type { StatsFacetCount, StatsResponse } from "@/api/types"
@@ -275,19 +275,17 @@ const extractStatsFacets = (aggs: Record<string, unknown>): Record<string, Recor
 /**
  * Aggregate the public-facing stats over published Research / Dataset only.
  *
+ * The Dataset side goes through `buildDatasetVisibilityFilter` rather than a
+ * plain `humId` allowlist: a published Research can carry Datasets on a draft
+ * version beyond its `latestVersion`, and those must not reach a public count.
+ * Sharing the filter with `searchDatasets` keeps `dataset.total` equal to the
+ * Dataset listing's `pagination.total`.
+ *
  * Returns counts and per-facet research/dataset breakdowns suitable for
  * `singleReadOnlyResponse(c, result)` in the route handler.
  */
 export const getPublicStats = async (): Promise<StatsResponse> => {
-  const publishedHumIds = await getPublishedHumIds(null)
-
-  const must: estypes.QueryDslQueryContainer[] = []
-  if (publishedHumIds !== null) {
-    if (publishedHumIds.length === 0) {
-      return { research: { total: 0 }, dataset: { total: 0 }, facets: {} }
-    }
-    must.push({ terms: { humId: publishedHumIds } })
-  }
+  const datasetFilter = await buildDatasetVisibilityFilter(null)
 
   const publicFilter = await buildStatusFilter(null)
   const researchCount = await esClient.count({
@@ -298,7 +296,7 @@ export const getPublicStats = async (): Promise<StatsResponse> => {
   const datasetRes = await esClient.search({
     index: ES_INDEX.dataset,
     size: 0,
-    query: must.length > 0 ? { bool: { must } } : { match_all: {} },
+    query: datasetFilter ?? { match_all: {} },
     aggs: buildStatsAggregations(),
   })
 

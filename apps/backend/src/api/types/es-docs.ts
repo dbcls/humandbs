@@ -26,4 +26,6 @@ export type {
   Grant,
   Publication,
   Summary,
+  ResearchProject,
+  BilingualText,
 } from "../../es/types"

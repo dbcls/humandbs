@@ -188,14 +188,14 @@ export const DatasetSchema = z.object({
     .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
   version: z.string()
     .describe("Dataset version (e.g., 'v1', 'v2')"),
-  versionReleaseDate: z.string()
-    .describe("ISO 8601 date when this dataset version was released"),
+  versionReleaseDate: z.string().nullable()
+    .describe("ISO 8601 date when this dataset version was released. Null for drafts (datasets attached to a draft ResearchVersion)."),
   humId: z.string()
     .describe("Parent Research identifier (e.g., 'hum0001')"),
   humVersionId: z.string()
     .describe("Parent Research version identifier (e.g., 'hum0001-v1')"),
-  releaseDate: z.string()
-    .describe("ISO 8601 date when the dataset was first released"),
+  releaseDate: z.string().nullable()
+    .describe("ISO 8601 date when the dataset was first released. Null for drafts (datasets attached to a draft ResearchVersion that has not yet been released)."),
   criteria: CriteriaCanonicalSchema
     .describe("Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'"),
 
@@ -311,8 +311,8 @@ export const ResearchSchema = z.object({
   // Timestamps
   datePublished: z.string().nullable()
     .describe("ISO 8601 timestamp when the Research was first published. Null until first approve."),
-  dateModified: z.string()
-    .describe("ISO 8601 timestamp when the Research was last modified"),
+  dateModified: z.string().nullable()
+    .describe("ISO 8601 timestamp when the Research was last modified. Null for freshly ingested N-new-hum drafts that have never been touched via the editor."),
 })
 export type Research = z.infer<typeof ResearchSchema>
 
@@ -332,8 +332,8 @@ export const ResearchVersionSchema = z.object({
     .describe("Research version identifier (e.g., 'hum0001-v1')"),
   version: z.string()
     .describe("Version number (e.g., 'v1', 'v2')"),
-  versionReleaseDate: z.string()
-    .describe("ISO 8601 date when this version was released"),
+  versionReleaseDate: z.string().nullable()
+    .describe("ISO 8601 date when this version was released. Null for drafts (versions that have not yet been released)."),
   datasets: z.array(DatasetRefSchema)
     .describe("References to datasets linked to this Research version"),
 

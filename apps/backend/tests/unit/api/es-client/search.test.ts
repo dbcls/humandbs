@@ -24,9 +24,24 @@ interface SearchCall {
   aggs?: unknown
 }
 
+interface EsSearchArgs {
+  index: string
+  query?: unknown
+  aggs?: unknown
+  track_total_hits?: boolean
+}
+
 const searchCalls: SearchCall[] = []
-const mockEsSearch = mock<(args: { index: string; query?: unknown; aggs?: unknown }) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
+const mockEsSearch = mock<(args: EsSearchArgs) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
 const mockEsMget = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({ docs: [] }))
+
+// `buildDatasetVisibilityFilter` issues its own Research-index lookup (the only
+// one with `track_total_hits: false`) before any query under test runs. It is
+// served out of band so `searchCalls` and the staged responses below stay
+// aligned with the query each test actually exercises.
+let visibilityHits: { _source: { humId: string; latestVersion: string | null } }[] = []
+const isVisibilityLookup = (args: EsSearchArgs) =>
+  args.index === "research" && args.track_total_hits === false
 
 void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
@@ -39,7 +54,8 @@ void mock.module("@/api/services/ownership", () => ({
 void mock.module("@/api/es-client/client", () => ({
   ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
   esClient: {
-    search: (args: { index: string; query?: unknown; aggs?: unknown }) => {
+    search: (args: EsSearchArgs) => {
+      if (isVisibilityLookup(args)) return Promise.resolve({ hits: { hits: visibilityHits } })
       searchCalls.push({ index: args.index, query: args.query, aggs: args.aggs })
       return mockEsSearch(args)
     },
@@ -86,6 +102,7 @@ const baseQuery = {
 
 beforeEach(() => {
   searchCalls.length = 0
+  visibilityHits = []
   mockEsSearch.mockReset()
   mockEsMget.mockReset()
   mockEsMget.mockResolvedValue({ docs: [] })
@@ -133,11 +150,15 @@ describe("searchResearches: full-text query via Dataset-side resolution (IT-SEAR
 
     await searchResearches({ ...baseQuery, q: "jgad000002" }, null)
 
-    const datasetQuery = searchCalls[0].query as { bool: { should: unknown[] } }
-    expect(Array.isArray(datasetQuery.bool.should)).toBe(true)
-    const ds = datasetQuery.bool.should as { term?: { datasetId: { value: string; case_insensitive: boolean } }; prefix?: { datasetId: { value: string; case_insensitive: boolean } } }[]
-    const termClause = ds.find(s => "term" in s)
-    const prefixClause = ds.find(s => "prefix" in s)
+    interface IdClause {
+      term?: { datasetId: { value: string; case_insensitive: boolean } }
+      prefix?: { datasetId: { value: string; case_insensitive: boolean } }
+    }
+    const datasetQuery = searchCalls[0].query as { bool: { must: { bool?: { should?: IdClause[] } }[] } }
+    const ds = datasetQuery.bool.must.find(m => Array.isArray(m.bool?.should))?.bool?.should
+    expect(Array.isArray(ds)).toBe(true)
+    const termClause = ds!.find(s => "term" in s)
+    const prefixClause = ds!.find(s => "prefix" in s)
     expect(termClause?.term?.datasetId.case_insensitive).toBe(true)
     expect(prefixClause?.prefix?.datasetId.case_insensitive).toBe(true)
   })
@@ -187,6 +208,69 @@ describe("searchResearches: visibility filter", () => {
       const hasExistsFilter = (q.bool.must as { exists?: { field: string } }[])
         .some(m => m.exists?.field === "latestVersion")
       expect(hasExistsFilter).toBe(false)
+    }
+  })
+})
+
+describe("searchResearches: Dataset-side visibility ceiling", () => {
+  // Every Dataset-index read must carry the same ceiling as the Dataset listing,
+  // or a draft-release Dataset can pull its parent Research into the results or
+  // inflate a facet count.
+  const CEILING = {
+    bool: {
+      should: [{ terms: { humVersionId: ["hum0001-v1", "hum0001-v2"] } }],
+      minimum_should_match: 1,
+    },
+  }
+
+  const datasetMust = (call: SearchCall) => (call.query as { bool: { must: unknown[] } }).bool.must
+
+  beforeEach(() => {
+    visibilityHits = [{ _source: { humId: "hum0001", latestVersion: "v2" } }]
+    mockEsSearch.mockImplementation(async args => (args.index === "dataset"
+      ? { aggregations: { humIds: { buckets: [{ key: "hum0001", doc_count: 1 }] } } }
+      : {
+        hits: { total: { value: 0 }, hits: [] },
+        aggregations: { all_humIds: { buckets: [{ key: "hum0001", doc_count: 1 }] } },
+      }))
+  })
+
+  it("bounds the datasetId lookup so a draft-release datasetId cannot surface its parent", async () => {
+    await searchResearches({ ...baseQuery, q: "JGAD000002" }, null)
+
+    const call = searchCalls.find(c => c.index === "dataset")!
+    expect(datasetMust(call)).toContainEqual(CEILING)
+  })
+
+  it("bounds the dataset-side text cross-search", async () => {
+    await searchResearches({ ...baseQuery, q: "cancer" }, null)
+
+    const call = searchCalls.find(c => c.index === "dataset")!
+    expect(datasetMust(call)).toContainEqual(CEILING)
+  })
+
+  it("bounds the datasetFilters humId resolution", async () => {
+    await searchResearches({ ...baseQuery, assayType: "WGS" }, null)
+
+    const call = searchCalls.find(c => c.index === "dataset")!
+    expect(datasetMust(call)).toContainEqual(CEILING)
+  })
+
+  it("bounds the facet aggregation so a draft-release Dataset cannot inflate a count", async () => {
+    await searchResearches({ ...baseQuery, includeFacets: true }, null)
+
+    const facetCall = searchCalls.find(c => c.index === "dataset" && c.aggs !== undefined)!
+    expect(datasetMust(facetCall)).toContainEqual(CEILING)
+  })
+
+  it("admin reads the Dataset index unbounded", async () => {
+    await searchResearches(
+      { ...baseQuery, q: "JGAD000002", includeFacets: true },
+      createMockAuthUser({ isAdmin: true }),
+    )
+
+    for (const call of searchCalls.filter(c => c.index === "dataset")) {
+      expect(JSON.stringify(call.query)).not.toContain("humVersionId")
     }
   })
 })
@@ -412,5 +496,91 @@ describe("searchResearches: platforms projection (structured searchable.platform
     const result = await searchResearches({ ...baseQuery }, null)
 
     expect(result.data[0].platforms).toEqual(["Illumina [HiSeq 2000]"])
+  })
+})
+
+// V-new-version draft rv have `versionReleaseDate: null`. Before the schema
+// widen this made `searchResearches` throw when a draft rv appeared in the
+// top-N result set (`order=desc` in production). The two tests below lock in
+// the two invariants that fix touches: (1) the mget parse no longer throws,
+// (2) the response projection still drops draft versions for anonymous
+// viewers (draft-release.md invariant "一般ユーザーには見えない状態を保証する").
+describe("searchResearches: V-draft rv (versionReleaseDate=null) handling", () => {
+  const buildResearchWithDraftVersion = () => createMockResearchDoc({
+    humId: "hum0006",
+    latestVersion: "v5",
+    draftVersion: "v8",
+    status: "draft",
+    versionIds: ["hum0006-v1", "hum0006-v5", "hum0006-v8"],
+  })
+
+  const setupMgetWithDraftRv = () => {
+    // 1st mget: research-version index — 2 published + 1 draft (null rd).
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [
+        {
+          found: true,
+          _id: "hum0006-v1",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v1",
+            version: "v1",
+            versionReleaseDate: "2020-01-01",
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+        {
+          found: true,
+          _id: "hum0006-v5",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v5",
+            version: "v5",
+            versionReleaseDate: "2024-01-01",
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+        {
+          found: true,
+          _id: "hum0006-v8",
+          _source: {
+            humId: "hum0006",
+            humVersionId: "hum0006-v8",
+            version: "v8",
+            versionReleaseDate: null, // ← draft
+            releaseNote: { ja: null, en: null },
+            datasets: [],
+          },
+        },
+      ],
+    }))
+    // 2nd mget: dataset index — empty.
+    mockEsMget.mockImplementationOnce(async () => ({ docs: [] }))
+  }
+
+  it("does not throw when a top-N Research owns a draft rv (500 regression)", async () => {
+    const doc = buildResearchWithDraftVersion()
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMgetWithDraftRv()
+
+    const result = await searchResearches({ ...baseQuery, order: "desc" as const, sort: "dateModified" as const }, null)
+
+    expect(result.data).toHaveLength(1)
+  })
+
+  it("drops draft version from response.versions[] for anonymous viewer", async () => {
+    const doc = buildResearchWithDraftVersion()
+    mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 1 }, hits: [{ _source: doc }] } }))
+    setupMgetWithDraftRv()
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    const versions = result.data[0].versions.map(v => v.version)
+    expect(versions).toEqual(["v1", "v5"])
+    expect(versions).not.toContain("v8")
+    // status is downgraded to published for anonymous viewers
+    expect(result.data[0].status).toBe("published")
   })
 })

@@ -7,7 +7,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import fc from "fast-check"
 
 import type { ResearchDetail } from "@/api/types"
-import { isOwnerOrAdmin, parseVersionNum, resolveVersionForUser, sanitizeResearchDetailForUser } from "@/api/utils/version"
+import { isHumVersionAccessible, isOwnerOrAdmin, parseVersionFromHumVersionId, parseVersionNum, resolveVersionForUser, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import { createMockAuthUser, createMockResearchDoc } from "../helpers/mock-es"
 
@@ -44,6 +44,57 @@ describe("parseVersionNum", () => {
     "v-1",
   ])("throws for invalid format: %s", (input) => {
     expect(() => parseVersionNum(input)).toThrow("Invalid version format")
+  })
+})
+
+describe("parseVersionFromHumVersionId", () => {
+  it.each([
+    ["hum0001-v1", "v1"],
+    ["hum0006-v8", "v8"],
+    ["hum0197-v37", "v37"],
+  ] as const)("extracts version from %s", (input, expected) => {
+    expect(parseVersionFromHumVersionId(input)).toBe(expected)
+  })
+
+  it.each([
+    "hum0001",
+    "hum0001-",
+    "hum0001-1",
+    "hum0001-V1",
+    "hum0001-v",
+    "-v1",
+  ])("returns null for malformed %s", (input) => {
+    expect(parseVersionFromHumVersionId(input)).toBeNull()
+  })
+})
+
+describe("isHumVersionAccessible", () => {
+  // owner/admin bypass: always true regardless of latestVersion
+  it("admin/owner sees any version (including drafts)", () => {
+    expect(isHumVersionAccessible("hum0006-v8", "v5", true)).toBe(true)
+    expect(isHumVersionAccessible("hum0006-v8", null, true)).toBe(true)
+  })
+
+  // parent has published version — draft is v > latestVersion
+  it("hides V-draft version above latestVersion from public", () => {
+    expect(isHumVersionAccessible("hum0006-v8", "v5", false)).toBe(false)
+    expect(isHumVersionAccessible("hum0006-v6", "v5", false)).toBe(false)
+  })
+
+  it("shows version at or below latestVersion to public", () => {
+    expect(isHumVersionAccessible("hum0006-v5", "v5", false)).toBe(true)
+    expect(isHumVersionAccessible("hum0006-v3", "v5", false)).toBe(true)
+    expect(isHumVersionAccessible("hum0006-v1", "v5", false)).toBe(true)
+  })
+
+  // N-draft: parent has no latestVersion, all versions are drafts
+  it("hides all versions of N-draft (latestVersion=null) from public", () => {
+    expect(isHumVersionAccessible("hum9999-v1", null, false)).toBe(false)
+  })
+
+  // Malformed humVersionId — defensive: treat as hidden
+  it("returns false for malformed humVersionId with public viewer", () => {
+    expect(isHumVersionAccessible("garbage", "v5", false)).toBe(false)
   })
 })
 

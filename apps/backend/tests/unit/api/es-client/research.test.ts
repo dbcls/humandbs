@@ -50,8 +50,10 @@ void mock.module("@/api/es-client/client", () => ({
   },
 }))
 
+const mockGetResearchVersion = mock<(..._args: unknown[]) => Promise<unknown>>(async () => null)
+
 void mock.module("@/api/es-client/research-version", () => ({
-  getResearchVersion: mock(async () => null),
+  getResearchVersion: mockGetResearchVersion,
   getResearchVersionWithSeqNo: mock(async () => null),
   listResearchVersions: mock(async () => []),
   listResearchVersionsSorted: mock(async () => []),
@@ -86,6 +88,11 @@ const optimisticLockError = () => Object.assign(new Error("optimistic lock"), {
 const TODAY = new Date().toISOString().split("T")[0]
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
+// N-new-hum draft context (latestVersion=null): updateResearch writes content
+// only to RV[draftVersion], never to the Research root. That's what these
+// tests exercise — they never assert content on the root doc.
+const nNewCtx = { status: "draft" as const, latestVersion: null, draftVersion: "v1" }
+
 beforeEach(() => {
   mockEsIndex.mockReset()
   mockEsUpdate.mockReset()
@@ -93,6 +100,8 @@ beforeEach(() => {
   mockEsSearch.mockReset()
   mockEsDelete.mockReset()
   mockEsDeleteByQuery.mockReset()
+  mockGetResearchVersion.mockReset()
+  mockGetResearchVersion.mockResolvedValue(null)
 })
 
 // === createResearch ===
@@ -201,7 +210,7 @@ describe("updateResearch", () => {
       _primary_term: 1,
     })
 
-    const result = await research.updateResearch("hum0001", { title: { ja: "new", en: "new" } }, 4, 1)
+    const result = await research.updateResearch("hum0001", nNewCtx, { title: { ja: "new", en: "new" } }, 4, 1)
     expect(result).not.toBeNull()
     expect(result?.dateModified).toMatch(ISO_DATE)
 
@@ -214,7 +223,7 @@ describe("updateResearch", () => {
   it("returns null on optimistic-lock failure (IT-RESEARCH-14)", async () => {
     mockEsUpdate.mockRejectedValue(optimisticLockError())
 
-    const result = await research.updateResearch("hum0001", { title: { ja: "x", en: "x" } }, 0, 0)
+    const result = await research.updateResearch("hum0001", nNewCtx, { title: { ja: "x", en: "x" } }, 0, 0)
     expect(result).toBeNull()
   })
 
@@ -223,7 +232,7 @@ describe("updateResearch", () => {
 
     let caught: unknown
     try {
-      await research.updateResearch("hum0001", {}, 1, 1)
+      await research.updateResearch("hum0001", nNewCtx, {}, 1, 1)
     } catch (e) {
       caught = e
     }
@@ -236,6 +245,7 @@ describe("updateResearch", () => {
 
     await research.updateResearch(
       "hum0001",
+      nNewCtx,
       {
         summaryShort: {
           methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
@@ -259,7 +269,7 @@ describe("updateResearch", () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: false })
 
-    await research.updateResearch("hum0001", { summaryShort: null }, 1, 1)
+    await research.updateResearch("hum0001", nNewCtx, { summaryShort: null }, 1, 1)
 
     const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
     expect("summaryShort" in doc).toBe(true)
@@ -270,7 +280,7 @@ describe("updateResearch", () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: false })
 
-    await research.updateResearch("hum0001", { title: { ja: "t", en: "t" } }, 1, 1)
+    await research.updateResearch("hum0001", nNewCtx, { title: { ja: "t", en: "t" } }, 1, 1)
 
     const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
     expect("summaryShort" in doc).toBe(false)
@@ -282,6 +292,7 @@ describe("updateResearch", () => {
 
     await research.updateResearch(
       "hum0001",
+      nNewCtx,
       {
         summaryShort: {
           methods: { ja: { text: "配列決定" }, en: null },
@@ -299,6 +310,199 @@ describe("updateResearch", () => {
       typeOfData: { ja: null, en: { text: "NGS", rawHtml: null } },
       targets: { ja: null, en: null },
     })
+  })
+})
+
+// === updateResearch write-routing (per-version leak fix) ===
+//
+// These tests pin the invariant that draft-of-published edits (V-new-version
+// draft where latestVersion != null) never touch the Research root content —
+// only the RV[draftVersion] doc. Without this the root snapshot leaks into
+// public detail responses because getResearchDetail merges root + RV meta.
+
+describe("updateResearch write routing", () => {
+  const vNewDraftCtx = { status: "draft" as const, latestVersion: "v1", draftVersion: "v2" }
+  const publishedCtx = { status: "published" as const, latestVersion: "v1", draftVersion: null }
+
+  const bodyDoc = (call: number): Record<string, unknown> =>
+    (mockEsUpdate.mock.calls[call]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+  const updateIndex = (call: number): string =>
+    (mockEsUpdate.mock.calls[call]?.[0] as { index: string }).index
+  const updateId = (call: number): string =>
+    (mockEsUpdate.mock.calls[call]?.[0] as { id: string }).id
+
+  it("V-new-version draft: content lands on RV[draftVersion] only, root gets no content", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      vNewDraftCtx,
+      { title: { ja: "draft-only", en: "draft-only" } },
+      1,
+      1,
+    )
+
+    expect(mockEsUpdate).toHaveBeenCalledTimes(2)
+
+    // 1st call = root: bumps dateModified, does NOT carry title.
+    expect(updateIndex(0)).toBe("research")
+    expect(updateId(0)).toBe("hum0001")
+    const rootDoc = bodyDoc(0)
+    expect(rootDoc.dateModified).toMatch(ISO_DATE)
+    expect("title" in rootDoc).toBe(false)
+    expect("summary" in rootDoc).toBe(false)
+
+    // 2nd call = RV[draftVersion=v2]: carries the content update.
+    expect(updateIndex(1)).toBe("research-version")
+    expect(updateId(1)).toBe("hum0001-v2")
+    const rvDoc = bodyDoc(1)
+    expect(rvDoc.title).toEqual({ ja: "draft-only", en: "draft-only" })
+    expect("dateModified" in rvDoc).toBe(false)
+  })
+
+  it("published patch: content lands on both root and RV[latestVersion]", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      publishedCtx,
+      { title: { ja: "patched", en: "patched" } },
+      1,
+      1,
+    )
+
+    expect(mockEsUpdate).toHaveBeenCalledTimes(2)
+
+    // Root: has content
+    expect(updateIndex(0)).toBe("research")
+    expect(bodyDoc(0).title).toEqual({ ja: "patched", en: "patched" })
+
+    // RV[latestVersion=v1]: also has content
+    expect(updateIndex(1)).toBe("research-version")
+    expect(updateId(1)).toBe("hum0001-v1")
+    expect(bodyDoc(1).title).toEqual({ ja: "patched", en: "patched" })
+  })
+
+  it("summaryShort updates hit only the Research root (never per-version)", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      vNewDraftCtx,
+      {
+        summaryShort: {
+          methods: { ja: { text: "m" }, en: { text: "m" } },
+          typeOfData: { ja: { text: "t" }, en: { text: "t" } },
+          targets: { ja: { text: "g" }, en: { text: "g" } },
+        },
+      },
+      1,
+      1,
+    )
+
+    // Only root update — no content updates → no RV call.
+    expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+    expect(updateIndex(0)).toBe("research")
+    expect(bodyDoc(0).summaryShort).toBeDefined()
+  })
+
+  it("V-new-version draft: RV update skipped when no content field is supplied", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    // Passing only `summaryShort` (root-only) triggers no RV write even though
+    // there's a live draftVersion.
+    await research.updateResearch("hum0001", vNewDraftCtx, { summaryShort: null }, 1, 1)
+
+    expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+    expect(updateIndex(0)).toBe("research")
+  })
+
+  it("V-new-version draft: root optimistic-lock failure short-circuits before RV write", async () => {
+    mockEsUpdate.mockImplementationOnce(async () => { throw optimisticLockError() })
+
+    const result = await research.updateResearch(
+      "hum0001",
+      vNewDraftCtx,
+      { title: { ja: "x", en: "x" } },
+      0,
+      0,
+    )
+
+    expect(result).toBeNull()
+    expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+    expect(updateIndex(0)).toBe("research")
+  })
+})
+
+// === syncResearchRootFromVersion (approve invariant) ===
+//
+// approve copies RV[newLatestVersion] content back to the Research root so
+// search / listing / public detail all serve the newly-approved version.
+
+describe("syncResearchRootFromVersion", () => {
+  it("copies non-null content fields from the target RV to the Research root", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockGetResearchVersion.mockResolvedValueOnce({
+      humId: "hum0001",
+      humVersionId: "hum0001-v2",
+      version: "v2",
+      versionReleaseDate: TODAY,
+      datasets: [],
+      releaseNote: { ja: null, en: null },
+      title: { ja: "v2-title", en: "v2-title" },
+      summary: { aims: { ja: { text: "v2-aim", rawHtml: null }, en: null }, methods: { ja: null, en: null }, targets: { ja: null, en: null }, url: { ja: [], en: [] } },
+      dataProvider: [],
+      researchProject: [],
+      grant: [],
+      relatedPublication: [],
+    })
+
+    await research.syncResearchRootFromVersion("hum0001", "v2")
+
+    expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+    const args = mockEsUpdate.mock.calls[0]?.[0] as { index: string; id: string; body: { doc: Record<string, unknown> } }
+    expect(args.index).toBe("research")
+    expect(args.id).toBe("hum0001")
+    expect(args.body.doc.title).toEqual({ ja: "v2-title", en: "v2-title" })
+    expect((args.body.doc.summary as { aims: unknown }).aims).toBeDefined()
+    // Version-metadata fields are not copied — sync only touches content.
+    expect("versionReleaseDate" in args.body.doc).toBe(false)
+    expect("releaseNote" in args.body.doc).toBe(false)
+    expect("datasets" in args.body.doc).toBe(false)
+  })
+
+  it("skips the root update when the target RV has no populated content (pre-migration doc)", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockGetResearchVersion.mockResolvedValueOnce({
+      humId: "hum0001",
+      humVersionId: "hum0001-v1",
+      version: "v1",
+      versionReleaseDate: TODAY,
+      datasets: [],
+      releaseNote: { ja: null, en: null },
+      // No content fields populated
+    })
+
+    await research.syncResearchRootFromVersion("hum0001", "v1")
+
+    // No-op: nothing to sync, so no root write happens.
+    expect(mockEsUpdate).not.toHaveBeenCalled()
+  })
+
+  it("throws when the target RV does not exist", async () => {
+    mockGetResearchVersion.mockResolvedValueOnce(null)
+
+    let caught: unknown
+    try {
+      await research.syncResearchRootFromVersion("hum0001", "v9")
+    } catch (e) {
+      caught = e
+    }
+    expect((caught as Error).message).toContain("hum0001-v9 not found")
   })
 })
 

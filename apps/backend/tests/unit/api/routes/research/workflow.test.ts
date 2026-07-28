@@ -29,6 +29,7 @@ const mockUpdateResearchStatus = mock<
 const mockGetResearchWithSeqNo = mock<
   (humId: string) => Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number } | null>
 >()
+const mockSyncResearchRootFromVersion = mock<(humId: string, version: string) => Promise<void>>(async () => undefined)
 
 void mock.module("@/api/es-client/research", () => ({
   createResearch: mock(() => Promise.resolve(null)),
@@ -38,6 +39,7 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
   updateResearch: mock(() => Promise.resolve(null)),
   updateResearchStatus: (...args: unknown[]) => mockUpdateResearchStatus(...args),
+  syncResearchRootFromVersion: (humId: string, version: string) => mockSyncResearchRootFromVersion(humId, version),
 }))
 
 void mock.module("@/api/es-client/search", () => ({
@@ -210,6 +212,8 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
   beforeEach(() => {
     mockGetResearchWithSeqNo.mockReset()
     mockUpdateResearchStatus.mockReset()
+    mockSyncResearchRootFromVersion.mockReset()
+    mockSyncResearchRootFromVersion.mockResolvedValue(undefined)
     mockIsOwner.mockReset()
     mockIsOwner.mockImplementation(async (_u: string) => _u === "owner-1")
   })
@@ -238,6 +242,46 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
     })
     expect(res.status).toBe(200)
     expect(mockUpdateResearchStatus).toHaveBeenCalledTimes(1)
+    // approve must sync the Research root content from the newly-published RV
+    // so search / listing / public detail catch up with the approved version.
+    expect(mockSyncResearchRootFromVersion).toHaveBeenCalledTimes(1)
+    expect(mockSyncResearchRootFromVersion).toHaveBeenCalledWith("hum0001", "v1")
+  })
+
+  it("submit/reject/unpublish do NOT invoke syncResearchRootFromVersion", async () => {
+    // Submit (draft → review): no content changes → no sync.
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("review"))
+
+    await getTestApp().request("/research/hum0001/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: "{}",
+    })
+    expect(mockSyncResearchRootFromVersion).not.toHaveBeenCalled()
+
+    // Unpublish (published → draft): latestVersion clears, no content changes.
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 2, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("draft", { latestVersion: null, draftVersion: "v1" }))
+
+    await getTestApp().request("/research/hum0001/unpublish", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(mockSyncResearchRootFromVersion).not.toHaveBeenCalled()
   })
 
   it("approve: invalid current status (draft) returns 409 and updateResearchStatus is NOT called", async () => {

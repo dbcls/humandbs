@@ -21,11 +21,25 @@ import { logger } from "@/api/logger"
 import { EsDatasetSchema } from "@/api/types"
 import type { AuthUser, CreateDatasetRequest, DatasetVersionItem, EsDataset, ResearchDetail, UpdateDatasetRequest } from "@/api/types"
 import { hydrateExperiment } from "@/api/utils/hydrate-raw-html"
+import { isHumVersionAccessible, isOwnerOrAdmin } from "@/api/utils/version"
 
 // === Dataset Retrieval ===
 
 /**
- * Check if user can access a Dataset based on parent Research status
+ * Check if user can access a Dataset.
+ *
+ * A Dataset is accessible when both hold:
+ * 1. Its parent Research is accessible (`canAccessResearchDoc`).
+ * 2. Its `humVersionId` version part is not beyond `parent.latestVersion` —
+ *    i.e. the Dataset does not belong to a draft ResearchVersion that a
+ *    non-owner/admin should not see.
+ *
+ * Owner and admin bypass rule 2 (they can see draft Datasets).
+ *
+ * Rule 2 is what plugs the draft-release leak: even though a V-new-version
+ * parent Research is publicly visible (its `latestVersion` still exists),
+ * the newer `humVersionId=hum{NNNN}-v<draft>` Datasets attached to it must
+ * stay hidden until the draft is approved.
  */
 const canAccessDataset = async (
   authUser: AuthUser | null,
@@ -33,51 +47,58 @@ const canAccessDataset = async (
 ): Promise<boolean> => {
   if (authUser?.isAdmin) return true
 
-  // Get parent Research and check access
   const researchDoc = await getResearchDoc(dataset.humId)
   if (!researchDoc) return false
+  if (!await canAccessResearchDoc(authUser, researchDoc)) return false
 
-  return await canAccessResearchDoc(authUser, researchDoc)
+  const ownerOrAdmin = await isOwnerOrAdmin(authUser, dataset.humId)
+  return isHumVersionAccessible(dataset.humVersionId, researchDoc.latestVersion, ownerOrAdmin)
 }
+
+// Upper bound on how many Dataset versions a single datasetId can have. Used
+// as the ES fetch size when resolving the "latest visible" version so we can
+// skip past drafts for non-owner/admin viewers. A datasetId with > 30 versions
+// is not realistic in this dataset (checked against production: max ≈ 10);
+// leaving headroom prevents silent latest-version misses if that ever grows.
+const LATEST_VERSION_SCAN_SIZE = 30
 
 export const getDataset = async (
   datasetId: string,
   { version }: { version?: string },
   authUser: AuthUser | null = null,
 ): Promise<EsDataset | null> => {
-  let dataset: EsDataset | null = null
-
   if (version) {
     const id = `${datasetId}-${version}`
     const res = await esClient.get<EsDataset>({
       index: ES_INDEX.dataset,
       id,
     }, { ignore: [404] })
-    dataset = res.found && res._source ? EsDatasetSchema.parse(res._source) : null
-  } else {
-    // If the version is not specified, get the latest version
-    const { hits } = await esClient.search<EsDataset>({
-      index: ES_INDEX.dataset,
-      size: 1,
-      query: { term: { datasetId } },
-      sort: [
-        versionSortSpec("desc"),
-        { releaseDate: { order: "desc" } },
-      ],
-      _source: true,
-      track_total_hits: false,
-    })
-    const hit = hits.hits[0]
-    dataset = hit?._source != null ? EsDatasetSchema.parse(hit._source) : null
+    const dataset = res.found && res._source ? EsDatasetSchema.parse(res._source) : null
+    if (!dataset) return null
+    return await canAccessDataset(authUser, dataset) ? dataset : null
   }
 
-  if (!dataset) return null
+  // Version unspecified: return the latest *visible* version. Owner/admin see
+  // the true max (draft-included); everyone else sees the max whose
+  // humVersionId is at or below the parent's latestVersion.
+  const { hits } = await esClient.search<EsDataset>({
+    index: ES_INDEX.dataset,
+    size: LATEST_VERSION_SCAN_SIZE,
+    query: { term: { datasetId } },
+    sort: [
+      versionSortSpec("desc"),
+      { releaseDate: { order: "desc" } },
+    ],
+    _source: true,
+    track_total_hits: false,
+  })
 
-  // Authorization check: verify user can access parent Research
-  const canAccess = await canAccessDataset(authUser, dataset)
-  if (!canAccess) return null
-
-  return dataset
+  for (const hit of hits.hits) {
+    if (!hit._source) continue
+    const dataset = EsDatasetSchema.parse(hit._source)
+    if (await canAccessDataset(authUser, dataset)) return dataset
+  }
+  return null
 }
 
 /**
@@ -133,7 +154,9 @@ export const listDatasetVersions = async (
       versionSortSpec("desc"),
       { releaseDate: { order: "desc" } },
     ],
-    _source: ["version", "typeOfData", "criteria", "releaseDate", "humId"],
+    // `humVersionId` is required so we can hide draft-only versions from
+    // non-owner/admin viewers via `isHumVersionAccessible`.
+    _source: ["version", "typeOfData", "criteria", "releaseDate", "humId", "humVersionId"],
     track_total_hits: false,
   })
 
@@ -150,7 +173,12 @@ export const listDatasetVersions = async (
     return null // Return null to indicate not found/unauthorized
   }
 
-  return rows.map(d => ({
+  const ownerOrAdmin = await isOwnerOrAdmin(authUser, firstRow.humId)
+  const visible = rows.filter(d =>
+    isHumVersionAccessible(d.humVersionId, researchDoc.latestVersion, ownerOrAdmin),
+  )
+
+  return visible.map(d => ({
     version: d.version,
     typeOfData: d.typeOfData,
     criteria: d.criteria,

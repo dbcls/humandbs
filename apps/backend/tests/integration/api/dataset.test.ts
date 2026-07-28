@@ -51,8 +51,10 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     const json = (await res.json()) as SearchResponse<EsDataset & { _seq_no?: number; _primary_term?: number }>
     expect(json.meta.pagination.page).toBe(1)
     expect(json.meta.pagination.limit).toBe(5)
-    expect(json.data.length).toBeLessThanOrEqual(5)
-    expect(json.data.length).toBeLessThanOrEqual(json.meta.pagination.total)
+    // Post-fix: query-time humVersionId ceiling makes pagination.total = uniq_ids
+    // cardinality of accessible docs, so data.length is exactly the page slice —
+    // no drops from a stale post-filter that would inflate total.
+    expect(json.data.length).toBe(Math.min(5, json.meta.pagination.total))
     // Optimistic-lock fields are detail-only — list items must NOT leak them.
     for (const item of json.data) {
       expect(item._seq_no).toBeUndefined()

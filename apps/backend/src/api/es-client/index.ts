@@ -11,8 +11,9 @@ export type { estypes } from "@/api/es-client/client"
 // Authorization
 export {
   buildStatusFilter,
+  buildDatasetVisibilityFilter,
   canAccessResearchDoc,
-  getPublishedHumIds,
+  getAccessibleHumsWithLatest,
   checkRequestedStatus,
   validateStatusTransition,
   canPerformTransition,
