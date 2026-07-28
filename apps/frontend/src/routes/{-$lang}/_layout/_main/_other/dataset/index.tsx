@@ -27,7 +27,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
-import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
@@ -196,16 +195,11 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
 function CardContent() {
   const t = useTranslations("Dataset-list");
-  const { containerRef, maxHeight } = useMaxHeight(130);
 
   return (
     <>
       <InfoBadge>{t("cart-note")}</InfoBadge>
-      <div
-        ref={containerRef}
-        style={{ maxHeight }}
-        className="flex min-w-full flex-1 flex-col overflow-auto"
-      >
+      <div className="min-w-full overflow-x-auto">
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -340,7 +334,7 @@ function TableWrapper() {
   if (!data || (isFetching && !isPlaceholderData)) {
     return (
       <TableLoadingSpinner
-        className="min-h-full w-max min-w-full flex-1 text-sm"
+        className="w-max min-w-full text-sm"
         columns={datasetsColumns}
         meta={{ t, lang }}
       />
@@ -349,7 +343,7 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("w-max min-w-full text-sm")}
       meta={{ t, lang }}
       columns={datasetsColumns}
       data={data.data}

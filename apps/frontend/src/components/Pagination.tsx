@@ -1,8 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
+import { useEffect, useState } from "react";
+
 import type { Pagination as APIPagination } from "@humandbs/backend/types";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Pagination as PaginationBase,
   PaginationContent,
@@ -86,11 +90,23 @@ interface PaginationProps {
 export function Pagination({ pagination, onItemsPerPageChange, className }: PaginationProps) {
   const navigate = useNavigate();
   const t = useTranslations("Pagination");
+  const [pageInput, setPageInput] = useState(String(pagination.page));
 
   const visiblePages = getVisiblePages(pagination.page, pagination.totalPages);
+  const visiblePageItems = visiblePages.map((pageNum, index) => ({
+    pageNum,
+    key:
+      pageNum === "ellipsis"
+        ? `ellipsis-${visiblePages[index - 1]}-${visiblePages[index + 1]}`
+        : pageNum,
+  }));
+
+  useEffect(() => {
+    setPageInput(String(pagination.page));
+  }, [pagination.page]);
 
   const handleItemsPerPageChange = (value: string) => {
-    const newItemsPerPage = parseInt(value);
+    const newItemsPerPage = parseInt(value, 10);
     if (onItemsPerPageChange) {
       onItemsPerPageChange(newItemsPerPage);
     }
@@ -98,6 +114,24 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page: 1, limit: newItemsPerPage }),
+      resetScroll: false,
+    });
+  };
+
+  const handlePageJump = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const requestedPage = Number(pageInput);
+    if (!Number.isInteger(requestedPage)) return;
+
+    const page = Math.min(pagination.totalPages, Math.max(1, requestedPage));
+    setPageInput(String(page));
+
+    if (page === pagination.page) return;
+
+    navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, page }),
       resetScroll: false,
     });
   };
@@ -123,10 +157,10 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
             />
           </PaginationItem>
 
-          {visiblePages.map((pageNum, index) => {
+          {visiblePageItems.map(({ pageNum, key }) => {
             if (pageNum === "ellipsis") {
               return (
-                <PaginationItem key={`ellipsis-${pageNum}-${index}`}>
+                <PaginationItem key={key}>
                   <PaginationEllipsis />
                 </PaginationItem>
               );
@@ -159,6 +193,28 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
               })}
               resetScroll={false}
             />
+          </PaginationItem>
+          <PaginationItem>
+            <form className="flex items-center gap-2" onSubmit={handlePageJump}>
+              <label className="text-muted-foreground text-sm" htmlFor="pagination-page">
+                {t("page")}
+              </label>
+              <Input
+                aria-label={t("pageNumber")}
+                className="w-16 text-center"
+                id="pagination-page"
+                max={pagination.totalPages}
+                min="1"
+                onChange={(event) => setPageInput(event.target.value)}
+                required
+                step="1"
+                type="number"
+                value={pageInput}
+              />
+              <Button size="default" type="submit" variant="outline">
+                {t("go")}
+              </Button>
+            </form>
           </PaginationItem>
         </PaginationContent>
       </PaginationBase>
