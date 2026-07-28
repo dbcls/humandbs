@@ -68,6 +68,7 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDetail: mock(() => Promise.resolve(null)),
   getResearchDoc: (humId: string) => mockGetResearchDoc(humId),
   getResearchWithSeqNo: mock(() => Promise.resolve(null)),
+  syncResearchRootFromVersion: mock(() => Promise.resolve(undefined)),
   updateResearch: mock(() => Promise.resolve(null)),
   updateResearchStatus: mock(() => Promise.resolve(null)),
 }))

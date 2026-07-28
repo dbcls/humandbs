@@ -94,6 +94,7 @@ void mock.module("@/api/es-client/research", () => ({
   createResearch: mockCreateResearch,
   updateResearch: mockUpdateResearch,
   updateResearchStatus: mockUpdateResearchStatus,
+  syncResearchRootFromVersion: mock(async () => undefined),
   deleteResearch: mockDeleteResearch,
 }))
 

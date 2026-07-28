@@ -49,6 +49,7 @@ void mock.module("@/api/es-client/research", () => ({
   createResearch: mock(async () => { throw new Error("createResearch not stubbed in this test") }),
   updateResearch: mock(async () => null),
   updateResearchStatus: mock(async () => null),
+  syncResearchRootFromVersion: mock(async () => undefined),
   deleteResearch: mock(async () => false),
 }))
 

@@ -43,6 +43,15 @@ interface SingleResearchResponse {
   }
 }
 
+/**
+ * Response shape of a GET without `includeRawHtml`: `maybeStripRawHtml` removes
+ * every `rawHtml` key, so the stored doc's type overstates what arrives.
+ */
+type RawHtmlStripped<T> =
+  T extends (infer U)[] ? RawHtmlStripped<U>[]
+    : T extends object ? { [K in keyof T as K extends "rawHtml" ? never : K]: RawHtmlStripped<T[K]> }
+      : T
+
 beforeAll(setupIntegration)
 
 interface ResearchSummary {
@@ -926,7 +935,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       // covered by unit tests; here we just check the text round-trips.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(200)
-      const detailJson = (await detail.json()) as SingleReadOnlyResponse<EsResearch>
+      const detailJson = (await detail.json()) as SingleReadOnlyResponse<RawHtmlStripped<EsResearch>>
       expect(detailJson.data.summaryShort).toEqual({
         methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
         typeOfData: { ja: { text: "NGS（WGS）" }, en: { text: "NGS (WGS)" } },

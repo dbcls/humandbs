@@ -13,7 +13,7 @@
  * the in-process ownership cache in `services/ownership.ts` — production
  * ownership is read-only from the JGA DB and cannot be mutated by tests.
  *
- * Constraints (see plan): the production indices must never be touched.
+ * Constraints: the production indices must never be touched.
  * Callers must already be inside `itWithIsolationIndex`, which verifies that
  * the `-it` indices are wired in. The helpers themselves do not re-check —
  * that is the responsibility of the `itWithIsolationIndex` wrapper.
@@ -24,7 +24,7 @@
  */
 import { expect } from "bun:test"
 
-import { seedOwnershipForTest, unseedAllOwnersForHumIdTest } from "@/api/services/ownership"
+import { getOwnerUsernames, seedOwnershipForTest, unseedAllOwnersForHumIdTest } from "@/api/services/ownership"
 
 import { authHeaders, getApp, url } from "./setup"
 
@@ -124,8 +124,39 @@ const extractDatasetHandle = (
   }
 }
 
-const randomHumId = (): string =>
-  `hum${9000 + Math.floor(Math.random() * 999)}`
+const drawnHumIds = new Set<string>()
+
+const ownersOf = async (humId: string): Promise<string[]> => {
+  try {
+    return await getOwnerUsernames(humId)
+  } catch {
+    // Ownership cache unavailable (JGA DB unreachable). Fall back to the
+    // process-local uniqueness check alone.
+    return []
+  }
+}
+
+/**
+ * Draw a humId that is free for a fresh draft.
+ *
+ * `humId` is validated as `hum0000`–`hum9999`, so the pool a test may draw from
+ * is small and every draw has to clear two hazards: an id another test in this
+ * process already used (its ES doc may be gone but assertions about a *fresh*
+ * Research would still see leftovers), and an id that carries ownership. Owners
+ * come from `services/ownership.ts`, which maps humIds to usernames out of the
+ * JGA application DB and the test seeds — a draft created on an owned humId
+ * starts out with `owners` already populated.
+ */
+const drawFreeHumId = async (): Promise<string> => {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const humId = `hum${9000 + Math.floor(Math.random() * 999)}`
+    if (drawnHumIds.has(humId)) continue
+    if ((await ownersOf(humId)).length > 0) continue
+    drawnHumIds.add(humId)
+    return humId
+  }
+  throw new Error("drawFreeHumId: no unused, unowned humId left in hum9000-hum9998")
+}
 
 /**
  * Create a fresh draft Research as admin.
@@ -135,15 +166,15 @@ const randomHumId = (): string =>
  * value-based fields (`status:"draft"`, `latestVersion:null`,
  * `draftVersion:"v1"`).
  *
- * When `opts.humId` is omitted a random 5-digit humId is generated so tests
- * that don't care about the specific id don't have to supply one.
+ * When `opts.humId` is omitted an unused, unowned humId is drawn so tests that
+ * don't care about the specific id don't have to supply one.
  */
 export const createDraftResearch = async (
   admin: string,
   opts: { humId?: string } = {},
 ): Promise<ResearchHandle> => {
   const app = getApp()
-  const humId = opts.humId ?? randomHumId()
+  const humId = opts.humId ?? await drawFreeHumId()
   const res = await app.request(url("/research/new"), {
     method: "POST",
     headers: { ...authHeaders(admin), "Content-Type": "application/json" },
@@ -302,9 +333,9 @@ export const purgeResearch = async (admin: string, humId: string): Promise<void>
   } catch (err) {
     console.warn(`  purgeResearch(${humId}): ${(err as Error).message}`)
   } finally {
-    // humIds are reusable after physical delete; without this the ownership
-    // cache seed from `setOwnerUids` would leak into the next test that
-    // happens to draw the same humId.
+    // Drop the `setOwnerUids` seed along with the doc: the humId becomes
+    // reusable after a physical delete, and a test passing this id explicitly
+    // must not inherit its owners.
     unseedAllOwnersForHumIdTest(humId)
   }
 }
