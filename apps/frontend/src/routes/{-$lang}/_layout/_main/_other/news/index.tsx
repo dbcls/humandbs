@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/Card";
+import { ClientLocalDate } from "@/components/ClientLocalDate";
 import { DateTimeRangePicker } from "@/components/DatePicker";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -14,7 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
 import { getPublishedNewsTitlesInfiniteQueryOptions } from "@/serverFunctions/news";
-import { toDateString, toLocaleDateTimeString } from "@/utils/dates";
 import { newsPublicSearchParamsSchema } from "@/utils/query-params";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
@@ -138,7 +138,11 @@ function RouteComponent() {
             return (
               <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
                 <span className="text-neutral-500 text-xs">
-                  {item.publishedAt ? toDateString(item.publishedAt) : tNews("no-date")}
+                  {item.publishedAt ? (
+                    <ClientLocalDate date={item.publishedAt} />
+                  ) : (
+                    tNews("no-date")
+                  )}
                 </span>
 
                 <Link

@@ -1,7 +1,7 @@
+import { useTranslations } from "use-intl";
+
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-
-import { useTranslations } from "use-intl";
 
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,9 +10,10 @@ import type { Locale } from "@/config/i18n";
 /**
  * Shared big-modal shell for admin previews (research, dataset, flowchart).
  *
- * Sized like the document-diff modal (`max-h-[90vh] max-w-[90vw]`) so it takes
- * up almost all the screen. The language switcher lives in the header, next to
- * the title, so each preview surface no longer needs its own inline pill.
+ * The desktop width is twice the base dialog's `max-w-2xl` cap, while remaining
+ * constrained to 90% of the viewport. The language switcher lives in the
+ * header, next to the title, so each preview surface no longer needs its own
+ * inline pill.
  */
 export function PreviewDialog({
   open,
@@ -32,7 +33,7 @@ export function PreviewDialog({
   const tMd = useTranslations("admin.markdown");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col items-stretch gap-0 p-0">
+      <DialogContent className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col items-stretch gap-0 p-0 sm:max-w-[84rem]">
         <DialogHeader className="flex shrink-0 flex-row items-center gap-4 border-b py-4 pr-16 pl-5">
           <DialogTitle className="mr-auto">{title}</DialogTitle>
           <LangSwitcherPill value={lang} onChange={onLangChange} />
@@ -40,7 +41,9 @@ export function PreviewDialog({
         <div className="min-h-0 flex-1 overflow-auto">
           <Suspense
             fallback={
-              <div className="px-5 py-8 text-center text-gray-400 text-sm">{tMd("loading-preview")}</div>
+              <div className="px-5 py-8 text-center text-gray-400 text-sm">
+                {tMd("loading-preview")}
+              </div>
             }
           >
             {children}

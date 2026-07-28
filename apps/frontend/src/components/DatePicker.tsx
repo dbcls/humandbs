@@ -1,3 +1,4 @@
+import { ClientOnly } from "@tanstack/react-router";
 import { ChevronDownIcon, XIcon } from "lucide-react";
 
 import { useState } from "react";
@@ -65,15 +66,33 @@ function isoToCalendarDay(iso: string | undefined): Date | undefined {
   return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
-export function DateTimeRangePicker({
-  value,
-  onSelect,
-  onClear,
-}: {
+export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
+  return (
+    <ClientOnly
+      fallback={
+        <Button
+          variant="outline"
+          size="slim"
+          className="min-w-56 justify-between font-normal"
+          disabled
+        >
+          Loading date…
+          <ChevronDownIcon className="inline-block size-5" />
+        </Button>
+      }
+    >
+      <DateTimeRangePickerClient {...props} />
+    </ClientOnly>
+  );
+}
+
+interface DateTimeRangePickerProps {
   value: DateStringRange | undefined;
   onSelect: (value: DateStringRange) => void;
   onClear?: () => void;
-}) {
+}
+
+function DateTimeRangePickerClient({ value, onSelect, onClear }: DateTimeRangePickerProps) {
   const [open, setOpen] = useState(false);
 
   const fromDay = isoToCalendarDay(value?.from);

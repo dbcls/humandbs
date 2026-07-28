@@ -1,16 +1,18 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "use-intl";
 
+import { ClientLocalDate } from "@/components/ClientLocalDate";
 import { Link } from "@/components/Link";
 import type { NewsTitleResponse } from "@/serverFunctions/news";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
-import { toDateString } from "@/utils/dates";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
     <li>
       {newsItem.publishedAt ? (
-        <span className="w-24 shrink-0 text-xs">{toDateString(newsItem.publishedAt)}</span>
+        <span className="w-24 shrink-0 text-xs">
+          <ClientLocalDate date={newsItem.publishedAt} />
+        </span>
       ) : null}
 
       <Link
