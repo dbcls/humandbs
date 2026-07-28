@@ -9,6 +9,7 @@ import fc from "fast-check"
 
 import {
   buildAccessibleVersionFilter,
+  buildDatasetVisibilityFilter,
   buildStatusFilter,
   canAccessResearchDoc,
   canPerformTransition,
@@ -33,6 +34,17 @@ void mock.module("@/api/services/ownership", () => {
     resetOwnershipCacheForTest: mock(() => undefined),
   }
 })
+
+// Only `buildDatasetVisibilityFilter` reaches Elasticsearch (via
+// getAccessibleHumsWithLatest); the rest of this file's subjects are pure.
+const mockEsSearch = mock<(args: unknown) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
+
+void mock.module("@/api/es-client/client", () => ({
+  ES_INDEX: { research: "research", researchVersion: "research-version", dataset: "dataset" },
+  esClient: { search: mockEsSearch },
+  isConflictError: () => false,
+  isDocumentExistsError: () => false,
+}))
 
 // === buildStatusFilter ===
 
@@ -195,6 +207,62 @@ describe("buildAccessibleVersionFilter", () => {
         },
       ),
     )
+  })
+})
+
+// === buildDatasetVisibilityFilter ===
+
+describe("buildDatasetVisibilityFilter", () => {
+  beforeEach(() => {
+    mockEsSearch.mockReset()
+    mockEsSearch.mockResolvedValue({ hits: { hits: [] } })
+    mockGetOwnedHumIdsFn.mockReset()
+    mockGetOwnedHumIdsFn.mockImplementation(async () => [])
+  })
+
+  const withResearch = (docs: { humId: string; latestVersion: string | null }[]) => {
+    mockEsSearch.mockResolvedValue({ hits: { hits: docs.map(_source => ({ _source })) } })
+  }
+
+  it("returns null for admin without touching Elasticsearch", async () => {
+    const admin = createMockAuthUser({ isAdmin: true })
+    expect(await buildDatasetVisibilityFilter(admin)).toBeNull()
+    expect(mockEsSearch).not.toHaveBeenCalled()
+  })
+
+  it("caps a public viewer at each Research's latestVersion", async () => {
+    withResearch([
+      { humId: "hum0001", latestVersion: "v2" },
+      { humId: "hum0002", latestVersion: "v1" },
+    ])
+    expect(await buildDatasetVisibilityFilter(null)).toEqual({
+      bool: {
+        should: [{ terms: { humVersionId: ["hum0001-v1", "hum0001-v2", "hum0002-v1"] } }],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("lifts the ceiling only on the caller's own Research", async () => {
+    withResearch([
+      { humId: "hum0001", latestVersion: "v2" },
+      { humId: "hum0002", latestVersion: "v1" },
+    ])
+    mockGetOwnedHumIdsFn.mockImplementation(async () => ["hum0001"])
+
+    expect(await buildDatasetVisibilityFilter(createMockAuthUser({ username: "owner1" }))).toEqual({
+      bool: {
+        should: [
+          { terms: { humVersionId: ["hum0002-v1"] } },
+          { terms: { humId: ["hum0001"] } },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  })
+
+  it("fails closed when no Research is accessible", async () => {
+    expect(await buildDatasetVisibilityFilter(null)).toEqual({ term: { humId: "__no_match__" } })
   })
 })
 

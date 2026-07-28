@@ -92,42 +92,10 @@ export const canAccessResearchDoc = async (
 }
 
 /**
- * Get humIds of published Research for Dataset filtering
- * Used when Dataset visibility depends on parent Research status
- */
-export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<string[] | null> => {
-  if (authUser?.isAdmin) {
-    // Admin can see all datasets
-    return null
-  }
-
-  const statusFilter = await buildStatusFilter(authUser)
-  if (!statusFilter) return null
-
-  interface HumIdAggs {
-    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
-  }
-
-  const res = await esClient.search<unknown, HumIdAggs>({
-    index: ES_INDEX.research,
-    size: 0,
-    query: statusFilter,
-    aggs: {
-      humIds: { terms: { field: "humId", size: 10000 } },
-    },
-  })
-
-  const buckets = res.aggregations?.humIds.buckets
-  if (!Array.isArray(buckets)) return []
-  return buckets.map(b => b.key)
-}
-
-/**
- * Like `getPublishedHumIds`, but also returns each accessible Research's
- * `latestVersion`. The caller uses this to gate Dataset visibility per
- * humVersionId (draft-release drafts have `humVersionId > latestVersion`
- * and must stay hidden even though their parent Research is otherwise
- * publicly visible).
+ * Map each Research the caller may see to its `latestVersion`, which is the
+ * per-humId ceiling on Dataset visibility: draft-release Datasets sit on
+ * `humVersionId > latestVersion` and must stay hidden even though their parent
+ * Research is otherwise publicly visible.
  *
  * - admin: returns `null` (no filter, all Datasets visible)
  * - public/authenticated non-admin: `Map<humId, latestVersion | null>`
@@ -197,6 +165,28 @@ export const buildAccessibleVersionFilter = (
   if (ownedHumIds.length > 0) should.push({ terms: { humId: ownedHumIds } })
   if (should.length === 0) return { term: { humId: "__no_match__" } }
   return { bool: { should, minimum_should_match: 1 } }
+}
+
+/**
+ * Resolve the Dataset-side visibility filter for a caller in one step.
+ *
+ * Every query that reads the Dataset index — search, facets, stats, and the
+ * Research-search lookups that resolve humIds from Dataset matches — must carry
+ * this filter, so a Dataset hidden from one endpoint is hidden from all of them.
+ *
+ * Returns `null` for admin (no filter, all Datasets visible). A caller with no
+ * accessible Research at all gets the `__no_match__` sentinel from
+ * `buildAccessibleVersionFilter`, so the query fails closed without a separate
+ * empty-result branch at each call site.
+ */
+export const buildDatasetVisibilityFilter = async (
+  authUser: AuthUser | null,
+): Promise<estypes.QueryDslQueryContainer | null> => {
+  const humLatestMap = await getAccessibleHumsWithLatest(authUser)
+  if (humLatestMap === null) return null
+
+  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
+  return buildAccessibleVersionFilter(humLatestMap, ownedHumIdSet)
 }
 
 // === Status Transition Validation ===

@@ -4,83 +4,103 @@
  * Covers:
  * - IT-STATS-01: response shape (data.research.total / dataset.total / facets, meta.requestId)
  * - IT-STATS-02: facets carry { research, dataset } breakdown; platform key uses "vendor||model"
- * - IT-STATS-03: publishedHumIds=[] short-circuits to totals=0 and empty facets
+ * - IT-STATS-03: no accessible Research yields totals=0 and empty facets
  * - IT-STATS-04: total_research / total_dataset are not exposed as facet keys
+ * - IT-STATS-06: the Dataset aggregation is bounded by the same humVersionId
+ *   ceiling as the Dataset listing, so `dataset.total` cannot count draft-release
+ *   Datasets the listing hides
  *
  * Mocking strategy:
- * - @/api/es-client/auth.getPublishedHumIds is mocked (its result steers the
- *   stats handler's branching). buildStatusFilter is left as the real impl.
  * - @/api/es-client/client.esClient is mocked so no real ES is contacted.
- *   count() and search() return controlled shapes.
+ *   search() is dispatched on `index`: the Research index serves the visibility
+ *   lookup behind `buildDatasetVisibilityFilter`, the Dataset index serves the
+ *   stats aggregations. The auth module itself runs unmocked so the emitted
+ *   filter is the real one.
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-import { buildStatusFilter } from "@/api/es-client/auth"
+interface SearchArgs {
+  index: string
+  query?: unknown
+  aggs?: unknown
+}
 
-const mockGetPublishedHumIds = mock<(...args: unknown[]) => Promise<string[] | null>>(
-  async () => ["hum0001", "hum0002"],
-)
+interface ResearchHit {
+  _source: { humId: string; latestVersion: string | null }
+}
 
-void mock.module("@/api/es-client/auth", () => ({
-  // re-export the real buildStatusFilter; only intercept getPublishedHumIds
-  buildStatusFilter,
-  getPublishedHumIds: mockGetPublishedHumIds,
-}))
-
-const mockEsCount = mock(async () => ({ count: 42 }))
-const mockEsSearch = mock(async () => ({
-  aggregations: {
-    total_research: { value: 12 },
-    total_dataset: { value: 87 },
-    criteria: {
+const DATASET_AGGS = {
+  total_research: { value: 12 },
+  total_dataset: { value: 87 },
+  criteria: {
+    buckets: [
+      { key: "Controlled-access (Type I)", doc_count: 50, research_count: { value: 10 }, dataset_count: { value: 50 } },
+      { key: "Unrestricted-access", doc_count: 5, research_count: { value: 2 }, dataset_count: { value: 5 } },
+    ],
+  },
+  assayType: {
+    doc_count: 100,
+    values: {
       buckets: [
-        { key: "Controlled-access (Type I)", doc_count: 50, research_count: { value: 10 }, dataset_count: { value: 50 } },
-        { key: "Unrestricted-access", doc_count: 5, research_count: { value: 2 }, dataset_count: { value: 5 } },
+        {
+          key: "WGS",
+          doc_count: 20,
+          counts: { doc_count: 20, research_count: { value: 5 }, dataset_count: { value: 18 } },
+        },
       ],
     },
-    assayType: {
-      doc_count: 100,
-      values: {
+  },
+  platform: {
+    doc_count: 30,
+    inner: {
+      doc_count: 30,
+      vendorModel: {
         buckets: [
           {
-            key: "WGS",
+            key: ["Illumina", "NovaSeq"],
             doc_count: 20,
-            counts: { doc_count: 20, research_count: { value: 5 }, dataset_count: { value: 18 } },
+            counts: { doc_count: 20, research_count: { value: 4 }, dataset_count: { value: 18 } },
           },
         ],
       },
     },
-    platform: {
-      doc_count: 30,
-      inner: {
-        doc_count: 30,
-        vendorModel: {
-          buckets: [
-            {
-              key: ["Illumina", "NovaSeq"],
-              doc_count: 20,
-              counts: { doc_count: 20, research_count: { value: 4 }, dataset_count: { value: 18 } },
-            },
-          ],
-        },
-      },
-    },
-    disease: {
+  },
+  disease: {
+    doc_count: 10,
+    inner: {
       doc_count: 10,
-      inner: {
-        doc_count: 10,
-        values: {
-          buckets: [
-            {
-              key: "lung cancer",
-              doc_count: 8,
-              counts: { doc_count: 8, research_count: { value: 3 }, dataset_count: { value: 7 } },
-            },
-          ],
-        },
+      values: {
+        buckets: [
+          {
+            key: "lung cancer",
+            doc_count: 8,
+            counts: { doc_count: 8, research_count: { value: 3 }, dataset_count: { value: 7 } },
+          },
+        ],
       },
     },
   },
+}
+
+const EMPTY_DATASET_AGGS = { total_research: { value: 0 }, total_dataset: { value: 0 } }
+
+const searchCalls: SearchArgs[] = []
+let researchHits: ResearchHit[] = []
+let datasetAggs: Record<string, unknown> = DATASET_AGGS
+
+const mockEsCount = mock(async () => ({ count: 42 }))
+const mockEsSearch = mock(async (args: SearchArgs) => {
+  searchCalls.push(args)
+  if (args.index === "research") return { hits: { hits: researchHits } }
+  return { aggregations: datasetAggs }
+})
+
+void mock.module("@/api/services/ownership", () => ({
+  getOwnerUsernames: async () => [],
+  getOwnedHumIds: async () => [],
+  isOwner: async () => false,
+  refreshOwnershipCache: async () => undefined,
+  resetOwnershipCacheForTest: () => undefined,
 }))
 
 void mock.module("@/api/es-client/client", () => ({
@@ -104,10 +124,21 @@ interface StatsBody {
   meta: { requestId: string; timestamp: string }
 }
 
+/** The single Dataset-index search issued per request (the stats aggregation). */
+const datasetSearchCall = (): SearchArgs => {
+  const call = searchCalls.find(c => c.index === "dataset")
+  if (!call) throw new Error("no Dataset-index search was issued")
+  return call
+}
+
 describe("api/routes/stats", () => {
   beforeEach(() => {
-    mockGetPublishedHumIds.mockReset()
-    mockGetPublishedHumIds.mockResolvedValue(["hum0001", "hum0002"])
+    searchCalls.length = 0
+    researchHits = [
+      { _source: { humId: "hum0001", latestVersion: "v2" } },
+      { _source: { humId: "hum0002", latestVersion: "v1" } },
+    ]
+    datasetAggs = DATASET_AGGS
     mockEsCount.mockClear()
     mockEsSearch.mockClear()
   })
@@ -203,9 +234,51 @@ describe("api/routes/stats", () => {
     })
   })
 
-  describe("GET /stats - zero published path (IT-STATS-03)", () => {
-    it("short-circuits to totals=0 and empty facets when no humIds are published", async () => {
-      mockGetPublishedHumIds.mockResolvedValueOnce([])
+  describe("GET /stats - Dataset visibility ceiling (IT-STATS-06)", () => {
+    it("bounds the aggregation to humVersionIds at or below each latestVersion", async () => {
+      const app = getTestApp()
+      await app.request("/stats")
+
+      expect(datasetSearchCall().query).toEqual({
+        bool: {
+          should: [{ terms: { humVersionId: ["hum0001-v1", "hum0001-v2", "hum0002-v1"] } }],
+          minimum_should_match: 1,
+        },
+      })
+    })
+
+    it("excludes a Research with no latestVersion from the enumerated humVersionIds", async () => {
+      researchHits = [
+        { _source: { humId: "hum0001", latestVersion: "v1" } },
+        { _source: { humId: "hum0009", latestVersion: null } },
+      ]
+      const app = getTestApp()
+      await app.request("/stats")
+
+      expect(datasetSearchCall().query).toEqual({
+        bool: {
+          should: [{ terms: { humVersionId: ["hum0001-v1"] } }],
+          minimum_should_match: 1,
+        },
+      })
+    })
+
+    it("does not fall back to a humId-only filter", async () => {
+      const app = getTestApp()
+      await app.request("/stats")
+
+      expect(JSON.stringify(datasetSearchCall().query)).not.toContain("\"humId\"")
+    })
+  })
+
+  describe("GET /stats - no accessible Research (IT-STATS-03)", () => {
+    beforeEach(() => {
+      researchHits = []
+      datasetAggs = EMPTY_DATASET_AGGS
+      mockEsCount.mockResolvedValueOnce({ count: 0 })
+    })
+
+    it("returns totals=0 and empty facets", async () => {
       const app = getTestApp()
       const res = await app.request("/stats")
 
@@ -214,10 +287,13 @@ describe("api/routes/stats", () => {
       expect(body.data.research.total).toBe(0)
       expect(body.data.dataset.total).toBe(0)
       expect(body.data.facets).toEqual({})
+    })
 
-      // No ES count/search should be issued in the short-circuit branch
-      expect(mockEsCount).not.toHaveBeenCalled()
-      expect(mockEsSearch).not.toHaveBeenCalled()
+    it("fails closed: the aggregation query matches nothing", async () => {
+      const app = getTestApp()
+      await app.request("/stats")
+
+      expect(datasetSearchCall().query).toEqual({ term: { humId: "__no_match__" } })
     })
   })
 })

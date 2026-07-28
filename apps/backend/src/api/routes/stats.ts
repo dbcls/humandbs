@@ -26,7 +26,7 @@ const getStatsRoute = createRoute({
   tags: ["Stats"],
   operationId: "getStats",
   summary: "Get Statistics",
-  description: "Get statistics about published Research and Dataset resources, including counts and facets with Research/Dataset breakdown. Only published resources are aggregated.",
+  description: "Get statistics about publicly visible Research and Dataset resources, including counts and facets with Research/Dataset breakdown. Only published Research is aggregated, and only the Datasets on its released versions — so `dataset.total` matches the Dataset listing's `pagination.total`.",
   security: SECURITY_PUBLIC,
   responses: {
     200: {

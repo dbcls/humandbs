@@ -228,7 +228,7 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 
 `GET /facets` / `GET /facets/{fieldName}` はファセット検索クエリを受け付ける。パラメータを指定するとマッチする Dataset に絞った件数、未指定ならグローバルカウントが返る。`fieldName` enum は `apps/backend/src/api/types/facets.ts` の `DATASET_FACET_NAMES` を SSOT とし、不正な名前は 400 を返す。
 
-ファセット値は認証状態により変わる。public ユーザーには published Research に紐づく Dataset のファセットのみ返却される。
+ファセット値は認証状態により変わる。Dataset の可視性は親 Research の公開状態と `latestVersion` の両方に従う（[architecture.md § Dataset の status 依存](architecture.md#dataset-の-status-依存)）ため、public ユーザーには公開 version の Dataset に由来するファセットのみ返却される。
 
 ### Research 検索 vs Dataset 検索のフィルター構造
 
@@ -244,6 +244,8 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 Research のフリーテキスト検索は、Research 自身の `all_text` に加え、子 Dataset の `all_text` も横断検索する。子 Dataset のみにヒットする語（例: `experiments.data` 中のマッピング手法名 "Novoalign"）で検索しても、親 Research が結果に含まれる。
 
 内部実装: `getHumIdsByTextQuery()` で Dataset index にテキストクエリを投げ、親 `humId` 群を OR 条件で Research クエリに合流させる（既存の `getHumIdsByDatasetIdQuery()` と同パターン）。Research 自身のテキスト一致と Dataset 経由のテキスト一致は `should`（OR）で結合されるため、どちらか一方でも一致すれば結果に含まれる。
+
+Dataset index を引くこれらの経路（`datasetFilters` の humId 解決を含む）は、Dataset 一覧と同じ可視性 filter を通る。呼び出し元から見えない version にしか存在しない datasetId や語で検索しても、その親 Research はヒットしない。
 
 ### フリーテキスト検索の挙動
 
@@ -475,7 +477,9 @@ OpenAPI 単体では表現できない「複数 API の連鎖」のための章�
 
 ### 集計対象
 
-**published なリソースのみ**。draft / review は除外。これは「Stats は外部公開可能な統計」という前提による。
+**public に見えるリソースのみ**。「Stats は外部公開可能な統計」という前提から、認証状態によらず匿名ユーザーと同じ可視性で集計する。
+
+Research 側は draft / review を除外する (`latestVersion` を持つもののみ)。Dataset 側はそれに加えて、親 Research の `latestVersion` を humVersionId の上限とする — published Research が draft cycle 中に持つ次 version の Dataset は、親が公開中であっても集計に入れない。この可視性判定は Dataset 一覧 (`POST /dataset/search`) と同一の filter を共有しており、`dataset.total` は一覧の `pagination.total` と常に一致する。
 
 ### レスポンス構造
 

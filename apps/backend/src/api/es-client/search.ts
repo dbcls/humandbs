@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildAccessibleVersionFilter, buildStatusFilter, canAccessResearchDoc, getAccessibleHumsWithLatest } from "@/api/es-client/auth"
+import { buildDatasetVisibilityFilter, buildStatusFilter, canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -555,28 +555,14 @@ export const searchDatasets = async (
   // Build query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
-  // Apply authorization filter: Dataset visibility depends on parent Research
-  // status. Fetch each accessible Research's `latestVersion` at the same time
-  // so we can ceiling-filter Dataset docs at query time — draft-release drafts
-  // sit on humVersionId > latestVersion and must stay hidden. Admin gets no
-  // filter (map is null).
-  const humLatestMap = await getAccessibleHumsWithLatest(authUser)
-  const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
-  if (humLatestMap !== null) {
-    if (humLatestMap.size === 0) {
-      // No accessible Research, return empty result
-      return {
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-        facets: includeFacets ? {} : undefined,
-      }
-    }
-    // Enumerate accessible humVersionIds so `from + size` pagination and
-    // `uniq_ids` cardinality both see the exact same document set. Post-
-    // filtering the collapse's inner_hits would drop groups after ES had
-    // already sized/counted them, thinning deep pages and inflating total.
-    must.push(buildAccessibleVersionFilter(humLatestMap, ownedHumIdSet))
-  }
+  // Dataset visibility depends on the parent Research — its status, plus its
+  // `latestVersion` as a ceiling on humVersionId so draft-release Datasets stay
+  // hidden. Filtering at query time (rather than post-filtering the collapse's
+  // inner_hits) keeps `from + size` pagination and the `uniq_ids` cardinality
+  // over the exact same document set: post-filtering drops groups after ES has
+  // already sized and counted them, thinning deep pages and inflating total.
+  const visibilityFilter = await buildDatasetVisibilityFilter(authUser)
+  if (visibilityFilter) must.push(visibilityFilter)
 
   must.push(...buildDatasetFilterClauses(params))
 
@@ -642,10 +628,12 @@ export const searchDatasets = async (
 
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,
+  visibilityFilter: estypes.QueryDslQueryContainer | null,
 ): Promise<string[]> => {
   // BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
   must.push(...buildDatasetFilterClauses(params))
+  if (visibilityFilter) must.push(visibilityFilter)
 
   interface HumIdAggs {
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
@@ -668,23 +656,29 @@ const getHumIdsByDatasetFilters = async (
 // Research 全文検索で "JGAD000002" のような Dataset ID を入れても親 Research (hum0001) が返るように、
 // Dataset index に対して datasetId の term/prefix マッチを走らせて humId 集合を得る。
 // Research index に datasetIds フィールドを持たせないための迂回路。
-const getHumIdsByDatasetIdQuery = async (q: string): Promise<string[]> => {
+const getHumIdsByDatasetIdQuery = async (
+  q: string,
+  visibilityFilter: estypes.QueryDslQueryContainer | null,
+): Promise<string[]> => {
   interface HumIdAggs {
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
   }
 
+  const must: estypes.QueryDslQueryContainer[] = [{
+    bool: {
+      should: [
+        { term: { datasetId: { value: q, case_insensitive: true } } },
+        { prefix: { datasetId: { value: q, case_insensitive: true } } },
+      ],
+      minimum_should_match: 1,
+    },
+  }]
+  if (visibilityFilter) must.push(visibilityFilter)
+
   const res = await esClient.search<unknown, HumIdAggs>({
     index: ES_INDEX.dataset,
     size: 0,
-    query: {
-      bool: {
-        should: [
-          { term: { datasetId: { value: q, case_insensitive: true } } },
-          { prefix: { datasetId: { value: q, case_insensitive: true } } },
-        ],
-        minimum_should_match: 1,
-      },
-    },
+    query: { bool: { must } },
     aggs: {
       humIds: { terms: { field: "humId", size: 10000 } },
     },
@@ -697,6 +691,7 @@ const getHumIdsByDatasetIdQuery = async (q: string): Promise<string[]> => {
 
 const getHumIdsByTextQuery = async (
   parsed: ParsedFreeTextQuery,
+  visibilityFilter: estypes.QueryDslQueryContainer | null,
 ): Promise<string[]> => {
   if (parsed.phraseTokens.length === 0 && parsed.bareWords.length === 0) {
     return []
@@ -709,10 +704,12 @@ const getHumIdsByTextQuery = async (
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
   }
 
+  const must = visibilityFilter ? [...textClauses, visibilityFilter] : textClauses
+
   const res = await esClient.search<unknown, HumIdAggs>({
     index: ES_INDEX.dataset,
     size: 0,
-    query: { bool: { must: textClauses } },
+    query: { bool: { must } },
     aggs: {
       humIds: { terms: { field: "humId", size: 10000 } },
     },
@@ -749,11 +746,18 @@ export const searchResearches = async (
     }
   }
 
+  // Every Dataset-index read below — the humId resolutions and the facet
+  // aggregation — carries the same visibility filter as `searchDatasets`, so a
+  // draft-release Dataset can neither pull its parent Research into the result
+  // set nor inflate a facet count. Resolved once because it costs a
+  // Research-index lookup of its own.
+  const datasetVisibilityFilter = await buildDatasetVisibilityFilter(authUser)
+
   // Dataset filters (parent-child): resolve a humId allowlist from the Dataset
   // index first, so the Research query can constrain by it.
   let humIdFilter: string[] | null = null
   if (hasDatasetFilters(params)) {
-    humIdFilter = await getHumIdsByDatasetFilters(params)
+    humIdFilter = await getHumIdsByDatasetFilters(params, datasetVisibilityFilter)
     if (humIdFilter.length === 0) {
       // No matching datasets, return empty result
       return {
@@ -805,10 +809,12 @@ export const searchResearches = async (
   const dsIdTokens = datasetIdTokens(parsed)
   let datasetParentHumIds: string[] = []
   if (dsIdTokens.length > 0) {
-    const resolved = await Promise.all(dsIdTokens.map(getHumIdsByDatasetIdQuery))
+    const resolved = await Promise.all(
+      dsIdTokens.map(token => getHumIdsByDatasetIdQuery(token, datasetVisibilityFilter)),
+    )
     datasetParentHumIds = [...new Set(resolved.flat())]
   }
-  const datasetTextHumIds = await getHumIdsByTextQuery(parsed)
+  const datasetTextHumIds = await getHumIdsByTextQuery(parsed, datasetVisibilityFilter)
   must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds, datasetTextHumIds))
 
   // Date range filters
@@ -976,6 +982,7 @@ export const searchResearches = async (
         datasetFacetQuery.push({ terms: { humId: allHumIds } })
       }
     }
+    if (datasetVisibilityFilter) datasetFacetQuery.push(datasetVisibilityFilter)
 
     const facetRes = await esClient.search({
       index: ES_INDEX.dataset,
