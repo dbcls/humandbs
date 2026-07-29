@@ -151,7 +151,7 @@
     "research-version": "研究ID",
     "research": "研究",
     "version": "バージョン",
-    "releaseDate": "公開日付",
+    "releaseDate": "公開日",
     "versionReleaseDate": "更新日付",
     "dateModified": "更新日",
     "parentJgaStudyId": "JGA Study ID",
@@ -238,7 +238,7 @@
     "alreadyInCart": "カートに追加済み",
     "addToCart": "カートに追加",
     "info": "情報",
-    "releaseDate": "公開日付",
+    "releaseDate": "公開日",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
     "experiments": "解析手法"
