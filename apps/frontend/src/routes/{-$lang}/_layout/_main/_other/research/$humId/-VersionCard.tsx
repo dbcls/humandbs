@@ -20,6 +20,7 @@ import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRo
 import { ResearchLink } from "@/components/ResearchLink";
 import { Separator } from "@/components/Separator";
 import { SortHeader, Table } from "@/components/Table";
+import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
@@ -49,6 +50,8 @@ export function VersionCard({
     t,
   };
 
+  const isLatestVersion = versionData.version === versionData.latestVersion;
+
   return (
     <CardWithCaption
       size={"lg"}
@@ -65,6 +68,21 @@ export function VersionCard({
             >
               {t("Research.release-info")}
             </Link>
+          }
+          right={
+            isLatestVersion ? (
+              <Badge className="text-sm">{t("Research.latest-version")}</Badge>
+            ) : (
+              <Badge>
+                <Link
+                  target="_blank"
+                  className="text-white no-underline visited:text-white"
+                  to="/{-$lang}/research/$humId"
+                >
+                  {`${t("Research.to-latest-version")} (${versionData.latestVersion})`}
+                </Link>
+              </Badge>
+            )
           }
         >
           {versionData.humVersionId}
