@@ -1,5 +1,6 @@
 import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
+import { LucideExternalLink } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { useMemo } from "react";
@@ -79,6 +80,7 @@ export function VersionCard({
                   className="text-white no-underline visited:text-white"
                   to="/{-$lang}/research/$humId"
                 >
+                  <LucideExternalLink className="mr-2 inline size-5" />
                   {`${t("Research.to-latest-version")} (${versionData.latestVersion})`}
                 </Link>
               </Badge>

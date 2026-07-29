@@ -187,6 +187,8 @@
     "research-list": "List of researches",
     "humId": "Research ID",
     "datasets": "Datasets",
+    "datasetsAddedInRelease": "Datasets added in this release",
+    "noDatasetsAddedInRelease": "No datasets added in this release.",
     "release-info": "Release info",
     "to-latest-version": "To the latest version",
     "latest-version": "Latest",
