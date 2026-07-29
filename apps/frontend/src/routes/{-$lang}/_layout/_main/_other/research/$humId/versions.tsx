@@ -11,6 +11,8 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
 import type { RenderedResearchVersionItem } from "@/utils/renderedHtml/types";
 
+import { getAddedDatasets } from "./-releaseDatasets";
+
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$humId/versions")({
   component: RouteComponent,
   loader: async ({ context, params }) => {
@@ -40,9 +42,12 @@ function RouteComponent() {
       }
     >
       <ul className="space-y-4">
-        {data.map((ver, i) => (
+        {data.map((ver, index) => (
           <li key={ver.humVersionId}>
-            <VersionInfo version={ver} />
+            <VersionInfo
+              version={ver}
+              addedDatasets={getAddedDatasets(ver.datasets, data[index + 1]?.datasets)}
+            />
           </li>
         ))}
       </ul>
@@ -50,7 +55,13 @@ function RouteComponent() {
   );
 }
 
-function VersionInfo({ version }: { version: RenderedResearchVersionItem }) {
+function VersionInfo({
+  version,
+  addedDatasets,
+}: {
+  version: RenderedResearchVersionItem;
+  addedDatasets: RenderedResearchVersionItem["datasets"];
+}) {
   const { lang } = useRouteContext({ strict: false });
   const tResearch = useTranslations("Research");
 
@@ -64,15 +75,24 @@ function VersionInfo({ version }: { version: RenderedResearchVersionItem }) {
         </Route.Link>
       </h3>
       <section className="flex items-start gap-5 px-3 py-4 text-sm">
-        <div>
-          <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("datasets")}</h4>
-          <ul className="w-72 space-y-1.5">
-            {version.datasets.map((ds) => (
-              <li key={ds.datasetId}>
-                <DatasetLink datasetId={ds.datasetId} />
-              </li>
-            ))}
-          </ul>
+        <div className="w-80 shrink-0">
+          <h4 className="mb-4 font-semibold text-secondary text-xs">
+            {tResearch("datasetsAddedInRelease")}
+          </h4>
+          {addedDatasets.length > 0 ? (
+            <ul className="w-full space-y-1.5">
+              {addedDatasets.map((ds) => (
+                <li key={ds.datasetId}>
+                  <DatasetLink
+                    className="max-w-full whitespace-normal [&>span>span]:min-w-0 [&>span>span]:break-all"
+                    datasetId={ds.datasetId}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-400 text-sm">{tResearch("noDatasetsAddedInRelease")}</p>
+          )}
         </div>
         <div>
           <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>

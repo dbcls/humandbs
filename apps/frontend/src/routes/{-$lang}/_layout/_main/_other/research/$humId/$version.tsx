@@ -1,6 +1,7 @@
 import { createFileRoute, isNotFound, notFound } from "@tanstack/react-router";
 
 import { NotFound } from "@/components/NotFound";
+import { i18n } from "@/config/i18n";
 import {
   getExternalDatasetIds,
   prefetchDatasetParentResearches,
@@ -37,6 +38,19 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
 
   notFoundComponent: () => <NotFound />,
   component: RouteComponent,
+  head: ({ loaderData, match }) => {
+    const lang = match.context.lang;
+
+    const seoTitle = `HumanDBs - ${loaderData?.data.title[lang ?? i18n.defaultLocale] ?? match.context.messages?.common?.research} (${loaderData?.data.version ?? ""})`;
+
+    return {
+      meta: [
+        {
+          title: seoTitle,
+        },
+      ],
+    };
+  },
 });
 
 function RouteComponent() {
