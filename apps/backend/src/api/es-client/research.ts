@@ -40,7 +40,7 @@ import {
   hydrateResearchProject,
   hydrateSummary,
 } from "@/api/utils/hydrate-raw-html"
-import { resolveVersionForUser } from "@/api/utils/version"
+import { resolveEditTargetVersion, resolveVersionForUser } from "@/api/utils/version"
 
 // === Elasticsearch Error Helpers ===
 
@@ -381,7 +381,7 @@ export const updateResearch = async (
   }
 
   // RV write target and whether root should also carry the content update.
-  const targetVersion = research.draftVersion ?? research.latestVersion
+  const targetVersion = resolveEditTargetVersion(research)
   if (hasContent && !targetVersion) {
     throw new Error(`updateResearch: Research ${humId} has no draftVersion or latestVersion`)
   }

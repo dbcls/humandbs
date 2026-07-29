@@ -8,6 +8,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi"
 import {
   ConflictError,
   ForbiddenError,
+  InternalError,
   NotFoundError,
 } from "@/api/errors"
 import { checkRequestedStatus } from "@/api/es-client/auth"
@@ -34,7 +35,7 @@ import { ResearchStatusSchema } from "@/api/types"
 import type { ResearchDetail } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
-import { isOwnerOrAdmin, sanitizeResearchDetailForUser } from "@/api/utils/version"
+import { isOwnerOrAdmin, resolveEditTargetVersion, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import {
   listResearchRoute,
@@ -208,12 +209,13 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw new ConflictError()
     }
 
-    // releaseNote target: draftVersion while in draft cycle, latestVersion when
-    // patching published content in place.
-    const releaseNoteTarget = research.status === "published"
-      ? research.latestVersion
-      : research.draftVersion
-    if (body.releaseNote !== undefined && releaseNoteTarget) {
+    // Same routing as the content fields above — a release note must never
+    // land on a different version than the edit it describes.
+    if (body.releaseNote !== undefined) {
+      const releaseNoteTarget = resolveEditTargetVersion(research)
+      if (!releaseNoteTarget) {
+        throw new InternalError(`Research ${humId} has no draftVersion or latestVersion`)
+      }
       const versionDocId = `${humId}-${releaseNoteTarget}`
       const versionWithSeq = await getResearchVersionWithSeqNo(versionDocId)
       if (versionWithSeq) {

@@ -16,12 +16,12 @@ import {
   resolveLatestDatasetVersion,
 } from "@/api/es-client/dataset"
 import { getResearchDetail } from "@/api/es-client/research"
-import { getResearchVersion } from "@/api/es-client/research-version"
 import {
   createdResponse,
   listResponse,
 } from "@/api/helpers/response"
 import { createPagination } from "@/api/types/response"
+import { resolveEditTargetVersion } from "@/api/utils/version"
 
 import {
   listLinkedDatasetsRoute,
@@ -67,9 +67,11 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
       }
     }
 
-    // Get latest ResearchVersion to determine humVersionId
-    const latestVersion = await getResearchVersion(humId, {})
-    if (!latestVersion) {
+    // The Dataset's humVersionId is what hides it from public viewers until the
+    // version it belongs to is published, so it has to name the version being
+    // edited — not whichever RV happens to carry the highest number.
+    const targetVersion = resolveEditTargetVersion(research)
+    if (!targetVersion) {
       throw new InternalError(`Research ${humId} has no version`)
     }
 
@@ -77,7 +79,7 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
     const dataset = await createDataset({
       datasetId: body.datasetId,
       humId,
-      humVersionId: latestVersion.humVersionId,
+      humVersionId: `${humId}-${targetVersion}`,
       releaseDate: body.releaseDate ?? new Date().toISOString().split("T")[0],
       criteria: body.criteria ?? "Controlled-access (Type I)",
       typeOfData: body.typeOfData ?? { ja: null, en: null },

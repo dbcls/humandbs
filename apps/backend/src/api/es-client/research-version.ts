@@ -10,7 +10,6 @@
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
-import { versionSortSpec } from "@/api/es-client/query-builders"
 import { lockedUpdateBody, mgetMap } from "@/api/es-client/utils"
 import {
   EsResearchSchema,
@@ -23,6 +22,33 @@ import type {
 } from "@/api/types"
 import type { BilingualTextValueRequest } from "@/api/types/request-schemas"
 import { hydrateBilingualTextValue } from "@/api/utils/hydrate-raw-html"
+import { nextVersionNumber, resolveEditTargetVersion } from "@/api/utils/version"
+
+/**
+ * Read the Research root doc. Local rather than imported from
+ * `es-client/research` because that module already imports this one.
+ */
+const getResearchRoot = async (humId: string): Promise<EsResearch | null> => {
+  const res = await esClient.get<EsResearch>({
+    index: ES_INDEX.research,
+    id: humId,
+  }, { ignore: [404] })
+
+  return res.found && res._source ? EsResearchSchema.parse(res._source) : null
+}
+
+/**
+ * humVersionId that dataset links belong to, resolved from the Research root's
+ * `draftVersion` / `latestVersion` — the same routing `updateResearch` uses for
+ * content. Null when the Research is missing or names no version.
+ */
+const resolveEditTargetHumVersionId = async (humId: string): Promise<string | null> => {
+  const research = await getResearchRoot(humId)
+  if (!research) return null
+  const version = resolveEditTargetVersion(research)
+
+  return version ? `${humId}-${version}` : null
+}
 
 /**
  * Extract per-version content snapshot from either a ResearchVersion
@@ -44,33 +70,24 @@ const pickContentForNewVersion = (
 
 // === ResearchVersion Retrieval ===
 
+/**
+ * Fetch one ResearchVersion by version.
+ *
+ * The version is always explicit: callers resolve it from the Research root's
+ * `latestVersion` / `draftVersion`. Picking the highest-numbered RV instead
+ * would silently select an orphan above `latestVersion` — the migration left
+ * such docs, and their content was never published.
+ */
 export const getResearchVersion = async (
   humId: string,
-  { version }: { version?: string },
+  { version }: { version: string },
 ): Promise<ResearchVersion | null> => {
-  if (version) {
-    const id = `${humId}-${version}`
-    const res = await esClient.get<ResearchVersion>({
-      index: ES_INDEX.researchVersion,
-      id,
-    }, { ignore: [404] })
-    return res.found && res._source ? ResearchVersionSchema.parse(res._source) : null
-  }
-
-  // If the version is not specified, get the latest version
-  const { hits } = await esClient.search<ResearchVersion>({
+  const res = await esClient.get<ResearchVersion>({
     index: ES_INDEX.researchVersion,
-    size: 1,
-    query: { term: { humId } },
-    sort: [
-      versionSortSpec("desc"),
-      { versionReleaseDate: { order: "desc" } },
-    ],
-    _source: true,
-    track_total_hits: false,
-  })
-  const hit = hits.hits[0]
-  return hit?._source != null ? ResearchVersionSchema.parse(hit._source) : null
+    id: `${humId}-${version}`,
+  }, { ignore: [404] })
+
+  return res.found && res._source ? ResearchVersionSchema.parse(res._source) : null
 }
 
 /**
@@ -151,25 +168,22 @@ export const createResearchVersion = async (
 ): Promise<ResearchVersion | null> => {
   const now = new Date().toISOString().split("T")[0]
 
-  // Get current research to determine new version number
-  const researchRes = await esClient.get<EsResearch>({
-    index: ES_INDEX.research,
-    id: humId,
-  }, { ignore: [404] })
-  if (!researchRes.found || !researchRes._source) {
+  const research = await getResearchRoot(humId)
+  if (!research) {
     throw new Error(`Research ${humId} not found`)
   }
-  const research = EsResearchSchema.parse(researchRes._source)
 
-  // Calculate new version number
-  const currentVersionNum = research.versionIds.length
-  const newVersion = `v${currentVersionNum + 1}`
+  const newVersion = `v${nextVersionNumber(research.versionIds)}`
   const newHumVersionId = `${humId}-${newVersion}`
 
-  // Fetch the current latest RV (source of both dataset refs and content
-  // snapshot). `getResearchVersion(humId, {})` picks the highest-version doc,
-  // which is the published one before we mint the new draft.
-  const latestRv = await getResearchVersion(humId, {})
+  // Source of both dataset refs and the content snapshot: the published
+  // version named by `latestVersion`, not whichever RV carries the highest
+  // number. An RV above `latestVersion` — the migration left orphans there —
+  // holds content that was never published, and copying it into the new draft
+  // would publish it at the next approve.
+  const latestRv = research.latestVersion
+    ? await getResearchVersion(humId, { version: research.latestVersion })
+    : null
   const datasetsToUse = datasets ?? latestRv?.datasets ?? []
   const content = pickContentForNewVersion(latestRv, research)
 
@@ -236,8 +250,8 @@ export const createResearchVersion = async (
 // === Dataset Linking ===
 
 /**
- * Link a Dataset to a Research (updates latest ResearchVersion)
- * Owner or admin can link
+ * Link a Dataset to the Research's edit target version (draft when one is in
+ * flight, otherwise the published version). Owner or admin can link.
  *
  * @param humId - Research ID
  * @param datasetId - Dataset ID to link
@@ -249,13 +263,10 @@ export const linkDatasetToResearch = async (
   datasetId: string,
   version: string,
 ): Promise<{ datasetId: string; version: string }[] | null> => {
-  // Get latest ResearchVersion
-  const latestVersion = await getResearchVersion(humId, {})
-  if (!latestVersion) {
+  const humVersionId = await resolveEditTargetHumVersionId(humId)
+  if (!humVersionId) {
     return null
   }
-
-  const humVersionId = latestVersion.humVersionId
 
   // Get with sequence number for optimistic locking
   const versionWithSeq = await getResearchVersionWithSeqNo(humVersionId)
@@ -294,8 +305,8 @@ export const linkDatasetToResearch = async (
 }
 
 /**
- * Unlink a Dataset from a Research (updates latest ResearchVersion)
- * Owner or admin can unlink
+ * Unlink a Dataset from the Research's edit target version (draft when one is
+ * in flight, otherwise the published version). Owner or admin can unlink.
  *
  * @param humId - Research ID
  * @param datasetId - Dataset ID to unlink
@@ -307,13 +318,10 @@ export const unlinkDatasetFromResearch = async (
   datasetId: string,
   version?: string,
 ): Promise<boolean> => {
-  // Get latest ResearchVersion
-  const latestVersion = await getResearchVersion(humId, {})
-  if (!latestVersion) {
+  const humVersionId = await resolveEditTargetHumVersionId(humId)
+  if (!humVersionId) {
     return false
   }
-
-  const humVersionId = latestVersion.humVersionId
 
   // Get with sequence number for optimistic locking
   const versionWithSeq = await getResearchVersionWithSeqNo(humVersionId)

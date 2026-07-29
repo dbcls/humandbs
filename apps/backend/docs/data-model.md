@@ -93,15 +93,21 @@ Research の content 系フィールドは **ResearchVersion 側を SSOT** と�
 
 ### 書き分けルール (`updateResearch` at `src/api/es-client/research.ts`)
 
+編集がどの版に着地するかは 1 つの式で決まる。`resolveEditTargetVersion` (`src/api/utils/version.ts`) が返す `draftVersion ?? latestVersion` — 進行中の draft があればそこ、無ければ公開版 (in-place patch) である。content フィールド、release note、dataset の link / unlink、`POST /research/{humId}/dataset/new` が作る Dataset の `humVersionId` がすべてこの式を通るので、1 回の編集が別々の版に散ることがない。
+
+Research root に content を mirror するのは、着地先が `latestVersion` そのものだったとき (= in-place patch) だけ。
+
 | Action | Research root content | RV content | RV write target |
 |---|---|---|---|
 | create (N-new draft) | 書く (creation 時のみ) | RV v1 に書く (root と同じ値) | v1 |
 | update draft, `latestVersion=null` (N-new-hum draft) | 書かない | 書く | draftVersion |
 | update draft, `latestVersion!=null` (V-new-version draft) | **書かない** ← 漏れ防止の核 | 書く | draftVersion |
 | update published (in-place patch) | 書く | 書く (root と同じ値) | latestVersion |
-| versions/new | 変更なし | 新 RV に latestVersion の content を copy | 新 version |
+| versions/new | 変更なし | 新 RV に RV[latestVersion] の content を copy | 新 version |
 | approve | RV[新 latestVersion] の content を root に copy | 変更なし | - |
 | submit / reject / unpublish | 変更なし | 変更なし | - |
+
+`versions/new` が copy 元にするのは `latestVersion` が名指す RV であって、版番号が最大の RV ではない。移行データには `latestVersion` より上の番号を持つ孤立 RV があり、そこには公開されたことのない content が入っている。番号最大の RV から copy すると、その content が次の approve で公開される。
 
 approve が呼ぶ `syncResearchRootFromVersion(humId, version)` は idempotent。root 側で content フィールドが未 populated (pre-migration doc) の場合は上書きをスキップして root の既存値を残す。
 

@@ -7,7 +7,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import fc from "fast-check"
 
 import type { ResearchDetail } from "@/api/types"
-import { isHumVersionAccessible, isOwnerOrAdmin, parseVersionFromHumVersionId, parseVersionNum, resolveVersionForUser, sanitizeResearchDetailForUser } from "@/api/utils/version"
+import { isHumVersionAccessible, isOwnerOrAdmin, nextVersionNumber, parseVersionFromHumVersionId, parseVersionNum, resolveEditTargetVersion, resolveVersionForUser, sanitizeResearchDetailForUser } from "@/api/utils/version"
 
 import { createMockAuthUser, createMockResearchDoc } from "../helpers/mock-es"
 
@@ -65,6 +65,71 @@ describe("parseVersionFromHumVersionId", () => {
     "-v1",
   ])("returns null for malformed %s", (input) => {
     expect(parseVersionFromHumVersionId(input)).toBeNull()
+  })
+})
+
+describe("resolveEditTargetVersion", () => {
+  it.each([
+    ["published research with no draft", null, "v3", "v3"],
+    ["published research with a draft in flight", "v4", "v3", "v4"],
+    ["unpublished new hum", "v1", null, "v1"],
+    ["unpublished after withdrawal", "v3", null, "v3"],
+  ] as const)("targets %s", (_label, draftVersion, latestVersion, expected) => {
+    expect(resolveEditTargetVersion({ draftVersion, latestVersion })).toBe(expected)
+  })
+
+  it("returns null when the research names neither a draft nor a published version", () => {
+    expect(resolveEditTargetVersion({ draftVersion: null, latestVersion: null })).toBeNull()
+  })
+
+  it("never targets a version below latestVersion (PBT)", () => {
+    // The write target is what keeps an edit out of public view. Targeting a
+    // version at or below latestVersion while a draft exists would publish it
+    // immediately, since visibility is a version-number comparison.
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 99 }),
+        fc.integer({ min: 1, max: 99 }),
+        (latestN, bump) => {
+          const latestVersion = `v${latestN}`
+          const draftVersion = `v${latestN + bump}`
+          const target = resolveEditTargetVersion({ draftVersion, latestVersion })
+
+          return parseVersionNum(target!) > latestN
+        },
+      ),
+    )
+  })
+})
+
+describe("nextVersionNumber", () => {
+  it("counts up from the highest issued number, not from the number of versions", () => {
+    expect(nextVersionNumber(["hum0001-v1", "hum0001-v2", "hum0001-v5"])).toBe(6)
+  })
+
+  it("returns 1 for a research with no versions yet", () => {
+    expect(nextVersionNumber([])).toBe(1)
+  })
+
+  it("ignores ids that do not carry a parseable version", () => {
+    expect(nextVersionNumber(["hum0001-v2", "hum0001", "garbage"])).toBe(3)
+  })
+
+  it("never collides with an issued version and never lands at or below it (PBT)", () => {
+    // Both failure modes the old `versionIds.length + 1` had: a collision makes
+    // the Research permanently un-versionable, and a number at or below
+    // latestVersion mints a draft that public viewers can read.
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(fc.integer({ min: 1, max: 200 }), { minLength: 1, maxLength: 30 }),
+        (issued) => {
+          const versionIds = issued.map(n => `hum0001-v${n}`)
+          const next = nextVersionNumber(versionIds)
+
+          return !issued.includes(next) && issued.every(n => next > n)
+        },
+      ),
+    )
   })
 })
 

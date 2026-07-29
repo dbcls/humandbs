@@ -164,6 +164,8 @@ Research のライフサイクル状態遷移を管理する。
 - `datePublished`: 初回 approve 時に設定され、以後変更されない。作成時は null
 - `dateModified`: 状態変更、通常の更新（`PUT /research/{humId}/update`）、パッチ（`PUT /research/{humId}/patch`）のたびに更新される
 
+**不変条件**: `status === "published"` と `draftVersion === null` は同値である。上の遷移はすべてこれを保つ。破れると編集の着地先が状態依存になり（release note だけ公開版に書かれる、あるいは無言で捨てられる）、書き分けルールが機能しなくなる。ES を直接編集して doc を作る場合もこの組み合わせを崩さないこと。
+
 ### 削除
 
 Research の削除は物理削除で行う。`POST /research/{humId}/delete` (admin only) は Research ドキュメント、全 ResearchVersion、全紐づき Dataset を物理的に削除する。削除後は同じ humId で再作成が可能。
@@ -290,6 +292,10 @@ frontend は「一覧 → 詳細」の 2 段フェッチで運用する。一覧
 - 特定バージョンは `GET /research/{humId}/versions/{version}` で取得
 - バージョン一覧は `GET /research/{humId}/versions` で取得
 - 新バージョン作成は `POST /research/{humId}/versions/new`（published 状態のみ）
+
+**採番規則**: 新バージョン番号は「これまでに発行した最大番号 + 1」（`nextVersionNumber` at `src/api/utils/version.ts`）。`versionIds` の要素数から数えない。数えて採番すると欠番があるときに番号を再利用してしまい、既存バージョンと衝突して以後その Research が版を切れなくなるか、欠番が `latestVersion` より下にある場合は公開判定（版番号の大小比較）が published とみなす draft を作る。
+
+現在の全 Research は `v1` から連続しているが、採番規則は連続性に依存しない。版を取り下げれば欠番は再び生じるため、可視性判定が番号の大小比較である以上、`latestVersion` より上に draft が来ることは採番側で保証する。
 
 ### Dataset のバージョン
 

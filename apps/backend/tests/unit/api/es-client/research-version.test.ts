@@ -4,7 +4,7 @@
  * Covers:
  * - createResearchVersion:
  *   - Copies datasets from the latest version when datasets arg is omitted (IT-VERSION-06)
- *   - Bumps version number from versionIds.length + 1
+ *   - Mints the next version as max(issued) + 1 and seeds it from RV[latestVersion]
  *   - Updates research.versionIds, draftVersion, status=draft, dateModified
  *   - Throws ConflictError on op_type:create dup
  *   - Rolls back the new version doc on optimistic-lock failure during the research update (IT-VERSION-14)
@@ -106,10 +106,11 @@ beforeEach(() => {
 
 describe("createResearchVersion (IT-VERSION-06)", () => {
   it("copies datasets from the latest version when datasets arg is undefined", async () => {
-    // First esClient.get -> research doc; subsequent search inside getResearchVersion -> latest version with datasets
+    // esClient.get calls in order: research root, then RV[latestVersion]
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"], latestVersion: "v1", draftVersion: null }) })
-    mockEsSearch.mockResolvedValueOnce({
-      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }] }) }] },
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
     })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockResolvedValue({})
@@ -135,8 +136,9 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     // content snapshot (title / summary / dataProvider / …). The datasets arg
     // only overrides the datasets field, not the content copy.
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"], latestVersion: "v1" }) })
-    mockEsSearch.mockResolvedValueOnce({
-      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }] }) }] },
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
     })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockResolvedValue({})
@@ -145,14 +147,52 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, explicit, 1, 1)
 
     expect(result?.datasets).toEqual(explicit)
-    // Search was called to fetch the latest RV for the content copy, even
-    // though datasets was explicit.
-    expect(mockEsSearch).toHaveBeenCalledTimes(1)
+    // The latest RV was still fetched for the content copy, even though
+    // datasets was explicit.
+    expect((mockEsGet.mock.calls[1]?.[0] as { id: string }).id).toBe("hum0001-v1")
+  })
+
+  it("reads the content snapshot from latestVersion, not from a higher-numbered orphan RV", async () => {
+    // The migration left Research docs with an RV above latestVersion. That doc
+    // holds content that was never published; seeding a new draft from it would
+    // publish that content at the next approve.
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseResearch({ versionIds: ["hum0001-v1", "hum0001-v2", "hum0001-v5"], latestVersion: "v2", draftVersion: null }),
+    })
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ humVersionId: "hum0001-v2", version: "v2", title: { ja: "v2-published", en: "v2-published" } }),
+    })
+    mockEsIndex.mockResolvedValue({})
+    mockEsUpdate.mockResolvedValue({})
+
+    const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, undefined, 1, 1)
+
+    expect((mockEsGet.mock.calls[1]?.[0] as { id: string }).id).toBe("hum0001-v2")
+    expect(result?.title).toEqual({ ja: "v2-published", en: "v2-published" })
+    expect(mockEsSearch).not.toHaveBeenCalled()
+  })
+
+  it("mints one past the highest version ever issued, so a gap cannot produce a number at or below latestVersion", async () => {
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseResearch({ versionIds: ["hum0001-v1", "hum0001-v2", "hum0001-v5"], latestVersion: "v5", draftVersion: null }),
+    })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion({ humVersionId: "hum0001-v5", version: "v5" }) })
+    mockEsIndex.mockResolvedValue({})
+    mockEsUpdate.mockResolvedValue({})
+
+    const result = await rv.createResearchVersion("hum0001", { ja: null, en: null }, undefined, 1, 1)
+
+    // Counting versionIds would mint v4 here — a draft that the version-number
+    // comparison in isHumVersionAccessible reads as published.
+    expect(result?.version).toBe("v6")
   })
 
   it("throws ConflictError when the new humVersionId already exists (op_type:create dup)", async () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"] }) })
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion() })
     mockEsIndex.mockRejectedValue(versionConflictError())
 
     let caught: unknown
@@ -166,7 +206,7 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
 
   it("rolls back the version doc on optimistic-lock failure during research update (IT-VERSION-14)", async () => {
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"] }) })
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion() })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockRejectedValue(optimisticLockError())
 
@@ -189,8 +229,9 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
       relatedPublication: [{ title: { ja: null, en: null }, doi: null, datasetIds: [] }],
     }
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ versionIds: ["hum0001-v1"], latestVersion: "v1" }) })
-    mockEsSearch.mockResolvedValueOnce({
-      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }], ...latestContent }) }] },
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ datasets: [{ datasetId: "JGAD000001", version: "v1" }], ...latestContent }),
     })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockResolvedValue({})
@@ -219,7 +260,7 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     })
     mockEsGet.mockResolvedValueOnce({ found: true, _source: researchWithContent })
     // Latest RV has no content fields (pre-migration doc)
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion() })
     mockEsIndex.mockResolvedValue({})
     mockEsUpdate.mockResolvedValue({})
 
@@ -246,9 +287,8 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
 
 describe("linkDatasetToResearch (IT-VERSION-11)", () => {
   it("appends the dataset to the latest version's datasets", async () => {
-    // getResearchVersion: search returns latest version with empty datasets
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
-    // getResearchVersionWithSeqNo: get returns the version doc
+    // esClient.get calls in order: research root (edit target = v1), then the RV with its lock
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion(), _seq_no: 1, _primary_term: 1 })
     mockEsUpdate.mockResolvedValue({})
 
@@ -261,9 +301,7 @@ describe("linkDatasetToResearch (IT-VERSION-11)", () => {
   })
 
   it("is idempotent when the dataset is already linked", async () => {
-    mockEsSearch.mockResolvedValueOnce({
-      hits: { hits: [{ _source: baseVersion({ datasets: [{ datasetId: "JGAD000003", version: "v1" }] }) }] },
-    })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({
       found: true,
       _source: baseVersion({ datasets: [{ datasetId: "JGAD000003", version: "v1" }] }),
@@ -278,7 +316,7 @@ describe("linkDatasetToResearch (IT-VERSION-11)", () => {
   })
 
   it("returns null on optimistic-lock failure", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion() }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({ found: true, _source: baseVersion(), _seq_no: 1, _primary_term: 1 })
     mockEsUpdate.mockRejectedValue(optimisticLockError())
 
@@ -287,12 +325,49 @@ describe("linkDatasetToResearch (IT-VERSION-11)", () => {
     expect(result).toBeNull()
   })
 
-  it("returns null when no latest version exists", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [] } })
+  it("returns null when the research names no version", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch({ latestVersion: null, draftVersion: null }) })
 
     const result = await rv.linkDatasetToResearch("hum0001", "JGAD000003", "v1")
 
     expect(result).toBeNull()
+  })
+
+  it("writes to the draft version while one is in flight, leaving the published version alone", async () => {
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseResearch({ versionIds: ["hum0001-v1", "hum0001-v2"], latestVersion: "v1", draftVersion: "v2", status: "draft" }),
+    })
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ humVersionId: "hum0001-v2", version: "v2" }),
+      _seq_no: 1,
+      _primary_term: 1,
+    })
+    mockEsUpdate.mockResolvedValue({})
+
+    await rv.linkDatasetToResearch("hum0001", "JGAD000003", "v1")
+
+    expect((mockEsGet.mock.calls[1]?.[0] as { id: string }).id).toBe("hum0001-v2")
+    expect((mockEsUpdate.mock.calls[0]?.[0] as { id: string }).id).toBe("hum0001-v2")
+  })
+
+  it("ignores an orphan RV above latestVersion when no draft is in flight", async () => {
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseResearch({ versionIds: ["hum0001-v1", "hum0001-v2", "hum0001-v5"], latestVersion: "v2", draftVersion: null }),
+    })
+    mockEsGet.mockResolvedValueOnce({
+      found: true,
+      _source: baseVersion({ humVersionId: "hum0001-v2", version: "v2" }),
+      _seq_no: 1,
+      _primary_term: 1,
+    })
+    mockEsUpdate.mockResolvedValue({})
+
+    await rv.linkDatasetToResearch("hum0001", "JGAD000003", "v1")
+
+    expect((mockEsUpdate.mock.calls[0]?.[0] as { id: string }).id).toBe("hum0001-v2")
   })
 })
 
@@ -306,7 +381,7 @@ describe("unlinkDatasetFromResearch", () => {
   ]
 
   it("removes the exact (datasetId, version) pair", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion({ datasets: existing }) }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({
       found: true, _source: baseVersion({ datasets: existing }), _seq_no: 1, _primary_term: 1,
     })
@@ -323,7 +398,7 @@ describe("unlinkDatasetFromResearch", () => {
   })
 
   it("removes all versions when version is omitted", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion({ datasets: existing }) }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({
       found: true, _source: baseVersion({ datasets: existing }), _seq_no: 1, _primary_term: 1,
     })
@@ -337,7 +412,7 @@ describe("unlinkDatasetFromResearch", () => {
   })
 
   it("returns true (no-op) when the pair is not present", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion({ datasets: existing }) }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({
       found: true, _source: baseVersion({ datasets: existing }), _seq_no: 1, _primary_term: 1,
     })
@@ -348,7 +423,7 @@ describe("unlinkDatasetFromResearch", () => {
   })
 
   it("returns false on optimistic-lock failure", async () => {
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: baseVersion({ datasets: existing }) }] } })
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: baseResearch() })
     mockEsGet.mockResolvedValueOnce({
       found: true, _source: baseVersion({ datasets: existing }), _seq_no: 1, _primary_term: 1,
     })

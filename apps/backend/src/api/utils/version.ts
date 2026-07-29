@@ -27,6 +27,43 @@ export const parseVersionFromHumVersionId = (humVersionId: string): string | nul
   return /^v\d+$/.test(ver) ? ver : null
 }
 
+/** Version fields that decide which ResearchVersion a write lands on. */
+export interface VersionState {
+  latestVersion: string | null
+  draftVersion: string | null
+}
+
+/**
+ * The ResearchVersion an edit writes to: the in-flight draft when one exists,
+ * otherwise the published version (in-place patch). Content fields, release
+ * notes, dataset links and newly created Datasets all resolve their target
+ * through this, so a single edit can never scatter across two versions.
+ *
+ * Null only when the Research has neither a draft nor a published version,
+ * which no valid state produces — callers treat it as a broken document.
+ */
+export const resolveEditTargetVersion = (research: VersionState): string | null =>
+  research.draftVersion ?? research.latestVersion
+
+/**
+ * Next version number to mint: one past the highest ever issued, taken from
+ * `versionIds` rather than its length.
+ *
+ * Counting instead would reuse numbers whenever `versionIds` has a gap — the
+ * migration left six such Research docs. A reused number either collides with
+ * the existing version (409, and the Research can never be versioned again) or,
+ * when the gap sits below `latestVersion`, mints a draft that the version-number
+ * comparison in `isHumVersionAccessible` reads as published.
+ */
+export const nextVersionNumber = (versionIds: string[]): number => {
+  const issued = versionIds
+    .map(parseVersionFromHumVersionId)
+    .filter((v): v is string => v !== null)
+    .map(parseVersionNum)
+
+  return (issued.length > 0 ? Math.max(...issued) : 0) + 1
+}
+
 /**
  * Non-owner/admin visibility ceiling: a Dataset (or ResearchVersion) whose
  * humVersionId points to a version *after* the parent Research's
