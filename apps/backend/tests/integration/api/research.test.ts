@@ -950,7 +950,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         targetsSummary?: { ja: string | null; en: string | null } | null
       }>
       const listed = async (): Promise<ListedSummaries["data"][number] | undefined> => {
-        const list = await app.request(url("/research?limit=50"), { headers: authHeaders(nonAdmin) })
+        const list = await app.request(url(`/research?humId=${humId}`), { headers: authHeaders(nonAdmin) })
         expect(list.status).toBe(200)
 
         return ((await list.json()) as ListedSummaries).data.find((r) => r.humId === humId)
