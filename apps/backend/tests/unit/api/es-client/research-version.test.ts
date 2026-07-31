@@ -49,11 +49,6 @@ void mock.module("@/api/es-client/client", () => ({
 const rv = await import("@/api/es-client/research-version")
 const { ConflictError } = await import("@/api/errors")
 
-// Assertions on production-generated `dateModified` use `ISO_DATE` because
-// strict equality against `new Date()` taken at module-load time is flaky
-// across UTC midnight (the production call resolves a fresh `new Date()`).
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
 const baseResearch = (overrides: Record<string, unknown> = {}) => ({
   humId: "hum0001",
   url: { ja: "u", en: "u" },
@@ -127,8 +122,10 @@ describe("createResearchVersion (IT-VERSION-06)", () => {
     const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }
     expect(updateArgs.body.doc.draftVersion).toBe("v2")
     expect(updateArgs.body.doc.status).toBe("draft")
-    expect(updateArgs.body.doc.dateModified).toMatch(ISO_DATE)
     expect((updateArgs.body.doc.versionIds as string[])).toEqual(["hum0001-v1", "hum0001-v2"])
+    // Opening a draft publishes nothing, so the root's derived dates stay put.
+    expect(updateArgs.body.doc).not.toHaveProperty("dateModified")
+    expect(updateArgs.body.doc).not.toHaveProperty("datePublished")
   })
 
   it("uses the datasets arg when provided (still consults latest version for content snapshot)", async () => {

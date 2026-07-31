@@ -474,7 +474,8 @@ export { ResearchSchema, ResearchVersionSchema }
 export const WorkflowDataSchema = z.object({
   humId: z.string(),
   status: z.enum(RESEARCH_STATUS),
-  dateModified: z.string(),
+  // Derived from the published versions, so null while nothing is published.
+  dateModified: z.string().nullable(),
 })
 export type WorkflowData = z.infer<typeof WorkflowDataSchema>
 

@@ -128,6 +128,8 @@ API 経由の CAU 編集は廃止済みのため、バッチが唯一の書き�
 
 ## 実行方法
 
+開発環境:
+
 ```bash
 docker compose exec backend bun run generate-cau [--dry-run] [--hum-id hum0001] [--verbose]
 ```
@@ -138,10 +140,12 @@ docker compose exec backend bun run generate-cau [--dry-run] [--hum-id hum0001] 
 | `--hum-id` | 指定した hum のみ更新 (デバッグ用) |
 | `--verbose` | 詳細ログ出力 |
 
-## cron 設定 (a014)
+## 定期実行
 
-日次 2:30 に実行。既存の `dump-jga-hum-relations.sh` (2:00) の後に配置する。
+production (a014) の `w3humandbs-ac` の cron で日次 2:30 に実行し、`~/generate-cau-production.log` に追記する。
 
 ```cron
-30 2 * * * cd /path/to/humandbs && docker compose exec -T backend bun run generate-cau >> /var/log/humandbs/generate-cau.log 2>&1
+30 2 * * * podman exec --workdir /app/apps/backend humandbs-production-backend bun run generate-cau >> ~/generate-cau-production.log 2>&1
 ```
+
+作業ディレクトリは `podman exec --workdir` で指定する。cron は行全体を `/bin/sh -c` に渡すため、`sh -c 'cd ... && ...'` の形にするとクォートが崩れて実行できない。

@@ -8,6 +8,7 @@ import type { Context } from "hono"
 
 import { ConflictError } from "@/api/errors"
 import { validateStatusTransition } from "@/api/es-client/auth"
+import { computeResearchDates, stampVersionReleaseDate, today } from "@/api/es-client/publish-dates"
 import { syncResearchRootFromVersion, updateResearchStatus } from "@/api/es-client/research"
 import { singleResponse } from "@/api/helpers/response"
 import type { EsResearch, ResearchStatus, StatusAction } from "@/api/types"
@@ -25,21 +26,14 @@ import {
 export const computeVersionUpdates = (
   action: StatusAction,
   research: EsResearch,
-): { latestVersion?: string | null; draftVersion?: string | null; datePublished?: string | null } | undefined => {
+): { latestVersion: string | null; draftVersion: string | null } | undefined => {
   switch (action) {
     case "approve": {
       if (!research.draftVersion) {
         throw new Error("Cannot approve: draftVersion is null")
       }
-      const updates: { latestVersion: string; draftVersion: null; datePublished?: string } = {
-        latestVersion: research.draftVersion,
-        draftVersion: null,
-      }
-      if (!research.datePublished) {
-        updates.datePublished = new Date().toISOString().split("T")[0]
-      }
 
-      return updates
+      return { latestVersion: research.draftVersion, draftVersion: null }
     }
     case "unpublish":
       if (!research.latestVersion) {
@@ -76,8 +70,22 @@ const createStatusTransitionHandler = (
     // Compute version updates for this action
     const versionUpdates = computeVersionUpdates(action, research)
 
+    // Approve is the moment a version becomes published, so it is where the
+    // version's release date is decided. Stamping it before the root update
+    // lets the derived dates below read the value that was just written.
+    if (action === "approve" && research.draftVersion) {
+      await stampVersionReleaseDate(humId, research.draftVersion, today())
+    }
+
+    // Both root dates are derived from the published versions, so they are
+    // recomputed exactly when the published set changes — approve and unpublish
+    // ([data-model.md § 日付フィールド]).
+    const dates = versionUpdates
+      ? await computeResearchDates(research, versionUpdates.latestVersion)
+      : undefined
+
     // Update status (and optionally latestVersion/draftVersion)
-    const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm, versionUpdates)
+    const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm, { ...versionUpdates, ...dates })
     if (!updated) {
       throw new ConflictError()
     }

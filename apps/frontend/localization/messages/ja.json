@@ -139,7 +139,7 @@
     "experiments": "解析手法",
     "criteria": "アクセス制限",
     "releaseDate": "公開日",
-    "versionReleaseDate": "更新日"
+    "dateModified": "更新日"
   },
   "Dataset": {
     "datasetId": "データセット ID",

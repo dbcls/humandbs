@@ -194,6 +194,8 @@ export const createResearchVersion = async (
     humId,
     humVersionId: newHumVersionId,
     version: newVersion,
+    // Placeholder until approve stamps the real release date. The new version is
+    // a draft, so this value must not reach any published-side derivation.
     versionReleaseDate: now,
     datasets: datasetsToUse,
     releaseNote: hydrateBilingualTextValue(releaseNote),
@@ -218,7 +220,8 @@ export const createResearchVersion = async (
   }
 
   // Update Research to add new version to versionIds, set draftVersion, and change status to draft
-  // latestVersion is NOT changed here (keeps the published version visible)
+  // latestVersion is NOT changed here (keeps the published version visible).
+  // The root's dates stay put too: opening a draft publishes nothing.
   try {
     await esClient.update({
       index: ES_INDEX.research,
@@ -229,7 +232,6 @@ export const createResearchVersion = async (
         versionIds: [...research.versionIds, newHumVersionId],
         draftVersion: newVersion,
         status: "draft",
-        dateModified: now,
       }),
       refresh: "wait_for",
     })

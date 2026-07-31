@@ -139,7 +139,7 @@
     "experiments": "Analysis method",
     "criteria": "Access type",
     "releaseDate": "Release date",
-    "versionReleaseDate": "Version release date"
+    "dateModified": "Date modified"
   },
   "Dataset": {
     "datasetId": "Dataset ID",

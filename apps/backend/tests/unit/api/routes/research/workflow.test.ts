@@ -24,7 +24,7 @@ void mock.module("@/api/services/ownership", () => ({
 }))
 
 const mockUpdateResearchStatus = mock<
-  (...args: unknown[]) => Promise<({ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null)>
+  (...args: unknown[]) => Promise<({ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string | null } | null)>
 >()
 const mockGetResearchWithSeqNo = mock<
   (humId: string) => Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number } | null>
@@ -42,6 +42,21 @@ void mock.module("@/api/es-client/research", () => ({
   syncResearchRootFromVersion: (humId: string, version: string) => mockSyncResearchRootFromVersion(humId, version),
 }))
 
+const mockStampVersionReleaseDate = mock<(humId: string, version: string, date: string) => Promise<void>>(
+  async () => undefined,
+)
+const mockComputeResearchDates = mock<
+  (...args: unknown[]) => Promise<{ datePublished: string | null; dateModified: string | null }>
+>(async () => ({ datePublished: null, dateModified: null }))
+
+void mock.module("@/api/es-client/publish-dates", () => ({
+  today: () => "2024-03-04",
+  stampVersionReleaseDate: (humId: string, version: string, date: string) =>
+    mockStampVersionReleaseDate(humId, version, date),
+  computeResearchDates: (...args: unknown[]) => mockComputeResearchDates(...args),
+  syncDatasetDateModified: mock(async () => null),
+}))
+
 void mock.module("@/api/es-client/search", () => ({
   searchResearches: mock(() => Promise.resolve({
     data: [],
@@ -57,36 +72,17 @@ const { computeVersionUpdates } = await import("@/api/routes/research/workflow")
 const { getTestApp } = await import("../../helpers")
 
 describe("computeVersionUpdates", () => {
-  it("approve sets datePublished when it is null", () => {
-    const research = createMockResearchDoc({
-      status: "review",
-      draftVersion: "v1",
-      latestVersion: null,
-      datePublished: null,
-    })
-
-    const result = computeVersionUpdates("approve", research)
-
-    expect(result).toBeDefined()
-    expect(result!.latestVersion).toBe("v1")
-    expect(result!.draftVersion).toBeNull()
-    expect(result!.datePublished).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-  })
-
-  it("approve preserves existing datePublished", () => {
+  it("approve promotes draftVersion to latestVersion", () => {
     const research = createMockResearchDoc({
       status: "review",
       draftVersion: "v2",
       latestVersion: "v1",
-      datePublished: "2024-01-01",
     })
 
-    const result = computeVersionUpdates("approve", research)
-
-    expect(result).toBeDefined()
-    expect(result!.latestVersion).toBe("v2")
-    expect(result!.draftVersion).toBeNull()
-    expect(result!.datePublished).toBeUndefined()
+    expect(computeVersionUpdates("approve", research)).toEqual({
+      latestVersion: "v2",
+      draftVersion: null,
+    })
   })
 
   it("approve throws when draftVersion is null", () => {
@@ -157,48 +153,26 @@ describe("computeVersionUpdates", () => {
     )
   })
 
-  // PBT: approve with draftVersion and existing datePublished -> no datePublished in result
-  it("PBT: approve + datePublished exists -> no datePublished in result", () => {
+  // PBT: version routing never depends on the stored dates — those are derived
+  // separately by computeResearchDates.
+  it("PBT: approve -> latestVersion is the draft, whatever the stored dates are", () => {
     const arbVersion = fc.stringMatching(/^v\d+$/)
+    const arbDate = fc.date({
+      min: new Date("2020-01-01"),
+      max: new Date("2030-12-31"),
+      noInvalidDate: true,
+    }).map(d => d.toISOString().split("T")[0])
 
     fc.assert(
       fc.property(
         arbVersion,
-        fc.date({
-          min: new Date("2020-01-01"),
-          max: new Date("2030-12-31"),
-          noInvalidDate: true,
-        }).map(d => d.toISOString().split("T")[0]),
-        (draftVersion, datePublished) => {
-          const research = createMockResearchDoc({
-            draftVersion,
-            datePublished,
-          })
-          const result = computeVersionUpdates("approve", research)
-          return result !== undefined && result.datePublished === undefined
-        },
-      ),
-    )
-  })
+        fc.option(arbDate, { nil: null }),
+        fc.option(arbDate, { nil: null }),
+        (draftVersion, datePublished, dateModified) => {
+          const research = createMockResearchDoc({ draftVersion, datePublished, dateModified })
 
-  // PBT: approve + draftVersion + no datePublished -> datePublished is YYYY-MM-DD
-  it("PBT: approve + no datePublished -> datePublished is YYYY-MM-DD", () => {
-    const arbVersion = fc.stringMatching(/^v\d+$/)
-
-    fc.assert(
-      fc.property(
-        arbVersion,
-        (draftVersion) => {
-          const research = createMockResearchDoc({
-            draftVersion,
-            datePublished: null,
-          })
-          const result = computeVersionUpdates("approve", research)
-          return (
-            result !== undefined &&
-            typeof result.datePublished === "string" &&
-            /^\d{4}-\d{2}-\d{2}$/.test(result.datePublished)
-          )
+          return JSON.stringify(computeVersionUpdates("approve", research))
+            === JSON.stringify({ latestVersion: draftVersion, draftVersion: null })
         },
       ),
     )
@@ -214,6 +188,10 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
     mockUpdateResearchStatus.mockReset()
     mockSyncResearchRootFromVersion.mockReset()
     mockSyncResearchRootFromVersion.mockResolvedValue(undefined)
+    mockStampVersionReleaseDate.mockReset()
+    mockStampVersionReleaseDate.mockResolvedValue(undefined)
+    mockComputeResearchDates.mockReset()
+    mockComputeResearchDates.mockResolvedValue({ datePublished: null, dateModified: null })
     mockIsOwner.mockReset()
     mockIsOwner.mockImplementation(async (_u: string) => _u === "owner-1")
   })
@@ -246,6 +224,90 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
     // so search / listing / public detail catch up with the approved version.
     expect(mockSyncResearchRootFromVersion).toHaveBeenCalledTimes(1)
     expect(mockSyncResearchRootFromVersion).toHaveBeenCalledWith("hum0001", "v1")
+  })
+
+  it("approve stamps the draft's release date, then writes the recomputed root dates", async () => {
+    const reviewDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "review",
+      latestVersion: "v1",
+      draftVersion: "v2",
+      datePublished: "2020-01-01",
+      dateModified: "2020-01-01",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("published", { latestVersion: "v2", draftVersion: null }))
+    mockComputeResearchDates.mockResolvedValue({ datePublished: "2020-01-01", dateModified: "2024-03-04" })
+
+    const res = await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+
+    expect(res.status).toBe(200)
+    expect(mockStampVersionReleaseDate).toHaveBeenCalledWith("hum0001", "v2", "2024-03-04")
+    // The min/max must be taken over the versions up to the version being
+    // published — the draft that just became latest, not the stale latestVersion.
+    expect(mockComputeResearchDates).toHaveBeenCalledWith(expect.objectContaining({ humId: "hum0001" }), "v2")
+    expect(mockUpdateResearchStatus.mock.calls[0][4]).toEqual({
+      latestVersion: "v2",
+      draftVersion: null,
+      datePublished: "2020-01-01",
+      dateModified: "2024-03-04",
+    })
+  })
+
+  it("unpublish recomputes the root dates without an empty published set", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+      datePublished: "2020-01-01",
+      dateModified: "2020-01-01",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("draft", { latestVersion: null, draftVersion: "v1" }))
+
+    const res = await getTestApp().request("/research/hum0001/unpublish", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+
+    expect(res.status).toBe(200)
+    // Nothing was published, so no release date is stamped — but the derived
+    // dates still have to drop to null.
+    expect(mockStampVersionReleaseDate).not.toHaveBeenCalled()
+    expect(mockComputeResearchDates).toHaveBeenCalledWith(expect.objectContaining({ humId: "hum0001" }), null)
+    expect(mockUpdateResearchStatus.mock.calls[0][4]).toEqual({
+      latestVersion: null,
+      draftVersion: "v1",
+      datePublished: null,
+      dateModified: null,
+    })
+  })
+
+  it("submit and reject leave every date alone", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      latestVersion: "v1",
+      draftVersion: "v2",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("review"))
+
+    await getTestApp().request("/research/hum0001/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: "{}",
+    })
+
+    expect(mockStampVersionReleaseDate).not.toHaveBeenCalled()
+    expect(mockComputeResearchDates).not.toHaveBeenCalled()
+    expect(mockUpdateResearchStatus.mock.calls[0][4]).toEqual({})
   })
 
   it("submit/reject/unpublish do NOT invoke syncResearchRootFromVersion", async () => {

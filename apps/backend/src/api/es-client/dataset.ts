@@ -10,9 +10,11 @@
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
+import { syncDatasetDateModified } from "@/api/es-client/publish-dates"
 import { versionSortSpec } from "@/api/es-client/query-builders"
 import { getResearchDoc } from "@/api/es-client/research"
 import {
+  getResearchVersion,
   getResearchVersionWithSeqNo,
   linkDatasetToResearch,
   unlinkDatasetFromResearch,
@@ -22,7 +24,7 @@ import { logger } from "@/api/logger"
 import { EsDatasetSchema } from "@/api/types"
 import type { AuthUser, CreateDatasetRequest, DatasetVersionItem, EsDataset, ResearchDetail, UpdateDatasetRequest } from "@/api/types"
 import { hydrateExperiment } from "@/api/utils/hydrate-raw-html"
-import { isHumVersionAccessible, isOwnerOrAdmin } from "@/api/utils/version"
+import { isHumVersionAccessible, isOwnerOrAdmin, parseVersionFromHumVersionId } from "@/api/utils/version"
 
 // === Dataset Retrieval ===
 
@@ -226,37 +228,6 @@ const getNextDatasetVersion = async (datasetId: string): Promise<string> => {
 }
 
 /**
- * Recompute a dataset's version-invariant `dateModified` (the max
- * versionReleaseDate across its versions) and write it onto every version doc,
- * so the collapsed listing sort stays consistent (see `es/dataset-schema.ts`).
- * Returns the value written, or null when the datasetId has no documents left.
- */
-export const syncDatasetDateModified = async (datasetId: string): Promise<string | null> => {
-  const res = await esClient.search<EsDataset>({
-    index: ES_INDEX.dataset,
-    size: 1,
-    query: { term: { datasetId } },
-    sort: [{ versionReleaseDate: { order: "desc" } }],
-    _source: ["versionReleaseDate"],
-  })
-  const maxDate = res.hits.hits[0]?._source?.versionReleaseDate ?? null
-  if (maxDate === null) return null
-
-  await esClient.updateByQuery({
-    index: ES_INDEX.dataset,
-    refresh: true,
-    conflicts: "proceed",
-    query: { term: { datasetId } },
-    script: {
-      source: "ctx._source.dateModified = params.d",
-      params: { d: maxDate },
-    },
-  })
-
-  return maxDate
-}
-
-/**
  * Create a new Dataset
  * Authenticated user (parent Research owner) can create
  *
@@ -276,13 +247,22 @@ export const createDataset = async (
   // Get the next version number
   const version = await getNextDatasetVersion(datasetId)
 
+  // A Dataset version carries the release date of the ResearchVersion it hangs
+  // off ([data-model.md § 日付フィールド]). Falling back to today only covers a
+  // parent that cannot be read; approve restamps both in step.
+  const parentVersion = parseVersionFromHumVersionId(params.humVersionId)
+  const parentRv = parentVersion
+    ? await getResearchVersion(params.humId, { version: parentVersion })
+    : null
+  const versionReleaseDate = parentRv?.versionReleaseDate ?? now
+
   // Create Dataset document. A brand-new datasetId has a single version, so its
   // dateModified equals this version's releaseDate.
   const datasetDoc: EsDataset = {
     datasetId,
     version,
-    versionReleaseDate: now,
-    dateModified: now,
+    versionReleaseDate,
+    dateModified: versionReleaseDate,
     humId: params.humId,
     humVersionId: params.humVersionId,
     releaseDate: params.releaseDate,
@@ -446,11 +426,17 @@ const bumpDatasetVersion = async (
   // humId / humVersionId are derived from the existing dataset doc and the
   // parent's draftVersion — never from `updates` — so a request body cannot
   // repoint the dataset to a different parent Research.
+  // This version is born on the draft ResearchVersion, so it takes that
+  // version's release date rather than carrying over the previous one
+  // ([data-model.md § 日付フィールド]).
+  const draftRv = await getResearchVersion(humId, { version: draftVersion })
+
   const newDoc: EsDataset = {
     ...currentDoc,
     version: nextVersion,
     humVersionId: draftHumVersionId,
     humId,
+    versionReleaseDate: draftRv?.versionReleaseDate ?? currentDoc.versionReleaseDate,
     releaseDate: updates.releaseDate ?? currentDoc.releaseDate,
     criteria: updates.criteria ?? currentDoc.criteria,
     typeOfData: updates.typeOfData ?? currentDoc.typeOfData,

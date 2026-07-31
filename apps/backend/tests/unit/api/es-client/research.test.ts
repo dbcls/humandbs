@@ -117,7 +117,9 @@ describe("createResearch", () => {
     expect(result.research.status).toBe("draft")
     expect(result.research.latestVersion).toBe(null)
     expect(result.research.draftVersion).toBe("v1")
-    expect(result.research.dateModified).toMatch(ISO_DATE)
+    // v1 is a draft, so neither derived date has anything published to derive from.
+    expect(result.research.datePublished).toBeNull()
+    expect(result.research.dateModified).toBeNull()
     expect(result.version.version).toBe("v1")
     expect(result.version.humVersionId).toBe("hum0001-v1")
     expect(mockEsIndex).toHaveBeenCalledTimes(2)
@@ -185,7 +187,7 @@ describe("createResearch", () => {
 // === updateResearch ===
 
 describe("updateResearch", () => {
-  it("returns the updated doc and sets dateModified=today (IT-RESEARCH-12)", async () => {
+  it("returns the updated doc (IT-RESEARCH-12)", async () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({
       found: true,
@@ -247,13 +249,11 @@ describe("updateResearch", () => {
 
     await research.updateResearch("hum0001", nNewCtx, { title: { ja: "new", en: "new" } }, 4, 1)
 
-    // Draft content goes to the RV doc, so the root write carries date-granular
-    // dateModified alone — already equal to the stored value on a same-day edit.
-    // ES must still write it, otherwise _seq_no stalls and the spent lock keeps
-    // validating.
+    // Draft content goes to the RV doc and no root-only field was supplied, so
+    // the root write carries nothing at all. ES must still perform it, otherwise
+    // _seq_no stalls and the spent lock keeps validating.
     const rootUpdate = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown>; detect_noop?: boolean } }
-    expect(Object.keys(rootUpdate.body.doc)).toEqual(["dateModified"])
-    expect(rootUpdate.body.doc.dateModified).toBe(TODAY)
+    expect(Object.keys(rootUpdate.body.doc)).toEqual([])
     expect(rootUpdate.body.detect_noop).toBe(false)
   })
 
@@ -382,11 +382,11 @@ describe("updateResearch write routing", () => {
 
     expect(mockEsUpdate).toHaveBeenCalledTimes(2)
 
-    // 1st call = root: bumps dateModified, does NOT carry title.
+    // 1st call = root: spends the lock, does NOT carry title.
     expect(updateIndex(0)).toBe("research")
     expect(updateId(0)).toBe("hum0001")
     const rootDoc = bodyDoc(0)
-    expect(rootDoc.dateModified).toMatch(ISO_DATE)
+    expect("dateModified" in rootDoc).toBe(false)
     expect("title" in rootDoc).toBe(false)
     expect("summary" in rootDoc).toBe(false)
 
@@ -546,7 +546,7 @@ describe("syncResearchRootFromVersion", () => {
 // === updateResearchStatus (IT-WORKFLOW-15 invariants) ===
 
 describe("updateResearchStatus", () => {
-  it("returns the updated doc and propagates dateModified=today", async () => {
+  it("returns the updated doc and reports its stored dateModified", async () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({
       found: true,
@@ -573,8 +573,34 @@ describe("updateResearchStatus", () => {
 
     const result = await research.updateResearchStatus("hum0001", "review", 5, 1)
     expect(result).not.toBeNull()
-    expect(result?.dateModified).toMatch(ISO_DATE)
+    expect(result?.dateModified).toBe(TODAY)
     expect(result?.seqNo).toBe(6)
+
+    // A transition that publishes nothing must not touch either derived date;
+    // the caller passes them only when the published set changed.
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(Object.keys(doc)).toEqual(["status"])
+  })
+
+  it("writes the dates the caller derived, including nulls", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearchStatus("hum0001", "draft", 5, 1, {
+      latestVersion: null,
+      draftVersion: "v1",
+      datePublished: null,
+      dateModified: null,
+    })
+
+    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    expect(doc).toEqual({
+      status: "draft",
+      latestVersion: null,
+      draftVersion: "v1",
+      datePublished: null,
+      dateModified: null,
+    })
   })
 
   it("returns null on optimistic-lock failure", async () => {

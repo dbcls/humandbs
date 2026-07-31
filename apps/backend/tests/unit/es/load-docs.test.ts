@@ -138,7 +138,7 @@ describe("es/load-docs.ts", () => {
   // makeDatasetDateModifiedTransform
   // ===========================================================================
   describe("makeDatasetDateModifiedTransform", () => {
-    const raw = (docs: { datasetId: string; version: string; versionReleaseDate?: string }[]) =>
+    const raw = (docs: { datasetId: string; version: string; versionReleaseDate?: string; releaseDate?: string }[]) =>
       docs.map((data, i) => ({ fileName: `${data.datasetId}-${data.version}-${i}.json`, data }))
 
     it("stamps the max versionReleaseDate across a datasetId onto every version doc", () => {
@@ -176,6 +176,27 @@ describe("es/load-docs.ts", () => {
         { datasetId: "JGAD000001", version: "v2", versionReleaseDate: "2022-02-02" },
       ]))
       expect(transform({ datasetId: "JGAD000001", version: "v1" }).dateModified).toBe("2022-02-02")
+    })
+
+    it("lets releaseDate win when DDBJ published later than any version", () => {
+      // Without releaseDate in the max, dateModified lands before releaseDate —
+      // a Dataset that reads as modified before it was released.
+      const docs = [
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2026-07-08", releaseDate: "2026-07-30" },
+      ]
+      const transform = makeDatasetDateModifiedTransform(raw(docs))
+      expect(transform(docs[0]).dateModified).toBe("2026-07-30")
+    })
+
+    it("takes the max across both dates and all versions", () => {
+      const docs = [
+        { datasetId: "JGAD000001", version: "v1", versionReleaseDate: "2020-04-06", releaseDate: "2020-09-28" },
+        { datasetId: "JGAD000001", version: "v2", versionReleaseDate: "2024-07-30", releaseDate: "2020-09-28" },
+      ]
+      const transform = makeDatasetDateModifiedTransform(raw(docs))
+      for (const d of docs) {
+        expect(transform(d).dateModified).toBe("2024-07-30")
+      }
     })
 
     it("preserves all other fields and does not mutate the input", () => {

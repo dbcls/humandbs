@@ -121,3 +121,39 @@ approve が呼ぶ `syncResearchRootFromVersion(humId, version)` は idempotent�
 
 per-version content 未装填の RV doc に content を backfill する手順は
 [`.claude/schema-migrations/2026-07-rv-content/`](../../.claude/schema-migrations/2026-07-rv-content/) にある。initial backfill では全 version が同じ content (= 現行 latestVersion の content) になる — 過去バージョンの historical content は復元できないが、以降の編集からは per-version に分岐する。
+
+## 日付フィールド
+
+公開日 / 更新日を名乗るフィールドは 6 つあるが、一次情報は `ResearchVersion.versionReleaseDate` と `Dataset.releaseDate` の 2 つだけで、残りはそこから導出する。
+
+| フィールド | 定義 |
+|---|---|
+| `ResearchVersion.versionReleaseDate` | **その版を公開した日** (approve した日)。公開済みの版では必須 |
+| `Dataset.releaseDate` | **その Dataset 自体が公開された日**。外部 DB (DDBJ Search の `datePublished`) の値。取得できない場合はその Dataset が初めて載った版の `versionReleaseDate` |
+| `Research.datePublished` | `min(公開版の versionReleaseDate)` = 初版の公開日 |
+| `Research.dateModified` | `max(公開版の versionReleaseDate)` = 最新版の公開日 |
+| `Dataset.versionReleaseDate` | その Dataset 版が生まれた ResearchVersion (= `humVersionId`) の `versionReleaseDate` の写し |
+| `Dataset.dateModified` | `max(公開版の versionReleaseDate, releaseDate)` を同じ datasetId の全版に複製 |
+
+導出に使うのは **公開済みの版だけ** である。`draftVersion` が名指す版と、`latestVersion` より上の番号を持つ孤立 RV は、いずれも公開されていないので min / max のどちらにも入れない。draft の日付が公開側の表示・ソート・フィルタに現れることは、未公開の版の存在を漏らすことを意味する。
+
+`Research.datePublished` / `dateModified` は導出値であり、内容の編集そのものでは動かない。「最後に編集した日」ではなく「最新版を公開した日」なので、in-place patch で誤字を直しても更新日は変わらない。値が動くのは版の公開状態が変わったとき — approve と unpublish — に限られる。
+
+`Dataset.dateModified` が `releaseDate` も max の候補に取るのは、DDBJ 側の公開が版の公開より遅れると更新日が公開日より前になるためである。同じ datasetId の全版に同じ値を複製するのは、listing が `collapse` で 1 版だけを選ぶため、選ばれた版によってソート順が変わらないようにするもの (`es/dataset-schema.ts`)。
+
+`Dataset.releaseDate` は datasetId 単位で一定であることを意図しているが、移行データには版ごとに違う値を持つものがある。
+
+`Dataset.humVersionId` はその Dataset 版を生んだ ResearchVersion — 作成した版、または内容を変えて版を上げた版 — を指す。ResearchVersion の `datasets` は内容が変わらない Dataset 版への参照を次の版へ引き継ぐので、1 つの Dataset 版が複数の ResearchVersion から参照されることがあるが、`humVersionId` はそのうち最初の 1 つだけを指し、後から参照されても動かない。`versionReleaseDate` がこれに従うことで、内容が変わっていない Dataset の更新日が、親の版が上がっただけで動くことはない。移行データにはこの規則から外れ、最後に参照した版を指しているものがある。
+
+### 公開状態が変わったときの再計算
+
+approve は版の公開日を確定させ、そこから導出される値を順に揃える。
+
+1. `RV[draftVersion].versionReleaseDate` に当日の日付を書く
+2. `humVersionId` がその RV を指す Dataset の `versionReleaseDate` を 1 の値に揃える。この版で生まれた Dataset だけが対象で、前の版から参照を引き継いだだけのものは触らない
+3. 2 で触った datasetId の `dateModified` を計算し直す
+4. `Research.datePublished` / `dateModified` を公開版の min / max で計算し直す
+
+unpublish は公開版が減るので 4 だけを行う。`versions/new` と各種 update は公開状態を変えないため、日付には触らない。
+
+draft 中の `versionReleaseDate` は approve までの暫定値である。値そのものに意味はないが、公開版で必須である以上 null のまま approve に到達させないために、版の作成時に当日の日付を入れておく。

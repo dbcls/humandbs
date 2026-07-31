@@ -74,12 +74,13 @@ void mock.module("@/api/es-client/research", () => ({
 const mockLinkDataset = mock(async (..._args: unknown[]) => undefined)
 const mockUnlinkDataset = mock(async (..._args: unknown[]) => undefined)
 const mockGetResearchVersionWithSeqNo = mock<(..._args: unknown[]) => Promise<unknown>>(async () => null)
+const mockGetResearchVersion = mock<(..._args: unknown[]) => Promise<unknown>>(async () => null)
 
 void mock.module("@/api/es-client/research-version", () => ({
   linkDatasetToResearch: mockLinkDataset,
   unlinkDatasetFromResearch: mockUnlinkDataset,
   getResearchVersionWithSeqNo: mockGetResearchVersionWithSeqNo,
-  getResearchVersion: mock(async () => null),
+  getResearchVersion: mockGetResearchVersion,
   listResearchVersions: mock(async () => []),
   listResearchVersionsSorted: mock(async () => []),
   createResearchVersion: mock(async () => null),
@@ -111,6 +112,8 @@ beforeEach(() => {
   mockLinkDataset.mockReset()
   mockUnlinkDataset.mockReset()
   mockGetResearchVersionWithSeqNo.mockReset()
+  mockGetResearchVersion.mockReset()
+  mockGetResearchVersion.mockResolvedValue(null)
 })
 
 // === getDataset ===
@@ -315,6 +318,21 @@ describe("createDataset", () => {
     expect(result.version).toBe("v1")
   })
 
+  it("takes versionReleaseDate from the ResearchVersion it is created on", async () => {
+    mockGetResearchVersion.mockResolvedValue(
+      createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", versionReleaseDate: "2023-05-08" }),
+    )
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 0 } } })
+    mockEsIndex.mockResolvedValue({})
+
+    const result = await dataset.createDataset({ ...baseParams, datasetId: "JGAD999999" })
+
+    // Not today, and not the requested releaseDate — the parent version's date.
+    expect(result.versionReleaseDate).toBe("2023-05-08")
+    expect(result.dateModified).toBe("2023-05-08")
+    expect(result.releaseDate).toBe("2024-01-01")
+  })
+
   it("bumps version via max_version aggregation", async () => {
     mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 2 } } })
     mockEsIndex.mockResolvedValue({})
@@ -443,6 +461,35 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     expect(rewireArgs.if_seq_no).toBe(20)
     expect(rewireArgs.if_primary_term).toBe(3)
     expect(rewireArgs.body.doc.datasets).toEqual([{ datasetId: "JGAD000001", version: "v2" }])
+  })
+
+  it("Path A: the bumped version takes the draft ResearchVersion's release date, not the previous version's", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1", versionReleaseDate: "2020-04-06" }), _seq_no: 5, _primary_term: 2 })
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2",
+    }))
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 10,
+      primaryTerm: 2,
+    })
+    mockGetResearchVersion.mockResolvedValue(
+      createMockResearchVersionDoc({ humVersionId: "hum0001-v2", version: "v2", versionReleaseDate: "2026-06-30" }),
+    )
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 1 } } })
+    mockEsIndex.mockResolvedValueOnce({})
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v2", version: "v2", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 20,
+      primaryTerm: 3,
+    })
+    mockEsUpdate.mockResolvedValueOnce({})
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [] } })
+
+    await dataset.updateDataset("JGAD000001", "v1", {}, 5, 2)
+
+    const indexArgs = mockEsIndex.mock.calls[0]?.[0] as { body: { versionReleaseDate: string } }
+    expect(indexArgs.body.versionReleaseDate).toBe("2026-06-30")
   })
 
   it("Path B (second PUT in the same draft cycle): in-place update on the current draft version (IT-VERSION-10)", async () => {

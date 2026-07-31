@@ -260,8 +260,9 @@ export const createResearch = async (
     versionIds: [humVersionId],
     latestVersion: null,
     draftVersion: version,
+    // Nothing is published yet, so both derived dates stay null until approve.
     datePublished: null,
-    dateModified: now,
+    dateModified: null,
     status: "draft",
     summaryShort: params.summaryShort
       ? {
@@ -276,6 +277,7 @@ export const createResearch = async (
     humId,
     humVersionId,
     version,
+    // Placeholder until approve stamps the real release date.
     versionReleaseDate: now,
     datasets: [],
     releaseNote: { ja: null, en: null },
@@ -362,13 +364,13 @@ export const updateResearch = async (
   seqNo: number,
   primaryTerm: number,
 ): Promise<EsResearch | null> => {
-  const now = new Date().toISOString().split("T")[0]
-
   const contentUpdate = buildContentUpdate(updates)
   const hasContent = Object.keys(contentUpdate).length > 0
 
-  // Root-only fields (never per-version).
-  const rootDoc: Record<string, unknown> = { dateModified: now }
+  // Root-only fields (never per-version). `dateModified` is not among them: it
+  // names the day the newest version was published, not the day someone last
+  // edited, so an in-place patch leaves it alone ([data-model.md § 日付フィールド]).
+  const rootDoc: Record<string, unknown> = {}
   if (updates.url !== undefined) rootDoc.url = updates.url
   if (updates.summaryShort !== undefined) {
     rootDoc.summaryShort = updates.summaryShort === null
@@ -403,8 +405,8 @@ export const updateResearch = async (
   }
 
   // RV content update runs only after the root update succeeds — the root's
-  // optimistic lock is the concurrency gate. A network failure here leaves
-  // root.dateModified bumped without RV content changing; the caller retries.
+  // optimistic lock is the concurrency gate. A network failure here leaves the
+  // root's lock spent without RV content changing; the caller retries.
   if (hasContent && targetVersion) {
     try {
       await esClient.update({
@@ -484,14 +486,16 @@ export const updateResearchStatus = async (
   newStatus: ResearchStatus,
   seqNo: number,
   primaryTerm: number,
-  versionUpdates?: { latestVersion?: string | null; draftVersion?: string | null; datePublished?: string | null },
-): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
+  versionUpdates?: {
+    latestVersion?: string | null
+    draftVersion?: string | null
+    datePublished?: string | null
+    dateModified?: string | null
+  },
+): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string | null } | null> => {
   try {
-    const now = new Date().toISOString().split("T")[0]
-
     const updateDoc: Record<string, unknown> = {
       status: newStatus,
-      dateModified: now,
     }
     if (versionUpdates?.latestVersion !== undefined) {
       updateDoc.latestVersion = versionUpdates.latestVersion
@@ -499,8 +503,14 @@ export const updateResearchStatus = async (
     if (versionUpdates?.draftVersion !== undefined) {
       updateDoc.draftVersion = versionUpdates.draftVersion
     }
+    // Both dates derive from the published versions ([data-model.md § 日付フィールド]),
+    // so a transition that leaves the published set untouched — submit, reject —
+    // passes neither and the stored values stand.
     if (versionUpdates?.datePublished !== undefined) {
       updateDoc.datePublished = versionUpdates.datePublished
+    }
+    if (versionUpdates?.dateModified !== undefined) {
+      updateDoc.dateModified = versionUpdates.dateModified
     }
 
     await esClient.update({
@@ -520,7 +530,7 @@ export const updateResearchStatus = async (
       doc: result.doc,
       seqNo: result.seqNo,
       primaryTerm: result.primaryTerm,
-      dateModified: now,
+      dateModified: result.doc.dateModified ?? null,
     }
   } catch (error: unknown) {
     if (isConflictError(error)) return null

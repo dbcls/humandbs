@@ -112,21 +112,28 @@ export const makeResearchVersionContentTransform = (
 }
 
 /**
- * Build a Dataset transform that stamps `dateModified` (the max
- * versionReleaseDate across a datasetId's versions) onto every version doc.
- * Denormalizing this version-invariant date lets the collapsed dataset listing
- * sort consistently in both directions — see `es/dataset-schema.ts`.
+ * Build a Dataset transform that stamps `dateModified` onto every version doc:
+ * the max of `versionReleaseDate` and `releaseDate` across a datasetId's
+ * versions. Denormalizing this version-invariant date lets the collapsed
+ * dataset listing sort consistently in both directions — see
+ * `es/dataset-schema.ts`.
+ *
+ * `releaseDate` joins the max because DDBJ can publish a Dataset later than the
+ * version that introduced it, which would otherwise put the update date before
+ * the release date. Crawler output holds published versions only, so there is
+ * no draft to exclude here — unlike the API-side `syncDatasetDateModified`.
  */
 export const makeDatasetDateModifiedTransform = (
   rawDocs: { fileName: string; data: unknown }[],
 ): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
   const maxByDatasetId = new Map<string, string>()
   for (const { data } of rawDocs) {
-    const d = data as { datasetId?: string; versionReleaseDate?: string }
+    const d = data as { datasetId?: string; versionReleaseDate?: string; releaseDate?: string }
     if (!d?.datasetId) continue
-    const date = d.versionReleaseDate ?? ""
-    const cur = maxByDatasetId.get(d.datasetId)
-    if (cur === undefined || date > cur) maxByDatasetId.set(d.datasetId, date)
+    for (const date of [d.versionReleaseDate ?? "", d.releaseDate ?? ""]) {
+      const cur = maxByDatasetId.get(d.datasetId)
+      if (cur === undefined || date > cur) maxByDatasetId.set(d.datasetId, date)
+    }
   }
 
   return (doc) => ({

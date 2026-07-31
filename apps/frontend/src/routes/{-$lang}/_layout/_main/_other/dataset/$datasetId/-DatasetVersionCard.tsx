@@ -64,7 +64,7 @@ export function DatasetVersionCard({
 
   const infoKeyValues = [
     { title: t("releaseDate"), value: versionData.releaseDate },
-    { title: t("dateModified"), value: versionData.versionReleaseDate },
+    { title: t("dateModified"), value: versionData.dateModified },
     {
       title: t("research"),
       value: <ResearchLink humId={versionData.humId} />,

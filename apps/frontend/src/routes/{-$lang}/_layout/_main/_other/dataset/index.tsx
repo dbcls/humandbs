@@ -428,9 +428,9 @@ export const datasetsColumns = [
     header: (ctx) => ctx.table.options.meta?.t?.("Dataset-list.releaseDate"),
   }),
 
-  datasetsColumnHelper.accessor("versionReleaseDate", {
-    id: "versionReleaseDate",
-    header: (ctx) => ctx.table.options.meta?.t?.("Dataset-list.versionReleaseDate"),
+  datasetsColumnHelper.accessor("dateModified", {
+    id: "dateModified",
+    header: (ctx) => ctx.table.options.meta?.t?.("Dataset-list.dateModified"),
   }),
 ];
 
