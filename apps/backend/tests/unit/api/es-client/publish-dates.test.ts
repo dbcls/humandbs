@@ -215,6 +215,27 @@ describe("syncDatasetDateModified", () => {
     expect(await syncDatasetDateModified("JGAD000001")).toBeNull()
     expect(mockEsUpdateByQuery).not.toHaveBeenCalled()
   })
+
+  it("counts the version named by `publishing` as published, over the stored ceiling", async () => {
+    // Mid-approve the root still says v30 is latest and v31 is the draft.
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v30", draftVersion: "v31" }))
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ version: "v1", humVersionId: "hum0001-v31", versionReleaseDate: "2026-07-31", releaseDate: "2026-07-03" }),
+    ]))
+
+    expect(await syncDatasetDateModified("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toBe("2026-07-31")
+  })
+
+  it("lifts the ceiling only for the hum being published", async () => {
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0002", latestVersion: "v1", draftVersion: "v2" }))
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ humId: "hum0002", version: "v2", humVersionId: "hum0002-v2", versionReleaseDate: "2026-07-31", releaseDate: "2026-07-31" }),
+      createMockDatasetDoc({ humId: "hum0002", version: "v1", humVersionId: "hum0002-v1", versionReleaseDate: "2020-01-14", releaseDate: "2020-01-14" }),
+    ]))
+
+    // hum0001 is the one being approved; hum0002's own draft stays out of the max.
+    expect(await syncDatasetDateModified("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toBe("2020-01-14")
+  })
 })
 
 describe("stampVersionReleaseDate", () => {
@@ -250,6 +271,22 @@ describe("stampVersionReleaseDate", () => {
     expect(query).toEqual({ term: { humVersionId: "hum0001-v3" } })
     // RV alone was written; no dataset matched.
     expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it("fills dateModified for a Dataset born on the version being published", async () => {
+    // The root still carries the previous latestVersion while approve runs, so
+    // a datasetId that first appears on this version has no published sibling
+    // to take a date from. Left alone its dateModified stays null on a document
+    // that is about to go public, and the public detail endpoint stops parsing.
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v31", versionReleaseDate: "2026-07-31", releaseDate: "2026-07-03" }),
+    ]))
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v30", draftVersion: "v31" }))
+
+    await stampVersionReleaseDate("hum0001", "v31", "2026-07-31")
+
+    const args = mockEsUpdateByQuery.mock.calls[0]?.[0] as { script: { params: { d: string } } }
+    expect(args?.script.params.d).toBe("2026-07-31")
   })
 
   it("resyncs dateModified once per datasetId after the dates are written", async () => {

@@ -30,9 +30,19 @@ export const today = (): string => new Date().toISOString().split("T")[0]
  * later than the version that introduced it, which would otherwise put the
  * update date before the release date.
  *
+ * Pass `publishing` when calling this mid-approve. The Research doc still
+ * carries the old `latestVersion` at that point, so without it the version
+ * being published still counts as a draft — and a datasetId born on that
+ * version has no published sibling to fall back on, which leaves `dateModified`
+ * null on a document that is about to go public (the schema requires a string,
+ * so the public detail endpoint then fails to parse it).
+ *
  * Returns the value written, or null when the datasetId has no published docs.
  */
-export const syncDatasetDateModified = async (datasetId: string): Promise<string | null> => {
+export const syncDatasetDateModified = async (
+  datasetId: string,
+  publishing?: { humId: string; latestVersion: string },
+): Promise<string | null> => {
   const res = await esClient.search<EsDataset>({
     index: ES_INDEX.dataset,
     size: 1000,
@@ -44,9 +54,15 @@ export const syncDatasetDateModified = async (datasetId: string): Promise<string
     .filter((d): d is EsDataset => d !== undefined)
   if (docs.length === 0) return null
 
+  // The ceiling comes from the stored Research, except for the hum being
+  // approved right now — its root has not been flipped to the new version yet.
+  const ceilingOverride = new Map<string, string>()
+  if (publishing) ceilingOverride.set(publishing.humId, publishing.latestVersion)
+
   const latestByHumId = new Map<string, string | null>()
   for (const humId of uniq(docs.map(d => d.humId))) {
-    latestByHumId.set(humId, (await getResearchDoc(humId))?.latestVersion ?? null)
+    latestByHumId.set(humId,
+      ceilingOverride.get(humId) ?? (await getResearchDoc(humId))?.latestVersion ?? null)
   }
 
   const candidates = docs
@@ -113,9 +129,11 @@ export const stampVersionReleaseDate = async (
   }
 
   // Runs after every write above: `dateModified` is a max over the sibling
-  // versions, so it needs the new dates already visible.
+  // versions, so it needs the new dates already visible. `version` is the one
+  // being published, which the Research doc does not say yet — it is still the
+  // draft there until the caller updates the root.
   for (const datasetId of uniq(born.map(d => d.datasetId))) {
-    await syncDatasetDateModified(datasetId)
+    await syncDatasetDateModified(datasetId, { humId, latestVersion: version })
   }
 }
 
