@@ -19,7 +19,7 @@ export interface DateRange {
   to?: Date | undefined;
 }
 
-export function toDateString(date: Date | string | undefined): string | undefined {
+export function toDateString(date: Date | string | undefined | null): string | undefined {
   if (!date) return undefined;
 
   if (typeof date === "string") {
