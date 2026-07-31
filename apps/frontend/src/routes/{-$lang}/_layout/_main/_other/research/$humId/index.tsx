@@ -16,7 +16,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
         }),
       );
 
-      return { data };
+      return data;
     } catch (error) {
       // `$getResearch` throws `notFound()` for a missing research; react-query
       // re-surfaces it here, so re-throw it as the router notFound signal.
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
   head: ({ loaderData, match }) => {
     const lang = match.context.lang;
 
-    const seoTitle = `HumanDBs - ${loaderData?.data.data.title[lang ?? i18n.defaultLocale] ?? match.context.messages?.common?.research}`;
+    const seoTitle = `HumanDBs - ${loaderData?.data.humId}: ${loaderData?.data.title[lang ?? i18n.defaultLocale] ?? match.context.messages?.common?.research}`;
 
     return {
       meta: [
@@ -46,5 +46,5 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
 function RouteComponent() {
   const { data } = Route.useLoaderData();
 
-  return <VersionCard versionData={data.data} />;
+  return <VersionCard versionData={data} />;
 }
