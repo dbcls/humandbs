@@ -1971,23 +1971,23 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - `data.status === "published"`
 - `data.latestVersion === "v1"` (元の draftVersion)
 - `data.draftVersion === null`
-- `data.datePublished` は今日の date (初回 approve)
+- approve が v1 の `versionReleaseDate` に当日を書き、`data.datePublished` は公開版の min としてその値になる
 - 配下の Dataset の version が確定 (`GET /dataset/{datasetId}/versions` で v1 がリストに残る)
 
-**回帰元**: `architecture.md § 状態遷移テーブル § approve` / `docs/api-guide.md § レビュー提出と承認`
+**回帰元**: `architecture.md § 状態遷移テーブル § approve` / `docs/api-guide.md § レビュー提出と承認` / `docs/data-model.md § 日付フィールド`
 
 **関連 unit テスト**: `tests/unit/api/routes/research/workflow.test.ts`
 
-### IT-WORKFLOW-05: approve は datePublished 既存値を上書きしない
+### IT-WORKFLOW-05: 再 approve は datePublished を公開版から derive し直す
 
-**endpoint**: `POST /research/{humId}/approve` (再公開シナリオ、`datePublished` 既存値あり)
+**endpoint**: `POST /research/{humId}/approve` (approve → unpublish → submit → approve の再公開シナリオ)
 
 **不変条件**:
-- `data.datePublished` は元の値のまま (更新されない)
+- `data.datePublished` は公開版の `versionReleaseDate` の min。同じ版を同日に再 approve した場合は 1 回目と同じ値になる
 
-**回帰元**: `architecture.md § 状態遷移テーブル § approve § 追加処理`
+**回帰元**: `docs/data-model.md § 日付フィールド`
 
-**関連 unit テスト**: `tests/unit/api/routes/research/workflow.test.ts` (PBT 既存)
+**関連 unit テスト**: `tests/unit/api/es-client/publish-dates.test.ts`
 
 ### IT-WORKFLOW-06: approve は非 admin で 403
 
@@ -2047,9 +2047,9 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - `data.status === "draft"`
 - `data.latestVersion === null`
 - `data.draftVersion === "v2"` (元の latestVersion が移動)
-- `data.datePublished` は元の値のまま
+- 公開版が無くなるので `data.datePublished` / `data.dateModified` はいずれも null
 
-**回帰元**: `architecture.md § 状態遷移テーブル § unpublish` / `routes/research/workflow.test.ts § unpublish swaps latestVersion to draftVersion`
+**回帰元**: `architecture.md § 状態遷移テーブル § unpublish` / `docs/data-model.md § 日付フィールド` / `routes/research/workflow.test.ts § unpublish swaps latestVersion to draftVersion`
 
 **関連 unit テスト**: `tests/unit/api/routes/research/workflow.test.ts`
 
@@ -2099,18 +2099,18 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
-### IT-WORKFLOW-15: 各 action 後の dateModified が単調増加
+### IT-WORKFLOW-15: dateModified は公開集合が変わったときだけ動く
 
-**endpoint**: submit → approve → ... を順に実行し、それぞれ前後で GET
+**endpoint**: 連続 4 action (submit → approve → unpublish → submit)
 
 **不変条件**:
-- `new Date(after.dateModified) >= new Date(before.dateModified)`
-- 連続 4 action (submit/approve/unpublish/submit) でも単調非減少
-- 実時間が同 ms に収まった場合のみ等号
+- submit / reject では値が変わらない (公開集合を変えないため)
+- approve 後は公開版の `versionReleaseDate` の max。v1 のみを公開したなら approve 当日
+- unpublish 後は公開版が無くなるので null。その後の submit でも null のまま
 
-**回帰元**: `architecture.md § 状態遷移テーブル § 追加処理 (dateModified 更新)`
+**回帰元**: `docs/data-model.md § 日付フィールド`
 
-**関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
+**関連 unit テスト**: `tests/unit/api/es-client/publish-dates.test.ts`
 
 ### IT-WORKFLOW-16: submit → reject → submit のサイクルで状態が一貫
 

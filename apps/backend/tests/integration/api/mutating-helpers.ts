@@ -35,7 +35,7 @@ export interface ResearchHandle {
   status?: string
   latestVersion?: string | null
   draftVersion?: string | null
-  dateModified?: string
+  dateModified?: string | null
   datePublished?: string | null
 }
 
@@ -228,7 +228,7 @@ export const setOwnerUids = async (
 }
 
 interface WorkflowResponse {
-  data: { humId: string; status: string; dateModified?: string }
+  data: { humId: string; status: string; dateModified?: string | null }
   meta: { _seq_no?: number; _primary_term?: number }
 }
 

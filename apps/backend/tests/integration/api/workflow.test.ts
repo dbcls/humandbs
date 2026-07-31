@@ -222,9 +222,11 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
     }
   })
 
-  itWithIsolationIndex("IT-WORKFLOW-05: second approve preserves the original datePublished", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-WORKFLOW-05: re-approve derives datePublished from the published set again", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-05
-    // After approve→unpublish→submit→approve the datePublished must equal the value set by the first approve.
+    // datePublished is the min release date over the published versions, so
+    // approve→unpublish→submit→approve re-derives it. Re-approving the same
+    // version on the same day lands on the value the first approve produced.
     const username = decodeJwtPreferredUsername(nonAdmin)
     expect(username).toBeTruthy()
     let humId = ""
@@ -238,7 +240,7 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
       const firstDetail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       const firstJson = (await firstDetail.json()) as SingleReadOnlyResponse<{ datePublished?: string | null }>
       const firstDatePublished = firstJson.data.datePublished
-      expect(firstDatePublished).toBeTruthy()
+      expect(firstDatePublished).toBe(new Date().toISOString().split("T")[0])
       // Cycle: unpublish (draft) → submit (review) → approve (published) again
       await unpublishResearch(admin, humId)
       await submitForReview(nonAdmin, humId)
@@ -300,8 +302,13 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
       }>
       expect(afterJson.data.latestVersion).toBeNull()
       expect(afterJson.data.draftVersion).toBe("v1")
-      // datePublished is preserved across unpublish so a future approve doesn't reset it.
-      expect(afterJson.data.datePublished).toBe(datePublishedBefore ?? null)
+      // Approve stamped v1 with today, and datePublished is the min over the
+      // published versions — so it read as today while v1 was published.
+      expect(datePublishedBefore).toBe(new Date().toISOString().split("T")[0])
+      // Unpublishing empties the published set, leaving the derived date with
+      // nothing to point at. A later approve re-derives it from what is
+      // published then.
+      expect(afterJson.data.datePublished).toBeNull()
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
@@ -392,7 +399,7 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
     }
   })
 
-  itWithIsolationIndex("IT-WORKFLOW-15: dateModified is non-decreasing across submit/approve/unpublish/submit", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-WORKFLOW-15: dateModified moves only when the published set changes", async ({ admin, nonAdmin }) => {
     // IT-WORKFLOW-15
     const username = decodeJwtPreferredUsername(nonAdmin)
     expect(username).toBeTruthy()
@@ -401,18 +408,18 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
       const created = await createDraftResearch(admin)
       humId = created.humId
       await setOwnerUids(admin, humId, [username!])
-      const stamps: number[] = []
-      const recordFrom = (handle: { dateModified?: string }): void => {
-        if (handle.dateModified) stamps.push(Date.parse(handle.dateModified))
-      }
-      recordFrom(await submitForReview(nonAdmin, humId))
-      recordFrom(await approveResearch(admin, humId))
-      recordFrom(await unpublishResearch(admin, humId))
-      recordFrom(await submitForReview(nonAdmin, humId))
-      expect(stamps).toHaveLength(4)
-      for (let i = 1; i < stamps.length; i++) {
-        expect(stamps[i]).toBeGreaterThanOrEqual(stamps[i - 1])
-      }
+
+      // Moving to review publishes nothing, so there is still no date to derive.
+      expect((await submitForReview(nonAdmin, humId)).dateModified).toBeNull()
+
+      // Approve stamps v1 with today and takes the max over the published set.
+      expect((await approveResearch(admin, humId)).dateModified)
+        .toBe(new Date().toISOString().split("T")[0])
+
+      // Unpublish empties that set; the date drops back to null and stays there
+      // while the Research cycles through review again.
+      expect((await unpublishResearch(admin, humId)).dateModified).toBeNull()
+      expect((await submitForReview(nonAdmin, humId)).dateModified).toBeNull()
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
