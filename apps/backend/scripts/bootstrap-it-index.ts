@@ -152,6 +152,7 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
     ...rvBase,
     title: rvBase.title ?? research.title,
     summary: rvBase.summary ?? research.summary,
+    summaryShort: rvBase.summaryShort ?? research.summaryShort,
     dataProvider: rvBase.dataProvider ?? research.dataProvider,
     researchProject: rvBase.researchProject ?? research.researchProject,
     grant: rvBase.grant ?? research.grant,

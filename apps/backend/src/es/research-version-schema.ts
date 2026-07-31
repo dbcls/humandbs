@@ -9,8 +9,8 @@ import { f, generateMapping } from "./generate-mapping"
 /**
  * ResearchVersion schema definition
  *
- * Per-version content snapshot fields (title / summary / dataProvider /
- * researchProject / grant / relatedPublication) mirror the same shapes on
+ * Per-version content snapshot fields (title / summary / summaryShort /
+ * dataProvider / researchProject / grant / relatedPublication) mirror the same shapes on
  * `researchSchema` so an owner's draft edits land on the version doc and the
  * Research root retains the `latestVersion` snapshot. No `copy_to all_text`
  * on these fields: full-text search still runs on the Research root index
@@ -48,6 +48,11 @@ export const researchVersionSchema = {
         text: f.textKw(),
       }),
     }),
+  }),
+  summaryShort: f.object({
+    methods: f.bilingualTextValue(),
+    typeOfData: f.bilingualTextValue(),
+    targets: f.bilingualTextValue(),
   }),
   dataProvider: f.nested({
     name: f.bilingualTextValueKw(),

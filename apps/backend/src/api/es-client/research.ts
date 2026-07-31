@@ -32,13 +32,14 @@ import type {
   ResearchDetail,
   ResearchStatus,
   Summary,
+  SummaryShort,
   UpdateResearchRequest,
 } from "@/api/types"
 import {
-  hydrateBilingualTextValue,
   hydratePerson,
   hydrateResearchProject,
   hydrateSummary,
+  hydrateSummaryShort,
 } from "@/api/utils/hydrate-raw-html"
 import { resolveEditTargetVersion, resolveVersionForUser } from "@/api/utils/version"
 
@@ -155,13 +156,19 @@ export const getResearchDetail = async (
  * search / listing. Splitting them out prevents draft edits from leaking to
  * public viewers via the Research root.
  *
- * `summaryShort` and `controlledAccessUser` are NOT here: `summaryShort` is a
- * per-humId Joomla-derived listing snippet, `controlledAccessUser` is
- * accumulated across versions by the CAU pipeline. Both stay Research-only.
+ * `controlledAccessUser` is NOT here: the CAU pipeline accumulates it across
+ * versions, so it stays Research-only.
+ *
+ * `summaryShort` carries a meaning the other fields do not. Its `null` says
+ * "this humId dropped off the Joomla home article" and has to reach the root,
+ * whereas a null `title` / `summary` / … only means "not populated yet" and
+ * falls back to the root. The helpers below therefore key `summaryShort` off
+ * `undefined`, not `null`.
  */
 export interface ResearchContentSnapshot {
   title: BilingualText
   summary: Summary
+  summaryShort: SummaryShort | null
   dataProvider: Person[]
   researchProject: ResearchProject[]
   grant: Grant[]
@@ -177,10 +184,11 @@ const DEFAULT_SUMMARY: Summary = {
 
 /** Hydrate an UpdateResearchRequest / CreateResearchRequest into a full content snapshot with sensible defaults. */
 export const buildContentSnapshot = (
-  updates: Pick<UpdateResearchRequest, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+  updates: Pick<UpdateResearchRequest, "title" | "summary" | "summaryShort" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
 ): ResearchContentSnapshot => ({
   title: updates.title ?? { ja: null, en: null },
   summary: updates.summary ? hydrateSummary(updates.summary) : DEFAULT_SUMMARY,
+  summaryShort: updates.summaryShort ? hydrateSummaryShort(updates.summaryShort) : null,
   dataProvider: updates.dataProvider?.map(hydratePerson) ?? [],
   researchProject: updates.researchProject?.map(hydrateResearchProject) ?? [],
   grant: updates.grant ?? [],
@@ -192,11 +200,14 @@ export const buildContentSnapshot = (
  * Empty object when no content field is present — signals "no RV content write".
  */
 const buildContentUpdate = (
-  updates: Pick<UpdateResearchRequest, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+  updates: Pick<UpdateResearchRequest, "title" | "summary" | "summaryShort" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
 ): Partial<ResearchContentSnapshot> => {
   const out: Partial<ResearchContentSnapshot> = {}
   if (updates.title !== undefined) out.title = updates.title
   if (updates.summary !== undefined) out.summary = hydrateSummary(updates.summary)
+  if (updates.summaryShort !== undefined) {
+    out.summaryShort = updates.summaryShort === null ? null : hydrateSummaryShort(updates.summaryShort)
+  }
   if (updates.dataProvider !== undefined) out.dataProvider = updates.dataProvider.map(hydratePerson)
   if (updates.researchProject !== undefined) out.researchProject = updates.researchProject.map(hydrateResearchProject)
   if (updates.grant !== undefined) out.grant = updates.grant
@@ -211,11 +222,14 @@ const buildContentUpdate = (
  * `getResearchDetail` when merging the response.
  */
 export const pickVersionContent = (
-  rv: Pick<ResearchVersion, "title" | "summary" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
+  rv: Pick<ResearchVersion, "title" | "summary" | "summaryShort" | "dataProvider" | "researchProject" | "grant" | "relatedPublication">,
   fallback: ResearchContentSnapshot,
 ): ResearchContentSnapshot => ({
   title: rv.title ?? fallback.title,
   summary: rv.summary ?? fallback.summary,
+  // A null `summaryShort` is the version saying "this humId is not on the
+  // Joomla home article", so only an absent field falls back to the root.
+  summaryShort: rv.summaryShort !== undefined ? rv.summaryShort : fallback.summaryShort,
   dataProvider: rv.dataProvider ?? fallback.dataProvider,
   researchProject: rv.researchProject ?? fallback.researchProject,
   grant: rv.grant ?? fallback.grant,
@@ -225,6 +239,7 @@ export const pickVersionContent = (
 const extractResearchContent = (research: EsResearch): ResearchContentSnapshot => ({
   title: research.title,
   summary: research.summary,
+  summaryShort: research.summaryShort ?? null,
   dataProvider: research.dataProvider,
   researchProject: research.researchProject,
   grant: research.grant,
@@ -264,13 +279,6 @@ export const createResearch = async (
     datePublished: null,
     dateModified: null,
     status: "draft",
-    summaryShort: params.summaryShort
-      ? {
-        methods: hydrateBilingualTextValue(params.summaryShort.methods),
-        typeOfData: hydrateBilingualTextValue(params.summaryShort.typeOfData),
-        targets: hydrateBilingualTextValue(params.summaryShort.targets),
-      }
-      : null,
   }
 
   const versionDoc: ResearchVersion = {
@@ -372,15 +380,6 @@ export const updateResearch = async (
   // edited, so an in-place patch leaves it alone ([data-model.md § 日付フィールド]).
   const rootDoc: Record<string, unknown> = {}
   if (updates.url !== undefined) rootDoc.url = updates.url
-  if (updates.summaryShort !== undefined) {
-    rootDoc.summaryShort = updates.summaryShort === null
-      ? null
-      : {
-        methods: hydrateBilingualTextValue(updates.summaryShort.methods),
-        typeOfData: hydrateBilingualTextValue(updates.summaryShort.typeOfData),
-        targets: hydrateBilingualTextValue(updates.summaryShort.targets),
-      }
-  }
 
   // RV write target and whether root should also carry the content update.
   const targetVersion = resolveEditTargetVersion(research)
@@ -445,7 +444,8 @@ export const updateResearch = async (
  *
  * Only fields present (non-null) on the RV are written — a pre-migration RV
  * with null content fields keeps the root's current values instead of
- * wiping them.
+ * wiping them. `summaryShort` is the exception: its null means "not on the
+ * Joomla home article any more", so it is copied unless the field is absent.
  */
 export const syncResearchRootFromVersion = async (
   humId: string,
@@ -458,6 +458,7 @@ export const syncResearchRootFromVersion = async (
   const doc: Record<string, unknown> = {}
   if (rv.title != null) doc.title = rv.title
   if (rv.summary != null) doc.summary = rv.summary
+  if (rv.summaryShort !== undefined) doc.summaryShort = rv.summaryShort
   if (rv.dataProvider != null) doc.dataProvider = rv.dataProvider
   if (rv.researchProject != null) doc.researchProject = rv.researchProject
   if (rv.grant != null) doc.grant = rv.grant

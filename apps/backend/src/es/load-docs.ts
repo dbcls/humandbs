@@ -91,6 +91,7 @@ export const makeResearchVersionContentTransform = (
     contentByHumId.set(r.humId, {
       title: r.title,
       summary: r.summary,
+      summaryShort: r.summaryShort,
       dataProvider: r.dataProvider,
       researchProject: r.researchProject,
       grant: r.grant,
@@ -104,7 +105,7 @@ export const makeResearchVersionContentTransform = (
     const content = contentByHumId.get(humId)
     if (!content) return doc
     const out: Record<string, unknown> = { ...doc }
-    for (const key of ["title", "summary", "dataProvider", "researchProject", "grant", "relatedPublication"]) {
+    for (const key of ["title", "summary", "summaryShort", "dataProvider", "researchProject", "grant", "relatedPublication"]) {
       if (out[key] === undefined) out[key] = content[key]
     }
     return out

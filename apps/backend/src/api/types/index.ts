@@ -101,6 +101,7 @@ export {
   EsDatasetSchema,
   EsResearchSchema,
   ResearchVersionSchema,
+  SummaryShortSchema,
 } from "./es-docs"
 export type {
   DatasetRef,
@@ -112,6 +113,7 @@ export type {
   Grant,
   Publication,
   Summary,
+  SummaryShort,
   ResearchProject,
   BilingualText,
 } from "./es-docs"

@@ -13,6 +13,7 @@ export {
   EsDatasetSchema,
   EsResearchSchema,
   ResearchVersionSchema,
+  SummaryShortSchema,
 } from "../../es/types"
 
 // Re-export types directly
@@ -26,6 +27,7 @@ export type {
   Grant,
   Publication,
   Summary,
+  SummaryShort,
   ResearchProject,
   BilingualText,
 } from "../../es/types"

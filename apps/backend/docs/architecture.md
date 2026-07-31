@@ -195,7 +195,7 @@ latestVersion != null
 
 v2 を編集中（draft/review）でも、`latestVersion` が v1 なら public API には v1 が返り続ける。
 
-**content の per-version 分離**: `title` / `summary` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` は ResearchVersion doc に per-version の snapshot として保存される (`data-model.md § Research と ResearchVersion のフィールド分担`)。draft 編集 (`updateResearch` の V-new-version 分岐) は RV[draftVersion] にのみ書き込み、Research root は latestVersion の snapshot のまま。したがって v2 draft のどんな content 編集も v1 を見ている public 側には反映されない。approve が呼ぶ `syncResearchRootFromVersion` は RV[新 latestVersion] の content を root へ atomically に copy し、search / listing / public detail の一致を保つ。regression は `IT-RESEARCH-LEAK-*` (`tests/integration/api/research.test.ts`) がガードする。
+**content の per-version 分離**: `title` / `summary` / `summaryShort` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` は ResearchVersion doc に per-version の snapshot として保存される (`data-model.md § Research と ResearchVersion のフィールド分担`)。draft 編集 (`updateResearch` の V-new-version 分岐) は RV[draftVersion] にのみ書き込み、Research root は latestVersion の snapshot のまま。したがって v2 draft のどんな content 編集も v1 を見ている public 側には反映されない。approve が呼ぶ `syncResearchRootFromVersion` は RV[新 latestVersion] の content を root へ atomically に copy し、search / listing / public detail の一致を保つ。regression は `IT-RESEARCH-LEAK-*` (`tests/integration/api/research.test.ts`) がガードする。
 
 ### バージョン解決ルール
 
@@ -237,7 +237,7 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 
 `versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
 
-ResearchSummary の `methodsSummary` / `typeOfDataSummary` / `targetsSummary` は、Joomla 旧サイト一覧 article から取り込んだ短文要約（各 `BilingualText = {ja, en}`）。詳細ページ本文由来の `methods` / `typeOfData` / `targets`（長文）と並列で配信し、一覧 UI ではこちらを表示する想定。Joomla 一覧に未掲載の humId は `null` を返す。全文検索（`all_text`）には流さず、表示専用とする。curator が値を維持・修正するときは `PUT /research/{humId}/update` の `summaryShort` フィールドから編集する（ES 側 `summaryShort` を直接更新、ResearchVersion doc には反映しない）。
+ResearchSummary の `methodsSummary` / `typeOfDataSummary` / `targetsSummary` は、Joomla 旧サイト一覧 article から取り込んだ短文要約（各 `BilingualText = {ja, en}`）。詳細ページ本文由来の `methods` / `typeOfData` / `targets`（長文）と並列で配信し、一覧 UI ではこちらを表示する想定。Joomla 一覧に未掲載の humId は `null` を返す。全文検索（`all_text`）には流さず、表示専用とする。curator が値を維持・修正するときは `PUT /research/{humId}/update` の `summaryShort` フィールドから編集する。他の content フィールドと同じく書き込み先は ResearchVersion で、一覧が読むのは Research root — つまり draft 中の編集は一覧に出ず、approve が root へ同期した時点で切り替わる。
 
 ### レスポンスのフィールド制御
 

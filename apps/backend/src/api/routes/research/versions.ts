@@ -76,6 +76,7 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
       datasets: detail.datasets,
       title: detail.title,
       summary: detail.summary,
+      summaryShort: detail.summaryShort,
       dataProvider: detail.dataProvider,
       researchProject: detail.researchProject,
       grant: detail.grant,

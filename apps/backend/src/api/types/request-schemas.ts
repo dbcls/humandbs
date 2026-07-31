@@ -47,6 +47,14 @@ export const SummaryRequestSchema = z.object({
 })
 export type SummaryRequest = z.infer<typeof SummaryRequestSchema>
 
+/** summaryShort without rawHtml (request-only) */
+export const SummaryShortRequestSchema = z.object({
+  methods: BilingualTextValueRequestSchema,
+  typeOfData: BilingualTextValueRequestSchema,
+  targets: BilingualTextValueRequestSchema,
+})
+export type SummaryShortRequest = z.infer<typeof SummaryShortRequestSchema>
+
 /** Person without rawHtml (request-only) */
 export const PersonRequestSchema = z.object({
   name: BilingualTextValueRequestSchema,

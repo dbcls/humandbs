@@ -138,15 +138,21 @@ describe("createResearch", () => {
     expect((caught as Error).message).toContain("already exists")
   })
 
-  it("stores summaryShort=null by default and hydrates provided values", async () => {
+  it("stores summaryShort=null by default and hydrates provided values onto both root and v1", async () => {
     mockEsIndex.mockResolvedValue({})
 
     const defaultResult = await research.createResearch({ humId: "hum0001" })
     expect(defaultResult.research.summaryShort).toBeNull()
+    expect(defaultResult.version.summaryShort).toBeNull()
 
     mockEsIndex.mockReset()
     mockEsIndex.mockResolvedValue({})
 
+    const hydrated = {
+      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
+      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
+      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
+    }
     const withValueResult = await research.createResearch({
       humId: "hum0002",
       summaryShort: {
@@ -155,11 +161,8 @@ describe("createResearch", () => {
         targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
       },
     })
-    expect(withValueResult.research.summaryShort).toEqual({
-      methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
-      typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
-      targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
-    })
+    expect(withValueResult.research.summaryShort).toEqual(hydrated)
+    expect(withValueResult.version.summaryShort).toEqual(hydrated)
   })
 
   it("rolls back ResearchVersion if Research index fails", async () => {
@@ -276,7 +279,7 @@ describe("updateResearch", () => {
     expect(caught).toBeDefined()
   })
 
-  it("writes hydrated summaryShort with rawHtml=null when provided", async () => {
+  it("writes hydrated summaryShort with rawHtml=null to the edit target version", async () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: false })
 
@@ -294,8 +297,10 @@ describe("updateResearch", () => {
       1,
     )
 
-    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
-    expect(doc.summaryShort).toEqual({
+    const rvCall = mockEsUpdate.mock.calls[1]?.[0] as { index: string; id: string; body: { doc: Record<string, unknown> } }
+    expect(rvCall.index).toBe("research-version")
+    expect(rvCall.id).toBe("hum0001-v1")
+    expect(rvCall.body.doc.summaryShort).toEqual({
       methods: { ja: { text: "配列決定", rawHtml: null }, en: { text: "Sequencing", rawHtml: null } },
       typeOfData: { ja: { text: "NGS", rawHtml: null }, en: { text: "NGS", rawHtml: null } },
       targets: { ja: { text: "1 症例", rawHtml: null }, en: { text: "1 patient", rawHtml: null } },
@@ -308,7 +313,7 @@ describe("updateResearch", () => {
 
     await research.updateResearch("hum0001", nNewCtx, { summaryShort: null }, 1, 1)
 
-    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    const doc = (mockEsUpdate.mock.calls[1]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
     expect("summaryShort" in doc).toBe(true)
     expect(doc.summaryShort).toBeNull()
   })
@@ -319,7 +324,7 @@ describe("updateResearch", () => {
 
     await research.updateResearch("hum0001", nNewCtx, { title: { ja: "t", en: "t" } }, 1, 1)
 
-    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    const doc = (mockEsUpdate.mock.calls[1]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
     expect("summaryShort" in doc).toBe(false)
   })
 
@@ -341,7 +346,7 @@ describe("updateResearch", () => {
       1,
     )
 
-    const doc = (mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
+    const doc = (mockEsUpdate.mock.calls[1]?.[0] as { body: { doc: Record<string, unknown> } }).body.doc
     expect(doc.summaryShort).toEqual({
       methods: { ja: { text: "配列決定", rawHtml: null }, en: null },
       typeOfData: { ja: null, en: { text: "NGS", rawHtml: null } },
@@ -422,7 +427,7 @@ describe("updateResearch write routing", () => {
     expect(bodyDoc(1).title).toEqual({ ja: "patched", en: "patched" })
   })
 
-  it("summaryShort updates hit only the Research root (never per-version)", async () => {
+  it("V-new-version draft: summaryShort lands on RV[draftVersion], root keeps the published one", async () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: false })
 
@@ -440,19 +445,51 @@ describe("updateResearch write routing", () => {
       1,
     )
 
-    // Only root update — no content updates → no RV call.
-    expect(mockEsUpdate).toHaveBeenCalledTimes(1)
+    expect(mockEsUpdate).toHaveBeenCalledTimes(2)
     expect(updateIndex(0)).toBe("research")
+    expect("summaryShort" in bodyDoc(0)).toBe(false)
+    expect(updateIndex(1)).toBe("research-version")
+    expect(updateId(1)).toBe("hum0001-v2")
+    expect(bodyDoc(1).summaryShort).toBeDefined()
+  })
+
+  it("published patch: summaryShort lands on both root and RV[latestVersion]", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockEsGet.mockResolvedValue({ found: false })
+
+    await research.updateResearch(
+      "hum0001",
+      publishedCtx,
+      {
+        summaryShort: {
+          methods: { ja: { text: "m" }, en: { text: "m" } },
+          typeOfData: { ja: { text: "t" }, en: { text: "t" } },
+          targets: { ja: { text: "g" }, en: { text: "g" } },
+        },
+      },
+      1,
+      1,
+    )
+
+    expect(mockEsUpdate).toHaveBeenCalledTimes(2)
     expect(bodyDoc(0).summaryShort).toBeDefined()
+    expect(updateId(1)).toBe("hum0001-v1")
+    expect(bodyDoc(1).summaryShort).toEqual(bodyDoc(0).summaryShort)
   })
 
   it("V-new-version draft: RV update skipped when no content field is supplied", async () => {
     mockEsUpdate.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: false })
 
-    // Passing only `summaryShort` (root-only) triggers no RV write even though
-    // there's a live draftVersion.
-    await research.updateResearch("hum0001", vNewDraftCtx, { summaryShort: null }, 1, 1)
+    // `url` is root-only, so it triggers no RV write even though there's a
+    // live draftVersion.
+    await research.updateResearch(
+      "hum0001",
+      vNewDraftCtx,
+      { url: { ja: "https://humandbs.dbcls.jp/hum0001", en: "https://humandbs.dbcls.jp/en/hum0001" } },
+      1,
+      1,
+    )
 
     expect(mockEsUpdate).toHaveBeenCalledTimes(1)
     expect(updateIndex(0)).toBe("research")
@@ -510,6 +547,27 @@ describe("syncResearchRootFromVersion", () => {
     expect("versionReleaseDate" in args.body.doc).toBe(false)
     expect("releaseNote" in args.body.doc).toBe(false)
     expect("datasets" in args.body.doc).toBe(false)
+    // This RV never carried summaryShort, so the root's value stays untouched.
+    expect("summaryShort" in args.body.doc).toBe(false)
+  })
+
+  it("copies a null summaryShort so a humId dropped from the Joomla home clears on the root", async () => {
+    mockEsUpdate.mockResolvedValue({})
+    mockGetResearchVersion.mockResolvedValueOnce({
+      humId: "hum0001",
+      humVersionId: "hum0001-v2",
+      version: "v2",
+      versionReleaseDate: TODAY,
+      datasets: [],
+      releaseNote: { ja: null, en: null },
+      summaryShort: null,
+    })
+
+    await research.syncResearchRootFromVersion("hum0001", "v2")
+
+    const args = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: Record<string, unknown> } }
+    expect("summaryShort" in args.body.doc).toBe(true)
+    expect(args.body.doc.summaryShort).toBeNull()
   })
 
   it("skips the root update when the target RV has no populated content (pre-migration doc)", async () => {

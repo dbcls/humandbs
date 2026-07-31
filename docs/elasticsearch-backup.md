@@ -154,7 +154,22 @@ snapshot_restore_exception
 
 ## Mapping 変更時の標準オペレーション
 
-`apps/backend/src/es/*-schema.ts` のフィールド定義 (`keyword` ↔ `text` の切替、`bilingualTextKw` 化、`nested` の追加など) を変えた場合、ES は既存 index の mapping を後付けで変更できないため、対象 index を **削除して再作成 → データを再投入** する。`apps/backend/src/es/load-mappings.ts` は既存 index がある場合 skip するので、必ず先に DELETE すること。
+`apps/backend/src/es/*-schema.ts` を変えたときの手順は、**フィールドを足しただけ**か **既存フィールドの定義を変えた**かで分かれる。どちらの場合も `apps/backend/src/es/load-mappings.ts` は既存 index があると skip するため、稼働中の環境に自動では反映されない。
+
+### フィールドの追加
+
+新しいフィールドを足すだけなら `PUT /{index}/_mapping` で後付けできる。既存ドキュメントは触らず、再投入も要らない。
+
+```bash
+curl -X PUT "http://localhost:9200/research-version/_mapping" \
+  -H 'Content-Type: application/json' -d @mapping-fragment.json
+```
+
+流す JSON は `*-schema.ts` から `generateMapping` で生成したマッピングの該当部分を切り出して使う (手で書くと生成側とドリフトする)。追加した時点では既存ドキュメントに値が無いので、値を入れる backfill は別に流す。integration test 用の `-it` index は `scripts/bootstrap-it-index.ts --from-production` が live のマッピングを写すため、作り直すなら PUT は要らない。
+
+### 既存フィールドの定義変更
+
+`keyword` ↔ `text` の切替、`bilingualTextKw` 化、`nested` の追加などは後付けできないため、対象 index を **削除して再作成 → データを再投入** する。必ず先に DELETE すること。
 
 以下の手順は `dataset` index を例にしたもの。`research` / `research-version` でも対象 index 名を差し替えて同じ流れになる。
 

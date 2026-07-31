@@ -36,6 +36,7 @@ import {
   PersonRequestSchema,
   ResearchProjectRequestSchema,
   SummaryRequestSchema,
+  SummaryShortRequestSchema,
 } from "./request-schemas"
 import {
   ResponseMetaReadOnlySchema,
@@ -153,12 +154,7 @@ export const CreateResearchRequestSchema = z.object({
     .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
-  summaryShort: z
-    .object({
-      methods: BilingualTextValueRequestSchema,
-      typeOfData: BilingualTextValueRequestSchema,
-      targets: BilingualTextValueRequestSchema,
-    })
+  summaryShort: SummaryShortRequestSchema
     .nullable()
     .optional()
     .describe(
@@ -196,16 +192,11 @@ export const UpdateResearchRequestSchema = z.object({
   releaseNote: BilingualTextValueRequestSchema.optional().describe(
     "Release note for the current draft version",
   ),
-  summaryShort: z
-    .object({
-      methods: BilingualTextValueRequestSchema,
-      typeOfData: BilingualTextValueRequestSchema,
-      targets: BilingualTextValueRequestSchema,
-    })
+  summaryShort: SummaryShortRequestSchema
     .nullable()
     .optional()
     .describe(
-      "Short bilingual summaries for the listing view (research method / data type / target). Null clears the field for humIds no longer listed on the Joomla home. Omit to keep the current value.",
+      "Short bilingual summaries for the listing view (research method / data type / target). Lands on the edit target version like the other content fields, and reaches the Research root on approve. Null clears the field for humIds no longer listed on the Joomla home. Omit to keep the current value.",
     ),
   _seq_no: z
     .number()

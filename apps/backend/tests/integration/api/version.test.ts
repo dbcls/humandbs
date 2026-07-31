@@ -568,4 +568,59 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
       if (humId) await purgeResearch(admin, humId)
     }
   })
+
+  itWithIsolationIndex("IT-VERSION-CONTENT-03: summaryShort is inherited by versions/new, and a null on the draft reaches the root on approve", async ({ admin, nonAdmin }) => {
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      const owned = await setOwnerUids(admin, humId, [username!])
+      const app = getApp()
+      const v1Short = {
+        methods: { ja: { text: "配列決定" }, en: { text: "Sequencing" } },
+        typeOfData: { ja: { text: "NGS" }, en: { text: "NGS" } },
+        targets: { ja: { text: "1 症例" }, en: { text: "1 patient" } },
+      }
+      const putV1 = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ summaryShort: v1Short, _seq_no: owned.seqNo, _primary_term: owned.primaryTerm }),
+      })
+      expect(putV1.status).toBe(200)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      // v2 draft inherits v1's summaryShort.
+      await createNewVersion(nonAdmin, humId)
+      const draftGet = await app.request(url(`/research/${humId}`), { headers: authHeaders(nonAdmin) })
+      const draftJson = (await draftGet.json()) as SingleReadOnlyResponse<{ version: string; summaryShort: unknown }>
+      expect(draftJson.data.version).toBe("v2")
+      expect(draftJson.data.summaryShort).toEqual(v1Short)
+
+      // The humId drops off the Joomla home article: null on the draft ...
+      const v2Seq = await getResearchSeqNo(admin, humId)
+      const clear = await app.request(url(`/research/${humId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ summaryShort: null, _seq_no: v2Seq.seqNo, _primary_term: v2Seq.primaryTerm }),
+      })
+      expect(clear.status).toBe(200)
+
+      // ... leaves the published v1 view untouched ...
+      const v1Get = await app.request(url(`/research/${humId}?version=v1`), { headers: authHeaders(admin) })
+      const v1Json = (await v1Get.json()) as SingleReadOnlyResponse<{ summaryShort: unknown }>
+      expect(v1Json.data.summaryShort).toEqual(v1Short)
+
+      // ... and clears the root once v2 is approved.
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      const publicGet = await app.request(url(`/research/${humId}`))
+      const publicJson = (await publicGet.json()) as SingleReadOnlyResponse<{ version: string; summaryShort: unknown }>
+      expect(publicJson.data.version).toBe("v2")
+      expect(publicJson.data.summaryShort).toBeNull()
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
 })

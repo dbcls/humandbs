@@ -96,8 +96,21 @@ export {
   SearchableDatasetSchema,
 }
 
+// Short bilingual summaries used by the listing view. Source: Joomla
+// `humandbs.dbcls.jp/home` (ja article_id=58) and `/en/home` (en=168).
+// Carried by both the Research root and ResearchVersion like the other content
+// fields. `null` is a value of its own — "this humId is no longer listed on the
+// Joomla home article" — and is copied through to the root on approve, unlike
+// the other content fields where null means "not yet populated".
+export const SummaryShortSchema = z.object({
+  methods: BilingualTextValueSchema,
+  typeOfData: BilingualTextValueSchema,
+  targets: BilingualTextValueSchema,
+})
+export type SummaryShort = z.infer<typeof SummaryShortSchema>
+
 // ResearchVersionSchema extends the crawler shape with per-version content
-// snapshots so that content fields (title, summary, dataProvider,
+// snapshots so that content fields (title, summary, summaryShort, dataProvider,
 // researchProject, grant, relatedPublication) live on the version doc and
 // stop leaking between versions on the Research root. Fields are
 // `nullable().optional()` so pre-migration RV docs (produced by the crawler
@@ -108,6 +121,8 @@ export const ResearchVersionSchema = CrawlerResearchVersionSchema.extend({
     .describe("Per-version snapshot of the Research title. Null on RV docs indexed before per-version content was introduced."),
   summary: SummarySchema.nullable().optional()
     .describe("Per-version snapshot of the Research summary (aims / methods / targets / url)."),
+  summaryShort: SummaryShortSchema.nullable().optional()
+    .describe("Per-version snapshot of the listing-view short summaries. Absent on RV docs indexed before summaryShort became per-version; null means the humId is not listed on the Joomla home article."),
   dataProvider: z.array(PersonSchema).nullable().optional()
     .describe("Per-version snapshot of the Research data providers."),
   researchProject: z.array(ResearchProjectSchema).nullable().optional()
@@ -207,14 +222,9 @@ export const EsResearchSchema = CrawlerResearchSchema.extend({
     .describe("Publication status: 'draft', 'review', or 'published'"),
   draftVersion: z.string().nullable()
     .describe("Version being edited (e.g., 'v2'). Null if no editing in progress."),
-  // Short bilingual summaries used by the listing view. Source: Joomla
-  // `humandbs.dbcls.jp/home` (ja article_id=58) and `/en/home` (en=168).
+  // `latestVersion` snapshot of the per-version `summaryShort` on ResearchVersion.
   // Null when the humId is not listed on the Joomla home page.
-  summaryShort: z.object({
-    methods: BilingualTextValueSchema,
-    typeOfData: BilingualTextValueSchema,
-    targets: BilingualTextValueSchema,
-  }).nullable().optional()
+  summaryShort: SummaryShortSchema.nullable().optional()
     .describe("Short bilingual summaries for the listing view (research method / data type / target). Sourced from the Joomla home article."),
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>

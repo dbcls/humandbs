@@ -132,6 +132,13 @@ describe("es/schema-consistency", () => {
         "version",
         "versionReleaseDate",
         "releaseNote",
+        "title",
+        "summary",
+        "summaryShort",
+        "dataProvider",
+        "researchProject",
+        "grant",
+        "relatedPublication",
       ]
 
       const schemaFields = getSchemaFieldNames(researchVersionSchema)

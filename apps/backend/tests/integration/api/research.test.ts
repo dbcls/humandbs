@@ -903,11 +903,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-29: PUT /research/{humId}/update writes summaryShort and it flows to detail + list projection", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-RESEARCH-29: PUT /research/{humId}/update writes summaryShort to the version, and approve carries it to the list projection", async ({ admin, nonAdmin }) => {
     // IT-RESEARCH-29
-    // summaryShort is stored as BilingualTextValue on the ES doc and projected
-    // to flat BilingualText (methodsSummary / typeOfDataSummary / targetsSummary)
-    // in the listing view. Both shapes must be observable end-to-end.
+    // summaryShort is a per-version content field stored as BilingualTextValue.
+    // The PUT lands on the edit target version and is visible in the detail
+    // view; the listing keeps reading the Research root (flat BilingualText:
+    // methodsSummary / typeOfDataSummary / targetsSummary) until approve syncs
+    // the version onto the root.
     const username = decodeJwtPreferredUsername(nonAdmin)
     expect(username).toBeTruthy()
     let humId = ""
@@ -942,19 +944,32 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
         targets: { ja: { text: "SCA31：1 症例" }, en: { text: "1 SCA31 patient" } },
       })
 
-      // Owners see their own draft in the list projection; the flat *Summary fields must appear.
-      const list = await app.request(url("/research?status=draft&limit=50"), { headers: authHeaders(nonAdmin) })
-      expect(list.status).toBe(200)
-      const listJson = (await list.json()) as SearchResponse<ResearchSummary & {
+      type ListedSummaries = SearchResponse<ResearchSummary & {
         methodsSummary?: { ja: string | null; en: string | null } | null
         typeOfDataSummary?: { ja: string | null; en: string | null } | null
         targetsSummary?: { ja: string | null; en: string | null } | null
       }>
-      const mine = listJson.data.find((r) => r.humId === humId)
-      expect(mine).toBeDefined()
-      expect(mine!.methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
-      expect(mine!.typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
-      expect(mine!.targetsSummary).toEqual({ ja: "SCA31：1 症例", en: "1 SCA31 patient" })
+      const listed = async (): Promise<ListedSummaries["data"][number] | undefined> => {
+        const list = await app.request(url("/research?limit=50"), { headers: authHeaders(nonAdmin) })
+        expect(list.status).toBe(200)
+
+        return ((await list.json()) as ListedSummaries).data.find((r) => r.humId === humId)
+      }
+
+      // The listing reads the Research root, which the draft edit left alone.
+      const beforeApprove = await listed()
+      expect(beforeApprove).toBeDefined()
+      expect(beforeApprove!.methodsSummary).toBeNull()
+
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      // approve copied the version's summaryShort onto the root.
+      const afterApprove = await listed()
+      expect(afterApprove).toBeDefined()
+      expect(afterApprove!.methodsSummary).toEqual({ ja: "配列決定", en: "Sequencing" })
+      expect(afterApprove!.typeOfDataSummary).toEqual({ ja: "NGS（WGS）", en: "NGS (WGS)" })
+      expect(afterApprove!.targetsSummary).toEqual({ ja: "SCA31：1 症例", en: "1 SCA31 patient" })
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

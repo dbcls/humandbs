@@ -12,6 +12,7 @@ import type {
   PersonRequest,
   ResearchProjectRequest,
   SummaryRequest,
+  SummaryShortRequest,
   TextValueRequest,
 } from "@/api/types/request-schemas"
 import type { TextValue, BilingualTextValue } from "@/crawler/types/common"
@@ -21,6 +22,7 @@ import type {
   ResearchProject,
   Summary,
 } from "@/crawler/types/structured"
+import type { SummaryShort } from "@/es/types"
 import { extractDataText } from "@/es/types"
 
 export const hydrateTextValue = (v: TextValueRequest | null): TextValue | null => {
@@ -40,6 +42,12 @@ export const hydrateSummary = (v: SummaryRequest): Summary => ({
   methods: hydrateBilingualTextValue(v.methods),
   targets: hydrateBilingualTextValue(v.targets),
   url: v.url,
+})
+
+export const hydrateSummaryShort = (v: SummaryShortRequest): SummaryShort => ({
+  methods: hydrateBilingualTextValue(v.methods),
+  typeOfData: hydrateBilingualTextValue(v.typeOfData),
+  targets: hydrateBilingualTextValue(v.targets),
 })
 
 export const hydratePerson = (v: PersonRequest): Person => ({

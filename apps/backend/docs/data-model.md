@@ -60,8 +60,8 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
 - **Crawler → ES**: `es/types.ts` は crawler スキーマを `.extend()` で合成し、差分のみ定義する
   - `EsDatasetSchema`: `originalMetadata` を `.extend()` で追加
   - `EsResearchSchema`: `status`, `uids`, `draftVersion`, `summaryShort` を `.extend()` で追加
-  - `ResearchVersionSchema` (ES 側): `CrawlerResearchVersionSchema` を `.extend()` して per-version content snapshot 6 フィールド (`title` / `summary` / `dataProvider` / `researchProject` / `grant` / `relatedPublication`) を追加。詳細は下の「Research と ResearchVersion のフィールド分担」節を参照
-  - `summaryShort`: 一覧表示用の 1〜2 文の短文要約（`methods` / `typeOfData` / `targets` の 3 つ、各 `BilingualTextValue`）。Joomla 旧サイトの一覧 article（ja=`/home`, en=`/en/home`）由来。crawler を経由しないため `nullable + optional`。未掲載 humId は null。curator による編集は `PUT /research/{humId}/update` の `summaryShort` フィールド経由（`null` を送ると Joomla 一覧から外れたケースを表現）
+  - `ResearchVersionSchema` (ES 側): `CrawlerResearchVersionSchema` を `.extend()` して per-version content snapshot 7 フィールド (`title` / `summary` / `summaryShort` / `dataProvider` / `researchProject` / `grant` / `relatedPublication`) を追加。詳細は下の「Research と ResearchVersion のフィールド分担」節を参照
+  - `summaryShort`: 一覧表示用の 1〜2 文の短文要約（`methods` / `typeOfData` / `targets` の 3 つ、各 `BilingualTextValue`）。Joomla 旧サイトの一覧 article（ja=`/home`, en=`/en/home`）由来。crawler を経由しないため `nullable + optional`。未掲載 humId は null。他の content フィールドと同じく ResearchVersion が SSOT で、curator による編集は `PUT /research/{humId}/update` の `summaryShort` フィールド経由（`null` を送ると Joomla 一覧から外れたケースを表現）
   - Crawler の `latestVersion` は `z.string()` だが、ES では nullable（未公開時 null）
   - `draftVersion`: 編集中のバージョン（null = 編集なし）。ES 固有フィールド
   - `.describe()` は crawler スキーマ（SSOT）に定義されているため、ES スキーマが継承する
@@ -85,8 +85,7 @@ Research の content 系フィールドは **ResearchVersion 側を SSOT** と�
 
 | フィールド | 保存場所 | 備考 |
 |---|---|---|
-| `title` / `summary` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` | 両方 (RV が SSOT、root は latestVersion snapshot) | draft 編集は RV[draftVersion] のみに書く。approve / patch で root と同期する |
-| `summaryShort` | Research root のみ | Joomla 一覧由来、humId 単位。per-version の概念ではない |
+| `title` / `summary` / `summaryShort` / `dataProvider` / `researchProject` / `grant` / `relatedPublication` | 両方 (RV が SSOT、root は latestVersion snapshot) | draft 編集は RV[draftVersion] のみに書く。approve / patch で root と同期する |
 | `controlledAccessUser` | Research root のみ | CAU pipeline (`src/cau/`) が版横断で累積する |
 | `humId` / `url` / `versionIds` / `latestVersion` / `draftVersion` / `datePublished` / `dateModified` / `status` | Research root のみ | メタデータ |
 | `humVersionId` / `version` / `versionReleaseDate` / `datasets` / `releaseNote` | ResearchVersion のみ | 版メタデータ |
@@ -109,7 +108,9 @@ Research root に content を mirror するのは、着地先が `latestVersion`
 
 `versions/new` が copy 元にするのは `latestVersion` が名指す RV であって、版番号が最大の RV ではない。移行データには `latestVersion` より上の番号を持つ孤立 RV があり、そこには公開されたことのない content が入っている。番号最大の RV から copy すると、その content が次の approve で公開される。
 
-approve が呼ぶ `syncResearchRootFromVersion(humId, version)` は idempotent。root 側で content フィールドが未 populated (pre-migration doc) の場合は上書きをスキップして root の既存値を残す。
+approve が呼ぶ `syncResearchRootFromVersion(humId, version)` は idempotent。RV 側の content フィールドが null (pre-migration doc) の場合はそのフィールドの copy をスキップし、root の既存値を残す。
+
+`summaryShort` だけは `null` の意味が違う。他の content フィールドの `null` が「pre-migration で未装填」を表すのに対し、`summaryShort` の `null` は「Joomla 一覧から外れた」を表す正当な値である (`PUT /research/{humId}/update` は「`null` = クリア、フィールド省略 = 据え置き」と定めている)。そのため copy をスキップする条件はフィールドが存在しないときだけで、`null` はそのまま root へ伝える。新版への content 引き継ぎ (`versions/new`) と詳細レスポンスの overlay も同じ規則に従う。
 
 ### 読み分けルール (`getResearchDetail` at `src/api/es-client/research.ts`)
 
@@ -119,8 +120,7 @@ approve が呼ぶ `syncResearchRootFromVersion(humId, version)` は idempotent�
 
 ### migration
 
-per-version content 未装填の RV doc に content を backfill する手順は
-[`.claude/schema-migrations/2026-07-rv-content/`](../../.claude/schema-migrations/2026-07-rv-content/) にある。initial backfill では全 version が同じ content (= 現行 latestVersion の content) になる — 過去バージョンの historical content は復元できないが、以降の編集からは per-version に分岐する。
+content フィールドを per-version 化したとき、既存の RV doc には content が入っていない。移行では ES mapping にフィールドを additive に追加し (`PUT /research-version/_mapping`、既存 doc は触らない)、Research root の値を全 version に backfill する。initial backfill では全 version が同じ content (= 現行 latestVersion の content) になる — 過去バージョンの historical content は復元できないが、以降の編集からは per-version に分岐する。
 
 ## 日付フィールド
 

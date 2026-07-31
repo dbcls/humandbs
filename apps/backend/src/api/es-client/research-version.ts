@@ -62,6 +62,11 @@ const pickContentForNewVersion = (
 ) => ({
   title: latestRv?.title ?? research.title,
   summary: latestRv?.summary ?? research.summary,
+  // Null on the RV means "not on the Joomla home article", which the new
+  // version inherits; only an absent field falls back to the root.
+  summaryShort: latestRv?.summaryShort !== undefined
+    ? latestRv.summaryShort
+    : research.summaryShort ?? null,
   dataProvider: latestRv?.dataProvider ?? research.dataProvider,
   researchProject: latestRv?.researchProject ?? research.researchProject,
   grant: latestRv?.grant ?? research.grant,
