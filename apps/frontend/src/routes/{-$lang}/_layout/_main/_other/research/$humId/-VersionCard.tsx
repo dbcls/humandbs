@@ -95,34 +95,20 @@ export function VersionCard({
         <ContentHeader>{t("Research.title")}</ContentHeader>
         <h2 className="text">{versionData.title[lang]}</h2>
         <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
-        <dl className="sm:columns-2 sm:break-inside-avoid-column [&>_div]:break-inside-avoid [&_.custom-prose]:mt-1 [&_.custom-prose_:first-child]:mt-0 [&_dt]:font-extrabold">
-          <div>
-            <dt>{t("Research.aims")}:</dt>
-            <dd>
-              <Markdown
-                className="text-base"
-                contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
-              />
-            </dd>
-          </div>
-          <div>
-            <dt>{t("Research.methods")}:</dt>
-            <dd>
-              <Markdown
-                className="text-base"
-                contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
-              />
-            </dd>
-          </div>
-
-          <div>
-            <dt>{t("Research.targets")}:</dt>
-            <Markdown
-              className="text-base"
-              contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
-            />
-          </div>
-        </dl>
+        <div className="sm:columns-2 sm:break-inside-avoid-column">
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.aims[lang]?.renderedHtml ?? "" }}
+          />
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.methods[lang]?.renderedHtml ?? "" }}
+          />
+          <Markdown
+            className="text-base"
+            contentHtml={{ markup: versionData.summary.targets[lang]?.renderedHtml ?? "" }}
+          />
+        </div>
       </article>
       <Separator className="-mx-4" />
       <section>
@@ -233,20 +219,26 @@ const datasetColumns = [
   }),
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("Research.criteria"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.criteria")} />
+    ),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />, //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
   datasetColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("Research.typeOfData"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.typeOfData")} />
+    ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
 
     maxSize: 14,
   }),
   datasetColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
-    header: (ctx) => ctx.table.options.meta?.t("Dataset.releaseDate"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Dataset.releaseDate")} />
+    ),
     cell: (ctx) => toDateString(ctx.getValue()),
   }),
 ];
@@ -281,7 +273,9 @@ function createRelatedPublicationsColumns(parentHumIds: Record<string, string | 
   return [
     publicationsColumnHelper.accessor("title", {
       id: "title",
-      header: (ctx) => ctx.table.options.meta?.t("Research.publicationTitle"),
+      header: (ctx) => (
+        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.publicationTitle")} />
+      ),
       cell: (ctx) => (
         <span className="text-sm">
           {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
@@ -290,7 +284,7 @@ function createRelatedPublicationsColumns(parentHumIds: Record<string, string | 
     }),
     publicationsColumnHelper.accessor("doi", {
       id: "DOI",
-      header: "DOI",
+      header: (ctx) => <SortHeader ctx={ctx} label={"DOI"} />,
       cell: (info) => (
         <a href={info.getValue() ?? undefined} className="break-all text-sm">
           {info.renderValue()}
@@ -347,27 +341,35 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
   return [
     dataUsedByColumnsHelper.accessor("name", {
       id: "cau.name",
-      header: (ctx) => ctx.table.options.meta?.t("Person.name"),
+      header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Person.name")} />,
       cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
     }),
     dataUsedByColumnsHelper.accessor("organization.name", {
       id: "cau.org.name",
-      header: (ctx) => ctx.table.options.meta?.t("Research.organization"),
+      header: (ctx) => (
+        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.organization")} />
+      ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
     }),
     dataUsedByColumnsHelper.accessor("organization.address.country", {
       id: "cau.org.country",
-      header: (ctx) => ctx.table.options.meta?.t("Research.organization-country"),
+      header: (ctx) => (
+        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.organization-country")} />
+      ),
       cell: (ctx) => ctx.getValue(),
     }),
     dataUsedByColumnsHelper.accessor("researchTitle", {
       id: "cau.research-title",
-      header: (ctx) => ctx.table.options.meta?.t("Research.researchTitle"),
+      header: (ctx) => (
+        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchTitle")} />
+      ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
     }),
     dataUsedByColumnsHelper.accessor("periodOfDataUse", {
       id: "cau.periodOfDataUse",
-      header: (ctx) => ctx.table.options.meta?.t("Research.periodOfDataUse"),
+      header: (ctx) => (
+        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.periodOfDataUse")} />
+      ),
       cell: (ctx) => (
         <span className="text-nowrap text-sm">
           <span>
@@ -407,17 +409,23 @@ const grantsColumnsHelper = createColumnHelper<ResearchDetailResponse["data"]["g
 const grantsColumns = [
   grantsColumnsHelper.accessor("agency.name", {
     id: "grantAgency",
-    header: (ctx) => ctx.table.options.meta?.t("Research.grant.agency"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.agency")} />
+    ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("title", {
     id: "grantTitle",
-    header: (ctx) => ctx.table.options.meta?.t("Research.grant.title"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.title")} />
+    ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("id", {
     id: "grantId",
-    header: (ctx) => ctx.table.options.meta?.t("Research.grant.id"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.id")} />
+    ),
     cell: (ctx) => (
       <ul className="flex flex-wrap items-center gap-2">
         {ctx.getValue()?.map((id) => (
@@ -436,12 +444,16 @@ const researchProjectsColumnsHelper =
 const researchProjectsColumns = [
   researchProjectsColumnsHelper.accessor("name", {
     id: "researchProjectTitle",
-    header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.name"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchProject.name")} />
+    ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ?? "",
   }),
   researchProjectsColumnsHelper.accessor("url", {
     id: "researchProjectId",
-    header: (ctx) => ctx.table.options.meta?.t("Research.researchProject.URL"),
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchProject.URL")} />
+    ),
     cell: (ctx) => {
       const url = ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url;
       if (!url) return null;
