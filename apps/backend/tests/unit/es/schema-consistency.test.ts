@@ -189,6 +189,32 @@ describe("es/schema-consistency", () => {
     })
   })
 
+  // A date that no published version fixes yet is stored as `null`, and the read
+  // path parses `_source` straight back through these schemas. A date field that
+  // only tolerates `undefined` therefore throws on documents ES holds today.
+  describe("date field nullability", () => {
+    const cases = [
+      { name: "EsResearchSchema", schema: EsResearchSchema, mapping: researchMapping },
+      { name: "EsDatasetSchema", schema: EsDatasetSchema, mapping: datasetMapping },
+      { name: "ResearchVersionSchema", schema: ResearchVersionSchema, mapping: researchVersionMapping },
+    ]
+
+    for (const { name, schema, mapping } of cases) {
+      it(`${name} accepts null for every top-level date field`, () => {
+        const dateFields = getMappingFieldNames(mapping).filter(field => {
+          const def = mapping.mappings.properties[field] as { type?: string }
+
+          return def.type === "date"
+        })
+        expect(dateFields.length).toBeGreaterThan(0)
+
+        const shape = schema.shape as Record<string, { safeParse: (value: unknown) => { success: boolean } }>
+        const rejected = dateFields.filter(field => !shape[field]?.safeParse(null).success)
+        expect(rejected).toEqual([])
+      })
+    }
+  })
+
   describe("ResearchVersionSchema vs researchVersionSchema", () => {
     it("should have matching top-level fields", () => {
       const zodFields = getZodFieldNames(ResearchVersionSchema)
