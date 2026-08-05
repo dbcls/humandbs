@@ -6,6 +6,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["app/**/*.test.ts"],
+    include: ["app/**/*.test.ts", "migration/**/*.test.ts"],
+    // Tests that touch the database share one, and each empties it before
+    // every case, so two files running at once would clear each other's rows.
+    fileParallelism: false,
   },
 })

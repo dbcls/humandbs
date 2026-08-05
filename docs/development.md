@@ -73,8 +73,32 @@ schema を DB に入れるのは `npm run db:push`。**migration file を持た�
 別途 SQL を流す手順は無い。
 
 **PGroonga の index は `pg_relation_size` に出ず、`DROP INDEX` しても data dir が縮まない。**
-実体が Groonga 側の別ファイルにあるため、容量を見るときはこれを前提にする。crash 後は `REINDEX` が
-要る。
+実体が Groonga 側の別ファイルにあるため、容量を見るときはこれを前提にする。開発用データを入れ直す
+たびにこのファイルは増えるので、気になったら volume ごと作り直す。crash 後は `REINDEX` が要る。
+
+## 開発用データを入れる
+
+v1 の Elasticsearch dump から、公開されている research・その公開版・それらの版が listing している
+dataset を読み込む。**画面を書くための実データを用意するのが目的で、値の正しさも網羅性も問わない。**
+
+```bash
+cp <v1 repo>/.claude/joomla-es/data/es/prod/{research,research-version,dataset}.json migration/input/
+docker compose exec app npm run db:load-dev-data
+```
+
+`migration/input/` は git 管理外。数秒で終わり、**全部を 1 つのトランザクションで置き換える**ので、
+途中で落ちても前のデータが残る。**test は開発用 DB を空にする**ので、test の後は入れ直す。
+
+意図的にやっていないことがある。どれも機械的な変換ではなく判断が要るもので、本番のデータを作る移行の
+側で決める。
+
+- 共有された experiment ブロックを dataset ごとに割ること
+- `rawHtml` にしか残っていない markup の回収
+- catalog のキーへの語彙型・数値型の割り当て (公開区分だけ語彙にしてある)
+- dataset のファイル選択の初期値
+- サイトコンテンツ (document / news / navigation) の取り込み
+
+schema を変えたら `npm run db:push` の後にもう一度流す。
 
 ## ファイルストアを触る
 
@@ -105,7 +129,8 @@ docker compose down -v          # volume ごと消す (DB・S3・node_modules)
 docker compose build --no-cache app
 ```
 
-schema が固まるまで migration file を持たないので、schema を変えたら DB を作り直す。
+schema が固まるまで migration file を持たないので、schema を変えたら DB を作り直し、開発用データを
+入れ直す。
 
 ## 意図的にやっていないこと
 

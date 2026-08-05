@@ -21,6 +21,15 @@ export function getPool(): Pool {
 
 export type Database = NodePgDatabase<typeof schema>
 
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0]
+
+/**
+ * Anything a statement can run on. Rebuilding the search rows happens inside
+ * the transaction that published something and also has to be runnable on its
+ * own, so it takes this rather than a `Database`.
+ */
+export type Executor = Database | Transaction
+
 let db: Database | undefined
 
 /**
