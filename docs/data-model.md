@@ -285,7 +285,12 @@ path-style の URL が `/files/hum0009/hum0009.v1.CpG.v1.zip` となって公開
   bucket の一覧と本文をそのまま返す。配信は必ず前段の proxy を通す
 - **前段で `X-Content-Type-Options: nosniff` を付け、画像と PDF 以外は `Content-Disposition: attachment`
   にする。** ストアは Content-Type 未指定のファイルの中身から MIME を推測するので、HTML を含むファイルが
-  同じ origin で inline render される経路を塞ぐ。**upload 時は Content-Type を明示する**
+  同じ origin で inline render される経路を塞ぐ
+- **upload は presigned URL で行い、Content-Type と Content-Length を署名対象に入れる。** byte は
+  ブラウザとストアの間を直接流れてアプリを通らないので、**発行時に決めた種類とサイズちょうどしか
+  受け付けない URL にすることが、かけられる唯一の制限になる**。違う値を送っても値を送らなくても 403 に
+  なる。有効期間はストアが 7 日を上限として強制する。大きいファイルは multipart で入れ、その場合も
+  part の upload だけが presigned で、開始と完了は credential を持つ server 側に残る
 - **切り替えのコストはファイルサイズに比例する。** CopyObject は実体のバイトコピーなので、公開状態の
   切り替えは job にして公開操作を待たせない
 

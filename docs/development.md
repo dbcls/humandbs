@@ -56,7 +56,7 @@ docker compose exec app npm run db:push     # schema 定義を DB に反映
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
 **test は `db` を使う** — schema の不変条件を実際の Postgres に対して確かめるので、`--no-deps` を
-付けると落ちる。
+付けると落ちる。階層の分け方と何を test にするかは [testing.md](testing.md)。
 
 ## DB を触る
 
@@ -72,9 +72,15 @@ schema を DB に入れるのは `npm run db:push`。**migration file を持た�
 直して開発用データを作り直す。全文検索の生成列と PGroonga の index も schema 定義に含まれるので、
 別途 SQL を流す手順は無い。
 
-**PGroonga の index は `pg_relation_size` に出ず、`DROP INDEX` しても data dir が縮まない。**
-実体が Groonga 側の別ファイルにあるため、容量を見るときはこれを前提にする。開発用データを入れ直す
-たびにこのファイルは増えるので、気になったら volume ごと作り直す。crash 後は `REINDEX` が要る。
+**PGroonga の index は `pg_relation_size` に出ない。** 実体が Groonga 側の別ファイル
+(`base/{dboid}/pgrn.*`) にあるため。このファイルは投入のたびに増え、`DROP INDEX` でも `REINDEX` でも
+縮まない。しかも疎ファイルなので `ls -l` と `du -sb` は実使用の数倍を表示する (実ブロックを見るなら
+`du -s --block-size=1` か `find -printf %b`)。開発中に膨らんだら volume ごと作り直すのが早い。
+
+**crash した後は index を作り直す。** 壊れたかどうかは、heap の走査 (`LIKE`) と index 経由 (`&@~`) で
+同じ条件を数えて突き合わせれば分かる。index が無い状態でも `&@~` は seq scan で正しい結果を返すので、
+作り直すまでの間も検索は動く (この規模で 100 倍ほど遅くなる)。`pg_dump` / `pg_restore` は index の定義を
+そのまま運ぶので、PGroonga のために足す手順は無い。
 
 ## 開発用データを入れる
 
