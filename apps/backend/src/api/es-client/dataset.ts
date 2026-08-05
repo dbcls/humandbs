@@ -548,11 +548,17 @@ export const deleteDataset = async (
     // Delete specific version
     const esId = `${datasetId}-${version}`
 
-    // Get the dataset to find humId
-    const dataset = await getDataset(datasetId, { version })
-    if (!dataset) {
+    // Read the doc by id to find humId. Deliberately not `getDataset`, which
+    // resolves through the caller-facing visibility rules: with no authUser it
+    // hides the very versions this endpoint exists to remove (a draft-cycle
+    // version sits above the parent's `latestVersion`), and the delete would
+    // return "already deleted" without touching anything. Authorization happens
+    // at the route — admin only, parent Research in draft.
+    const existing = await getDatasetWithSeqNo(datasetId, version)
+    if (!existing) {
       return true // Already deleted
     }
+    const dataset = existing.doc
 
     // Remove from ResearchVersion.datasets
     await unlinkDatasetFromResearch(dataset.humId, datasetId, version)

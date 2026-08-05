@@ -668,15 +668,19 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
 
 describe("deleteDataset (IT-DATASET-16)", () => {
   it("single-version: unlinks and deletes the specific id", async () => {
-    // getDataset (version-specific) uses esClient.get
+    // Read by id, not through the visibility rules: a draft-cycle version sits
+    // above the parent's latestVersion, and resolving it as a caller would
+    // makes this endpoint a no-op on exactly the versions it exists to remove.
     mockEsGet.mockResolvedValueOnce({
       found: true,
-      _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2" }),
+      _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }),
     })
-    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({ status: "published", latestVersion: "v1" }))
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ status: "published", latestVersion: "v1" }))
     mockEsDelete.mockResolvedValue({})
-    // syncDatasetDateModified resyncs remaining docs after the version is removed
-    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [{ _source: { versionReleaseDate: "2024-09-01" } }] } })
+    // syncDatasetDerived resyncs the remaining docs after the version is removed
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [
+      { _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v1", versionReleaseDate: "2024-09-01" }) },
+    ] } })
 
     const ok = await dataset.deleteDataset("JGAD000001", "v2")
     expect(ok).toBe(true)
