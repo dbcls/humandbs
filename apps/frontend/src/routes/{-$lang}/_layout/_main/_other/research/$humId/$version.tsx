@@ -41,7 +41,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
   head: ({ loaderData, match }) => {
     const lang = match.context.lang;
 
-    const seoTitle = `HumanDBs - ${loaderData?.data.title[lang ?? i18n.defaultLocale] ?? match.context.messages?.common?.research} (${loaderData?.data.version ?? ""})`;
+    const seoTitle = `HumanDBs - ${loaderData?.data.humVersionId}: ${loaderData?.data.title[lang ?? i18n.defaultLocale] ?? match.context.messages?.common?.research} (${loaderData?.data.version ?? ""})`;
 
     return {
       meta: [
