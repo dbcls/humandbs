@@ -44,8 +44,9 @@ draft ごとに変更エントリを持つのは、draft を複数許す決定�
 **排他しない。** 編集画面を開いている人を presence として表示するだけで、他者を read-only にしない。
 正しさは保存時の楽観照合で担保する。
 
-- **draft 配下の可変な行 (draft の content、dataset の変更エントリ、experiment の変更エントリ) は整数の
-  revision を持ち、更新は `WHERE id = ? AND revision = ?` の形で行う。影響行数が 0 なら 409**
+- **draft 配下の可変な行 (draft の content と dataset の変更エントリ) は整数の revision を持ち、更新は
+  `WHERE id = ? AND revision = ?` の形で行う。影響行数が 0 なら 409**。experiment は変更エントリの
+  content の中にあるので、その編集は属する dataset のエントリの revision で照合される
 - **変更エントリの初回作成は「無ければ挿入」で行い、挿入されなければ 409**
 - **複数行にまたがる保存は 1 トランザクションで全部照合し、1 つでも 0 行なら全体を rollback する**
 - **revision に `xmin` を使わない。** VACUUM FREEZE で値が変わるので照合の基準にならない

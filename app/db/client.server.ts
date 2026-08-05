@@ -1,7 +1,9 @@
-import { drizzle } from "drizzle-orm/node-postgres"
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
 
 import { loadConfig } from "~/config.server"
+
+import * as schema from "./schema"
 
 /**
  * The dev server re-evaluates modules on every change, so a module-scoped pool
@@ -17,9 +19,15 @@ export function getPool(): Pool {
   return globalForDb.humandbsPool
 }
 
-let db: ReturnType<typeof drizzle> | undefined
+export type Database = NodePgDatabase<typeof schema>
 
-export function getDb(): ReturnType<typeof drizzle> {
-  db ??= drizzle(getPool())
+let db: Database | undefined
+
+/**
+ * `casing` has to match what `drizzle.config.ts` passes to drizzle-kit, or the
+ * queries this builds would address columns the pushed schema does not have.
+ */
+export function getDb(): Database {
+  db ??= drizzle(getPool(), { schema, casing: "snake_case" })
   return db
 }

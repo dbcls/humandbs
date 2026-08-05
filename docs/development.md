@@ -51,9 +51,12 @@ docker compose exec app npm run lint        # eslint
 docker compose exec app npm test            # vitest
 docker compose exec app npm run typecheck   # react-router typegen && tsc
 docker compose exec app npm run build       # 本番ビルド
+docker compose exec app npm run db:push     # schema 定義を DB に反映
 ```
 
-`app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。
+`app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
+**test は `db` を使う** — schema の不変条件を実際の Postgres に対して確かめるので、`--no-deps` を
+付けると落ちる。
 
 ## DB を触る
 
@@ -64,6 +67,10 @@ docker compose exec db psql -U humandbs -d humandbs
 PGroonga は初回の initdb で入る (`docker/db/initdb/`)。入っているかは
 `SELECT extname, extversion FROM pg_extension` で見る。initdb は volume が空のときにしか走らないので、
 拡張や初期 SQL を足したら `docker compose down -v` からやり直す。
+
+schema を DB に入れるのは `npm run db:push`。**migration file を持たない**ので、定義を変えたら push し
+直して開発用データを作り直す。全文検索の生成列と PGroonga の index も schema 定義に含まれるので、
+別途 SQL を流す手順は無い。
 
 **PGroonga の index は `pg_relation_size` に出ず、`DROP INDEX` しても data dir が縮まない。**
 実体が Groonga 側の別ファイルにあるため、容量を見るときはこれを前提にする。crash 後は `REINDEX` が
