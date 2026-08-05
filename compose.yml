@@ -1,0 +1,83 @@
+services:
+  db:
+    image: docker.io/groonga/pgroonga:4.0.8-debian-18
+    environment:
+      TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+      POSTGRES_USER: ${HUMANDBS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${HUMANDBS_POSTGRES_DB}
+    volumes:
+      # Postgres 18 images keep the cluster in a major-version subdirectory, so
+      # the mount goes one level above what earlier versions used.
+      - pgdata:/var/lib/postgresql
+      - ./docker/db/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${HUMANDBS_POSTGRES_BIND_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    init: true
+
+  # Master, filer and the S3 API all stay inside the compose network: the filer
+  # HTTP endpoint is unauthenticated, and a directly reachable S3 port would be
+  # a second way to fetch an object without the proxy's headers.
+  s3:
+    image: docker.io/chrislusf/seaweedfs:4.40
+    command:
+      - server
+      - -dir=/data
+      - -filer
+      - -s3
+      - -s3.config=/etc/seaweedfs/s3.json
+    environment:
+      TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+    volumes:
+      - s3data:/data
+      - ./docker/s3/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    init: true
+
+  app:
+    build:
+      context: .
+      target: dev
+    environment:
+      TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+      NODE_ENV: development
+      HUMANDBS_DATABASE_URL: ${HUMANDBS_DATABASE_URL}
+      HUMANDBS_PUBLIC_PORT: ${HUMANDBS_PUBLIC_PORT:-8080}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    init: true
+
+  proxy:
+    image: docker.io/library/nginx:1.29-alpine
+    environment:
+      TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${HUMANDBS_PUBLIC_PORT:-8080}:8080"
+    depends_on:
+      app:
+        condition: service_started
+      s3:
+        condition: service_started
+    init: true
+
+volumes:
+  pgdata:
+  s3data:
+  node_modules:

@@ -1,0 +1,18 @@
+{
+  "identities": [
+    {
+      "name": "anonymous",
+      "actions": ["Read:files"]
+    },
+    {
+      "name": "app",
+      "credentials": [
+        {
+          "accessKey": "humandbs-dev",
+          "secretKey": "humandbs-dev-secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
