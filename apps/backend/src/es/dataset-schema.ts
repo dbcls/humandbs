@@ -36,6 +36,15 @@ export const datasetSchema = {
   // the listing displays the latest one). Mirrors Research's `dateModified`.
   dateModified: f.date(),
 
+  // Which doc of this datasetId is the latest one. Search, aggregation and
+  // filtering scope themselves to it; `collapse` cannot, because it does not
+  // apply to aggregations. Two flags because "latest" differs by viewer:
+  // `isLatestPublished` for public and non-owners, `isLatest` for owners and
+  // admins who also see drafts. Definition and maintenance:
+  // `es/dataset-latest.ts` and [data-model.md § 最新版フラグ].
+  isLatest: f.boolean(),
+  isLatestPublished: f.boolean(),
+
   // Classification
   criteria: f.keyword(C),
   typeOfData: f.bilingualTextKw(C),

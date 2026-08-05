@@ -43,9 +43,11 @@ let visibilityHits: { _source: { humId: string; latestVersion: string | null } }
 const isVisibilityLookup = (args: EsSearchArgs) =>
   args.index === "research" && args.track_total_hits === false
 
+const mockGetOwnedHumIds = mock<(username: string) => Promise<string[]>>(async () => [])
+
 void mock.module("@/api/services/ownership", () => ({
   getOwnerUsernames: async () => [],
-  getOwnedHumIds: async () => [],
+  getOwnedHumIds: (username: string) => mockGetOwnedHumIds(username),
   isOwner: async () => false,
   refreshOwnershipCache: async () => undefined,
   resetOwnershipCacheForTest: () => undefined,
@@ -106,6 +108,8 @@ beforeEach(() => {
   mockEsSearch.mockReset()
   mockEsMget.mockReset()
   mockEsMget.mockResolvedValue({ docs: [] })
+  mockGetOwnedHumIds.mockReset()
+  mockGetOwnedHumIds.mockResolvedValue([])
   mockLoggerError.mockClear()
   mockLoggerWarn.mockClear()
   mockLoggerInfo.mockClear()
@@ -275,6 +279,179 @@ describe("searchResearches: Dataset-side visibility ceiling", () => {
   })
 })
 
+describe("searchResearches: Dataset-side latest-version scope", () => {
+  // Superseded Dataset versions must not reach a facet bucket or pull their
+  // parent Research into the results: the value would show up in the filter UI
+  // while the listing row, built from the latest version, does not have it.
+  const datasetCalls = () => searchCalls.filter(c => c.index === "dataset")
+  const datasetMust = (call: SearchCall) => (call.query as { bool: { must: unknown[] } }).bool.must
+
+  beforeEach(() => {
+    visibilityHits = [{ _source: { humId: "hum0001", latestVersion: "v2" } }]
+    mockEsSearch.mockImplementation(async args => (args.index === "dataset"
+      ? { aggregations: { humIds: { buckets: [{ key: "hum0001", doc_count: 1 }] } } }
+      : {
+        hits: { total: { value: 0 }, hits: [] },
+        aggregations: { all_humIds: { buckets: [{ key: "hum0001", doc_count: 1 }] } },
+      }))
+  })
+
+  const everyDatasetRead = { ...baseQuery, q: "JGAD000002 cancer", assayType: "WGS", includeFacets: true }
+
+  it("public: scopes every Dataset read to the latest published version", async () => {
+    await searchResearches(everyDatasetRead, null)
+
+    expect(datasetCalls().length).toBeGreaterThan(1)
+    for (const call of datasetCalls()) {
+      expect(datasetMust(call)).toContainEqual({ term: { isLatestPublished: true } })
+    }
+  })
+
+  it("admin: scopes every Dataset read to the latest version, drafts included", async () => {
+    await searchResearches(everyDatasetRead, createMockAuthUser({ isAdmin: true }))
+
+    expect(datasetCalls().length).toBeGreaterThan(1)
+    for (const call of datasetCalls()) {
+      expect(datasetMust(call)).toContainEqual({ term: { isLatest: true } })
+    }
+  })
+
+  it("owner: takes the draft version for owned Research and the published one elsewhere", async () => {
+    mockGetOwnedHumIds.mockResolvedValue(["hum0001"])
+
+    await searchResearches(everyDatasetRead, createMockAuthUser({ username: "owner-1" }))
+
+    for (const call of datasetCalls()) {
+      expect(datasetMust(call)).toContainEqual({
+        bool: {
+          should: [
+            { bool: { filter: [{ terms: { humId: ["hum0001"] } }, { term: { isLatest: true } }] } },
+            {
+              bool: {
+                must_not: { terms: { humId: ["hum0001"] } },
+                filter: { term: { isLatestPublished: true } },
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      })
+    }
+  })
+})
+
+describe("searchResearches: per-Research aggregation takes one version per datasetId", () => {
+  const datasetDoc = (version: string, model: string, flags: { isLatest: boolean; isLatestPublished: boolean }) => ({
+    found: true,
+    _id: `JGAD000001-${version}`,
+    _source: {
+      datasetId: "JGAD000001",
+      version,
+      humId: "hum0001",
+      humVersionId: `hum0001-${version}`,
+      versionReleaseDate: "2024-01-01",
+      releaseDate: "2024-01-01",
+      criteria: "Controlled-access (Type I)",
+      typeOfData: { ja: `NGS(${model})`, en: `NGS(${model})` },
+      ...flags,
+      experiments: [{
+        header: { ja: { text: "WGS", rawHtml: null }, en: { text: "WGS", rawHtml: null } },
+        data: {},
+        searchable: {
+          subjectCount: null,
+          subjectCountType: null,
+          healthStatus: null,
+          diseases: [],
+          tissues: [],
+          isTumor: null,
+          cellLine: [],
+          population: [],
+          cohorts: [],
+          sex: null,
+          ageGroup: null,
+          assayType: [],
+          libraryKits: [],
+          platforms: [{ vendor: "Illumina", model }],
+          readType: null,
+          readLength: null,
+          sequencingDepth: null,
+          targetCoverage: null,
+          referenceGenome: [],
+          variantCounts: null,
+          hasPhenotypeData: null,
+          targets: null,
+          fileTypes: [],
+          processedDataTypes: [],
+          dataVolumeGb: null,
+          policies: [],
+        },
+      }],
+    },
+  })
+
+  const rvDoc = (version: string, datasetVersion: string) => ({
+    found: true,
+    _id: `hum0001-${version}`,
+    _source: {
+      humId: "hum0001",
+      humVersionId: `hum0001-${version}`,
+      version,
+      versionReleaseDate: "2024-01-01",
+      releaseNote: { ja: null, en: null },
+      datasets: [{ datasetId: "JGAD000001", version: datasetVersion }],
+    },
+  })
+
+  beforeEach(() => {
+    // Two published versions of the Research, each pinning its own version of the
+    // same Dataset — the shape that used to put both platform spellings on one row.
+    mockEsMget.mockImplementationOnce(async () => ({ docs: [rvDoc("v1", "v1"), rvDoc("v2", "v2")] }))
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [
+        datasetDoc("v1", "Infinium MethylationEPIC BeadChip", { isLatest: false, isLatestPublished: false }),
+        datasetDoc("v2", "Infinium MethylationEPIC", { isLatest: true, isLatestPublished: true }),
+      ],
+    }))
+    mockEsSearch.mockImplementationOnce(async () => ({
+      hits: {
+        total: { value: 1 },
+        hits: [{
+          _source: createMockResearchDoc({
+            humId: "hum0001",
+            latestVersion: "v2",
+            versionIds: ["hum0001-v1", "hum0001-v2"],
+          }),
+        }],
+      },
+    }))
+  })
+
+  it("keeps only the latest published version's platforms and typeOfData", async () => {
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data[0].platforms).toEqual(["Illumina [Infinium MethylationEPIC]"])
+    expect(result.data[0].typeOfData).toEqual(["NGS(Infinium MethylationEPIC)"])
+    expect(result.data[0].datasetIds).toEqual(["JGAD000001"])
+  })
+
+  it("warns instead of silently emptying the row when no version carries the flag", async () => {
+    mockEsMget.mockReset()
+    mockEsMget.mockImplementationOnce(async () => ({ docs: [rvDoc("v1", "v1"), rvDoc("v2", "v2")] }))
+    mockEsMget.mockImplementationOnce(async () => ({
+      docs: [
+        datasetDoc("v1", "A", { isLatest: false, isLatestPublished: false }),
+        datasetDoc("v2", "B", { isLatest: false, isLatestPublished: false }),
+      ],
+    }))
+
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    // A backfill gap has to be visible rather than passed off as "no datasets".
+    expect(result.data[0].platforms).toEqual([])
+    expect(mockLoggerWarn.mock.calls.some(c => c[0].includes("latest-version Dataset"))).toBe(true)
+  })
+})
+
 describe("searchResearches: post-filter defence-in-depth", () => {
   it("excludes a doc with latestVersion=null + empty uids that the ES query should have filtered (public)", async () => {
     // Inject a doc the public ES query "should" never return — to prove the
@@ -380,6 +557,8 @@ describe("searchResearches: platforms projection (structured searchable.platform
       humVersionId: "hum0001-v1",
       versionReleaseDate: "2024-01-01",
       releaseDate: "2024-01-01",
+      isLatest: true,
+      isLatestPublished: true,
       criteria: "Controlled-access (Type I)",
       typeOfData: { ja: "NGS(WGS)", en: "NGS(WGS)" },
       experiments: [

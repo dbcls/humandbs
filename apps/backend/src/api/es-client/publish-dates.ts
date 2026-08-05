@@ -1,12 +1,14 @@
 /**
- * Publication dates
+ * Values derived from a Research's published set
  *
  * Every date a user sees derives from one number per version: the day that
- * version was published. This module owns the two operations that keep the
- * derived values in step — stamping a version's release date at approve time,
- * and recomputing a Research's dates from its published versions.
+ * version was published. Which Dataset doc counts as the latest one derives
+ * from the same published set. This module owns the operations that keep both
+ * in step — stamping a version's release date at approve time, recomputing a
+ * Research's dates, and recomputing a Dataset's `dateModified` and latest-version
+ * flags.
  *
- * See [data-model.md § 日付フィールド] for the definitions.
+ * See [data-model.md § 日付フィールド] and [§ 最新版フラグ] for the definitions.
  */
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { getResearchDoc } from "@/api/es-client/research"
@@ -14,45 +16,69 @@ import { lockedUpdateBody, mgetMap, uniq } from "@/api/es-client/utils"
 import { ResearchVersionSchema } from "@/api/types"
 import type { EsDataset, EsResearch } from "@/api/types"
 import { isHumVersionAccessible, parseVersionNum } from "@/api/utils/version"
+import { pickLatestVersions } from "@/es/dataset-latest"
 
 /** Today in the `yyyy-MM-dd` shape every date field uses. */
 export const today = (): string => new Date().toISOString().split("T")[0]
 
+/** What a datasetId's version docs derive from the published set. */
+export interface DatasetDerived {
+  /** `max(versionReleaseDate, releaseDate)` over published versions, null when none. */
+  dateModified: string | null
+  latestVersion: string | null
+  latestPublishedVersion: string | null
+}
+
+const EMPTY_DERIVED: DatasetDerived = {
+  dateModified: null,
+  latestVersion: null,
+  latestPublishedVersion: null,
+}
+
 /**
- * Recompute a dataset's version-invariant `dateModified` and write it onto
- * every version doc, so the collapsed listing sort stays consistent (see
- * `es/dataset-schema.ts`).
+ * Recompute everything a datasetId's docs derive from each other, and write it
+ * onto every version doc of that datasetId.
  *
- * The value is `max(versionReleaseDate, releaseDate)` over the *published*
- * versions. Draft versions are left out: their dates exist only because an
- * unpublished version was opened, and surfacing one in the public listing leaks
- * that it exists. `releaseDate` joins the max because DDBJ can publish a Dataset
- * later than the version that introduced it, which would otherwise put the
- * update date before the release date.
+ * - `dateModified` is `max(versionReleaseDate, releaseDate)` over the *published*
+ *   versions, denormalized so the value stays version-invariant (see
+ *   `es/dataset-schema.ts`). `releaseDate` joins the max because DDBJ can publish
+ *   a Dataset later than the version that introduced it, which would otherwise put
+ *   the update date before the release date.
+ * - `isLatest` / `isLatestPublished` name the newest version overall and the newest
+ *   published one, which is what search and aggregation scope themselves to
+ *   (`es/dataset-latest.ts`).
+ *
+ * Draft versions are left out of the published set: their dates exist only
+ * because an unpublished version was opened, and surfacing one in the public
+ * listing leaks that it exists.
  *
  * Pass `publishing` when calling this mid-approve. The Research doc still
  * carries the old `latestVersion` at that point, so without it the version
- * being published still counts as a draft — and a datasetId born on that
- * version has no published sibling to fall back on, which leaves `dateModified`
+ * being published still counts as a draft — a datasetId born on that version
+ * would keep `isLatestPublished` false and stay out of the public listing, and
+ * with no published sibling to fall back on its `dateModified` would be left
  * null on a document that is about to go public (the schema requires a string,
  * so the public detail endpoint then fails to parse it).
  *
- * Returns the value written, or null when the datasetId has no published docs.
+ * The flags are written even when nothing is published — a datasetId whose
+ * parent has never been published still needs `isLatest` for its owner's
+ * listing. Only `dateModified` is left alone in that case, keeping whatever an
+ * earlier publication put there.
  */
-export const syncDatasetDateModified = async (
+export const syncDatasetDerived = async (
   datasetId: string,
   publishing?: { humId: string; latestVersion: string },
-): Promise<string | null> => {
+): Promise<DatasetDerived> => {
   const res = await esClient.search<EsDataset>({
     index: ES_INDEX.dataset,
     size: 1000,
     query: { term: { datasetId } },
-    _source: ["humId", "humVersionId", "versionReleaseDate", "releaseDate"],
+    _source: ["humId", "humVersionId", "version", "versionReleaseDate", "releaseDate"],
   })
   const docs = res.hits.hits
     .map(h => h._source)
     .filter((d): d is EsDataset => d !== undefined)
-  if (docs.length === 0) return null
+  if (docs.length === 0) return EMPTY_DERIVED
 
   // The ceiling comes from the stored Research, except for the hum being
   // approved right now — its root has not been flipped to the new version yet.
@@ -65,12 +91,13 @@ export const syncDatasetDateModified = async (
       ceilingOverride.get(humId) ?? (await getResearchDoc(humId))?.latestVersion ?? null)
   }
 
+  const { latestVersion, latestPublishedVersion } = pickLatestVersions(docs, latestByHumId)
+
   const candidates = docs
     .filter(d => isHumVersionAccessible(d.humVersionId, latestByHumId.get(d.humId) ?? null, false))
     .flatMap(d => [d.versionReleaseDate, d.releaseDate])
     .filter((d): d is string => d !== null && d !== undefined && d !== "")
-  if (candidates.length === 0) return null
-  const maxDate = candidates.reduce((a, b) => (a > b ? a : b))
+  const dateModified = candidates.length > 0 ? candidates.reduce((a, b) => (a > b ? a : b)) : null
 
   await esClient.updateByQuery({
     index: ES_INDEX.dataset,
@@ -78,22 +105,64 @@ export const syncDatasetDateModified = async (
     conflicts: "proceed",
     query: { term: { datasetId } },
     script: {
-      source: "ctx._source.dateModified = params.d",
-      params: { d: maxDate },
+      source: [
+        "if (params.dateModified != null) { ctx._source.dateModified = params.dateModified; }",
+        "ctx._source.isLatest = ctx._source.version == params.latestVersion;",
+        "ctx._source.isLatestPublished = params.latestPublishedVersion != null"
+        + " && ctx._source.version == params.latestPublishedVersion;",
+      ].join("\n"),
+      params: { dateModified, latestVersion, latestPublishedVersion },
     },
   })
 
-  return maxDate
+  return { dateModified, latestVersion, latestPublishedVersion }
+}
+
+/**
+ * Run `syncDatasetDerived` over every datasetId under a Research.
+ *
+ * Called when the Research's published ceiling moves (approve / unpublish).
+ * Narrowing this to the Datasets born on the version being published would miss
+ * a version left above the old ceiling by an abandoned draft cycle: it is not
+ * born on the version being approved, yet the higher ceiling pulls it into the
+ * published set and moves `isLatestPublished` onto it.
+ *
+ * `publishingVersion` is the version being approved right now, for the same
+ * reason `syncDatasetDerived` takes `publishing`.
+ */
+export const syncDatasetDerivedForResearch = async (
+  humId: string,
+  publishingVersion?: string,
+): Promise<void> => {
+  const { hits } = await esClient.search<EsDataset>({
+    index: ES_INDEX.dataset,
+    size: 1000,
+    query: { term: { humId } },
+    _source: ["datasetId"],
+  })
+  const datasetIds = uniq(
+    hits.hits.map(h => h._source?.datasetId).filter((id): id is string => id !== undefined),
+  )
+
+  for (const datasetId of datasetIds) {
+    await syncDatasetDerived(
+      datasetId,
+      publishingVersion ? { humId, latestVersion: publishingVersion } : undefined,
+    )
+  }
 }
 
 /**
  * Record `date` as the day `version` was published: onto the ResearchVersion,
- * onto the Datasets born on it, and into those datasetIds' `dateModified`.
+ * onto the Datasets born on it, and into the derived values of every Dataset
+ * under this Research.
  *
- * Only Datasets whose `humVersionId` names this version are touched. A Dataset
- * that has not changed since an earlier version is referenced by this version's
- * `datasets` array but was not born here, and its release date must not move
- * just because the parent Research gained a version.
+ * Only Datasets whose `humVersionId` names this version get the release date. A
+ * Dataset that has not changed since an earlier version is referenced by this
+ * version's `datasets` array but was not born here, and its release date must
+ * not move just because the parent Research gained a version. The derived
+ * values are recomputed for all of them, because the ceiling moved
+ * (`syncDatasetDerivedForResearch`).
  */
 export const stampVersionReleaseDate = async (
   humId: string,
@@ -128,13 +197,11 @@ export const stampVersionReleaseDate = async (
     })
   }
 
-  // Runs after every write above: `dateModified` is a max over the sibling
-  // versions, so it needs the new dates already visible. `version` is the one
-  // being published, which the Research doc does not say yet — it is still the
-  // draft there until the caller updates the root.
-  for (const datasetId of uniq(born.map(d => d.datasetId))) {
-    await syncDatasetDateModified(datasetId, { humId, latestVersion: version })
-  }
+  // Runs after every write above: the derived values are computed over the
+  // sibling versions, so they need the new dates already visible. `version` is
+  // the one being published, which the Research doc does not say yet — it is
+  // still the draft there until the caller updates the root.
+  await syncDatasetDerivedForResearch(humId, version)
 }
 
 /**

@@ -10,7 +10,7 @@
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
-import { syncDatasetDateModified } from "@/api/es-client/publish-dates"
+import { syncDatasetDerived } from "@/api/es-client/publish-dates"
 import { versionSortSpec } from "@/api/es-client/query-builders"
 import { getResearchDoc } from "@/api/es-client/research"
 import {
@@ -257,12 +257,17 @@ export const createDataset = async (
   const versionReleaseDate = parentRv?.versionReleaseDate ?? now
 
   // Create Dataset document. A brand-new datasetId has a single version, so its
-  // dateModified equals this version's releaseDate.
+  // dateModified equals this version's releaseDate and it is by definition the
+  // latest one. Whether it is also the latest *published* version depends on the
+  // parent, which `syncDatasetDerived` below resolves — the flags are stamped
+  // here so the doc is never indexed without the fields search filters on.
   const datasetDoc: EsDataset = {
     datasetId,
     version,
     versionReleaseDate,
     dateModified: versionReleaseDate,
+    isLatest: true,
+    isLatestPublished: false,
     humId: params.humId,
     humVersionId: params.humVersionId,
     releaseDate: params.releaseDate,
@@ -302,7 +307,17 @@ export const createDataset = async (
     }
   }
 
-  return EsDatasetSchema.parse(datasetDoc)
+  // A Dataset created while the parent is published (in-place patch) is public
+  // straight away, so `isLatestPublished` cannot be decided without reading the
+  // parent's ceiling.
+  const derived = await syncDatasetDerived(datasetId)
+
+  return EsDatasetSchema.parse({
+    ...datasetDoc,
+    dateModified: derived.dateModified ?? datasetDoc.dateModified,
+    isLatest: derived.latestVersion === version,
+    isLatestPublished: derived.latestPublishedVersion === version,
+  })
 }
 
 // === Dataset Updates ===
@@ -348,6 +363,10 @@ export const updateDataset = async (
   // pinned by the URL-resolved Dataset doc + parent Research preload. Anything
   // the caller passes in the request body is rejected at the handler boundary
   // (routes/dataset.ts), and this layer is a second backstop.
+  //
+  // Keeping them fixed is also why this path needs no `syncDatasetDerived`: the
+  // set of versions and the parent's published ceiling both stay put, so nothing
+  // the derived values are computed from moves.
   const hydratedDoc: Record<string, unknown> = {}
   if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
   if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
@@ -402,7 +421,7 @@ export const patchDataset = async (
       refresh: "wait_for",
     })
 
-    await syncDatasetDateModified(datasetId)
+    await syncDatasetDerived(datasetId)
 
     const result = await getDatasetWithSeqNo(datasetId, version)
     return result?.doc ?? null
@@ -431,9 +450,15 @@ const bumpDatasetVersion = async (
   // ([data-model.md § 日付フィールド]).
   const draftRv = await getResearchVersion(humId, { version: draftVersion })
 
+  // The bumped version is the newest one, and it stays unpublished until the
+  // parent is approved. Stamped inline as well as recomputed below so a
+  // `conflicts: "proceed"` miss leaves a duplicate rather than a doc no search
+  // can reach.
   const newDoc: EsDataset = {
     ...currentDoc,
     version: nextVersion,
+    isLatest: true,
+    isLatestPublished: false,
     humVersionId: draftHumVersionId,
     humId,
     versionReleaseDate: draftRv?.versionReleaseDate ?? currentDoc.versionReleaseDate,
@@ -494,10 +519,15 @@ const bumpDatasetVersion = async (
     throw new Error(`Failed to update parent ResearchVersion references: ${error}`)
   }
 
-  // A new version became the latest; keep dateModified version-invariant across
-  // all docs of this datasetId so the listing sort stays consistent.
-  const maxDate = await syncDatasetDateModified(datasetId)
-  return EsDatasetSchema.parse({ ...newDoc, dateModified: maxDate ?? newDoc.dateModified })
+  // A new version became the latest: move the flags off the previous version and
+  // keep dateModified version-invariant across all docs of this datasetId.
+  const derived = await syncDatasetDerived(datasetId)
+  return EsDatasetSchema.parse({
+    ...newDoc,
+    dateModified: derived.dateModified ?? newDoc.dateModified,
+    isLatest: derived.latestVersion === nextVersion,
+    isLatestPublished: derived.latestPublishedVersion === nextVersion,
+  })
 }
 
 // === Dataset Deletion ===
@@ -534,9 +564,9 @@ export const deleteDataset = async (
       refresh: "wait_for",
     }, { ignore: [404] })
 
-    // Removing a version can change the max versionReleaseDate; resync the
-    // remaining docs' dateModified so the listing sort stays correct.
-    await syncDatasetDateModified(datasetId)
+    // Removing a version can change both the max versionReleaseDate and which
+    // version is the latest one, so the remaining docs need a resync.
+    await syncDatasetDerived(datasetId)
 
     return true
   } else {

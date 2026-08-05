@@ -9,6 +9,8 @@ import fc from "fast-check"
 
 import {
   buildAccessibleVersionFilter,
+  buildDatasetLatestFilter,
+  buildDatasetSearchFilters,
   buildDatasetVisibilityFilter,
   buildStatusFilter,
   canAccessResearchDoc,
@@ -263,6 +265,75 @@ describe("buildDatasetVisibilityFilter", () => {
 
   it("fails closed when no Research is accessible", async () => {
     expect(await buildDatasetVisibilityFilter(null)).toEqual({ term: { humId: "__no_match__" } })
+  })
+})
+
+// === buildDatasetLatestFilter / buildDatasetSearchFilters ===
+
+describe("buildDatasetLatestFilter", () => {
+  beforeEach(() => {
+    mockEsSearch.mockReset()
+    mockEsSearch.mockResolvedValue({ hits: { hits: [] } })
+    mockGetOwnedHumIdsFn.mockReset()
+    mockGetOwnedHumIdsFn.mockImplementation(async () => [])
+  })
+
+  it("gives a public viewer the latest published version", async () => {
+    expect(await buildDatasetLatestFilter(null)).toEqual({ term: { isLatestPublished: true } })
+  })
+
+  it("gives admin the latest version including drafts, but still scopes the query", async () => {
+    // An unscoped admin query returns every historical version — the thing this
+    // filter exists to prevent — so admin is not a null filter.
+    expect(await buildDatasetLatestFilter(createMockAuthUser({ isAdmin: true })))
+      .toEqual({ term: { isLatest: true } })
+  })
+
+  it("falls back to the published version for an authenticated non-owner", async () => {
+    expect(await buildDatasetLatestFilter(createMockAuthUser({ username: "nobody" })))
+      .toEqual({ term: { isLatestPublished: true } })
+  })
+
+  it("excludes owned humIds from the published branch so a datasetId matches once", async () => {
+    mockGetOwnedHumIdsFn.mockImplementation(async () => ["hum0001"])
+
+    // Without the must_not, an owned Research mid-draft-cycle matches its
+    // published version and its draft version, and the datasetId comes back twice.
+    expect(await buildDatasetLatestFilter(createMockAuthUser({ username: "owner1" }))).toEqual({
+      bool: {
+        should: [
+          { bool: { filter: [{ terms: { humId: ["hum0001"] } }, { term: { isLatest: true } }] } },
+          {
+            bool: {
+              must_not: { terms: { humId: ["hum0001"] } },
+              filter: { term: { isLatestPublished: true } },
+            },
+          },
+        ],
+        minimum_should_match: 1,
+      },
+    })
+  })
+})
+
+describe("buildDatasetSearchFilters", () => {
+  beforeEach(() => {
+    mockEsSearch.mockReset()
+    mockEsSearch.mockResolvedValue({ hits: { hits: [{ _source: { humId: "hum0001", latestVersion: "v1" } }] } })
+    mockGetOwnedHumIdsFn.mockReset()
+    mockGetOwnedHumIdsFn.mockImplementation(async () => [])
+  })
+
+  it("pairs the visibility filter with the latest-version filter", async () => {
+    expect(await buildDatasetSearchFilters(null)).toEqual([
+      { bool: { should: [{ terms: { humVersionId: ["hum0001-v1"] } }], minimum_should_match: 1 } },
+      { term: { isLatestPublished: true } },
+    ])
+  })
+
+  it("still carries the latest-version filter for admin, who has no visibility filter", async () => {
+    expect(await buildDatasetSearchFilters(createMockAuthUser({ isAdmin: true })))
+      .toEqual([{ term: { isLatest: true } }])
   })
 })
 

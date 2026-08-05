@@ -151,9 +151,26 @@ approve は版の公開日を確定させ、そこから導出される値を順
 
 1. `RV[draftVersion].versionReleaseDate` に当日の日付を書く
 2. `humVersionId` がその RV を指す Dataset の `versionReleaseDate` を 1 の値に揃える。この版で生まれた Dataset だけが対象で、前の版から参照を引き継いだだけのものは触らない
-3. 2 で触った datasetId の `dateModified` を計算し直す
+3. その Research 配下の**全** datasetId の `dateModified` と最新版フラグを計算し直す。2 で触ったものだけでは足りない — 公開の天井が上がると、この版で生まれていない Dataset 版まで公開集合に入ることがある
 4. `Research.datePublished` / `dateModified` を公開版の min / max で計算し直す
 
-unpublish は公開版が減るので 4 だけを行う。`versions/new` と各種 update は公開状態を変えないため、日付には触らない。
+unpublish は公開版がゼロになるので、3 の最新版フラグと 4 を行う。`dateModified` は公開版が無いと導出できないので直前の値を据え置く。`versions/new` と各種 update は公開状態を変えないため、どちらにも触らない。
 
 draft 中の `versionReleaseDate` は approve までの暫定値である。値そのものに意味はないが、公開版で必須である以上 null のまま approve に到達させないために、版の作成時に当日の日付を入れておく。
+
+## 最新版フラグ
+
+Dataset の検索・集約は datasetId ごとの最新版だけを見る ([architecture.md § Dataset の検索・集約は最新版のみ](architecture.md#dataset-の検索集約は最新版のみ))。どれが最新版かはクエリ時には決められない — Elasticsearch の `collapse` は集約に効かず、doc 間でフィールドを比較する手段も無い — ので、doc 自身に持たせる。
+
+| フィールド | 定義 |
+|---|---|
+| `Dataset.isLatest` | 同じ datasetId の doc のうち version 番号が最大。親 Research を参照しない |
+| `Dataset.isLatestPublished` | 親 Research の `latestVersion` を天井として公開版だけを残した集合で version 番号が最大 |
+
+2 本あるのは「最新版」が閲覧者によって違うためである。public と非オーナーは公開版の最新 (`isLatestPublished`)、オーナーと admin は draft を含む最新 (`isLatest`) を見る。公開集合の選び方は `Dataset.dateModified` と共通で、どちらも `isHumVersionAccessible` (`src/api/utils/version.ts`) を通す — 導出値はすべて公開済みの版だけから作る、という同じ原則に従う。
+
+doc 集合が空でなければ `isLatest` が true の doc はちょうど 1 件、`isLatestPublished` が true の doc は 0 件または 1 件で、後者の version は前者以下になる。公開版が 1 つも無い datasetId (親が未公開、または全 doc が `latestVersion` より上の孤立 doc) では `isLatestPublished` が全件 false になり、その Dataset は public の検索から消える。
+
+計算は `src/es/dataset-latest.ts` の純関数が持ち、ingest (`es/load-docs.ts`) と live (`es-client/publish-dates.ts § syncDatasetDerived`) と backfill (`scripts/backfill-dataset-latest.ts`) の 3 経路が同じ定義を共有する。
+
+既存 index にこの種の denormalize フィールドを足すときは、mapping を additive に追加してから値を書く。ES index は `dynamic: false` なので、mapping が無いまま書いた値は `_source` に入るだけで index されず、後から mapping を足しても遡及しない。

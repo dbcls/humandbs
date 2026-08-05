@@ -767,6 +767,20 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ---
 
+### IT-FACETS-09: 旧版の Dataset にしか無い値はファセットの選択肢に出ない
+
+**endpoint**: `GET /facets/tissues` (version を跨いで facet 値を差し替えた Research を作った状態)
+
+**不変条件**:
+- 最新版が持つ値は `data.values` に含まれる
+- 旧版だけが持っていた値は含まれない (選択肢に出れば、絞り込んでも一覧に該当が無い状態になる)
+
+**回帰元**: `docs/api-guide.md § 検索・集約は最新版 Dataset のみ`
+
+**関連 unit テスト**: `tests/unit/api/es-client/search.test.ts::searchResearches: Dataset-side latest-version scope`
+
+---
+
 ## IT-SEARCH-*: 検索
 
 `POST /research/search` / `POST /dataset/search`、`GET /research` / `GET /dataset` (リスト)、`includeFacets`、`query` の fulltext (AND / 記号フレーズ / 末尾前方一致) + ID 完全一致/前方一致 + mixed ID 抽出、`datasetId` 経由の親 Research ヒット、case-insensitive、`filters` ネスト、`datasetFilters` (research search のみ)、Range フィルタ、Boolean フィルタ、disease / diseaseIcd10、ページネーション境界、sort/order。
@@ -1449,6 +1463,34 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 ---
 
+### IT-DATASET-20: version bump 後も datasetId ごとに 1 行で、public は公開版 / owner は draft 版
+
+**endpoint**: `GET /dataset?humId=` (public / owner)、`PUT /dataset/{datasetId}/update` (draft cycle 中の初回)
+
+**不変条件**:
+- approve 済みの状態で public / owner とも 1 行
+- draft cycle 中に bump した直後も **両者とも 1 行**。public は公開版、owner は draft 版
+- 次の approve 後は public も新しい版
+
+**回帰元**: `docs/architecture.md § Dataset の検索・集約は最新版のみ` / `§ Dataset のバージョン`
+
+**関連 unit テスト**: `tests/unit/es/dataset-latest.test.ts` / `tests/unit/api/es-client/dataset.test.ts`
+
+---
+
+### IT-DATASET-21: 最新版を削除すると一覧が前の版に戻る
+
+**endpoint**: `POST /dataset/{datasetId}/delete?version=`、`GET /dataset?humId=`
+
+**不変条件**:
+- v2 を削除した後、その datasetId は一覧から消えず v1 が返る (最新版フラグが繰り上がる)
+
+**回帰元**: `docs/data-model.md § 最新版フラグ`
+
+**関連 unit テスト**: `tests/unit/api/es-client/dataset.test.ts`
+
+---
+
 ### IT-DATASET-BATCH-01: GET /dataset/batch で複数 Dataset を一括取得
 
 **endpoint**: `GET /dataset/batch?ids=<id2>,<id1>`
@@ -2125,6 +2167,21 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **回帰元**: `es-client/auth.ts § validateStatusTransition` / `architecture.md § 状態遷移テーブル`
 
 **関連 unit テスト**: `tests/unit/api/es-client/auth.test.ts`
+
+---
+
+### IT-WORKFLOW-17: unpublish で Dataset が公開一覧から消え、再 approve で 1 行だけ戻る
+
+**endpoint**: `POST /research/{humId}/unpublish` → `submit` → `approve`、間に `GET /dataset?humId=` (public)
+
+**不変条件**:
+- approve 済みで 1 行
+- unpublish 後は 0 行 (公開版が無くなるので最新公開版フラグも残らない)
+- 再 approve 後はまた 1 行
+
+**回帰元**: `docs/data-model.md § 公開状態が変わったときの再計算`
+
+**関連 unit テスト**: `tests/unit/api/routes/research/workflow.test.ts` / `tests/unit/api/es-client/publish-dates.test.ts`
 
 ---
 

@@ -131,6 +131,10 @@ const datasetSearchCall = (): SearchArgs => {
   return call
 }
 
+/** Its filter clauses: the visibility ceiling and the latest-version scope. */
+const datasetMust = (): unknown[] =>
+  (datasetSearchCall().query as { bool: { must: unknown[] } }).bool.must
+
 describe("api/routes/stats", () => {
   beforeEach(() => {
     searchCalls.length = 0
@@ -239,7 +243,7 @@ describe("api/routes/stats", () => {
       const app = getTestApp()
       await app.request("/stats")
 
-      expect(datasetSearchCall().query).toEqual({
+      expect(datasetMust()).toContainEqual({
         bool: {
           should: [{ terms: { humVersionId: ["hum0001-v1", "hum0001-v2", "hum0002-v1"] } }],
           minimum_should_match: 1,
@@ -255,7 +259,7 @@ describe("api/routes/stats", () => {
       const app = getTestApp()
       await app.request("/stats")
 
-      expect(datasetSearchCall().query).toEqual({
+      expect(datasetMust()).toContainEqual({
         bool: {
           should: [{ terms: { humVersionId: ["hum0001-v1"] } }],
           minimum_should_match: 1,
@@ -267,7 +271,16 @@ describe("api/routes/stats", () => {
       const app = getTestApp()
       await app.request("/stats")
 
-      expect(JSON.stringify(datasetSearchCall().query)).not.toContain("\"humId\"")
+      expect(JSON.stringify(datasetMust()[0])).not.toContain("\"humId\"")
+    })
+
+    it("counts one version per datasetId", async () => {
+      const app = getTestApp()
+      await app.request("/stats")
+
+      // Without this the facet breakdown carries values that only a superseded
+      // version had, and stops matching the listing it links to.
+      expect(datasetMust()).toContainEqual({ term: { isLatestPublished: true } })
     })
   })
 
@@ -293,7 +306,7 @@ describe("api/routes/stats", () => {
       const app = getTestApp()
       await app.request("/stats")
 
-      expect(datasetSearchCall().query).toEqual({ term: { humId: "__no_match__" } })
+      expect(datasetMust()).toContainEqual({ term: { humId: "__no_match__" } })
     })
   })
 })

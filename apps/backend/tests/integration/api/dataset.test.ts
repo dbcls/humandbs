@@ -20,6 +20,7 @@ import {
   purgeResearch,
   setOwnerUids,
   submitForReview,
+  updateDatasetSearchable,
 } from "./mutating-helpers"
 import {
   authHeaders,
@@ -664,6 +665,95 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       for (const d of linkedJson.data) {
         expect(d.datasetId).not.toBe(ds.datasetId)
       }
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-20: a version bump keeps one row per datasetId, published for public and draft for admin", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-20
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
+      const v1 = await createDatasetForResearch(nonAdmin, humId)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      const app = getApp()
+      const rowsFor = async (token?: string): Promise<{ version: string }[]> => {
+        const res = await app.request(
+          url(`/dataset?humId=${humId}`),
+          token ? { headers: authHeaders(token) } : undefined,
+        )
+        expect(res.status).toBe(200)
+        return ((await res.json()) as SearchResponse<{ version: string }>).data
+      }
+
+      expect((await rowsFor()).map(r => r.version)).toEqual(["v1"])
+
+      // Open a draft version and bump the Dataset inside it.
+      await createNewVersion(nonAdmin, humId)
+      const reread = await app.request(url(`/dataset/${v1.datasetId}?version=v1`), { headers: authHeaders(nonAdmin) })
+      const rereadJson = (await reread.json()) as { data: unknown; meta: { _seq_no: number; _primary_term: number } }
+      const bumped = await updateDatasetSearchable(
+        nonAdmin,
+        { ...v1, seqNo: rereadJson.meta._seq_no, primaryTerm: rereadJson.meta._primary_term },
+        { tissues: ["it-latest-draft"] },
+      )
+      expect(bumped.version).toBe("v2")
+
+      // One row either way: the draft must neither replace the published row for
+      // public nor sit alongside it for the owner.
+      expect((await rowsFor()).map(r => r.version)).toEqual(["v1"])
+      expect((await rowsFor(nonAdmin)).map(r => r.version)).toEqual(["v2"])
+
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      expect((await rowsFor()).map(r => r.version)).toEqual(["v2"])
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-21: deleting the newest version puts the listing back on the previous one", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-21
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
+      const v1 = await createDatasetForResearch(nonAdmin, humId)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      await createNewVersion(nonAdmin, humId)
+
+      const app = getApp()
+      const reread = await app.request(url(`/dataset/${v1.datasetId}?version=v1`), { headers: authHeaders(nonAdmin) })
+      const rereadJson = (await reread.json()) as { meta: { _seq_no: number; _primary_term: number } }
+      const bumped = await updateDatasetSearchable(
+        nonAdmin,
+        { ...v1, seqNo: rereadJson.meta._seq_no, primaryTerm: rereadJson.meta._primary_term },
+        { tissues: ["it-latest-draft"] },
+      )
+      expect(bumped.version).toBe("v2")
+
+      const del = await app.request(url(`/dataset/${v1.datasetId}/delete?version=v2`), {
+        method: "POST",
+        headers: authHeaders(admin),
+      })
+      expect(del.status).toBe(204)
+
+      // v1 has to take the latest flag back, or the datasetId disappears from
+      // every listing while its document is still there.
+      const res = await app.request(url(`/dataset?humId=${humId}`), { headers: authHeaders(nonAdmin) })
+      const rows = ((await res.json()) as SearchResponse<{ version: string }>).data
+      expect(rows.map(r => r.version)).toEqual(["v1"])
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

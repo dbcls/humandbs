@@ -205,6 +205,14 @@ export const EsDatasetSchema = CrawlerDatasetSchema.extend({
   // before the field existed; the sort treats both as `_last`.
   dateModified: z.string().nullable().optional()
     .describe("ISO 8601 date of this dataset's most recent version release"),
+  // Whether this doc is the latest version of its datasetId — `isLatest`
+  // including drafts, `isLatestPublished` among published versions only.
+  // Search and aggregation scope themselves to these (`es/dataset-latest.ts`).
+  // Optional so docs indexed before the fields existed still parse.
+  isLatest: z.boolean().optional()
+    .describe("True when this is the highest version of this datasetId"),
+  isLatestPublished: z.boolean().optional()
+    .describe("True when this is the highest published version of this datasetId"),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 

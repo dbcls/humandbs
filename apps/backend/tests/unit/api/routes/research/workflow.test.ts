@@ -48,13 +48,15 @@ const mockStampVersionReleaseDate = mock<(humId: string, version: string, date: 
 const mockComputeResearchDates = mock<
   (...args: unknown[]) => Promise<{ datePublished: string | null; dateModified: string | null }>
 >(async () => ({ datePublished: null, dateModified: null }))
+const mockSyncDatasetDerivedForResearch = mock<(humId: string) => Promise<void>>(async () => undefined)
 
 void mock.module("@/api/es-client/publish-dates", () => ({
   today: () => "2024-03-04",
   stampVersionReleaseDate: (humId: string, version: string, date: string) =>
     mockStampVersionReleaseDate(humId, version, date),
   computeResearchDates: (...args: unknown[]) => mockComputeResearchDates(...args),
-  syncDatasetDateModified: mock(async () => null),
+  syncDatasetDerived: mock(async () => ({ dateModified: null, latestVersion: null, latestPublishedVersion: null })),
+  syncDatasetDerivedForResearch: (humId: string) => mockSyncDatasetDerivedForResearch(humId),
 }))
 
 void mock.module("@/api/es-client/search", () => ({
@@ -192,6 +194,8 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
     mockStampVersionReleaseDate.mockResolvedValue(undefined)
     mockComputeResearchDates.mockReset()
     mockComputeResearchDates.mockResolvedValue({ datePublished: null, dateModified: null })
+    mockSyncDatasetDerivedForResearch.mockReset()
+    mockSyncDatasetDerivedForResearch.mockResolvedValue(undefined)
     mockIsOwner.mockReset()
     mockIsOwner.mockImplementation(async (_u: string) => _u === "owner-1")
   })
@@ -287,6 +291,49 @@ describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing
       datePublished: null,
       dateModified: null,
     })
+  })
+
+  it("unpublish resyncs the Datasets' latest-version flags", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("draft", { latestVersion: null, draftVersion: "v1" }))
+
+    const res = await getTestApp().request("/research/hum0001/unpublish", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+
+    // The published set is now empty, so no Dataset may keep a latest-published
+    // flag — without this the listing would still serve them.
+    expect(res.status).toBe(200)
+    expect(mockSyncDatasetDerivedForResearch).toHaveBeenCalledWith("hum0001")
+  })
+
+  it("submit, reject and approve leave the Dataset flags to their own write paths", async () => {
+    const reviewDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "review",
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("published", { latestVersion: "v1", draftVersion: null }))
+
+    await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+
+    // approve resyncs through `stampVersionReleaseDate`, which runs before the
+    // root flip and passes the version being published.
+    expect(mockSyncDatasetDerivedForResearch).not.toHaveBeenCalled()
   })
 
   it("submit and reject leave every date alone", async () => {

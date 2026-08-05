@@ -25,6 +25,7 @@
 import { expect } from "bun:test"
 
 import { getOwnerUsernames, seedOwnershipForTest, unseedAllOwnersForHumIdTest } from "@/api/services/ownership"
+import type { SearchableExperimentFields } from "@/crawler/types"
 
 import { authHeaders, getApp, url } from "./setup"
 
@@ -282,6 +283,75 @@ export const createDatasetForResearch = async (
     body: "{}",
   })
   expect(res.status).toBe(201)
+  const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
+  return extractDatasetHandle(json)
+}
+
+/**
+ * Every `searchable` field, so a test only has to name the ones it cares about.
+ * `SearchableExperimentFieldsSchema` requires all of them explicitly.
+ */
+const emptySearchable: SearchableExperimentFields = {
+  subjectCount: null,
+  subjectCountType: null,
+  healthStatus: null,
+  diseases: [],
+  tissues: [],
+  isTumor: null,
+  cellLine: [],
+  population: [],
+  cohorts: [],
+  sex: null,
+  ageGroup: null,
+  assayType: [],
+  libraryKits: [],
+  platforms: [],
+  readType: null,
+  readLength: null,
+  sequencingDepth: null,
+  targetCoverage: null,
+  referenceGenome: [],
+  variantCounts: null,
+  hasPhenotypeData: null,
+  targets: null,
+  fileTypes: [],
+  processedDataTypes: [],
+  dataVolumeGb: null,
+  policies: [],
+}
+
+/**
+ * Replace a Dataset's single experiment with one carrying the given facet
+ * values (owner or admin). Asserts 200 and returns the resulting handle —
+ * the version may have been bumped, so the caller reads it from the response.
+ *
+ * Used by the latest-version scenarios: giving each version a distinct facet
+ * value is what makes "a superseded version's value leaked into the facets"
+ * observable from the outside.
+ */
+export const updateDatasetSearchable = async (
+  ownerOrAdmin: string,
+  ds: DatasetHandle,
+  searchable: Partial<SearchableExperimentFields>,
+): Promise<DatasetHandle> => {
+  const app = getApp()
+  const res = await app.request(url(`/dataset/${ds.datasetId}/update?version=${ds.version}`), {
+    method: "PUT",
+    headers: { ...authHeaders(ownerOrAdmin), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+      criteria: ds.criteria ?? "Controlled-access (Type I)",
+      typeOfData: { ja: null, en: null },
+      experiments: [{
+        header: { ja: { text: "実験" }, en: { text: "Experiment" } },
+        data: {},
+        searchable: { ...emptySearchable, ...searchable },
+      }],
+      _seq_no: ds.seqNo,
+      _primary_term: ds.primaryTerm,
+    }),
+  })
+  expect(res.status).toBe(200)
   const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
   return extractDatasetHandle(json)
 }

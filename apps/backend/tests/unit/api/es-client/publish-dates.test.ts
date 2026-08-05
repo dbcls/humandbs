@@ -36,8 +36,20 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchDoc: mockGetResearchDoc,
 }))
 
-const { computeResearchDates, stampVersionReleaseDate, syncDatasetDateModified } =
+const { computeResearchDates, stampVersionReleaseDate, syncDatasetDerived, syncDatasetDerivedForResearch } =
   await import("@/api/es-client/publish-dates")
+
+/** Params of the `update_by_query` script that writes the derived values. */
+interface DerivedParams {
+  dateModified: string | null
+  latestVersion: string | null
+  latestPublishedVersion: string | null
+}
+
+const updateByQueryArgs = (call = 0) => mockEsUpdateByQuery.mock.calls[call]?.[0] as {
+  query: unknown
+  script: { source: string; params: DerivedParams }
+}
 
 /** ES `search` response carrying the given `_source` docs. */
 const hits = (docs: unknown[]) => ({ hits: { hits: docs.map(d => ({ _source: d })) } })
@@ -158,7 +170,7 @@ describe("computeResearchDates", () => {
   })
 })
 
-describe("syncDatasetDateModified", () => {
+describe("syncDatasetDerived", () => {
   it("takes the max of versionReleaseDate and releaseDate across published versions", async () => {
     mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v2" }))
     mockEsSearch.mockResolvedValue(hits([
@@ -166,16 +178,17 @@ describe("syncDatasetDateModified", () => {
       createMockDatasetDoc({ version: "v2", humVersionId: "hum0001-v2", versionReleaseDate: "2024-07-30", releaseDate: "2020-09-28" }),
     ]))
 
-    expect(await syncDatasetDateModified("JGAD000001")).toBe("2024-07-30")
+    expect(await syncDatasetDerived("JGAD000001")).toEqual({
+      dateModified: "2024-07-30",
+      latestVersion: "v2",
+      latestPublishedVersion: "v2",
+    })
 
     // The value is denormalized onto every version doc, drafts included, so the
     // collapsed listing sorts the same whichever version it picks.
-    const args = mockEsUpdateByQuery.mock.calls[0]?.[0] as {
-      query: unknown
-      script: { params: { d: string } }
-    }
+    const args = updateByQueryArgs()
     expect(args.query).toEqual({ term: { datasetId: "JGAD000001" } })
-    expect(args.script.params.d).toBe("2024-07-30")
+    expect(args.script.params.dateModified).toBe("2024-07-30")
   })
 
   it("lets releaseDate win when DDBJ published later than the version", async () => {
@@ -186,7 +199,7 @@ describe("syncDatasetDateModified", () => {
 
     // Without releaseDate in the max the update date would sit before the
     // release date, which reads as a Dataset modified before it existed.
-    expect(await syncDatasetDateModified("JGAD000001")).toBe("2026-07-30")
+    expect((await syncDatasetDerived("JGAD000001")).dateModified).toBe("2026-07-30")
   })
 
   it("excludes draft versions from the max", async () => {
@@ -196,23 +209,64 @@ describe("syncDatasetDateModified", () => {
       createMockDatasetDoc({ version: "v2", humVersionId: "hum0001-v2", versionReleaseDate: "2022-06-17", releaseDate: "2022-06-17" }),
     ]))
 
-    expect(await syncDatasetDateModified("JGAD000001")).toBe("2020-01-14")
+    expect((await syncDatasetDerived("JGAD000001")).dateModified).toBe("2020-01-14")
   })
 
-  it("returns null and writes nothing when the parent has no published version", async () => {
+  it("names the draft version as latest and the published one as latest published", async () => {
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v1", draftVersion: "v2" }))
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ version: "v1", humVersionId: "hum0001-v1" }),
+      createMockDatasetDoc({ version: "v2", humVersionId: "hum0001-v2" }),
+    ]))
+
+    const derived = await syncDatasetDerived("JGAD000001")
+    expect(derived.latestVersion).toBe("v2")
+    expect(derived.latestPublishedVersion).toBe("v1")
+    expect(updateByQueryArgs().script.params).toMatchObject({
+      latestVersion: "v2",
+      latestPublishedVersion: "v1",
+    })
+  })
+
+  it("reads the version off each doc, so the flags can be written per version", async () => {
+    mockEsSearch.mockResolvedValue(hits([createMockDatasetDoc({ version: "v1", humVersionId: "hum0001-v1" })]))
+
+    await syncDatasetDerived("JGAD000001")
+
+    // Without `version` in `_source` every doc would compare as unversioned and
+    // the flags would land on none of them.
+    const source = (mockEsSearch.mock.calls[0]?.[0] as { _source: string[] })._source
+    expect(source).toContain("version")
+  })
+
+  it("writes the flags but leaves dateModified alone when nothing is published", async () => {
     mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: null, draftVersion: "v1" }))
     mockEsSearch.mockResolvedValue(hits([
       createMockDatasetDoc({ version: "v1", humVersionId: "hum0001-v1" }),
     ]))
 
-    expect(await syncDatasetDateModified("JGAD000001")).toBeNull()
-    expect(mockEsUpdateByQuery).not.toHaveBeenCalled()
+    // The owner still needs to find this Dataset in their own listing, so
+    // `isLatest` has to be written even with no published version to date.
+    expect(await syncDatasetDerived("JGAD000001")).toEqual({
+      dateModified: null,
+      latestVersion: "v1",
+      latestPublishedVersion: null,
+    })
+    expect(updateByQueryArgs().script.params).toEqual({
+      dateModified: null,
+      latestVersion: "v1",
+      latestPublishedVersion: null,
+    })
   })
 
-  it("returns null when the datasetId has no documents", async () => {
+  it("writes nothing when the datasetId has no documents", async () => {
     mockEsSearch.mockResolvedValue(hits([]))
 
-    expect(await syncDatasetDateModified("JGAD000001")).toBeNull()
+    expect(await syncDatasetDerived("JGAD000001")).toEqual({
+      dateModified: null,
+      latestVersion: null,
+      latestPublishedVersion: null,
+    })
     expect(mockEsUpdateByQuery).not.toHaveBeenCalled()
   })
 
@@ -223,7 +277,11 @@ describe("syncDatasetDateModified", () => {
       createMockDatasetDoc({ version: "v1", humVersionId: "hum0001-v31", versionReleaseDate: "2026-07-31", releaseDate: "2026-07-03" }),
     ]))
 
-    expect(await syncDatasetDateModified("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toBe("2026-07-31")
+    expect(await syncDatasetDerived("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toEqual({
+      dateModified: "2026-07-31",
+      latestVersion: "v1",
+      latestPublishedVersion: "v1",
+    })
   })
 
   it("lifts the ceiling only for the hum being published", async () => {
@@ -233,8 +291,46 @@ describe("syncDatasetDateModified", () => {
       createMockDatasetDoc({ humId: "hum0002", version: "v1", humVersionId: "hum0002-v1", versionReleaseDate: "2020-01-14", releaseDate: "2020-01-14" }),
     ]))
 
-    // hum0001 is the one being approved; hum0002's own draft stays out of the max.
-    expect(await syncDatasetDateModified("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toBe("2020-01-14")
+    // hum0001 is the one being approved; hum0002's own draft stays out of the
+    // published set — it is neither in the max nor the latest published version.
+    expect(await syncDatasetDerived("JGAD000001", { humId: "hum0001", latestVersion: "v31" })).toEqual({
+      dateModified: "2020-01-14",
+      latestVersion: "v2",
+      latestPublishedVersion: "v1",
+    })
+  })
+})
+
+describe("syncDatasetDerivedForResearch", () => {
+  it("resyncs every datasetId under the Research, once each", async () => {
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v1" }),
+      createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }),
+      createMockDatasetDoc({ datasetId: "JGAD000002", version: "v1", humVersionId: "hum0001-v1" }),
+    ]))
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v2" }))
+
+    await syncDatasetDerivedForResearch("hum0001")
+
+    expect((mockEsSearch.mock.calls[0]?.[0] as { query: unknown }).query)
+      .toEqual({ term: { humId: "hum0001" } })
+    expect(mockEsUpdateByQuery).toHaveBeenCalledTimes(2)
+  })
+
+  it("clears every latest-published flag once the Research is unpublished", async () => {
+    // unpublish moves latestVersion to null, so no version is published anymore.
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: null, draftVersion: "v2" }))
+    mockEsSearch.mockResolvedValue(hits([
+      createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v1" }),
+      createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }),
+    ]))
+
+    await syncDatasetDerivedForResearch("hum0001")
+
+    expect(updateByQueryArgs().script.params).toMatchObject({
+      latestVersion: "v2",
+      latestPublishedVersion: null,
+    })
   })
 })
 
@@ -285,11 +381,10 @@ describe("stampVersionReleaseDate", () => {
 
     await stampVersionReleaseDate("hum0001", "v31", "2026-07-31")
 
-    const args = mockEsUpdateByQuery.mock.calls[0]?.[0] as { script: { params: { d: string } } }
-    expect(args?.script.params.d).toBe("2026-07-31")
+    expect(updateByQueryArgs().script.params.dateModified).toBe("2026-07-31")
   })
 
-  it("resyncs dateModified once per datasetId after the dates are written", async () => {
+  it("resyncs the derived values once per datasetId after the dates are written", async () => {
     mockEsSearch.mockResolvedValue(hits([
       createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }),
       createMockDatasetDoc({ datasetId: "JGAD000001", version: "v3", humVersionId: "hum0001-v2" }),
@@ -299,5 +394,26 @@ describe("stampVersionReleaseDate", () => {
     await stampVersionReleaseDate("hum0001", "v2", "2026-07-30")
 
     expect(mockEsUpdateByQuery).toHaveBeenCalledTimes(1)
+  })
+
+  it("resyncs Datasets that were not born on the version being published", async () => {
+    // A version left above the old ceiling by an abandoned draft cycle is not
+    // born on the version being approved, but the higher ceiling pulls it into
+    // the published set — narrowing the resync to the born ones would leave its
+    // latest-published flag on the older version.
+    mockEsSearch.mockImplementation(async (args: unknown) => {
+      const query = (args as { query: { term?: Record<string, string> } }).query
+      if (query.term?.humVersionId) return hits([])
+
+      return hits([
+        createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v1" }),
+        createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }),
+      ])
+    })
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v1", draftVersion: "v3" }))
+
+    await stampVersionReleaseDate("hum0001", "v3", "2026-07-30")
+
+    expect(updateByQueryArgs().script.params).toMatchObject({ latestPublishedVersion: "v2" })
   })
 })

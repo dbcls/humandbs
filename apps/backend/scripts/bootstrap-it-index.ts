@@ -9,6 +9,9 @@
  *     mapping (`indices.get_mapping`) and `_reindex` the entire production
  *     index into the `-it` counterpart. Lets the read-only IT suite keep
  *     passing against equivalent data without touching production at runtime.
+ *     The `-it` index inherits whatever the source index has, so run
+ *     `backfill-dataset-latest.ts` on the source first — without the
+ *     latest-version flags every listing / facet / stats IT comes back empty.
  *
  * Required env (refuses to run otherwise):
  *   HUMANDBS_INTEGRATION_TEST=1
@@ -29,6 +32,7 @@ import { Client, HttpConnection } from "@elastic/elasticsearch"
 import { readFileSync } from "fs"
 import { join } from "path"
 
+import { computeDatasetLatestFlags } from "@/es/dataset-latest"
 import { datasetMapping } from "@/es/dataset-schema"
 import type { EsMapping } from "@/es/generate-mapping"
 import { researchMapping } from "@/es/research-schema"
@@ -167,6 +171,16 @@ const minimalSeedDocs = (): MinimalSeedDoc[] => {
       exp.dataText = extractDataText(exp.data as Record<string, DataValue>)
     }
   }
+
+  // Search and aggregation only reach the latest version of each datasetId, so
+  // a seed without the flags leaves every listing / facet / stats test empty.
+  const ceilings = new Map([[String(research.humId), (research.latestVersion as string | null) ?? null]])
+  const flags = computeDatasetLatestFlags([{
+    version: String(dataset.version),
+    humId: String(dataset.humId),
+    humVersionId: String(dataset.humVersionId),
+  }], ceilings).get(String(dataset.version))
+  Object.assign(dataset, flags)
 
   return [
     {

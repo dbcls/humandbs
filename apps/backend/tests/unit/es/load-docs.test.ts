@@ -7,6 +7,7 @@ import {
   idDataset,
   transformResearch,
   makeDatasetDateModifiedTransform,
+  makeDatasetLatestFlagsTransform,
   makeDatasetTransform,
 } from "@/es/load-docs"
 import { extractDataText } from "@/es/types"
@@ -215,6 +216,46 @@ describe("es/load-docs.ts", () => {
   // ===========================================================================
   // extractDataText
   // ===========================================================================
+  describe("makeDatasetLatestFlagsTransform", () => {
+    const raw = (docs: Record<string, unknown>[]) =>
+      docs.map((data, i) => ({ fileName: `doc-${i}.json`, data }))
+
+    const datasetDocs = [
+      { datasetId: "JGAD000001", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1" },
+      { datasetId: "JGAD000001", version: "v2", humId: "hum0001", humVersionId: "hum0001-v2" },
+      { datasetId: "JGAD000002", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1" },
+    ]
+
+    it("flags the highest version of each datasetId", () => {
+      const transform = makeDatasetLatestFlagsTransform(
+        raw(datasetDocs),
+        raw([{ humId: "hum0001", latestVersion: "v2" }]),
+      )
+
+      expect(transform(datasetDocs[0])).toMatchObject({ isLatest: false, isLatestPublished: false })
+      expect(transform(datasetDocs[1])).toMatchObject({ isLatest: true, isLatestPublished: true })
+      expect(transform(datasetDocs[2])).toMatchObject({ isLatest: true, isLatestPublished: true })
+    })
+
+    it("holds the published flag back on a version the Research has not published", () => {
+      // A Research whose latestVersion trails its Dataset versions must not get
+      // a doc that public search picks up.
+      const transform = makeDatasetLatestFlagsTransform(
+        raw(datasetDocs),
+        raw([{ humId: "hum0001", latestVersion: "v1" }]),
+      )
+
+      expect(transform(datasetDocs[0])).toMatchObject({ isLatest: false, isLatestPublished: true })
+      expect(transform(datasetDocs[1])).toMatchObject({ isLatest: true, isLatestPublished: false })
+    })
+
+    it("flags nothing for a Dataset with no sibling Research doc", () => {
+      const transform = makeDatasetLatestFlagsTransform(raw(datasetDocs), raw([]))
+
+      expect(transform(datasetDocs[1])).toMatchObject({ isLatest: true, isLatestPublished: false })
+    })
+  })
+
   describe("extractDataText", () => {
     it("concatenates ja and en text from all data entries", () => {
       const data = {
@@ -310,7 +351,7 @@ describe("es/load-docs.ts", () => {
         },
       ]
 
-      const transform = makeDatasetTransform(rawDocs)
+      const transform = makeDatasetTransform(rawDocs, [])
       const result = transform(rawDocs[0].data)
 
       expect(result.dateModified).toBe("2024-01-01")
@@ -331,7 +372,7 @@ describe("es/load-docs.ts", () => {
         },
       ]
 
-      const transform = makeDatasetTransform(rawDocs)
+      const transform = makeDatasetTransform(rawDocs, [])
       const result = transform(rawDocs[0].data)
       const experiments = result.experiments as Record<string, unknown>[]
       expect(experiments[0].dataText).toBe("")

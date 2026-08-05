@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildDatasetVisibilityFilter, buildStatusFilter, canAccessResearchDoc } from "@/api/es-client/auth"
+import { buildDatasetSearchFilters, buildStatusFilter, canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -557,12 +557,13 @@ export const searchDatasets = async (
 
   // Dataset visibility depends on the parent Research — its status, plus its
   // `latestVersion` as a ceiling on humVersionId so draft-release Datasets stay
-  // hidden. Filtering at query time (rather than post-filtering the collapse's
+  // hidden — and the query is scoped to the latest version of each datasetId so
+  // the facet aggregation below counts the same documents the rows come from.
+  // Filtering at query time (rather than post-filtering the collapse's
   // inner_hits) keeps `from + size` pagination and the `uniq_ids` cardinality
   // over the exact same document set: post-filtering drops groups after ES has
   // already sized and counted them, thinning deep pages and inflating total.
-  const visibilityFilter = await buildDatasetVisibilityFilter(authUser)
-  if (visibilityFilter) must.push(visibilityFilter)
+  must.push(...await buildDatasetSearchFilters(authUser))
 
   must.push(...buildDatasetFilterClauses(params))
 
@@ -628,12 +629,12 @@ export const searchDatasets = async (
 
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,
-  visibilityFilter: estypes.QueryDslQueryContainer | null,
+  datasetFilters: estypes.QueryDslQueryContainer[],
 ): Promise<string[]> => {
   // BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
   must.push(...buildDatasetFilterClauses(params))
-  if (visibilityFilter) must.push(visibilityFilter)
+  must.push(...datasetFilters)
 
   interface HumIdAggs {
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
@@ -658,7 +659,7 @@ const getHumIdsByDatasetFilters = async (
 // Research index に datasetIds フィールドを持たせないための迂回路。
 const getHumIdsByDatasetIdQuery = async (
   q: string,
-  visibilityFilter: estypes.QueryDslQueryContainer | null,
+  datasetFilters: estypes.QueryDslQueryContainer[],
 ): Promise<string[]> => {
   interface HumIdAggs {
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
@@ -673,7 +674,7 @@ const getHumIdsByDatasetIdQuery = async (
       minimum_should_match: 1,
     },
   }]
-  if (visibilityFilter) must.push(visibilityFilter)
+  must.push(...datasetFilters)
 
   const res = await esClient.search<unknown, HumIdAggs>({
     index: ES_INDEX.dataset,
@@ -691,7 +692,7 @@ const getHumIdsByDatasetIdQuery = async (
 
 const getHumIdsByTextQuery = async (
   parsed: ParsedFreeTextQuery,
-  visibilityFilter: estypes.QueryDslQueryContainer | null,
+  datasetFilters: estypes.QueryDslQueryContainer[],
 ): Promise<string[]> => {
   if (parsed.phraseTokens.length === 0 && parsed.bareWords.length === 0) {
     return []
@@ -704,7 +705,7 @@ const getHumIdsByTextQuery = async (
     humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
   }
 
-  const must = visibilityFilter ? [...textClauses, visibilityFilter] : textClauses
+  const must = [...textClauses, ...datasetFilters]
 
   const res = await esClient.search<unknown, HumIdAggs>({
     index: ES_INDEX.dataset,
@@ -747,17 +748,17 @@ export const searchResearches = async (
   }
 
   // Every Dataset-index read below — the humId resolutions and the facet
-  // aggregation — carries the same visibility filter as `searchDatasets`, so a
-  // draft-release Dataset can neither pull its parent Research into the result
-  // set nor inflate a facet count. Resolved once because it costs a
-  // Research-index lookup of its own.
-  const datasetVisibilityFilter = await buildDatasetVisibilityFilter(authUser)
+  // aggregation — carries the same filters as `searchDatasets`, so neither a
+  // draft-release Dataset nor a superseded version can pull its parent Research
+  // into the result set or inflate a facet count. Resolved once because it costs
+  // a Research-index lookup of its own.
+  const datasetFilters = await buildDatasetSearchFilters(authUser)
 
   // Dataset filters (parent-child): resolve a humId allowlist from the Dataset
   // index first, so the Research query can constrain by it.
   let humIdFilter: string[] | null = null
   if (hasDatasetFilters(params)) {
-    humIdFilter = await getHumIdsByDatasetFilters(params, datasetVisibilityFilter)
+    humIdFilter = await getHumIdsByDatasetFilters(params, datasetFilters)
     if (humIdFilter.length === 0) {
       // No matching datasets, return empty result
       return {
@@ -810,11 +811,11 @@ export const searchResearches = async (
   let datasetParentHumIds: string[] = []
   if (dsIdTokens.length > 0) {
     const resolved = await Promise.all(
-      dsIdTokens.map(token => getHumIdsByDatasetIdQuery(token, datasetVisibilityFilter)),
+      dsIdTokens.map(token => getHumIdsByDatasetIdQuery(token, datasetFilters)),
     )
     datasetParentHumIds = [...new Set(resolved.flat())]
   }
-  const datasetTextHumIds = await getHumIdsByTextQuery(parsed, datasetVisibilityFilter)
+  const datasetTextHumIds = await getHumIdsByTextQuery(parsed, datasetFilters)
   must.push(...buildResearchQueryClauses(parsed, datasetParentHumIds, datasetTextHumIds))
 
   // Date range filters
@@ -904,9 +905,10 @@ export const searchResearches = async (
   }
 
   const data: ResearchSummary[] = base.map(d => {
+    const ownerOrAdmin = isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId)
     // For non-owner users, only include versions up to latestVersion
     let effectiveVersionIds = d.versionIds
-    if (!isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) && d.latestVersion) {
+    if (!ownerOrAdmin && d.latestVersion) {
       const publishedNum = parseVersionNum(d.latestVersion)
       effectiveVersionIds = d.versionIds.filter(id => {
         const version = id.split("-").pop() ?? ""
@@ -915,7 +917,20 @@ export const searchResearches = async (
     }
     const rvs = effectiveVersionIds.map(id => rvMap.get(id)).filter((x): x is ResearchVersion => !!x)
     const datasetRefs = rvs.flatMap(rv => rv.datasets)
-    const datasets = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDataset => !!x)
+    const pinned = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDataset => !!x)
+    // Every version pins its own Dataset versions, so a datasetId updated across
+    // versions appears more than once here. Keep the latest of each — the same
+    // document the Dataset listing shows — or the row ends up carrying the
+    // platforms and type-of-data of every version this Research ever had
+    // ([architecture.md § Dataset の検索・集約は最新版のみ]). Absent flags are
+    // not treated as latest: a backfill gap has to surface, not pass silently.
+    const datasets = pinned.filter(ds => (ownerOrAdmin ? ds.isLatest : ds.isLatestPublished) === true)
+    if (pinned.length > 0 && datasets.length === 0) {
+      logger.warn(
+        "searchResearches found no latest-version Dataset for a Research that has pinned ones. Check the latest-version flag backfill.",
+        { humId: d.humId, pinned: pinned.length },
+      )
+    }
 
     const versions = rvs.map(rv => ({ version: rv.version, releaseDate: rv.versionReleaseDate }))
     const methods = extractText(d.summary?.methods)
@@ -959,7 +974,7 @@ export const searchResearches = async (
       targetsSummary: toBilingualText(d.summaryShort?.targets),
       dataProvider,
       criteria,
-      status: isOwnerOrAdminSync(authUser, ownedHumIdSet, d.humId) ? d.status : "published" as const,
+      status: ownerOrAdmin ? d.status : "published" as const,
     }
   })
 
@@ -982,7 +997,7 @@ export const searchResearches = async (
         datasetFacetQuery.push({ terms: { humId: allHumIds } })
       }
     }
-    if (datasetVisibilityFilter) datasetFacetQuery.push(datasetVisibilityFilter)
+    datasetFacetQuery.push(...datasetFilters)
 
     const facetRes = await esClient.search({
       index: ES_INDEX.dataset,

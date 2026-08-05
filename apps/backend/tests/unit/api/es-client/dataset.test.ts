@@ -114,6 +114,9 @@ beforeEach(() => {
   mockGetResearchVersionWithSeqNo.mockReset()
   mockGetResearchVersion.mockReset()
   mockGetResearchVersion.mockResolvedValue(null)
+  // Calls past the ones a test queues with `mockResolvedValueOnce` — the
+  // `syncDatasetDerived` lookup every write path ends with — see an empty index.
+  mockEsSearch.mockResolvedValue({ hits: { hits: [] } })
 })
 
 // === getDataset ===
@@ -333,6 +336,39 @@ describe("createDataset", () => {
     expect(result.releaseDate).toBe("2024-01-01")
   })
 
+  it("marks the new version as the latest, published when the parent already is", async () => {
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 0 } } })
+    // syncDatasetDerived reads the freshly indexed doc back.
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [
+      { _source: createMockDatasetDoc({ datasetId: "JGAD999999", version: "v1", humVersionId: "hum0001-v1" }) },
+    ] } })
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: "v1" }))
+    mockEsIndex.mockResolvedValue({})
+
+    const result = await dataset.createDataset({ ...baseParams, datasetId: "JGAD999999" })
+
+    expect(result.isLatest).toBe(true)
+    expect(result.isLatestPublished).toBe(true)
+    // Stamped on the document itself as well, so it is never indexed in a state
+    // the search filter cannot reach.
+    const indexed = mockEsIndex.mock.calls[0]?.[0] as { body: { isLatest: boolean } }
+    expect(indexed.body.isLatest).toBe(true)
+  })
+
+  it("leaves the new version unpublished while the parent Research is a draft", async () => {
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 0 } } })
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [
+      { _source: createMockDatasetDoc({ datasetId: "JGAD999999", version: "v1", humVersionId: "hum0001-v1" }) },
+    ] } })
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({ humId: "hum0001", latestVersion: null, draftVersion: "v1" }))
+    mockEsIndex.mockResolvedValue({})
+
+    const result = await dataset.createDataset({ ...baseParams, datasetId: "JGAD999999" })
+
+    expect(result.isLatest).toBe(true)
+    expect(result.isLatestPublished).toBe(false)
+  })
+
   it("bumps version via max_version aggregation", async () => {
     mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 2 } } })
     mockEsIndex.mockResolvedValue({})
@@ -461,6 +497,42 @@ describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
     expect(rewireArgs.if_seq_no).toBe(20)
     expect(rewireArgs.if_primary_term).toBe(3)
     expect(rewireArgs.body.doc.datasets).toEqual([{ datasetId: "JGAD000001", version: "v2" }])
+  })
+
+  it("Path A: the bumped version takes over `isLatest` while the published one keeps `isLatestPublished`", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1" }), _seq_no: 5, _primary_term: 2 })
+    mockGetResearchDoc.mockResolvedValue(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2",
+    }))
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 10,
+      primaryTerm: 2,
+    })
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 1 } } })
+    mockEsIndex.mockResolvedValueOnce({})
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v2", version: "v2", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 20,
+      primaryTerm: 3,
+    })
+    mockEsUpdate.mockResolvedValueOnce({})
+    // syncDatasetDerived sees both versions: v1 published, v2 born on the draft.
+    mockEsSearch.mockResolvedValueOnce({ hits: { hits: [
+      { _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humVersionId: "hum0001-v1" }) },
+      { _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humVersionId: "hum0001-v2" }) },
+    ] } })
+
+    const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
+
+    // The bumped version is the one owners edit; the public listing stays on v1
+    // until approve.
+    expect(result?.isLatest).toBe(true)
+    expect(result?.isLatestPublished).toBe(false)
+    const script = (mockEsUpdateByQuery.mock.calls[0]?.[0] as {
+      script: { params: { latestVersion: string; latestPublishedVersion: string } }
+    }).script
+    expect(script.params).toMatchObject({ latestVersion: "v2", latestPublishedVersion: "v1" })
   })
 
   it("Path A: the bumped version takes the draft ResearchVersion's release date, not the previous version's", async () => {

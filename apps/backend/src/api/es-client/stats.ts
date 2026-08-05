@@ -8,7 +8,7 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
-import { buildDatasetVisibilityFilter, buildStatusFilter } from "@/api/es-client/auth"
+import { buildDatasetSearchFilters, buildStatusFilter } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
 import type { StatsFacetCount, StatsResponse } from "@/api/types"
@@ -275,17 +275,18 @@ const extractStatsFacets = (aggs: Record<string, unknown>): Record<string, Recor
 /**
  * Aggregate the public-facing stats over published Research / Dataset only.
  *
- * The Dataset side goes through `buildDatasetVisibilityFilter` rather than a
- * plain `humId` allowlist: a published Research can carry Datasets on a draft
- * version beyond its `latestVersion`, and those must not reach a public count.
- * Sharing the filter with `searchDatasets` keeps `dataset.total` equal to the
- * Dataset listing's `pagination.total`.
+ * The Dataset side goes through `buildDatasetSearchFilters` rather than a plain
+ * `humId` allowlist: a published Research can carry Datasets on a draft version
+ * beyond its `latestVersion`, and those must not reach a public count, and the
+ * facet breakdown must count the same documents the listing shows rather than
+ * every historical version. Sharing the filters with `searchDatasets` keeps
+ * `dataset.total` equal to the Dataset listing's `pagination.total`.
  *
  * Returns counts and per-facet research/dataset breakdowns suitable for
  * `singleReadOnlyResponse(c, result)` in the route handler.
  */
 export const getPublicStats = async (): Promise<StatsResponse> => {
-  const datasetFilter = await buildDatasetVisibilityFilter(null)
+  const datasetFilters = await buildDatasetSearchFilters(null)
 
   const publicFilter = await buildStatusFilter(null)
   const researchCount = await esClient.count({
@@ -296,7 +297,7 @@ export const getPublicStats = async (): Promise<StatsResponse> => {
   const datasetRes = await esClient.search({
     index: ES_INDEX.dataset,
     size: 0,
-    query: datasetFilter ?? { match_all: {} },
+    query: { bool: { must: datasetFilters } },
     aggs: buildStatsAggregations(),
   })
 

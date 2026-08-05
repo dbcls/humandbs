@@ -34,14 +34,20 @@ Dataset 自体は status フィールドを持たない。親 Research の可視
 
 **重要**: Dataset の作成・更新・削除は、親 Research が **draft 状態の場合のみ** 可能。
 
-### Dataset 一覧の collapse と日付 sort
+この表は doc 単位の可視性。検索・集約はさらに datasetId ごとの最新版に絞る（[§ Dataset の検索・集約は最新版のみ](#dataset-の検索集約は最新版のみ)）。
 
-Dataset index は **1 (datasetId, version) = 1 doc**。一覧 (`GET /dataset` / `POST /dataset/search` → `searchDatasets`) は `collapse: { field: "datasetId" }` で datasetId ごとに畳み込み、**表示は inner_hits の最新 version** から組み立てる。Elasticsearch の collapse は「外側 sort で先頭に来た doc を group の代表」にするため、**version 可変なフィールドで sort すると asc で破綻する**（asc の代表が最古 version になり、group がその最古日付で並ぶ一方、表示は最新 version の日付になり不整合）。
+### Dataset の検索・集約は最新版のみ
+
+Dataset index は **1 (datasetId, version) = 1 doc**。検索・集約・絞り込みは **datasetId ごとの最新版 doc だけ**を対象にする。どの doc が最新版かは doc 自身の `isLatest` / `isLatestPublished` が持ち（[data-model.md § 最新版フラグ](data-model.md#最新版フラグ)）、Dataset index を引く経路は `buildDatasetSearchFilters` (`src/api/es-client/auth.ts`) が返す「可視性 + 最新版」の 2 本を必ず通す。
+
+過去版を集計に混ぜると、一覧の行（最新版）には無い値が facet の選択肢に並び、その値で絞り込むと親 Research はヒットするのに一覧に該当が見つからない、という食い違いが起きる。**一覧の行・facet の値と件数・humId 逆引き・stats がすべて同じ doc 集合を見ること**が不変条件で、Dataset 側の検索経路を 1 つ足すたびにこの filter を通す必要がある。version を明示指定する経路（`GET /dataset/{id}?version=`、`GET /dataset/{id}/versions`、楽観ロック取得）は絞り込みの対象外で、今までどおり全 version を扱う。
+
+一覧 (`GET /dataset` / `POST /dataset/search` → `searchDatasets`) はさらに `collapse: { field: "datasetId" }` を通す。フラグが同じ datasetId に二重に立っても行が重複しないための担保である。Elasticsearch の collapse は「外側 sort で先頭に来た doc を group の代表」にするため、**version 可変なフィールドで sort すると asc で破綻する**（asc の代表が最古 version になり、group がその最古日付で並ぶ一方、表示は最新 version の日付になり不整合）。
 
 このため、sort 可能な日付は **version 不変** であること:
 
 - `releaseDate`: 初回公開日。全 version で同一（元から version 不変）。
-- `dateModified`: その datasetId の `max(versionReleaseDate)`（= 最新版の release 日付）を全 version doc に denormalize した値。ingest (`es/load-docs.ts § makeDatasetDateModifiedTransform`) で付与し、live の作成・更新・削除経路 (`es-client/dataset.ts § syncDatasetDateModified`) で datasetId 単位に再同期して version 不変を保つ。Research の `dateModified`（1 humId = 1 doc なので collapse 不要）と同じ役割。
+- `dateModified`: その datasetId の `max(versionReleaseDate)`（= 最新版の release 日付）を全 version doc に denormalize した値。ingest (`es/load-docs.ts § makeDatasetDateModifiedTransform`) で付与し、live の作成・更新・削除経路 (`es-client/publish-dates.ts § syncDatasetDerived`) で datasetId 単位に再同期して version 不変を保つ。Research の `dateModified`（1 humId = 1 doc なので collapse 不要）と同じ役割。
 
 version 可変の `versionReleaseDate` は表示専用で、一覧の sort 値には使わない。
 
@@ -235,7 +241,7 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 | authenticated (非オーナー) | `latestVersion` 以下のバージョンのみ |
 | owner/admin | 全バージョン |
 
-`versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
+`versions` は上記で許可されたバージョンから集計する。`datasetIds` / `typeOfData` / `platforms` / `criteria` は、そのうち **datasetId ごとの最新版 Dataset だけ**から集計する（[§ Dataset の検索・集約は最新版のみ](#dataset-の検索集約は最新版のみ)）。同じ Dataset の過去版が持っていた値は混ぜない — 過去版でしか使っていない platform や、表記を直す前の値が一覧に並ぶのを防ぐため。
 
 ResearchSummary の `methodsSummary` / `typeOfDataSummary` / `targetsSummary` は、Joomla 旧サイト一覧 article から取り込んだ短文要約（各 `BilingualText = {ja, en}`）。詳細ページ本文由来の `methods` / `typeOfData` / `targets`（長文）と並列で配信し、一覧 UI ではこちらを表示する想定。Joomla 一覧に未掲載の humId は `null` を返す。全文検索（`all_text`）には流さず、表示専用とする。curator が値を維持・修正するときは `PUT /research/{humId}/update` の `summaryShort` フィールドから編集する。他の content フィールドと同じく書き込み先は ResearchVersion で、一覧が読むのは Research root — つまり draft 中の編集は一覧に出ず、approve が root へ同期した時点で切り替わる。
 
@@ -320,6 +326,8 @@ Dataset の version は親 Research のライフサイクルと連動して管�
 
 5. `POST /research/{humId}/approve` で公開
    - Dataset の version が確定し、public から見えるようになる
+
+Dataset doc の `isLatest` / `isLatestPublished` はこのライフサイクルに追随する。version bump と版削除はその datasetId の中でフラグを付け替え、approve と unpublish は親の `latestVersion` が動くので humId 配下の全 datasetId を計算し直す（[data-model.md § 最新版フラグ](data-model.md#最新版フラグ)）。
 
 ### 「初回更新」の判定
 

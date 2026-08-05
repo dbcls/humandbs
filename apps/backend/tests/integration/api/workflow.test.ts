@@ -458,4 +458,38 @@ describe("IT-WORKFLOW-*: Research state transitions (4xx guards)", () => {
       if (humId) await purgeResearch(admin, humId)
     }
   })
+
+  itWithIsolationIndex("IT-WORKFLOW-17: unpublish hides the Datasets and re-approve brings back exactly one row", async ({ admin, nonAdmin }) => {
+    // IT-WORKFLOW-17
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
+      await createDatasetForResearch(nonAdmin, humId)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      const app = getApp()
+      const publicRows = async (): Promise<{ version: string }[]> => {
+        const res = await app.request(url(`/dataset?humId=${humId}`))
+        expect(res.status).toBe(200)
+        return ((await res.json()) as SearchResponse<{ version: string }>).data
+      }
+      expect(await publicRows()).toHaveLength(1)
+
+      await unpublishResearch(admin, humId)
+      expect(await publicRows()).toHaveLength(0)
+
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      // Re-approving has to restore exactly one row: the unpublish must have
+      // cleared the latest-published flag rather than left it on a stale version.
+      expect((await publicRows()).map(r => r.version)).toEqual(["v1"])
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
 })

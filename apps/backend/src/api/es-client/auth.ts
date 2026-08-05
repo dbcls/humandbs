@@ -173,6 +173,8 @@ export const buildAccessibleVersionFilter = (
  * Every query that reads the Dataset index — search, facets, stats, and the
  * Research-search lookups that resolve humIds from Dataset matches — must carry
  * this filter, so a Dataset hidden from one endpoint is hidden from all of them.
+ * Callers take it through `buildDatasetSearchFilters`, which pairs it with the
+ * latest-version filter.
  *
  * Returns `null` for admin (no filter, all Datasets visible). A caller with no
  * accessible Research at all gets the `__no_match__` sentinel from
@@ -187,6 +189,62 @@ export const buildDatasetVisibilityFilter = async (
 
   const ownedHumIdSet = new Set(authUser ? await getOwnedHumIds(authUser.username) : [])
   return buildAccessibleVersionFilter(humLatestMap, ownedHumIdSet)
+}
+
+/**
+ * Restrict a Dataset query to the latest version of each datasetId.
+ *
+ * Which version that is depends on the viewer, so the split mirrors the
+ * visibility filter's: an owned humId is scoped by `isLatest` (drafts included,
+ * which is what the owner edits), everything else by `isLatestPublished`
+ * ([architecture.md § Dataset の検索・集約は最新版のみ]).
+ *
+ * The `must_not` on the second clause is load-bearing. Without it an owned
+ * humId mid-draft-cycle matches twice — its published version through
+ * `isLatestPublished` and its draft version through `isLatest` — and the
+ * datasetId comes back as two rows.
+ *
+ * Never null, admin included: an unscoped query returns every historical
+ * version, which is exactly what this filter exists to prevent.
+ */
+export const buildDatasetLatestFilter = async (
+  authUser: AuthUser | null,
+): Promise<estypes.QueryDslQueryContainer> => {
+  const latestPublished: estypes.QueryDslQueryContainer = { term: { isLatestPublished: true } }
+  if (authUser?.isAdmin) return { term: { isLatest: true } }
+
+  const ownedHumIds = authUser ? await getOwnedHumIds(authUser.username) : []
+  if (ownedHumIds.length === 0) return latestPublished
+
+  return {
+    bool: {
+      should: [
+        { bool: { filter: [{ terms: { humId: ownedHumIds } }, { term: { isLatest: true } }] } },
+        { bool: { must_not: { terms: { humId: ownedHumIds } }, filter: latestPublished } },
+      ],
+      minimum_should_match: 1,
+    },
+  }
+}
+
+/**
+ * The filters every Dataset-index search carries: who may see the document, and
+ * whether it is the version the caller should be looking at.
+ *
+ * One entry point for both so a new search path cannot pick up one and forget
+ * the other — the listing, the facets, the humId lookups behind Research search
+ * and the stats aggregation all resolve their clauses here.
+ *
+ * Paths that address a version explicitly (`GET /dataset/{id}?version=`, the
+ * version list, optimistic-lock reads) deliberately do not use this.
+ */
+export const buildDatasetSearchFilters = async (
+  authUser: AuthUser | null,
+): Promise<estypes.QueryDslQueryContainer[]> => {
+  const visibility = await buildDatasetVisibilityFilter(authUser)
+  const latest = await buildDatasetLatestFilter(authUser)
+
+  return visibility ? [visibility, latest] : [latest]
 }
 
 // === Status Transition Validation ===

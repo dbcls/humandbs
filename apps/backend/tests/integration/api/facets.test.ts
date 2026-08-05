@@ -7,7 +7,26 @@ import { beforeAll, describe, expect } from "bun:test"
 
 import type { FacetFieldResponse, FacetsMap, SingleReadOnlyResponse } from "@/api/types"
 
-import { authHeaders, getApp, itWithEs, itWithNonAdminToken, setupIntegration, url } from "./setup"
+import {
+  approveResearch,
+  createDatasetForResearch,
+  createDraftResearch,
+  createNewVersion,
+  purgeResearch,
+  setOwnerUids,
+  submitForReview,
+  updateDatasetSearchable,
+} from "./mutating-helpers"
+import {
+  authHeaders,
+  decodeJwtPreferredUsername,
+  getApp,
+  itWithEs,
+  itWithIsolationIndex,
+  itWithNonAdminToken,
+  setupIntegration,
+  url,
+} from "./setup"
 
 beforeAll(setupIntegration)
 
@@ -175,6 +194,46 @@ describe("IT-FACETS-*: facet aggregations", () => {
     const auth = (await authRes.json()) as SingleReadOnlyResponse<FacetsMap>
     const sum = (xs: { count: number }[] | undefined) => (xs ?? []).reduce((acc, x) => acc + x.count, 0)
     expect(sum(pub.data.assayType)).toBeLessThanOrEqual(sum(auth.data.assayType))
+  })
+
+  itWithIsolationIndex("IT-FACETS-09: a value only a superseded Dataset version had is not offered as a facet", async ({ admin, nonAdmin }) => {
+    // IT-FACETS-09
+    const username = decodeJwtPreferredUsername(nonAdmin)
+    expect(username).toBeTruthy()
+    const stale = `it-stale-${Date.now()}`
+    const fresh = `it-fresh-${Date.now()}`
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [username!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      const v1 = await updateDatasetSearchable(nonAdmin, ds, { tissues: [stale] })
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      await createNewVersion(nonAdmin, humId)
+      const app = getApp()
+      const reread = await app.request(url(`/dataset/${v1.datasetId}?version=${v1.version}`), { headers: authHeaders(nonAdmin) })
+      const meta = ((await reread.json()) as { meta: { _seq_no: number; _primary_term: number } }).meta
+      await updateDatasetSearchable(
+        nonAdmin,
+        { ...v1, seqNo: meta._seq_no, primaryTerm: meta._primary_term },
+        { tissues: [fresh] },
+      )
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+
+      const res = await app.request(url("/facets/tissues"))
+      expect(res.status).toBe(200)
+      const values = ((await res.json()) as SingleReadOnlyResponse<FacetFieldResponse>).data.values.map(v => v.value)
+      // The old spelling is still in the index on the superseded version. Offering
+      // it as a filter would hand the user a value that matches no listed Dataset.
+      expect(values).toContain(fresh)
+      expect(values).not.toContain(stale)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
   })
 
   // IT-FACETS-08: ES に存在しない priority value が skip されることは facet-order.json の運用に依存し、

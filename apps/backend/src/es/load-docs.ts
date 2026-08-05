@@ -16,6 +16,8 @@ import { existsSync, readdirSync, readFileSync } from "fs"
 import { join, dirname } from "path"
 import type { z } from "zod"
 
+import { computeDatasetLatestFlags, groupByDatasetId } from "./dataset-latest"
+import type { DatasetLatestFlags, DatasetVersionRef } from "./dataset-latest"
 import {
   EsResearchSchema,
   EsDatasetSchema,
@@ -122,7 +124,7 @@ export const makeResearchVersionContentTransform = (
  * `releaseDate` joins the max because DDBJ can publish a Dataset later than the
  * version that introduced it, which would otherwise put the update date before
  * the release date. Crawler output holds published versions only, so there is
- * no draft to exclude here — unlike the API-side `syncDatasetDateModified`.
+ * no draft to exclude here — unlike the API-side `syncDatasetDerived`.
  */
 export const makeDatasetDateModifiedTransform = (
   rawDocs: { fileName: string; data: unknown }[],
@@ -157,11 +159,58 @@ const stampDataText = (doc: Record<string, unknown>): Record<string, unknown> =>
   }
 }
 
+/**
+ * Build a Dataset transform that stamps `isLatest` / `isLatestPublished`, the
+ * flags search and aggregation scope themselves to (`es/dataset-latest.ts`).
+ *
+ * The published ceiling comes from the sibling Research docs' `latestVersion`.
+ * Crawler output carries published versions only, so in practice the two flags
+ * agree — but they are computed rather than assumed, so a Research whose
+ * `latestVersion` trails its Dataset versions does not get a doc that public
+ * search would pick up.
+ */
+export const makeDatasetLatestFlagsTransform = (
+  rawDocs: { fileName: string; data: unknown }[],
+  researchRaw: { fileName: string; data: unknown }[],
+): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
+  const ceilingByHumId = new Map<string, string | null>()
+  for (const { data } of researchRaw) {
+    const r = data as { humId?: string; latestVersion?: string | null } | null | undefined
+    if (typeof r?.humId !== "string") continue
+    ceilingByHumId.set(r.humId, r.latestVersion ?? null)
+  }
+
+  const refs: (DatasetVersionRef & { datasetId: string })[] = []
+  for (const { data } of rawDocs) {
+    const d = data as Partial<DatasetVersionRef & { datasetId: string }> | null | undefined
+    if (!d?.datasetId || !d.version || !d.humId || !d.humVersionId) continue
+    refs.push({ datasetId: d.datasetId, version: d.version, humId: d.humId, humVersionId: d.humVersionId })
+  }
+
+  const flagsByDatasetId = new Map<string, Map<string, DatasetLatestFlags>>()
+  for (const [datasetId, group] of groupByDatasetId(refs)) {
+    flagsByDatasetId.set(datasetId, computeDatasetLatestFlags(group, ceilingByHumId))
+  }
+
+  return (doc) => {
+    const flags = flagsByDatasetId.get(doc.datasetId as string)?.get(doc.version as string)
+
+    return {
+      ...doc,
+      isLatest: flags?.isLatest ?? false,
+      isLatestPublished: flags?.isLatestPublished ?? false,
+    }
+  }
+}
+
 export const makeDatasetTransform = (
   rawDocs: { fileName: string; data: unknown }[],
+  researchRaw: { fileName: string; data: unknown }[],
 ): ((doc: Record<string, unknown>) => Record<string, unknown>) => {
   const dateModifiedTransform = makeDatasetDateModifiedTransform(rawDocs)
-  return (doc) => stampDataText(dateModifiedTransform(doc))
+  const latestFlagsTransform = makeDatasetLatestFlagsTransform(rawDocs, researchRaw)
+
+  return (doc) => stampDataText(latestFlagsTransform(dateModifiedTransform(doc)))
 }
 
 /**
@@ -356,7 +405,7 @@ const main = async () => {
     datasetRaw,
     EsDatasetSchema,
     (d) => idDataset(d.datasetId, d.version),
-    makeDatasetTransform(datasetRaw),
+    makeDatasetTransform(datasetRaw, researchRaw),
   )
 
   console.log("\nDone!")

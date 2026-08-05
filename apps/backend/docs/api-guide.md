@@ -230,6 +230,20 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 
 ファセット値は認証状態により変わる。Dataset の可視性は親 Research の公開状態と `latestVersion` の両方に従う（[architecture.md § Dataset の status 依存](architecture.md#dataset-の-status-依存)）ため、public ユーザーには公開 version の Dataset に由来するファセットのみ返却される。
 
+### 検索・集約は最新版 Dataset のみ
+
+Dataset index は 1 (datasetId, version) = 1 doc だが、**検索・集約・絞り込みは datasetId ごとの最新版だけ**を対象にする。public と非オーナーには公開版の最新、オーナーと admin には draft を含む最新が使われる（[architecture.md § Dataset の検索・集約は最新版のみ](architecture.md#dataset-の検索集約は最新版のみ)）。
+
+| 対象 | 挙動 |
+|---|---|
+| `GET /dataset`, `POST /dataset/search` | 行・件数・ファセットのすべて |
+| `GET /facets`, `GET /facets/{fieldName}` | ファセットの値と件数 |
+| `GET /research`, `POST /research/search` | `datasetFilters` の絞り込み、ファセット、`datasetIds` / `typeOfData` / `platforms` / `criteria` の集計 |
+| `GET /stats` | ファセットの内訳 |
+| `GET /dataset/{id}?version=`, `GET /dataset/{id}/versions` | **対象外**。指定された version をそのまま返す |
+
+過去版でしか使っていない値はファセットの選択肢に現れず、その値で絞り込んでも 0 件になる。「ファセットに出ている値で検索したのに一覧に該当が無い」が起きないことを保証するための規則である。
+
 ### Research 検索 vs Dataset 検索のフィルター構造
 
 - **`POST /research/search`**: Dataset 属性によるフィルタは `datasetFilters` 配下にネスト。Research 自身の属性（`status`, `datePublished`, `dateModified`）はトップレベル
@@ -245,7 +259,7 @@ Research のフリーテキスト検索は、Research 自身の `all_text` に�
 
 内部実装: `getHumIdsByTextQuery()` で Dataset index にテキストクエリを投げ、親 `humId` 群を OR 条件で Research クエリに合流させる（既存の `getHumIdsByDatasetIdQuery()` と同パターン）。Research 自身のテキスト一致と Dataset 経由のテキスト一致は `should`（OR）で結合されるため、どちらか一方でも一致すれば結果に含まれる。
 
-Dataset index を引くこれらの経路（`datasetFilters` の humId 解決を含む）は、Dataset 一覧と同じ可視性 filter を通る。呼び出し元から見えない version にしか存在しない datasetId や語で検索しても、その親 Research はヒットしない。
+Dataset index を引くこれらの経路（`datasetFilters` の humId 解決を含む）は、Dataset 一覧と同じ filter を通る。呼び出し元から見えない version にしか存在しない datasetId や語で検索しても、その親 Research はヒットしない。**過去版にしか無い語も同様にヒットしない** — 引く対象が datasetId ごとの最新版に限られるため、Dataset を更新して消えた語で親 Research を引くことはできない。
 
 ### フリーテキスト検索の挙動
 
@@ -320,7 +334,7 @@ Dataset の「更新日付 (Modification date)」での sort は `sort=dateModif
 | `searchDataset` (`includeFacets=true`) | Dataset 数（datasetId cardinality）|
 | `getFacets`, `getFacet` | `countBy` で選択 (`research` = humId, `dataset` = datasetId, デフォルト `dataset`) |
 
-Research 一覧画面のフィルタ UI では `countBy=research`、Dataset 一覧画面では `countBy=dataset` を指定するのが標準。同じレスポンス shape で `count` の意味のみ切り替わる。
+Research 一覧画面のフィルタ UI では `countBy=research`、Dataset 一覧画面では `countBy=dataset` を指定するのが標準。同じレスポンス shape で `count` の意味のみ切り替わる。件数はいずれも datasetId ごとの最新版だけを数えた cardinality で、過去版は寄与しない。
 
 ### ファセット値の並び順
 
@@ -479,7 +493,7 @@ OpenAPI 単体では表現できない「複数 API の連鎖」のための章�
 
 **public に見えるリソースのみ**。「Stats は外部公開可能な統計」という前提から、認証状態によらず匿名ユーザーと同じ可視性で集計する。
 
-Research 側は draft / review を除外する (`latestVersion` を持つもののみ)。Dataset 側はそれに加えて、親 Research の `latestVersion` を humVersionId の上限とする — published Research が draft cycle 中に持つ次 version の Dataset は、親が公開中であっても集計に入れない。この可視性判定は Dataset 一覧 (`POST /dataset/search`) と同一の filter を共有しており、`dataset.total` は一覧の `pagination.total` と常に一致する。
+Research 側は draft / review を除外する (`latestVersion` を持つもののみ)。Dataset 側はそれに加えて、親 Research の `latestVersion` を humVersionId の上限とする — published Research が draft cycle 中に持つ次 version の Dataset は、親が公開中であっても集計に入れない。さらに datasetId ごとの最新版だけを数える（[§ 検索・集約は最新版 Dataset のみ](#検索集約は最新版-dataset-のみ)）ので、ファセットの内訳に過去版だけが持っていた値は現れない。これらの filter は Dataset 一覧 (`POST /dataset/search`) と同一のものを共有しており、`dataset.total` は一覧の `pagination.total` と常に一致する。
 
 ### レスポンス構造
 

@@ -8,7 +8,12 @@ import type { Context } from "hono"
 
 import { ConflictError } from "@/api/errors"
 import { validateStatusTransition } from "@/api/es-client/auth"
-import { computeResearchDates, stampVersionReleaseDate, today } from "@/api/es-client/publish-dates"
+import {
+  computeResearchDates,
+  stampVersionReleaseDate,
+  syncDatasetDerivedForResearch,
+  today,
+} from "@/api/es-client/publish-dates"
 import { syncResearchRootFromVersion, updateResearchStatus } from "@/api/es-client/research"
 import { singleResponse } from "@/api/helpers/response"
 import type { EsResearch, ResearchStatus, StatusAction } from "@/api/types"
@@ -98,6 +103,17 @@ const createStatusTransitionHandler = (
     // can be re-run manually to catch up.
     if (action === "approve" && versionUpdates?.latestVersion) {
       await syncResearchRootFromVersion(humId, versionUpdates.latestVersion)
+    }
+
+    // Unpublish empties the published set, so every Dataset under this Research
+    // loses its latest-published version. Runs after the root update because it
+    // reads the new (null) ceiling — the mirror image of approve, which stamps
+    // before the flip and passes the version being published explicitly.
+    // Non-atomic like the content sync above: a failure leaves
+    // `isLatestPublished` on a doc the visibility filter already excludes, and
+    // the next approve heals it.
+    if (action === "unpublish") {
+      await syncDatasetDerivedForResearch(humId)
     }
 
     const responseData = {

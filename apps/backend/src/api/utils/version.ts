@@ -5,27 +5,10 @@
  */
 import { isOwner } from "@/api/services/ownership"
 import type { AuthUser, ResearchDetail } from "@/api/types"
+import { parseVersionFromHumVersionId, parseVersionNum } from "@/es/version"
 
-/** Parse version number from version string (e.g., "v2" -> 2) */
-export const parseVersionNum = (v: string): number => {
-  const match = /^v(\d+)$/.exec(v)
-  if (!match) {
-    throw new Error(`Invalid version format: "${v}"`)
-  }
-
-  return parseInt(match[1], 10)
-}
-
-/**
- * Extract the version part from a humVersionId (e.g., "hum0006-v8" -> "v8").
- * Returns null if the id does not match the expected shape.
- */
-export const parseVersionFromHumVersionId = (humVersionId: string): string | null => {
-  const idx = humVersionId.lastIndexOf("-")
-  if (idx <= 0) return null // must have a non-empty humId prefix
-  const ver = humVersionId.slice(idx + 1)
-  return /^v\d+$/.test(ver) ? ver : null
-}
+// Version string arithmetic lives in `@/es/version` so ingest can share it.
+export { isHumVersionAccessible, parseVersionFromHumVersionId, parseVersionNum } from "@/es/version"
 
 /** Version fields that decide which ResearchVersion a write lands on. */
 export interface VersionState {
@@ -62,30 +45,6 @@ export const nextVersionNumber = (versionIds: string[]): number => {
     .map(parseVersionNum)
 
   return (issued.length > 0 ? Math.max(...issued) : 0) + 1
-}
-
-/**
- * Non-owner/admin visibility ceiling: a Dataset (or ResearchVersion) whose
- * humVersionId points to a version *after* the parent Research's
- * `latestVersion` (i.e. a draft) must be hidden.
- *
- * - owner/admin: always visible
- * - parent has no latestVersion (N-draft): always hidden for non-owner/admin
- * - otherwise: visible iff `parseVersionNum(childVersion) <= parseVersionNum(latestVersion)`
- *
- * Returns false when the humVersionId cannot be parsed (defensive; unknown-shape
- * ids are treated as hidden for non-owner/admin).
- */
-export const isHumVersionAccessible = (
-  humVersionId: string,
-  parentLatestVersion: string | null,
-  isOwnerOrAdmin: boolean,
-): boolean => {
-  if (isOwnerOrAdmin) return true
-  if (parentLatestVersion === null) return false
-  const childVer = parseVersionFromHumVersionId(humVersionId)
-  if (childVer === null) return false
-  return parseVersionNum(childVer) <= parseVersionNum(parentLatestVersion)
 }
 
 /** Check if user is the resource owner or an admin */
