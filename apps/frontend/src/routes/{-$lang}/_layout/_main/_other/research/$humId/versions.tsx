@@ -26,7 +26,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
     return { data: versions.data, crumb: "Versions" };
   },
   head: ({ match }) => {
-    const seoTitle = `HumanDBs - ${match.params.humId}: ${match.context.messages?.Research?.["release-info"]})`;
+    const seoTitle = `HumanDBs - ${match.params.humId}: ${match.context.messages?.Research?.["release-info"]}`;
 
     return {
       meta: [
