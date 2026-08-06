@@ -19,7 +19,10 @@ import type {
   Experiment,
   LocalizedLinks,
   ResearchContent,
+  RichText,
   Slot,
+  Span,
+  TranslatedRichText,
   TranslatedText,
   ValueSlot,
 } from "../types"
@@ -39,6 +42,36 @@ export const translatedTextArb: fc.Arbitrary<TranslatedText> = fc.record({
   en: fc.string(),
 })
 
+/** A span's text never holds a newline: that is what a line boundary is. */
+const spanTextArb = fc.string().map((text) => text.replaceAll("\n", " "))
+
+/**
+ * Destinations are drawn from a fixed set with both kinds in it, so that a law
+ * about what may be followed sees the ones that may not.
+ */
+const hrefArb = fc.constantFrom(
+  "https://ddbj.nig.ac.jp/",
+  "/nbdc-policy",
+  "mailto:someone@example.com",
+  "javascript:alert(1)",
+  "//example.com/",
+)
+
+const spanArb: fc.Arbitrary<Span> = fc.oneof(
+  fc.record({ text: spanTextArb }),
+  fc.record({ text: spanTextArb, href: hrefArb }),
+)
+
+export const richTextArb: fc.Arbitrary<RichText> = fc.array(
+  fc.array(spanArb, { maxLength: 3 }),
+  { maxLength: 3 },
+)
+
+export const translatedRichTextArb: fc.Arbitrary<TranslatedRichText> = fc.record({
+  ja: richTextArb,
+  en: richTextArb,
+})
+
 const linkArb = fc.record({ id: idArb, url: fc.string(), text: fc.string() })
 
 export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
@@ -56,7 +89,7 @@ export function slotArb<T>(value: fc.Arbitrary<T>): fc.Arbitrary<Slot<T>> {
 }
 
 export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
-  fc.record({ kind: fc.constant("text" as const), text: translatedTextArb }),
+  fc.record({ kind: fc.constant("text" as const), text: translatedRichTextArb }),
   fc.record({ kind: fc.constant("single" as const), value: fc.string() }),
   fc.record({ kind: fc.constant("accession" as const), value: fc.string() }),
   fc.record({
@@ -86,17 +119,17 @@ export const experimentArb: fc.Arbitrary<Experiment> = fc.record({
 export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
   title: slotArb(translatedTextArb),
   summary: fc.record({
-    aims: slotArb(translatedTextArb),
-    methods: slotArb(translatedTextArb),
-    targets: slotArb(translatedTextArb),
+    aims: slotArb(translatedRichTextArb),
+    methods: slotArb(translatedRichTextArb),
+    targets: slotArb(translatedRichTextArb),
     url: slotArb(localizedLinksArb),
   }),
   summaryShort: fc.record({
-    methods: slotArb(translatedTextArb),
-    targets: slotArb(translatedTextArb),
-    typeOfData: slotArb(translatedTextArb),
+    methods: slotArb(translatedRichTextArb),
+    targets: slotArb(translatedRichTextArb),
+    typeOfData: slotArb(translatedRichTextArb),
   }),
-  releaseNote: slotArb(translatedTextArb),
+  releaseNote: slotArb(translatedRichTextArb),
   dataProviders: fc.array(
     fc.record({
       id: idArb,

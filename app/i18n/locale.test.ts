@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { isLocale, resolveLinks, resolveText } from "./locale"
+import { isLocale, resolveLinks, resolveRichText, resolveText } from "./locale"
 
 describe("resolveText", () => {
   it("returns the wanted language when it has a value", () => {
@@ -22,6 +22,25 @@ describe("resolveText", () => {
       .toEqual({ text: "", untranslated: false })
     expect(resolveText({ ja: "", en: "" }, "en"))
       .toEqual({ text: "", untranslated: false })
+  })
+})
+
+describe("resolveRichText", () => {
+  const ja = [[{ text: "日本語" }]]
+  const en = [[{ text: "English" }]]
+
+  it("returns the wanted language when it has a value", () => {
+    expect(resolveRichText({ ja, en }, "ja")).toEqual({ text: ja, untranslated: false })
+    expect(resolveRichText({ ja, en }, "en")).toEqual({ text: en, untranslated: false })
+  })
+
+  it("falls back to the other language and says so", () => {
+    expect(resolveRichText({ ja, en: [] }, "en")).toEqual({ text: ja, untranslated: true })
+  })
+
+  it("reads lines that carry no text as nothing to fall back from", () => {
+    expect(resolveRichText({ ja: [[]], en: [[{ text: "" }]] }, "ja"))
+      .toEqual({ text: [], untranslated: false })
   })
 })
 

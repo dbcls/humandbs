@@ -62,7 +62,7 @@ describe("buildResearchContent", () => {
   it("turns a field v1 never filled in into an empty value rather than unknown", () => {
     const content = build(version())
     expect(content.title).toEqual({ state: "value", value: { ja: "", en: "" } })
-    expect(content.releaseNote).toEqual({ state: "value", value: { ja: "", en: "" } })
+    expect(content.releaseNote).toEqual({ state: "value", value: { ja: [], en: [] } })
     expect(value(content.summary.url)).toEqual({ ja: [], en: [] })
   })
 
@@ -70,7 +70,17 @@ describe("buildResearchContent", () => {
     const content = build(version({
       summary: { aims: { ja: { text: "目的", rawHtml: "<b>目的</b>" } } },
     }))
-    expect(value(content.summary.aims)).toEqual({ ja: "目的", en: "" })
+    expect(value(content.summary.aims)).toEqual({ ja: [[{ text: "目的" }]], en: [] })
+  })
+
+  it("reads the markdown of a prose field into lines and links", () => {
+    const content = build(version({
+      summary: { methods: { ja: { text: "詳細は [NBDC policy](/nbdc-policy) を参照\n2 行目" } } },
+    }))
+    expect(value(content.summary.methods).ja).toEqual([
+      [{ text: "詳細は " }, { text: "NBDC policy", href: "/nbdc-policy" }, { text: " を参照" }],
+      [{ text: "2 行目" }],
+    ])
   })
 
   it("keeps a publication title single-valued, preferring the English side", () => {
@@ -137,8 +147,8 @@ describe("buildResearchContent", () => {
       datasetIdByLabel: new Map(),
     })
     const withoutIt = build(version())
-    expect(value(withIt.summaryShort.methods).ja).toBe("配列決定")
-    expect(value(withoutIt.summaryShort.methods).ja).toBe("")
+    expect(value(withIt.summaryShort.methods).ja).toEqual([[{ text: "配列決定" }]])
+    expect(value(withoutIt.summaryShort.methods).ja).toEqual([])
   })
 })
 
@@ -162,7 +172,13 @@ describe("buildDatasetContent", () => {
     })
     expect(first(content.experiments).values).toEqual([{
       keyId: "key-platform",
-      slot: { state: "value", value: { kind: "text", text: { ja: "Illumina", en: "Illumina" } } },
+      slot: {
+        state: "value",
+        value: {
+          kind: "text",
+          text: { ja: [[{ text: "Illumina" }]], en: [[{ text: "Illumina" }]] },
+        },
+      },
     }])
   })
 

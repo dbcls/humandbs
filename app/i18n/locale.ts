@@ -19,7 +19,14 @@
  * they resolve through the same function.
  */
 
-import type { Link, LocalizedLinks, TranslatedText } from "~/content/types"
+import { isEmptyRichText } from "~/content/richtext"
+import type {
+  Link,
+  LocalizedLinks,
+  RichText,
+  TranslatedRichText,
+  TranslatedText,
+} from "~/content/types"
 
 export const LOCALES = ["ja", "en"] as const
 
@@ -44,6 +51,26 @@ export function resolveText(text: TranslatedText, locale: Locale): ResolvedText 
   const other = locale === "ja" ? text.en : text.ja
   return other === ""
     ? { text: "", untranslated: false }
+    : { text: other, untranslated: true }
+}
+
+export interface ResolvedRichText {
+  text: RichText
+  untranslated: boolean
+}
+
+/**
+ * The same rule for prose, with "empty" meaning no line carries any text. A
+ * tree of blank lines reads as nothing having been written, exactly as an empty
+ * string does.
+ */
+export function resolveRichText(text: TranslatedRichText, locale: Locale): ResolvedRichText {
+  const wanted = text[locale]
+  if (!isEmptyRichText(wanted)) return { text: wanted, untranslated: false }
+
+  const other = locale === "ja" ? text.en : text.ja
+  return isEmptyRichText(other)
+    ? { text: [], untranslated: false }
     : { text: other, untranslated: true }
 }
 

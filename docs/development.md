@@ -103,6 +103,8 @@ docker compose exec app npm run db:load-dev-data
 
 - 共有された experiment ブロックを dataset ごとに割ること
 - `rawHtml` にしか残っていない markup の回収
+- 自由文に残ったリンクを型付きの値へ移すことと、上付き・下付きを Unicode に置き換えること
+  (文の markdown は木にするが、畳み方の判断はしない)
 - catalog のキーへの語彙型・数値型の割り当て (公開区分だけ語彙にしてある)
 - dataset のファイル選択の初期値
 - サイトコンテンツ (document / news / navigation) の取り込み

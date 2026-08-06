@@ -1,4 +1,10 @@
-import type { DatasetContent, ResearchContent, Slot, TranslatedText } from "./types"
+import type {
+  DatasetContent,
+  ResearchContent,
+  Slot,
+  TranslatedRichText,
+  TranslatedText,
+} from "./types"
 
 /**
  * The starting point for a new research or dataset.
@@ -13,17 +19,17 @@ export function emptyResearchContent(): ResearchContent {
   return {
     title: emptyTranslated(),
     summary: {
-      aims: emptyTranslated(),
-      methods: emptyTranslated(),
-      targets: emptyTranslated(),
+      aims: emptyRich(),
+      methods: emptyRich(),
+      targets: emptyRich(),
       url: { state: "value", value: { ja: [], en: [] } },
     },
     summaryShort: {
-      methods: emptyTranslated(),
-      targets: emptyTranslated(),
-      typeOfData: emptyTranslated(),
+      methods: emptyRich(),
+      targets: emptyRich(),
+      typeOfData: emptyRich(),
     },
-    releaseNote: emptyTranslated(),
+    releaseNote: emptyRich(),
     dataProviders: [],
     researchProjects: [],
     grants: [],
@@ -43,4 +49,9 @@ export function emptyDatasetContent(): DatasetContent {
 
 function emptyTranslated(): Slot<TranslatedText> {
   return { state: "value", value: { ja: "", en: "" } }
+}
+
+/** No lines at all, which is what "nobody has written anything" looks like. */
+function emptyRich(): Slot<TranslatedRichText> {
+  return { state: "value", value: { ja: [], en: [] } }
 }

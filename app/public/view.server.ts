@@ -1,12 +1,13 @@
 /**
  * Preparing the public projection for a screen.
  *
- * The projection only ever drops (`app/content/public.ts`), which leaves three
+ * The projection only ever drops (`app/content/public.ts`), which leaves two
  * things for the page to do, and they are done here rather than in components:
- * pick a language for each value, render the markdown of the ones that carry
- * it, and resolve catalog labels and catalog order. All three add something the
- * content does not hold, which is why they are outside the projection — and all
- * three need the server, which is why they are not in a component.
+ * pick a language for each value, and resolve catalog labels and catalog order.
+ * Both add something the content does not hold, which is why they are outside
+ * the projection — and both need the catalog, which is why they are not in a
+ * component. Prose keeps its tree all the way to the page: there is no markup
+ * to parse and nothing to sanitise, so nothing has to happen to it here.
  *
  * Whether the page shows the untranslated notice is decided here for the same
  * reason: it is the disjunction over exactly the fields the page renders, and
@@ -22,17 +23,17 @@ import type {
   Link,
   LocalizedLinks,
   ResearchContent,
+  RichText,
   Slot,
+  TranslatedRichText,
   TranslatedText,
   ValueSlot,
 } from "~/content/types"
-import { resolveLinks, resolveText, type Locale } from "~/i18n/locale"
-
-import { renderMarkdown } from "./markdown.server"
+import { resolveLinks, resolveRichText, resolveText, type Locale } from "~/i18n/locale"
 
 export type FieldView
   = | { state: "not-applicable" }
-    | { state: "markdown", html: string, untranslated: boolean }
+    | { state: "rich", text: RichText, untranslated: boolean }
     | { state: "plain", text: string, untranslated: boolean }
 
 export interface CatalogKeyView {
@@ -97,19 +98,26 @@ function fallbackTracker(): Fallbacks {
 
 const EMPTY: FieldView = { state: "plain", text: "", untranslated: false }
 
-function translated(
-  slot: Slot<TranslatedText>,
-  locale: Locale,
-  fallbacks: Fallbacks,
-  kind: "markdown" | "plain",
-): FieldView {
+function translated(slot: Slot<TranslatedText>, locale: Locale, fallbacks: Fallbacks): FieldView {
   if (slot.state === "not-applicable") return { state: "not-applicable" }
   if (slot.state !== "value") return EMPTY
   const resolved = resolveText(slot.value, locale)
-  const untranslated = fallbacks.note(resolved.untranslated)
-  return kind === "markdown"
-    ? { state: "markdown", html: renderMarkdown(resolved.text), untranslated }
-    : { state: "plain", text: resolved.text, untranslated }
+  return {
+    state: "plain",
+    text: resolved.text,
+    untranslated: fallbacks.note(resolved.untranslated),
+  }
+}
+
+function prose(slot: Slot<TranslatedRichText>, locale: Locale, fallbacks: Fallbacks): FieldView {
+  if (slot.state === "not-applicable") return { state: "not-applicable" }
+  if (slot.state !== "value") return EMPTY
+  const resolved = resolveRichText(slot.value, locale)
+  return {
+    state: "rich",
+    text: resolved.text,
+    untranslated: fallbacks.note(resolved.untranslated),
+  }
 }
 
 function linksOf(slot: Slot<LocalizedLinks>, locale: Locale): Link[] {
@@ -128,10 +136,10 @@ function valueField(
 ): FieldView {
   switch (value.kind) {
     case "text": {
-      const resolved = resolveText(value.text, locale)
+      const resolved = resolveRichText(value.text, locale)
       return {
-        state: "markdown",
-        html: renderMarkdown(resolved.text),
+        state: "rich",
+        text: resolved.text,
         untranslated: fallbacks.note(resolved.untranslated),
       }
     }
@@ -332,28 +340,28 @@ export function researchView(
     releaseDate: input.releaseDate,
     isLatest: input.versionNumber === input.latestVersionNumber,
     latestVersionNumber: input.latestVersionNumber,
-    title: translated(content.title, locale, fallbacks, "plain"),
+    title: translated(content.title, locale, fallbacks),
     summary: {
-      aims: translated(content.summary.aims, locale, fallbacks, "markdown"),
-      methods: translated(content.summary.methods, locale, fallbacks, "markdown"),
-      targets: translated(content.summary.targets, locale, fallbacks, "markdown"),
+      aims: prose(content.summary.aims, locale, fallbacks),
+      methods: prose(content.summary.methods, locale, fallbacks),
+      targets: prose(content.summary.targets, locale, fallbacks),
       links: linksOf(content.summary.url, locale),
     },
     datasets: input.datasets.map((row) => datasetRowView(row, locale, catalog, fallbacks)),
     dataProviders: content.dataProviders.map((provider) => ({
       id: provider.id,
-      representative: translated(provider.name, locale, fallbacks, "plain"),
-      organization: translated(provider.organization.name, locale, fallbacks, "plain"),
+      representative: translated(provider.name, locale, fallbacks),
+      organization: translated(provider.organization.name, locale, fallbacks),
     })),
     researchProjects: content.researchProjects.map((project) => ({
       id: project.id,
-      name: translated(project.name, locale, fallbacks, "plain"),
+      name: translated(project.name, locale, fallbacks),
       links: linksOf(project.url, locale),
     })),
     grants: content.grants.map((grant) => ({
       id: grant.id,
-      title: translated(grant.title, locale, fallbacks, "plain"),
-      agency: translated(grant.agency.name, locale, fallbacks, "plain"),
+      title: translated(grant.title, locale, fallbacks),
+      agency: translated(grant.agency.name, locale, fallbacks),
       grantIds: grant.grantIds,
     })),
     relatedPublications: content.relatedPublications.map((publication) => ({
@@ -398,7 +406,7 @@ export function releaseListView(input: ReleaseListInput, locale: Locale): Releas
     number: version.number,
     label: `${input.humLabel}-v${version.number}`,
     releaseDate: version.releaseDate,
-    releaseNote: translated(version.content.releaseNote, locale, fallbacks, "markdown"),
+    releaseNote: prose(version.content.releaseNote, locale, fallbacks),
     addedDatasetLabels: version.addedDatasetIds
       .map((id) => input.datasetLabelById.get(id))
       .filter((label) => label !== undefined),

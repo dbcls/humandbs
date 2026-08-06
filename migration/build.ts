@@ -17,8 +17,10 @@
  *   value wins, and where both do they agree in 94% or more of the data.
  * - **References become identities.** A dataset is addressed by its uuid, not
  *   by the `JGAD…` string, which is a label that can be corrected.
+ * - **Prose stops being markdown** (`richtext.ts`).
  */
 
+import { isEmptyRichText } from "~/content/richtext"
 import type {
   DataProvider,
   DatasetContent,
@@ -30,6 +32,7 @@ import type {
   ResearchContent,
   ResearchProject,
   Slot,
+  TranslatedRichText,
   TranslatedText,
   ValueSlot,
 } from "~/content/types"
@@ -44,8 +47,18 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
+import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
-function richText(value: EsBilingualRich | null | undefined): TranslatedText {
+/** v1's extracted text is markdown; the HTML it came from is left behind. */
+function prose(value: EsBilingualRich | null | undefined): TranslatedRichText {
+  return {
+    ja: richTextFromMarkdown(value?.ja?.text ?? ""),
+    en: richTextFromMarkdown(value?.en?.text ?? ""),
+  }
+}
+
+/** A v1 rich field that v2 holds as a value, which is its text without markup. */
+function valueText(value: EsBilingualRich | null | undefined): TranslatedText {
   return { ja: value?.ja?.text ?? "", en: value?.en?.text ?? "" }
 }
 
@@ -101,10 +114,10 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
-    name: held(richText(p.name)),
+    name: held(valueText(p.name)),
     organization: {
-      name: held(richText(p.organization?.name)),
-      address: held(richText(p.organization?.address)),
+      name: held(valueText(p.organization?.name)),
+      address: held(valueText(p.organization?.address)),
     },
     orcid: single(p.orcid),
     email: single(p.email),
@@ -112,7 +125,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
 
   const researchProjects: ResearchProject[] = (rv.researchProject ?? []).map((p, i) => ({
     id: `research-project-${i + 1}`,
-    name: held(richText(p.name)),
+    name: held(valueText(p.name)),
     url: localizedLinks([p.url?.ja], [p.url?.en], `research-project-${i + 1}-url`),
   }))
 
@@ -133,17 +146,17 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
   return {
     title: held(plainText(rv.title)),
     summary: {
-      aims: held(richText(rv.summary?.aims)),
-      methods: held(richText(rv.summary?.methods)),
-      targets: held(richText(rv.summary?.targets)),
+      aims: held(prose(rv.summary?.aims)),
+      methods: held(prose(rv.summary?.methods)),
+      targets: held(prose(rv.summary?.targets)),
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
     summaryShort: {
-      methods: held(richText(summaryShort?.methods)),
-      targets: held(richText(summaryShort?.targets)),
-      typeOfData: held(richText(summaryShort?.typeOfData)),
+      methods: held(prose(summaryShort?.methods)),
+      targets: held(prose(summaryShort?.targets)),
+      typeOfData: held(prose(summaryShort?.typeOfData)),
     },
-    releaseNote: held(richText(rv.releaseNote)),
+    releaseNote: held(prose(rv.releaseNote)),
     dataProviders,
     researchProjects,
     grants,
@@ -193,7 +206,13 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   if (typeOfDataKeyId && (doc.typeOfData?.ja || doc.typeOfData?.en)) {
     values.push({
       keyId: typeOfDataKeyId,
-      slot: held({ kind: "text", text: plainText(doc.typeOfData) }),
+      slot: held({
+        kind: "text",
+        text: {
+          ja: richTextFromPlain(doc.typeOfData.ja ?? ""),
+          en: richTextFromPlain(doc.typeOfData.en ?? ""),
+        },
+      }),
     })
   }
 
@@ -205,8 +224,8 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
       if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
       const keyId = keyIdByCode.get(code)
       if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
-      const text = richText(value)
-      if (!text.ja && !text.en) return []
+      const text = prose(value)
+      if (isEmptyRichText(text.ja) && isEmptyRichText(text.en)) return []
       return [{ keyId, slot: held({ kind: "text" as const, text }) }]
     }),
   }))

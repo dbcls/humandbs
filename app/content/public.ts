@@ -34,6 +34,7 @@ import type {
   LocalizedLinks,
   ResearchContent,
   Slot,
+  TranslatedRichText,
   TranslatedText,
   ValueSlot,
 } from "./types"
@@ -118,6 +119,10 @@ function text(slot: Slot<TranslatedText>, options: PublicOptions): Slot<Translat
   return settle(slot, { ja: "", en: "" }, options)
 }
 
+function rich(slot: Slot<TranslatedRichText>, options: PublicOptions): Slot<TranslatedRichText> {
+  return settle(slot, { ja: [], en: [] }, options)
+}
+
 function single(slot: Slot<string>, options: PublicOptions): Slot<string> {
   return settle(slot, "", options)
 }
@@ -137,17 +142,17 @@ export function publicResearchContent(
   return {
     title: text(content.title, options),
     summary: {
-      aims: text(content.summary.aims, options),
-      methods: text(content.summary.methods, options),
-      targets: text(content.summary.targets, options),
+      aims: rich(content.summary.aims, options),
+      methods: rich(content.summary.methods, options),
+      targets: rich(content.summary.targets, options),
       url: links(content.summary.url, options),
     },
     summaryShort: {
-      methods: text(content.summaryShort.methods, options),
-      targets: text(content.summaryShort.targets, options),
-      typeOfData: text(content.summaryShort.typeOfData, options),
+      methods: rich(content.summaryShort.methods, options),
+      targets: rich(content.summaryShort.targets, options),
+      typeOfData: rich(content.summaryShort.typeOfData, options),
     },
-    releaseNote: text(content.releaseNote, options),
+    releaseNote: rich(content.releaseNote, options),
     dataProviders: content.dataProviders.map((provider) => ({
       id: provider.id,
       name: text(provider.name, options),

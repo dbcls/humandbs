@@ -20,6 +20,42 @@ export interface TranslatedText {
 }
 
 /**
+ * A run of text inside a line, and the whole of what may decorate one: a
+ * destination. Nothing else is representable — no emphasis, no code, no
+ * superscript, no raw HTML.
+ *
+ * `text` never contains a newline. A line break is a line, which is the only
+ * thing the structure above a span says.
+ */
+export interface Span {
+  text: string
+  /** Present when the run is a link. */
+  href?: string
+}
+
+export type Line = Span[]
+
+/**
+ * What a sentence is: lines of spans, and no other structure. An empty line
+ * separates paragraphs; the empty rich text is `[]`.
+ *
+ * Prose is held this way rather than as markdown so that the set of things a
+ * curator may write is the type itself. A markdown string says nothing about
+ * its own contents until it is parsed, which puts the allowed set in two places
+ * — the check at save time and the sanitiser at render time — and lets raw HTML
+ * arrive on the portal's own origin. Input is still written as markdown and
+ * parsed into this on the way in; output is this walked into plain text, into
+ * markdown, or straight into the page.
+ */
+export type RichText = Line[]
+
+/** A translated pair of prose. Empty on one side means untranslated, as above. */
+export interface TranslatedRichText {
+  ja: RichText
+  en: RichText
+}
+
+/**
  * A value whose two languages point at different resources. In the real data
  * only URLs do this: a lab's Japanese page and its English page are separate
  * pages, and often only one exists.
@@ -56,7 +92,7 @@ export type Slot<T>
  * slot whose kind disagrees with its key is rejected at the write path.
  */
 export type ContentValue
-  = | { kind: "text", text: TranslatedText }
+  = | { kind: "text", text: TranslatedRichText }
     | { kind: "single", value: string }
     | { kind: "accession", value: string }
     | { kind: "vocabulary", termIds: string[] }
@@ -80,17 +116,17 @@ export interface ValueSlot {
 export interface ResearchContent {
   title: Slot<TranslatedText>
   summary: {
-    aims: Slot<TranslatedText>
-    methods: Slot<TranslatedText>
-    targets: Slot<TranslatedText>
+    aims: Slot<TranslatedRichText>
+    methods: Slot<TranslatedRichText>
+    targets: Slot<TranslatedRichText>
     url: Slot<LocalizedLinks>
   }
   summaryShort: {
-    methods: Slot<TranslatedText>
-    targets: Slot<TranslatedText>
-    typeOfData: Slot<TranslatedText>
+    methods: Slot<TranslatedRichText>
+    targets: Slot<TranslatedRichText>
+    typeOfData: Slot<TranslatedRichText>
   }
-  releaseNote: Slot<TranslatedText>
+  releaseNote: Slot<TranslatedRichText>
   dataProviders: DataProvider[]
   researchProjects: ResearchProject[]
   grants: Grant[]

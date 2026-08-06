@@ -112,17 +112,24 @@ describe("the untranslated notice", () => {
 })
 
 describe("what a research page carries", () => {
-  it("renders the summary as markdown and the title as plain text", () => {
+  it("hands the summary over as lines and the title as one string", () => {
     const content = research({
-      title: { state: "value", value: { ja: "", en: "**not bold**" } },
+      title: { state: "value", value: { ja: "", en: "A * B" } },
       summary: {
         ...emptyResearchContent().summary,
-        aims: { state: "value", value: { ja: "", en: "**bold**" } },
+        aims: {
+          state: "value",
+          value: { ja: [], en: [[{ text: "First" }], [{ text: "Second" }]] },
+        },
       },
     })
     const view = viewOf(content)
-    expect(view.title).toEqual({ state: "plain", text: "**not bold**", untranslated: false })
-    expect(view.summary.aims.state).toBe("markdown")
+    expect(view.title).toEqual({ state: "plain", text: "A * B", untranslated: false })
+    expect(view.summary.aims).toEqual({
+      state: "rich",
+      text: [[{ text: "First" }], [{ text: "Second" }]],
+      untranslated: false,
+    })
   })
 
   it("takes the links of the language asked for, without falling back", () => {
@@ -195,11 +202,17 @@ describe("what a dataset page carries", () => {
       ...emptyDatasetContent(),
       values: [
         { keyId: "k-access", slot: { state: "value", value: { kind: "vocabulary", termIds: ["t-open"] } } },
-        { keyId: "k-type", slot: { state: "value", value: { kind: "text", text: { ja: "SNP", en: "SNP" } } } },
+        {
+          keyId: "k-type",
+          slot: {
+            state: "value",
+            value: { kind: "text", text: { ja: [[{ text: "SNP" }]], en: [[{ text: "SNP" }]] } },
+          },
+        },
       ],
     })
     expect(view.accessType).toEqual({ code: "unrestricted-access", label: "非制限公開" })
-    expect(view.typeOfData?.state).toBe("markdown")
+    expect(view.typeOfData).toEqual({ state: "rich", text: [[{ text: "SNP" }]], untranslated: false })
   })
 
   it("orders the values of an experiment by the catalog, not by the content", () => {

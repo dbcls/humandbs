@@ -1,5 +1,7 @@
-import type { ReactNode } from "react"
+import { Fragment, type ReactNode } from "react"
 
+import { linkHref } from "~/content/richtext"
+import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { FieldView, TermView } from "~/public/view.server"
@@ -66,6 +68,31 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 /**
+ * A run of prose. A span is a link only if its destination is one the page may
+ * follow — everything else keeps its text and loses the link, so a `javascript:`
+ * URL written into a value cannot become an anchor on the portal's own origin.
+ * This is the last of the two checks; the save path is the other.
+ */
+function SpanText({ span }: { span: Span }) {
+  const href = span.href === undefined ? null : linkHref(span.href)
+  return href === null ? <>{span.text}</> : <a href={href}>{span.text}</a>
+}
+
+/** Lines of spans, and nothing else — the whole of what prose can hold. */
+function Prose({ text }: { text: RichText }) {
+  return (
+    <>
+      {text.map((line, lineIndex) => (
+        <Fragment key={lineIndex}>
+          {lineIndex > 0 && <br />}
+          {line.map((span, spanIndex) => <SpanText key={spanIndex} span={span} />)}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
+/**
  * One resolved value. `not-applicable` is settled information, so it is shown
  * as a value rather than hidden — an empty value and "there is no such value"
  * are different answers, and only one of them means somebody still has to act.
@@ -74,10 +101,8 @@ export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
   if (field.state === "not-applicable") {
     return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
   }
-  if (field.state === "markdown") {
-    return field.html === ""
-      ? null
-      : <div className="markdown" dangerouslySetInnerHTML={{ __html: field.html }} />
+  if (field.state === "rich") {
+    return field.text.length === 0 ? null : <Prose text={field.text} />
   }
   return field.text === "" ? null : <>{field.text}</>
 }

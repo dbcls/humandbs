@@ -1,9 +1,14 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { localizedLinksArb, translatedTextArb } from "~/content/arbitraries/content"
+import {
+  localizedLinksArb,
+  translatedRichTextArb,
+  translatedTextArb,
+} from "~/content/arbitraries/content"
+import { isEmptyRichText } from "~/content/richtext"
 
-import { LOCALES, resolveLinks, resolveText } from "./locale"
+import { LOCALES, resolveLinks, resolveRichText, resolveText } from "./locale"
 
 const localeArb = fc.constantFrom(...LOCALES)
 
@@ -26,6 +31,23 @@ describe("resolveText", () => {
     fc.assert(fc.property(translatedTextArb, localeArb, (text, locale) => {
       const resolved = resolveText(text, locale)
       if (text.ja !== "" || text.en !== "") expect(resolved.text).not.toBe("")
+    }))
+  })
+})
+
+describe("resolveRichText", () => {
+  it("reports untranslated exactly when the wanted language is empty and the other is not", () => {
+    fc.assert(fc.property(translatedRichTextArb, localeArb, (text, locale) => {
+      const other = locale === "ja" ? text.en : text.ja
+      const expected = isEmptyRichText(text[locale]) && !isEmptyRichText(other)
+      expect(resolveRichText(text, locale).untranslated).toBe(expected)
+    }))
+  })
+
+  it("returns one of the two languages it was given, never a mixture", () => {
+    fc.assert(fc.property(translatedRichTextArb, localeArb, (text, locale) => {
+      const resolved = resolveRichText(text, locale).text
+      expect(resolved === text.ja || resolved === text.en || resolved.length === 0).toBe(true)
     }))
   })
 })
