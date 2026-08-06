@@ -9,16 +9,26 @@
 
 | URL | 中身 |
 |---|---|
+| `/` | トップ |
 | `/research/{humId}` | 最新公開版 |
 | `/research/{humId}/v{n}` | 版指定 |
 | `/research/{humId}/versions` | リリース情報 (公開版の一覧) |
 | `/dataset/{datasetId}` | dataset |
+| `/data-submission` `/data-use` `/contact-us` | 提供・利用・問い合わせの入口 |
+| `/news` `/news/{id}` | お知らせの一覧と個別 |
+| `/{slug}` | document。`guidelines/data-sharing-guidelines` のように `/` を含む |
 | `/{humId}` `/{humId}-v{n}` `/{humId}-latest` `/{humId}-v{n}-release` `/{humId}-latest-release` | 上のいずれかへの redirect |
 | `/en/…` | 上のすべての英語版 |
 
-**到達性を約束するのは research のページ (最新公開版と版指定) と裸の hum ID だけ。** DDBJ Search が
-`/{humId}` の形でリンクを組んでいるので、この形は恒久的に応答し続ける必要がある。ファイルの URL は
-約束の対象にしない ([data-model.md](data-model.md) の「ファイル」)。
+**到達性を約束するのは research のページ (最新公開版と版指定)、裸の hum ID、そして document の slug。**
+DDBJ Search が `/{humId}` の形でリンクを組み、外部の submission metadata がガイドラインの slug を焼き
+込んでいるので、どちらも恒久的に応答し続ける必要がある。ファイルの URL は約束の対象にしない
+([data-model.md](data-model.md) の「ファイル」)。
+
+**document は catch-all が受け、hum ラベルと旧アドレスの解決を先に済ませる。** 順序がそのまま優先順位に
+なるので、document が research のアドレスを横取りすることが起こらない。route が持つアドレスの一覧は
+`app/public/urls.ts` の `SCREEN_PATHS` にあり、**この一覧にある slug の document は作れない** — 作っても
+route の後ろに隠れて届かない。
 
 **redirect は server 側で返す。** 現行は裸の hum ID を client side の redirect で救っているため、
 JS を実行しないクライアントに届いていない。
@@ -35,6 +45,9 @@ JS を実行しないクライアントに届いていない。
 **未翻訳のフォールバックはページ単位で 1 度だけ告げる。** 片言語しか埋まっていない値は、もう一方の
 言語の値を出したうえでページ上部に注記を置く。欄ごとに印を付けない — 言語が丸ごと入っていないページでは
 すべての欄が印だらけになる。CAU は content ではないので (同節) この注記の対象から外れる。
+
+**これは research 系の規則で、サイトコンテンツには当てはまらない。** document と news は locale ごとに
+公開状態を持つので、公開されていない言語は**もう一方に倒れず 404 になる** (「サイトコンテンツ」)。
 
 ## ページの中身
 
@@ -75,11 +88,57 @@ content にも JSON API にも残るが、公開ページには描かない。**
 日付は公開表現が 1 つに解決したものを出す — ポータルが発行した id は content の値、外部 accession は
 アーカイブのキャッシュ ([data-model.md](data-model.md) の「日付」)。
 
+## サイトコンテンツ
+
+ガイドライン・ポリシー・FAQ・お知らせと、それらを束ねる画面。**research 系とは別の規則で動く** —
+版も pin も公開表現も無く、公開検索の対象にもならない ([data-model.md](data-model.md) の
+「サイトコンテンツ」)。
+
+### 画面と document の境い目
+
+**境界は「本文があるか」で引く。** 本文を持つものは document で、admin が直せる。持たないものは画面で、
+コードが持つ。
+
+| | 何が持つか |
+|---|---|
+| `/data-submission` `/data-use` `/contact-us` | route。ボタンと短い文だけで、本文が無い |
+| `/` (トップ) | route が枠を持ち、`home` document が本文を差し込む |
+| `/news` `/news/{id}` | route が枠を持ち、`news` が中身を持つ |
+| `/{slug}` | document |
+
+ここを混ぜたことが現行の markdown に拡張記法とレイアウト用の生 HTML を持ち込んだ原因になっている。
+**画面の部品は component で持ち、本文の書式に持ち込まない** (`app/components/site.tsx`)。
+
+`guidelines` (改定履歴のリンク集) や `dac` (審査委員会の回ごとのリンク) のように、項目が増えていくが
+本文を持つものは document のまま残す — 増えるかどうかは境界ではない。
+
+### ガイドラインの過去版
+
+**過去版は独立した document で、slug は `{slug}/version/{n}`。** 版なしの slug がつねに最新を指し、
+過去版は `latestOfId` で親を指す。版なし slug は外部の submission metadata に焼き込まれているので、
+**恒久的に 200 を返し続ける必要がある。**
+
+### グローバルナビとフッタ
+
+**`app/public/navigation.ts` の定数**で、DB には無い。admin が編集する UI を持たないので、DB に置く
+理由が無い。ラベルは document のタイトルではなく手書きの短縮名なので、性質は UI 文言の辞書と同じになる。
+
+**定数が指す先が実在することは test で守る** — 型では守れないため。route が持つアドレスか、移行が作る
+document の slug のどちらかであることを確かめる。
+
+### alert
+
+全ページ共通のバナー。**on / off だけで期間を持たない。** ja/en の対を 1 つ持ち、片言語しか無ければ
+もう一方が出る。
+
 ## 何を根拠に「公開されている」と言うか
 
-**対象の集合は `search_doc` からしか引かない。** ラベルの解決 (pin 台帳) と公開判定 (`search_doc`) は
-別の手順で、この順に行う。本文は `content_snapshot` と `dataset_content` から取るが、この 2 つは公開時に
-しか行が生まれないので、draft と同じ DB に居ても公開ページには出てこない。
+**research 系は `search_doc` からしか集合を引かない。** ラベルの解決 (pin 台帳) と公開判定
+(`search_doc`) は別の手順で、この順に行う。本文は `content_snapshot` と `dataset_content` から取るが、
+この 2 つは公開時にしか行が生まれないので、draft と同じ DB に居ても公開ページには出てこない。
+
+**サイトコンテンツは公開状態の列そのものが根拠になる。** 版も pin も検索行も持たないので、
+`document_content` / `news_content` の `published` が立っている行が公開されているものになる。
 
 **secondary のラベルで辿り着いたら primary のアドレスへ redirect する。** 旧 dataset id と typo された
 hum ラベルは記事の地の文・申請書・URL の fragment から参照されていて書き換えられない
@@ -90,20 +149,35 @@ hum ラベルは記事の地の文・申請書・URL の fragment から参照�
 
 ## 本文の書式
 
-本文性のある値 (研究概要・リリースノート・記述系のキー) は**行と span の木**で持つ
+**2 系統ある。境界は research 系かサイトコンテンツかで、混ざらない。**
+
+**research 系の本文性のある値** (研究概要・リリースノート・記述系のキー) は**行と span の木**で持つ
 ([data-model.md](data-model.md) の「値と文」)。**画面はその木をそのまま描く** — 行の切れ目が改行に
 なり、span は文字かリンク 1 つになる。**HTML 文字列を作る経路が無い**ので、値に書かれた文字が markup に
 なることはなく、sanitize する対象も無い。
 
+**サイトコンテンツ** は markdown 文字列で、CommonMark と GFM の表を許す。見出し・表・番号付きリストが
+文書の構造そのものだからで、`app/public/markdown.server.ts` が server 側で HTML にする。
+**生 HTML は parse しない** — `allowDangerousHtml` を渡さないので HTML の節点が木に入らず、許可リストの
+sanitize を持たない。したがって**出せる要素の集合は markdown が表せる集合と同じ**になり、これは PBT で
+守る。
+
+**refuse するとは落とすこと。** 行の中のタグはタグだけ落ちて文字が残り、HTML のブロックは中身ごと落ちる。
+描画としてはこれが正しいが、書いた人が気づく場所ではないので、**保存の側が生 HTML を弾く**。
+
 **リンクの行き先は描く時点で検査する。** `http` / `https` / `mailto` とサイト内の絶対パス以外は、文字
 だけを出してリンクにしない。木は生 HTML の経路を塞ぐが、リンクの URL に `javascript:` と書く経路までは
-塞がないため。保存時にも弾くので検査は 2 箇所にあり、ここが最後の砦になる。
+塞がないため。保存時にも弾くので検査は 2 箇所にあり、ここが最後の砦になる。**サイトコンテンツにも同じ
+検査がかかる** — markdown のリンクと画像の行き先が対象になる。
 
 ## 意図的にやっていないこと
 
 | やらないこと | 理由 |
 |---|---|
 | 一覧 (`/research`, `/dataset`) | 公開検索そのもの。検索の層で作る |
+| 目次 (TOC) と document の版一覧 | 現行の 62 document すべてで表示が切られていて、誰も使っていない |
+| news の絞り込み | 公開検索の対象ではない。一覧は日付順とページ送りだけ |
 | ページごとの `og:` と JSON-LD | 機械可読な公開面はまだ決めていない |
 | cookie / `Accept-Language` による言語の切り替え | 言語は URL が決める |
 | 欄ごとの未翻訳の印 | ページ単位で 1 度だけ告げる |
+| サイトコンテンツの未翻訳フォールバック | locale ごとに公開状態を持つので、無い言語は 404 |

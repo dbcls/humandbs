@@ -12,6 +12,7 @@ import { SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { activeAlerts } from "~/public/site.server"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/root"
@@ -22,15 +23,21 @@ import "./app.css"
  * The language is read from the address rather than from a header or a cookie,
  * so a page has one language whoever asks for it and a link can name the
  * language it points at.
+ *
+ * The banner is loaded here because it belongs to every page. It is one small
+ * read, and asking each loader for it instead would mean a page that forgot it
+ * silently stops announcing.
  */
-export function loader({ request }: Route.LoaderArgs) {
-  return { locale: readLocale(new URL(request.url).pathname).locale }
+export async function loader({ request }: Route.LoaderArgs) {
+  const locale = readLocale(new URL(request.url).pathname).locale
+  return { locale, alerts: await activeAlerts(locale) }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   // The layout also wraps the error boundary, which renders when the loader
   // above did not run.
-  const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? DEFAULT_LOCALE
+  const data = useRouteLoaderData<typeof loader>("root")
+  const locale = data?.locale ?? DEFAULT_LOCALE
 
   return (
     <html lang={locale}>
@@ -41,7 +48,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="flex min-h-screen flex-col">
-        <SiteHeader locale={locale} />
+        <SiteHeader locale={locale} alerts={data?.alerts ?? []} />
         <div className="flex-1">{children}</div>
         <SiteFooter locale={locale} />
         <ScrollRestoration />

@@ -8,12 +8,11 @@ import {
   pgTable,
   primaryKey,
   text,
-  timestamp,
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core"
 
-import type { AlertContent, ArticleContent, NavigationLabel } from "~/content/types"
+import type { AlertContent, ArticleContent } from "~/content/types"
 
 import { createdAt, primaryId, updatedAt } from "./common"
 
@@ -88,31 +87,18 @@ export const newsContent = pgTable("news_content", {
 ])
 
 /**
- * A navigation entry. Points either at a document or at a raw URL. Document
- * links are by identity, so a pointer survives a slug being rewritten but does
- * **not** follow a guideline being superseded — that is what moving
- * `document.latestOfId` is for.
+ * The site-wide banner. On or off, with no schedule: the two banners the
+ * current site carries both leave their window empty, and a window would make
+ * "is this shown" a question with two answers to combine.
+ *
+ * Navigation is not here. It is a constant in `app/public/navigation.ts`,
+ * because nothing edits it at runtime — the labels are hand-written short forms
+ * rather than document titles, which makes them interface text.
  */
-export const navigationItem = pgTable("navigation_item", {
-  id: primaryId(),
-  parentId: uuid().references((): AnyPgColumn => navigationItem.id, { onDelete: "cascade" }),
-  position: integer().notNull().default(0),
-  label: jsonb().$type<NavigationLabel>().notNull(),
-  documentId: uuid().references(() => document.id, { onDelete: "set null" }),
-  url: text(),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-}, (t) => [
-  index().on(t.parentId, t.position),
-])
-
-/** The site-wide banner. */
 export const alert = pgTable("alert", {
   id: primaryId(),
   content: jsonb().$type<AlertContent>().notNull(),
   active: boolean().notNull().default(false),
-  startsAt: timestamp({ withTimezone: true }),
-  endsAt: timestamp({ withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })

@@ -45,3 +45,40 @@
     @apply text-brand underline hover:text-brand-light visited:text-visited;
   }
 }
+
+/*
+ * Site content is markdown, so its shape is whatever the author wrote — the
+ * research pages, whose prose is lines and links, need none of this. The set of
+ * selectors below is the set of elements the renderer can emit
+ * (`app/public/markdown.server.ts`); nothing outside it can appear.
+ */
+@layer components {
+  .markdown :is(h1, h2, h3, h4, h5, h6) {
+    @apply mt-8 mb-3 font-semibold text-brand first:mt-0;
+  }
+
+  .markdown h1 { @apply text-2xl; }
+  .markdown h2 { @apply border-line border-b pb-1 text-xl; }
+  .markdown h3 { @apply text-lg; }
+
+  .markdown p { @apply my-3; }
+  .markdown :is(ul, ol) { @apply my-3 pl-6; }
+  .markdown ul { @apply list-disc; }
+  .markdown ol { @apply list-decimal; }
+  .markdown li { @apply my-1; }
+  .markdown blockquote { @apply my-4 border-brand border-l-4 bg-surface px-4 py-2; }
+  .markdown hr { @apply my-6 border-line; }
+  .markdown code { @apply rounded-sm bg-surface px-1 py-0.5 text-sm; }
+  .markdown pre { @apply my-4 overflow-x-auto bg-surface p-4 text-sm; }
+  .markdown pre code { @apply bg-transparent p-0; }
+  .markdown img { @apply my-4 max-w-full; }
+
+  /* The supplementary tables run to hundreds of rows and are far wider than the
+     column, so a table scrolls inside the page instead of widening it. */
+  .markdown table {
+    @apply my-4 block w-full max-w-full table-auto border-collapse overflow-x-auto text-sm;
+  }
+
+  .markdown :is(th, td) { @apply border border-line px-3 py-1.5 align-top; }
+  .markdown th { @apply bg-surface text-left font-semibold; }
+}

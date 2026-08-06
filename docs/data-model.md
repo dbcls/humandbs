@@ -8,7 +8,7 @@ Postgres が唯一の store で、編集中のものと公開済みのものを�
 ```
 Postgres
   research / experiment / dataset    identity + content + draft + pin ledger
-  site content                       document / news / navigation / alert
+  site content                       document / news / alert
   review                             comments (the share link is a draft column)
   external cache                     CAU / hum-to-accession / accession dates
   event                              append-only
@@ -191,8 +191,9 @@ field は 3 種に分かれ、**分類は content の型が持つ** (`app/conten
 翻訳対の規則は文でも同じで、**行に文字が 1 つも無ければ空**として未翻訳を導出する。
 
 **サイトコンテンツにはこの規則を当てない** (「サイトコンテンツ」節)。ガイドラインとポリシーでは見出しと
-表が文書の構造そのものなので、markdown 文字列と許可リストの sanitize のまま持つ。版も pin も持たず、
-公開表現・公開検索・public API のどれも対象にしないので、規則が 2 系統あっても交わらない。
+表が文書の構造そのものなので、markdown 文字列のまま持ち、CommonMark と GFM の表を許す。版も pin も
+持たず、公開表現・公開検索・public API のどれも対象にしないので、規則が 2 系統あっても交わらない。
+**生 HTML はどちらの規則でも持たない**ので、許可リストの sanitize はどちらにも要らない。
 
 ## 値スロットの状態
 
@@ -405,12 +406,19 @@ path-style の URL が `/files/hum0009/hum0009.v1.CpG.v1.zip` となって公開
 適用せず、公開表現の純関数の対象にも公開検索の対象にもならない。
 
 - **locale ごとに content と公開状態を持つ。** 版を持たないので「公開の単位は版であって言語ではない」が
-  当てはまらない
+  当てはまらない。公開されていない言語は**もう一方に倒れず 404 になる**
 - **news は document と別のエンティティ。** identity + locale ごとの content + 公開日 + draft
-- **ガイドラインの過去版も独立した document として持つ。** 各版は全文を持つ自己完結した本文
-- **「最新」を指す機構を持ち、admin が設定する。** 版なし slug が最新版を指し、指し先の張り替えと
-  redirect を admin が操作する。**版なし slug は恒久的に 200 を返し続ける必要がある** — 外部の
-  submission metadata に焼き込まれた参照があり、書き換えられない
+- **ガイドラインの過去版も独立した document として持つ。** 各版は全文を持つ自己完結した本文で、slug は
+  現行の URL をそのまま採って `{slug}/version/{n}`
+- **「最新」を指す機構を持ち、admin が設定する。** 版なし slug が最新版を指し (`latestOfId`)、指し先の
+  張り替えと redirect を admin が操作する。**版なし slug は恒久的に 200 を返し続ける必要がある** —
+  外部の submission metadata に焼き込まれた参照があり、書き換えられない
+- **本文は markdown 文字列。** 生 HTML は持たない (「値と文」)
+- **alert は on / off だけを持ち、期間を持たない。** ja/en の対を 1 つ持つ
+
+**画面は document ではない。** 提供・利用・問い合わせの入口はボタンと短い文だけで本文を持たないので、
+コードが持つ ([public-pages.md](public-pages.md))。トップだけは枠がコードで、本文が `home` document に
+なる。**navigation も DB に持たない** — admin が編集する UI が無いので、置く理由が無い。
 
 ## 意図的に持たないもの
 
@@ -421,6 +429,9 @@ path-style の URL が `/files/hum0009/hum0009.v1.CpG.v1.zip` となって公開
 | experiment の行 | content の中の要素で足りる。集計は検索用の行が引き受ける |
 | `versionIds` / `latestVersion` のような二重管理 | 台帳から導出できる |
 | 生 HTML (rawHtml) | 公開画面が読んでいない。値と装飾の分離にもなっていない |
+| サイトコンテンツの生 HTML と許可リストの sanitize | 生 HTML を parse しなければ、出せる集合が markdown の集合そのものになる |
+| navigation のテーブル | admin が編集する UI を持たない。コードの定数で足りる |
+| alert の期間指定 | 現行の 2 件とも空。持つと表示の判定が 2 本立てになる |
 | 文の中の見出し・表・箇条書き・強調・上付き | 実データでほぼ空 (見出しと表は 0%、強調 0.6%、箇条書き 0.3%)。持たなければ許可集合が型そのものになる |
 | アーカイブ由来の生メタデータ (originalMetadata) | 必要になった時点で外部キャッシュとして置き直せる |
 | 抽出した派生値の層 (searchable) | catalog のキーとして値スロットに吸収する |

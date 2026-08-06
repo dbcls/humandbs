@@ -10,24 +10,29 @@
  * What it deliberately does not do, because each is a decision rather than a
  * transformation: split the shared experiment blocks per dataset, recover the
  * markup that only survives in `rawHtml`, type the catalog keys as vocabularies
- * and numbers, seed each dataset's file selection, or carry the site content.
+ * and numbers, or seed each dataset's file selection.
  *
  * Everything is inserted in one transaction, so a failure leaves the previous
  * data in place.
  */
 
-import { sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, getPool, type Executor } from "~/db/client.server"
 import {
+  alert,
   cauEntry,
   contentKey,
   contentSnapshot,
   dataset,
   datasetContent,
+  document,
+  documentContent,
   facetCategory,
   labelPin,
+  news,
+  newsContent,
   research,
   researchVersion,
   vocabularySet,
@@ -36,6 +41,7 @@ import {
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { buildCauRows, buildDatasetContent, buildResearchContent } from "./build"
+import { buildAlerts, buildDocuments, buildNews, loadCms } from "./cms"
 import {
   ACCESS_CRITERIA_KEY,
   ACCESS_CRITERIA_SET,
@@ -145,6 +151,70 @@ async function seedCatalog(tx: Executor) {
   return { keyIdByCode, termIdByCode, codeBySourceKey }
 }
 
+/**
+ * Site content. Documents are inserted parents-first so that a past version can
+ * point at the one that superseded it, and each locale that was published gets
+ * its row — publication is per locale here, so a Japanese-only document stays
+ * Japanese-only rather than gaining an empty English side.
+ */
+async function loadSiteContent(tx: Executor) {
+  const cms = loadCms()
+
+  const documents = buildDocuments(cms.documents)
+  const idBySlug = await insertReturning(
+    documents,
+    (d) => d.slug,
+    (chunk) => tx
+      .insert(document)
+      .values(chunk.map((d) => ({ slug: d.slug, position: d.position })))
+      .returning({ id: document.id }),
+  )
+
+  for (const past of documents) {
+    if (past.latestOfSlug === null) continue
+    await tx
+      .update(document)
+      .set({ latestOfId: identityOf(idBySlug, past.latestOfSlug, "document") })
+      .where(eq(document.id, identityOf(idBySlug, past.slug, "document")))
+  }
+
+  await insertChunked(
+    documents.flatMap((d) => d.contents.map((c) => ({
+      documentId: identityOf(idBySlug, d.slug, "document"),
+      locale: c.locale,
+      content: c.content,
+      published: true,
+      publishedAt: c.publishedAt,
+    }))),
+    (chunk) => tx.insert(documentContent).values(chunk),
+  )
+
+  const items = buildNews(cms.news)
+  const newsIds = await insertReturning(
+    items,
+    (_, index) => index,
+    (chunk) => tx
+      .insert(news)
+      .values(chunk.map((item) => ({ publishedAt: item.publishedAt })))
+      .returning({ id: news.id }),
+  )
+
+  await insertChunked(
+    items.flatMap((item, index) => item.contents.map((c) => ({
+      newsId: identityOf(newsIds, index, "news"),
+      locale: c.locale,
+      content: c.content,
+      published: true,
+    }))),
+    (chunk) => tx.insert(newsContent).values(chunk),
+  )
+
+  const alerts = buildAlerts(cms.alerts)
+  await insertChunked(alerts, (chunk) => tx.insert(alert).values(chunk))
+
+  return { documents: documents.length, news: items.length, alerts: alerts.length }
+}
+
 async function load() {
   const dump = loadDump()
   const selection = selectPublishedDatasets(dump)
@@ -154,7 +224,8 @@ async function load() {
     // CASCADE reaches the datasets, versions, snapshots, pins and search rows
     // that hang off these five. Nothing else writes to this database yet.
     await tx.execute(sql`
-      TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry CASCADE
+      TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
+                     document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdByCode, codeBySourceKey } = await seedCatalog(tx)
@@ -241,6 +312,8 @@ async function load() {
       .flatMap((r) => buildCauRows(r.humId, r.controlledAccessUser ?? []))
     await insertChunked(cauRows, (chunk) => tx.insert(cauEntry).values(chunk))
 
+    const site = await loadSiteContent(tx)
+
     const search = await rebuildSearchDocs(tx)
 
     return {
@@ -248,6 +321,7 @@ async function load() {
       versions: versions.length,
       datasets: datasets.length,
       cau: cauRows.length,
+      ...site,
       search,
     }
   })
@@ -261,6 +335,9 @@ console.log("research           ", counts.research)
 console.log("published versions ", counts.versions)
 console.log("datasets           ", counts.datasets)
 console.log("controlled-access  ", counts.cau)
+console.log("documents          ", counts.documents)
+console.log("news               ", counts.news)
+console.log("alerts             ", counts.alerts)
 console.log("search docs        ", counts.search)
 if (selection.sharedAcrossResearch.length > 0) {
   console.log("dataset ids listed by more than one research:", selection.sharedAcrossResearch)

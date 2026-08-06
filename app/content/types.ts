@@ -218,11 +218,6 @@ export interface ArticleContent {
   body: string
 }
 
-export interface NavigationLabel {
-  ja: string
-  en: string
-}
-
 export interface AlertContent {
   /** Markdown. */
   body: TranslatedText

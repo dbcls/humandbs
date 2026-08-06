@@ -68,6 +68,29 @@ export function datasetPath(datasetLabel: string): string {
   return `/dataset/${encodeURIComponent(datasetLabel)}`
 }
 
+export function newsPath(): string {
+  return "/news"
+}
+
+export function newsItemPath(id: string): string {
+  return `/news/${encodeURIComponent(id)}`
+}
+
+/**
+ * The addresses a route owns rather than a document. Everything else under the
+ * root is a document slug, so this is also the list of slugs a document may not
+ * take — a document named `news` would be unreachable behind the route.
+ */
+export const SCREEN_PATHS = [
+  "/",
+  "/data-submission",
+  "/data-use",
+  "/contact-us",
+  "/news",
+  "/research",
+  "/dataset",
+] as const
+
 /**
  * The `v{n}` segment of a version address.
  *

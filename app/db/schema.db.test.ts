@@ -16,7 +16,7 @@ const db = getDb()
 beforeEach(async () => {
   await db.execute(sql`
     TRUNCATE research, content_key, vocabulary_set, facet_category, admin_user,
-             event, document, news, alert, navigation_item, cau_entry,
+             event, document, news, alert, cau_entry,
              hum_accession, accession_date
     CASCADE
   `)

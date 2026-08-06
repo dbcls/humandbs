@@ -87,15 +87,19 @@ schema を DB に入れるのは `npm run db:push`。**migration file を持た�
 
 ## 開発用データを入れる
 
-v1 の Elasticsearch dump から、公開されている research・その公開版・それらの版が listing している
-dataset を読み込む。**画面を書くための実データを用意するのが目的で、値の正しさも網羅性も問わない。**
+入力は 2 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを
+読み込む。**画面を書くための実データを用意するのが目的で、値の正しさも網羅性も問わない。**
 
 ```bash
 cp <v1 repo>/.claude/joomla-es/data/es/prod/{research,research-version,dataset}.json migration/input/
 docker compose exec app npm run db:load-dev-data
 ```
 
-`migration/input/` は git 管理外。数秒で終わり、**全部を 1 つのトランザクションで置き換える**ので、
+サイトコンテンツの入力 `migration/input/cms.json` は staging の CMS DB から取る。**production には
+接続しない。** SQL は `.claude/` 側に置いてあり、`document` / `news_item` / `alert` とそれぞれの翻訳を
+1 つの JSON オブジェクトにまとめたものを読む。
+
+`migration/input/` は git 管理外。10 秒ほどで終わり、**全部を 1 つのトランザクションで置き換える**ので、
 途中で落ちても前のデータが残る。**test は開発用 DB を空にする**ので、test の後は入れ直す。
 
 意図的にやっていないことがある。どれも機械的な変換ではなく判断が要るもので、本番のデータを作る移行の
@@ -107,7 +111,12 @@ docker compose exec app npm run db:load-dev-data
   (文の markdown は木にするが、畳み方の判断はしない)
 - catalog のキーへの語彙型・数値型の割り当て (公開区分だけ語彙にしてある)
 - dataset のファイル選択の初期値
-- サイトコンテンツ (document / news / navigation) の取り込み
+- サイトコンテンツの去就の判断 — 中身が古い document、到達できない document、ガイドラインの版番号と
+  本文の `Ver.` のずれ、失われる見出しアンカー
+
+サイトコンテンツについては変換だけは本番と同じものを通す。**本文の生 HTML はここで markdown になる**
+(`migration/html.ts`) ので、開発用データにも生 HTML は 1 つも残らない。表は GFM の表になり、`rowspan` は
+セルを複製して畳む。**扱えない記法に出会ったら投入を止める** — 黙って本文に残すと、描画の時点で消える。
 
 schema を変えたら `npm run db:push` の後にもう一度流す。
 
