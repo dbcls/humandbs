@@ -37,6 +37,11 @@ export default defineConfig([
       "@typescript-eslint/restrict-template-expressions": ["error", {
         allowNumber: true,
       }],
+      // A loader answers with a `Response`: a redirect and a 404 are thrown so
+      // that the code after them is unreachable by construction.
+      "@typescript-eslint/only-throw-error": ["error", {
+        allow: [{ from: "lib", name: "Response" }],
+      }],
     },
   },
   {

@@ -72,7 +72,7 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
       scope: "dataset",
       valueType: "vocabulary",
       labelJa: "アクセス制限",
-      labelEn: "Access criteria",
+      labelEn: "Access type",
       position: 0,
       vocabularySetCode: ACCESS_CRITERIA_SET,
       facetCategoryCode: BASIC_INFO_CATEGORY,

@@ -1,13 +1,21 @@
+import { Page } from "~/components/page"
+import { messagesFor } from "~/i18n/messages"
+import { readLocale } from "~/public/urls"
+
 import type { Route } from "./+types/home"
 
-export function meta(_args: Route.MetaArgs) {
-  return [{ title: "NBDC Human Database" }]
+export function loader({ request }: Route.LoaderArgs) {
+  return { locale: readLocale(new URL(request.url).pathname).locale }
 }
 
-export default function Home() {
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: messagesFor(loaderData.locale).siteName }]
+}
+
+export default function Home({ loaderData }: Route.ComponentProps) {
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-bold">NBDC Human Database</h1>
-    </main>
+    <Page>
+      <h1 className="font-bold text-2xl">{messagesFor(loaderData.locale).siteName}</h1>
+    </Page>
   )
 }

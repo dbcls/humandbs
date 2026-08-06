@@ -13,6 +13,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 | ファイル | 中身 |
 |---|---|
 | [docs/data-model.md](docs/data-model.md) | 何をどう持つか。identity と label、版と pin、公開表現、ファイル、外部キャッシュの不変条件 |
+| [docs/public-pages.md](docs/public-pages.md) | 読者が見る画面。URL 体系、言語の載せ方、各ページに何を出すか |
 | [docs/editing.md](docs/editing.md) | 編集から公開までの不変条件。draft、同時編集、公開ゲート、レビュー、証跡 |
 | [docs/glossary.md](docs/glossary.md) | ドメインの語の ja/en 対。画面・API・facet・語彙が従う訳語 |
 | [docs/testing.md](docs/testing.md) | テストの 5 階層。何を test にするか、mock の境界、e2e のシナリオ |

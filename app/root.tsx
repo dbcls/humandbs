@@ -5,23 +5,45 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteLoaderData,
 } from "react-router"
+
+import { SiteFooter, SiteHeader } from "~/components/layout"
+import { Page } from "~/components/page"
+import { DEFAULT_LOCALE } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
+import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/root"
 
 import "./app.css"
 
+/**
+ * The language is read from the address rather than from a header or a cookie,
+ * so a page has one language whoever asks for it and a link can name the
+ * language it points at.
+ */
+export function loader({ request }: Route.LoaderArgs) {
+  return { locale: readLocale(new URL(request.url).pathname).locale }
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  // The layout also wraps the error boundary, which renders when the loader
+  // above did not run.
+  const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? DEFAULT_LOCALE
+
   return (
-    <html lang="ja">
+    <html lang={locale}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
-        {children}
+      <body className="flex min-h-screen flex-col">
+        <SiteHeader locale={locale} />
+        <div className="flex-1">{children}</div>
+        <SiteFooter locale={locale} />
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -34,29 +56,33 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Error"
-  let details = "An unexpected error occurred."
+  const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? DEFAULT_LOCALE
+  const messages = messagesFor(locale)
+
+  let title = messages.notFoundTitle
+  let detail = messages.notFoundBody
   let stack: string | undefined
 
   if (isRouteErrorResponse(error)) {
-    message = String(error.status)
-    details = error.status === 404
-      ? "The requested page could not be found."
-      : error.statusText || details
+    if (error.status !== 404) {
+      title = String(error.status)
+      detail = error.statusText
+    }
   } else if (import.meta.env.DEV && error instanceof Error) {
-    details = error.message
+    title = error.name
+    detail = error.message
     stack = error.stack
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-bold">{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full overflow-x-auto p-4">
+    <Page>
+      <h1 className="font-bold text-2xl">{title}</h1>
+      <p className="mt-2">{detail}</p>
+      {stack !== undefined && (
+        <pre className="mt-6 w-full overflow-x-auto bg-surface p-4 text-xs">
           <code>{stack}</code>
         </pre>
       )}
-    </main>
+    </Page>
   )
 }
