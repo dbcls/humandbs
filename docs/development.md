@@ -48,15 +48,18 @@ prefix 付きの変数から渡す。
 
 ```bash
 docker compose exec app npm run lint        # eslint
-docker compose exec app npm test            # vitest
+docker compose exec app npm test            # vitest (全階層)
+docker compose exec app npm run test:unit   # 不変量 + 単体 (DB 不要)
+docker compose exec app npm run test:db     # schema + 経路 (db が要る)
 docker compose exec app npm run typecheck   # react-router typegen && tsc
 docker compose exec app npm run build       # 本番ビルド
 docker compose exec app npm run db:push     # schema 定義を DB に反映
 ```
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
-**test は `db` を使う** — schema の不変条件を実際の Postgres に対して確かめるので、`--no-deps` を
-付けると落ちる。階層の分け方と何を test にするかは [testing.md](testing.md)。
+**`npm test` と `test:db` は `db` を使う** — schema の不変条件を実際の Postgres に対して確かめるので、
+`--no-deps` を付けると落ちる。`test:unit` は依存を持たない。階層の分け方と何を test にするかは
+[testing.md](testing.md)。
 
 ## DB を触る
 

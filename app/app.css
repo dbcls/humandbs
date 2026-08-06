@@ -1,1 +1,47 @@
 @import "tailwindcss";
+
+/*
+ * The palette is the one the portal already has. It is carried over by value,
+ * not by name: v1 called these primary / secondary / tetriary, which says
+ * nothing about what they are for, held one colour under two names twice, and
+ * misspelled tertiary. Nothing else from v1's stylesheet is kept — the type
+ * scale there is built on a 10px root (`html { font-size: 62.5% }`), and
+ * inheriting that would put the workaround into every new screen.
+ */
+@theme {
+  /* Links, headings, and anything the eye should land on first. */
+  --color-brand: #1a5fbd;
+  --color-brand-light: #1a96d2;
+  --color-brand-lighter: #2ebedb;
+
+  /* Reserved for the few things that must be noticed over the brand colour. */
+  --color-accent: #eb0075;
+  --color-accent-light: #ff618e;
+
+  /* Body text. */
+  --color-ink: #002245;
+  --color-ink-muted: #2a5b73;
+
+  /* Rules, borders, and text that should recede. */
+  --color-line: #abb4c4;
+
+  /* Panels and page background. */
+  --color-surface: #edeff2;
+  --color-surface-hover: #e8eff8;
+  --color-surface-input: #f7f7f7;
+
+  --color-danger: #d51616;
+  --color-visited: #6b21a8;
+}
+
+@layer base {
+  html {
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    @apply text-brand underline hover:text-brand-light visited:text-visited;
+  }
+}

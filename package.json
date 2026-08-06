@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:db": "vitest run --project db",
     "db:push": "drizzle-kit push",
     "db:load-dev-data": "tsx migration/run.ts"
   },
