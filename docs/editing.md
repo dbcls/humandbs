@@ -5,7 +5,7 @@ preview とコメントだけができる。
 
 モデルの側の不変条件は [data-model.md](data-model.md) にある。ここは操作とその制約。
 
-## 誰が編集できるか
+## 誰が何をできるか
 
 認証は Keycloak (DDBJ 所管)。**1 人 1 アカウントとし、共有アカウントは持ち込まない** — 共有
 アカウントを許すと証跡の解像度がそこで失われる。
@@ -14,11 +14,52 @@ preview とコメントだけができる。
   key にすると、改名で権限と証跡の主体が切れる
 - **admin かどうかは v2 側が持つ。** Keycloak の role には寄せない。realm が他組織の所管なので、role の
   付与が依頼になり担当者の交代に即応できない。Postgres に状態だけを持ち、管理画面から付け外しする
-- **認可は要求ごとに server 側で導出し、cookie に焼かない**
-- **役割は admin ひとつ。** 認可のコードは capability (publish / withdraw / edit-content /
-  manage-labels / manage-admins / view-unpublished) で書き、admin は全 capability を持つ唯一の役割
+- **認可は要求ごとに server 側で導出し、cookie に焼かない。** admin を外せば次の要求から効く
+- **役割は admin ひとつ。** 認可のコードは capability で書き、admin は全 capability を持つ唯一の役割
 
-初期 admin は移行で投入する。管理画面からしか付け外しできないので、bootstrap の経路が別に要る。
+| capability | 何を許すか |
+|---|---|
+| `view-unpublished` | 管理画面で未公開を読む |
+| `edit-content` | draft の作成・編集・破棄、共有リンクの管理、コメントの解決 |
+| `publish` | 版の公開と fix |
+| `withdraw` | 取り下げと再公開 |
+| `manage-labels` | hum ラベルと dataset id の pin と解除 |
+| `manage-files` | ファイルの upload と公開状態の切り替え |
+| `manage-catalog` | catalog のキーと語彙 |
+| `manage-admins` | admin の付け外し |
+| `delete-research` | research の削除 |
+
+**ログイン済みで admin でない主体は capability を 1 つも持たない。** 導出を「主体 → capability の集合」の
+形にしてあるので、後から一般利用者向けの操作を足すときに認可の形を触らずに済む。
+
+**認可が返す答えは 3 つだけ。** 未ログインはサインインへ送って元の場所に戻す。ログイン済みで capability が
+無ければ 403 — サインインし直しても答えは変わらないので、redirect にしない。あれば主体を返す。
+
+## セッション
+
+**cookie に入れるのは推測不能な値 1 つで、セッションの中身は Postgres の行が持つ。** cookie の中身が
+認可の根拠になる余地を構造的に消すためで、「認可を cookie に焼かない」を cookie の形の側からも守る。
+
+- **行は cookie の値の hash を持つ。** 行を読めることと、その人になりすませられることを別にする
+- **ログアウトは行を消すこと**なので server 側で即座に効く。cookie を消すだけにしない
+- **期限は 2 本** — 最終アクセスから 7 日と、発行から 30 日。cookie の寿命を後者にして前者は読み取りの
+  ときに判定する。最終アクセス時刻の更新は値が 1 時間より古いときだけで、**ページを読むことが書き込みに
+  ならない**。期限切れの行の掃除はログインのときに行う
+- **Keycloak の token は保存しない。** public API に認証が無く、token を付けて転送する先も無い。例外は
+  id_token だけで、Keycloak 側のセッションを終わらせる `id_token_hint` に要る
+- **client は public client + PKCE (S256)。** 長期の credential を 1 つも持たないので、client secret が
+  守る対象が無い。`state` と PKCE の verifier と戻り先は 10 分の cookie に置く
+- **戻り先はサイト内のパスに限る。検査は結果の側で行う** — `/..//example.com` は「このサイトのパス」として
+  parse できてしまい、`Location` に入った瞬間に別のホストになる
+- **session の行は失ってよい。** 失えば全員が再ログインするだけなので、backup も移行の対象にならない
+
+**最初の admin は管理画面からは作れない。** 付け外しは `sub` を指定して行い、`sub` を表示するのは管理画面
+だけだから。ここは 2 つで解く。
+
+- **管理画面の入口はセッションだけを要求し、開いた人自身の `sub` を見せる。** 見せるのは本人の identity
+  だけで、ポータルのデータは capability の要る画面の側にある
+- **付け外しは CLI からもできる。** dev の初期 admin も、本番の初期 admin (移行の作業項目) もこれで入れる。
+  CLI 由来の event の actor は人ではないので、予約された値を焼く
 
 ## draft
 
@@ -181,8 +222,11 @@ event として記録する。** pin 台帳が「いまどうなっているか�
 履歴が残らないため。
 
 - **event は subject に外部キーを張らない。** research を削除しても、そこに至った操作の記録は残る
-- **append-only は書き込みロールの権限で担保する** (INSERT と SELECT だけを与える)。アプリ側の規律に
-  頼らない
+- **append-only は DB のロールで担保する。** schema を作る owner と、アプリが繋ぐ role を分け、アプリ側に
+  event への UPDATE と DELETE を与えない。アプリ側の規律にもトリガにも頼らない — トリガを迂回できる権限が
+  あれば、トリガ自身の記録も直せる。**副産物としてアプリはどのテーブルも TRUNCATE できない**ので、DB を
+  空にする経路は owner に閉じる
+- **ログインは記録しない。** 記録するのは公開されているものを変えた操作で、主体は event ごとに焼かれる
 - **DB への直接の SQL を緊急避難の経路として残すなら、その分は event に載らないことを前提にする**
 
 ## 意図的にやっていないこと
@@ -194,4 +238,7 @@ event として記録する。** pin 台帳が「いまどうなっているか�
 | autosave | undo の目的が「弾かれた入力を捨てない」ことなので、明示保存の直前だけを積めば足りる |
 | コメントのテキスト範囲アンカー | 第一のユースケース (値の無いスロット) に届かず、再アンカーの実装が重い |
 | 提供者を認可主体にすること | 認可を capability ベースにし、上流 DB からの ownership 導出を無くす |
+| admin 以外の役割 | 実績が無い。Joomla は 6 段の編集役割を持ちながら 3 つが在籍 0 人だった |
+| Keycloak の role で権限を表すこと | realm が他組織の所管で、付与が依頼になり交代に即応できない |
+| session に access / refresh token を持つこと | 送る先が無い。public API に認証が無く、resource server も無い |
 | 通知 | メール送信基盤が無い |

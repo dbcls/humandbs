@@ -15,8 +15,12 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:db": "vitest run --project db",
-    "db:push": "drizzle-kit push",
-    "db:load-dev-data": "tsx migration/run.ts"
+    "db:push": "drizzle-kit push && npm run db:grants",
+    "db:grants": "tsx scripts/grants.ts",
+    "db:load-dev-data": "tsx migration/run.ts",
+    "admin:list": "tsx scripts/admin.ts list",
+    "admin:grant": "tsx scripts/admin.ts grant",
+    "admin:revoke": "tsx scripts/admin.ts revoke"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
@@ -24,8 +28,10 @@
     "@aws-sdk/s3-request-presigner": "^3.1103.0",
     "@react-router/node": "^8.3.0",
     "@react-router/serve": "^8.3.0",
+    "cookie": "^2.0.1",
     "drizzle-orm": "^0.45.2",
     "isbot": "^5.2.1",
+    "openid-client": "^6.8.4",
     "pg": "^8.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

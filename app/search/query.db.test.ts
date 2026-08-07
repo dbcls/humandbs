@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-import { getDb, getPool } from "~/db/client.server"
+import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import { parseQuery, type QueryNode } from "./dsl"
@@ -28,7 +28,7 @@ async function labels(
 }
 
 beforeAll(async () => {
-  await db.execute(sql`TRUNCATE research, dataset CASCADE`)
+  await emptyDatabase(getOwnerDb())
   const rows = [
     {
       humLabel: "hum0001",
@@ -76,8 +76,8 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await db.execute(sql`TRUNCATE research, dataset CASCADE`)
-  await getPool().end()
+  await emptyDatabase(getOwnerDb())
+  await closePools()
 })
 
 describe("running a query against the published set", () => {

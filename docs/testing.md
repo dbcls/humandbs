@@ -74,6 +74,9 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 - revision の合わない保存が 409 になり、手元の入力が残る
 - 共有リンクの検証が server 側のデータ取得経路にかかっている (画面の guard だけでは通れない)
 - 公開操作が検索行を同じトランザクションで更新する
+- admin を外すと、同じ cookie の次の要求で効く (認可を cookie に焼いていないことの言い換え)
+- **アプリが繋ぐ role が event を書き換えられず、消せず、TRUNCATE もできない。** これは権限の性質なので、
+  「アプリが UPDATE を発行しない」を確かめても意味がない。実際にその role で発行して落ちることを見る
 
 ## e2e
 
@@ -132,7 +135,9 @@ route ごと組んだ状態で回して、その内側の HTTP だけを境界�
 状態を共有しない。実行順序に依存しない。
 
 - DB を使う 2 階層は 1 つの開発 DB を共有し、各 test が前に空にする。したがって**ファイル並列は切る**
-  (`fileParallelism: false`)
+  (`fileParallelism: false`)。空にするのは owner の接続で、アプリが繋ぐ role には TRUNCATE が無い
+  ([editing.md](editing.md) の「証跡」)。**test 本体は必ずアプリの role で回す** — 権限まで含めて
+  本番と同じ条件にするため
 - 直列で 60 秒を超えたら、worker ごとに DB を複製する形に切り替える (`CREATE DATABASE ... TEMPLATE` は
   数十 ms で終わる)
 - **test は開発用 DB を空にする。** 開発用データは test の後に入れ直す

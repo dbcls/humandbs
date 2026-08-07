@@ -9,6 +9,7 @@
  */
 
 export * from "./audit"
+export * from "./auth"
 export * from "./cache"
 export * from "./catalog"
 export * from "./files"

@@ -1,22 +1,6 @@
 import { index, jsonb, pgEnum, pgTable, text } from "drizzle-orm/pg-core"
 
-import { createdAt, primaryId, updatedAt } from "./common"
-
-/**
- * Who may administer the portal. This is deliberately not a Keycloak role: the
- * realm belongs to another organisation, so granting a role would be a request
- * to them, and a change of staff could not be handled the same day.
- *
- * The key is the Keycloak `sub`. `preferred_username` can change, and keying on
- * it would sever both the grant and the audit trail on a rename.
- */
-export const adminUser = pgTable("admin_user", {
-  id: primaryId(),
-  keycloakSub: text().notNull().unique(),
-  displayName: text().notNull(),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-})
+import { createdAt, primaryId } from "./common"
 
 export const eventAction = pgEnum("event_action", [
   "publish-version",
@@ -34,6 +18,18 @@ export const eventAction = pgEnum("event_action", [
   "pass-publish-gate",
 ])
 
+export type EventAction = (typeof eventAction.enumValues)[number]
+
+/** What an action is done to. Not a table name: the subject has no foreign key. */
+export type EventSubjectType
+  = | "research"
+    | "research-version"
+    | "dataset"
+    | "draft"
+    | "label"
+    | "file"
+    | "admin"
+
 /**
  * Append-only record of the operations that changed what is published.
  *
@@ -41,9 +37,12 @@ export const eventAction = pgEnum("event_action", [
  * research must not delete the record of how it got there, and files are
  * addressed by name because their published state lives in S3, not here.
  *
- * Append-only is enforced by granting the writing role INSERT and SELECT only.
- * A trigger would not be enough — anything that can UPDATE can also fix up the
- * trigger's own bookkeeping.
+ * Append-only is enforced by granting the role that serves requests INSERT and
+ * SELECT only (`app/db/grants.server.ts`). A trigger would not be enough —
+ * anything that can UPDATE can also fix up the trigger's own bookkeeping.
+ *
+ * Signing in is not recorded. What is recorded is the operations that changed
+ * something published, and the actor is written into each of those.
  */
 export const event = pgTable("event", {
   id: primaryId(),
@@ -51,7 +50,7 @@ export const event = pgTable("event", {
   actorSub: text().notNull(),
   actorName: text().notNull(),
   action: eventAction().notNull(),
-  subjectType: text().notNull(),
+  subjectType: text().$type<EventSubjectType>().notNull(),
   subjectId: text().notNull(),
   detail: jsonb().$type<Record<string, unknown>>().notNull().default({}),
 }, (t) => [

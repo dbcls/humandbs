@@ -143,6 +143,18 @@ const ja = {
     experiments: "解析手法",
     noExperiments: "解析手法の記載はありません。",
   },
+  account: {
+    logIn: "ログイン",
+    logOut: "ログアウト",
+    admin: "管理",
+  },
+  admin: {
+    heading: "管理",
+    signedInAs: "ログイン中",
+    subject: "Keycloak の sub",
+    capabilities: "権限",
+    notAdmin: "この画面を操作する権限がありません。",
+  },
 }
 
 export type Messages = typeof ja
@@ -268,6 +280,18 @@ const en: Messages = {
     accessType: "Access type",
     experiments: "Analysis method",
     noExperiments: "No analysis method is described.",
+  },
+  account: {
+    logIn: "Log in",
+    logOut: "Log out",
+    admin: "Admin",
+  },
+  admin: {
+    heading: "Administration",
+    signedInAs: "Signed in as",
+    subject: "Keycloak subject",
+    capabilities: "Capabilities",
+    notAdmin: "You are not allowed to use this screen.",
   },
 }
 

@@ -1,8 +1,9 @@
-import { eq, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
-import { getDb, getPool } from "~/db/client.server"
+import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
@@ -17,13 +18,11 @@ import { canonicalRedirect, datasetListPage, researchListPage } from "./lists.se
 const db = getDb()
 
 beforeEach(async () => {
-  await db.execute(sql`
-    TRUNCATE research, dataset, content_key, vocabulary_set, facet_category, accession_date CASCADE
-  `)
+  await emptyDatabase(getOwnerDb())
 })
 
 afterAll(async () => {
-  await getPool().end()
+  await closePools()
 })
 
 function only<T>(rows: T[]): T {

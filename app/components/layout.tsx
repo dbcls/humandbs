@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router"
+import { Form, Link, useLocation } from "react-router"
 
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
@@ -60,7 +60,51 @@ function NavbarEntry({ entry, locale }: { entry: NavEntry, locale: Locale }) {
   )
 }
 
-export function SiteHeader({ locale, alerts }: { locale: Locale, alerts: string[] }) {
+/** What the header knows about the person asking. Never their capabilities. */
+export interface Account {
+  name: string
+  isAdmin: boolean
+}
+
+/**
+ * Signing in and out.
+ *
+ * The link is a plain anchor because `/auth/login` answers with a redirect to
+ * Keycloak and has no page behind it; a client-side navigation would ask it for
+ * data instead of following it. Signing out is a POST, so that neither a link
+ * nor an image somebody else placed can end a session.
+ */
+function AccountMenu({ account, locale }: { account: Account | null, locale: Locale }) {
+  const messages = messagesFor(locale)
+  const location = useLocation()
+
+  if (account === null) {
+    const back = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
+    return (
+      <a href={`/auth/login?${back.toString()}`} className="text-sm">
+        {messages.account.logIn}
+      </a>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className="text-ink-muted">{account.name}</span>
+      {account.isAdmin && <Link to={href(locale, "/admin")}>{messages.account.admin}</Link>}
+      <Form method="post" action="/auth/logout">
+        <button type="submit" className="cursor-pointer underline">
+          {messages.account.logOut}
+        </button>
+      </Form>
+    </div>
+  )
+}
+
+export function SiteHeader({ locale, alerts, account }: {
+  locale: Locale
+  alerts: string[]
+  account: Account | null
+}) {
   const messages = messagesFor(locale)
   const other = otherLocale(locale)
   const location = useLocation()
@@ -68,18 +112,21 @@ export function SiteHeader({ locale, alerts }: { locale: Locale, alerts: string[
 
   return (
     <header className="border-line border-b bg-white">
-      <div className="mx-auto flex max-w-6xl items-baseline justify-between gap-4 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link to={href(locale, "/")} className="font-bold text-lg no-underline">
           {messages.siteName}
         </Link>
-        <Link
-          to={`${href(other, path)}${location.search}`}
-          hrefLang={other}
-          lang={other}
-          className="text-sm"
-        >
-          {messages.otherLanguage}
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to={`${href(other, path)}${location.search}`}
+            hrefLang={other}
+            lang={other}
+            className="text-sm"
+          >
+            {messages.otherLanguage}
+          </Link>
+          <AccountMenu account={account} locale={locale} />
+        </div>
       </div>
 
       <nav aria-label={messages.globalNavigation} className="border-line border-t">

@@ -19,7 +19,7 @@
 import { eq, sql } from "drizzle-orm"
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
-import { getDb, getPool, type Executor } from "~/db/client.server"
+import { closePools, getOwnerDb, type Executor } from "~/db/client.server"
 import {
   alert,
   cauEntry,
@@ -218,11 +218,15 @@ async function loadSiteContent(tx: Executor) {
 async function load() {
   const dump = loadDump()
   const selection = selectPublishedDatasets(dump)
-  const db = getDb()
+  // TRUNCATE belongs to the owner, not to the role that serves requests
+  // (`app/db/grants.server.ts`).
+  const db = getOwnerDb()
 
   const counts = await db.transaction(async (tx) => {
     // CASCADE reaches the datasets, versions, snapshots, pins and search rows
-    // that hang off these five. Nothing else writes to this database yet.
+    // that hang off these. Administrators and sessions are not part of what this
+    // load owns, so reloading the data does not sign anybody out or remove their
+    // access.
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
                      document, news, alert CASCADE
@@ -346,4 +350,4 @@ if (selection.missingDocuments.length > 0) {
   console.log("pinned dataset ids with no document:", selection.missingDocuments)
 }
 
-await getPool().end()
+await closePools()

@@ -14,13 +14,15 @@ Docker と Docker Compose だけ。Node もホストには要らない。
 cp .env.example .env
 docker compose run --rm --no-deps app npm install
 docker compose up -d
+docker compose exec app npm run db:push
 ```
 
 `http://localhost:8080/` が開けば起動している。`/healthz` は依存サービスの疎通を返し、1 つでも
 落ちていれば 503 になる。
 
 `npm install` を先に走らせるのは、`node_modules` が named volume にあり image に焼かれていないため。
-`docker compose down -v` で volume を消したら install からやり直す。
+`docker compose down -v` で volume を消したら install からやり直す。**`db:push` を初回に打つ必要があるのは、
+アプリが繋ぐ role をそれが作るから** (「[DB を触る](#db-を触る)」)。
 
 ## サービス
 
@@ -53,7 +55,8 @@ docker compose exec app npm run test:unit   # 不変量 + 単体 (DB 不要)
 docker compose exec app npm run test:db     # schema + 経路 (db が要る)
 docker compose exec app npm run typecheck   # react-router typegen && tsc
 docker compose exec app npm run build       # 本番ビルド
-docker compose exec app npm run db:push     # schema 定義を DB に反映
+docker compose exec app npm run db:push     # schema 定義を DB に反映し、権限を張り直す
+docker compose exec app npm run admin:list  # admin の一覧
 ```
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
@@ -67,6 +70,15 @@ docker compose exec app npm run db:push     # schema 定義を DB に反映
 docker compose exec db psql -U humandbs -d humandbs
 ```
 
+**role は 2 つある。** `humandbs` が schema を持ち、`humandbs_app` がアプリと test の繋ぐ先。分けるのは
+event を append-only にするためで (詳細は [editing.md](editing.md) の「証跡」)、その帰結として
+**`humandbs_app` はどのテーブルも TRUNCATE できない**。DB を空にする経路は owner に閉じている。psql は
+owner で入るので、上のコマンドには制限がかからない。
+
+`humandbs_app` を作り権限を張るのは `npm run db:grants` で、**`db:push` が後ろに繋いで自動で走る**。
+role の定義は `HUMANDBS_DATABASE_URL` そのもの — 接続文字列から role 名とパスワードを読むので、
+アプリが繋ぐ先と作られる role がずれない。
+
 PGroonga は初回の initdb で入る (`docker/db/initdb/`)。入っているかは
 `SELECT extname, extversion FROM pg_extension` で見る。initdb は volume が空のときにしか走らないので、
 拡張や初期 SQL を足したら `docker compose down -v` からやり直す。
@@ -74,6 +86,19 @@ PGroonga は初回の initdb で入る (`docker/db/initdb/`)。入っている�
 schema を DB に入れるのは `npm run db:push`。**migration file を持たない**ので、定義を変えたら push し
 直して開発用データを作り直す。全文検索の生成列と PGroonga の index も schema 定義に含まれるので、
 別途 SQL を流す手順は無い。
+
+**列や制約を消す変更は `db:push` が対話で確認を求め、TTY が無いので落ちる。** そのときは schema ごと
+作り直す。
+
+```bash
+docker compose exec db psql -U humandbs -d humandbs \
+  -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; CREATE EXTENSION pgroonga;"
+docker compose exec app npm run db:push
+docker compose exec app npm run db:load-dev-data
+```
+
+schema を落とすと `db:grants` が張った権限も消えるが、`db:push` が張り直す。role 自体は schema の外に
+あるので残る。
 
 **PGroonga の index は `pg_relation_size` に出ない。** 実体が Groonga 側の別ファイル
 (`base/{dboid}/pgrn.*`) にあるため。このファイルは投入のたびに増え、`DROP INDEX` でも `REINDEX` でも
@@ -120,6 +145,36 @@ docker compose exec app npm run db:load-dev-data
 
 schema を変えたら `npm run db:push` の後にもう一度流す。
 
+## サインインを試す
+
+認証は DDBJ が所管する staging の Keycloak を使う。dev に Keycloak を立てないので、手元で要る設定は
+`.env` の 3 行だけ。client (`humandbs-dev`) 側には `http://localhost:8080/auth/callback` が redirect URI
+として登録済みで、public client + PKCE なので secret は無い。
+
+| 変数 | dev の値 |
+|---|---|
+| `HUMANDBS_AUTH_ISSUER_URL` | `https://idp-staging.ddbj.nig.ac.jp/realms/master` |
+| `HUMANDBS_AUTH_CLIENT_ID` | `humandbs-dev` |
+| `HUMANDBS_AUTH_REDIRECT_URI` | `http://localhost:8080/auth/callback` |
+
+**cookie に `Secure` を付けるかは redirect URI の scheme から決まる。** そのための設定を別に持たない —
+本番で付け忘れる余地を作らないため。したがって http で配信している手元では `Secure` が付かない。
+
+初めて admin になるには自分の `sub` が要る。
+
+```bash
+# 1. ヘッダの「ログイン」からサインインし、/admin を開く。自分の sub が出る
+# 2. その sub を渡す
+docker compose exec app npm run admin:grant -- <sub> "表示名"
+# 3. /admin を開き直すと capability の一覧が出る
+```
+
+外すのは `admin:revoke -- <sub>`。**開発用データの投入は admin も session も消さない**ので
+`db:load-dev-data` を流し直しても入り直さなくてよいが、**test は DB を空にするので admin は消える**。
+
+サインアウトは Keycloak 側のセッションも終わらせるので、押した後は DDBJ アカウントのログインから
+やり直しになる。
+
 ## ファイルストアを触る
 
 bucket は自動では作られない。
@@ -155,6 +210,7 @@ schema が固まるまで migration file を持たないので、schema を変�
 ## 意図的にやっていないこと
 
 - **Keycloak を dev に立てない。** DDBJ が所管する staging の realm を使う
+- **Keycloak から `sub` を取る script を持たない。** サインインして `/admin` を開けば出る
 - **`db` 以外の port をホストに出さない。** S3 と filer を直接叩ける口を作らない
 - **フォーマッタを別に入れない。** 整形は eslint (`@stylistic`) が持つので、`npm run lint:fix` で直す
 - **ホストでの実行を前提にした script を置かない**

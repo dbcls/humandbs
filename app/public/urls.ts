@@ -114,6 +114,8 @@ export const SCREEN_PATHS = [
   "/news",
   "/research",
   "/dataset",
+  "/admin",
+  "/auth",
 ] as const
 
 /**

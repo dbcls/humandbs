@@ -18,7 +18,7 @@ import { type RouteConfig, index, prefix, route } from "@react-router/dev/routes
  * slash**: the server build resolves a module from it, so `ja/research` sends it
  * looking for a file that is not there and every route answers 500.
  */
-function publicPages(scope: string) {
+function pages(scope: string) {
   return [
     index("routes/home.tsx", { id: `${scope}-home` }),
     route("news", "routes/news.tsx", { id: `${scope}-news` }),
@@ -32,12 +32,24 @@ function publicPages(scope: string) {
     route("research/:humId/:version", "routes/research-version.tsx", { id: `${scope}-version` }),
     route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),
+    route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
   ]
 }
 
+/**
+ * Signing in has no language prefix. These are not pages anybody reads, and the
+ * callback address is registered with Keycloak, which admits one spelling.
+ */
+const auth = [
+  route("auth/login", "routes/auth-login.ts"),
+  route("auth/callback", "routes/auth-callback.ts"),
+  route("auth/logout", "routes/auth-logout.ts"),
+]
+
 export default [
   route("healthz", "routes/healthz.ts"),
-  ...publicPages("ja"),
-  ...prefix("en", publicPages("en")),
+  ...auth,
+  ...pages("ja"),
+  ...prefix("en", pages("en")),
   route("*", "routes/document.tsx"),
 ] satisfies RouteConfig

@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
-import { getDb, getPool } from "~/db/client.server"
+import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import { activeAlerts, documentPage, findDocument, newsItemPage, newsList } from "./site.server"
@@ -14,11 +14,11 @@ import { activeAlerts, documentPage, findDocument, newsItemPage, newsList } from
 const db = getDb()
 
 beforeEach(async () => {
-  await db.execute(sql`TRUNCATE document, news, alert CASCADE`)
+  await emptyDatabase(getOwnerDb())
 })
 
 afterAll(async () => {
-  await getPool().end()
+  await closePools()
 })
 
 function only<T>(rows: T[]): T {

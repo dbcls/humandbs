@@ -8,6 +8,7 @@ import {
   useRouteLoaderData,
 } from "react-router"
 
+import { readActor } from "~/auth/actor.server"
 import { SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
@@ -26,11 +27,21 @@ import "./app.css"
  *
  * The banner is loaded here because it belongs to every page. It is one small
  * read, and asking each loader for it instead would mean a page that forgot it
- * silently stops announcing.
+ * silently stops announcing. The header's account area is here for the same
+ * reason; a request with no session cookie asks the database nothing at all.
+ *
+ * **Only the name and whether the person is an administrator leave the server.**
+ * Capabilities are derived per request where they are checked, and putting them
+ * in a loader's answer would send an authorisation decision to the browser.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  return { locale, alerts: await activeAlerts(locale) }
+  const actor = await readActor(request)
+  return {
+    locale,
+    alerts: await activeAlerts(locale),
+    account: actor === null ? null : { name: actor.name, isAdmin: actor.isAdmin },
+  }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -48,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="flex min-h-screen flex-col">
-        <SiteHeader locale={locale} alerts={data?.alerts ?? []} />
+        <SiteHeader locale={locale} alerts={data?.alerts ?? []} account={data?.account ?? null} />
         <div className="flex-1">{children}</div>
         <SiteFooter locale={locale} />
         <ScrollRestoration />

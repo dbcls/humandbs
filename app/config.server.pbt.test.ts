@@ -3,31 +3,45 @@ import { describe, expect, it } from "vitest"
 
 import { ConfigError, loadConfig } from "~/config.server"
 
-/** Every message `loadConfig` is allowed to produce for HUMANDBS_DATABASE_URL. */
-const ALLOWED_MESSAGES = [
-  "HUMANDBS_DATABASE_URL is required",
-  "HUMANDBS_DATABASE_URL must be a URL",
-  "HUMANDBS_DATABASE_URL must use one of: postgres:, postgresql:",
-]
+const VALID = {
+  HUMANDBS_DATABASE_URL: "postgres://humandbs_app:secret@db:5432/humandbs",
+  HUMANDBS_OWNER_DATABASE_URL: "postgres://humandbs:secret@db:5432/humandbs",
+  HUMANDBS_AUTH_ISSUER_URL: "https://idp-staging.ddbj.nig.ac.jp/realms/master",
+  HUMANDBS_AUTH_CLIENT_ID: "humandbs-dev",
+  HUMANDBS_AUTH_REDIRECT_URI: "http://localhost:8080/auth/callback",
+}
+
+const NAMES = Object.keys(VALID)
+
+/** Every message `loadConfig` is allowed to produce for a given variable. */
+function allowedMessages(name: string): string[] {
+  return [
+    `${name} is required`,
+    `${name} must be a URL`,
+    `${name} must use one of: postgres:, postgresql:`,
+    `${name} must use one of: https:`,
+    `${name} must use one of: http:, https:`,
+  ]
+}
 
 const whitespace = fc
   .array(fc.constantFrom(" ", "\t", "\n", "\r", "\f", "\v"), { minLength: 1, maxLength: 12 })
   .map((chars) => chars.join(""))
 
 describe("loadConfig", () => {
-  it("rejects a HUMANDBS_DATABASE_URL that holds only whitespace", () => {
+  it.each(NAMES)("rejects a %s that holds only whitespace", (name) => {
     fc.assert(fc.property(whitespace, (value) => {
-      expect(() => loadConfig({ HUMANDBS_DATABASE_URL: value })).toThrow("HUMANDBS_DATABASE_URL is required")
+      expect(() => loadConfig({ ...VALID, [name]: value })).toThrow(`${name} is required`)
     }))
   })
 
-  it("never lets the configured value into the error message", () => {
+  it.each(NAMES)("never lets the value of %s into the error message", (name) => {
     fc.assert(fc.property(fc.string(), (value) => {
       try {
-        loadConfig({ HUMANDBS_DATABASE_URL: value })
+        loadConfig({ ...VALID, [name]: value })
       } catch (error) {
         expect(error).toBeInstanceOf(ConfigError)
-        expect(ALLOWED_MESSAGES).toContain((error as ConfigError).message)
+        expect(allowedMessages(name)).toContain((error as ConfigError).message)
       }
     }))
   })

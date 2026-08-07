@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import type { Locale } from "~/i18n/locale"
 import { NAVBAR } from "~/public/navigation"
 
-import { SiteFooter, SiteHeader } from "./layout"
+import { type Account, SiteFooter, SiteHeader } from "./layout"
 
 /**
  * The header and the footer read the current address, so they need a router
@@ -17,8 +17,13 @@ function render(element: React.ReactElement, at: string): string {
   return renderToStaticMarkup(<Stub initialEntries={[at]} />)
 }
 
-function header(locale: Locale, at: string, alerts: string[] = []): string {
-  return render(<SiteHeader locale={locale} alerts={alerts} />, at)
+function header(
+  locale: Locale,
+  at: string,
+  alerts: string[] = [],
+  account: Account | null = null,
+): string {
+  return render(<SiteHeader locale={locale} alerts={alerts} account={account} />, at)
 }
 
 describe("サイトのヘッダ", () => {
@@ -57,6 +62,40 @@ describe("サイトのヘッダ", () => {
     const html = header("ja", "/", ["<p>一つ目</p>", "<p>二つ目</p>"])
     expect(html).toContain("一つ目")
     expect(html).toContain("二つ目")
+  })
+})
+
+describe("ヘッダのログイン導線", () => {
+  const admin: Account = { name: "curator", isAdmin: true }
+  const signedIn: Account = { name: "someone", isAdmin: false }
+
+  it("未ログインならログインリンクが、いま見ているアドレスを戻り先に持つ", () => {
+    const html = header("ja", "/research?q=%E7%B3%96%E5%B0%BF%E7%97%85&page=2")
+    expect(html).toContain("ログイン")
+    expect(html).toContain(
+      "href=\"/auth/login?redirect=%2Fresearch%3Fq%3D%25E7%25B3%2596%25E5%25B0%25BF%25E7%2597%2585%26page%3D2\"",
+    )
+  })
+
+  it("未ログインならログアウトの form を出さない", () => {
+    expect(header("ja", "/")).not.toContain("/auth/logout")
+  })
+
+  it("ログイン済みなら名前とログアウトを出す。ログアウトは POST でしか押せない", () => {
+    const html = header("ja", "/", [], signedIn)
+    expect(html).toContain("someone")
+    expect(html).toContain("action=\"/auth/logout\"")
+    expect(html).toContain("method=\"post\"")
+    expect(html).not.toContain("/auth/login")
+  })
+
+  it("admin でないログイン済みには管理リンクを出さない", () => {
+    expect(header("ja", "/", [], signedIn)).not.toContain("href=\"/admin\"")
+  })
+
+  it("admin には管理リンクを出し、英語では /en の下を指す", () => {
+    expect(header("ja", "/", [], admin)).toContain("href=\"/admin\"")
+    expect(header("en", "/en", [], admin)).toContain("href=\"/en/admin\"")
   })
 })
 

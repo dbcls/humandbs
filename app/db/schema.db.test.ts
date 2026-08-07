@@ -3,27 +3,23 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
 
-import { getDb, getPool, type Database } from "./client.server"
+import { closePools, getDb, getOwnerDb, type Database } from "./client.server"
+import { emptyDatabase } from "./empty.server"
 import * as s from "./schema"
 
 /**
  * These run against the development database, so they need `docker compose up`.
- * Each one starts from an empty database — the truncate cascades from the few
- * roots — which keeps them independent of the order they run in.
+ * Each one starts from an empty database, which keeps them independent of the
+ * order they run in.
  */
 const db = getDb()
 
 beforeEach(async () => {
-  await db.execute(sql`
-    TRUNCATE research, content_key, vocabulary_set, facet_category, admin_user,
-             event, document, news, alert, cau_entry,
-             hum_accession, accession_date
-    CASCADE
-  `)
+  await emptyDatabase(getOwnerDb())
 })
 
 afterAll(async () => {
-  await getPool().end()
+  await closePools()
 })
 
 /** `noUncheckedIndexedAccess` makes every indexed read optional; this says why. */
