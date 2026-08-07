@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 
 import { buildCauRows, buildDatasetContent, buildResearchContent, isPortalIssuedId } from "./build"
@@ -61,23 +62,23 @@ function value<T>(slot: Slot<T>): T {
 describe("buildResearchContent", () => {
   it("turns a field v1 never filled in into an empty value rather than unknown", () => {
     const content = build(version())
-    expect(content.title).toEqual({ state: "value", value: { ja: "", en: "" } })
-    expect(content.releaseNote).toEqual({ state: "value", value: { ja: [], en: [] } })
-    expect(value(content.summary.url)).toEqual({ ja: [], en: [] })
+    expect(content.title).toEqual({ ja: filled(""), en: filled("") })
+    expect(content.releaseNote).toEqual({ ja: filled([]), en: filled([]) })
+    expect(content.summary.url).toEqual({ ja: filled([]), en: filled([]) })
   })
 
   it("takes the extracted text and leaves the HTML behind", () => {
     const content = build(version({
       summary: { aims: { ja: { text: "目的", rawHtml: "<b>目的</b>" } } },
     }))
-    expect(value(content.summary.aims)).toEqual({ ja: [[{ text: "目的" }]], en: [] })
+    expect(content.summary.aims).toEqual({ ja: filled([[{ text: "目的" }]]), en: filled([]) })
   })
 
   it("reads the markdown of a prose field into lines and links", () => {
     const content = build(version({
       summary: { methods: { ja: { text: "詳細は [NBDC policy](/nbdc-policy) を参照\n2 行目" } } },
     }))
-    expect(value(content.summary.methods).ja).toEqual([
+    expect(value(content.summary.methods.ja)).toEqual([
       [{ text: "詳細は " }, { text: "NBDC policy", href: "/nbdc-policy" }, { text: " を参照" }],
       [{ text: "2 行目" }],
     ])
@@ -119,15 +120,15 @@ describe("buildResearchContent", () => {
         },
       },
     }))
-    expect(value(content.summary.url).ja.map((l) => l.url)).toEqual(["https://example.jp/"])
-    expect(value(content.summary.url).en.map((l) => l.url)).toEqual(["https://example.com/en/"])
+    expect(value(content.summary.url.ja).map((l) => l.url)).toEqual(["https://example.jp/"])
+    expect(value(content.summary.url.en).map((l) => l.url)).toEqual(["https://example.com/en/"])
   })
 
   it("drops a link that has no destination", () => {
     const content = build(version({
       summary: { url: { ja: [{ text: "見出しだけ" }, { url: "https://example.jp/" }] } },
     }))
-    expect(value(content.summary.url).ja).toHaveLength(1)
+    expect(value(content.summary.url.ja)).toHaveLength(1)
   })
 
   it("gives every array element an identity so a comment can address it", () => {
@@ -147,8 +148,8 @@ describe("buildResearchContent", () => {
       datasetIdByLabel: new Map(),
     })
     const withoutIt = build(version())
-    expect(value(withIt.summaryShort.methods).ja).toEqual([[{ text: "配列決定" }]])
-    expect(value(withoutIt.summaryShort.methods).ja).toEqual([])
+    expect(value(withIt.summaryShort.methods.ja)).toEqual([[{ text: "配列決定" }]])
+    expect(value(withoutIt.summaryShort.methods.ja)).toEqual([])
   })
 })
 
@@ -157,7 +158,7 @@ describe("buildDatasetContent", () => {
     const content = dataset({ criteria: "Unrestricted-access" })
     expect(content.values).toContainEqual({
       keyId: "key-criteria",
-      slot: { state: "value", value: { kind: "vocabulary", termIds: ["term-unrestricted"] } },
+      value: { kind: "vocabulary", termIds: filled(["term-unrestricted"]) },
     })
   })
 
@@ -172,12 +173,9 @@ describe("buildDatasetContent", () => {
     })
     expect(first(content.experiments).values).toEqual([{
       keyId: "key-platform",
-      slot: {
-        state: "value",
-        value: {
-          kind: "text",
-          text: { ja: [[{ text: "Illumina" }]], en: [[{ text: "Illumina" }]] },
-        },
+      value: {
+        kind: "text",
+        text: { ja: filled([[{ text: "Illumina" }]]), en: filled([[{ text: "Illumina" }]]) },
       },
     }])
   })

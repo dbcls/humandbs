@@ -18,6 +18,7 @@
  */
 
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   Link,
@@ -29,7 +30,13 @@ import type {
   TranslatedText,
   ValueSlot,
 } from "~/content/types"
-import { resolveLinks, resolveRichText, resolveText, type Locale } from "~/i18n/locale"
+import {
+  resolveBilingual,
+  resolveLinks,
+  resolveRichText,
+  resolveText,
+  type Locale,
+} from "~/i18n/locale"
 
 export type FieldView
   = | { state: "not-applicable" }
@@ -98,36 +105,46 @@ function fallbackTracker(): Fallbacks {
 
 const EMPTY: FieldView = { state: "plain", text: "", untranslated: false }
 
-function translated(slot: Slot<TranslatedText>, locale: Locale, fallbacks: Fallbacks): FieldView {
-  if (slot.state === "not-applicable") return { state: "not-applicable" }
-  if (slot.state !== "value") return EMPTY
-  const resolved = resolveText(slot.value, locale)
+function translated(pair: TranslatedText, locale: Locale, fallbacks: Fallbacks): FieldView {
+  const resolved = resolveText(pair, locale)
+  if (resolved.state === "not-applicable") return { state: "not-applicable" }
   return {
     state: "plain",
-    text: resolved.text,
+    text: resolved.value,
     untranslated: fallbacks.note(resolved.untranslated),
   }
 }
 
-function prose(slot: Slot<TranslatedRichText>, locale: Locale, fallbacks: Fallbacks): FieldView {
-  if (slot.state === "not-applicable") return { state: "not-applicable" }
-  if (slot.state !== "value") return EMPTY
-  const resolved = resolveRichText(slot.value, locale)
+function prose(pair: TranslatedRichText, locale: Locale, fallbacks: Fallbacks): FieldView {
+  const resolved = resolveRichText(pair, locale)
+  if (resolved.state === "not-applicable") return { state: "not-applicable" }
   return {
     state: "rich",
-    text: resolved.text,
+    text: resolved.value,
     untranslated: fallbacks.note(resolved.untranslated),
   }
 }
 
-function linksOf(slot: Slot<LocalizedLinks>, locale: Locale): Link[] {
-  return slot.state === "value" ? resolveLinks(slot.value, locale) : []
+function linksOf(pair: LocalizedLinks, locale: Locale): Link[] {
+  return resolveLinks(pair, locale)
 }
 
 function stringOf(slot: Slot<string>): string {
   return slot.state === "value" ? slot.value : ""
 }
 
+/** A single-language value, which is settled or not on its own. */
+function plainOf(slot: Slot<string>): FieldView {
+  if (slot.state === "not-applicable") return { state: "not-applicable" }
+  return slot.state === "value"
+    ? { state: "plain", text: slot.value, untranslated: false }
+    : EMPTY
+}
+
+/**
+ * The state of a value lives inside it: prose holds one per language and
+ * resolves like any other translated pair, everything else holds a single one.
+ */
 function valueField(
   value: ContentValue,
   locale: Locale,
@@ -135,42 +152,31 @@ function valueField(
   fallbacks: Fallbacks,
 ): FieldView {
   switch (value.kind) {
-    case "text": {
-      const resolved = resolveRichText(value.text, locale)
-      return {
-        state: "rich",
-        text: resolved.text,
-        untranslated: fallbacks.note(resolved.untranslated),
-      }
-    }
+    case "text":
+      return prose(value.text, locale, fallbacks)
     case "single":
     case "accession":
-      return { state: "plain", text: value.value, untranslated: false }
+      return plainOf(value.value)
     case "vocabulary": {
-      const labels = value.termIds
+      if (value.termIds.state === "not-applicable") return { state: "not-applicable" }
+      if (value.termIds.state !== "value") return EMPTY
+      const labels = value.termIds.value
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
         .map((term) => termLabel(term, locale))
       return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
     }
-    case "number":
+    case "number": {
+      if (value.value.state === "not-applicable") return { state: "not-applicable" }
+      if (value.value.state !== "value") return EMPTY
+      const number = value.value.value
       return {
         state: "plain",
-        text: value.unit === null ? String(value.value) : `${value.value} ${value.unit}`,
+        text: number.unit === null ? String(number.value) : `${number.value} ${number.unit}`,
         untranslated: false,
       }
+    }
   }
-}
-
-function slotField(
-  slot: Slot<ContentValue>,
-  locale: Locale,
-  catalog: CatalogView,
-  fallbacks: Fallbacks,
-): FieldView {
-  if (slot.state === "not-applicable") return { state: "not-applicable" }
-  if (slot.state !== "value") return EMPTY
-  return valueField(slot.value, locale, catalog, fallbacks)
 }
 
 export interface ValueView {
@@ -193,7 +199,7 @@ function valueViews(
       return [{
         keyId: value.keyId,
         label: keyLabel(key, locale),
-        field: slotField(value.slot, locale, catalog, fallbacks),
+        field: valueField(value.value, locale, catalog, fallbacks),
         position: key.position,
       }]
     })
@@ -205,10 +211,10 @@ function valueUnderCode(
   content: DatasetContent,
   catalog: CatalogView,
   code: string,
-): Slot<ContentValue> | null {
+): ContentValue | null {
   const key = catalog.keyByCode.get(code)
   if (key === undefined) return null
-  return content.values.find((value) => value.keyId === key.id)?.slot ?? null
+  return content.values.find((value) => value.keyId === key.id)?.value ?? null
 }
 
 /**
@@ -235,12 +241,12 @@ export interface DatasetRowInput {
 }
 
 function firstTerm(
-  slot: Slot<ContentValue> | null,
+  value: ContentValue | null,
   locale: Locale,
   catalog: CatalogView,
 ): TermView | null {
-  if (slot?.state !== "value" || slot.value.kind !== "vocabulary") return null
-  const [termId] = slot.value.termIds
+  if (value?.kind !== "vocabulary" || value.termIds.state !== "value") return null
+  const [termId] = value.termIds.value
   const term = termId === undefined ? undefined : catalog.termById.get(termId)
   return term === undefined ? null : { code: term.code, label: termLabel(term, locale) }
 }
@@ -255,17 +261,17 @@ function datasetRowView(
   return {
     label: input.label,
     accessType: firstTerm(valueUnderCode(input.content, catalog, ACCESS_TYPE_KEY), locale, catalog),
-    typeOfData: typeOfData === null ? null : slotField(typeOfData, locale, catalog, fallbacks),
+    typeOfData: typeOfData === null ? null : valueField(typeOfData, locale, catalog, fallbacks),
     datePublished: input.datePublished,
   }
 }
 
 export interface CauInput {
   applicationId: string
-  principalInvestigator: TranslatedText
-  affiliation: TranslatedText
+  principalInvestigator: Bilingual
+  affiliation: Bilingual
   country: string
-  researchTitle: TranslatedText
+  researchTitle: Bilingual
   periodStart: string | null
   periodEnd: string | null
   datasetAccessions: string[]
@@ -280,15 +286,15 @@ export interface CauView extends Omit<CauInput, "principalInvestigator" | "affil
 /**
  * Upstream's languages, taken as they are. A usage record is not content: a
  * curator cannot edit it, so calling one of its languages untranslated would
- * name a defect nobody in the portal can fix. It is left out of the page's
- * untranslated notice for the same reason.
+ * name a defect nobody in the portal can fix. It carries no state either, which
+ * is why it resolves through its own function.
  */
 function cauView(entry: CauInput, locale: Locale): CauView {
   return {
     ...entry,
-    principalInvestigator: resolveText(entry.principalInvestigator, locale).text,
-    affiliation: resolveText(entry.affiliation, locale).text,
-    researchTitle: resolveText(entry.researchTitle, locale).text,
+    principalInvestigator: resolveBilingual(entry.principalInvestigator, locale),
+    affiliation: resolveBilingual(entry.affiliation, locale),
+    researchTitle: resolveBilingual(entry.researchTitle, locale),
   }
 }
 

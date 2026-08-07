@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -53,7 +53,7 @@ async function createDataset(
           ...emptyDatasetContent(),
           experiments: [{
             id: "experiment-1",
-            label: { state: "value", value: experimentLabel },
+            label: filled(experimentLabel),
             values: [],
           }],
         },
@@ -73,7 +73,7 @@ async function publish(
       researchId,
       content: {
         ...emptyResearchContent(),
-        title: { state: "value", value: { ja: title, en: title } },
+        title: { ja: filled(title), en: filled(title) },
         datasetIds,
       },
     })

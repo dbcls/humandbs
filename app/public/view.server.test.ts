@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
-import type { DataProvider, DatasetContent, ResearchContent } from "~/content/types"
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import type { DataProvider, DatasetContent, ResearchContent, Slot } from "~/content/types"
 
 import {
   ACCESS_TYPE_KEY,
@@ -12,6 +12,9 @@ import {
   type CatalogView,
   type CauInput,
 } from "./view.server"
+
+const UNKNOWN: Slot<never> = { state: "unknown" }
+const NOT_APPLICABLE: Slot<never> = { state: "not-applicable" }
 
 function key(id: string, code: string, position: number, showOnPublicPage = true): CatalogKeyView {
   return { id, code, labelJa: `${code} ja`, labelEn: `${code} en`, position, showOnPublicPage }
@@ -41,13 +44,13 @@ function research(overrides: Partial<ResearchContent> = {}): ResearchContent {
 function provider(overrides: Partial<DataProvider> = {}): DataProvider {
   return {
     id: "p1",
-    name: { state: "value", value: { ja: "", en: "" } },
+    name: { ja: filled(""), en: filled("") },
     organization: {
-      name: { state: "value", value: { ja: "", en: "" } },
-      address: { state: "value", value: { ja: "", en: "" } },
+      name: { ja: filled(""), en: filled("") },
+      address: { ja: filled(""), en: filled("") },
     },
-    orcid: { state: "value", value: "" },
-    email: { state: "value", value: "" },
+    orcid: filled(""),
+    email: filled(""),
     ...overrides,
   }
 }
@@ -67,15 +70,27 @@ function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauIn
 
 describe("the untranslated notice", () => {
   it("is off when nothing had to fall back", () => {
-    const content = research({ title: { state: "value", value: { ja: "題", en: "Title" } } })
+    const content = research({ title: { ja: filled("題"), en: filled("Title") } })
     expect(viewOf(content).untranslated).toBe(false)
   })
 
   it("is on when a rendered field showed the other language", () => {
-    const content = research({ title: { state: "value", value: { ja: "題", en: "" } } })
+    const content = research({ title: { ja: filled("題"), en: filled("") } })
     const view = viewOf(content)
     expect(view.untranslated).toBe(true)
     expect(view.title).toEqual({ state: "plain", text: "題", untranslated: true })
+  })
+
+  /**
+   * The two are different answers: one language is a question the provider has
+   * been asked, the other is a translation nobody has written. Only the second
+   * is something falling back can fix.
+   */
+  it("is off when the wanted language is a question rather than a missing translation", () => {
+    const content = research({ title: { ja: filled("題"), en: UNKNOWN } })
+    const view = viewOf(content)
+    expect(view.untranslated).toBe(false)
+    expect(view.title).toEqual({ state: "plain", text: "", untranslated: false })
   })
 
   /**
@@ -86,8 +101,8 @@ describe("the untranslated notice", () => {
     const content = research({
       dataProviders: [provider({
         organization: {
-          name: { state: "value", value: { ja: "大学", en: "University" } },
-          address: { state: "value", value: { ja: "東京", en: "" } },
+          name: { ja: filled("大学"), en: filled("University") },
+          address: { ja: filled("東京"), en: filled("") },
         },
       })],
     })
@@ -114,13 +129,10 @@ describe("the untranslated notice", () => {
 describe("what a research page carries", () => {
   it("hands the summary over as lines and the title as one string", () => {
     const content = research({
-      title: { state: "value", value: { ja: "", en: "A * B" } },
+      title: { ja: filled(""), en: filled("A * B") },
       summary: {
         ...emptyResearchContent().summary,
-        aims: {
-          state: "value",
-          value: { ja: [], en: [[{ text: "First" }], [{ text: "Second" }]] },
-        },
+        aims: { ja: filled([]), en: filled([[{ text: "First" }], [{ text: "Second" }]]) },
       },
     })
     const view = viewOf(content)
@@ -132,16 +144,20 @@ describe("what a research page carries", () => {
     })
   })
 
+  it("says a field is settled as having no value, whichever language holds that", () => {
+    const content = research({ title: { ja: NOT_APPLICABLE, en: filled("Title") } })
+    expect(viewOf(content, "ja").title).toEqual({ state: "not-applicable" })
+    expect(viewOf(content, "en").title)
+      .toEqual({ state: "plain", text: "Title", untranslated: false })
+  })
+
   it("takes the links of the language asked for, without falling back", () => {
     const content = research({
       summary: {
         ...emptyResearchContent().summary,
         url: {
-          state: "value",
-          value: {
-            ja: [{ id: "u1", url: "https://example.jp/", text: "jp" }],
-            en: [],
-          },
+          ja: filled([{ id: "u1", url: "https://example.jp/", text: "jp" }]),
+          en: filled([]),
         },
       },
     })
@@ -167,8 +183,8 @@ describe("what a research page carries", () => {
     const content = research({
       relatedPublications: [{
         id: "pub1",
-        title: { state: "value", value: "A paper" },
-        doi: { state: "value", value: "https://doi.org/10" },
+        title: filled("A paper"),
+        doi: filled("https://doi.org/10"),
         datasetIds: ["known", "gone"],
       }],
     })
@@ -201,12 +217,12 @@ describe("what a dataset page carries", () => {
     const view = dataset({
       ...emptyDatasetContent(),
       values: [
-        { keyId: "k-access", slot: { state: "value", value: { kind: "vocabulary", termIds: ["t-open"] } } },
+        { keyId: "k-access", value: { kind: "vocabulary", termIds: filled(["t-open"]) } },
         {
           keyId: "k-type",
-          slot: {
-            state: "value",
-            value: { kind: "text", text: { ja: [[{ text: "SNP" }]], en: [[{ text: "SNP" }]] } },
+          value: {
+            kind: "text",
+            text: { ja: filled([[{ text: "SNP" }]]), en: filled([[{ text: "SNP" }]]) },
           },
         },
       ],
@@ -220,10 +236,10 @@ describe("what a dataset page carries", () => {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
-        label: { state: "value", value: "WES" },
+        label: filled("WES"),
         values: [
-          { keyId: "k-late", slot: { state: "value", value: { kind: "single", value: "later" } } },
-          { keyId: "k-early", slot: { state: "value", value: { kind: "single", value: "earlier" } } },
+          { keyId: "k-late", value: { kind: "single", value: filled("later") } },
+          { keyId: "k-early", value: { kind: "single", value: filled("earlier") } },
         ],
       }],
     })
@@ -236,10 +252,8 @@ describe("what a dataset page carries", () => {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
-        label: { state: "value", value: "WES" },
-        values: [
-          { keyId: "k-nonexistent", slot: { state: "value", value: { kind: "single", value: "x" } } },
-        ],
+        label: filled("WES"),
+        values: [{ keyId: "k-nonexistent", value: { kind: "single", value: filled("x") } }],
       }],
     })
     expect(view.experiments[0]?.values).toEqual([])
@@ -250,8 +264,8 @@ describe("what a dataset page carries", () => {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
-        label: { state: "value", value: "WES" },
-        values: [{ keyId: "k-early", slot: { state: "not-applicable" } }],
+        label: filled("WES"),
+        values: [{ keyId: "k-early", value: { kind: "single", value: NOT_APPLICABLE } }],
       }],
     })
     expect(view.experiments[0]?.values[0]?.field).toEqual({ state: "not-applicable" })
@@ -262,12 +276,12 @@ describe("what a dataset page carries", () => {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
-        label: { state: "value", value: "WES" },
+        label: filled("WES"),
         values: [{
           keyId: "k-early",
-          slot: {
-            state: "value",
-            value: { kind: "number", value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB" },
+          value: {
+            kind: "number",
+            value: filled({ value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB" }),
           },
         }],
       }],
@@ -282,9 +296,7 @@ describe("what a dataset page carries", () => {
   it("falls back to the English label of a term that has no Japanese one", () => {
     const view = dataset({
       ...emptyDatasetContent(),
-      values: [
-        { keyId: "k-access", slot: { state: "value", value: { kind: "vocabulary", termIds: ["t-en-only"] } } },
-      ],
+      values: [{ keyId: "k-access", value: { kind: "vocabulary", termIds: filled(["t-en-only"]) } }],
     })
     expect(view.accessType?.label).toBe("English only")
   })

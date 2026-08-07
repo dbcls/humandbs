@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "./empty"
+import { emptyDatasetContent, emptyResearchContent, filled } from "./empty"
 import {
   publicDataset,
   publicDatasetContent,
@@ -9,29 +9,44 @@ import {
   type CatalogKey,
   type PublicOptions,
 } from "./public"
+import type { Slot } from "./types"
 
 const PUBLISHED: PublicOptions = { keepUnsettled: false }
 const PREVIEW: PublicOptions = { keepUnsettled: true }
+
+const UNKNOWN: Slot<never> = { state: "unknown" }
+const NOT_APPLICABLE: Slot<never> = { state: "not-applicable" }
 
 const catalog = (...keys: CatalogKey[]): ReadonlyMap<string, CatalogKey> =>
   new Map(keys.map((key) => [key.id, key]))
 
 describe("publicResearchContent", () => {
-  it("empties an unsettled field for a public page and keeps its state for a preview", () => {
-    const content = { ...emptyResearchContent(), title: { state: "unknown" } as const }
+  it("empties an unsettled language for a public page and keeps its state for a preview", () => {
+    const content = { ...emptyResearchContent(), title: { ja: filled("日本語"), en: UNKNOWN } }
 
     expect(publicResearchContent(content, PUBLISHED).title)
-      .toEqual({ state: "value", value: { ja: "", en: "" } })
-    expect(publicResearchContent(content, PREVIEW).title).toEqual({ state: "unknown" })
+      .toEqual({ ja: filled("日本語"), en: filled("") })
+    expect(publicResearchContent(content, PREVIEW).title)
+      .toEqual({ ja: filled("日本語"), en: UNKNOWN })
   })
 
-  it("keeps a not-applicable field on both, because it is settled information", () => {
-    const content = { ...emptyResearchContent(), releaseNote: { state: "not-applicable" } as const }
+  it("settles each language on its own, so one being a question does not empty the other", () => {
+    const content = { ...emptyResearchContent(), title: { ja: UNKNOWN, en: filled("English") } }
+
+    expect(publicResearchContent(content, PUBLISHED).title)
+      .toEqual({ ja: filled(""), en: filled("English") })
+  })
+
+  it("keeps a not-applicable language on both, because it is settled information", () => {
+    const content = {
+      ...emptyResearchContent(),
+      releaseNote: { ja: NOT_APPLICABLE, en: NOT_APPLICABLE },
+    }
 
     expect(publicResearchContent(content, PUBLISHED).releaseNote)
-      .toEqual({ state: "not-applicable" })
+      .toEqual({ ja: NOT_APPLICABLE, en: NOT_APPLICABLE })
     expect(publicResearchContent(content, PREVIEW).releaseNote)
-      .toEqual({ state: "not-applicable" })
+      .toEqual({ ja: NOT_APPLICABLE, en: NOT_APPLICABLE })
   })
 
   it("keeps an array element whose own field is unsettled", () => {
@@ -39,43 +54,43 @@ describe("publicResearchContent", () => {
       ...emptyResearchContent(),
       dataProviders: [{
         id: "p1",
-        name: { state: "unknown" } as const,
+        name: { ja: UNKNOWN, en: UNKNOWN },
         organization: {
-          name: { state: "value", value: { ja: "大学", en: "University" } } as const,
-          address: { state: "value", value: { ja: "", en: "" } } as const,
+          name: { ja: filled("大学"), en: filled("University") },
+          address: { ja: filled(""), en: filled("") },
         },
-        orcid: { state: "value", value: "" } as const,
-        email: { state: "value", value: "" } as const,
+        orcid: filled(""),
+        email: filled(""),
       }],
     }
 
     const published = publicResearchContent(content, PUBLISHED)
     expect(published.dataProviders).toHaveLength(1)
-    expect(published.dataProviders[0]?.name).toEqual({ state: "value", value: { ja: "", en: "" } })
+    expect(published.dataProviders[0]?.name).toEqual({ ja: filled(""), en: filled("") })
     expect(published.dataProviders[0]?.organization.name)
-      .toEqual({ state: "value", value: { ja: "大学", en: "University" } })
+      .toEqual({ ja: filled("大学"), en: filled("University") })
   })
 
-  it("empties an unsettled URL field to a pair of empty lists, not to a text", () => {
+  it("empties an unsettled URL field to an empty list, not to a text", () => {
     const content = {
       ...emptyResearchContent(),
-      summary: { ...emptyResearchContent().summary, url: { state: "unknown" } as const },
+      summary: { ...emptyResearchContent().summary, url: { ja: UNKNOWN, en: UNKNOWN } },
     }
 
     expect(publicResearchContent(content, PUBLISHED).summary.url)
-      .toEqual({ state: "value", value: { ja: [], en: [] } })
+      .toEqual({ ja: filled([]), en: filled([]) })
   })
 })
 
 describe("publicDatasetContent", () => {
   const shown: CatalogKey = { id: "shown", showOnPublicPage: true }
   const hidden: CatalogKey = { id: "hidden", showOnPublicPage: false }
-  const value = { state: "value", value: { kind: "single", value: "x" } } as const
+  const value = { kind: "single", value: filled("x") } as const
 
   it("drops a value under a key the catalog hides", () => {
     const content = {
       ...emptyDatasetContent(),
-      values: [{ keyId: "shown", slot: value }, { keyId: "hidden", slot: value }],
+      values: [{ keyId: "shown", value }, { keyId: "hidden", value }],
     }
 
     const out = publicDatasetContent(content, { keys: catalog(shown, hidden), files: [] }, PREVIEW)
@@ -83,25 +98,34 @@ describe("publicDatasetContent", () => {
   })
 
   it("drops a value under a key the catalog does not know", () => {
-    const content = {
-      ...emptyDatasetContent(),
-      values: [{ keyId: "gone", slot: value }],
-    }
+    const content = { ...emptyDatasetContent(), values: [{ keyId: "gone", value }] }
 
     const out = publicDatasetContent(content, { keys: catalog(shown), files: [] }, PREVIEW)
     expect(out.values).toEqual([])
   })
 
-  it("drops an unsettled value for a public page and keeps it for a preview", () => {
-    const content = {
-      ...emptyDatasetContent(),
-      values: [{ keyId: "shown", slot: { state: "unknown" } as const }],
-    }
+  it("drops an unsettled single value for a public page and keeps it for a preview", () => {
+    const unsettled = { keyId: "shown", value: { kind: "single", value: UNKNOWN } as const }
+    const content = { ...emptyDatasetContent(), values: [unsettled] }
     const input = { keys: catalog(shown), files: [] }
 
     expect(publicDatasetContent(content, input, PUBLISHED).values).toEqual([])
-    expect(publicDatasetContent(content, input, PREVIEW).values)
-      .toEqual([{ keyId: "shown", slot: { state: "unknown" } }])
+    expect(publicDatasetContent(content, input, PREVIEW).values).toEqual([unsettled])
+  })
+
+  it("empties only the unsettled language of a prose value, keeping the other published", () => {
+    const ja = [[{ text: "値" }]]
+    const content = {
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: "shown",
+        value: { kind: "text", text: { ja: filled(ja), en: UNKNOWN } } as const,
+      }],
+    }
+
+    const out = publicDatasetContent(content, { keys: catalog(shown), files: [] }, PUBLISHED)
+    expect(out.values[0]?.value)
+      .toEqual({ kind: "text", text: { ja: filled(ja), en: filled([]) } })
   })
 
   it("applies the same rules to an experiment's values", () => {
@@ -109,14 +133,14 @@ describe("publicDatasetContent", () => {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
-        label: { state: "unknown" } as const,
-        values: [{ keyId: "shown", slot: value }, { keyId: "hidden", slot: value }],
+        label: UNKNOWN,
+        values: [{ keyId: "shown", value }, { keyId: "hidden", value }],
       }],
     }
 
     const out = publicDatasetContent(content, { keys: catalog(shown, hidden), files: [] }, PUBLISHED)
     expect(out.experiments).toHaveLength(1)
-    expect(out.experiments[0]?.label).toEqual({ state: "value", value: "" })
+    expect(out.experiments[0]?.label).toEqual(filled(""))
     expect(out.experiments[0]?.values.map((v) => v.keyId)).toEqual(["shown"])
   })
 

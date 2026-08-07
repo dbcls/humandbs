@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -144,8 +144,8 @@ describe("rebuildSearchDocs", () => {
         ...emptyDatasetContent(),
         experiments: [{
           id: "experiment-1",
-          label: { state: "value", value: "WES" },
-          values: [{ keyId, slot: { state: "value", value: { kind: "vocabulary", termIds: [childId] } } }],
+          label: filled("WES"),
+          values: [{ keyId, value: { kind: "vocabulary", termIds: filled([childId]) } }],
         }],
       },
     }).where(eq(s.datasetContent.datasetId, datasetId))
@@ -165,7 +165,7 @@ describe("rebuildSearchDocs", () => {
     await db.update(s.datasetContent).set({
       content: {
         ...emptyDatasetContent(),
-        experiments: [{ id: "experiment-1", label: { state: "value", value: "ATAC-seq" }, values: [] }],
+        experiments: [{ id: "experiment-1", label: filled("ATAC-seq"), values: [] }],
       },
     }).where(eq(s.datasetContent.datasetId, datasetId))
     await publish(researchId, 1, [datasetId])
@@ -203,14 +203,14 @@ describe("rebuildSearchDocs", () => {
         ...emptyDatasetContent(),
         experiments: [{
           id: "experiment-1",
-          label: { state: "value", value: "WES" },
+          label: filled("WES"),
           values: [
-            { keyId: hiddenTerms, slot: { state: "value", value: { kind: "vocabulary", termIds: [termId] } } },
+            { keyId: hiddenTerms, value: { kind: "vocabulary", termIds: filled([termId]) } },
             {
               keyId: hiddenProse,
-              slot: {
-                state: "value",
-                value: { kind: "text", text: { ja: [[{ text: "内部メモ" }]], en: [] } },
+              value: {
+                kind: "text",
+                text: { ja: filled([[{ text: "内部メモ" }]]), en: filled([]) },
               },
             },
           ],

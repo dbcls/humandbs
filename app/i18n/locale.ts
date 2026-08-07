@@ -9,21 +9,35 @@
  * page — and showing one in place of the other would send the reader somewhere
  * that was never claimed to be the translation.
  *
+ * **Each language carries its own state**, so resolving is a decision about the
+ * wanted language first:
+ *
+ * - `not-applicable` is an answer, so it is returned as one and never falls back
+ * - `unknown` is a question. It does not fall back either: the preview is where
+ *   an unsettled value is meant to be visible as an empty frame with the comment
+ *   asking for it, and filling that frame from the other language would hide
+ *   what is being asked. On a public page the projection has already turned it
+ *   into an empty value, so the fallback below applies instead
+ * - an empty value is nobody having written anything, and falls back
+ *
  * Whether a value is untranslated is derived here rather than stored: one side
- * empty and the other filled is untranslated, both empty is nobody having filled
- * it in yet. A flag would drift from the values it describes.
+ * holding a value and the other holding an empty one is untranslated, both empty
+ * is nobody having filled it in yet. A flag would drift from the values it
+ * describes.
  *
  * **Not every pair of languages is content.** Cached values from upstream (a
- * controlled-access usage record) carry whatever languages upstream has, and
- * curators cannot edit them, so nothing marks them as untranslated even though
- * they resolve through the same function.
+ * controlled-access usage record) carry whatever languages upstream has and no
+ * state at all, and curators cannot edit them, so nothing marks them as
+ * untranslated.
  */
 
 import { isEmptyRichText } from "~/content/richtext"
 import type {
+  Bilingual,
   Link,
   LocalizedLinks,
   RichText,
+  Slot,
   TranslatedRichText,
   TranslatedText,
 } from "~/content/types"
@@ -38,25 +52,39 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value)
 }
 
-export interface ResolvedText {
-  text: string
-  /** The other language was used because the wanted one is empty. */
-  untranslated: boolean
+export type Resolved<T>
+  = | { state: "not-applicable" }
+    | {
+      state: "value"
+      value: T
+      /** The other language was used because the wanted one is empty. */
+      untranslated: boolean
+    }
+
+function other(locale: Locale): Locale {
+  return locale === "ja" ? "en" : "ja"
 }
 
-export function resolveText(text: TranslatedText, locale: Locale): ResolvedText {
-  const wanted = text[locale]
-  if (wanted !== "") return { text: wanted, untranslated: false }
+function resolve<T>(
+  pair: { ja: Slot<T>, en: Slot<T> },
+  locale: Locale,
+  empty: T,
+  isEmpty: (value: T) => boolean,
+): Resolved<T> {
+  const wanted = pair[locale]
+  if (wanted.state === "not-applicable") return { state: "not-applicable" }
+  if (wanted.state === "unknown") return { state: "value", value: empty, untranslated: false }
+  if (!isEmpty(wanted.value)) return { state: "value", value: wanted.value, untranslated: false }
 
-  const other = locale === "ja" ? text.en : text.ja
-  return other === ""
-    ? { text: "", untranslated: false }
-    : { text: other, untranslated: true }
+  const fallback = pair[other(locale)]
+  if (fallback.state !== "value" || isEmpty(fallback.value)) {
+    return { state: "value", value: empty, untranslated: false }
+  }
+  return { state: "value", value: fallback.value, untranslated: true }
 }
 
-export interface ResolvedRichText {
-  text: RichText
-  untranslated: boolean
+export function resolveText(text: TranslatedText, locale: Locale): Resolved<string> {
+  return resolve(text, locale, "", (value) => value === "")
 }
 
 /**
@@ -64,17 +92,22 @@ export interface ResolvedRichText {
  * tree of blank lines reads as nothing having been written, exactly as an empty
  * string does.
  */
-export function resolveRichText(text: TranslatedRichText, locale: Locale): ResolvedRichText {
-  const wanted = text[locale]
-  if (!isEmptyRichText(wanted)) return { text: wanted, untranslated: false }
-
-  const other = locale === "ja" ? text.en : text.ja
-  return isEmptyRichText(other)
-    ? { text: [], untranslated: false }
-    : { text: other, untranslated: true }
+export function resolveRichText(text: TranslatedRichText, locale: Locale): Resolved<RichText> {
+  return resolve(text, locale, [], isEmptyRichText)
 }
 
 /** No fallback: the languages of a link are different destinations, not translations. */
 export function resolveLinks(links: LocalizedLinks, locale: Locale): Link[] {
-  return links[locale]
+  const slot = links[locale]
+  return slot.state === "value" ? slot.value : []
+}
+
+/**
+ * A pair from upstream, which has no state and no notion of being untranslated.
+ * An empty side still shows the other one, because a record with only English
+ * is upstream's answer rather than a gap the portal can close.
+ */
+export function resolveBilingual(text: Bilingual, locale: Locale): string {
+  const wanted = text[locale]
+  return wanted === "" ? text[other(locale)] : wanted
 }

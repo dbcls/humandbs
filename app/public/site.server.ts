@@ -16,7 +16,7 @@ import { and, desc, eq, sql } from "drizzle-orm"
 
 import { getDb } from "~/db/client.server"
 import { alert, document, documentContent, news, newsContent } from "~/db/schema"
-import { resolveText } from "~/i18n/locale"
+import { resolveBilingual } from "~/i18n/locale"
 import type { Locale } from "~/i18n/locale"
 
 import { renderMarkdown } from "./markdown.server"
@@ -142,6 +142,6 @@ export async function activeAlerts(locale: Locale): Promise<string[]> {
     .orderBy(alert.createdAt)
 
   return rows
-    .map((row) => renderMarkdown(resolveText(row.content.body, locale).text))
+    .map((row) => renderMarkdown(resolveBilingual(row.content.body, locale)))
     .filter((html) => html !== "")
 }

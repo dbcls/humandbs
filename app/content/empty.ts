@@ -1,5 +1,6 @@
 import type {
   DatasetContent,
+  LocalizedLinks,
   ResearchContent,
   Slot,
   TranslatedRichText,
@@ -9,11 +10,12 @@ import type {
 /**
  * The starting point for a new research or dataset.
  *
- * Every named field is present and holds an empty value rather than being
- * absent or `unknown`: an empty translated pair means "nobody has filled this
- * in", which is a different thing from "there is a value but it is not settled"
- * (`unknown`, which the publish gate lists) and from "there is no value"
- * (`not-applicable`, which is settled and gets rendered).
+ * Every named field is present and holds an empty value in both languages
+ * rather than being absent or `unknown`. An empty value means "nobody has
+ * filled this in", which is a different thing from "there is a value but it is
+ * not settled" (`unknown`, which the publish gate lists) and from "there is no
+ * value" (`not-applicable`, which is settled and gets rendered). Each language
+ * carries its own state, so a new content starts with both of them empty.
  */
 export function emptyResearchContent(): ResearchContent {
   return {
@@ -22,7 +24,7 @@ export function emptyResearchContent(): ResearchContent {
       aims: emptyRich(),
       methods: emptyRich(),
       targets: emptyRich(),
-      url: { state: "value", value: { ja: [], en: [] } },
+      url: emptyLinks(),
     },
     summaryShort: {
       methods: emptyRich(),
@@ -47,11 +49,19 @@ export function emptyDatasetContent(): DatasetContent {
   }
 }
 
-function emptyTranslated(): Slot<TranslatedText> {
-  return { state: "value", value: { ja: "", en: "" } }
+export function filled<T>(value: T): Slot<T> {
+  return { state: "value", value }
+}
+
+function emptyTranslated(): TranslatedText {
+  return { ja: filled(""), en: filled("") }
 }
 
 /** No lines at all, which is what "nobody has written anything" looks like. */
-function emptyRich(): Slot<TranslatedRichText> {
-  return { state: "value", value: { ja: [], en: [] } }
+function emptyRich(): TranslatedRichText {
+  return { ja: filled([]), en: filled([]) }
+}
+
+function emptyLinks(): LocalizedLinks {
+  return { ja: filled([]), en: filled([]) }
 }

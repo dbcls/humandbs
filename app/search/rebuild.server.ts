@@ -73,10 +73,13 @@ function indexed(text: SearchText) {
   return { textJa: text.ja, textEn: text.en }
 }
 
+function heldText(slot: Slot<string>): string {
+  return slot.state === "value" ? slot.value : ""
+}
+
 /** Both languages of the title in one string; the field is not language-scoped. */
-function titleOf(slot: Slot<TranslatedText>): string {
-  if (slot.state !== "value") return ""
-  return [slot.value.ja, slot.value.en].filter(Boolean).join(" ")
+function titleOf(title: TranslatedText): string {
+  return [heldText(title.ja), heldText(title.en)].filter(Boolean).join(" ")
 }
 
 function earliest(dates: string[]): string | null {
@@ -313,18 +316,18 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     if (docId === undefined) continue
     const seen = new Set<string>()
     for (const slot of valueSlots(row.content)) {
-      if (slot.slot.state !== "value") continue
-      const value = slot.slot.value
-      if (value.kind === "vocabulary") {
-        for (const termId of value.termIds) {
+      const value = slot.value
+      if (value.kind === "vocabulary" && value.termIds.state === "value") {
+        for (const termId of value.termIds.value) {
           const key = `${slot.keyId}/${termId}`
           if (seen.has(key)) continue
           seen.add(key)
           termRows.push({ docId, keyId: slot.keyId, termId, ancestorIds: ancestorsOf(termId) })
         }
       }
-      if (value.kind === "number") {
-        numberRows.push({ docId, keyId: slot.keyId, value: value.value })
+      if (value.kind === "number" && value.value.state === "value") {
+        // The canonical unit is what the facet compares; the entered one is not.
+        numberRows.push({ docId, keyId: slot.keyId, value: value.value.value.value })
       }
     }
   }

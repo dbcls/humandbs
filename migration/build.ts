@@ -7,11 +7,12 @@
  *
  * Three shape changes happen here and nowhere else:
  *
- * - **A slot is always present.** v1 dropped a key when it had no value, so a
- *   missing value arrives as an absent key. It becomes an empty value rather
- *   than `unknown`: `unknown` means "there is a value but it is not settled",
- *   and published v1 content has essentially none of those (2 leaves), so
- *   asserting it here would invent a state the data does not carry.
+ * - **Every field is present, in both languages.** v1 dropped a key when it had
+ *   no value, so a missing value arrives as an absent key. It becomes an empty
+ *   value rather than `unknown`: `unknown` means "there is a value but it is
+ *   not settled", and published v1 content has essentially none of those
+ *   (2 leaves), so asserting it here would invent a state the data does not
+ *   carry.
  * - **Fields v2 holds as one language become one.** Publication titles and
  *   experiment labels are single-valued in v2; the language that carries the
  *   value wins, and where both do they agree in 94% or more of the data.
@@ -49,25 +50,25 @@ import type {
 } from "./es"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
+function held<T>(value: T): Slot<T> {
+  return { state: "value", value }
+}
+
 /** v1's extracted text is markdown; the HTML it came from is left behind. */
 function prose(value: EsBilingualRich | null | undefined): TranslatedRichText {
   return {
-    ja: richTextFromMarkdown(value?.ja?.text ?? ""),
-    en: richTextFromMarkdown(value?.en?.text ?? ""),
+    ja: held(richTextFromMarkdown(value?.ja?.text ?? "")),
+    en: held(richTextFromMarkdown(value?.en?.text ?? "")),
   }
 }
 
 /** A v1 rich field that v2 holds as a value, which is its text without markup. */
 function valueText(value: EsBilingualRich | null | undefined): TranslatedText {
-  return { ja: value?.ja?.text ?? "", en: value?.en?.text ?? "" }
+  return { ja: held(value?.ja?.text ?? ""), en: held(value?.en?.text ?? "") }
 }
 
 function plainText(value: EsBilingual | null | undefined): TranslatedText {
-  return { ja: value?.ja ?? "", en: value?.en ?? "" }
-}
-
-function held<T>(value: T): Slot<T> {
-  return { state: "value", value }
+  return { ja: held(value?.ja ?? ""), en: held(value?.en ?? "") }
 }
 
 /** The language that has a value wins; when both do they agree in the data. */
@@ -88,8 +89,8 @@ function localizedLinks(
   ja: (EsLink | null | undefined)[],
   en: (EsLink | null | undefined)[],
   prefix: string,
-): Slot<LocalizedLinks> {
-  return held({ ja: linkList(ja, `${prefix}-ja`), en: linkList(en, `${prefix}-en`) })
+): LocalizedLinks {
+  return { ja: held(linkList(ja, `${prefix}-ja`)), en: held(linkList(en, `${prefix}-en`)) }
 }
 
 /** Drops references to datasets that no published version lists. */
@@ -114,10 +115,10 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
-    name: held(valueText(p.name)),
+    name: valueText(p.name),
     organization: {
-      name: held(valueText(p.organization?.name)),
-      address: held(valueText(p.organization?.address)),
+      name: valueText(p.organization?.name),
+      address: valueText(p.organization?.address),
     },
     orcid: single(p.orcid),
     email: single(p.email),
@@ -125,14 +126,14 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
 
   const researchProjects: ResearchProject[] = (rv.researchProject ?? []).map((p, i) => ({
     id: `research-project-${i + 1}`,
-    name: held(valueText(p.name)),
+    name: valueText(p.name),
     url: localizedLinks([p.url?.ja], [p.url?.en], `research-project-${i + 1}-url`),
   }))
 
   const grants: Grant[] = (rv.grant ?? []).map((g, i) => ({
     id: `grant-${i + 1}`,
-    title: held(plainText(g.title)),
-    agency: { name: held(plainText(g.agency?.name)) },
+    title: plainText(g.title),
+    agency: { name: plainText(g.agency?.name) },
     grantIds: g.id ?? [],
   }))
 
@@ -144,19 +145,19 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
   }))
 
   return {
-    title: held(plainText(rv.title)),
+    title: plainText(rv.title),
     summary: {
-      aims: held(prose(rv.summary?.aims)),
-      methods: held(prose(rv.summary?.methods)),
-      targets: held(prose(rv.summary?.targets)),
+      aims: prose(rv.summary?.aims),
+      methods: prose(rv.summary?.methods),
+      targets: prose(rv.summary?.targets),
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
     summaryShort: {
-      methods: held(prose(summaryShort?.methods)),
-      targets: held(prose(summaryShort?.targets)),
-      typeOfData: held(prose(summaryShort?.typeOfData)),
+      methods: prose(summaryShort?.methods),
+      targets: prose(summaryShort?.targets),
+      typeOfData: prose(summaryShort?.typeOfData),
     },
-    releaseNote: held(prose(rv.releaseNote)),
+    releaseNote: prose(rv.releaseNote),
     dataProviders,
     researchProjects,
     grants,
@@ -198,7 +199,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   if (criteriaKeyId && termId) {
     values.push({
       keyId: criteriaKeyId,
-      slot: held({ kind: "vocabulary", termIds: [termId] }),
+      value: { kind: "vocabulary", termIds: held([termId]) },
     })
   }
 
@@ -206,13 +207,13 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   if (typeOfDataKeyId && (doc.typeOfData?.ja || doc.typeOfData?.en)) {
     values.push({
       keyId: typeOfDataKeyId,
-      slot: held({
+      value: {
         kind: "text",
         text: {
-          ja: richTextFromPlain(doc.typeOfData.ja ?? ""),
-          en: richTextFromPlain(doc.typeOfData.en ?? ""),
+          ja: held(richTextFromPlain(doc.typeOfData.ja ?? "")),
+          en: held(richTextFromPlain(doc.typeOfData.en ?? "")),
         },
-      }),
+      },
     })
   }
 
@@ -224,9 +225,10 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
       if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
       const keyId = keyIdByCode.get(code)
       if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
-      const text = prose(value)
-      if (isEmptyRichText(text.ja) && isEmptyRichText(text.en)) return []
-      return [{ keyId, slot: held({ kind: "text" as const, text }) }]
+      const ja = richTextFromMarkdown(value.ja?.text ?? "")
+      const en = richTextFromMarkdown(value.en?.text ?? "")
+      if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
+      return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
     }),
   }))
 

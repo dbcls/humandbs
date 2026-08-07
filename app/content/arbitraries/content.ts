@@ -9,6 +9,9 @@
  * with free ids every slot would be dropped for an unknown key and the laws
  * would hold vacuously. File names are drawn the same way, so that a selection
  * sometimes names a listed file and sometimes does not.
+ *
+ * A translated pair draws a state per language, so the space holds the mixtures
+ * the laws have to survive: settled on one side and a question on the other.
  */
 
 import fc from "fast-check"
@@ -18,6 +21,7 @@ import type {
   DatasetContent,
   Experiment,
   LocalizedLinks,
+  NumberValue,
   ResearchContent,
   RichText,
   Slot,
@@ -37,9 +41,29 @@ const keyIdArb = fc.constantFrom(...KEY_IDS)
 const fileNameArb = fc.constantFrom(...FILE_NAMES)
 const dateArb = fc.option(fc.constantFrom("2020-01-01", "2024-12-31"), { nil: null })
 
+/**
+ * All three states, so that dropping one is visible and keeping two is checked.
+ * Holding a value is weighted because a translated pair draws twice: with three
+ * equal states the two sides would both hold one in a ninth of the samples, and
+ * the laws about untranslated pairs need both sides settled to say anything.
+ */
+export function slotArb<T>(value: fc.Arbitrary<T>): fc.Arbitrary<Slot<T>> {
+  return fc.oneof(
+    { weight: 3, arbitrary: fc.record({ state: fc.constant("value" as const), value }) },
+    { weight: 1, arbitrary: fc.constant<Slot<T>>({ state: "unknown" }) },
+    { weight: 1, arbitrary: fc.constant<Slot<T>>({ state: "not-applicable" }) },
+  )
+}
+
+/** Empty is drawn on purpose: an empty side is what makes a pair untranslated. */
+const textArb = fc.oneof(
+  { weight: 1, arbitrary: fc.constant("") },
+  { weight: 3, arbitrary: fc.string({ minLength: 1 }) },
+)
+
 export const translatedTextArb: fc.Arbitrary<TranslatedText> = fc.record({
-  ja: fc.string(),
-  en: fc.string(),
+  ja: slotArb(textArb),
+  en: slotArb(textArb),
 })
 
 /** A span's text never holds a newline: that is what a line boundary is. */
@@ -68,46 +92,39 @@ export const richTextArb: fc.Arbitrary<RichText> = fc.array(
 )
 
 export const translatedRichTextArb: fc.Arbitrary<TranslatedRichText> = fc.record({
-  ja: richTextArb,
-  en: richTextArb,
+  ja: slotArb(richTextArb),
+  en: slotArb(richTextArb),
 })
 
 const linkArb = fc.record({ id: idArb, url: fc.string(), text: fc.string() })
+const linkListArb = fc.array(linkArb, { maxLength: 3 })
 
 export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
-  ja: fc.array(linkArb, { maxLength: 3 }),
-  en: fc.array(linkArb, { maxLength: 3 }),
+  ja: slotArb(linkListArb),
+  en: slotArb(linkListArb),
 })
 
-/** All three states, so that dropping one is visible and keeping two is checked. */
-export function slotArb<T>(value: fc.Arbitrary<T>): fc.Arbitrary<Slot<T>> {
-  return fc.oneof(
-    fc.record({ state: fc.constant("value" as const), value }),
-    fc.constant<Slot<T>>({ state: "unknown" }),
-    fc.constant<Slot<T>>({ state: "not-applicable" }),
-  )
-}
+const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
+  value: fc.double({ noNaN: true, noDefaultInfinity: true }),
+  unit: fc.option(fc.string(), { nil: null }),
+  inputValue: fc.double({ noNaN: true, noDefaultInfinity: true }),
+  inputUnit: fc.option(fc.string(), { nil: null }),
+})
 
 export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
   fc.record({ kind: fc.constant("text" as const), text: translatedRichTextArb }),
-  fc.record({ kind: fc.constant("single" as const), value: fc.string() }),
-  fc.record({ kind: fc.constant("accession" as const), value: fc.string() }),
+  fc.record({ kind: fc.constant("single" as const), value: slotArb(fc.string()) }),
+  fc.record({ kind: fc.constant("accession" as const), value: slotArb(fc.string()) }),
   fc.record({
     kind: fc.constant("vocabulary" as const),
-    termIds: fc.array(idArb, { maxLength: 3 }),
+    termIds: slotArb(fc.array(idArb, { maxLength: 3 })),
   }),
-  fc.record({
-    kind: fc.constant("number" as const),
-    value: fc.double({ noNaN: true, noDefaultInfinity: true }),
-    unit: fc.option(fc.string(), { nil: null }),
-    inputValue: fc.double({ noNaN: true, noDefaultInfinity: true }),
-    inputUnit: fc.option(fc.string(), { nil: null }),
-  }),
+  fc.record({ kind: fc.constant("number" as const), value: slotArb(numberValueArb) }),
 )
 
 export const valueSlotArb: fc.Arbitrary<ValueSlot> = fc.record({
   keyId: keyIdArb,
-  slot: slotArb(contentValueArb),
+  value: contentValueArb,
 })
 
 export const experimentArb: fc.Arbitrary<Experiment> = fc.record({
@@ -117,26 +134,26 @@ export const experimentArb: fc.Arbitrary<Experiment> = fc.record({
 })
 
 export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
-  title: slotArb(translatedTextArb),
+  title: translatedTextArb,
   summary: fc.record({
-    aims: slotArb(translatedRichTextArb),
-    methods: slotArb(translatedRichTextArb),
-    targets: slotArb(translatedRichTextArb),
-    url: slotArb(localizedLinksArb),
+    aims: translatedRichTextArb,
+    methods: translatedRichTextArb,
+    targets: translatedRichTextArb,
+    url: localizedLinksArb,
   }),
   summaryShort: fc.record({
-    methods: slotArb(translatedRichTextArb),
-    targets: slotArb(translatedRichTextArb),
-    typeOfData: slotArb(translatedRichTextArb),
+    methods: translatedRichTextArb,
+    targets: translatedRichTextArb,
+    typeOfData: translatedRichTextArb,
   }),
-  releaseNote: slotArb(translatedRichTextArb),
+  releaseNote: translatedRichTextArb,
   dataProviders: fc.array(
     fc.record({
       id: idArb,
-      name: slotArb(translatedTextArb),
+      name: translatedTextArb,
       organization: fc.record({
-        name: slotArb(translatedTextArb),
-        address: slotArb(translatedTextArb),
+        name: translatedTextArb,
+        address: translatedTextArb,
       }),
       orcid: slotArb(fc.string()),
       email: slotArb(fc.string()),
@@ -144,14 +161,14 @@ export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
     { maxLength: 3 },
   ),
   researchProjects: fc.array(
-    fc.record({ id: idArb, name: slotArb(translatedTextArb), url: slotArb(localizedLinksArb) }),
+    fc.record({ id: idArb, name: translatedTextArb, url: localizedLinksArb }),
     { maxLength: 3 },
   ),
   grants: fc.array(
     fc.record({
       id: idArb,
-      title: slotArb(translatedTextArb),
-      agency: fc.record({ name: slotArb(translatedTextArb) }),
+      title: translatedTextArb,
+      agency: fc.record({ name: translatedTextArb }),
       grantIds: fc.array(fc.string(), { maxLength: 3 }),
     }),
     { maxLength: 3 },

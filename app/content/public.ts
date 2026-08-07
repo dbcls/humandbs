@@ -30,6 +30,8 @@
  */
 
 import type {
+  Bilingual,
+  ContentValue,
   DatasetContent,
   LocalizedLinks,
   ResearchContent,
@@ -64,11 +66,11 @@ export interface CatalogKey {
  */
 export interface CauUsage {
   applicationId: string
-  principalInvestigator: TranslatedText
-  affiliation: TranslatedText
+  principalInvestigator: Bilingual
+  affiliation: Bilingual
   /** Upstream holds this in English only. */
   country: string
-  researchTitle: TranslatedText
+  researchTitle: Bilingual
   periodStart: string | null
   periodEnd: string | null
   datasetAccessions: string[]
@@ -109,26 +111,36 @@ export interface PublicDataset {
   dates: ArchiveDates
 }
 
+/**
+ * An unsettled value becomes an empty one, which is how it disappears from the
+ * page: the shape is the content type itself, so there is nothing to omit.
+ */
 function settle<T>(slot: Slot<T>, empty: T, options: PublicOptions): Slot<T> {
   return slot.state === "unknown" && !options.keepUnsettled
     ? { state: "value", value: empty }
     : slot
 }
 
-function text(slot: Slot<TranslatedText>, options: PublicOptions): Slot<TranslatedText> {
-  return settle(slot, { ja: "", en: "" }, options)
+/**
+ * A translated pair holds a state per language, so each side settles on its own
+ * — a title that is settled in Japanese and still a question in English
+ * publishes the Japanese and falls back for the English, exactly as an
+ * untranslated field does.
+ */
+function text(pair: TranslatedText, options: PublicOptions): TranslatedText {
+  return { ja: settle(pair.ja, "", options), en: settle(pair.en, "", options) }
 }
 
-function rich(slot: Slot<TranslatedRichText>, options: PublicOptions): Slot<TranslatedRichText> {
-  return settle(slot, { ja: [], en: [] }, options)
+function rich(pair: TranslatedRichText, options: PublicOptions): TranslatedRichText {
+  return { ja: settle(pair.ja, [], options), en: settle(pair.en, [], options) }
 }
 
 function single(slot: Slot<string>, options: PublicOptions): Slot<string> {
   return settle(slot, "", options)
 }
 
-function links(slot: Slot<LocalizedLinks>, options: PublicOptions): Slot<LocalizedLinks> {
-  return settle(slot, { ja: [], en: [] }, options)
+function links(pair: LocalizedLinks, options: PublicOptions): LocalizedLinks {
+  return { ja: settle(pair.ja, [], options), en: settle(pair.en, [], options) }
 }
 
 /**
@@ -185,6 +197,18 @@ export function publicResearchContent(
 }
 
 /**
+ * The state of a value that is not prose sits on the value itself, so an
+ * unsettled one takes its whole slot with it. Prose holds a state per language,
+ * and only the unsettled language empties — the other one is still published.
+ */
+function publicValue(value: ContentValue, options: PublicOptions): ContentValue | null {
+  if (value.kind === "text") return { kind: "text", text: rich(value.text, options) }
+  if (options.keepUnsettled) return value
+  const state = value.kind === "vocabulary" ? value.termIds.state : value.value.state
+  return state === "unknown" ? null : value
+}
+
+/**
  * A slot under a key the catalog does not know is dropped: without the catalog
  * there is nothing that says it may be shown, and the safe reading of an
  * unknown key is that it may not.
@@ -194,9 +218,10 @@ function publicValues(
   keys: ReadonlyMap<string, CatalogKey>,
   options: PublicOptions,
 ): ValueSlot[] {
-  return values.filter((value) => {
-    if (!keys.get(value.keyId)?.showOnPublicPage) return false
-    return value.slot.state !== "unknown" || options.keepUnsettled
+  return values.flatMap((slot) => {
+    if (!keys.get(slot.keyId)?.showOnPublicPage) return []
+    const value = publicValue(slot.value, options)
+    return value === null ? [] : [{ keyId: slot.keyId, value }]
   })
 }
 

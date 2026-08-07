@@ -11,12 +11,54 @@
  */
 
 /**
- * A translated pair. One side empty means untranslated, both empty means never
- * filled in. Both states are derived from the value, never stored as a flag.
+ * The three states a value can be in. Together with a value that is present but
+ * empty this makes four ways a field appears; a value slot adds a fifth by being
+ * absent from the list altogether.
+ *
+ * `unknown` is what the publish gate enumerates: a value that should exist but
+ * has not been settled. **Empty is a different thing** — nobody has touched it
+ * yet, which is what a required-field check looks for. Emptiness is a value
+ * rather than a state of its own, so that "the empty state" and "the empty
+ * value" never become two ways of writing the same thing.
+ *
+ * `not-applicable` is settled information — the value does not exist — so the
+ * gate leaves it alone and the public page renders it as an explicit "not
+ * applicable" rather than hiding the row.
  */
-export interface TranslatedText {
+export type Slot<T>
+  = | { state: "value", value: T }
+    | { state: "unknown" }
+    | { state: "not-applicable" }
+
+/**
+ * A plain pair of languages, carrying no state.
+ *
+ * This is for what curators do not edit: the cache of an upstream system, whose
+ * two languages are whatever upstream has, and site content, which has neither
+ * versions nor pins. Neither is ever counted as untranslated.
+ */
+export interface Bilingual {
   ja: string
   en: string
+}
+
+/**
+ * A translated pair. **Each language carries its own state**, because a field
+ * can be settled in one language while still being a question in the other —
+ * the published data has `ご教示ください(英語タイトル)` sitting in `en` while
+ * `ja` holds a value.
+ *
+ * The state is held here and nowhere else. Wrapping the pair in a slot as well
+ * would let one fact be stated in two places.
+ *
+ * Untranslated is derived rather than stored: both languages hold a value and
+ * exactly one of them is empty. Where the states differ — a value on one side,
+ * `unknown` on the other — it counts as unsettled instead, so one missing value
+ * is never listed twice by the publish gate.
+ */
+export interface TranslatedText {
+  ja: Slot<string>
+  en: Slot<string>
 }
 
 /**
@@ -49,10 +91,10 @@ export type Line = Span[]
  */
 export type RichText = Line[]
 
-/** A translated pair of prose. Empty on one side means untranslated, as above. */
+/** A translated pair of prose. The state is per language, as above. */
 export interface TranslatedRichText {
-  ja: RichText
-  en: RichText
+  ja: Slot<RichText>
+  en: Slot<RichText>
 }
 
 /**
@@ -61,8 +103,8 @@ export interface TranslatedRichText {
  * pages, and often only one exists.
  */
 export interface LocalizedLinks {
-  ja: Link[]
-  en: Link[]
+  ja: Slot<Link[]>
+  en: Slot<Link[]>
 }
 
 export interface Link {
@@ -72,61 +114,53 @@ export interface Link {
   text: string
 }
 
-/**
- * The three states a value slot can be in. Together with the slot being absent
- * this gives four ways a field can appear.
- *
- * `unknown` is what the publish gate enumerates: a value that should exist but
- * has not been settled. `not-applicable` is settled information — the value
- * does not exist — so the gate leaves it alone and the public page renders it
- * as an explicit "not applicable" rather than hiding the row.
- */
-export type Slot<T>
-  = | { state: "value", value: T }
-    | { state: "unknown" }
-    | { state: "not-applicable" }
+/** A number as stored: what search reads, and what was typed to get there. */
+export interface NumberValue {
+  /** Converted to the key's canonical unit. Search and facets read only this. */
+  value: number
+  unit: string | null
+  /** What the editor actually typed, kept so a bad conversion can be redone. */
+  inputValue: number
+  inputUnit: string | null
+}
 
 /**
- * A value under a catalog key. The `kind` mirrors `content_key.value_type`, so a
- * slot carries enough to be rendered without reading the catalog, and writing a
- * slot whose kind disagrees with its key is rejected at the write path.
+ * A value under a catalog key. The `kind` mirrors `content_key.value_type`, so
+ * a value carries enough to be rendered without reading the catalog, and
+ * writing one whose kind disagrees with its key is rejected at the write path.
+ *
+ * **The state sits inside**: translated prose holds one per language,
+ * everything else holds one. Putting a state on the slot as well would be a
+ * second place to say the same thing.
  */
 export type ContentValue
   = | { kind: "text", text: TranslatedRichText }
-    | { kind: "single", value: string }
-    | { kind: "accession", value: string }
-    | { kind: "vocabulary", termIds: string[] }
-    | {
-      kind: "number"
-      /** Converted to the key's canonical unit. Search and facets read only this. */
-      value: number
-      unit: string | null
-      /** What the editor actually typed, kept so a bad conversion can be redone. */
-      inputValue: number
-      inputUnit: string | null
-    }
+    | { kind: "single", value: Slot<string> }
+    | { kind: "accession", value: Slot<string> }
+    | { kind: "vocabulary", termIds: Slot<string[]> }
+    | { kind: "number", value: Slot<NumberValue> }
 
 export interface ValueSlot {
   /** References `content_key.id`. */
   keyId: string
-  slot: Slot<ContentValue>
+  value: ContentValue
 }
 
 /** What a ContentSnapshot holds, and what a draft edits. */
 export interface ResearchContent {
-  title: Slot<TranslatedText>
+  title: TranslatedText
   summary: {
-    aims: Slot<TranslatedRichText>
-    methods: Slot<TranslatedRichText>
-    targets: Slot<TranslatedRichText>
-    url: Slot<LocalizedLinks>
+    aims: TranslatedRichText
+    methods: TranslatedRichText
+    targets: TranslatedRichText
+    url: LocalizedLinks
   }
   summaryShort: {
-    methods: Slot<TranslatedRichText>
-    targets: Slot<TranslatedRichText>
-    typeOfData: Slot<TranslatedRichText>
+    methods: TranslatedRichText
+    targets: TranslatedRichText
+    typeOfData: TranslatedRichText
   }
-  releaseNote: Slot<TranslatedRichText>
+  releaseNote: TranslatedRichText
   dataProviders: DataProvider[]
   researchProjects: ResearchProject[]
   grants: Grant[]
@@ -142,10 +176,10 @@ export interface ResearchContent {
 /** Array elements carry an identity because comments address them. */
 export interface DataProvider {
   id: string
-  name: Slot<TranslatedText>
+  name: TranslatedText
   organization: {
-    name: Slot<TranslatedText>
-    address: Slot<TranslatedText>
+    name: TranslatedText
+    address: TranslatedText
   }
   orcid: Slot<string>
   email: Slot<string>
@@ -153,14 +187,14 @@ export interface DataProvider {
 
 export interface ResearchProject {
   id: string
-  name: Slot<TranslatedText>
-  url: Slot<LocalizedLinks>
+  name: TranslatedText
+  url: LocalizedLinks
 }
 
 export interface Grant {
   id: string
-  title: Slot<TranslatedText>
-  agency: { name: Slot<TranslatedText> }
+  title: TranslatedText
+  agency: { name: TranslatedText }
   /** Grant numbers as issued. Not translated. */
   grantIds: string[]
 }
@@ -220,7 +254,7 @@ export interface ArticleContent {
 
 export interface AlertContent {
   /** Markdown. */
-  body: TranslatedText
+  body: Bilingual
 }
 
 /**

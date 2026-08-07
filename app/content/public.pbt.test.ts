@@ -42,6 +42,23 @@ function unsettled(value: unknown): number {
   return count
 }
 
+/**
+ * Every slot the value holds, addressed by where it sits. A translated pair has
+ * one per language, so the two sides get their own addresses and can be
+ * compared separately.
+ */
+function slotsAt(value: unknown, path: string, into: Map<string, unknown>): Map<string, unknown> {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => slotsAt(item, `${path}[${index}]`, into))
+    return into
+  }
+  if (value === null || typeof value !== "object") return into
+  const record = value as Record<string, unknown>
+  if (typeof record.state === "string") into.set(path, record)
+  for (const [key, item] of Object.entries(record)) slotsAt(item, `${path}.${key}`, into)
+  return into
+}
+
 const modeArb = fc.boolean().map((keepUnsettled): PublicOptions => ({ keepUnsettled }))
 
 describe("publicResearchContent", () => {
@@ -70,6 +87,18 @@ describe("publicResearchContent", () => {
     fc.assert(fc.property(researchContentArb, modeArb, (content, options) => {
       const once = publicResearchContent(content, options)
       expect(publicResearchContent(once, options)).toEqual(once)
+    }))
+  })
+
+  it("changes a slot only where that slot was unsettled", () => {
+    fc.assert(fc.property(researchContentArb, modeArb, (content, options) => {
+      const before = slotsAt(content, "", new Map())
+      const after = slotsAt(publicResearchContent(content, options), "", new Map())
+      for (const [path, slot] of before) {
+        if (slot !== null && typeof slot === "object" && "state" in slot
+          && slot.state === "unknown") continue
+        expect(after.get(path)).toEqual(slot)
+      }
     }))
   })
 })
