@@ -33,6 +33,13 @@ function pages(scope: string) {
     route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),
     route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
+    route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
+    route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
+    route(
+      "admin/research/:researchId/draft/:draftId",
+      "routes/admin-draft.tsx",
+      { id: `${scope}-admin-draft` },
+    ),
   ]
 }
 

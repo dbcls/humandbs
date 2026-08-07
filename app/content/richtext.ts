@@ -47,8 +47,16 @@ export function linkHref(href: string): string | null {
   return null
 }
 
-/** Punctuation markdown reads as syntax wherever in a line it appears. */
-const INLINE = /[\\`*_[\]<&]/g
+/**
+ * Punctuation markdown reads as syntax wherever in a line it appears.
+ *
+ * `|` and `~` are here for the dialect's sake rather than CommonMark's: a table
+ * and a strikethrough are things prose cannot hold, and the save path rejects
+ * them, so text that already holds one of those characters has to come back out
+ * as text. Escaping them is what makes "what this writes out, the save path
+ * accepts and reads back unchanged" true for every tree.
+ */
+const INLINE = /[\\`*_[\]<&|~]/g
 
 function isWordChar(char: string | undefined): boolean {
   return char !== undefined && /[\p{L}\p{N}]/u.test(char)

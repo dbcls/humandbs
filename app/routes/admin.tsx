@@ -1,7 +1,10 @@
+import { Link } from "react-router"
+
+import { adminResearchListPath } from "~/admin/urls"
 import { requireActor } from "~/auth/actor.server"
 import { Card, Empty, KeyValue, Page, PageHead } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
-import { readLocale } from "~/public/urls"
+import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin"
 
@@ -40,7 +43,13 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <PageHead label={messages.admin.heading} />
+      <PageHead label={messages.admin.heading}>
+        {capabilities.includes("view-unpublished") && (
+          <Link to={href(locale, adminResearchListPath())} className="text-white">
+            {messages.admin.research.heading}
+          </Link>
+        )}
+      </PageHead>
       <Card>
         <dl>
           <KeyValue title={messages.admin.signedInAs}>{name}</KeyValue>
