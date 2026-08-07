@@ -461,3 +461,75 @@ export function datasetView(
     untranslated: fallbacks.seen(),
   }
 }
+
+/**
+ * A row of one of the two listings.
+ *
+ * The listings do not carry the untranslated notice. It is a statement about a
+ * page — "what you are reading is not fully translated" — and a table of twenty
+ * rows drawn from twenty different records has no single answer to give.
+ */
+export interface ResearchListRowView {
+  humLabel: string
+  title: FieldView
+  datasetLabels: string[]
+  typeOfData: FieldView
+  methods: FieldView
+  targets: FieldView
+  accessTypes: TermView[]
+  datePublished: string | null
+  dateModified: string | null
+}
+
+export interface ResearchListRowInput {
+  humLabel: string
+  content: ResearchContent
+  /** In the order the version lists them, already resolved to labels. */
+  datasetLabels: string[]
+  /** Distinct access types across the research's published datasets. */
+  accessTermIds: string[]
+  datePublished: string | null
+  dateModified: string | null
+}
+
+export function researchListRowView(
+  input: ResearchListRowInput,
+  locale: Locale,
+  catalog: CatalogView,
+): ResearchListRowView {
+  const fallbacks = fallbackTracker()
+  const short = input.content.summaryShort
+  return {
+    humLabel: input.humLabel,
+    title: translated(input.content.title, locale, fallbacks),
+    datasetLabels: input.datasetLabels,
+    typeOfData: prose(short.typeOfData, locale, fallbacks),
+    methods: prose(short.methods, locale, fallbacks),
+    targets: prose(short.targets, locale, fallbacks),
+    accessTypes: input.accessTermIds.flatMap((id) => {
+      const term = catalog.termById.get(id)
+      return term === undefined ? [] : [{ code: term.code, label: termLabel(term, locale) }]
+    }),
+    datePublished: input.datePublished,
+    dateModified: input.dateModified,
+  }
+}
+
+export interface DatasetListRowView extends DatasetRowView {
+  humLabel: string
+  dateModified: string | null
+}
+
+export interface DatasetListRowInput extends DatasetRowInput {
+  humLabel: string
+  dateModified: string | null
+}
+
+export function datasetListRowView(
+  input: DatasetListRowInput,
+  locale: Locale,
+  catalog: CatalogView,
+): DatasetListRowView {
+  const row = datasetRowView(input, locale, catalog, fallbackTracker())
+  return { ...row, humLabel: input.humLabel, dateModified: input.dateModified }
+}

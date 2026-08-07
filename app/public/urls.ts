@@ -68,6 +68,31 @@ export function datasetPath(datasetLabel: string): string {
   return `/dataset/${encodeURIComponent(datasetLabel)}`
 }
 
+export function listPath(target: "research" | "dataset"): string {
+  return target === "research" ? "/research" : "/dataset"
+}
+
+export interface SearchParams {
+  /** The query language, not what was typed into the box. Omitted when empty. */
+  q: string
+  sort: string | null
+  page: number
+}
+
+/**
+ * The query string of a search. Only what differs from the default is written,
+ * so the first page of an unfiltered browse is the bare address and the same
+ * search always reads the same way.
+ */
+export function searchQuery(params: SearchParams): string {
+  const search = new URLSearchParams()
+  if (params.q !== "") search.set("q", params.q)
+  if (params.sort !== null) search.set("sort", params.sort)
+  if (params.page > 1) search.set("page", String(params.page))
+  const written = search.toString()
+  return written === "" ? "" : `?${written}`
+}
+
 export function newsPath(): string {
   return "/news"
 }

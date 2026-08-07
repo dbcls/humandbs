@@ -45,6 +45,12 @@ export const searchDoc = pgTable("search_doc", {
   datasetLabel: text(),
   datePublished: date(),
   dateModified: date(),
+  /**
+   * The title of the research the row belongs to, both languages, so a query
+   * can be scoped to it. Not indexed: the column is short, the corpus is a few
+   * thousand rows, and the match operator works without one.
+   */
+  title: text().notNull(),
   textJa: text().notNull(),
   textEn: text().notNull(),
   /**

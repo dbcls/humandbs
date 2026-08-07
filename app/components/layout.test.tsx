@@ -39,6 +39,11 @@ describe("サイトのヘッダ", () => {
       .toContain("href=\"/guidelines/data-sharing-guidelines\"")
   })
 
+  it("言語切替はクエリを持ったまま切り替える。一覧ではそこに検索が入っている", () => {
+    expect(header("ja", "/research?q=%E7%B3%96%E5%B0%BF%E7%97%85&page=2"))
+      .toContain("href=\"/en/research?q=%E7%B3%96%E5%B0%BF%E7%97%85&amp;page=2\"")
+  })
+
   it("alert が無いときはバナーの器ごと出さない", () => {
     expect(header("ja", "/")).not.toContain("announcement")
     expect(header("ja", "/")).not.toContain("<div class=\"markdown")

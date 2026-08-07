@@ -160,6 +160,91 @@ describe("rebuildSearchDocs", () => {
     expect(facet.ancestorIds).toEqual([parentId])
   })
 
+  it("carries the text of a dataset into the row of the research it belongs to", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await db.update(s.datasetContent).set({
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{ id: "experiment-1", label: { state: "value", value: "ATAC-seq" }, values: [] }],
+      },
+    }).where(eq(s.datasetContent.datasetId, datasetId))
+    await publish(researchId, 1, [datasetId])
+
+    await rebuildSearchDocs(db)
+
+    const texts = await db
+      .select({ targetType: s.searchDoc.targetType, textJa: s.searchDoc.textJa })
+      .from(s.searchDoc)
+    expect(only(texts.filter((row) => row.targetType === "research")).textJa).toContain("ATAC-seq")
+    // A version is the ledger of what was published, not something the lists search.
+    const version = only(texts.filter((row) => row.targetType === "research-version"))
+    expect(version.textJa).not.toContain("ATAC-seq")
+    expect(version.textJa).toContain("JGAD000001")
+  })
+
+  it("leaves a value the catalog hides out of the text while still counting it as a facet", async () => {
+    const researchId = await createResearch("hum0001")
+    const { id: setId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "tissue", labelJa: "組織", labelEn: "Tissue", source: "portal" })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: termId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "liver", labelEn: "Liver", source: "portal" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: hiddenTerms } = only(await db.insert(s.contentKey)
+      .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId, showOnPublicPage: false })
+      .returning({ id: s.contentKey.id }))
+    const { id: hiddenProse } = only(await db.insert(s.contentKey)
+      .values({ code: "internal-note", scope: "experiment", valueType: "text", labelJa: "メモ", labelEn: "Note", showOnPublicPage: false })
+      .returning({ id: s.contentKey.id }))
+
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await db.update(s.datasetContent).set({
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: { state: "value", value: "WES" },
+          values: [
+            { keyId: hiddenTerms, slot: { state: "value", value: { kind: "vocabulary", termIds: [termId] } } },
+            {
+              keyId: hiddenProse,
+              slot: {
+                state: "value",
+                value: { kind: "text", text: { ja: [[{ text: "内部メモ" }]], en: [] } },
+              },
+            },
+          ],
+        }],
+      },
+    }).where(eq(s.datasetContent.datasetId, datasetId))
+    await publish(researchId, 1, [datasetId])
+
+    const counts = await rebuildSearchDocs(db)
+
+    expect(counts.facetTerms).toBe(1)
+    const texts = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
+    expect(texts.every((row) => !row.textJa.includes("内部メモ"))).toBe(true)
+  })
+
+  it("takes the dates of an accession the archive issued from the cache", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await publish(researchId, 1, [datasetId])
+    await db.insert(s.accessionDate).values({
+      accession: "JGAD000001",
+      source: "ddbj-search",
+      datePublished: "2018-04-02",
+      dateModified: "2023-11-15",
+    })
+
+    await rebuildSearchDocs(db)
+
+    const row = only((await docs()).filter((d) => d.targetType === "dataset"))
+    expect(row.datePublished).toBe("2018-04-02")
+    expect(row.dateModified).toBe("2023-11-15")
+  })
+
   it("produces the same rows when run again", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")

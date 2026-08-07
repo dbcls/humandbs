@@ -21,7 +21,6 @@ import { and, eq, inArray } from "drizzle-orm"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
-  accessionDate,
   cauEntry,
   contentKey,
   contentSnapshot,
@@ -151,6 +150,13 @@ export interface PublishedDatasetPage extends PublishedDatasetRow {
   dateModified: string | null
 }
 
+/**
+ * The dates are read off the search row rather than resolved here. Whether the
+ * content's own release date or the archive's cache applies is decided where
+ * those rows are derived, so a page, a listing and the JSON API cannot answer
+ * differently — and a cache refresh reaches all three at once because it
+ * rebuilds the rows in the same transaction.
+ */
 export async function publishedDataset(
   db: Executor,
   datasetId: string,
@@ -161,6 +167,7 @@ export async function publishedDataset(
       label: searchDoc.datasetLabel,
       humLabel: searchDoc.humLabel,
       datePublished: searchDoc.datePublished,
+      dateModified: searchDoc.dateModified,
       content: datasetContent.content,
     })
     .from(searchDoc)
@@ -169,25 +176,7 @@ export async function publishedDataset(
     .limit(1)
   const label = row?.label
   if (row === undefined || label === null || label === undefined) return null
-
-  // The archive owns the dates of an accession it issued; `content.releaseDate`
-  // is only ever set for an id the portal issued itself. The projection decides
-  // which of the two applies, so nothing downstream has to.
-  const [dates] = await db
-    .select({
-      datePublished: accessionDate.datePublished,
-      dateModified: accessionDate.dateModified,
-    })
-    .from(accessionDate)
-    .where(eq(accessionDate.accession, label))
-    .limit(1)
-
-  return {
-    ...row,
-    label,
-    datePublished: row.content.releaseDate ?? dates?.datePublished ?? null,
-    dateModified: dates?.dateModified ?? null,
-  }
+  return { ...row, label }
 }
 
 /**

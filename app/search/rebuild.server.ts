@@ -7,6 +7,16 @@
  * points at any more all disappear by the same route: the published set is
  * derived again and they are not in it.
  *
+ * The text is derived from the **public projection** rather than from the
+ * content, so a value the catalog hides and a value nobody has settled cannot
+ * be found by searching for it.
+ *
+ * A research row carries the text of its datasets as well as its own. A dataset
+ * belongs to exactly one research, so this duplicates nothing, and it is what
+ * makes "find the study whose analysis method mentions this" work in the
+ * research list. A version row carries only its datasets' labels: versions are
+ * the ledger of what is published rather than something the lists search.
+ *
  * A full rebuild is a normal operation rather than a repair. The corpus is a
  * few thousand rows, and rebuilding it is how a change to the derivation, to
  * the catalog, or to a vocabulary reaches the search.
@@ -14,9 +24,12 @@
 
 import { eq } from "drizzle-orm"
 
-import type { DatasetContent, ValueSlot } from "~/content/types"
+import { publicDatasetContent, publicResearchContent, type CatalogKey } from "~/content/public"
+import type { DatasetContent, ResearchContent, Slot, TranslatedText, ValueSlot } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
+  accessionDate,
+  contentKey,
   contentSnapshot,
   dataset,
   datasetContent,
@@ -29,7 +42,7 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 
-import { searchTextOf, type SearchText } from "./text"
+import { concatSearchText, searchTextOf, type SearchText } from "./text"
 
 export interface RebuildCounts {
   research: number
@@ -40,6 +53,9 @@ export interface RebuildCounts {
 }
 
 const INSERT_CHUNK = 500
+
+/** Nothing on the public side is ever derived with unsettled values kept. */
+const PUBLISHED = { keepUnsettled: false }
 
 async function insertAll<T>(
   rows: T[],
@@ -55,6 +71,12 @@ async function insertAll<T>(
 /** The pure side names the languages; the table names the columns. */
 function indexed(text: SearchText) {
   return { textJa: text.ja, textEn: text.en }
+}
+
+/** Both languages of the title in one string; the field is not language-scoped. */
+function titleOf(slot: Slot<TranslatedText>): string {
+  if (slot.state !== "value") return ""
+  return [slot.value.ja, slot.value.en].filter(Boolean).join(" ")
 }
 
 function earliest(dates: string[]): string | null {
@@ -91,6 +113,13 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     if (pin.kind === "dataset" && pin.datasetId) datasetLabelOf.set(pin.datasetId, pin.label)
   }
 
+  // The projection needs to know which keys may be shown; nothing else about
+  // the catalog matters here.
+  const keyRows = await db
+    .select({ id: contentKey.id, showOnPublicPage: contentKey.showOnPublicPage })
+    .from(contentKey)
+  const keys = new Map<string, CatalogKey>(keyRows.map((key) => [key.id, key]))
+
   const versions = await db
     .select({
       id: researchVersion.id,
@@ -111,6 +140,22 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     })
     .from(datasetContent)
     .innerJoin(dataset, eq(dataset.id, datasetContent.datasetId))
+
+  // The archive owns the dates of an accession it issued; the content carries
+  // one only for an id the portal issued itself. Resolving it here is what
+  // makes the daily cache refresh reach the listings — the rows are rebuilt in
+  // the same transaction — and leaves one place that knows which of the two
+  // applies.
+  const archiveDates = new Map(
+    (await db
+      .select({
+        accession: accessionDate.accession,
+        datePublished: accessionDate.datePublished,
+        dateModified: accessionDate.dateModified,
+      })
+      .from(accessionDate))
+      .map((row) => [row.accession, row]),
+  )
 
   const terms = await db
     .select({ id: vocabularyTerm.id, parentId: vocabularyTerm.parentId })
@@ -137,9 +182,52 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     for (const id of (version.content).datasetIds) listedDatasetIds.add(id)
   }
 
+  // Datasets first: a research row carries the text of the ones below it.
+  //
+  // The text comes from the projection and the facets come from the content,
+  // and the difference is deliberate. A key the catalog keeps off the public
+  // page is exactly what a facet is made of, so projecting before collecting
+  // them would delete the facets that are meant to exist. Unsettled slots are
+  // left out of both.
+  interface DatasetProjection {
+    id: string
+    researchId: string
+    label: string
+    content: DatasetContent
+    projected: DatasetContent
+    text: SearchText
+  }
+  const projectedDatasets: DatasetProjection[] = []
+  const datasetTextByResearch = new Map<string, SearchText[]>()
+  for (const row of datasets) {
+    if (!listedDatasetIds.has(row.id)) continue
+    const humLabel = humLabelOf.get(row.researchId)
+    const label = datasetLabelOf.get(row.id)
+    if (!humLabel || !label) continue
+    const projected = publicDatasetContent(row.content, { keys, files: [] }, PUBLISHED)
+    const text = searchTextOf(projected, [humLabel, label])
+    projectedDatasets.push({
+      id: row.id,
+      researchId: row.researchId,
+      label,
+      content: row.content,
+      projected,
+      text,
+    })
+    const held = datasetTextByResearch.get(row.researchId) ?? []
+    held.push(text)
+    datasetTextByResearch.set(row.researchId, held)
+  }
+  const datasetLabelsOfVersion = (content: ResearchContent): string[] =>
+    content.datasetIds.flatMap((id) => {
+      const label = datasetLabelOf.get(id)
+      return label !== undefined && listedDatasetIds.has(id) ? [label] : []
+    })
+
   type DocRow = typeof searchDoc.$inferInsert
   const docs: DocRow[] = []
   const datasetDocKeyOf = new Map<string, number>()
+  const titleOfResearch = new Map<string, string>()
 
   const researchRows = await db.select({ id: research.id }).from(research)
   for (const row of researchRows) {
@@ -147,48 +235,61 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     const humLabel = humLabelOf.get(row.id)
     if (!held || held.length === 0 || !humLabel) continue
     const current = held.reduce((a, b) => (a.number > b.number ? a : b))
+    const content = publicResearchContent(current.content, PUBLISHED)
+    const title = titleOf(content.title)
+    titleOfResearch.set(row.id, title)
     const dates = held.map((v) => v.releaseDate)
     docs.push({
       targetType: "research",
       targetId: row.id,
       researchId: row.id,
       humLabel,
+      title,
       datePublished: earliest(dates),
       dateModified: latest(dates),
-      ...indexed(searchTextOf(current.content, [humLabel])),
+      ...indexed(concatSearchText([
+        searchTextOf(content, [humLabel]),
+        ...(datasetTextByResearch.get(row.id) ?? []),
+      ])),
     })
   }
 
   for (const version of versions) {
     const humLabel = humLabelOf.get(version.researchId)
     if (!humLabel) continue
+    const content = publicResearchContent(version.content, PUBLISHED)
     docs.push({
       targetType: "research-version",
       targetId: version.id,
       researchId: version.researchId,
       humLabel,
       versionNumber: version.number,
+      title: titleOf(content.title),
       datePublished: version.releaseDate,
       dateModified: version.releaseDate,
-      ...indexed(searchTextOf(version.content, [humLabel, `${humLabel}-v${version.number}`])),
+      ...indexed(searchTextOf(content, [
+        humLabel,
+        `${humLabel}-v${version.number}`,
+        ...datasetLabelsOfVersion(version.content),
+      ])),
     })
   }
 
-  for (const row of datasets) {
-    if (!listedDatasetIds.has(row.id)) continue
+  for (const row of projectedDatasets) {
     const humLabel = humLabelOf.get(row.researchId)
-    const datasetLabel = datasetLabelOf.get(row.id)
-    if (!humLabel || !datasetLabel) continue
-    const content = row.content
+    if (!humLabel) continue
+    const archive = archiveDates.get(row.label)
     datasetDocKeyOf.set(row.id, docs.length)
     docs.push({
       targetType: "dataset",
       targetId: row.id,
       researchId: row.researchId,
       humLabel,
-      datasetLabel,
-      datePublished: content.releaseDate,
-      ...indexed(searchTextOf(content, [humLabel, datasetLabel])),
+      datasetLabel: row.label,
+      title: titleOfResearch.get(row.researchId) ?? "",
+      datePublished: row.content.releaseDate ?? archive?.datePublished ?? null,
+      dateModified: archive?.dateModified ?? null,
+      ...indexed(row.text),
     })
   }
 
@@ -205,7 +306,7 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
 
   const termRows: (typeof searchFacetTerm.$inferInsert)[] = []
   const numberRows: (typeof searchFacetNumber.$inferInsert)[] = []
-  for (const row of datasets) {
+  for (const row of projectedDatasets) {
     const at = datasetDocKeyOf.get(row.id)
     if (at === undefined) continue
     const docId = ids[at]

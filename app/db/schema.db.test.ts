@@ -358,6 +358,7 @@ describe("search_doc", () => {
       targetId: researchId,
       researchId,
       humLabel: "hum0001",
+      title: "",
       textJa,
       textEn,
     })
@@ -439,6 +440,7 @@ describe("search_facet_term", () => {
       targetId: researchId,
       researchId,
       humLabel: "hum0001",
+      title: "",
       textJa: "",
       textEn: "",
     }).returning({ id: s.searchDoc.id }))
@@ -472,7 +474,7 @@ describe("search_facet_term", () => {
     const researchId = await createResearch()
     const doc = only(await db.insert(s.searchDoc).values({
       targetType: "dataset", targetId: researchId, researchId,
-      humLabel: "hum0001", textJa: "", textEn: "",
+      humLabel: "hum0001", title: "", textJa: "", textEn: "",
     }).returning({ id: s.searchDoc.id }))
     await db.insert(s.searchFacetTerm).values({ docId: doc.id, keyId: key.id, termId: term.id })
 

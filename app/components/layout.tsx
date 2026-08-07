@@ -9,7 +9,9 @@ import { href, readLocale } from "~/public/urls"
 /**
  * The language switch points at the same page in the other language rather than
  * at its front page: the two addresses of a page differ only by the prefix, so
- * the switch is the current path with a different prefix on it.
+ * the switch is the current address with a different prefix on it. **The query
+ * string comes along** — on a listing it holds the search, and dropping it
+ * would answer "read this in English" with a different page.
  */
 function otherLocale(locale: Locale): Locale {
   return LOCALES.find((candidate) => candidate !== locale) ?? locale
@@ -61,7 +63,8 @@ function NavbarEntry({ entry, locale }: { entry: NavEntry, locale: Locale }) {
 export function SiteHeader({ locale, alerts }: { locale: Locale, alerts: string[] }) {
   const messages = messagesFor(locale)
   const other = otherLocale(locale)
-  const { path } = readLocale(useLocation().pathname)
+  const location = useLocation()
+  const { path } = readLocale(location.pathname)
 
   return (
     <header className="border-line border-b bg-white">
@@ -69,7 +72,12 @@ export function SiteHeader({ locale, alerts }: { locale: Locale, alerts: string[
         <Link to={href(locale, "/")} className="font-bold text-lg no-underline">
           {messages.siteName}
         </Link>
-        <Link to={href(other, path)} hrefLang={other} lang={other} className="text-sm">
+        <Link
+          to={`${href(other, path)}${location.search}`}
+          hrefLang={other}
+          lang={other}
+          className="text-sm"
+        >
           {messages.otherLanguage}
         </Link>
       </div>

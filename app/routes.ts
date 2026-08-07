@@ -26,9 +26,11 @@ function publicPages(scope: string) {
     route("data-submission", "routes/data-submission.tsx", { id: `${scope}-data-submission` }),
     route("data-use", "routes/data-use.tsx", { id: `${scope}-data-use` }),
     route("contact-us", "routes/contact-us.tsx", { id: `${scope}-contact-us` }),
+    route("research", "routes/research-list.tsx", { id: `${scope}-research-list` }),
     route("research/:humId", "routes/research.tsx", { id: `${scope}-research` }),
     route("research/:humId/versions", "routes/research-versions.tsx", { id: `${scope}-versions` }),
     route("research/:humId/:version", "routes/research-version.tsx", { id: `${scope}-version` }),
+    route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),
   ]
 }

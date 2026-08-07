@@ -2,6 +2,7 @@ import { Link } from "react-router"
 
 import { Page, Section } from "~/components/page"
 import { Markdown } from "~/components/markdown"
+import { SearchExamples, SearchForm } from "~/components/search"
 import { ActionButton, ActionRow } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { findDocument, newsList } from "~/public/site.server"
@@ -17,8 +18,9 @@ const LATEST_NEWS = 5
  * document supplies the words. A missing or unpublished introduction leaves the
  * frame standing rather than turning the front page into a 404.
  *
- * The search box belongs here and is not built yet; it arrives with the search
- * layer, along with the two list addresses the buttons already point at.
+ * The search box sits here and in the two listings, and nowhere else. Those are
+ * the places a reader starts from, and a box in the header would have to be
+ * carried by every page for the few who search from the middle of one.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -47,6 +49,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <Markdown html={intro.html} className="mt-4" />
             </>
           )}
+
+          <div className="mt-8">
+            <SearchForm locale={locale} target="research" keyword="" query="" size="large" />
+            <SearchExamples locale={locale} />
+          </div>
 
           <div className="mt-10">
             <ActionRow>
