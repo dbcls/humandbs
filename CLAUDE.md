@@ -11,7 +11,8 @@ S3 (SeaweedFS) の 2 bucket に置く。
 | 知りたいこと | どこ |
 |---|---|
 | 何をどう持つか (identity と label、版と pin、公開表現、ファイル、キャッシュ) | [docs/data-model.md](docs/data-model.md) |
-| 編集から公開まで (draft、同時編集、公開ゲート、レビュー、証跡) | [docs/editing.md](docs/editing.md) |
+| 編集から公開まで (draft、保存の単位、同時編集、公開ゲート、レビュー、証跡) | [docs/editing.md](docs/editing.md) |
+| 誰が何を許されるか (capability、セッション) | [docs/auth.md](docs/auth.md) |
 | test の階層と mock の境界 | [docs/testing.md](docs/testing.md) |
 | 開発環境の手順 | [docs/development.md](docs/development.md) |
 | 訳語 | [docs/glossary.md](docs/glossary.md) |

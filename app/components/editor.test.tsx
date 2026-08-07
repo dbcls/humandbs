@@ -19,6 +19,8 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
     revision: 3,
     input,
     datasets: [],
+    presence: [],
+    undo: [],
   }
 }
 

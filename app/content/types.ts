@@ -267,8 +267,18 @@ export type CommentAnchor
     | { kind: "dataset-value", datasetId: string, keyId: string }
     | { kind: "experiment-value", datasetId: string, experimentId: string, keyId: string }
 
+/**
+ * Why a snapshot was kept. The two are what the undo stack is for and they are
+ * taken back differently: the state before a save is somewhere to return to,
+ * while a form a conflict refused is work that was never written down anywhere
+ * else.
+ */
+export type UndoReason = "before-save" | "rejected"
+
 /** One entry of a draft's undo stack: the whole draft, not a diff. */
 export interface DraftSnapshot {
+  reason: UndoReason
+  note: string
   content: ResearchContent
   datasetEntries: { datasetId: string, content: DatasetContent }[]
 }

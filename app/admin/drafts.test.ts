@@ -49,11 +49,37 @@ describe("writing to a draft", () => {
 
   it("is checked against a revision by every function that changes a row", () => {
     const source = readFileSync(WRITER, "utf8")
-    const changing = [...source.matchAll(/export async function (\w+)\(\s*\n?\s*db: \w+,\s*\n?\s*(\w+): (\w+)/g)]
-      .filter(([, , , type]) => type === "DraftAt")
 
-    // Saving and discarding are the two that touch a row that already exists.
-    expect(changing.map(([, name]) => name)).toEqual(["saveDraftContent", "discardDraft"])
+    expect(changingFunctions(source)).toEqual([
+      "saveDraftContent",
+      "saveDatasetEntry",
+      "createDatasetInDraft",
+      "deleteDraftDataset",
+      "discardDraft",
+    ])
+    // The two mutable rows under a draft, each checked against its own.
     expect(source).toContain("eq(researchDraft.revision, at.revision)")
+    expect(source).toContain("eq(draftDatasetEntry.revision, revision)")
+  })
+
+  it("takes no revision only where there is nothing to check against", () => {
+    const source = readFileSync(WRITER, "utf8")
+    const changing = new Set(changingFunctions(source))
+    const exported = [...source.matchAll(/export async function (\w+)/g)]
+      .map((match) => match[1] ?? "")
+
+    // Two of these create a row, which has no earlier version of itself to
+    // disagree with. The third is presence, which is not content: nobody reads
+    // it for correctness and a lost write costs one heartbeat.
+    expect(exported.filter((name) => !changing.has(name)))
+      .toEqual(["createResearchWithDraft", "createDraft", "touchPresence"])
   })
 })
+
+/** Every exported function whose second argument names what it is changing. */
+function changingFunctions(source: string): string[] {
+  const declarations = source.matchAll(
+    /export async function (\w+)\(\s*\n?\s*db: \w+,\s*\n?\s*at: (DraftAt|DatasetEntryAt)\b/g,
+  )
+  return [...declarations].map((match) => match[1] ?? "")
+}

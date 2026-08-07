@@ -12,13 +12,19 @@ import { createResearchWithDraft, saveDraftContent } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
 import {
   createResearchAction,
+  datasetEditorPage,
+  draftDatasetListAction,
+  draftDatasetListPage,
   draftEditorPage,
+  presenceAction,
   researchDetailAction,
   researchDetailPage,
   researchListPage,
+  saveDatasetAction,
   saveDraftAction,
+  undoSnapshotLoader,
 } from "./pages.server"
-import { readDraft } from "./queries.server"
+import { readDraft, readUndoStack } from "./queries.server"
 
 /**
  * The management screens with their guards on, against the development
@@ -365,5 +371,235 @@ describe("the research screen's forms", () => {
 
     expect(response.status).toBe(404)
     expect(await readDraft(db, draftId)).not.toBeNull()
+  })
+})
+
+describe("the dataset screens of a draft", () => {
+  async function seedCatalog(): Promise<{ textKey: string, vocabKey: string, terms: string[] }> {
+    const set = only(await db.insert(s.vocabularySet)
+      .values({ code: "access", labelJa: "アクセス制限", labelEn: "Access", source: "portal" })
+      .returning({ id: s.vocabularySet.id }))
+    const terms = await db.insert(s.vocabularyTerm).values([
+      { setId: set.id, code: "open", labelEn: "Unrestricted", source: "portal" },
+      { setId: set.id, code: "closed", labelEn: "Controlled", source: "portal" },
+    ]).returning({ id: s.vocabularyTerm.id })
+    const keys = await db.insert(s.contentKey).values([
+      {
+        code: "type-of-data",
+        scope: "dataset",
+        valueType: "text",
+        labelJa: "データの種類",
+        labelEn: "Type of data",
+      },
+      {
+        code: "access-criteria",
+        scope: "dataset",
+        valueType: "vocabulary",
+        labelJa: "アクセス制限",
+        labelEn: "Access type",
+        vocabularySetId: set.id,
+      },
+      {
+        code: "coverage",
+        scope: "experiment",
+        valueType: "text",
+        labelJa: "深度",
+        labelEn: "Coverage",
+      },
+    ]).returning({ id: s.contentKey.id, code: s.contentKey.code })
+
+    const byCode = new Map(keys.map((key) => [key.code, key.id]))
+    return {
+      textKey: byCode.get("type-of-data") ?? "",
+      vocabKey: byCode.get("access-criteria") ?? "",
+      terms: terms.map((term) => term.id),
+    }
+  }
+
+  async function datasetOf(researchId: string, published = false): Promise<string> {
+    const row = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    if (published) {
+      await db.insert(s.datasetContent).values({
+        datasetId: row.id,
+        content: { ...emptyDatasetContent(), releaseDate: "2024-03-01" },
+      })
+    }
+    return row.id
+  }
+
+  function datasetPayload(revision: number | null, values: unknown[] = [], experiments: unknown[] = []) {
+    return {
+      revision,
+      content: { releaseDate: "", fileSelection: [], values, experiments },
+    }
+  }
+
+  function textValue(keyId: string, ja: string) {
+    return {
+      keyId,
+      value: {
+        kind: "text",
+        text: { ja: { state: "value", text: ja }, en: { state: "value", text: "" } },
+      },
+    }
+  }
+
+  it("refuses the editor and the save from somebody without the capability", async () => {
+    const token = await signIn(READER, false)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+    const params = { researchId, draftId, datasetId }
+
+    expect((await thrown(() => datasetEditorPage(get(token, "/x"), "ja", params))).status).toBe(403)
+    expect((await thrown(() =>
+      saveDatasetAction(postJson(token, "/x", datasetPayload(null)), params))).status).toBe(403)
+  })
+
+  it("shows the published description until the draft has written one of its own", async () => {
+    const token = await signIn(CURATOR, true)
+    await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId, true)
+    const params = { researchId, draftId, datasetId }
+
+    const before = await datasetEditorPage(get(token, "/x"), "ja", params)
+    expect(before.revision).toBeNull()
+    expect(before.input.releaseDate).toBe("2024-03-01")
+
+    await saveDatasetAction(postJson(token, "/x", datasetPayload(null)), params)
+
+    const after = await datasetEditorPage(get(token, "/x"), "ja", params)
+    expect(after.revision).toBe(1)
+    expect(after.input.releaseDate).toBe("")
+  })
+
+  it("refuses a dataset of another research as a dataset of this draft", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const other = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(other.researchId)
+
+    expect((await thrown(() =>
+      datasetEditorPage(get(token, "/x"), "ja", { researchId, draftId, datasetId }))).status)
+      .toBe(404)
+  })
+
+  it("refuses a value the catalog would not recognise, rather than storing it", async () => {
+    const token = await signIn(CURATOR, true)
+    const catalog = await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+    const params = { researchId, draftId, datasetId }
+    const refused = async (payload: unknown) =>
+      (await thrown(() => saveDatasetAction(postJson(token, "/x", payload), params))).status
+
+    // A key nobody has heard of.
+    expect(await refused(datasetPayload(null, [
+      textValue("00000000-0000-0000-0000-0000000000ff", "値"),
+    ]))).toBe(400)
+    // A key of the experiment level used at the dataset level.
+    expect(await refused(datasetPayload(null, [], [
+      { id: "exp-1", label: { state: "value", text: "" }, values: [textValue(catalog.textKey, "値")] },
+    ]))).toBe(400)
+    // A kind that disagrees with the key's type.
+    expect(await refused(datasetPayload(null, [
+      { keyId: catalog.vocabKey, value: { kind: "text", text: { ja: { state: "value", text: "x" }, en: { state: "value", text: "" } } } },
+    ]))).toBe(400)
+    // Two terms under a key that takes one.
+    expect(await refused(datasetPayload(null, [
+      { keyId: catalog.vocabKey, value: { kind: "vocabulary", state: "value", termIds: catalog.terms } },
+    ]))).toBe(400)
+
+    expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+  })
+
+  it("answers refused markup with the field it was written in, and writes nothing", async () => {
+    const token = await signIn(CURATOR, true)
+    const catalog = await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+    const params = { researchId, draftId, datasetId }
+
+    const result = await saveDatasetAction(
+      postJson(token, "/x", datasetPayload(null, [textValue(catalog.textKey, "# 見出し")])),
+      params,
+    )
+
+    expect(result.status).toBe("invalid")
+    expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+  })
+
+  it("answers a stale save with what the entry holds now, and leaves it alone", async () => {
+    const token = await signIn(CURATOR, true)
+    const catalog = await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+    const params = { researchId, draftId, datasetId }
+
+    await saveDatasetAction(postJson(token, "/x", datasetPayload(null, [textValue(catalog.textKey, "theirs")])), params)
+    const result = await saveDatasetAction(
+      postJson(token, "/x", datasetPayload(null, [textValue(catalog.textKey, "mine")])),
+      params,
+    )
+
+    expect(result.status).toBe("conflict")
+    if (result.status !== "conflict") return
+    expect(result.revision).toBe(1)
+    const theirs = result.current.values[0]?.value
+    expect(theirs?.kind === "text" && theirs.text.ja.text).toBe("theirs")
+  })
+
+  it("lists a dataset it creates, and refuses to destroy one that is published", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const params = { researchId, draftId }
+
+    const created = await draftDatasetListAction(
+      postForm(token, "/x", { intent: "create-dataset", revision: "1" }),
+      "ja",
+      params,
+    )
+    expect(created).toBeInstanceOf(Response)
+
+    const view = await draftDatasetListPage(get(token, "/x"), "ja", params)
+    expect(view.rows).toHaveLength(1)
+    expect(view.rows[0]?.listed).toBe(true)
+    expect(view.rows[0]?.isOwn).toBe(true)
+
+    const datasetId = view.rows[0]?.id ?? ""
+    await db.insert(s.datasetContent).values({ datasetId, content: emptyDatasetContent() })
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "delete-dataset", datasetId, revision: String(view.revision) }),
+      "ja",
+      params,
+    )).toEqual({ status: "refused" })
+  })
+
+  it("records who is editing and answers with everybody, marking the one who asked", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    const answer = await presenceAction(postForm(token, "/x", {}), { researchId, draftId })
+
+    expect(answer.present).toEqual([{ name: "curator", isSelf: true }])
+    expect(await db.select().from(s.draftPresence)).toHaveLength(1)
+  })
+
+  it("hands over an undo entry without writing anything back", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await saveDraftContent(db, { draftId, revision: 1 }, {
+      note: "before",
+      content: emptyResearchContent(),
+    })
+    const stack = await readUndoStack(db, draftId)
+    const undoId = stack[0]?.id ?? ""
+
+    const snapshot = await undoSnapshotLoader(get(token, "/x"), { researchId, draftId, undoId })
+
+    expect(snapshot.reason).toBe("before-save")
+    expect((await readDraft(db, draftId))?.note).toBe("before")
+    expect(await readUndoStack(db, draftId)).toHaveLength(1)
   })
 })

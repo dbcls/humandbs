@@ -7,16 +7,18 @@
  * their value. Nothing is merged and nothing is reloaded — **what is in the
  * form stays in the form** until the author says otherwise.
  *
- * The comparison is of the meaning, not of the JSON: a slot that says there is
- * no value carries whatever was half typed into it before, and two slots that
- * differ only in that leftover text say the same thing.
- *
- * Arrays are compared twice over. The array's own path stands for membership
- * and order, and each element that exists on both sides is compared field by
- * field under its identity. An element only one side has therefore shows up as
- * a change to the array rather than as a change to a field nobody can see.
+ * How two values are told apart and how an array is compared are the same for a
+ * research and for a dataset, so they live in `compare.ts`.
  */
 
+import {
+  diff,
+  elements,
+  sameStrings,
+  sameText,
+  sameTextPair,
+  type Diff,
+} from "./compare"
 import type {
   DataProviderInput,
   DraftInput,
@@ -26,19 +28,8 @@ import type {
   LinksPairInput,
   RelatedPublicationInput,
   ResearchProjectInput,
-  TextInput,
-  TextPairInput,
 } from "./form"
-
-function sameStrings(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((value, at) => value === b[at])
-}
-
-/** Leftover text is invisible while the state says there is no value. */
-function sameText(a: TextInput, b: TextInput): boolean {
-  if (a.state !== b.state) return false
-  return a.state !== "value" || a.text === b.text
-}
+import { readAt, writeAt } from "./paths"
 
 function sameLink(a: LinkInput, b: LinkInput): boolean {
   return a.id === b.id && a.url === b.url && a.text === b.text
@@ -54,44 +45,12 @@ function sameLinks(a: LinksInput, b: LinksInput): boolean {
     })
 }
 
-function sameTextPair(a: TextPairInput, b: TextPairInput): boolean {
-  return sameText(a.ja, b.ja) && sameText(a.en, b.en)
-}
-
 function sameLinksPair(a: LinksPairInput, b: LinksPairInput): boolean {
   return sameLinks(a.ja, b.ja) && sameLinks(a.en, b.en)
 }
 
-interface Diff {
-  paths: string[]
-  when: (same: boolean, path: string) => void
-}
-
-function diff(): Diff {
-  const paths: string[] = []
-  return {
-    paths,
-    when(same, path) {
-      if (!same) paths.push(path)
-    },
-  }
-}
-
-type Compare<T> = (into: Diff, a: T, b: T, at: string) => void
-
-function elements<T extends { id: string }>(
-  into: Diff,
-  path: string,
-  base: readonly T[],
-  other: readonly T[],
-  compare: Compare<T>,
-): void {
-  into.when(sameStrings(base.map((e) => e.id), other.map((e) => e.id)), path)
-  const otherById = new Map(other.map((element) => [element.id, element]))
-  for (const element of base) {
-    const counterpart = otherById.get(element.id)
-    if (counterpart !== undefined) compare(into, element, counterpart, `${path}.${element.id}`)
-  }
+function byId(element: { id: string }): string {
+  return element.id
 }
 
 function provider(into: Diff, a: DataProviderInput, b: DataProviderInput, at: string): void {
@@ -150,10 +109,10 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
   )
   into.when(sameTextPair(a.releaseNote, b.releaseNote), "releaseNote")
 
-  elements(into, "dataProviders", a.dataProviders, b.dataProviders, provider)
-  elements(into, "researchProjects", a.researchProjects, b.researchProjects, project)
-  elements(into, "grants", a.grants, b.grants, grant)
-  elements(into, "relatedPublications", a.relatedPublications, b.relatedPublications, publication)
+  elements(into, "dataProviders", a.dataProviders, b.dataProviders, byId, provider)
+  elements(into, "researchProjects", a.researchProjects, b.researchProjects, byId, project)
+  elements(into, "grants", a.grants, b.grants, byId, grant)
+  elements(into, "relatedPublications", a.relatedPublications, b.relatedPublications, byId, publication)
 
   into.when(sameStrings(a.datasetIds, b.datasetIds), "datasetIds")
   return into.paths
@@ -161,46 +120,12 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
 
 /**
  * One field of `theirs` written over `mine`, addressed by the path the diff
- * reported. This walks the structure rather than naming every field, which is
- * safe precisely because the paths come from the diff above: the two share one
- * vocabulary, and the law that taking every reported path leaves nothing to
- * report is what holds them together.
- *
- * A path into an array element that only the other side has changes nothing —
- * the element's absence is a difference in the array itself, and taking that
- * path is what replaces it.
+ * reported. The memo sits beside the content rather than inside it, so it is
+ * the one path that does not descend through `content`.
  */
 export function takeField(mine: DraftInput, theirs: DraftInput, path: string): DraftInput {
   const keys = path === "note" ? ["note"] : ["content", ...path.split(".")]
-  const taken = read(theirs, keys)
+  const taken = readAt(theirs, keys)
   if (!taken.found) return mine
-  return write(mine, keys, taken.value) as DraftInput
-}
-
-function elementOf(items: readonly unknown[], id: string): unknown {
-  return items.find((item) => (item as { id?: unknown }).id === id)
-}
-
-function read(target: unknown, keys: readonly string[]): { found: boolean, value: unknown } {
-  const [head, ...rest] = keys
-  if (head === undefined) return { found: true, value: target }
-  if (Array.isArray(target)) {
-    const element = elementOf(target, head)
-    return element === undefined ? { found: false, value: undefined } : read(element, rest)
-  }
-  if (typeof target !== "object" || target === null) return { found: false, value: undefined }
-  const record = target as Record<string, unknown>
-  return head in record ? read(record[head], rest) : { found: false, value: undefined }
-}
-
-function write(target: unknown, keys: readonly string[], value: unknown): unknown {
-  const [head, ...rest] = keys
-  if (head === undefined) return value
-  if (Array.isArray(target)) {
-    const items = target as unknown[]
-    return items.map((item) =>
-      (item as { id?: unknown }).id === head ? write(item, rest, value) : item)
-  }
-  const record = target as Record<string, unknown>
-  return { ...record, [head]: write(record[head], rest, value) }
+  return writeAt(mine, keys, taken.value) as DraftInput
 }

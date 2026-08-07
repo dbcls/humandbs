@@ -40,8 +40,28 @@ function pages(scope: string) {
       "routes/admin-draft.tsx",
       { id: `${scope}-admin-draft` },
     ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset",
+      "routes/admin-draft-datasets.tsx",
+      { id: `${scope}-admin-draft-datasets` },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset/:datasetId",
+      "routes/admin-draft-dataset.tsx",
+      { id: `${scope}-admin-draft-dataset` },
+    ),
   ]
 }
+
+/**
+ * What an open editor talks to rather than navigates to. They are registered
+ * once because they answer with data rather than with a page, so the language
+ * prefix has nothing to change about them.
+ */
+const editing = [
+  route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
+  route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
+]
 
 /**
  * Signing in has no language prefix. These are not pages anybody reads, and the
@@ -56,6 +76,7 @@ const auth = [
 export default [
   route("healthz", "routes/healthz.ts"),
   ...auth,
+  ...editing,
   ...pages("ja"),
   ...prefix("en", pages("en")),
   route("*", "routes/document.tsx"),

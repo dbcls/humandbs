@@ -226,7 +226,7 @@ describe("discarding a draft", () => {
     await db.insert(s.draftDatasetEntry).values({ draftId, datasetId, content: emptyDatasetContent() })
     await db.insert(s.draftUndo).values({
       draftId,
-      snapshot: { content: emptyResearchContent(), datasetEntries: [] },
+      snapshot: { reason: "before-save", note: "", content: emptyResearchContent(), datasetEntries: [] },
     })
     await db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" })
     const thread = only(await db.insert(s.commentThread).values({

@@ -25,6 +25,31 @@ export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
 
+export function adminDraftDatasetsPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/dataset`
+}
+
+export function adminDraftDatasetPath(
+  researchId: string,
+  draftId: string,
+  datasetId: string,
+): string {
+  return `${adminDraftDatasetsPath(researchId, draftId)}/${datasetId}`
+}
+
+/**
+ * The two addresses an open editor talks to rather than navigates to. **They
+ * carry no language prefix**: nothing they return is interface text, and a page
+ * that changed language mid-edit would otherwise heartbeat to a second address.
+ */
+export function draftPresencePath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/presence`
+}
+
+export function draftUndoPath(researchId: string, draftId: string, undoId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/undo/${undoId}`
+}
+
 export interface ListingQuery {
   keyword: string
   status: string | null

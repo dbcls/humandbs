@@ -9,9 +9,20 @@
 
 import fc from "fast-check"
 
-import { researchContentArb } from "~/content/arbitraries/content"
-import type { ResearchContent } from "~/content/types"
+import {
+  KEY_IDS,
+  researchContentArb,
+  slotArb,
+  translatedRichTextArb,
+} from "~/content/arbitraries/content"
+import type {
+  ContentValue,
+  DatasetContent,
+  ResearchContent,
+  ValueSlot,
+} from "~/content/types"
 
+import { datasetContentInput, type DatasetContentInput } from "../dataset-form"
 import { researchContentInput, type DraftInput, type ResearchContentInput } from "../form"
 
 function positional(content: ResearchContent): ResearchContent {
@@ -32,3 +43,39 @@ export const draftInputArb: fc.Arbitrary<DraftInput> = fc.record({
   note: fc.string(),
   content: researchContentInputArb,
 })
+
+/**
+ * A dataset as the editor holds it.
+ *
+ * Only the two kinds that have an input control are drawn: the others have no
+ * form to be in, and the write path refuses them long before a diff would see
+ * one. Keys are drawn as a subset of the same fixed pool so that two
+ * independently generated datasets share some — with free keys every slot would
+ * look added-and-removed and the per-slot paths would never be exercised — and
+ * a subset rather than an array so that a key appears at most once, which is
+ * what makes it the identity of the slot.
+ */
+const editableValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
+  fc.record({ kind: fc.constant("text" as const), text: translatedRichTextArb }),
+  fc.record({
+    kind: fc.constant("vocabulary" as const),
+    termIds: slotArb(fc.subarray(["term-a", "term-b", "term-c"])),
+  }),
+)
+
+const valuesArb: fc.Arbitrary<ValueSlot[]> = fc
+  .subarray([...KEY_IDS])
+  .chain((keyIds) => fc.tuple(...keyIds.map((keyId) =>
+    editableValueArb.map((value): ValueSlot => ({ keyId, value })))))
+
+export const datasetContentForEditorArb: fc.Arbitrary<DatasetContent> = fc.record({
+  releaseDate: fc.option(fc.constantFrom("2020-01-01", "2024-12-31"), { nil: null }),
+  fileSelection: fc.subarray(["a.zip", "b.zip", "c.pdf"]),
+  values: valuesArb,
+  experiments: fc
+    .array(fc.record({ label: slotArb(fc.string()), values: valuesArb }), { maxLength: 3 })
+    .map((rows) => rows.map((row, at) => ({ ...row, id: `experiment-${at}` }))),
+})
+
+export const datasetContentInputArb: fc.Arbitrary<DatasetContentInput>
+  = datasetContentForEditorArb.map(datasetContentInput)

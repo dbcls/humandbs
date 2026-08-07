@@ -1,5 +1,5 @@
 /**
- * What the three management screens load, and what their forms do.
+ * What the management screens load, and what their forms do.
  *
  * The order is always the same: establish who is asking and what they may do,
  * then read. Nothing here is reachable without a capability, and the two that
@@ -21,34 +21,57 @@
  * field at a time. Which fields the other version moved is worked out on the
  * screen rather than here, because the comparison is against what the screen
  * was handed when it opened, and only the screen still has that.
+ *
+ * A research and a dataset are saved separately, because they are separate
+ * identities with separate revisions: a research with two hundred datasets is
+ * not one screenful, and a conflict over one of them is not a conflict over the
+ * rest.
  */
 
 import { redirect } from "react-router"
 
 import { requireCapability } from "~/auth/actor.server"
-import type { TranslatedText } from "~/content/types"
+import { emptyDatasetContent } from "~/content/empty"
+import type { DraftSnapshot, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb } from "~/db/client.server"
 import { resolveText, type Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
 
+import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
+import { datasetContentOf, saveDatasetSchema } from "./dataset-form.server"
 import {
+  createDatasetInDraft,
   createDraft,
   createResearchWithDraft,
+  deleteDraftDataset,
   discardDraft,
+  saveDatasetEntry,
   saveDraftContent,
+  touchPresence,
 } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema, type FieldProblem } from "./form.server"
 import {
+  activePresence,
   adminResearch,
   adminResearchIndex,
+  draftDatasetRows,
   humLabelOf,
+  loadEditableCatalog,
+  readDatasetEntry,
   readDraft,
+  readPublishedDataset,
+  readUndoSnapshot,
+  readUndoStack,
   researchDatasets,
   type AdminDraftRow,
   type AdminVersionRow,
+  type DraftDatasetRow,
+  type EditableCatalog,
+  type PresenceRow,
   type ResearchDatasetRow,
+  type UndoEntryRow,
 } from "./queries.server"
 import {
   filterResearchRows,
@@ -60,7 +83,7 @@ import {
   type AdminFlags,
   type AdminStatus,
 } from "./listing"
-import { adminDraftPath, adminResearchPath } from "./urls"
+import { adminDraftDatasetPath, adminDraftDatasetsPath, adminDraftPath, adminResearchPath } from "./urls"
 
 function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
@@ -195,6 +218,43 @@ export interface AdminDraftPageView {
   revision: number
   input: DraftInput
   datasets: ResearchDatasetRow[]
+  /** Who else has this draft open, and what there is to go back to. */
+  presence: PresenceView[]
+  undo: UndoEntryRow[]
+}
+
+/**
+ * The draft this screen is for, refused when it is reached under the wrong
+ * research: a draft belongs to one, and an address that names another is not
+ * an address for it.
+ */
+async function draftOf(
+  request: Request,
+  params: { researchId: string | undefined, draftId: string | undefined },
+) {
+  const actor = await requireCapability(request, "edit-content")
+
+  const researchId = identity(params.researchId)
+  const draftId = identity(params.draftId)
+  const db = getDb()
+  const draft = await readDraft(db, draftId)
+  if (draft?.researchId !== researchId) notFound()
+  return { db, actor, researchId, draftId, draft }
+}
+
+/**
+ * Who has the draft open, as a screen says it. The rows are named rather than
+ * counted, and the reader's own session is marked rather than dropped here:
+ * "somebody else is editing this" is what the line means, and only the request
+ * knows which of the sessions is the one asking.
+ */
+export interface PresenceView {
+  name: string
+  isSelf: boolean
+}
+
+function presenceView(rows: PresenceRow[], sessionId: string): PresenceView[] {
+  return rows.map((row) => ({ name: row.displayName, isSelf: row.sessionId === sessionId }))
 }
 
 export async function draftEditorPage(
@@ -202,18 +262,13 @@ export async function draftEditorPage(
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
 ): Promise<AdminDraftPageView> {
-  await requireCapability(request, "edit-content")
+  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const researchId = identity(params.researchId)
-  const draftId = identity(params.draftId)
-  const db = getDb()
-  const draft = await readDraft(db, draftId)
-  // A draft reached under the wrong research is not a draft of that research.
-  if (draft?.researchId !== researchId) notFound()
-
-  const [humLabel, datasets] = await Promise.all([
+  const [humLabel, datasets, presence, undo] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
+    activePresence(db, draftId),
+    readUndoStack(db, draftId),
   ])
 
   return {
@@ -224,7 +279,272 @@ export async function draftEditorPage(
     revision: draft.revision,
     input: { note: draft.note, content: researchContentInput(draft.content) },
     datasets,
+    presence: presenceView(presence, actor.sessionId),
+    undo,
   }
+}
+
+export interface DraftDatasetListView {
+  locale: Locale
+  researchId: string
+  draftId: string
+  humLabel: string | null
+  /** The draft's revision, which creating and destroying a dataset both move. */
+  revision: number
+  rows: DraftDatasetRow[]
+  presence: PresenceView[]
+}
+
+export async function draftDatasetListPage(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<DraftDatasetListView> {
+  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
+
+  const [humLabel, rows, presence] = await Promise.all([
+    humLabelOf(db, researchId),
+    draftDatasetRows(db, draftId, researchId, draft.content.datasetIds),
+    activePresence(db, draftId),
+  ])
+
+  return {
+    locale,
+    researchId,
+    draftId,
+    humLabel,
+    revision: draft.revision,
+    rows,
+    presence: presenceView(presence, actor.sessionId),
+  }
+}
+
+/** The answers that are neither a redirect nor a thrown response. */
+export interface DatasetListRefusal {
+  status: "conflict" | "refused"
+}
+
+/**
+ * Making a dataset, and destroying one this draft made. Both change what the
+ * version lists, so both carry the draft's revision.
+ */
+export async function draftDatasetListAction(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<Response | DatasetListRefusal> {
+  const { db, researchId, draftId } = await draftOf(request, params)
+
+  const form = await request.formData()
+  const intent = form.get("intent")
+  const revision = Number(form.get("revision"))
+  if (!Number.isInteger(revision)) badRequest()
+
+  if (intent === "create-dataset") {
+    const outcome = await createDatasetInDraft(db, { draftId, revision }, researchId)
+    if (outcome.status === "gone") notFound()
+    if (outcome.status === "conflict") return { status: "conflict" }
+    return redirect(
+      href(locale, adminDraftDatasetPath(researchId, draftId, outcome.datasetId)),
+    )
+  }
+
+  if (intent !== "delete-dataset") badRequest()
+
+  const named = form.get("datasetId")
+  const datasetId = identity(typeof named === "string" ? named : undefined)
+  const outcome = await deleteDraftDataset(db, { draftId, revision }, datasetId)
+  if (outcome.status === "gone") notFound()
+  if (outcome.status !== "deleted") return { status: outcome.status }
+  return redirect(href(locale, adminDraftDatasetsPath(researchId, draftId)))
+}
+
+export interface DatasetEditorView {
+  locale: Locale
+  researchId: string
+  draftId: string
+  datasetId: string
+  humLabel: string | null
+  datasetLabel: string | null
+  published: boolean
+  /**
+   * Null when this draft has not written anything for the dataset yet, which is
+   * what makes the first save an insert rather than an update.
+   */
+  revision: number | null
+  input: DatasetContentInput
+  catalog: EditableCatalog
+  presence: PresenceView[]
+  undo: UndoEntryRow[]
+}
+
+/**
+ * One dataset, as this draft has it. What is shown is the draft's own entry if
+ * there is one, the published description if there is not, and an empty one for
+ * a dataset nobody has described yet — copy-on-write seen from the reading end.
+ */
+export async function datasetEditorPage(
+  request: Request,
+  locale: Locale,
+  params: {
+    researchId: string | undefined
+    draftId: string | undefined
+    datasetId: string | undefined
+  },
+): Promise<DatasetEditorView> {
+  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
+  const datasetId = identity(params.datasetId)
+
+  const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
+  const row = rows.find((candidate) => candidate.id === datasetId)
+  // A dataset belongs to exactly one research, so one of another research is
+  // not a dataset this draft could be editing.
+  if (row === undefined) notFound()
+
+  const [entry, published, humLabel, catalog, presence, undo] = await Promise.all([
+    readDatasetEntry(db, draftId, datasetId),
+    readPublishedDataset(db, datasetId),
+    humLabelOf(db, researchId),
+    loadEditableCatalog(db),
+    activePresence(db, draftId),
+    readUndoStack(db, draftId),
+  ])
+
+  return {
+    locale,
+    researchId,
+    draftId,
+    datasetId,
+    humLabel,
+    datasetLabel: row.label,
+    published: row.published,
+    revision: entry?.revision ?? null,
+    input: datasetContentInput(entry?.content ?? published ?? emptyDatasetContent()),
+    catalog,
+    presence: presenceView(presence, actor.sessionId),
+    undo,
+  }
+}
+
+export type SaveDatasetResult
+  = | { status: "saved", revision: number }
+    | { status: "invalid", problems: FieldProblem[] }
+    | {
+      status: "conflict"
+      revision: number
+      /** What the entry holds now, for the screen to compare against its own. */
+      current: DatasetContentInput
+    }
+
+/**
+ * Whether the catalog would recognise every value in a payload.
+ *
+ * A key it does not know, a key used at the wrong level, a value whose kind
+ * disagrees with the key's type, a term from another vocabulary, or a second
+ * term under a key that takes one — none of these are things the form offers,
+ * so none of them are things an author can fix. They are answered as a bad
+ * request rather than as a problem against a field.
+ */
+function catalogAccepts(input: DatasetContentInput, catalog: EditableCatalog): boolean {
+  const keyById = new Map(catalog.keys.map((key) => [key.id, key]))
+  const setOfTerm = new Map(catalog.terms.map((term) => [term.id, term.setId]))
+
+  const accepts = (
+    values: DatasetContentInput["values"],
+    scope: "dataset" | "experiment",
+  ): boolean =>
+    values.every((slot) => {
+      const key = keyById.get(slot.keyId)
+      if (key?.scope !== scope) return false
+      if (key.valueType !== slot.value.kind) return false
+      if (slot.value.kind !== "vocabulary") return true
+      if (!key.multiple && slot.value.termIds.length > 1) return false
+      return slot.value.termIds.every((id) => setOfTerm.get(id) === key.vocabularySetId)
+    })
+
+  return accepts(input.values, "dataset")
+    && input.experiments.every((experiment) => accepts(experiment.values, "experiment"))
+}
+
+export async function saveDatasetAction(
+  request: Request,
+  params: {
+    researchId: string | undefined
+    draftId: string | undefined
+    datasetId: string | undefined
+  },
+): Promise<SaveDatasetResult> {
+  const { db, researchId, draftId, draft } = await draftOf(request, params)
+  const datasetId = identity(params.datasetId)
+
+  const payload = saveDatasetSchema.safeParse(await request.json())
+  if (!payload.success) badRequest()
+
+  const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
+  if (!rows.some((row) => row.id === datasetId)) notFound()
+
+  const catalog = await loadEditableCatalog(db)
+  if (!catalogAccepts(payload.data.content, catalog)) badRequest()
+
+  const content = datasetContentOf(payload.data.content)
+  if (!content.ok) return { status: "invalid", problems: content.problems }
+
+  const outcome = await saveDatasetEntry(
+    db,
+    { draftId, datasetId, revision: payload.data.revision },
+    content.content,
+  )
+  if (outcome.status === "saved") return { status: "saved", revision: outcome.revision }
+  if (outcome.status === "gone") notFound()
+
+  const current = await readDatasetEntry(db, draftId, datasetId)
+  if (current === null) notFound()
+  return {
+    status: "conflict",
+    revision: current.revision,
+    current: datasetContentInput(current.content),
+  }
+}
+
+/**
+ * Saying that somebody still has this draft open, and answering with who else
+ * does. The two go together so that an open editor learns of a colleague by
+ * the same request that announces itself.
+ */
+export async function presenceAction(
+  request: Request,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<{ present: PresenceView[] }> {
+  const { db, actor, draftId } = await draftOf(request, params)
+
+  await touchPresence(db, {
+    draftId,
+    sessionId: actor.sessionId,
+    actorSub: actor.sub,
+    displayName: actor.name,
+  })
+  return { present: presenceView(await activePresence(db, draftId), actor.sessionId) }
+}
+
+/**
+ * One entry of the undo stack, for the screen to put back into its form. It is
+ * handed over rather than written: **restoring is an ordinary save**, so it
+ * goes through the same revision check as anything else the author does.
+ */
+export async function undoSnapshotLoader(
+  request: Request,
+  params: {
+    researchId: string | undefined
+    draftId: string | undefined
+    undoId: string | undefined
+  },
+): Promise<DraftSnapshot> {
+  const { db, draftId } = await draftOf(request, params)
+  const undoId = identity(params.undoId)
+
+  const found = await readUndoSnapshot(db, draftId, undoId)
+  if (found === null) notFound()
+  return found
 }
 
 /** A new research is created together with the draft it will be written in. */

@@ -17,20 +17,32 @@
 
 import { and, asc, desc, eq, sql } from "drizzle-orm"
 
-import type { ResearchContent, TranslatedText } from "~/content/types"
+import type {
+  DatasetContent,
+  DraftSnapshot,
+  ResearchContent,
+  TranslatedText,
+  UndoReason,
+} from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
+  contentKey,
   contentSnapshot,
   dataset,
   datasetContent,
+  draftDatasetEntry,
+  draftPresence,
+  draftUndo,
   labelPin,
   research,
   researchDraft,
   researchVersion,
+  vocabularyTerm,
 } from "~/db/schema"
 
 import { contentFlags, type ContentFlags } from "./flags"
 import type { AdminResearchRow, AdminStatus } from "./listing"
+import { PRESENCE_WINDOW_SECONDS } from "./presence"
 
 function latest(dates: readonly Date[]): string {
   return new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString()
@@ -296,6 +308,208 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
     .where(eq(researchDraft.id, draftId))
     .limit(1)
   return row ?? null
+}
+
+export interface DatasetEntryRecord {
+  revision: number
+  content: DatasetContent
+}
+
+/**
+ * What this draft has written for one dataset, if it has written anything.
+ * **Null is not an empty entry** — it is the copy-on-write state of never
+ * having been touched, and it is what makes the first save an insert.
+ */
+export async function readDatasetEntry(
+  db: Executor,
+  draftId: string,
+  datasetId: string,
+): Promise<DatasetEntryRecord | null> {
+  const [row] = await db
+    .select({ revision: draftDatasetEntry.revision, content: draftDatasetEntry.content })
+    .from(draftDatasetEntry)
+    .where(and(
+      eq(draftDatasetEntry.draftId, draftId),
+      eq(draftDatasetEntry.datasetId, datasetId),
+    ))
+    .limit(1)
+  return row ?? null
+}
+
+/** The published description of a dataset, which is what a draft starts from. */
+export async function readPublishedDataset(
+  db: Executor,
+  datasetId: string,
+): Promise<DatasetContent | null> {
+  const [row] = await db
+    .select({ content: datasetContent.content })
+    .from(datasetContent)
+    .where(eq(datasetContent.datasetId, datasetId))
+    .limit(1)
+  return row?.content ?? null
+}
+
+export interface DraftDatasetRow extends ResearchDatasetRow {
+  /** Listed by the version this draft is writing. */
+  listed: boolean
+  /** This draft has written something for it. */
+  edited: boolean
+  /** This draft introduced it, so this draft may destroy it. */
+  isOwn: boolean
+}
+
+/**
+ * Every dataset of the research, as this draft sees it. The marks are separate
+ * facts and none of them implies another: a dataset can be published and not
+ * listed, listed and never touched, or introduced here and already edited.
+ */
+export async function draftDatasetRows(
+  db: Executor,
+  draftId: string,
+  researchId: string,
+  listedIds: readonly string[],
+): Promise<DraftDatasetRow[]> {
+  const [rows, entries, own] = await Promise.all([
+    researchDatasets(db, researchId),
+    db
+      .select({ datasetId: draftDatasetEntry.datasetId })
+      .from(draftDatasetEntry)
+      .where(eq(draftDatasetEntry.draftId, draftId)),
+    db
+      .select({ id: dataset.id })
+      .from(dataset)
+      .where(eq(dataset.originDraftId, draftId)),
+  ])
+
+  const edited = new Set(entries.map((row) => row.datasetId))
+  const introduced = new Set(own.map((row) => row.id))
+  const listed = new Set(listedIds)
+
+  return rows.map((row) => ({
+    ...row,
+    listed: listed.has(row.id),
+    edited: edited.has(row.id),
+    isOwn: introduced.has(row.id),
+  }))
+}
+
+export interface UndoEntryRow {
+  id: string
+  reason: UndoReason
+  createdAt: string
+}
+
+/** The stack, newest first. The snapshots themselves are fetched one at a time. */
+export async function readUndoStack(db: Executor, draftId: string): Promise<UndoEntryRow[]> {
+  const rows = await db
+    .select({
+      id: draftUndo.id,
+      snapshot: draftUndo.snapshot,
+      createdAt: draftUndo.createdAt,
+    })
+    .from(draftUndo)
+    .where(eq(draftUndo.draftId, draftId))
+    .orderBy(desc(draftUndo.createdAt), desc(draftUndo.id))
+
+  return rows.map((row) => ({
+    id: row.id,
+    reason: row.snapshot.reason,
+    createdAt: row.createdAt.toISOString(),
+  }))
+}
+
+export async function readUndoSnapshot(
+  db: Executor,
+  draftId: string,
+  undoId: string,
+): Promise<DraftSnapshot | null> {
+  const [row] = await db
+    .select({ snapshot: draftUndo.snapshot })
+    .from(draftUndo)
+    .where(and(eq(draftUndo.id, undoId), eq(draftUndo.draftId, draftId)))
+    .limit(1)
+  return row?.snapshot ?? null
+}
+
+export interface PresenceRow {
+  sessionId: string
+  displayName: string
+}
+
+/**
+ * Who has this draft open. Expiry is a predicate on the read, so a sweep that
+ * never runs cannot make somebody appear to still be editing.
+ */
+export async function activePresence(db: Executor, draftId: string): Promise<PresenceRow[]> {
+  return db
+    .select({ sessionId: draftPresence.sessionId, displayName: draftPresence.displayName })
+    .from(draftPresence)
+    .where(and(
+      eq(draftPresence.draftId, draftId),
+      sql`${draftPresence.lastSeenAt} > now() - make_interval(secs => ${PRESENCE_WINDOW_SECONDS})`,
+    ))
+    .orderBy(draftPresence.displayName, draftPresence.sessionId)
+}
+
+export interface EditableKey {
+  id: string
+  code: string
+  scope: "dataset" | "experiment"
+  valueType: "text" | "single" | "accession" | "vocabulary" | "number"
+  labelJa: string
+  labelEn: string
+  position: number
+  vocabularySetId: string | null
+  multiple: boolean
+}
+
+export interface EditableTerm {
+  id: string
+  setId: string
+  labelJa: string | null
+  labelEn: string
+  position: number
+}
+
+export interface EditableCatalog {
+  keys: EditableKey[]
+  terms: EditableTerm[]
+}
+
+/**
+ * The catalog as the editor needs it: with the type of every key, which the
+ * public projection has no use for. **The type decides which input control a
+ * value gets**, so a screen without it could only guess.
+ */
+export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog> {
+  const [keys, terms] = await Promise.all([
+    db
+      .select({
+        id: contentKey.id,
+        code: contentKey.code,
+        scope: contentKey.scope,
+        valueType: contentKey.valueType,
+        labelJa: contentKey.labelJa,
+        labelEn: contentKey.labelEn,
+        position: contentKey.position,
+        vocabularySetId: contentKey.vocabularySetId,
+        multiple: contentKey.multiple,
+      })
+      .from(contentKey)
+      .orderBy(contentKey.position, contentKey.code),
+    db
+      .select({
+        id: vocabularyTerm.id,
+        setId: vocabularyTerm.setId,
+        labelJa: vocabularyTerm.labelJa,
+        labelEn: vocabularyTerm.labelEn,
+        position: vocabularyTerm.position,
+      })
+      .from(vocabularyTerm)
+      .where(eq(vocabularyTerm.active, true))
+      .orderBy(vocabularyTerm.position, vocabularyTerm.labelEn),
+  ])
+  return { keys, terms }
 }
 
 export async function humLabelOf(db: Executor, researchId: string): Promise<string | null> {

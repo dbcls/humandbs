@@ -9,31 +9,68 @@
  * revision and look correct — so the only place the rule can live is the shape
  * of the calls, which is why they are all here and all take the same argument.
  *
- * The two that create a row take no revision because there is nothing to check
- * against: an insert has no earlier version of itself to disagree with. Once a
- * draft exists, nothing else may touch it from outside this file.
+ * There are two revisions because there are two kinds of mutable row under a
+ * draft: the draft's own content, and the entry that holds one dataset the
+ * draft has touched. **An experiment is inside a dataset's content**, so
+ * editing one is checked against that dataset's entry — it has no revision of
+ * its own to be checked against.
+ *
+ * The functions that create a row take no revision because there is nothing to
+ * check against; the first save of a dataset entry finds its conflict by not
+ * being the insert that won. Presence is the one write with no revision at all:
+ * it is not content, nobody reads it for correctness, and a lost update costs
+ * one heartbeat.
  *
  * A conflict is told apart from a draft that is simply gone, because the two
  * mean different things to whoever asked: one is somebody else's edit to look
  * at, the other is a page that no longer exists.
  */
 
-import { randomBytes } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, isNull, notInArray, sql } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
-import type { ResearchContent } from "~/content/types"
-import type { Database, Executor } from "~/db/client.server"
-import { contentSnapshot, research, researchDraft, researchVersion } from "~/db/schema"
+import type {
+  DatasetContent,
+  DraftSnapshot,
+  ResearchContent,
+  UndoReason,
+} from "~/content/types"
+import type { Database, Executor, Transaction } from "~/db/client.server"
+import {
+  contentSnapshot,
+  dataset,
+  datasetContent,
+  draftDatasetEntry,
+  draftPresence,
+  draftUndo,
+  research,
+  researchDraft,
+  researchVersion,
+} from "~/db/schema"
 
 const SHARE_TOKEN_BYTES = 32
+
+/** The eleventh push drops the oldest. */
+export const UNDO_DEPTH = 10
 
 /** Which draft, and which version of it the caller was looking at. */
 export interface DraftAt {
   draftId: string
   revision: number
+}
+
+/**
+ * Which dataset entry, and which version of it the caller was looking at.
+ * **Null means the draft had not touched this dataset when the screen opened**,
+ * which is what tells the first save apart from every later one.
+ */
+export interface DatasetEntryAt {
+  draftId: string
+  datasetId: string
+  revision: number | null
 }
 
 export type SaveOutcome
@@ -45,6 +82,18 @@ export type DiscardOutcome
   = | { status: "discarded" }
     | { status: "conflict" }
     | { status: "gone" }
+
+export type CreateDatasetOutcome
+  = | { status: "created", datasetId: string }
+    | { status: "conflict" }
+    | { status: "gone" }
+
+export type DeleteDatasetOutcome
+  = | { status: "deleted" }
+    | { status: "conflict" }
+    | { status: "gone" }
+    /** Published, or belonging to another draft: not this draft's to destroy. */
+    | { status: "refused" }
 
 function one<T>(rows: T[]): T {
   const row = rows[0]
@@ -68,6 +117,59 @@ async function draftExists(executor: Executor, draftId: string): Promise<boolean
     .where(eq(researchDraft.id, draftId))
     .limit(1)
   return rows.length > 0
+}
+
+/** The whole of a draft as it stands, which is what one undo entry holds. */
+type DraftState = Omit<DraftSnapshot, "reason">
+
+async function currentDraft(tx: Transaction, draftId: string): Promise<DraftState | null> {
+  const [draft] = await tx
+    .select({ note: researchDraft.note, content: researchDraft.content })
+    .from(researchDraft)
+    .where(eq(researchDraft.id, draftId))
+    .limit(1)
+  if (draft === undefined) return null
+
+  const entries = await tx
+    .select({ datasetId: draftDatasetEntry.datasetId, content: draftDatasetEntry.content })
+    .from(draftDatasetEntry)
+    .where(eq(draftDatasetEntry.draftId, draftId))
+    .orderBy(draftDatasetEntry.datasetId)
+
+  return { note: draft.note, content: draft.content, datasetEntries: entries }
+}
+
+/**
+ * One more snapshot on the stack, and the oldest off the end of it.
+ *
+ * Snapshots are rows rather than one JSON value so that a save appends instead
+ * of rewriting the whole stack. The depth is bounded rather than the age,
+ * because drafts stay open for months and a stalled one must not accumulate.
+ */
+async function pushUndo(
+  tx: Transaction,
+  draftId: string,
+  snapshot: DraftSnapshot,
+): Promise<void> {
+  await tx.insert(draftUndo).values({ draftId, snapshot })
+
+  const kept = await tx
+    .select({ id: draftUndo.id })
+    .from(draftUndo)
+    .where(eq(draftUndo.draftId, draftId))
+    .orderBy(desc(draftUndo.createdAt), desc(draftUndo.id))
+    .limit(UNDO_DEPTH)
+
+  await tx
+    .delete(draftUndo)
+    .where(and(
+      eq(draftUndo.draftId, draftId),
+      notInArray(draftUndo.id, kept.map((row) => row.id)),
+    ))
+}
+
+function snapshot(reason: UndoReason, state: DraftState): DraftSnapshot {
+  return { reason, ...state }
 }
 
 /**
@@ -133,26 +235,255 @@ export async function createDraft(db: Database, researchId: string): Promise<str
 /**
  * Writing the editor's work back. The revision moves by one, which is what the
  * next save will be checked against.
+ *
+ * The state as it stood goes onto the undo stack first; a save the revision
+ * refuses puts the refused form there instead, because that form exists nowhere
+ * else once the screen is closed.
  */
 export async function saveDraftContent(
-  db: Executor,
+  db: Database,
   at: DraftAt,
   fields: { note: string, content: ResearchContent },
 ): Promise<SaveOutcome> {
-  const rows = await db
-    .update(researchDraft)
-    .set({
-      content: fields.content,
-      note: fields.note,
-      revision: sql`${researchDraft.revision} + 1`,
-      updatedAt: sql`now()`,
-    })
-    .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
-    .returning({ revision: researchDraft.revision })
+  return db.transaction(async (tx) => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
 
-  const row = rows[0]
-  if (row !== undefined) return { status: "saved", revision: row.revision }
-  return { status: await draftExists(db, at.draftId) ? "conflict" : "gone" }
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: fields.content,
+        note: fields.note,
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+
+    const row = rows[0]
+    if (row === undefined) {
+      await pushUndo(tx, at.draftId, snapshot("rejected", {
+        note: fields.note,
+        content: fields.content,
+        datasetEntries: before.datasetEntries,
+      }))
+      return { status: "conflict" }
+    }
+
+    await pushUndo(tx, at.draftId, snapshot("before-save", before))
+    return { status: "saved", revision: row.revision }
+  })
+}
+
+/**
+ * Writing one dataset back. The unit is the entry rather than the draft: a
+ * dataset is its own identity, and a research with two hundred of them is not
+ * one screenful.
+ *
+ * The first save is the one that creates the entry, and it carries the
+ * published description alongside as `baseContent` — the three-way diff at
+ * publish time needs to know what was there when editing began, and after the
+ * first save nothing can recover it. An entry the draft itself introduced has
+ * no published description, so it has no base.
+ */
+export async function saveDatasetEntry(
+  db: Database,
+  at: DatasetEntryAt,
+  content: DatasetContent,
+): Promise<SaveOutcome> {
+  return db.transaction(async (tx) => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    const revision = at.revision
+    if (revision === null) {
+      const [published] = await tx
+        .select({ content: datasetContent.content })
+        .from(datasetContent)
+        .where(eq(datasetContent.datasetId, at.datasetId))
+        .limit(1)
+
+      const inserted = await tx
+        .insert(draftDatasetEntry)
+        .values({
+          draftId: at.draftId,
+          datasetId: at.datasetId,
+          content,
+          baseContent: published?.content ?? null,
+        })
+        .onConflictDoNothing()
+        .returning({ revision: draftDatasetEntry.revision })
+
+      const created = inserted[0]
+      if (created === undefined) {
+        await pushUndo(tx, at.draftId, rejectedDataset(before, at.datasetId, content))
+        return { status: "conflict" }
+      }
+      await pushUndo(tx, at.draftId, snapshot("before-save", before))
+      return { status: "saved", revision: created.revision }
+    }
+
+    const rows = await tx
+      .update(draftDatasetEntry)
+      .set({
+        content,
+        revision: sql`${draftDatasetEntry.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(
+        eq(draftDatasetEntry.draftId, at.draftId),
+        eq(draftDatasetEntry.datasetId, at.datasetId),
+        eq(draftDatasetEntry.revision, revision),
+      ))
+      .returning({ revision: draftDatasetEntry.revision })
+
+    const row = rows[0]
+    if (row !== undefined) {
+      await pushUndo(tx, at.draftId, snapshot("before-save", before))
+      return { status: "saved", revision: row.revision }
+    }
+
+    // The entry is gone in two different ways: somebody deleted the dataset, or
+    // somebody saved it first. Only the second is worth showing a diff for.
+    const [still] = await tx
+      .select({ id: dataset.id })
+      .from(dataset)
+      .where(eq(dataset.id, at.datasetId))
+      .limit(1)
+    if (still === undefined) return { status: "gone" }
+
+    await pushUndo(tx, at.draftId, rejectedDataset(before, at.datasetId, content))
+    return { status: "conflict" }
+  })
+}
+
+/** The draft as the author meant it: their dataset over what the draft holds. */
+function rejectedDataset(
+  before: DraftState,
+  datasetId: string,
+  content: DatasetContent,
+): DraftSnapshot {
+  const others = before.datasetEntries.filter((entry) => entry.datasetId !== datasetId)
+  return snapshot("rejected", {
+    ...before,
+    datasetEntries: [...others, { datasetId, content }]
+      .sort((a, b) => a.datasetId.localeCompare(b.datasetId)),
+  })
+}
+
+/**
+ * A dataset this draft is adding. It belongs to the draft until the draft is
+ * published, which is what `originDraftId` records, and it is listed by the
+ * version straight away — a dataset created and then left off the list is a
+ * dataset nobody would find again.
+ *
+ * Listing it changes the draft's content, so the revision is checked. The
+ * identity is minted before the check so that a refused create leaves nothing
+ * behind: the update either happens or the transaction did nothing at all.
+ */
+export async function createDatasetInDraft(
+  db: Database,
+  at: DraftAt,
+  researchId: string,
+): Promise<CreateDatasetOutcome> {
+  return db.transaction(async (tx) => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    const datasetId = randomUUID()
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: { ...before.content, datasetIds: [...before.content.datasetIds, datasetId] },
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+    if (rows[0] === undefined) return { status: "conflict" }
+
+    await tx.insert(dataset).values({ id: datasetId, researchId, originDraftId: at.draftId })
+    return { status: "created", datasetId }
+  })
+}
+
+/**
+ * Destroying a dataset this draft introduced, when it turns out to have been a
+ * mistake. **Only this draft's own, still unpublished datasets**: one that has
+ * ever been published is referenced by the versions that listed it, and taking
+ * it off the current version is a different operation with a different meaning.
+ *
+ * Its entry, and any pin, go with it by cascade.
+ */
+export async function deleteDraftDataset(
+  db: Database,
+  at: DraftAt,
+  datasetId: string,
+): Promise<DeleteDatasetOutcome> {
+  return db.transaction(async (tx) => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    const [target] = await tx
+      .select({ id: dataset.id })
+      .from(dataset)
+      .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
+      .where(and(
+        eq(dataset.id, datasetId),
+        eq(dataset.originDraftId, at.draftId),
+        isNull(datasetContent.datasetId),
+      ))
+      .limit(1)
+    if (target === undefined) return { status: "refused" }
+
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: {
+          ...before.content,
+          datasetIds: before.content.datasetIds.filter((id) => id !== datasetId),
+        },
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+    if (rows[0] === undefined) return { status: "conflict" }
+
+    await tx.delete(dataset).where(eq(dataset.id, datasetId))
+    return { status: "deleted" }
+  })
+}
+
+/**
+ * Saying that somebody still has this draft open.
+ *
+ * The only write here that carries no revision, because presence is not
+ * content: nobody is made read-only by it, correctness comes from the checks
+ * above, and a row that is lost or overwritten costs one heartbeat. Rows are
+ * left to expire rather than deleted when a screen closes — a browser that is
+ * closed sends nothing reliable.
+ */
+export async function touchPresence(
+  db: Executor,
+  presence: {
+    draftId: string
+    sessionId: string
+    actorSub: string
+    displayName: string
+  },
+): Promise<void> {
+  await db
+    .insert(draftPresence)
+    .values({ ...presence, lastSeenAt: sql`now()` })
+    .onConflictDoUpdate({
+      target: [draftPresence.draftId, draftPresence.sessionId],
+      set: {
+        actorSub: presence.actorSub,
+        displayName: presence.displayName,
+        lastSeenAt: sql`now()`,
+      },
+    })
 }
 
 /**

@@ -1,17 +1,17 @@
 /**
  * The screen a research draft is written on.
  *
- * Everything is held in one piece of state and posted as one document, because
- * a version of a research is one thing: half of it saved is not a state anybody
- * asked for. **What is typed is never taken away.** Marking a field unsettled
- * keeps the half-written text beside it, refused markup comes back attached to
- * the field it was written in, and a save rejected because somebody else got
- * there first leaves the form exactly as it was and offers their version one
- * field at a time.
+ * The research is one document and is posted as one, because a version of a
+ * research is one thing: half of it saved is not a state anybody asked for. Its
+ * datasets are not part of that document — they are their own identities with
+ * their own revisions — so they are written on their own screen, reached from
+ * here.
  *
- * The two languages sit side by side and carry a state each, so a title settled
- * in Japanese while the English is still a question put to the provider is one
- * row rather than two fields that have to be kept in step.
+ * **What is typed is never taken away.** Marking a field unsettled keeps the
+ * half-written text beside it, refused markup comes back attached to the field
+ * it was written in, and a save rejected because somebody else got there first
+ * leaves the form exactly as it was and offers their version one field at a
+ * time.
  */
 
 import { useState } from "react"
@@ -27,19 +27,42 @@ import type {
   RelatedPublicationInput,
   ResearchContentInput,
   ResearchProjectInput,
-  SlotState,
-  TextInput,
-  TextPairInput,
 } from "~/admin/form"
+import { researchContentInput } from "~/admin/form"
 import type { FieldProblem } from "~/admin/form.server"
 import type { AdminDraftPageView, SaveResult } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
-import { adminResearchPath } from "~/admin/urls"
+import {
+  adminDraftDatasetsPath,
+  adminResearchPath,
+  draftPresencePath,
+  draftUndoPath,
+} from "~/admin/urls"
+import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-const STATES: readonly SlotState[] = ["value", "unknown", "not-applicable"]
+import { PresenceLine, UndoMenu } from "./draft-tools"
+import {
+  AddElement,
+  ConflictBand,
+  ElementCard,
+  FieldHead,
+  PairField,
+  ProblemBand,
+  RowButton,
+  Section,
+  SingleField,
+  StateSwitch,
+  emptyLinksPair,
+  emptyPair,
+  emptySlot,
+  moved,
+  newId,
+  replacing,
+  type Marks,
+} from "./fields"
 
 const SECTIONS = [
   "note",
@@ -54,53 +77,11 @@ const SECTIONS = [
   "datasets",
 ] as const
 
-/** Everything a field needs to know about the two ways a save can come back. */
-interface Marks {
-  changed: boolean
-  onTake: (() => void) | null
-  problems: FieldProblem[]
-}
-
-function newId(): string {
-  return crypto.randomUUID()
-}
-
-function emptySlot(): TextInput {
-  return { state: "value", text: "" }
-}
-
-function emptyPair(): TextPairInput {
-  return { ja: emptySlot(), en: emptySlot() }
-}
-
-function emptyLinks(): LinksPairInput {
-  return { ja: { state: "value", links: [] }, en: { state: "value", links: [] } }
-}
-
-/** A pair is untranslated when both sides hold a value and one of them is empty. */
-function isUntranslated(pair: TextPairInput): boolean {
-  return pair.ja.state === "value"
-    && pair.en.state === "value"
-    && (pair.ja.text === "") !== (pair.en.text === "")
-}
-
-function moved<T>(items: readonly T[], from: number, by: number): T[] {
-  const to = from + by
-  if (to < 0 || to >= items.length) return [...items]
-  const next = [...items]
-  const [taken] = next.splice(from, 1)
-  if (taken !== undefined) next.splice(to, 0, taken)
-  return next
-}
-
-function replacing<T extends { id: string }>(items: readonly T[], id: string, next: T): T[] {
-  return items.map((item) => item.id === id ? next : item)
-}
-
 export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const locale = view.locale
   const t = messagesFor(locale).admin.editor
   const fetcher = useFetcher<SaveResult>()
+  const undoFetcher = useFetcher<DraftSnapshot>()
 
   const [input, setInput] = useState<DraftInput>(view.input)
   const [base, setBase] = useState<DraftInput>(view.input)
@@ -113,6 +94,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   // version the server now holds without depending on what has been typed since.
   const [sent, setSent] = useState<DraftInput>(view.input)
   const [answered, setAnswered] = useState<SaveResult | null>(null)
+  const [restored, setRestored] = useState<DraftSnapshot | null>(null)
 
   // The answer is taken while rendering rather than in an effect: it is one
   // state derived from another, not a message to an outside system, and the
@@ -135,6 +117,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       setBase(answer.current)
       setProblems([])
     }
+  }
+
+  // A snapshot taken off the stack is put into the form and left there. It is
+  // unsaved work like any other until somebody presses save, which is what
+  // keeps going back from being a way around the revision check.
+  const snapshot = undoFetcher.state === "idle" ? undoFetcher.data : undefined
+  if (snapshot !== undefined && snapshot !== restored) {
+    setRestored(snapshot)
+    setInput({ note: snapshot.note, content: researchContentInput(snapshot.content) })
+    setSaved(false)
+    setProblems([])
   }
 
   const dirty = diffDraftInput(base, input).length > 0
@@ -173,13 +166,15 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16">
       <TopBar
-        locale={locale}
-        researchId={view.researchId}
-        humLabel={view.humLabel}
+        view={view}
         dirty={dirty}
         saving={fetcher.state !== "idle"}
         saved={saved}
         onSave={save}
+        onUndo={(undoId) => {
+          void undoFetcher.load(draftUndoPath(view.researchId, view.draftId, undoId))
+        }}
+        undoLoading={undoFetcher.state !== "idle"}
       />
 
       {conflict !== null && (
@@ -304,28 +299,41 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   )
 }
 
-function TopBar({ locale, researchId, humLabel, dirty, saving, saved, onSave }: {
-  locale: Locale
-  researchId: string
-  humLabel: string | null
+function TopBar({ view, dirty, saving, saved, onSave, onUndo, undoLoading }: {
+  view: AdminDraftPageView
   dirty: boolean
   saving: boolean
   saved: boolean
   onSave: () => void
+  onUndo: (undoId: string) => void
+  undoLoading: boolean
 }) {
+  const locale = view.locale
   const t = messagesFor(locale).admin.editor
   return (
     <div className="sticky top-0 z-10 mb-4 border-line border-b bg-white py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h1 className="font-bold text-lg">{humLabel ?? t.heading}</h1>
-          <Link to={href(locale, adminResearchPath(researchId))} className="text-sm">
+          <h1 className="font-bold text-lg">{view.humLabel ?? t.heading}</h1>
+          <Link to={href(locale, adminResearchPath(view.researchId))} className="text-sm">
             {t.backToResearch}
+          </Link>
+          <Link
+            to={href(locale, adminDraftDatasetsPath(view.researchId, view.draftId))}
+            className="text-sm"
+          >
+            {messagesFor(locale).admin.draft.datasets}
           </Link>
         </div>
         <div className="flex items-center gap-3 text-sm">
           {dirty && <span className="text-accent">{t.unsaved}</span>}
           {!dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
+          <UndoMenu
+            locale={locale}
+            entries={view.undo}
+            onPick={onUndo}
+            loading={undoLoading}
+          />
           <button
             type="button"
             onClick={onSave}
@@ -336,231 +344,16 @@ function TopBar({ locale, researchId, humLabel, dirty, saving, saved, onSave }: 
           </button>
         </div>
       </div>
+      <PresenceLine
+        locale={locale}
+        path={draftPresencePath(view.researchId, view.draftId)}
+        initial={view.presence}
+      />
       <nav className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         {SECTIONS.map((section) => (
           <a key={section} href={`#${section}`}>{t.sections[section]}</a>
         ))}
       </nav>
-    </div>
-  )
-}
-
-function ConflictBand({ locale, changed }: { locale: Locale, changed: string[] }) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="mb-4 rounded-sm border border-accent bg-surface px-4 py-3 text-sm">
-      <p className="font-semibold">{t.conflictHeading}</p>
-      <p className="mt-1">
-        {changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}
-      </p>
-      {changed.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {changed.map((path) => (
-            <li key={path} className="rounded-sm border border-line px-2 py-0.5 text-xs">
-              <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function ProblemBand({ locale, problems }: { locale: Locale, problems: FieldProblem[] }) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="mb-4 rounded-sm border border-danger bg-surface px-4 py-3 text-sm">
-      <p className="font-semibold text-danger">{t.problemsHeading}</p>
-      <ul className="mt-2 flex flex-col gap-1 text-xs">
-        {problems.map((problem, at) => (
-          <li key={at}>
-            {problem.path}
-            {" — "}
-            {t.syntax[problem.syntax]}
-            {" ("}
-            {t.problemLine(problem.line)}
-            )
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function Section({ id, title, children }: { id: string, title: string, children: React.ReactNode }) {
-  return (
-    <section id={id} className="mt-8 scroll-mt-32">
-      <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function FieldHead({ label, marks, locale, untranslated = false }: {
-  label: string
-  marks: Marks
-  locale: Locale
-  untranslated?: boolean
-}) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="font-semibold text-ink-muted text-xs">{label}</span>
-      {untranslated && (
-        <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted text-xs">
-          {t.untranslated}
-        </span>
-      )}
-      {marks.changed && (
-        <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
-          {t.changed}
-        </span>
-      )}
-      {marks.onTake !== null && (
-        <button type="button" onClick={marks.onTake} className="cursor-pointer text-accent text-xs underline">
-          {t.take}
-        </button>
-      )}
-    </div>
-  )
-}
-
-function StateSwitch({ state, onChange, locale }: {
-  state: SlotState
-  onChange: (next: SlotState) => void
-  locale: Locale
-}) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="flex gap-1">
-      {STATES.map((candidate) => (
-        <button
-          key={candidate}
-          type="button"
-          aria-pressed={state === candidate}
-          onClick={() => { onChange(candidate) }}
-          className={`cursor-pointer rounded-sm border px-1.5 py-0.5 text-xs ${
-            state === candidate ? "border-brand bg-brand text-white" : "border-line text-ink-muted"
-          }`}
-        >
-          {t.states[candidate]}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-/**
- * One language of one field. The text stays in the box whatever the state says,
- * so switching to "unsettled" and back gives the half-written value back.
- */
-function SlotEditor({ language, value, multiline, onChange, locale, problems }: {
-  language: Locale
-  value: TextInput
-  multiline?: boolean
-  onChange: (next: TextInput) => void
-  locale: Locale
-  problems: FieldProblem[]
-}) {
-  const t = messagesFor(locale).admin.editor
-  const disabled = value.state !== "value"
-  const classes = `w-full rounded-sm border px-2 py-1 text-sm ${
-    problems.length > 0 ? "border-danger" : "border-line"
-  } ${disabled ? "bg-surface text-ink-muted" : ""}`
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-ink-muted text-xs" lang={language}>{language}</span>
-        <StateSwitch
-          state={value.state}
-          onChange={(state) => { onChange({ ...value, state }) }}
-          locale={locale}
-        />
-      </div>
-      {multiline === true
-        ? (
-            <textarea
-              className={classes}
-              rows={4}
-              lang={language}
-              disabled={disabled}
-              value={value.text}
-              onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
-            />
-          )
-        : (
-            <input
-              type="text"
-              className={classes}
-              lang={language}
-              disabled={disabled}
-              value={value.text}
-              onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
-            />
-          )}
-      {problems.length > 0 && (
-        <ul className="text-danger text-xs">
-          {problems.map((problem, at) => (
-            <li key={at}>{`${t.syntax[problem.syntax]} (${t.problemLine(problem.line)})`}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function PairField({ label, value, multiline, marks, locale, onChange }: {
-  label: string
-  value: TextPairInput
-  multiline?: boolean
-  marks: Marks
-  locale: Locale
-  onChange: (next: TextPairInput) => void
-}) {
-  const problemsOf = (language: Locale) =>
-    marks.problems.filter((problem) => problem.path.endsWith(`.${language}`))
-
-  return (
-    <div className="mt-4 first:mt-0">
-      <FieldHead label={label} marks={marks} locale={locale} untranslated={isUntranslated(value)} />
-      <div className="mt-1 grid gap-3 md:grid-cols-2">
-        {(["ja", "en"] as const).map((language) => (
-          <SlotEditor
-            key={language}
-            language={language}
-            value={value[language]}
-            multiline={multiline}
-            locale={locale}
-            problems={problemsOf(language)}
-            onChange={(next) => { onChange({ ...value, [language]: next }) }}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** A field with one value and no languages: an identifier, an address, a DOI. */
-function SingleField({ label, value, marks, locale, onChange }: {
-  label: string
-  value: TextInput
-  marks: Marks
-  locale: Locale
-  onChange: (next: TextInput) => void
-}) {
-  return (
-    <div className="mt-4">
-      <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="mt-1 md:max-w-md">
-        <SlotEditor
-          language={locale}
-          value={value}
-          locale={locale}
-          problems={[]}
-          onChange={onChange}
-        />
-      </div>
     </div>
   )
 }
@@ -640,51 +433,6 @@ function LinksField({ label, value, marks, locale, onChange }: {
           )
         })}
       </div>
-    </div>
-  )
-}
-
-function RowButton({ label, onClick, disabled = false }: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="cursor-pointer rounded-sm border border-line px-2 py-0.5 text-ink-muted text-xs disabled:opacity-50"
-    >
-      {label}
-    </button>
-  )
-}
-
-function ElementCard({ index, count, locale, onMove, onRemove, children }: {
-  index: number
-  count: number
-  locale: Locale
-  onMove: (by: number) => void
-  onRemove: () => void
-  children: React.ReactNode
-}) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="mt-4 rounded-sm border border-line px-4 py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-ink-muted text-xs">{index + 1}</span>
-        <div className="flex gap-1">
-          <RowButton label={t.moveUp} disabled={index === 0} onClick={() => { onMove(-1) }} />
-          <RowButton
-            label={t.moveDown}
-            disabled={index === count - 1}
-            onClick={() => { onMove(1) }}
-          />
-          <RowButton label={t.remove} onClick={onRemove} />
-        </div>
-      </div>
-      {children}
     </div>
   )
 }
@@ -820,7 +568,7 @@ function ProjectsSection({ locale, items, marksFor, onChange }: SectionProps<Res
       <AddElement
         label={t.add}
         onClick={() => {
-          onChange([...items, { id: newId(), name: emptyPair(), url: emptyLinks() }])
+          onChange([...items, { id: newId(), name: emptyPair(), url: emptyLinksPair() }])
         }}
       />
     </Section>
@@ -992,25 +740,18 @@ function PublicationsSection({ locale, items, datasets, marksFor, onChange }:
   )
 }
 
-function AddElement({ label, onClick }: { label: string, onClick: () => void }) {
-  return (
-    <div className="mt-3">
-      <button
-        type="button"
-        onClick={onClick}
-        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
-      >
-        {label}
-      </button>
-    </div>
-  )
-}
-
 function datasetName(row: ResearchDatasetRow, locale: Locale): string {
   return row.label ?? messagesFor(locale).admin.editor.unpinnedDataset
 }
 
-/** The datasets a version lists, in the order it lists them. */
+/**
+ * The datasets a version lists, in the order it lists them.
+ *
+ * An id that names nothing is shown as gone rather than as itself. It happens:
+ * another draft can destroy a dataset it introduced while this one still lists
+ * it, and a save that lists a dataset of no research is refused — so the row
+ * has to say what is wrong beside the button that fixes it.
+ */
 function DatasetOrder({ locale, datasets, selected, onChange }: {
   locale: Locale
   datasets: ResearchDatasetRow[]
@@ -1021,7 +762,9 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
   const byId = new Map(datasets.map((row) => [row.id, row]))
   const unselected = datasets.filter((row) => !selected.includes(row.id))
 
-  if (datasets.length === 0) return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+  if (datasets.length === 0 && selected.length === 0) {
+    return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+  }
 
   return (
     <div className="mt-2 flex flex-col gap-2">
@@ -1030,7 +773,9 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
           const row = byId.get(id)
           return (
             <li key={id} className="flex items-center gap-2 text-sm">
-              <span className="min-w-40">{row === undefined ? id : datasetName(row, locale)}</span>
+              <span className={`min-w-40 ${row === undefined ? "text-danger" : ""}`}>
+                {row === undefined ? t.missingDataset : datasetName(row, locale)}
+              </span>
               {row?.published === false && (
                 <span className="text-ink-muted text-xs">
                   {messagesFor(locale).admin.detail.unpublishedDataset}
