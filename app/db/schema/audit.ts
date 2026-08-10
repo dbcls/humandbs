@@ -13,6 +13,7 @@ export const eventAction = pgEnum("event_action", [
   "unpin-label",
   "publish-file",
   "unpublish-file",
+  "delete-file",
   "grant-admin",
   "revoke-admin",
   "pass-publish-gate",

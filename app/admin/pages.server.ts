@@ -35,6 +35,10 @@ import { emptyDatasetContent } from "~/content/empty"
 import type { DatasetContent, DraftSnapshot, ResearchContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb } from "~/db/client.server"
+import type { BoxEntry } from "~/files/box"
+import { adminBox } from "~/files/listing.server"
+import { privateNames, switchFiles } from "~/files/jobs.server"
+import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -228,6 +232,8 @@ export interface AdminResearchPageView {
   datasetIdSuggestion: string | null
   /** Whether a link is out there for each draft, and what is unanswered. */
   reviews: DraftReviewSummary[]
+  /** What the box holds. Null when the store did not answer. */
+  box: { count: number, bytes: number } | null
 }
 
 export async function researchDetailPage(
@@ -244,11 +250,15 @@ export async function researchDetailPage(
 
   const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
   const taken = view.datasets.flatMap((row) => row.label === null ? [] : [row.label])
+  const box = await adminBox(db, id, humLabel)
 
   return {
     locale,
     researchId: id,
     reviews: await draftReviewSummaries(db, id),
+    box: box === null
+      ? null
+      : { count: box.length, bytes: box.reduce((sum, entry) => sum + entry.size, 0) },
     humLabel,
     labels: view.labels,
     versions: view.versions,
@@ -486,6 +496,12 @@ export interface DatasetEditorView {
   undo: UndoEntryRow[]
   upstream: UpstreamView<DatasetContentInput> | null
   review: ReviewMarksView
+  /**
+   * The research's box, both buckets merged, which the file selection is chosen
+   * from. Null when the store did not answer — the editor then offers nothing
+   * rather than pretending the box is empty.
+   */
+  box: BoxEntry[] | null
 }
 
 /**
@@ -520,6 +536,7 @@ export async function datasetEditorPage(
     readUndoStack(db, draftId),
     readThreads(db, draftId),
   ])
+  const box = await adminBox(db, researchId, humLabel)
 
   const content = entry?.content ?? published ?? emptyDatasetContent()
   const input = datasetContentInput(content)
@@ -548,6 +565,7 @@ export async function datasetEditorPage(
       publishedNumber: null,
       signedInName: actor.name,
     },
+    box,
   }
 }
 
@@ -790,6 +808,12 @@ export interface PublishGroupView {
   kind: GateFindingKind
   count: number
   places: PublishPlaceView[]
+  /**
+   * The files this group is about, for the one group that offers to act:
+   * listing the private ones is also the way to make them public. Empty for
+   * every other kind.
+   */
+  fileNames: string[]
 }
 
 export interface PublishBlockView {
@@ -846,7 +870,7 @@ export async function publishPage(
 ): Promise<PublishPageView> {
   const { db, researchId, draftId } = await draftOf(request, params)
 
-  const preview = await publishPreview(db, draftId)
+  const preview = await publishPreview(db, draftId, await privateNames(researchId))
   if (preview === null) notFound()
 
   const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
@@ -908,6 +932,8 @@ function groupFindings(
 ): PublishGroupView[] {
   const t = messagesFor(locale).admin.publish
   const groups = new Map<GateFindingKind, Map<string, PublishPlaceView>>()
+  // One file can be selected by several datasets, and it is switched once.
+  const files = new Set<string>()
 
   const place = (kind: GateFindingKind, key: string, view: () => PublishPlaceView): void => {
     const held = groups.get(kind) ?? new Map<string, PublishPlaceView>()
@@ -956,6 +982,16 @@ function groupFindings(
       }))
       continue
     }
+    if (finding.kind === "private-file") {
+      files.add(finding.fileName)
+      place(finding.kind, finding.datasetId, () => ({
+        label: into.naming(finding.datasetId),
+        href: into.datasetHref(finding.datasetId),
+        count: 1,
+        note: null,
+      }))
+      continue
+    }
     place(finding.kind, finding.datasetId, () => ({
       label: into.naming(finding.datasetId),
       href: finding.kind === "empty-dataset" ? into.datasetHref(finding.datasetId) : null,
@@ -968,7 +1004,12 @@ function groupFindings(
     const held = groups.get(kind)
     if (held === undefined) return []
     const places = [...held.values()]
-    return [{ kind, count: places.reduce((total, row) => total + row.count, 0), places }]
+    return [{
+      kind,
+      count: places.reduce((total, row) => total + row.count, 0),
+      places,
+      fileNames: kind === "private-file" ? [...files] : [],
+    }]
   })
 }
 
@@ -1009,6 +1050,19 @@ export async function publishAction(
     return redirect(href(locale, adminDraftPublishPath(researchId, draftId)))
   }
 
+  if (intent === "publish-files") {
+    await requireCapability(request, "manage-files")
+    const names = form.getAll("fileName")
+      .flatMap((value) => typeof value === "string" ? [value] : [])
+    await switchFiles(
+      db,
+      names.map((fileName) => ({ researchId, fileName, action: "publish" as const })),
+      actorOf(actor),
+    )
+    wakeFileRunner()
+    return redirect(href(locale, adminDraftPublishPath(researchId, draftId)))
+  }
+
   if (intent !== "publish") badRequest()
   await requireCapability(request, "publish")
 
@@ -1022,6 +1076,7 @@ export async function publishAction(
     at: { draftId, revision },
     mode: asFix ? { kind: "fix" } : { kind: "version", releaseDate },
     acknowledged: form.get("acknowledged") === "on",
+    privateFiles: await privateNames(researchId),
   }, actorOf(actor))
 
   if (outcome.status === "published") return redirect(href(locale, adminResearchPath(researchId)))

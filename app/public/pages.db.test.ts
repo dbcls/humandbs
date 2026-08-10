@@ -1,11 +1,14 @@
-import { sql } from "drizzle-orm"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { eq, sql } from "drizzle-orm"
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
+
+import { clearPrefix, putTestObject } from "~/files/_store"
+import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
 
 import { datasetPage, releaseListPage, researchPage } from "./pages.server"
 
@@ -62,7 +65,7 @@ async function publish(
   })
 }
 
-const ja = { locale: "ja" } as const
+const ja = { locale: "ja", filePage: 1 } as const
 
 /** The thrown answer of a loader, so its status and headers can be read. */
 async function caught(load: () => Promise<unknown>): Promise<Response> {
@@ -141,7 +144,7 @@ describe("a research page", () => {
     await rebuildSearchDocs(db)
 
     const redirect = await caught(() =>
-      researchPage({ locale: "en", humId: "hun0001", wanted: "latest" }))
+      researchPage({ locale: "en", humId: "hun0001", wanted: "latest", filePage: 1 }))
 
     expect(redirect.headers.get("location")).toBe("/en/research/hum0001")
   })
@@ -256,5 +259,62 @@ describe("a dataset page", () => {
 
     expect((await datasetPage({ ...ja, datasetId: "hum0001-NHA001" })).datePublished)
       .toBe("2021-06-30")
+  })
+})
+
+describe("the download list", () => {
+  const HUM = "hum7001"
+
+  afterEach(async () => {
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
+  })
+
+  it("is the public bucket listed, and holds nothing the research did not put there", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`, "12")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`, "1")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix("hum7999")}other.zip`)
+
+    const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+
+    expect(view.files.rows).toEqual([
+      { name: "a.zip", size: 1, isPublic: true },
+      { name: "b.zip", size: 2, isPublic: true },
+    ])
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix("hum7999"))
+  })
+
+  it("cuts at a hundred names and says how many pages there are", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    for (let at = 0; at < 101; at += 1) {
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${String(at).padStart(4, "0")}.zip`)
+    }
+
+    const first = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+    const second = await researchPage({ ...ja, humId: HUM, wanted: "latest", filePage: 2 })
+
+    expect(first.files.rows).toHaveLength(100)
+    expect(first.files.total).toBe(101)
+    expect(first.files.pageCount).toBe(2)
+    expect(second.files.rows).toHaveLength(1)
+  })
+
+  it("keeps only the dataset selections the box holds", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await db.update(s.datasetContent)
+      .set({ content: { ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] } })
+      .where(eq(s.datasetContent.datasetId, datasetId))
+    await publish(researchId, 1, [datasetId])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`, "1")
+
+    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
+
+    expect(view.files).toEqual([{ name: "a.zip", size: 1, isPublic: true }])
   })
 })

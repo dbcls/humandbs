@@ -78,6 +78,7 @@ function view(content: DatasetContent = emptyDatasetContent()): DatasetEditorVie
     humLabel: "hum0001",
     datasetLabel: "JGAD000001",
     published: true,
+    box: [],
     revision: 2,
     input: datasetContentInput(content),
     catalog,

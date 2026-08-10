@@ -47,6 +47,7 @@ import { href } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
 
 import { PresenceLine, UndoMenu } from "./draft-tools"
+import { FileSelection } from "./files"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import {
   AddElement,
@@ -300,6 +301,17 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           values={input.values}
           marksFor={marksFor}
           onChange={(values) => { edit({ ...input, values }) }}
+        />
+      </section>
+
+      <section id="files" className="mt-8 scroll-mt-32">
+        <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{t.files}</h2>
+        <FieldHead label={t.files} marks={marksFor("fileSelection")} locale={locale} />
+        <FileSelection
+          locale={locale}
+          listing={view.box}
+          selected={input.fileSelection}
+          onChange={(fileSelection) => { edit({ ...input, fileSelection }) }}
         />
       </section>
 

@@ -16,6 +16,13 @@
  * which is the point of holding more than one. Unpinning does not reserve
  * anything: the ledger says which labels are in use and nothing more.
  *
+ * **Renumbering a research moves its box.** The public key carries the hum
+ * label, so the files a reader can already fetch would otherwise stay at the
+ * retired address and disappear from the new one. The move is queued after the
+ * pin is committed: it is a rename inside one bucket rather than a copy of the
+ * bytes, and holding the ledger's rows while talking to the store would be
+ * paying for that with a lock.
+ *
  * Visibility follows from the search rows, so every change here derives them
  * again for the research it touched. A dataset whose id was taken away has no
  * label to be found by and drops out of the listings of the versions that carry
@@ -28,6 +35,8 @@ import { and, eq } from "drizzle-orm"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Database, Transaction } from "~/db/client.server"
 import { dataset, labelPin } from "~/db/schema"
+import { requestBoxMove } from "~/files/jobs.server"
+import { wakeFileRunner } from "~/files/runner.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 export interface PinRequest {
@@ -62,19 +71,19 @@ export async function pinLabel(
   const label = request.label.trim()
   if (label === "") return { status: "gone" }
 
-  return db.transaction(async (tx): Promise<PinOutcome> => {
+  const done = await db.transaction(async (tx) => {
     const researchId = await researchOf(tx, request)
-    if (researchId === null) return { status: "gone" }
+    if (researchId === null) return { outcome: { status: "gone" } as PinOutcome }
 
     const [held] = await tx
       .select({ id: labelPin.id })
       .from(labelPin)
       .where(and(eq(labelPin.kind, request.kind), eq(labelPin.label, label)))
       .limit(1)
-    if (held !== undefined) return { status: "taken" }
+    if (held !== undefined) return { outcome: { status: "taken" } as PinOutcome }
 
     const columns = subjectColumns(request)
-    if (request.isPrimary) await demote(tx, request)
+    const demoted = request.isPrimary ? await demote(tx, request) : null
 
     await tx.insert(labelPin).values({
       kind: request.kind,
@@ -90,8 +99,19 @@ export async function pinLabel(
       detail: { kind: request.kind, subject: request.subjectId, isPrimary: request.isPrimary },
     })
     await rebuildSearchDocs(tx, { researchIds: [researchId] })
-    return { status: "pinned" }
+    return {
+      outcome: { status: "pinned" } as PinOutcome,
+      // Only a hum label addresses a box, and only a new primary moves it.
+      movedFrom: request.kind === "hum" ? demoted : null,
+      researchId,
+    }
   })
+
+  if (done.movedFrom != null) {
+    await requestBoxMove(db, done.researchId, done.movedFrom)
+    wakeFileRunner()
+  }
+  return done.outcome
 }
 
 export async function unpinLabel(
@@ -145,13 +165,19 @@ async function researchOfDataset(
   return row?.researchId ?? null
 }
 
-/** The label that was primary becomes secondary, so it keeps resolving. */
-async function demote(tx: Transaction, request: PinRequest): Promise<void> {
+/**
+ * The label that was primary becomes secondary, so it keeps resolving. It is
+ * returned because a hum label is also the name of the public box, and the
+ * files under it have to follow the new one.
+ */
+async function demote(tx: Transaction, request: PinRequest): Promise<string | null> {
   const subject = request.kind === "hum"
     ? eq(labelPin.researchId, request.subjectId)
     : eq(labelPin.datasetId, request.subjectId)
-  await tx
+  const rows = await tx
     .update(labelPin)
     .set({ isPrimary: false })
     .where(and(eq(labelPin.kind, request.kind), subject, eq(labelPin.isPrimary, true)))
+    .returning({ label: labelPin.label })
+  return rows[0]?.label ?? null
 }

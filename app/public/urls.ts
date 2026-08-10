@@ -102,9 +102,31 @@ export function newsItemPath(id: string): string {
 }
 
 /**
+ * Where a published file is fetched from.
+ *
+ * **No route answers this.** The front proxy passes `/files/…` to the store,
+ * where it is the path-style address of the public bucket — which is why the
+ * key there carries the hum label rather than the identity, and why the address
+ * is the same one the current portal publishes. The proxy is also what adds
+ * `nosniff` and the disposition, so nothing may link past it.
+ *
+ * It takes no language prefix: a file is the same file in both languages.
+ * Segments are escaped one at a time, because a listed name can contain a
+ * separator (`dac/DAC_summary-1.pdf`) and that separator is part of the address.
+ */
+export function filePath(humLabel: string, name: string): string {
+  const escaped = name.split("/").map(encodeURIComponent).join("/")
+  return `/files/${encodeURIComponent(humLabel)}/${escaped}`
+}
+
+/**
  * The addresses a route owns rather than a document. Everything else under the
  * root is a document slug, so this is also the list of slugs a document may not
  * take — a document named `news` would be unreachable behind the route.
+ *
+ * `/files` and `/private` are here although no route serves them: the proxy
+ * takes both to the store, so a document by either name would be shadowed by
+ * something a route cannot even see.
  */
 export const SCREEN_PATHS = [
   "/",
@@ -117,6 +139,8 @@ export const SCREEN_PATHS = [
   "/preview",
   "/admin",
   "/auth",
+  "/files",
+  "/private",
 ] as const
 
 /**

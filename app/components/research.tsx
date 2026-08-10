@@ -10,6 +10,7 @@ import {
 } from "~/public/urls"
 import type { ResearchView } from "~/public/view.server"
 
+import { Downloads } from "./files"
 import {
   AccessTypeBadge,
   Annotation,
@@ -153,6 +154,22 @@ export function ResearchBody({ view, locale, datasetHref }: {
               </Table>
             )}
       </Section>
+
+      {view.files.total > 0 && (
+        <Section title={t.downloads}>
+          <Downloads
+            locale={locale}
+            humLabel={view.humLabel === "" ? null : view.humLabel}
+            rows={view.files.rows}
+            total={view.files.total}
+            page={view.files.page}
+            pageCount={view.files.pageCount}
+            // Only the query string changes, so the same links work from the
+            // published address and from a preview without either being named.
+            at={(to) => `?files=${to}`}
+          />
+        </Section>
+      )}
 
       {view.dataProviders.length > 0 && (
         <Section title={t.dataProvider} at="dataProviders">

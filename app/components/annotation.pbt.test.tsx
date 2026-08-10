@@ -82,6 +82,7 @@ function researchAnchors(content: ResearchContent, datasets: { id: string, label
     })),
     datasetLabelById: new Map(datasets.map((row) => [row.id, row.label])),
     cau: [],
+    files: { rows: [], total: 0, page: 1, pageCount: 1 },
   }, "ja", catalog)
 
   const drawn = drawnAnchors(() => <ResearchBody view={anchored.view} locale="ja" />)
@@ -95,6 +96,7 @@ function datasetAnchors(content: DatasetContent) {
     content,
     datePublished: null,
     dateModified: null,
+    files: [],
   }, "ja", catalog)
 
   const drawn = drawnAnchors(() => (

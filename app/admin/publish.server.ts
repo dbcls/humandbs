@@ -69,6 +69,13 @@ export interface PublishRequest {
   mode: PublishMode
   /** The administrator has seen the listed findings and passed them. */
   acknowledged: boolean
+  /**
+   * The names in the private bucket, read before the transaction opened. The
+   * gate only lists these, so a name that moved in the meantime costs nothing —
+   * and reading the store while holding the draft's row would hold a lock
+   * across a call to something outside the portal.
+   */
+  privateFiles: ReadonlySet<string>
 }
 
 export type PublishOutcome
@@ -328,6 +335,7 @@ export interface PublishPreview {
 export async function publishPreview(
   db: Database,
   draftId: string,
+  privateFiles: ReadonlySet<string>,
 ): Promise<PublishPreview | null> {
   return db.transaction(async (tx): Promise<PublishPreview | null> => {
     const ground = await readGround(tx, draftId, false)
@@ -346,6 +354,7 @@ export async function publishPreview(
       datasets,
       previousDatasetIds: previous?.datasetIds ?? [],
       upstream: { loaded: ground.upstreamLoaded, humLabelOf: ground.upstreamHumLabelOf },
+      privateFiles,
     })
 
     const listedIds = datasets.map((row) => row.datasetId)
@@ -456,6 +465,7 @@ export async function publishDraft(
       datasets,
       previousDatasetIds: previous?.datasetIds ?? [],
       upstream: { loaded: ground.upstreamLoaded, humLabelOf: ground.upstreamHumLabelOf },
+      privateFiles: request.privateFiles,
     })
     if (gate.blocks.length > 0) return { status: "blocked", blocks: gate.blocks }
     if (gate.findings.length > 0 && !request.acknowledged) {

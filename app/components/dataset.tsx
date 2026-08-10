@@ -5,6 +5,7 @@ import { messagesFor } from "~/i18n/messages"
 import { href, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
+import { Downloads } from "./files"
 import {
   AccessTypeBadge,
   Annotation,
@@ -81,6 +82,20 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           </KeyValue>
         )}
       </dl>
+
+      {view.files.length > 0 && (
+        <Section title={t.files}>
+          <Downloads
+            locale={locale}
+            humLabel={view.humLabel === "" ? null : view.humLabel}
+            rows={view.files}
+            total={view.files.length}
+            page={1}
+            pageCount={1}
+            at={(to) => `?files=${to}`}
+          />
+        </Section>
+      )}
 
       <Section title={t.experiments} at="experiments">
         {view.experiments.length === 0

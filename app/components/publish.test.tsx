@@ -89,11 +89,13 @@ describe("the publish screen", () => {
         {
           kind: "unsettled",
           count: 12,
+          fileNames: [],
           places: [{ label: "研究の記述", href: "/admin/research/x/draft/y", count: 12, note: null }],
         },
         {
           kind: "upstream-edited",
           count: 1,
+          fileNames: [],
           places: [{
             label: "JGAD000001",
             href: "/admin/research/x/draft/y/dataset/z",

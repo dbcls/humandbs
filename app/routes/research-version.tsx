@@ -1,4 +1,5 @@
 import { ResearchVersionPage } from "~/components/research"
+import { readFilePage } from "~/files/listing.server"
 import { researchPage } from "~/public/pages.server"
 import { parseVersionSegment, readLocale } from "~/public/urls"
 
@@ -10,7 +11,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // Anything else in this position is not an address of a version, including
   // `v01` — one version has one address.
   if (wanted === null) throw new Response(null, { status: 404, statusText: "Not Found" })
-  return { locale, view: await researchPage({ locale, humId: params.humId, wanted }) }
+  const filePage = readFilePage(new URL(request.url))
+  const view = await researchPage({ locale, humId: params.humId, wanted, filePage })
+  return { locale, view }
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

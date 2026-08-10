@@ -15,6 +15,7 @@ cp .env.example .env
 docker compose run --rm --no-deps app npm install
 docker compose up -d
 docker compose exec app npm run db:push
+docker compose exec app npm run s3:buckets
 ```
 
 `http://localhost:8080/` が開けば起動している。`/healthz` は依存サービスの疎通を返し、1 つでも
@@ -22,13 +23,16 @@ docker compose exec app npm run db:push
 
 `npm install` を先に走らせるのは、`node_modules` が named volume にあり image に焼かれていないため。
 `docker compose down -v` で volume を消したら install からやり直す。**`db:push` を初回に打つ必要があるのは、
-アプリが繋ぐ role をそれが作るから** (「[DB を触る](#db-を触る)」)。
+アプリが繋ぐ role をそれが作るから** (「[DB を触る](#db-を触る)」)。**`s3:buckets` が要るのは、bucket を
+書き込みの副作用で作らないから** — どちらの bucket に居るかがファイルの公開状態そのものなので、
+最初の書き込みで bucket が生まれる形にすると公開が操作の順序に依存する
+([data-model.md](data-model.md) の「ファイル」)。
 
 ## サービス
 
 | service | 中身 | ホストからの見え方 |
 |---|---|---|
-| `proxy` | nginx。`/files/` を `s3` に、それ以外を `app` に渡す | `8080` |
+| `proxy` | nginx。`/files/` と `/private/` を `s3` に、それ以外を `app` に渡す | `8080` |
 | `app` | React Router の dev サーバー | proxy 経由のみ |
 | `db` | Postgres + PGroonga | `127.0.0.1:5432` |
 | `s3` | SeaweedFS (master / volume / filer / S3 API) | 公開しない |
@@ -37,6 +41,10 @@ docker compose exec app npm run db:push
 `Content-Disposition` は proxy が付けるので、S3 API を直接叩ける口があるとその header を迂回した
 URL が同じ object に生まれる。filer の HTTP は完全に無認証で非公開 bucket の中身まで返すので、
 こちらも同じ理由で閉じている (詳細は [data-model.md](data-model.md) の「ファイル」)。
+
+**upload も proxy を通る。** presigned URL の署名は Host を含むので、ブラウザに渡す URL は
+`HUMANDBS_AUTH_REDIRECT_URI` から導いたこのサイトの origin で作られ、`/private/` を proxy が store へ
+渡す。署名の無い要求は store が 403 で落とすので、この経路から非公開 bucket が読めるようにはならない。
 
 proxy が 8080 で受けるのは、認証に使う DDBJ Keycloak (staging) に
 `http://localhost:8080/auth/callback` が redirect URI として登録済みだから。8080 を他プロセスが
@@ -56,6 +64,7 @@ docker compose exec app npm run test:db     # schema + 経路 (db が要る)
 docker compose exec app npm run typecheck   # react-router typegen && tsc
 docker compose exec app npm run build       # 本番ビルド
 docker compose exec app npm run db:push     # schema 定義を DB に反映し、権限を張り直す
+docker compose exec app npm run s3:buckets  # 2 つの bucket を作る (無ければ)
 docker compose exec app npm run admin:list  # admin の一覧
 ```
 

@@ -89,6 +89,9 @@ async function ready(options: { describe?: boolean } = {}) {
   return { ...created, datasetId: made.datasetId, revision: 3 }
 }
 
+/** No file is waiting to be made public; the store is not reached from here. */
+const NO_PRIVATE_FILES: ReadonlySet<string> = new Set()
+
 const AS_VERSION = { kind: "version", releaseDate: "2026-08-10" } as const
 
 async function counts() {
@@ -118,7 +121,7 @@ describe("publishing a draft", () => {
 
     const outcome = await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -138,7 +141,7 @@ describe("publishing a draft", () => {
 
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -171,6 +174,7 @@ describe("publishing a draft", () => {
         at: { draftId: ground.draftId, revision: after?.revision ?? 0 },
         mode: AS_VERSION,
         acknowledged: true,
+        privateFiles: NO_PRIVATE_FILES,
       },
       CURATOR,
     )
@@ -184,7 +188,7 @@ describe("publishing a draft", () => {
 
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -198,7 +202,7 @@ describe("publishing a draft", () => {
 
     const outcome = await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -218,6 +222,7 @@ describe("a publish that is refused", () => {
         at: { draftId: ground.draftId, revision: ground.revision + 1 },
         mode: AS_VERSION,
         acknowledged: true,
+        privateFiles: NO_PRIVATE_FILES,
       },
       CURATOR,
     )
@@ -233,7 +238,7 @@ describe("a publish that is refused", () => {
 
     const outcome = await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -247,7 +252,7 @@ describe("a publish that is refused", () => {
 
     const outcome = await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: false },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: false, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -261,7 +266,7 @@ describe("a publish that is refused", () => {
 
     const outcome = await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: { kind: "fix" }, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: { kind: "fix" }, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -275,7 +280,7 @@ describe("publishing a fix", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     const first = only(await db.select().from(s.researchVersion))
@@ -287,7 +292,7 @@ describe("publishing a fix", () => {
     })
     const outcome = await publishDraft(
       db,
-      { at: { draftId, revision: 2 }, mode: { kind: "fix" }, acknowledged: true },
+      { at: { draftId, revision: 2 }, mode: { kind: "fix" }, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -304,7 +309,7 @@ describe("publishing a fix", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     expect(await db.select().from(s.replacedDatasetContent)).toHaveLength(0)
@@ -317,7 +322,7 @@ describe("publishing a fix", () => {
     )
     await publishDraft(
       db,
-      { at: { draftId, revision: 1 }, mode: { kind: "fix" }, acknowledged: true },
+      { at: { draftId, revision: 1 }, mode: { kind: "fix" }, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -330,7 +335,7 @@ describe("publishing a fix", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -341,7 +346,7 @@ describe("publishing a fix", () => {
     })
     await publishDraft(
       db,
-      { at: { draftId, revision: 2 }, mode: { kind: "fix" }, acknowledged: true },
+      { at: { draftId, revision: 2 }, mode: { kind: "fix" }, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -362,7 +367,7 @@ describe("the trail a publish leaves", () => {
 
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -382,7 +387,7 @@ describe("the trail a publish leaves", () => {
 
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
@@ -396,7 +401,7 @@ describe("taking a version out of sight", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     const version = only(await db.select().from(s.researchVersion))
@@ -412,7 +417,7 @@ describe("taking a version out of sight", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     const version = only(await db.select().from(s.researchVersion))
@@ -428,7 +433,7 @@ describe("looking a publish over first", () => {
     const ground = await ready()
     const before = await counts()
 
-    const preview = await publishPreview(db, ground.draftId)
+    const preview = await publishPreview(db, ground.draftId, NO_PRIVATE_FILES)
 
     expect(preview?.nextNumber).toBe(1)
     expect(preview?.fixes).toBeNull()
@@ -447,12 +452,12 @@ describe("looking a publish over first", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     const draftId = await createDraft(db, ground.researchId)
 
-    const preview = await publishPreview(db, draftId)
+    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
     // The comparison is against the version this one would follow, and a copy
     // of it differs from it in nothing.
@@ -467,7 +472,7 @@ describe("looking a publish over first", () => {
     const ground = await ready()
     await publishDraft(
       db,
-      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true },
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
     const behind = await createDraft(db, ground.researchId)
@@ -480,11 +485,11 @@ describe("looking a publish over first", () => {
     })
     await publishDraft(
       db,
-      { at: { draftId: other, revision: 2 }, mode: { kind: "fix" }, acknowledged: true },
+      { at: { draftId: other, revision: 2 }, mode: { kind: "fix" }, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
       CURATOR,
     )
 
-    const preview = await publishPreview(db, behind)
+    const preview = await publishPreview(db, behind, NO_PRIVATE_FILES)
     expect(preview?.fixes).toBeNull()
     expect(preview?.stale).toEqual({ number: 1 })
   })

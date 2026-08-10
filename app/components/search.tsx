@@ -6,6 +6,8 @@ import type { ConditionChip } from "~/public/lists.server"
 import { href, listPath, searchQuery } from "~/public/urls"
 import type { SortKey } from "~/search/query.server"
 
+import { PageLinks } from "./page"
+
 /**
  * The search box is a GET form. It carries the keywords under `k` and whatever
  * conditions the box cannot show under `q`, and the listing answers with a
@@ -128,30 +130,15 @@ export function Pagination({ locale, target, query, sort, page, pageCount }: {
   pageCount: number
 }) {
   const messages = messagesFor(locale)
-  if (pageCount <= 1) return null
-  const at = (to: number) =>
-    href(locale, listPath(target) + searchQuery({ q: query, sort, page: to }))
-  const window = [...new Set([
-    1,
-    ...[page - 2, page - 1, page, page + 1, page + 2].filter((n) => n > 1 && n < pageCount),
-    pageCount,
-  ])].sort((a, b) => a - b)
-
   return (
-    <nav aria-label={messages.search.pagination} className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-      {page > 1 && <Link to={at(page - 1)}>{messages.search.previousPage}</Link>}
-      {window.map((number, index) => (
-        <span key={number} className="flex items-center gap-2">
-          {index > 0 && (window[index - 1] ?? 0) < number - 1 && (
-            <span className="text-ink-muted" aria-hidden="true">…</span>
-          )}
-          {number === page
-            ? <span className="font-semibold" aria-current="page">{number}</span>
-            : <Link to={at(number)}>{number}</Link>}
-        </span>
-      ))}
-      {page < pageCount && <Link to={at(page + 1)}>{messages.search.nextPage}</Link>}
-    </nav>
+    <PageLinks
+      label={messages.search.pagination}
+      page={page}
+      pageCount={pageCount}
+      at={(to) => href(locale, listPath(target) + searchQuery({ q: query, sort, page: to }))}
+      previous={messages.search.previousPage}
+      next={messages.search.nextPage}
+    />
   )
 }
 

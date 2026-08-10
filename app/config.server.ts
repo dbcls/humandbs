@@ -12,6 +12,24 @@ export interface AuthConfig {
   redirectUri: string
 }
 
+/**
+ * How the application reaches the file store.
+ *
+ * These are root credentials, and every signature a browser is handed is made
+ * with them. The store cannot see who is asking — the application decides that
+ * from `admin_user` and then signs on their behalf (docs/data-model.md の
+ * 「ファイル」).
+ *
+ * The endpoint is the address inside the compose network, and **not** the
+ * address a download is served from: that is the front proxy, which adds the
+ * headers the store itself cannot be trusted to.
+ */
+export interface StoreConfig {
+  endpoint: string
+  accessKeyId: string
+  secretAccessKey: string
+}
+
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
   databaseUrl: string
@@ -21,6 +39,7 @@ export interface AppConfig {
    */
   ownerDatabaseUrl: string
   auth: AuthConfig
+  store: StoreConfig
 }
 
 export class ConfigError extends Error {
@@ -43,6 +62,11 @@ export function loadConfig(env: Env): AppConfig {
       clientId: readRequired(env, "HUMANDBS_AUTH_CLIENT_ID"),
       redirectUri: readUrl(env, "HUMANDBS_AUTH_REDIRECT_URI", ["http:", "https:"]),
     },
+    store: {
+      endpoint: readUrl(env, "HUMANDBS_S3_ENDPOINT", ["http:", "https:"]),
+      accessKeyId: readRequired(env, "HUMANDBS_S3_ACCESS_KEY"),
+      secretAccessKey: readRequired(env, "HUMANDBS_S3_SECRET_KEY"),
+    },
   }
 }
 
@@ -57,6 +81,22 @@ export function loadConfig(env: Env): AppConfig {
  */
 export function cookiesAreSecure(auth: AuthConfig): boolean {
   return new URL(auth.redirectUri).protocol === "https:"
+}
+
+/**
+ * The address a browser reaches this site at.
+ *
+ * Taken from the registered redirect URI for the same reason the cookie flag
+ * is: that URI is the one address Keycloak will return a browser to, so it
+ * cannot disagree with where the site is really served.
+ *
+ * **A presigned upload URL has to carry this origin**, not the store's own. The
+ * store is only reachable inside the network, and its port is deliberately not
+ * published — a browser has to go through the front proxy, and the signature
+ * covers the host it was made for.
+ */
+export function publicOrigin(auth: AuthConfig): string {
+  return new URL(auth.redirectUri).origin
 }
 
 function readUrl(env: Env, name: string, protocols: string[]): string {

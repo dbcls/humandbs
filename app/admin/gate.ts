@@ -42,6 +42,8 @@ export type GateFinding
     | { kind: "upstream-edited", datasetId: string, theirs: number, both: number }
     | { kind: "pin-unknown-upstream", datasetId: string, label: string }
     | { kind: "pin-disagrees-upstream", datasetId: string, label: string, upstreamHumLabel: string }
+    /** A file this dataset selects is in the private bucket, so a reader would not get it. */
+    | { kind: "private-file", datasetId: string, fileName: string }
 
 export type GateFindingKind = GateFinding["kind"]
 
@@ -53,6 +55,7 @@ export const GATE_FINDING_KINDS: readonly GateFindingKind[] = [
   "upstream-edited",
   "pin-unknown-upstream",
   "pin-disagrees-upstream",
+  "private-file",
 ]
 
 export interface GateDataset {
@@ -79,6 +82,16 @@ export interface GateInput {
   /** What the most recent published version listed, for spotting what fell off. */
   previousDatasetIds: readonly string[]
   upstream: UpstreamAccessions
+  /**
+   * The names sitting in the private bucket. A selection naming one of them
+   * would draw nothing on the published page, and making them public is a
+   * separate operation from publishing this version — so the gate lists them
+   * and offers to start it.
+   *
+   * A name in neither bucket is not listed: the selection is a note over the
+   * listing, not a claim that the file exists, and it simply does not draw.
+   */
+  privateFiles: ReadonlySet<string>
 }
 
 export interface PublishGate {
@@ -144,7 +157,24 @@ function findingsOf(input: GateInput): GateFinding[] {
     }]
   })
 
-  return [...unsettled, ...untranslated, ...empty, ...dropped, ...edited, ...pinFindings(input)]
+  const privateFiles: GateFinding[] = input.datasets.flatMap((dataset) =>
+    (dataset.content?.fileSelection ?? [])
+      .filter((fileName) => input.privateFiles.has(fileName))
+      .map((fileName) => ({
+        kind: "private-file" as const,
+        datasetId: dataset.datasetId,
+        fileName,
+      })))
+
+  return [
+    ...unsettled,
+    ...untranslated,
+    ...empty,
+    ...dropped,
+    ...edited,
+    ...pinFindings(input),
+    ...privateFiles,
+  ]
 }
 
 /**

@@ -23,6 +23,7 @@ function gate(over: Partial<GateInput> = {}) {
     datasets: [],
     previousDatasetIds: [],
     upstream: CACHE_EMPTY,
+    privateFiles: new Set<string>(),
     ...over,
   })
 }
@@ -195,5 +196,70 @@ describe("checking the pins against the application system", () => {
     }).findings
 
     expect(findings).toEqual([])
+  })
+})
+
+describe("files a dataset selects", () => {
+  function selecting(names: string[], datasetId = "d1"): GateDataset {
+    return dataset({
+      datasetId,
+      content: { ...emptyDatasetContent(), fileSelection: names },
+    })
+  }
+
+  it("lists a selected file that is still in the private bucket", () => {
+    const findings = gate({
+      datasets: [selecting(["closed.zip"])],
+      privateFiles: new Set(["closed.zip"]),
+    }).findings
+
+    expect(findings).toEqual([{ kind: "private-file", datasetId: "d1", fileName: "closed.zip" }])
+  })
+
+  it("says nothing about a selected file a reader can already fetch", () => {
+    const findings = gate({
+      datasets: [selecting(["open.zip"])],
+      privateFiles: new Set(["closed.zip"]),
+    }).findings
+
+    expect(findings).toEqual([])
+  })
+
+  it("says nothing about a selection the box does not hold at all", () => {
+    // The selection is a note over the listing rather than a claim that the
+    // file exists, so a name in neither bucket simply does not draw.
+    const findings = gate({
+      datasets: [selecting(["gone.zip"])],
+      privateFiles: new Set(["closed.zip"]),
+    }).findings
+
+    expect(findings).toEqual([])
+  })
+
+  it("lists one file once per dataset that selects it, because each is a place to look", () => {
+    const findings = gate({
+      datasets: [selecting(["closed.zip"], "d1"), selecting(["closed.zip"], "d2")],
+      privateFiles: new Set(["closed.zip"]),
+    }).findings
+
+    expect(findings.map((finding) => finding.kind)).toEqual(["private-file", "private-file"])
+  })
+
+  it("says nothing about a dataset with no description to hold a selection", () => {
+    const findings = gate({
+      datasets: [dataset({ content: null })],
+      privateFiles: new Set(["closed.zip"]),
+    }).findings
+
+    expect(findings).toEqual([{ kind: "empty-dataset", datasetId: "d1" }])
+  })
+
+  it("never stops the publish over a file", () => {
+    const blocks = gate({
+      datasets: [selecting(["closed.zip"])],
+      privateFiles: new Set(["closed.zip"]),
+    }).blocks
+
+    expect(blocks).toEqual([])
   })
 })

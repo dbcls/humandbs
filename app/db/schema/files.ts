@@ -1,4 +1,4 @@
-import { index, integer, pgEnum, pgTable, text, uuid } from "drizzle-orm/pg-core"
+import { index, integer, pgEnum, pgTable, text, unique, uuid } from "drizzle-orm/pg-core"
 
 import { createdAt, primaryId, updatedAt } from "./common"
 import { research } from "./research"
@@ -28,6 +28,11 @@ export const filePublishJobState = pgEnum("file_publish_job_state", [
  * deleted — a withdrawal that is late is better than an exposure that was not
  * intended.
  *
+ * **One row per file.** A row is not a request to perform an action but the
+ * bucket the file is meant to be in, so a second opinion overwrites the first
+ * rather than queueing behind it. Without the constraint the intermediate
+ * opinions would each be carried out as a copy of the actual bytes.
+ *
  * Completed jobs are deleted rather than kept: the durable record of who
  * changed a file's visibility is the event log.
  */
@@ -42,6 +47,6 @@ export const filePublishJob = pgTable("file_publish_job", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [
+  unique("file_publish_job_file_unique").on(t.researchId, t.fileName),
   index().on(t.state, t.createdAt),
-  index().on(t.researchId),
 ])

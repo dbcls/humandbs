@@ -17,6 +17,7 @@ import {
   draftDatasetListPage,
   draftEditorPage,
   presenceAction,
+  publishAction,
   researchDetailAction,
   researchDetailPage,
   researchListPage,
@@ -75,13 +76,20 @@ function postJson(token: string, path: string, payload: unknown): Request {
   })
 }
 
-function postForm(token: string, path: string, fields: Record<string, string>): Request {
+function postForm(
+  token: string,
+  path: string,
+  fields: Record<string, string>,
+  fileNames: string[] = [],
+): Request {
   const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
   headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
+  const body = new URLSearchParams(fields)
+  for (const name of fileNames) body.append("fileName", name)
   return new Request(`http://localhost:8080${path}`, {
     method: "POST",
     headers,
-    body: new URLSearchParams(fields).toString(),
+    body: body.toString(),
   })
 }
 
@@ -601,5 +609,38 @@ describe("the dataset screens of a draft", () => {
     expect(snapshot.reason).toBe("before-save")
     expect((await readDraft(db, draftId))?.note).toBe("before")
     expect(await readUndoStack(db, draftId)).toHaveLength(1)
+  })
+})
+
+describe("making the files a version needs public", () => {
+  it("queues them from the publish screen without publishing the version", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    const answer = await publishAction(
+      postForm(token, "/x", { intent: "publish-files" }, ["a.zip", "b.zip"]),
+      "ja",
+      { researchId, draftId },
+    )
+
+    expect(answer).toBeInstanceOf(Response)
+    const queued = await db.select().from(s.filePublishJob)
+    expect(queued.map((row) => row.fileName).toSorted()).toEqual(["a.zip", "b.zip"])
+    expect(queued.every((row) => row.action === "publish")).toBe(true)
+    expect(await db.select().from(s.researchVersion)).toHaveLength(0)
+  })
+
+  it("is refused to somebody who may edit but not manage files", async () => {
+    const token = await signIn(READER, false)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    const refusal = await thrown(() => publishAction(
+      postForm(token, "/x", { intent: "publish-files" }, ["a.zip"]),
+      "ja",
+      { researchId, draftId },
+    ))
+
+    expect(refusal.status).toBe(403)
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
   })
 })

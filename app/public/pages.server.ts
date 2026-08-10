@@ -14,6 +14,7 @@
 import { redirect } from "react-router"
 
 import { publicDatasetContent, publicResearch } from "~/content/public"
+import { fileListOf, publicBox, publicRows } from "~/files/listing.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 
@@ -58,6 +59,8 @@ export interface ResearchPageRequest {
   humId: string
   /** A version number, or the latest published one. */
   wanted: number | "latest"
+  /** Which page of the download list. The box is the only long thing here. */
+  filePage: number
 }
 
 export async function researchPage(request: ResearchPageRequest): Promise<ResearchView> {
@@ -83,9 +86,10 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     controlledAccessUsers(db, resolved.primaryLabel),
   ])
 
-  // The bucket listing is not wired up yet, so nothing is offered for download
-  // and every file selection drops out of the projection.
-  const projected = publicResearch(version.content, { cau, files: [] }, PUBLISHED)
+  // The download list is the public bucket, listed. A store that does not
+  // answer leaves the section out rather than losing the page.
+  const listing = await publicBox(resolved.primaryLabel)
+  const projected = publicResearch(version.content, { cau, files: listing ?? [] }, PUBLISHED)
   const content = projected.content
 
   const citedIds = content.relatedPublications.flatMap((publication) => publication.datasetIds)
@@ -100,7 +104,11 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     return [{
       id,
       label: row.label,
-      content: publicDatasetContent(row.content, { keys: catalog.keyById, files: [] }, PUBLISHED),
+      content: publicDatasetContent(
+        row.content,
+        { keys: catalog.keyById, files: listing ?? [] },
+        PUBLISHED,
+      ),
       datePublished: row.datePublished,
     }]
   })
@@ -117,6 +125,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     datasets: rows,
     datasetLabelById,
     cau: projected.cau,
+    files: fileListOf(publicRows(listing), request.filePage),
   }, request.locale, catalog)
 }
 
@@ -136,6 +145,7 @@ export async function releaseListPage(
   const projected = versions.map((version) => ({
     number: version.number,
     releaseDate: version.releaseDate,
+    // The release list draws no download section, so the box is not listed for it.
     content: publicResearch(version.content, { cau: [], files: [] }, PUBLISHED).content,
   }))
   const added = datasetsAddedByVersion(
@@ -168,13 +178,18 @@ export async function datasetPage(
 
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
-  const catalog = await loadCatalog(db)
+  const [catalog, listing] = await Promise.all([loadCatalog(db), publicBox(row.humLabel)])
 
   return datasetView({
     label: row.label,
     humLabel: row.humLabel,
-    content: publicDatasetContent(row.content, { keys: catalog.keyById, files: [] }, PUBLISHED),
+    content: publicDatasetContent(
+      row.content,
+      { keys: catalog.keyById, files: listing ?? [] },
+      PUBLISHED,
+    ),
     datePublished: row.datePublished,
     dateModified: row.dateModified,
+    files: publicRows(listing),
   }, request.locale, catalog)
 }

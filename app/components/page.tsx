@@ -1,4 +1,5 @@
 import { createContext, Fragment, useContext, type ReactNode } from "react"
+import { Link } from "react-router"
 
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -105,6 +106,46 @@ export function Td({ children, className = "" }: { children?: ReactNode, classNa
 
 export function Empty({ children }: { children: ReactNode }) {
   return <p className="text-ink-muted text-sm">{children}</p>
+}
+
+/**
+ * Page links, given a way to address a page.
+ *
+ * **The cut is always made on the server**, both for search results and for a
+ * box of ten thousand files, so what a reader gets is a link rather than a
+ * script — and one address for one page, which can be shared.
+ */
+export function PageLinks({ label, page, pageCount, at, previous, next }: {
+  label: string
+  page: number
+  pageCount: number
+  at: (page: number) => string
+  previous: string
+  next: string
+}) {
+  if (pageCount <= 1) return null
+  const window = [...new Set([
+    1,
+    ...[page - 2, page - 1, page, page + 1, page + 2].filter((n) => n > 1 && n < pageCount),
+    pageCount,
+  ])].sort((a, b) => a - b)
+
+  return (
+    <nav aria-label={label} className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+      {page > 1 && <Link to={at(page - 1)}>{previous}</Link>}
+      {window.map((number, index) => (
+        <span key={number} className="flex items-center gap-2">
+          {index > 0 && (window[index - 1] ?? 0) < number - 1 && (
+            <span className="text-ink-muted" aria-hidden="true">…</span>
+          )}
+          {number === page
+            ? <span className="font-semibold" aria-current="page">{number}</span>
+            : <Link to={at(number)}>{number}</Link>}
+        </span>
+      ))}
+      {page < pageCount && <Link to={at(page + 1)}>{next}</Link>}
+    </nav>
+  )
 }
 
 /**

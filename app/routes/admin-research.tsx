@@ -7,9 +7,11 @@ import {
   adminDraftPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
+  adminResearchFilesPath,
   adminResearchListPath,
 } from "~/admin/urls"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale, researchPath } from "~/public/urls"
@@ -180,6 +182,19 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   ))}
                 </ul>
               )}
+        </Section>
+
+        <Section title={messages.admin.files.heading}>
+          <p className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-ink-muted">
+              {view.box === null
+                ? messages.admin.files.unavailable
+                : messages.admin.files.summary(view.box.count, formatSize(view.box.bytes))}
+            </span>
+            <Link to={href(locale, adminResearchFilesPath(view.researchId))}>
+              {messages.admin.files.open}
+            </Link>
+          </p>
         </Section>
       </Card>
     </Page>

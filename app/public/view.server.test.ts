@@ -65,6 +65,7 @@ function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauIn
     datasets: [],
     datasetLabelById: new Map(),
     cau,
+    files: { rows: [], total: 0, page: 1, pageCount: 1 },
   }, locale, catalog)
 }
 
@@ -177,6 +178,7 @@ describe("what a research page carries", () => {
       datasets: [],
       datasetLabelById: new Map(),
       cau: [],
+      files: { rows: [], total: 0, page: 1, pageCount: 1 },
     }, "ja", catalog)).toMatchObject({ isLatest: false, versionLabel: "hum0001-v1" })
   })
 
@@ -198,6 +200,7 @@ describe("what a research page carries", () => {
       datasets: [],
       datasetLabelById: new Map([["known", "JGAD000001"]]),
       cau: [],
+      files: { rows: [], total: 0, page: 1, pageCount: 1 },
     }, "ja", catalog)
     expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
   })
@@ -210,6 +213,7 @@ function dataset(content: DatasetContent) {
     content,
     datePublished: "2020-01-01",
     dateModified: null,
+    files: [],
   }, "ja", catalog)
 }
 

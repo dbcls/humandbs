@@ -42,6 +42,11 @@ function pages(scope: string) {
     route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
     route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
     route(
+      "admin/research/:researchId/files",
+      "routes/admin-research-files.tsx",
+      { id: `${scope}-admin-research-files` },
+    ),
+    route(
       "admin/research/:researchId/draft/:draftId",
       "routes/admin-draft.tsx",
       { id: `${scope}-admin-draft` },
@@ -78,6 +83,7 @@ const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
+  route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
 ]
 
 /**

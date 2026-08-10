@@ -1,10 +1,12 @@
 import { eq } from "drizzle-orm"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { clearPrefix, putTestObject } from "~/files/_store"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { pinLabel, unpinLabel } from "./labels.server"
@@ -249,5 +251,53 @@ describe("a dataset whose label was taken away", () => {
 
     const labels = await db.select({ label: s.searchDoc.datasetLabel }).from(s.searchDoc)
     expect(labels.filter((row) => row.label !== null)).toEqual([{ label: "JGAD000009" }])
+  })
+})
+
+describe("renumbering a research", () => {
+  const OLD = "hum5001"
+  const NEW = "hum5002"
+
+  afterEach(async () => {
+    for (const label of [OLD, NEW]) await clearPrefix(PUBLIC_BUCKET, publicPrefix(label))
+  })
+
+  it("queues every file in the retired box to become public under the new label", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}b.zip`)
+
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+
+    const queued = await db.select().from(s.filePublishJob)
+    expect(queued.map((row) => row.fileName).toSorted()).toEqual(["a.zip", "b.zip"])
+    expect(queued.every((row) => row.action === "publish")).toBe(true)
+  })
+
+  it("queues nothing when the label being attached is not taking over from another", async () => {
+    const researchId = await createResearch()
+
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+  })
+
+  it("queues nothing for a dataset id, which addresses no box", async () => {
+    const researchId = await createResearch()
+    const datasetId = await createDataset(researchId)
+    await pinLabel(
+      db,
+      { kind: "dataset", label: "JGAD000001", subjectId: datasetId, isPrimary: true },
+      CURATOR,
+    )
+
+    await pinLabel(
+      db,
+      { kind: "dataset", label: "JGAD000002", subjectId: datasetId, isPrimary: true },
+      CURATOR,
+    )
+
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
   })
 })

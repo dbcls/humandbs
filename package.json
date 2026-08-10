@@ -18,6 +18,7 @@
     "db:push": "drizzle-kit push && npm run db:grants",
     "db:grants": "tsx scripts/grants.ts",
     "db:load-dev-data": "tsx migration/run.ts",
+    "s3:buckets": "tsx scripts/buckets.ts",
     "admin:list": "tsx scripts/admin.ts list",
     "admin:grant": "tsx scripts/admin.ts grant",
     "admin:revoke": "tsx scripts/admin.ts revoke"

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import {
   createDatasetInDraft,
@@ -12,6 +12,8 @@ import {
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "~/files/box"
+import { clearPrefix, putTestObject } from "~/files/_store"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
@@ -291,5 +293,51 @@ describe("writing from a share link", () => {
       RESEARCH,
     ))).toBe(404)
     expect(await readThreads(db, draftId)).toEqual([])
+  })
+})
+
+describe("the download list a share link shows", () => {
+  const HUM = "hum6001"
+  let opened = ""
+
+  afterEach(async () => {
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
+    if (opened !== "") await clearPrefix(PRIVATE_BUCKET, privatePrefix(opened))
+    opened = ""
+  })
+
+  it("shows what is still private, because at draft time that is all there is", async () => {
+    const shared = await sharedDraft()
+    opened = shared.researchId
+    await db.insert(s.labelPin)
+      .values({ kind: "hum", label: HUM, researchId: shared.researchId, isPrimary: true })
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(shared.researchId)}closed.zip`, "1")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}open.zip`, "12")
+
+    const view = await previewResearchPage(get(), "ja", shared.token)
+
+    expect(view.view.files.rows).toEqual([
+      { name: "closed.zip", size: 1, isPublic: false },
+      { name: "open.zip", size: 2, isPublic: true },
+    ])
+  })
+
+  it("keeps a dataset's selection of a file nobody has made public yet", async () => {
+    const shared = await sharedDraft()
+    opened = shared.researchId
+    await db.insert(s.labelPin)
+      .values({ kind: "hum", label: HUM, researchId: shared.researchId, isPrimary: true })
+    const created = await createDatasetInDraft(db, { draftId: shared.draftId, revision: 2 }, shared.researchId)
+    if (created.status !== "created") throw new Error("expected a dataset")
+    await saveDatasetEntry(
+      db,
+      { draftId: shared.draftId, datasetId: created.datasetId, revision: null },
+      { ...emptyDatasetContent(), fileSelection: ["closed.zip"] },
+    )
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(shared.researchId)}closed.zip`, "1")
+
+    const view = await previewDatasetPage(get(), "ja", shared.token, created.datasetId)
+
+    expect(view.view.files).toEqual([{ name: "closed.zip", size: 1, isPublic: false }])
   })
 })

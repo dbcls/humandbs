@@ -11,6 +11,7 @@ import {
 import { readActor } from "~/auth/actor.server"
 import { SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
+import { startFileRunner } from "~/files/runner.server"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { activeAlerts } from "~/public/site.server"
@@ -33,8 +34,13 @@ import "./app.css"
  * **Only the name and whether the person is an administrator leave the server.**
  * Capabilities are derived per request where they are checked, and putting them
  * in a loader's answer would send an authorisation decision to the browser.
+ *
+ * The loop that moves files between the buckets is started from here because
+ * every request passes through: it belongs to the process rather than to a
+ * screen, and starting it again while it runs does nothing.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  startFileRunner()
   const locale = readLocale(new URL(request.url).pathname).locale
   const actor = await readActor(request)
   return {

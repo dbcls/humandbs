@@ -54,6 +54,7 @@ export function PublishConfirmation({ view, result }: {
         {view.staleAgainst !== null && <Warning>{t.stale(view.staleAgainst)}</Warning>}
 
         {blocked && <Blocked view={view} />}
+        <PrivateFiles view={view} />
 
         <Form method="post" className="flex flex-col gap-6">
           <input type="hidden" name="intent" value="publish" />
@@ -199,6 +200,36 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
       />
       <button type="submit" className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm">
         {t.pin}
+      </button>
+    </Form>
+  )
+}
+
+/**
+ * Making the selected files public, before or after this version goes out.
+ *
+ * It sits above the publish form rather than inside it, because a form cannot
+ * hold another one — the same reason the pin form is up here. **The publish is
+ * not made to wait for it**: a switch copies the actual bytes, and where a file
+ * sits is a different question from whether this version is out.
+ */
+function PrivateFiles({ view }: { view: PublishPageView }) {
+  const t = messagesFor(view.locale).admin.publish
+  const group = view.groups.find((row) => row.kind === "private-file")
+  if (group === undefined || group.fileNames.length === 0) return null
+
+  return (
+    <Form method="post" className="mb-6 flex flex-wrap items-center gap-3">
+      <input type="hidden" name="intent" value="publish-files" />
+      {group.fileNames.map((name) => (
+        <input key={name} type="hidden" name="fileName" value={name} />
+      ))}
+      <span className="text-sm">{t.privateFileNote}</span>
+      <button
+        type="submit"
+        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+      >
+        {`${t.publishFiles} (${group.fileNames.length})`}
       </button>
     </Form>
   )

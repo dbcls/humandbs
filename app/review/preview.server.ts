@@ -21,6 +21,7 @@ import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { publicDatasetContent, publicResearch } from "~/content/public"
+import { adminBox, boxRows, fileListOf, readFilePage } from "~/files/listing.server"
 import type { ResearchContent } from "~/content/types"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -167,12 +168,19 @@ export async function previewResearchPage(
     latestPublishedVersion(db, draft.researchId),
   ])
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
+  // Both buckets: at draft time nothing is public yet, and showing only the
+  // public side would empty the download list exactly when it is being checked.
+  const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
 
-  const projected = publicResearch(draft.content, { cau, files: [] }, PREVIEW)
+  const projected = publicResearch(draft.content, { cau, files: listing }, PREVIEW)
   const rows: DatasetRowInput[] = datasets.map((row) => ({
     id: row.id,
     label: row.label ?? "",
-    content: publicDatasetContent(row.content, { keys: catalog.keyById, files: [] }, PREVIEW),
+    content: publicDatasetContent(
+      row.content,
+      { keys: catalog.keyById, files: listing },
+      PREVIEW,
+    ),
     datePublished: row.datePublished,
   }))
   const nextNumber = (published?.number ?? 0) + 1
@@ -187,6 +195,7 @@ export async function previewResearchPage(
     datasetLabelById: new Map(datasets.flatMap((row) =>
       row.label === null ? [] : [[row.id, row.label] as const])),
     cau: projected.cau,
+    files: fileListOf(listing, readFilePage(new URL(request.url))),
   }, locale, catalog)
 
   const changed = published === null
@@ -235,6 +244,8 @@ async function publishedResearchAnchors(
     })),
     datasetLabelById: labelOf,
     cau: [],
+    // Only the anchors of this are read, and no file carries one.
+    files: { rows: [], total: 0, page: 1, pageCount: 1 },
   }, locale, catalog).byAnchor
 }
 
@@ -258,13 +269,19 @@ export async function previewDatasetPage(
   ])
   const row = rows[0]
   if (row === undefined) notFound()
+  const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
 
   const anchored = anchoredDatasetView({
     label: row.label ?? "",
     humLabel: humLabel ?? "",
-    content: publicDatasetContent(row.content, { keys: catalog.keyById, files: [] }, PREVIEW),
+    content: publicDatasetContent(
+      row.content,
+      { keys: catalog.keyById, files: listing },
+      PREVIEW,
+    ),
     datePublished: row.datePublished,
     dateModified: row.dateModified,
+    files: listing,
   }, locale, catalog)
 
   const changed = row.published === null
@@ -281,11 +298,12 @@ export async function previewDatasetPage(
         humLabel: humLabel ?? "",
         content: publicDatasetContent(
           row.published,
-          { keys: catalog.keyById, files: [] },
+          { keys: catalog.keyById, files: listing },
           { keepUnsettled: false },
         ),
         datePublished: null,
         dateModified: null,
+        files: listing,
       }, locale, catalog).byAnchor)
 
   return {

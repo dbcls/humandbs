@@ -383,6 +383,31 @@ export interface ResearchView {
   grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
   relatedPublications: { id: string, title: FieldView, doi: FieldView, datasetLabels: string[] }[]
   cau: CauView[]
+  /**
+   * The research's box, as the caller listed and paged it. It is not part of
+   * the content and carries no anchor: nobody edits it, and a comment about a
+   * file would have nothing in the draft to attach to.
+   */
+  files: FileListView
+}
+
+/** One line of the download list. `isPublic` is false only inside a preview. */
+export interface FileRowView {
+  name: string
+  size: number
+  isPublic: boolean
+}
+
+/**
+ * One page of a box. **The cut is made before the view is built**, because it
+ * is a property of the listing rather than of the research, and the largest box
+ * would otherwise be a megabyte of HTML.
+ */
+export interface FileListView {
+  rows: FileRowView[]
+  total: number
+  page: number
+  pageCount: number
 }
 
 export interface ResearchViewInput {
@@ -396,6 +421,7 @@ export interface ResearchViewInput {
   /** Dataset identity to primary label, for the publications that cite them. */
   datasetLabelById: ReadonlyMap<string, string>
   cau: CauInput[]
+  files: FileListView
 }
 
 export function researchView(
@@ -478,6 +504,7 @@ export function anchoredResearchView(
       ),
     })),
     cau: input.cau.map((entry) => cauView(entry, locale)),
+    files: input.files,
     // Read last: everything above has had its chance to fall back by now.
     untranslated: fallbacks.seen(),
   }
@@ -540,6 +567,12 @@ export interface DatasetView {
   typeOfData: FieldView | null
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
+  /**
+   * What this dataset selects out of its research's box, in the order it
+   * selects it. Already narrowed to what the listing holds, so a selection
+   * naming something absent is simply not here.
+   */
+  files: FileRowView[]
 }
 
 export interface DatasetViewInput {
@@ -548,6 +581,8 @@ export interface DatasetViewInput {
   content: DatasetContent
   datePublished: string | null
   dateModified: string | null
+  /** The research's box, which the selection is read against. */
+  files: FileRowView[]
 }
 
 export function datasetView(
@@ -601,9 +636,27 @@ export function anchoredDatasetView(
     accessType: row.accessType,
     typeOfData: row.typeOfData,
     experiments,
+    files: selectedFiles(input.content.fileSelection, input.files),
     untranslated: fallbacks.seen(),
   }
   return { view, byAnchor: at.taken() }
+}
+
+/**
+ * The selection, in the order the dataset holds it, keeping only what the
+ * listing has. The projection has already dropped the rest, so this is the same
+ * rule applied a second time — and what makes the second application harmless
+ * is that both read the one listing.
+ */
+function selectedFiles(
+  selection: readonly string[],
+  listing: readonly FileRowView[],
+): FileRowView[] {
+  const byName = new Map(listing.map((row) => [row.name, row]))
+  return selection.flatMap((name) => {
+    const row = byName.get(name)
+    return row === undefined ? [] : [row]
+  })
 }
 
 /**

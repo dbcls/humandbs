@@ -21,6 +21,24 @@ export function adminResearchPath(researchId: string): string {
   return `/admin/research/${researchId}`
 }
 
+/**
+ * The research's box. It sits outside any draft: the box belongs to the
+ * research, holds no versions, and switching a file is a separate operation
+ * from publishing one (docs/editing.md の「ファイル」).
+ */
+export function adminResearchFilesPath(researchId: string): string {
+  return `${adminResearchPath(researchId)}/files`
+}
+
+/**
+ * Where the box screen asks for a signature. **It carries no language prefix**:
+ * nothing it answers with is interface text, and an upload that changed
+ * language mid-transfer would otherwise be talking to a second address.
+ */
+export function fileUploadPath(researchId: string): string {
+  return `${adminResearchFilesPath(researchId)}/upload`
+}
+
 export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }

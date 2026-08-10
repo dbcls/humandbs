@@ -8,6 +8,9 @@ const VALID = {
   HUMANDBS_AUTH_ISSUER_URL: "https://idp-staging.ddbj.nig.ac.jp/realms/master",
   HUMANDBS_AUTH_CLIENT_ID: "humandbs-dev",
   HUMANDBS_AUTH_REDIRECT_URI: "http://localhost:8080/auth/callback",
+  HUMANDBS_S3_ENDPOINT: "http://s3:8333",
+  HUMANDBS_S3_ACCESS_KEY: "humandbs-dev",
+  HUMANDBS_S3_SECRET_KEY: "humandbs-dev-secret",
 }
 
 const REQUIRED = Object.keys(VALID)
@@ -25,6 +28,11 @@ describe("loadConfig", () => {
         issuerUrl: VALID.HUMANDBS_AUTH_ISSUER_URL,
         clientId: VALID.HUMANDBS_AUTH_CLIENT_ID,
         redirectUri: VALID.HUMANDBS_AUTH_REDIRECT_URI,
+      },
+      store: {
+        endpoint: VALID.HUMANDBS_S3_ENDPOINT,
+        accessKeyId: VALID.HUMANDBS_S3_ACCESS_KEY,
+        secretAccessKey: VALID.HUMANDBS_S3_SECRET_KEY,
       },
     })
   })
