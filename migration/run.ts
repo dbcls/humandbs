@@ -30,6 +30,7 @@ import {
   document,
   documentContent,
   facetCategory,
+  humAccession,
   labelPin,
   news,
   newsContent,
@@ -52,6 +53,7 @@ import {
 } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber, type PublishedDataset } from "./es"
 import { collectTerms, vocabularySetSeeds } from "./facets"
+import { loadHumAccessions } from "./upstream"
 
 const CHUNK = 500
 
@@ -281,7 +283,7 @@ async function load() {
     // access.
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
-                     document, news, alert CASCADE
+                     hum_accession, document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdBySetAndCode, codeBySourceKey } = await seedCatalog(
@@ -371,6 +373,13 @@ async function load() {
       .flatMap((r) => buildCauRows(r.humId, r.controlledAccessUser ?? []))
     await insertChunked(cauRows, (chunk) => tx.insert(cauEntry).values(chunk))
 
+    // The upstream correspondence is a cache of somebody else's table, so it is
+    // loaded whole rather than cut down to what this dump happens to hold: the
+    // difference between the two is exactly what the publish gate checks for,
+    // and what the supply endpoint leaves out.
+    const upstream = loadHumAccessions()
+    await insertChunked(upstream, (chunk) => tx.insert(humAccession).values(chunk))
+
     const site = await loadSiteContent(tx)
 
     const search = await rebuildSearchDocs(tx)
@@ -380,6 +389,7 @@ async function load() {
       versions: versions.length,
       datasets: datasets.length,
       cau: cauRows.length,
+      upstream: upstream.length,
       ...site,
       search,
     }
@@ -394,6 +404,7 @@ console.log("research           ", counts.research)
 console.log("published versions ", counts.versions)
 console.log("datasets           ", counts.datasets)
 console.log("controlled-access  ", counts.cau)
+console.log("upstream accessions", counts.upstream)
 console.log("documents          ", counts.documents)
 console.log("news               ", counts.news)
 console.log("alerts             ", counts.alerts)

@@ -495,7 +495,9 @@ path-style の URL が `/files/hum0009/hum0009.v1.CpG.v1.zip` となって公開
   未翻訳の列挙にも載せない。curator が編集できない値なので、直す経路は上流側にある
 - **CAU の 1 行は 1 利用課題。** 人単位に丸めない (上流に person master が無く、名寄せが推測になる)。
   出すのは PI だけで、hum ラベルに紐づく
-- **hum と accession は 1 : n。** 上流がこの対応の master で、ポータルは検算と DDBJ Search への供給に使う
+- **hum と accession は 1 : n。** 上流がこの対応の master で、ポータルは検算と DDBJ Search への供給
+  ([public-api.md](public-api.md)) に使う。**ポータルの pin は master ではない**ので、キャッシュに無い
+  対応を供給に足すことはしない
 
 ## 日付
 

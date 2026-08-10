@@ -8,6 +8,21 @@
 
 Docker と Docker Compose だけ。Node もホストには要らない。
 
+## 触ってはいけないもの
+
+- **production 環境。** 検証は staging で行う。ここからのコピーは読み取りだけで、書き戻す経路を作らない
+- **JGA 申請管理システムの DB (jga-shinsei)。** 他プロジェクトの所管なので、schema の変更も直接の
+  書き込みもしない。ポータルはキャッシュを持つ読み手にとどまる ([data-model.md](data-model.md))
+
+## 書くときの約束
+
+- **仕様が絡む変更は `docs/` を先に直してから実装する。** 索引は [README.md](../README.md)
+- **型の SSOT はコードの側。** schema は `app/db/schema/`、content の型は `app/content/types.ts`、
+  API の応答は `app/api/schema.ts`。doc に一覧を写さない
+- **作業経緯を成果物に持ち込まない。** コードのコメント・test 名・docs・commit message に
+  「以前は X だった」「phase 1 より」の類を書かない。コードベースは現在の意図だけを語り、経緯は
+  git log と PR に残る
+
 ## 初回セットアップ
 
 ```bash
@@ -121,17 +136,24 @@ schema を落とすと `db:grants` が張った権限も消えるが、`db:push`
 
 ## 開発用データを入れる
 
-入力は 2 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを
-読み込む。**画面を書くための実データを用意するのが目的で、値の正しさも網羅性も問わない。**
+入力は 3 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを、
+JGA 申請管理システム由来の TSV 2 本から上流のキャッシュを読み込む。**画面を書くための実データを用意
+するのが目的で、値の正しさも網羅性も問わない。**
 
 ```bash
 cp <v1 repo>/.claude/joomla-es/data/es/prod/{research,research-version,dataset}.json migration/input/
+scp <cron のホスト>:~/jga-relation/jga_{study,dataset}_hum_id.tsv migration/input/
 docker compose exec app npm run db:load-dev-data
 ```
 
 サイトコンテンツの入力 `migration/input/cms.json` は staging の CMS DB から取る。**production には
 接続しない。** SQL は `.claude/` 側に置いてあり、`document` / `news_item` / `alert` とそれぞれの翻訳を
 1 つの JSON オブジェクトにまとめたものを読む。
+
+TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ送っているのと
+同じもの。**本番ではバッチがこのキャッシュを更新する**が、そのバッチはまだ無いので開発では
+ファイルから入れる。公開ゲートの検算と、DDBJ Search へ供給する endpoint
+([public-api.md](public-api.md)) がこれを読む。
 
 `migration/input/` は git 管理外。10 秒ほどで終わり、**全部を 1 つのトランザクションで置き換える**ので、
 途中で落ちても前のデータが残る。**test は開発用 DB を空にする**ので、test の後は入れ直す。

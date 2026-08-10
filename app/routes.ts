@@ -1,5 +1,7 @@
 import { type RouteConfig, index, prefix, route } from "@react-router/dev/routes"
 
+import { API_ENDPOINTS, OPENAPI_FILE, OPENAPI_PATH } from "./api/endpoints"
+
 /**
  * The same pages are registered twice, once without a prefix and once under
  * `/en`, because the language is part of the address and Japanese is the one
@@ -102,9 +104,22 @@ const auth = [
   route("auth/logout", "routes/auth-logout.ts"),
 ]
 
+/**
+ * The JSON API. **The addresses come from `app/api/endpoints.ts`**, which is the
+ * same list the OpenAPI document is generated from, so a route and its entry in
+ * the document cannot describe different addresses.
+ *
+ * No language prefix: an answer carries both languages.
+ */
+const api = [
+  ...API_ENDPOINTS.map((endpoint) => route(endpoint.path, endpoint.file)),
+  route(OPENAPI_PATH, OPENAPI_FILE),
+]
+
 export default [
   route("healthz", "routes/healthz.ts"),
   ...auth,
+  ...api,
   ...editing,
   ...pages("ja"),
   ...prefix("en", pages("en")),
