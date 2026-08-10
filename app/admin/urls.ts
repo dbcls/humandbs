@@ -34,6 +34,20 @@ export function adminDraftPublishPath(researchId: string, draftId: string): stri
   return `${adminDraftPath(researchId, draftId)}/publish`
 }
 
+/** The share link, what has been said about the draft, and what is unresolved. */
+export function adminDraftReviewPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/review`
+}
+
+/**
+ * Where the editing screens post a comment. It answers with the thread rather
+ * than with a redirect, because the editor holds unsaved work and must not
+ * navigate; the review screen and the preview post to their own pages instead.
+ */
+export function draftCommentsPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/comments`
+}
+
 export function adminDraftDatasetPath(
   researchId: string,
   draftId: string,

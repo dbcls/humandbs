@@ -39,6 +39,13 @@ import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
+import {
+  changedDatasetFromPublished,
+  changedFromPublished,
+  describedDataset,
+  describedResearch,
+  type ShownLine,
+} from "./changes"
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
 import { datasetContentOf, saveDatasetSchema } from "./dataset-form.server"
 import {
@@ -102,6 +109,14 @@ import {
   adminDraftPublishPath,
   adminResearchPath,
 } from "./urls"
+
+import type { ThreadView } from "~/review/comments"
+import { readThreads } from "~/review/comments.server"
+import {
+  draftReviewSummaries,
+  latestPublishedVersion,
+  type DraftReviewSummary,
+} from "~/review/queries.server"
 
 function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
@@ -211,6 +226,8 @@ export interface AdminResearchPageView {
   everPublished: boolean
   /** What the portal would propose for a dataset with no id yet. */
   datasetIdSuggestion: string | null
+  /** Whether a link is out there for each draft, and what is unanswered. */
+  reviews: DraftReviewSummary[]
 }
 
 export async function researchDetailPage(
@@ -221,7 +238,8 @@ export async function researchDetailPage(
   await requireCapability(request, "view-unpublished")
 
   const id = identity(researchId)
-  const view = await adminResearch(getDb(), id)
+  const db = getDb()
+  const view = await adminResearch(db, id)
   if (view === null) notFound()
 
   const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
@@ -230,6 +248,7 @@ export async function researchDetailPage(
   return {
     locale,
     researchId: id,
+    reviews: await draftReviewSummaries(db, id),
     humLabel,
     labels: view.labels,
     versions: view.versions,
@@ -254,6 +273,21 @@ export interface UpstreamView<T> {
   both: string[]
 }
 
+/**
+ * What the review layer adds to an editing screen: where the draft differs from
+ * what a reader sees now, and what has been said about the draft. Both are
+ * carried by path, in the same vocabulary as everything else the screen marks.
+ */
+export interface ReviewMarksView {
+  changed: string[]
+  previous: Record<string, ShownLine[]>
+  threads: ThreadView[]
+  /** The version being compared against; null when nothing is published. */
+  publishedNumber: number | null
+  /** The name the reader's own comments will be signed with. */
+  signedInName: string
+}
+
 export interface AdminDraftPageView {
   locale: Locale
   researchId: string
@@ -266,6 +300,7 @@ export interface AdminDraftPageView {
   presence: PresenceView[]
   undo: UndoEntryRow[]
   upstream: UpstreamView<DraftInput> | null
+  review: ReviewMarksView
 }
 
 /**
@@ -309,15 +344,20 @@ export async function draftEditorPage(
 ): Promise<AdminDraftPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, datasets, presence, undo, moved] = await Promise.all([
+  const [humLabel, datasets, presence, undo, moved, threads, published] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     activePresence(db, draftId),
     readUndoStack(db, draftId),
     upstreamResearch(db, researchId, draft.parentSnapshotId),
+    readThreads(db, draftId),
+    latestPublishedVersion(db, researchId),
   ])
 
   const input = { note: draft.note, content: researchContentInput(draft.content) }
+  const changed = published === null
+    ? []
+    : changedFromPublished(published.content, draft.content)
 
   return {
     locale,
@@ -330,6 +370,13 @@ export async function draftEditorPage(
     presence: presenceView(presence, actor.sessionId),
     undo,
     upstream: moved === null ? null : researchUpstream(moved, input),
+    review: {
+      changed,
+      previous: published === null ? {} : describedResearch(published.content, changed),
+      threads,
+      publishedNumber: published?.number ?? null,
+      signedInName: actor.name,
+    },
   }
 }
 
@@ -438,6 +485,7 @@ export interface DatasetEditorView {
   presence: PresenceView[]
   undo: UndoEntryRow[]
   upstream: UpstreamView<DatasetContentInput> | null
+  review: ReviewMarksView
 }
 
 /**
@@ -463,16 +511,19 @@ export async function datasetEditorPage(
   // not a dataset this draft could be editing.
   if (row === undefined) notFound()
 
-  const [entry, published, humLabel, catalog, presence, undo] = await Promise.all([
+  const [entry, published, humLabel, catalog, presence, undo, threads] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
     readPublishedDataset(db, datasetId),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
     activePresence(db, draftId),
     readUndoStack(db, draftId),
+    readThreads(db, draftId),
   ])
 
-  const input = datasetContentInput(entry?.content ?? published ?? emptyDatasetContent())
+  const content = entry?.content ?? published ?? emptyDatasetContent()
+  const input = datasetContentInput(content)
+  const changed = published === null ? [] : changedDatasetFromPublished(published, content)
 
   return {
     locale,
@@ -488,6 +539,15 @@ export async function datasetEditorPage(
     presence: presenceView(presence, actor.sessionId),
     undo,
     upstream: datasetUpstream(entry?.baseContent ?? null, published, input),
+    review: {
+      changed,
+      previous: published === null ? {} : describedDataset(published, changed),
+      threads,
+      // A dataset has no versions, so what it is compared against is simply
+      // what is published for it now.
+      publishedNumber: null,
+      signedInName: actor.name,
+    },
   }
 }
 

@@ -84,6 +84,13 @@ function view(content: DatasetContent = emptyDatasetContent()): DatasetEditorVie
     presence: [],
     undo: [],
     upstream: null,
+    review: {
+      changed: [],
+      previous: {},
+      threads: [],
+      publishedNumber: null,
+      signedInName: "curator",
+    },
   }
 }
 

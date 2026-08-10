@@ -3,11 +3,17 @@ import { data, Form, Link } from "react-router"
 
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
 import type { AdminDraftRow } from "~/admin/queries.server"
-import { adminDraftPath, adminDraftPublishPath, adminResearchListPath } from "~/admin/urls"
+import {
+  adminDraftPath,
+  adminDraftPublishPath,
+  adminDraftReviewPath,
+  adminResearchListPath,
+} from "~/admin/urls"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale, researchPath } from "~/public/urls"
+import type { DraftReviewSummary } from "~/review/queries.server"
 
 import type { Route } from "./+types/admin-research"
 
@@ -138,6 +144,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                     <DraftRow
                       key={draft.id}
                       draft={draft}
+                      review={view.reviews.find((row) => row.draftId === draft.id) ?? null}
                       researchId={view.researchId}
                       locale={locale}
                     />
@@ -317,8 +324,9 @@ function PinForm({ kind, datasetId, placeholder, suggestion, warn, locale }: {
  * and the revision travels with the request so a draft somebody has edited in
  * the meantime is not thrown away on the strength of a stale screen.
  */
-function DraftRow({ draft, researchId, locale }: {
+function DraftRow({ draft, review, researchId, locale }: {
   draft: AdminDraftRow
+  review: DraftReviewSummary | null
   researchId: string
   locale: Locale
 }) {
@@ -334,6 +342,17 @@ function DraftRow({ draft, researchId, locale }: {
           <Link to={href(locale, adminDraftPublishPath(researchId, draft.id))}>
             {messages.admin.publish.open}
           </Link>
+          <Link to={href(locale, adminDraftReviewPath(researchId, draft.id))}>{t.review}</Link>
+          {review !== null && (
+            <span className="text-ink-muted text-xs">
+              {review.shared ? t.shared : review.expired ? t.shareExpired : t.notShared}
+            </span>
+          )}
+          {review !== null && review.unresolved > 0 && (
+            <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
+              {t.openComments(review.unresolved)}
+            </span>
+          )}
           <span className="text-ink-muted text-xs">
             {`${t.updatedAt}: ${draft.updatedAt.slice(0, 10)}`}
           </span>

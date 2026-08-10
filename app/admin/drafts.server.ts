@@ -486,6 +486,46 @@ export async function touchPresence(
     })
 }
 
+export type ShareOutcome
+  = | { status: "set" }
+    | { status: "gone" }
+
+/**
+ * Turning sharing on or off, and saying when it lapses.
+ *
+ * **These take no revision.** Sharing is not content: nothing about it can be
+ * lost by two administrators disagreeing except the setting one of them made a
+ * moment ago, and the last press winning is the right answer. Checking it
+ * against the content revision would mean flipping a switch here made every
+ * open editor's next save fail with a conflict over fields nobody touched.
+ */
+export async function setDraftSharing(
+  db: Executor,
+  draftId: string,
+  sharing: { enabled: boolean, expiresAt: Date | null },
+): Promise<ShareOutcome> {
+  const rows = await db
+    .update(researchDraft)
+    .set({ shareEnabled: sharing.enabled, shareExpiresAt: sharing.expiresAt })
+    .where(eq(researchDraft.id, draftId))
+    .returning({ id: researchDraft.id })
+  return rows[0] === undefined ? { status: "gone" } : { status: "set" }
+}
+
+/**
+ * A new token, which kills the address that was handed out. This is the only
+ * way to do that: private can be undone, and an expiry can be extended, so
+ * neither of them answers "this link must stop working".
+ */
+export async function reissueShareToken(db: Executor, draftId: string): Promise<ShareOutcome> {
+  const rows = await db
+    .update(researchDraft)
+    .set({ shareToken: newShareToken() })
+    .where(eq(researchDraft.id, draftId))
+    .returning({ id: researchDraft.id })
+  return rows[0] === undefined ? { status: "gone" } : { status: "set" }
+}
+
 export type ConsumeOutcome
   = | { status: "consumed", researchId: string }
     | { status: "conflict" }

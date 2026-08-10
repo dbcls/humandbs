@@ -58,7 +58,7 @@ describe("resolveText", () => {
   it("never fills an unsettled language from the other one", () => {
     fc.assert(fc.property(translatedTextArb, localeArb, (text, locale) => {
       if (text[locale].state !== "unknown") return
-      expect(resolveText(text, locale)).toEqual({ state: "value", value: "", untranslated: false })
+      expect(resolveText(text, locale)).toEqual({ state: "unsettled" })
     }))
   })
 })
@@ -93,7 +93,7 @@ describe("resolveRichText", () => {
   it("never fills an unsettled language from the other one", () => {
     fc.assert(fc.property(translatedRichTextArb, localeArb, (text, locale) => {
       if (text[locale].state !== "unknown") return
-      expect(resolveRichText(text, locale)).toEqual({ state: "value", value: [], untranslated: false })
+      expect(resolveRichText(text, locale)).toEqual({ state: "unsettled" })
     }))
   })
 })

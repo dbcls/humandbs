@@ -32,6 +32,12 @@ function pages(scope: string) {
     route("research/:humId/:version", "routes/research-version.tsx", { id: `${scope}-version` }),
     route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),
+    route("preview/:token", "routes/preview.tsx", { id: `${scope}-preview` }),
+    route(
+      "preview/:token/dataset/:datasetId",
+      "routes/preview-dataset.tsx",
+      { id: `${scope}-preview-dataset` },
+    ),
     route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
     route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
     route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
@@ -44,6 +50,11 @@ function pages(scope: string) {
       "admin/research/:researchId/draft/:draftId/publish",
       "routes/admin-draft-publish.tsx",
       { id: `${scope}-admin-draft-publish` },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/review",
+      "routes/admin-draft-review.tsx",
+      { id: `${scope}-admin-draft-review` },
     ),
     route(
       "admin/research/:researchId/draft/:draftId/dataset",
@@ -66,6 +77,7 @@ function pages(scope: string) {
 const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
+  route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
 ]
 
 /**

@@ -309,6 +309,7 @@ export async function datasetListPage(
     const content = contentOf.get(hit.targetId)
     if (content === undefined || hit.datasetLabel === null) return []
     return [datasetListRowView({
+      id: hit.targetId,
       label: hit.datasetLabel,
       humLabel: hit.humLabel,
       content: publicDatasetContent(content, { keys: catalog.keyById, files: [] }, PUBLISHED),

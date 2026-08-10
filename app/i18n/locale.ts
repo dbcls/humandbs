@@ -13,11 +13,12 @@
  * wanted language first:
  *
  * - `not-applicable` is an answer, so it is returned as one and never falls back
- * - `unknown` is a question. It does not fall back either: the preview is where
- *   an unsettled value is meant to be visible as an empty frame with the comment
- *   asking for it, and filling that frame from the other language would hide
- *   what is being asked. On a public page the projection has already turned it
- *   into an empty value, so the fallback below applies instead
+ * - `unknown` is a question, and it is returned as its own state rather than as
+ *   an empty value: the preview is where an unsettled value is meant to be
+ *   visible as an empty frame with the comment asking for it. It does not fall
+ *   back either — filling that frame from the other language would hide what is
+ *   being asked. A public page never sees one, because the projection has
+ *   already turned it into an empty value that falls back like any other
  * - an empty value is nobody having written anything, and falls back
  *
  * Whether a value is untranslated is derived here rather than stored: one side
@@ -54,6 +55,7 @@ export function isLocale(value: unknown): value is Locale {
 
 export type Resolved<T>
   = | { state: "not-applicable" }
+    | { state: "unsettled" }
     | {
       state: "value"
       value: T
@@ -73,7 +75,7 @@ function resolve<T>(
 ): Resolved<T> {
   const wanted = pair[locale]
   if (wanted.state === "not-applicable") return { state: "not-applicable" }
-  if (wanted.state === "unknown") return { state: "value", value: empty, untranslated: false }
+  if (wanted.state === "unknown") return { state: "unsettled" }
   if (!isEmpty(wanted.value)) return { state: "value", value: wanted.value, untranslated: false }
 
   const fallback = pair[other(locale)]

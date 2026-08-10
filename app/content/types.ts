@@ -258,14 +258,17 @@ export interface AlertContent {
 }
 
 /**
- * Where a comment is attached. Field-level and slot-level only; there are no
- * text ranges. Array elements are addressed by their identity, so reordering
- * does not move a comment.
+ * Where a comment is attached: what it is about, and where inside it.
+ *
+ * Field-level and slot-level only; there are no text ranges. The path is the
+ * vocabulary the editing form and the conflict diff already use, so an array
+ * element is addressed by its identity and reordering does not move a comment,
+ * and a value slot is addressed by the catalog key it sits under. Because a
+ * slot is a path like any other place, only the subject has to be named.
  */
 export type CommentAnchor
   = | { kind: "research-field", path: string }
-    | { kind: "dataset-value", datasetId: string, keyId: string }
-    | { kind: "experiment-value", datasetId: string, experimentId: string, keyId: string }
+    | { kind: "dataset-field", datasetId: string, path: string }
 
 /**
  * Why a snapshot was kept. The two are what the undo stack is for and they are

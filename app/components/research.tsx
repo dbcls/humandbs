@@ -12,6 +12,7 @@ import type { ResearchView } from "~/public/view.server"
 
 import {
   AccessTypeBadge,
+  Annotation,
   Card,
   Empty,
   KeyValue,
@@ -34,8 +35,7 @@ import {
  * each dataset describes its own.
  */
 export function ResearchVersionPage({ view, locale }: { view: ResearchView, locale: Locale }) {
-  const messages = messagesFor(locale)
-  const t = messages.research
+  const t = messagesFor(locale).research
 
   return (
     <Page>
@@ -58,171 +58,240 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
         </Link>
       </PageHead>
 
-      <Card>
-        <UntranslatedNotice show={view.untranslated} locale={locale} />
+      <Card><ResearchBody view={view} locale={locale} /></Card>
+    </Page>
+  )
+}
 
-        <Section title={t.title}>
-          <p className="font-semibold text-lg"><Value field={view.title} locale={locale} /></p>
-        </Section>
+/**
+ * Everything a version says, and the whole of what a preview shows as well.
+ *
+ * The two differ in what surrounds it — a preview is not a version yet, so it
+ * has no version badge and no release list to point at — and in whether the
+ * marks are there. The marks come from the annotation layer rather than from a
+ * prop, so this reads the same either way and a published page cannot
+ * accidentally draw one.
+ *
+ * `datasetHref` exists because a draft's datasets may have no id pinned yet:
+ * a preview addresses them by identity, the public page by label.
+ */
+export function ResearchBody({ view, locale, datasetHref }: {
+  view: ResearchView
+  locale: Locale
+  datasetHref?: (ref: { id: string | null, label: string }) => string | null
+}) {
+  const messages = messagesFor(locale)
+  const t = messages.research
+  const linkTo = (ref: { id: string | null, label: string }): string | null =>
+    datasetHref === undefined ? href(locale, datasetPath(ref.label)) : datasetHref(ref)
 
-        <Section title={t.overview}>
-          <dl className="sm:columns-2">
-            <KeyValue title={t.aims}><Value field={view.summary.aims} locale={locale} /></KeyValue>
-            <KeyValue title={t.methods}><Value field={view.summary.methods} locale={locale} /></KeyValue>
-            <KeyValue title={t.targets}><Value field={view.summary.targets} locale={locale} /></KeyValue>
-            {view.summary.links.length > 0 && (
-              <KeyValue title={t.url}>
-                <ul>
-                  {view.summary.links.map((link) => (
-                    <li key={link.id} className="break-all">
-                      <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
-                    </li>
-                  ))}
-                </ul>
-              </KeyValue>
-            )}
-          </dl>
-        </Section>
+  return (
+    <>
+      <UntranslatedNotice show={view.untranslated} locale={locale} />
 
-        <Section title={t.datasets}>
-          {!view.isLatest && (
-            <p className="mb-2 text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
+      <Section title={t.title} at="title">
+        <p className="font-semibold text-lg"><Value field={view.title} locale={locale} /></p>
+      </Section>
+
+      <Section title={t.overview}>
+        <dl className="sm:columns-2">
+          <KeyValue title={t.aims} at="summary.aims">
+            <Value field={view.summary.aims} locale={locale} />
+          </KeyValue>
+          <KeyValue title={t.methods} at="summary.methods">
+            <Value field={view.summary.methods} locale={locale} />
+          </KeyValue>
+          <KeyValue title={t.targets} at="summary.targets">
+            <Value field={view.summary.targets} locale={locale} />
+          </KeyValue>
+          {view.summary.links.length > 0 && (
+            <KeyValue title={t.url} at="summary.url">
+              <ul>
+                {view.summary.links.map((link) => (
+                  <li key={link.id} className="break-all">
+                    <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
+                  </li>
+                ))}
+              </ul>
+            </KeyValue>
           )}
-          {view.datasets.length === 0
-            ? <Empty>{t.noDatasets}</Empty>
-            : (
-                <Table headers={[
-                  messages.dataset.datasetId,
-                  messages.dataset.accessType,
-                  messages.dataset.typeOfData,
-                  messages.dataset.datePublished,
-                ]}
-                >
-                  {view.datasets.map((row) => (
-                    <tr key={row.label} id={row.label}>
+        </dl>
+      </Section>
+
+      <Section title={t.datasets} at="datasetIds">
+        {!view.isLatest && (
+          <p className="mb-2 text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
+        )}
+        {view.datasets.length === 0
+          ? <Empty>{t.noDatasets}</Empty>
+          : (
+              <Table headers={[
+                messages.dataset.datasetId,
+                messages.dataset.accessType,
+                messages.dataset.typeOfData,
+                messages.dataset.datePublished,
+              ]}
+              >
+                {view.datasets.map((row, at) => {
+                  const name = row.label === ""
+                    ? `${messages.dataset.datasetId} ${at + 1}`
+                    : row.label
+                  const to = linkTo(row)
+                  return (
+                    <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
                       <Td className="break-all">
-                        <Link to={href(locale, datasetPath(row.label))}>{row.label}</Link>
+                        {to === null ? name : <Link to={to}>{name}</Link>}
                       </Td>
                       <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
-                      <Td>{row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}</Td>
+                      <Td>
+                        {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+                      </Td>
                       <Td>{row.datePublished}</Td>
                     </tr>
-                  ))}
-                </Table>
-              )}
+                  )
+                })}
+              </Table>
+            )}
+      </Section>
+
+      {view.dataProviders.length > 0 && (
+        <Section title={t.dataProvider} at="dataProviders">
+          {view.dataProviders.map((provider) => (
+            <dl key={provider.id} className="sm:columns-2">
+              <KeyValue title={t.representative} at={`dataProviders.${provider.id}.name`}>
+                <Value field={provider.representative} locale={locale} />
+              </KeyValue>
+              <KeyValue
+                title={t.organization}
+                at={`dataProviders.${provider.id}.organization.name`}
+              >
+                <Value field={provider.organization} locale={locale} />
+              </KeyValue>
+            </dl>
+          ))}
         </Section>
+      )}
 
-        {view.dataProviders.length > 0 && (
-          <Section title={t.dataProvider}>
-            {view.dataProviders.map((provider) => (
-              <dl key={provider.id} className="sm:columns-2">
-                <KeyValue title={t.representative}>
-                  <Value field={provider.representative} locale={locale} />
-                </KeyValue>
-                <KeyValue title={t.organization}>
-                  <Value field={provider.organization} locale={locale} />
-                </KeyValue>
-              </dl>
+      {view.researchProjects.length > 0 && (
+        <Section title={t.researchProjects} at="researchProjects">
+          <Table headers={[t.researchProjectName, t.url]}>
+            {view.researchProjects.map((project) => (
+              <tr key={project.id}>
+                <Td>
+                  <Value field={project.name} locale={locale} />
+                  <Annotation at={`researchProjects.${project.id}.name`} />
+                </Td>
+                <Td className="break-all">
+                  <ul>
+                    {project.links.map((link) => (
+                      <li key={link.id}>
+                        <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
+                      </li>
+                    ))}
+                  </ul>
+                  <Annotation at={`researchProjects.${project.id}.url`} />
+                </Td>
+              </tr>
             ))}
-          </Section>
-        )}
+          </Table>
+        </Section>
+      )}
 
-        {view.researchProjects.length > 0 && (
-          <Section title={t.researchProjects}>
-            <Table headers={[t.researchProjectName, t.url]}>
-              {view.researchProjects.map((project) => (
-                <tr key={project.id}>
-                  <Td><Value field={project.name} locale={locale} /></Td>
-                  <Td className="break-all">
-                    <ul>
-                      {project.links.map((link) => (
-                        <li key={link.id}>
-                          <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
-                        </li>
-                      ))}
-                    </ul>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
-          </Section>
-        )}
+      {view.grants.length > 0 && (
+        <Section title={t.grants} at="grants">
+          <Table headers={[t.grantTitle, t.grantAgency, t.grantId]}>
+            {view.grants.map((grant) => (
+              <tr key={grant.id}>
+                <Td>
+                  <Value field={grant.title} locale={locale} />
+                  <Annotation at={`grants.${grant.id}.title`} />
+                </Td>
+                <Td>
+                  <Value field={grant.agency} locale={locale} />
+                  <Annotation at={`grants.${grant.id}.agency.name`} />
+                </Td>
+                <Td>
+                  {grant.grantIds.join(", ")}
+                  <Annotation at={`grants.${grant.id}.grantIds`} />
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        </Section>
+      )}
 
-        {view.grants.length > 0 && (
-          <Section title={t.grants}>
-            <Table headers={[t.grantTitle, t.grantAgency, t.grantId]}>
-              {view.grants.map((grant) => (
-                <tr key={grant.id}>
-                  <Td><Value field={grant.title} locale={locale} /></Td>
-                  <Td><Value field={grant.agency} locale={locale} /></Td>
-                  <Td>{grant.grantIds.join(", ")}</Td>
-                </tr>
-              ))}
-            </Table>
-          </Section>
-        )}
-
-        {view.relatedPublications.length > 0 && (
-          <Section title={t.relatedPublications}>
-            <Table headers={[t.publicationTitle, "DOI", messages.dataset.datasets]}>
-              {view.relatedPublications.map((publication) => (
-                <tr key={publication.id}>
-                  <Td>{publication.title}</Td>
-                  <Td className="break-all">
-                    {publication.doi !== "" && (
-                      <a href={publication.doi} target="_blank" rel="noreferrer">{publication.doi}</a>
-                    )}
-                  </Td>
-                  <Td>
-                    <ul>
-                      {publication.datasetLabels.map((label) => (
+      {view.relatedPublications.length > 0 && (
+        <Section title={t.relatedPublications} at="relatedPublications">
+          <Table headers={[t.publicationTitle, "DOI", messages.dataset.datasets]}>
+            {view.relatedPublications.map((publication) => (
+              <tr key={publication.id}>
+                <Td>
+                  <Value field={publication.title} locale={locale} />
+                  <Annotation at={`relatedPublications.${publication.id}.title`} />
+                </Td>
+                <Td className="break-all">
+                  {publication.doi.state === "plain" && publication.doi.text !== ""
+                    ? (
+                        <a href={publication.doi.text} target="_blank" rel="noreferrer">
+                          {publication.doi.text}
+                        </a>
+                      )
+                    : <Value field={publication.doi} locale={locale} />}
+                  <Annotation at={`relatedPublications.${publication.id}.doi`} />
+                </Td>
+                <Td>
+                  <ul>
+                    {publication.datasetLabels.map((label) => {
+                      const to = linkTo({ id: null, label })
+                      return (
                         <li key={label} className="break-all">
-                          <Link to={href(locale, datasetPath(label))}>{label}</Link>
+                          {to === null ? label : <Link to={to}>{label}</Link>}
                         </li>
-                      ))}
-                    </ul>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
-          </Section>
-        )}
+                      )
+                    })}
+                  </ul>
+                  <Annotation at={`relatedPublications.${publication.id}.datasetIds`} />
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        </Section>
+      )}
 
-        {view.cau.length > 0 && (
-          <Section title={t.controlledAccessUsers}>
-            <Table headers={[
-              t.representative,
-              t.organization,
-              t.country,
-              t.title,
-              t.periodOfDataUse,
-              messages.dataset.datasets,
-            ]}
-            >
-              {view.cau.map((usage) => (
-                <tr key={usage.applicationId}>
-                  <Td>{usage.principalInvestigator}</Td>
-                  <Td>{usage.affiliation}</Td>
-                  <Td>{usage.country}</Td>
-                  <Td>{usage.researchTitle}</Td>
-                  <Td className="text-nowrap">
-                    {usage.periodStart !== null || usage.periodEnd !== null
-                      ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
-                      : null}
-                  </Td>
-                  <Td>
-                    <ul>
-                      {usage.datasetAccessions.map((accession) => (
-                        <li key={accession} className="break-all">{accession}</li>
-                      ))}
-                    </ul>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
-          </Section>
-        )}
-      </Card>
-    </Page>
+      {view.cau.length > 0 && (
+        <Section title={t.controlledAccessUsers}>
+          <Table headers={[
+            t.representative,
+            t.organization,
+            t.country,
+            t.title,
+            t.periodOfDataUse,
+            messages.dataset.datasets,
+          ]}
+          >
+            {view.cau.map((usage) => (
+              <tr key={usage.applicationId}>
+                <Td>{usage.principalInvestigator}</Td>
+                <Td>{usage.affiliation}</Td>
+                <Td>{usage.country}</Td>
+                <Td>{usage.researchTitle}</Td>
+                <Td className="text-nowrap">
+                  {usage.periodStart !== null || usage.periodEnd !== null
+                    ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
+                    : null}
+                </Td>
+                <Td>
+                  <ul>
+                    {usage.datasetAccessions.map((accession) => (
+                      <li key={accession} className="break-all">{accession}</li>
+                    ))}
+                  </ul>
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        </Section>
+      )}
+    </>
   )
 }

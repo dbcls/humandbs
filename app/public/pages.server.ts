@@ -98,6 +98,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     const row = listed.get(id)
     if (row === undefined) return []
     return [{
+      id,
       label: row.label,
       content: publicDatasetContent(row.content, { keys: catalog.keyById, files: [] }, PUBLISHED),
       datePublished: row.datePublished,

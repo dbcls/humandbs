@@ -35,6 +35,8 @@ import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries
 import {
   adminDraftDatasetsPath,
   adminDraftPath,
+  adminDraftReviewPath,
+  draftCommentsPath,
   draftPresencePath,
   draftUndoPath,
 } from "~/admin/urls"
@@ -42,8 +44,10 @@ import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+import { threadsByPath } from "~/review/comments"
 
 import { PresenceLine, UndoMenu } from "./draft-tools"
+import { FieldReview, type FieldReviewData } from "./field-review"
 import {
   AddElement,
   ConflictBand,
@@ -170,7 +174,25 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             }
           },
       problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),
+      extra: <FieldReview review={review} at={path} />,
     }
+  }
+
+  const subject = { kind: "dataset" as const, datasetId: view.datasetId }
+  const termLabelOf = new Map(view.catalog.terms.map((term) => [term.id, termLabel(term, locale)]))
+  const review: FieldReviewData = {
+    context: {
+      locale,
+      action: href(locale, draftCommentsPath(view.researchId, view.draftId)),
+      subject,
+      canResolve: true,
+      signedInName: view.review.signedInName,
+    },
+    threads: threadsByPath(view.review.threads, subject),
+    changed: view.review.changed,
+    previous: view.review.previous,
+    heading: messagesFor(locale).preview.previousPublished,
+    termLabel: (id) => termLabelOf.get(id) ?? id,
   }
 
   return (
@@ -192,6 +214,12 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               className="text-sm"
             >
               {t.backToDraft}
+            </Link>
+            <Link
+              to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))}
+              className="text-sm"
+            >
+              {messagesFor(locale).admin.editor.review}
             </Link>
             {!view.published && (
               <span className="text-ink-muted text-xs">
@@ -231,6 +259,11 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
         />
       </div>
 
+      {view.review.changed.length > 0 && (
+        <p className="mb-4 rounded-sm border border-line bg-surface px-4 py-2 text-sm">
+          {messagesFor(locale).admin.editor.differsCount(view.review.changed.length)}
+        </p>
+      )}
       {conflict !== null && <ConflictBand locale={locale} changed={conflict.changed} />}
       {upstream !== null && (upstream.only.length > 0 || upstream.both.length > 0) && (
         <UpstreamBand

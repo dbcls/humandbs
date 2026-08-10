@@ -1,10 +1,36 @@
-import { Fragment, type ReactNode } from "react"
+import { createContext, Fragment, useContext, type ReactNode } from "react"
 
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { FieldView, TermView } from "~/public/view.server"
+
+/**
+ * What a preview hangs beside a place the page draws — a comment mark, a note
+ * that the published version says something else.
+ *
+ * A page marks its places by putting `<Annotation at="…" />` where the mark
+ * belongs, and the anchor it names is the same path a comment is attached by
+ * and the diff reports. **A public page provides nothing**, so `annotate` is
+ * absent, every mark renders as nothing, and the published page is drawn by the
+ * same code that draws the preview.
+ */
+export type Annotate = (at: string) => ReactNode
+
+const AnnotateContext = createContext<Annotate | null>(null)
+
+export function AnnotationLayer({ annotate, children }: {
+  annotate: Annotate
+  children: ReactNode
+}) {
+  return <AnnotateContext.Provider value={annotate}>{children}</AnnotateContext.Provider>
+}
+
+export function Annotation({ at }: { at: string }) {
+  const annotate = useContext(AnnotateContext)
+  return annotate === null ? null : <>{annotate(at)}</>
+}
 
 export function Page({ children }: { children: ReactNode }) {
   return <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
@@ -24,20 +50,34 @@ export function Card({ children }: { children: ReactNode }) {
   return <div className="rounded-b border border-line border-t-0 px-5 py-6">{children}</div>
 }
 
-export function Section({ title, children }: { title: string, children: ReactNode }) {
+export function Section({ title, at, children }: {
+  title: string
+  /** The anchor of the whole section, when it draws one field. */
+  at?: string
+  children: ReactNode
+}) {
   return (
     <section className="mt-8 first:mt-0">
       <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{title}</h2>
+      {at !== undefined && <Annotation at={at} />}
       {children}
     </section>
   )
 }
 
-export function KeyValue({ title, children }: { title: string, children: ReactNode }) {
+export function KeyValue({ title, at, children }: {
+  title: string
+  /** The anchor of the value below, when the page has one for it. */
+  at?: string
+  children: ReactNode
+}) {
   return (
     <div className="break-inside-avoid py-2">
       <dt className="font-semibold text-ink-muted text-xs">{title}</dt>
-      <dd className="mt-1">{children}</dd>
+      <dd className="mt-1">
+        {children}
+        {at !== undefined && <Annotation at={at} />}
+      </dd>
     </div>
   )
 }
@@ -96,10 +136,21 @@ function Prose({ text }: { text: RichText }) {
  * One resolved value. `not-applicable` is settled information, so it is shown
  * as a value rather than hidden — an empty value and "there is no such value"
  * are different answers, and only one of them means somebody still has to act.
+ *
+ * `unsettled` only ever arrives from a preview, and it is drawn as the empty
+ * frame it is: the question is what the reader is being shown, and a blank
+ * would look like a value nobody thought worth filling in.
  */
 export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
   if (field.state === "not-applicable") {
     return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
+  }
+  if (field.state === "unsettled") {
+    return (
+      <span className="rounded-sm border border-accent border-dashed px-2 py-0.5 text-accent text-xs">
+        {messagesFor(locale).unsettled}
+      </span>
+    )
   }
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />

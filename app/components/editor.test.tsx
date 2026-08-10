@@ -22,6 +22,13 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
     presence: [],
     undo: [],
     upstream: null,
+    review: {
+      changed: [],
+      previous: {},
+      threads: [],
+      publishedNumber: null,
+      signedInName: "curator",
+    },
   }
 }
 

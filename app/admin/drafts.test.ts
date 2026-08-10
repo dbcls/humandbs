@@ -72,10 +72,18 @@ describe("writing to a draft", () => {
       .map((match) => match[1] ?? "")
 
     // Two of these create a row, which has no earlier version of itself to
-    // disagree with. The third is presence, which is not content: nobody reads
-    // it for correctness and a lost write costs one heartbeat.
+    // disagree with. The rest are not content: presence, which nobody reads for
+    // correctness and where a lost write costs one heartbeat, and the two share
+    // settings, where the last press winning is the answer and a check would
+    // make flipping the switch fail every open editor's next save.
     expect(exported.filter((name) => !changing.has(name)))
-      .toEqual(["createResearchWithDraft", "createDraft", "touchPresence"])
+      .toEqual([
+        "createResearchWithDraft",
+        "createDraft",
+        "touchPresence",
+        "setDraftSharing",
+        "reissueShareToken",
+      ])
   })
 })
 

@@ -84,13 +84,14 @@ describe("the untranslated notice", () => {
   /**
    * The two are different answers: one language is a question the provider has
    * been asked, the other is a translation nobody has written. Only the second
-   * is something falling back can fix.
+   * is something falling back can fix, and only a preview ever sees the first —
+   * the public projection has already turned it into an empty value.
    */
   it("is off when the wanted language is a question rather than a missing translation", () => {
     const content = research({ title: { ja: filled("題"), en: UNKNOWN } })
     const view = viewOf(content)
     expect(view.untranslated).toBe(false)
-    expect(view.title).toEqual({ state: "plain", text: "", untranslated: false })
+    expect(view.title).toEqual({ state: "unsettled" })
   })
 
   /**

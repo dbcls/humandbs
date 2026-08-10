@@ -35,7 +35,9 @@ import type { AdminDraftPageView, SaveResult } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
+  adminDraftReviewPath,
   adminResearchPath,
+  draftCommentsPath,
   draftPresencePath,
   draftUndoPath,
 } from "~/admin/urls"
@@ -43,8 +45,11 @@ import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+import { RESEARCH } from "~/review/anchors"
+import { threadsByPath, unresolvedCount } from "~/review/comments"
 
 import { PresenceLine, UndoMenu } from "./draft-tools"
+import { FieldReview, type FieldReviewData } from "./field-review"
 import {
   AddElement,
   ConflictBand,
@@ -135,6 +140,22 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   const dirty = diffDraftInput(base, input).length > 0
 
+  const review: FieldReviewData = {
+    context: {
+      locale,
+      action: href(locale, draftCommentsPath(view.researchId, view.draftId)),
+      subject: RESEARCH,
+      canResolve: true,
+      signedInName: view.review.signedInName,
+    },
+    threads: threadsByPath(view.review.threads, RESEARCH),
+    changed: view.review.changed,
+    previous: view.review.previous,
+    heading: view.review.publishedNumber === null
+      ? ""
+      : messagesFor(locale).preview.previousIn(view.review.publishedNumber),
+  }
+
   function edit(next: DraftInput): void {
     setInput(next)
     setSaved(false)
@@ -183,6 +204,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             }
           },
       problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),
+      extra: <FieldReview review={review} at={path} />,
     }
   }
 
@@ -201,6 +223,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         }}
         undoLoading={undoFetcher.state !== "idle"}
       />
+
+      <PublishedBand view={view} />
 
       {conflict !== null && (
         <ConflictBand locale={locale} changed={conflict.changed} />
@@ -332,6 +356,46 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   )
 }
 
+/**
+ * How this draft stands against the version a reader sees now, and what the
+ * review has to say. The places are listed rather than only counted: some of
+ * them — a list whose membership changed — have no field of their own to mark.
+ */
+function PublishedBand({ view }: { view: AdminDraftPageView }) {
+  const t = messagesFor(view.locale).admin.editor
+  const review = view.review
+  const open = unresolvedCount(review.threads)
+
+  if (review.publishedNumber === null) {
+    return <p className="mb-4 text-ink-muted text-sm">{t.noPublishedVersion}</p>
+  }
+  if (review.changed.length === 0 && open === 0) return null
+
+  return (
+    <div className="mb-4 rounded-sm border border-line bg-surface px-4 py-3 text-sm">
+      {review.changed.length > 0 && (
+        <>
+          <p>{t.differsCount(review.changed.length)}</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {review.changed.map((path) => (
+              <li key={path} className="rounded-sm border border-line bg-white px-2 py-0.5 text-xs">
+                <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {open > 0 && (
+        <p className="mt-2">
+          <Link to={href(view.locale, adminDraftReviewPath(view.researchId, view.draftId))}>
+            {messagesFor(view.locale).admin.detail.openComments(open)}
+          </Link>
+        </p>
+      )}
+    </div>
+  )
+}
+
 function TopBar({ view, dirty, saving, saved, onSave, onUndo, undoLoading }: {
   view: AdminDraftPageView
   dirty: boolean
@@ -356,6 +420,12 @@ function TopBar({ view, dirty, saving, saved, onSave, onUndo, undoLoading }: {
             className="text-sm"
           >
             {messagesFor(locale).admin.draft.datasets}
+          </Link>
+          <Link
+            to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))}
+            className="text-sm"
+          >
+            {t.review}
           </Link>
         </div>
         <div className="flex items-center gap-3 text-sm">

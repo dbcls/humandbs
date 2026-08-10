@@ -28,9 +28,9 @@ describe("resolveText", () => {
     expect(resolveText(pair, "en")).toEqual({ state: "value", value: "", untranslated: false })
   })
 
-  it("does not fill an unsettled language from the other one", () => {
+  it("answers unsettled rather than filling that language from the other one", () => {
     expect(resolveText({ ja: filled("日本語"), en: UNKNOWN }, "en"))
-      .toEqual({ state: "value", value: "", untranslated: false })
+      .toEqual({ state: "unsettled" })
   })
 
   it("answers not-applicable in the language it is settled in and leaves the other alone", () => {
@@ -60,9 +60,9 @@ describe("resolveRichText", () => {
       .toEqual({ state: "value", value: [], untranslated: false })
   })
 
-  it("does not fill an unsettled language from the other one", () => {
+  it("answers unsettled rather than filling that language from the other one", () => {
     expect(resolveRichText({ ja: filled(ja), en: UNKNOWN }, "en"))
-      .toEqual({ state: "value", value: [], untranslated: false })
+      .toEqual({ state: "unsettled" })
   })
 })
 

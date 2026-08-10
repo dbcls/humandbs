@@ -1,0 +1,250 @@
+/**
+ * A conversation about one place, drawn the same way wherever it appears.
+ *
+ * The preview, the review screen and the editing screens all show the same
+ * thing, and they differ in two ways only: where the form posts, and whether
+ * the reader may resolve. The preview posts to the page it is on and gets a
+ * redirect back, so it works with JavaScript switched off; an editing screen
+ * posts to a resource route that answers with the threads, because it is
+ * holding unsaved work and must not navigate.
+ *
+ * **A comment is signed.** Signing in fills the name from the account; a reader
+ * who has not signed in types one, and it is kept in `sessionStorage` rather
+ * than `localStorage` so a shared machine does not hand the next person the
+ * previous one's name.
+ */
+
+import { useSyncExternalStore } from "react"
+import { useFetcher } from "react-router"
+
+import type { AnchorSubject } from "~/review/anchors"
+import { unresolvedCount, type ThreadView } from "~/review/comments"
+import type { Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
+
+const NAME_KEY = "humandbs.review.name"
+
+/** Everything the spots on one page share. */
+export interface CommentContext {
+  locale: Locale
+  /** Where the forms post. */
+  action: string
+  subject: AnchorSubject
+  /** Only an administrator resolves; a link holder reads and answers. */
+  canResolve: boolean
+  /** The name comments will be signed with, when the reader is signed in. */
+  signedInName: string | null
+}
+
+type Answer
+  = | { status: "threads", threads: ThreadView[] }
+    | { status: "invalid", problem: string }
+
+function nameStore(): string {
+  try {
+    return sessionStorage.getItem(NAME_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function detach(): void {
+  // Nothing to detach: the value only ever changes on this page.
+}
+
+function subscribe(): () => void {
+  return detach
+}
+
+/**
+ * The remembered name. It is read through `useSyncExternalStore` so that the
+ * server renders an empty box and the browser fills it in after hydration,
+ * rather than the two disagreeing about what the markup should be.
+ */
+export function useRememberedName(): string {
+  return useSyncExternalStore(subscribe, nameStore, () => "")
+}
+
+export function rememberName(name: string): void {
+  if (name === "") return
+  try {
+    sessionStorage.setItem(NAME_KEY, name)
+  } catch {
+    // A browser that refuses storage still posts comments; it just forgets.
+  }
+}
+
+/**
+ * The mark beside a place: how many people have said something about it, and
+ * the way to say something yourself. Everything is inside a `details`, so
+ * nothing about it needs JavaScript to open.
+ */
+export function CommentSpot({ context, at, threads }: {
+  context: CommentContext
+  at: string
+  threads: readonly ThreadView[]
+}) {
+  const t = messagesFor(context.locale).comment
+  const fetcher = useFetcher<Answer>()
+  const answer = fetcher.data
+  const shown = answer?.status === "threads"
+    ? answer.threads.filter((thread) => thread.anchor.path === at)
+    : [...threads]
+  const open = unresolvedCount(shown)
+
+  return (
+    <details className="mt-1 inline-block align-top text-sm" id={encodeURIComponent(at)}>
+      <summary
+        title={shown.length === 0 ? t.add : t.heading}
+        className="inline-flex cursor-pointer items-center gap-1 rounded-sm border border-line px-2 py-0.5 text-ink-muted text-xs"
+      >
+        <span aria-hidden="true">💬</span>
+        <span className="sr-only">{shown.length === 0 ? t.add : t.heading}</span>
+        {shown.length > 0 && t.count(shown.length)}
+        {open > 0 && <span className="text-accent">{t.unresolved}</span>}
+      </summary>
+
+      <div className="mt-2 w-full min-w-64 max-w-xl rounded-sm border border-line bg-surface px-3 py-2">
+        {shown.map((thread) => (
+          <Thread key={thread.id} context={context} thread={thread} at={at} fetcher={fetcher} />
+        ))}
+        <CommentForm context={context} at={at} fetcher={fetcher} intent="comment" />
+        {answer?.status === "invalid" && (
+          <p className="mt-1 text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
+        )}
+      </div>
+    </details>
+  )
+}
+
+function problemText(locale: Locale, problem: string): string {
+  const t = messagesFor(locale).comment
+  if (problem === "name-required") return t.nameRequired
+  return problem === "body-required" ? t.bodyRequired : t.tooLong
+}
+
+type Fetcher = ReturnType<typeof useFetcher<Answer>>
+
+/** One thread: what was said, what to say back, and whether it is dealt with. */
+export function Thread({ context, thread, at, fetcher }: {
+  context: CommentContext
+  thread: ThreadView
+  /** The place, so a redirect can come back to it. Absent on a list screen. */
+  at?: string
+  fetcher?: Fetcher
+}) {
+  const t = messagesFor(context.locale).comment
+  const own = useFetcher<Answer>()
+  const post = fetcher ?? own
+
+  return (
+    <div className="mb-3 border-line border-b pb-2 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        {thread.resolved
+          ? (
+              <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted">
+                {thread.resolvedBy === null ? t.resolved : t.resolvedBy(thread.resolvedBy)}
+              </span>
+            )
+          : <span className="text-accent">{t.unresolved}</span>}
+        {context.canResolve && (
+          <post.Form method="post" action={context.action} className="inline">
+            <input type="hidden" name="intent" value={thread.resolved ? "reopen" : "resolve"} />
+            <input type="hidden" name="threadId" value={thread.id} />
+            {at !== undefined && <input type="hidden" name="at" value={at} />}
+            <button type="submit" className="cursor-pointer text-xs underline">
+              {thread.resolved ? t.reopen : t.resolve}
+            </button>
+          </post.Form>
+        )}
+      </div>
+
+      <ul className="mt-1 flex flex-col gap-2">
+        {thread.comments.map((comment) => (
+          <li key={comment.id}>
+            <div className="flex flex-wrap items-baseline gap-2 text-ink-muted text-xs">
+              <span className="font-semibold">{comment.authorName}</span>
+              {comment.bySignedIn && <span title={t.ddbjAccount} aria-hidden="true">🅳</span>}
+              <span>{comment.createdAt.slice(0, 16).replace("T", " ")}</span>
+            </div>
+            <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
+          </li>
+        ))}
+      </ul>
+
+      <CommentForm
+        context={context}
+        at={at}
+        fetcher={post}
+        intent="reply"
+        threadId={thread.id}
+      />
+    </div>
+  )
+}
+
+/**
+ * Writing something. The name box is there for a reader who has not signed in;
+ * for one who has, the account's name is what the server signs with and the box
+ * would be a second answer to the same question.
+ */
+export function CommentForm({ context, at, fetcher, intent, threadId }: {
+  context: CommentContext
+  at?: string
+  fetcher: Fetcher
+  intent: "comment" | "reply"
+  threadId?: string
+}) {
+  const t = messagesFor(context.locale).comment
+  const remembered = useRememberedName()
+  const busy = fetcher.state !== "idle"
+
+  return (
+    <fetcher.Form
+      method="post"
+      action={context.action}
+      className="mt-2 flex flex-col gap-1"
+      onSubmit={(event) => {
+        const typed = new FormData(event.currentTarget).get("name")
+        if (typeof typed === "string" && typed.trim() !== "") rememberName(typed.trim())
+      }}
+    >
+      <input type="hidden" name="intent" value={intent} />
+      {threadId !== undefined && <input type="hidden" name="threadId" value={threadId} />}
+      {intent === "comment" && <input type="hidden" name="path" value={at ?? ""} />}
+      {intent === "comment" && <input type="hidden" name="subject" value={context.subject.kind} />}
+      {intent === "comment" && context.subject.kind === "dataset" && (
+        <input type="hidden" name="datasetId" value={context.subject.datasetId} />
+      )}
+      {at !== undefined && <input type="hidden" name="at" value={at} />}
+
+      {context.signedInName === null && (
+        <input
+          type="text"
+          name="name"
+          key={remembered}
+          defaultValue={remembered}
+          placeholder={messagesFor(context.locale).preview.whoPlaceholder}
+          aria-label={messagesFor(context.locale).preview.who}
+          className="rounded-sm border border-line px-2 py-1 text-sm"
+        />
+      )}
+      <textarea
+        name="body"
+        rows={2}
+        placeholder={intent === "reply" ? t.reply : t.bodyPlaceholder}
+        aria-label={t.body}
+        className="rounded-sm border border-line px-2 py-1 text-sm"
+      />
+      <div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="cursor-pointer rounded-sm border border-brand px-3 py-0.5 text-brand text-xs disabled:opacity-60"
+        >
+          {busy ? t.posting : t.post}
+        </button>
+      </div>
+    </fetcher.Form>
+  )
+}

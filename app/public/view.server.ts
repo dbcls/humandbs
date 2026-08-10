@@ -38,10 +38,61 @@ import {
   type Locale,
 } from "~/i18n/locale"
 
+/**
+ * A value as a page shows it. `unsettled` only ever reaches a screen through a
+ * preview: the public projection turns an unsettled value into an empty one
+ * before it gets here, and a preview keeps it precisely so the frame stays
+ * visible with the question attached to it.
+ */
 export type FieldView
   = | { state: "not-applicable" }
+    | { state: "unsettled" }
     | { state: "rich", text: RichText, untranslated: boolean }
     | { state: "plain", text: string, untranslated: boolean }
+
+/**
+ * One place a page draws, kept under the anchor it draws it at.
+ *
+ * The anchors are the path vocabulary of the editing form, which is what makes
+ * three separate things line up on one spelling: where a comment is attached,
+ * which fields a diff reports, and where on the page either of them belongs.
+ * The map is built by the same walk that builds the view, so it cannot drift
+ * from it — what it has to agree with is the set of anchors the components draw,
+ * and that agreement is a test.
+ */
+export type AnchoredValue
+  = | { kind: "field", field: FieldView }
+    | { kind: "links", links: Link[] }
+    | { kind: "list", items: string[] }
+    | { kind: "term", term: TermView | null }
+
+export interface Anchored<T> {
+  view: T
+  byAnchor: Record<string, AnchoredValue>
+}
+
+interface Anchors {
+  field: (at: string, field: FieldView) => FieldView
+  links: (at: string, links: Link[]) => Link[]
+  list: (at: string, items: string[]) => string[]
+  term: (at: string, term: TermView | null) => TermView | null
+  taken: () => Record<string, AnchoredValue>
+}
+
+function anchorRecorder(): Anchors {
+  const taken: Record<string, AnchoredValue> = {}
+  function keep<T>(at: string, value: AnchoredValue, held: T): T {
+    taken[at] = value
+    return held
+  }
+  return {
+    field: (at, field) => keep(at, { kind: "field", field }, field),
+    links: (at, links) => keep(at, { kind: "links", links }, links),
+    list: (at, items) => keep(at, { kind: "list", items }, items),
+    term: (at, term) => keep(at, { kind: "term", term }, term),
+    taken: () => taken,
+  }
+}
 
 export interface CatalogKeyView {
   id: string
@@ -73,6 +124,22 @@ export interface CatalogView {
 export const ACCESS_TYPE_KEY = "access-criteria"
 export const TYPE_OF_DATA_KEY = "type-of-data"
 
+/** A value as one line of text, for saying what a list used to hold. */
+export function fieldText(field: FieldView): string {
+  if (field.state === "plain") return field.text
+  if (field.state === "rich") return field.text.map((line) => line.map((span) => span.text).join("")).join(" ")
+  return ""
+}
+
+/**
+ * Where a value under a catalog key is anchored. The two keys the dataset page
+ * places itself are still values in a list, so they anchor like the rest.
+ */
+export function anchorUnderCode(catalog: CatalogView, code: string): string | null {
+  const key = catalog.keyByCode.get(code)
+  return key === undefined ? null : `values.${key.id}`
+}
+
 export function keyLabel(key: CatalogKeyView, locale: Locale): string {
   return locale === "ja" ? key.labelJa : key.labelEn
 }
@@ -103,11 +170,9 @@ function fallbackTracker(): Fallbacks {
   }
 }
 
-const EMPTY: FieldView = { state: "plain", text: "", untranslated: false }
-
 function translated(pair: TranslatedText, locale: Locale, fallbacks: Fallbacks): FieldView {
   const resolved = resolveText(pair, locale)
-  if (resolved.state === "not-applicable") return { state: "not-applicable" }
+  if (resolved.state !== "value") return { state: resolved.state }
   return {
     state: "plain",
     text: resolved.value,
@@ -117,7 +182,7 @@ function translated(pair: TranslatedText, locale: Locale, fallbacks: Fallbacks):
 
 function prose(pair: TranslatedRichText, locale: Locale, fallbacks: Fallbacks): FieldView {
   const resolved = resolveRichText(pair, locale)
-  if (resolved.state === "not-applicable") return { state: "not-applicable" }
+  if (resolved.state !== "value") return { state: resolved.state }
   return {
     state: "rich",
     text: resolved.value,
@@ -129,16 +194,11 @@ function linksOf(pair: LocalizedLinks, locale: Locale): Link[] {
   return resolveLinks(pair, locale)
 }
 
-function stringOf(slot: Slot<string>): string {
-  return slot.state === "value" ? slot.value : ""
-}
-
 /** A single-language value, which is settled or not on its own. */
 function plainOf(slot: Slot<string>): FieldView {
   if (slot.state === "not-applicable") return { state: "not-applicable" }
-  return slot.state === "value"
-    ? { state: "plain", text: slot.value, untranslated: false }
-    : EMPTY
+  if (slot.state === "unknown") return { state: "unsettled" }
+  return { state: "plain", text: slot.value, untranslated: false }
 }
 
 /**
@@ -158,9 +218,10 @@ function valueField(
     case "accession":
       return plainOf(value.value)
     case "vocabulary": {
-      if (value.termIds.state === "not-applicable") return { state: "not-applicable" }
-      if (value.termIds.state !== "value") return EMPTY
-      const labels = value.termIds.value
+      const slot = value.termIds
+      if (slot.state === "not-applicable") return { state: "not-applicable" }
+      if (slot.state === "unknown") return { state: "unsettled" }
+      const labels = slot.value
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
         .map((term) => termLabel(term, locale))
@@ -168,7 +229,7 @@ function valueField(
     }
     case "number": {
       if (value.value.state === "not-applicable") return { state: "not-applicable" }
-      if (value.value.state !== "value") return EMPTY
+      if (value.value.state === "unknown") return { state: "unsettled" }
       const number = value.value.value
       return {
         state: "plain",
@@ -228,6 +289,12 @@ export interface TermView {
 }
 
 export interface DatasetRowView {
+  /**
+   * The identity, when the caller has one. A listing is built from search rows
+   * and has only labels; a version's own table has the identities it lists, and
+   * a preview needs them because a draft's datasets may have no label pinned yet.
+   */
+  id: string | null
   label: string
   accessType: TermView | null
   typeOfData: FieldView | null
@@ -235,6 +302,7 @@ export interface DatasetRowView {
 }
 
 export interface DatasetRowInput {
+  id: string | null
   label: string
   content: DatasetContent
   datePublished: string | null
@@ -259,6 +327,7 @@ function datasetRowView(
 ): DatasetRowView {
   const typeOfData = valueUnderCode(input.content, catalog, TYPE_OF_DATA_KEY)
   return {
+    id: input.id,
     label: input.label,
     accessType: firstTerm(valueUnderCode(input.content, catalog, ACCESS_TYPE_KEY), locale, catalog),
     typeOfData: typeOfData === null ? null : valueField(typeOfData, locale, catalog, fallbacks),
@@ -312,7 +381,7 @@ export interface ResearchView {
   dataProviders: { id: string, representative: FieldView, organization: FieldView }[]
   researchProjects: { id: string, name: FieldView, links: Link[] }[]
   grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
-  relatedPublications: { id: string, title: string, doi: string, datasetLabels: string[] }[]
+  relatedPublications: { id: string, title: FieldView, doi: FieldView, datasetLabels: string[] }[]
   cau: CauView[]
 }
 
@@ -334,52 +403,94 @@ export function researchView(
   locale: Locale,
   catalog: CatalogView,
 ): ResearchView {
+  return anchoredResearchView(input, locale, catalog).view
+}
+
+/**
+ * The same view, with every place it draws kept under its anchor. A public page
+ * takes the view alone; a preview takes both, because it has comments to hang
+ * and a published version to show the previous value from.
+ */
+export function anchoredResearchView(
+  input: ResearchViewInput,
+  locale: Locale,
+  catalog: CatalogView,
+): Anchored<ResearchView> {
   const fallbacks = fallbackTracker()
+  const at = anchorRecorder()
   const content = input.content
   const labelsOf = (ids: string[]): string[] =>
     ids.map((id) => input.datasetLabelById.get(id)).filter((label) => label !== undefined)
 
-  return {
+  const datasets = input.datasets.map((row) => datasetRowView(row, locale, catalog, fallbacks))
+  at.list("datasetIds", datasets.map((row) => row.label))
+
+  const view: ResearchView = {
     humLabel: input.humLabel,
     versionNumber: input.versionNumber,
     versionLabel: `${input.humLabel}-v${input.versionNumber}`,
     releaseDate: input.releaseDate,
     isLatest: input.versionNumber === input.latestVersionNumber,
     latestVersionNumber: input.latestVersionNumber,
-    title: translated(content.title, locale, fallbacks),
+    title: at.field("title", translated(content.title, locale, fallbacks)),
     summary: {
-      aims: prose(content.summary.aims, locale, fallbacks),
-      methods: prose(content.summary.methods, locale, fallbacks),
-      targets: prose(content.summary.targets, locale, fallbacks),
-      links: linksOf(content.summary.url, locale),
+      aims: at.field("summary.aims", prose(content.summary.aims, locale, fallbacks)),
+      methods: at.field("summary.methods", prose(content.summary.methods, locale, fallbacks)),
+      targets: at.field("summary.targets", prose(content.summary.targets, locale, fallbacks)),
+      links: at.links("summary.url", linksOf(content.summary.url, locale)),
     },
-    datasets: input.datasets.map((row) => datasetRowView(row, locale, catalog, fallbacks)),
+    datasets,
     dataProviders: content.dataProviders.map((provider) => ({
       id: provider.id,
-      representative: translated(provider.name, locale, fallbacks),
-      organization: translated(provider.organization.name, locale, fallbacks),
+      representative: at.field(
+        `dataProviders.${provider.id}.name`,
+        translated(provider.name, locale, fallbacks),
+      ),
+      organization: at.field(
+        `dataProviders.${provider.id}.organization.name`,
+        translated(provider.organization.name, locale, fallbacks),
+      ),
     })),
     researchProjects: content.researchProjects.map((project) => ({
       id: project.id,
-      name: translated(project.name, locale, fallbacks),
-      links: linksOf(project.url, locale),
+      name: at.field(
+        `researchProjects.${project.id}.name`,
+        translated(project.name, locale, fallbacks),
+      ),
+      links: at.links(`researchProjects.${project.id}.url`, linksOf(project.url, locale)),
     })),
     grants: content.grants.map((grant) => ({
       id: grant.id,
-      title: translated(grant.title, locale, fallbacks),
-      agency: translated(grant.agency.name, locale, fallbacks),
-      grantIds: grant.grantIds,
+      title: at.field(`grants.${grant.id}.title`, translated(grant.title, locale, fallbacks)),
+      agency: at.field(
+        `grants.${grant.id}.agency.name`,
+        translated(grant.agency.name, locale, fallbacks),
+      ),
+      grantIds: at.list(`grants.${grant.id}.grantIds`, grant.grantIds),
     })),
     relatedPublications: content.relatedPublications.map((publication) => ({
       id: publication.id,
-      title: stringOf(publication.title),
-      doi: stringOf(publication.doi),
-      datasetLabels: labelsOf(publication.datasetIds),
+      title: at.field(`relatedPublications.${publication.id}.title`, plainOf(publication.title)),
+      doi: at.field(`relatedPublications.${publication.id}.doi`, plainOf(publication.doi)),
+      datasetLabels: at.list(
+        `relatedPublications.${publication.id}.datasetIds`,
+        labelsOf(publication.datasetIds),
+      ),
     })),
     cau: input.cau.map((entry) => cauView(entry, locale)),
     // Read last: everything above has had its chance to fall back by now.
     untranslated: fallbacks.seen(),
   }
+
+  // An array carries its own path for membership and order, so each list is
+  // anchored as a whole as well: an element added or taken away is a change
+  // nobody could see if only the surviving elements were anchored.
+  at.list("dataProviders", view.dataProviders.map((row) => fieldText(row.representative)))
+  at.list("researchProjects", view.researchProjects.map((row) => fieldText(row.name)))
+  at.list("grants", view.grants.map((row) => fieldText(row.title)))
+  at.list("relatedPublications", view.relatedPublications.map((row) => fieldText(row.title)))
+
+  return { view, byAnchor: at.taken() }
 }
 
 export interface ReleaseListView {
@@ -428,7 +539,7 @@ export interface DatasetView {
   accessType: TermView | null
   typeOfData: FieldView | null
   untranslated: boolean
-  experiments: { id: string, label: string, values: ValueView[] }[]
+  experiments: { id: string, label: FieldView, values: ValueView[] }[]
 }
 
 export interface DatasetViewInput {
@@ -444,19 +555,45 @@ export function datasetView(
   locale: Locale,
   catalog: CatalogView,
 ): DatasetView {
+  return anchoredDatasetView(input, locale, catalog).view
+}
+
+/**
+ * A dataset's anchors are the paths of the dataset form: a value the dataset
+ * itself carries is under the catalog key it sits under, and an experiment's
+ * values are under the experiment's identity. The two keys the page places
+ * itself are anchored the same way, because a comment about the access type is
+ * a comment about that value slot however the page chose to draw it.
+ */
+export function anchoredDatasetView(
+  input: DatasetViewInput,
+  locale: Locale,
+  catalog: CatalogView,
+): Anchored<DatasetView> {
   const fallbacks = fallbackTracker()
+  const at = anchorRecorder()
   const row = datasetRowView(
-    { label: input.label, content: input.content, datePublished: input.datePublished },
+    { id: null, label: input.label, content: input.content, datePublished: input.datePublished },
     locale,
     catalog,
     fallbacks,
   )
+
+  const accessAnchor = anchorUnderCode(catalog, ACCESS_TYPE_KEY)
+  if (accessAnchor !== null) at.term(accessAnchor, row.accessType)
+  const typeAnchor = anchorUnderCode(catalog, TYPE_OF_DATA_KEY)
+  if (typeAnchor !== null && row.typeOfData !== null) at.field(typeAnchor, row.typeOfData)
+
   const experiments = input.content.experiments.map((experiment) => ({
     id: experiment.id,
-    label: stringOf(experiment.label),
-    values: valueViews(experiment.values, locale, catalog, fallbacks),
+    label: at.field(`experiments.${experiment.id}.label`, plainOf(experiment.label)),
+    values: valueViews(experiment.values, locale, catalog, fallbacks).map((value) =>
+      ({ ...value, field: at.field(`experiments.${experiment.id}.values.${value.keyId}`, value.field) })),
   }))
-  return {
+
+  at.list("experiments", experiments.map((row) => fieldText(row.label)))
+
+  const view: DatasetView = {
     label: input.label,
     humLabel: input.humLabel,
     datePublished: input.datePublished,
@@ -466,6 +603,7 @@ export function datasetView(
     experiments,
     untranslated: fallbacks.seen(),
   }
+  return { view, byAnchor: at.taken() }
 }
 
 /**

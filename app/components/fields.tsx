@@ -20,11 +20,17 @@ import { messagesFor } from "~/i18n/messages"
 
 const STATES: readonly SlotState[] = ["value", "unknown", "not-applicable"]
 
-/** Everything a field needs to know about the two ways a save can come back. */
+/**
+ * Everything a field needs to know about the two ways a save can come back, and
+ * whatever the review layer hangs beside it — where the published version says
+ * something else, and what has been said about the field. Those arrive as a
+ * node so that the field parts stay ignorant of both.
+ */
 export interface Marks {
   changed: boolean
   onTake: (() => void) | null
   problems: FieldProblem[]
+  extra?: React.ReactNode
 }
 
 export function newId(): string {
@@ -105,6 +111,7 @@ export function FieldHead({ label, marks, locale, untranslated = false }: {
           {t.take}
         </button>
       )}
+      {marks.extra}
     </div>
   )
 }
