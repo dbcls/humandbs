@@ -32,10 +32,11 @@ import { redirect } from "react-router"
 
 import { requireCapability } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
-import type { DraftSnapshot, TranslatedText } from "~/content/types"
+import type { DatasetContent, DraftSnapshot, ResearchContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb } from "~/db/client.server"
 import { resolveText, type Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
@@ -53,6 +54,16 @@ import {
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema, type FieldProblem } from "./form.server"
 import {
+  GATE_FINDING_KINDS,
+  type GateBlock,
+  type GateFinding,
+  type GateFindingKind,
+} from "./gate"
+import { proposeDatasetId } from "./labels"
+import { pinLabel, unpinLabel } from "./labels.server"
+import { isEmptyThreeWay, threeWayDataset, threeWayResearch } from "./merge"
+import { publishDraft, publishPreview, republishVersion, withdrawVersion } from "./publish.server"
+import {
   activePresence,
   adminResearch,
   adminResearchIndex,
@@ -65,6 +76,7 @@ import {
   readUndoSnapshot,
   readUndoStack,
   researchDatasets,
+  upstreamResearch,
   type AdminDraftRow,
   type AdminVersionRow,
   type DraftDatasetRow,
@@ -83,7 +95,13 @@ import {
   type AdminFlags,
   type AdminStatus,
 } from "./listing"
-import { adminDraftDatasetPath, adminDraftDatasetsPath, adminDraftPath, adminResearchPath } from "./urls"
+import {
+  adminDraftDatasetPath,
+  adminDraftDatasetsPath,
+  adminDraftPath,
+  adminDraftPublishPath,
+  adminResearchPath,
+} from "./urls"
 
 function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
@@ -182,10 +200,17 @@ export interface AdminResearchPageView {
   locale: Locale
   researchId: string
   humLabel: string | null
-  labels: { label: string, isPrimary: boolean }[]
+  labels: { id: string, label: string, isPrimary: boolean }[]
   versions: AdminVersionRow[]
   drafts: AdminDraftRow[]
   datasets: ResearchDatasetRow[]
+  /**
+   * Something has been published under this research, which is what makes
+   * moving a label to another identity worth warning about.
+   */
+  everPublished: boolean
+  /** What the portal would propose for a dataset with no id yet. */
+  datasetIdSuggestion: string | null
 }
 
 export async function researchDetailPage(
@@ -199,15 +224,34 @@ export async function researchDetailPage(
   const view = await adminResearch(getDb(), id)
   if (view === null) notFound()
 
+  const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
+  const taken = view.datasets.flatMap((row) => row.label === null ? [] : [row.label])
+
   return {
     locale,
     researchId: id,
-    humLabel: view.labels.find((label) => label.isPrimary)?.label ?? null,
+    humLabel,
     labels: view.labels,
     versions: view.versions,
     drafts: view.drafts,
     datasets: view.datasets,
+    everPublished: view.versions.length > 0,
+    datasetIdSuggestion: humLabel === null ? null : proposeDatasetId(humLabel, taken),
   }
+}
+
+/**
+ * The published description as it stands now, and how it stands against this
+ * draft. **Taking it is an edit like any other** — it goes into the form, and
+ * saving puts it into the draft through the same revision check. Publishing
+ * does not merge, because the draft is what a share link shows.
+ */
+export interface UpstreamView<T> {
+  theirs: T
+  /** Only they changed these, so taking them costs nothing held here. */
+  only: string[]
+  /** Both sides changed these; taking one replaces the value held here. */
+  both: string[]
 }
 
 export interface AdminDraftPageView {
@@ -221,6 +265,7 @@ export interface AdminDraftPageView {
   /** Who else has this draft open, and what there is to go back to. */
   presence: PresenceView[]
   undo: UndoEntryRow[]
+  upstream: UpstreamView<DraftInput> | null
 }
 
 /**
@@ -264,12 +309,15 @@ export async function draftEditorPage(
 ): Promise<AdminDraftPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, datasets, presence, undo] = await Promise.all([
+  const [humLabel, datasets, presence, undo, moved] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     activePresence(db, draftId),
     readUndoStack(db, draftId),
+    upstreamResearch(db, researchId, draft.parentSnapshotId),
   ])
+
+  const input = { note: draft.note, content: researchContentInput(draft.content) }
 
   return {
     locale,
@@ -277,11 +325,24 @@ export async function draftEditorPage(
     draftId,
     humLabel,
     revision: draft.revision,
-    input: { note: draft.note, content: researchContentInput(draft.content) },
+    input,
     datasets,
     presence: presenceView(presence, actor.sessionId),
     undo,
+    upstream: moved === null ? null : researchUpstream(moved, input),
   }
+}
+
+function researchUpstream(
+  moved: { base: ResearchContent, theirs: ResearchContent },
+  mine: DraftInput,
+): UpstreamView<DraftInput> | null {
+  const base = researchContentInput(moved.base)
+  const theirs = researchContentInput(moved.theirs)
+  const compared = threeWayResearch(base, theirs, mine.content)
+  if (isEmptyThreeWay(compared)) return null
+  // The memo is the draft's own and is never what upstream holds.
+  return { theirs: { note: mine.note, content: theirs }, only: compared.theirs, both: compared.both }
 }
 
 export interface DraftDatasetListView {
@@ -376,6 +437,7 @@ export interface DatasetEditorView {
   catalog: EditableCatalog
   presence: PresenceView[]
   undo: UndoEntryRow[]
+  upstream: UpstreamView<DatasetContentInput> | null
 }
 
 /**
@@ -410,6 +472,8 @@ export async function datasetEditorPage(
     readUndoStack(db, draftId),
   ])
 
+  const input = datasetContentInput(entry?.content ?? published ?? emptyDatasetContent())
+
   return {
     locale,
     researchId,
@@ -419,11 +483,30 @@ export async function datasetEditorPage(
     datasetLabel: row.label,
     published: row.published,
     revision: entry?.revision ?? null,
-    input: datasetContentInput(entry?.content ?? published ?? emptyDatasetContent()),
+    input,
     catalog,
     presence: presenceView(presence, actor.sessionId),
     undo,
+    upstream: datasetUpstream(entry?.baseContent ?? null, published, input),
   }
+}
+
+/**
+ * Where the published description has moved since this draft copied it. A draft
+ * that has not written anything yet is showing the published description, so
+ * there is nothing to have moved away from.
+ */
+function datasetUpstream(
+  base: DatasetContent | null,
+  published: DatasetContent | null,
+  mine: DatasetContentInput,
+): UpstreamView<DatasetContentInput> | null {
+  if (base === null || published === null) return null
+  const theirs = datasetContentInput(published)
+  const compared = threeWayDataset(datasetContentInput(base), theirs, mine)
+  return isEmptyThreeWay(compared)
+    ? null
+    : { theirs, only: compared.theirs, both: compared.both }
 }
 
 export type SaveDatasetResult
@@ -554,29 +637,64 @@ export async function createResearchAction(request: Request, locale: Locale): Pr
   return redirect(href(locale, adminDraftPath(created.researchId, created.draftId)))
 }
 
-/** The one answer a discard has that is not a redirect or a thrown response. */
-export interface DiscardConflict {
-  status: "conflict"
-}
+/** The answers the research screen has that are not a redirect. */
+export type ResearchDetailResult
+  = | { status: "conflict" }
+    | { status: "taken" }
 
 /**
- * The two things the research screen does: open a new draft, and throw one
- * away. Both are ordinary form posts, so they are told apart by what the form
- * says it is.
+ * Everything the research screen does: open a draft, throw one away, take a
+ * version out of sight or put it back, and attach or remove a label. They are
+ * ordinary form posts told apart by what the form says it is.
+ *
+ * The capability is asked for per operation rather than once at the top, so
+ * that what each one requires is written where it is done.
  */
 export async function researchDetailAction(
   request: Request,
   locale: Locale,
   researchId: string | undefined,
-): Promise<Response | DiscardConflict> {
-  const actor = await requireCapability(request, "edit-content")
-
+): Promise<Response | ResearchDetailResult> {
   const id = identity(researchId)
   const db = getDb()
   if (await adminResearch(db, id) === null) notFound()
 
   const form = await request.formData()
   const intent = form.get("intent")
+  const back = redirect(href(locale, adminResearchPath(id)))
+
+  if (intent === "withdraw-version" || intent === "republish-version") {
+    const actor = await requireCapability(request, "withdraw")
+    const versionId = identity(readString(form, "versionId"))
+    const outcome = intent === "withdraw-version"
+      ? await withdrawVersion(db, versionId, actorOf(actor))
+      : await republishVersion(db, versionId, actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    return back
+  }
+
+  if (intent === "pin" || intent === "unpin") {
+    const actor = await requireCapability(request, "manage-labels")
+    if (intent === "unpin") {
+      const outcome = await unpinLabel(db, identity(readString(form, "pinId")), actorOf(actor))
+      if (outcome.status === "gone") notFound()
+      return back
+    }
+    const kind = form.get("kind")
+    if (kind !== "hum" && kind !== "dataset") badRequest()
+    const label = form.get("label")
+    if (typeof label !== "string") badRequest()
+    const subjectId = kind === "hum" ? id : identity(readString(form, "datasetId"))
+    const outcome = await pinLabel(
+      db,
+      { kind, label, subjectId, isPrimary: form.get("isPrimary") === "on" },
+      actorOf(actor),
+    )
+    if (outcome.status === "gone") notFound()
+    return outcome.status === "taken" ? { status: "taken" } : back
+  }
+
+  const actor = await requireCapability(request, "edit-content")
 
   if (intent === "create-draft") {
     const draftId = await createDraft(db, id)
@@ -585,8 +703,7 @@ export async function researchDetailAction(
 
   if (intent !== "discard-draft") badRequest()
 
-  const named = form.get("draftId")
-  const draftId = identity(typeof named === "string" ? named : undefined)
+  const draftId = identity(readString(form, "draftId"))
   const revision = Number(form.get("revision"))
   if (!Number.isInteger(revision)) badRequest()
 
@@ -596,7 +713,269 @@ export async function researchDetailAction(
   const outcome = await discardDraft(db, { draftId, revision }, actorOf(actor))
   if (outcome.status === "gone") notFound()
   if (outcome.status === "conflict") return { status: "conflict" }
-  return redirect(href(locale, adminResearchPath(id)))
+  return back
+}
+
+export interface PublishPlaceView {
+  /** What it is about: the research itself, or a dataset by its id. */
+  label: string
+  /** Where it can be dealt with, when there is such a screen. */
+  href: string | null
+  count: number
+  /** A second line where the count alone does not say enough. */
+  note: string | null
+}
+
+export interface PublishGroupView {
+  kind: GateFindingKind
+  count: number
+  places: PublishPlaceView[]
+}
+
+export interface PublishBlockView {
+  kind: GateBlock["kind"]
+  /** Set for a missing dataset id, which is pinned from this screen. */
+  datasetId: string | null
+  label: string | null
+  /** What the pin form starts with, when the portal has something to propose. */
+  suggestion: string | null
+}
+
+export interface PublishDatasetChangeView {
+  datasetId: string
+  label: string | null
+  fields: number
+  affects: number
+  affectsIfFix: number | null
+  isNew: boolean
+  href: string
+}
+
+export interface PublishPageView {
+  locale: Locale
+  researchId: string
+  draftId: string
+  humLabel: string | null
+  revision: number
+  nextNumber: number
+  /** The version a fix would replace. Null hides the choice. */
+  fixNumber: number | null
+  /** The version that is out there now, when it is not what this draft came from. */
+  staleAgainst: number | null
+  today: string
+  blocks: PublishBlockView[]
+  groups: PublishGroupView[]
+  findingCount: number
+  researchFields: number | null
+  datasetChanges: PublishDatasetChangeView[]
+  listingAdded: string[]
+  listingRemoved: string[]
+}
+
+/**
+ * The last screen before a version exists.
+ *
+ * It reads rather than decides: the same gate runs again inside the publish,
+ * under a lock, and that run is the one that is allowed to refuse. What is
+ * shown here is what the administrator is being asked to look at.
+ */
+export async function publishPage(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<PublishPageView> {
+  const { db, researchId, draftId } = await draftOf(request, params)
+
+  const preview = await publishPreview(db, draftId)
+  if (preview === null) notFound()
+
+  const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
+  const naming = (datasetId: string): string =>
+    labelOf.get(datasetId) ?? messagesFor(locale).admin.editor.unpinnedDataset
+  const datasetHref = (datasetId: string): string =>
+    href(locale, adminDraftDatasetPath(researchId, draftId, datasetId))
+
+  const taken = preview.datasetLabels.flatMap((row) => row.label === null ? [] : [row.label])
+
+  return {
+    locale,
+    researchId,
+    draftId,
+    humLabel: preview.humLabel,
+    revision: preview.revision,
+    nextNumber: preview.nextNumber,
+    fixNumber: preview.fixes?.number ?? null,
+    staleAgainst: preview.stale?.number ?? null,
+    today: new Date().toISOString().slice(0, 10),
+    blocks: preview.gate.blocks.map((block) => ({
+      kind: block.kind,
+      datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,
+      label: null,
+      suggestion: block.kind === "dataset-id-missing" && preview.humLabel !== null
+        ? proposeDatasetId(preview.humLabel, taken)
+        : null,
+    })),
+    groups: groupFindings(preview.gate.findings, locale, {
+      researchHref: href(locale, adminDraftPath(researchId, draftId)),
+      datasetHref,
+      naming,
+    }),
+    findingCount: preview.gate.findings.length,
+    researchFields: preview.researchFields,
+    datasetChanges: preview.datasetChanges.map((change) => ({
+      ...change,
+      label: labelOf.get(change.datasetId) ?? null,
+      href: datasetHref(change.datasetId),
+    })),
+    listingAdded: preview.listingAdded.map(naming),
+    listingRemoved: preview.listingRemoved.map(naming),
+  }
+}
+
+/**
+ * The findings, gathered by kind and then by the screen that can deal with
+ * them. A gate that listed twelve unsettled values one line each would be a
+ * list nobody reads; what is wanted is which screens to open.
+ */
+function groupFindings(
+  findings: readonly GateFinding[],
+  locale: Locale,
+  into: {
+    researchHref: string
+    datasetHref: (datasetId: string) => string
+    naming: (datasetId: string) => string
+  },
+): PublishGroupView[] {
+  const t = messagesFor(locale).admin.publish
+  const groups = new Map<GateFindingKind, Map<string, PublishPlaceView>>()
+
+  const place = (kind: GateFindingKind, key: string, view: () => PublishPlaceView): void => {
+    const held = groups.get(kind) ?? new Map<string, PublishPlaceView>()
+    groups.set(kind, held)
+    const found = held.get(key)
+    if (found === undefined) held.set(key, view())
+    else found.count += 1
+  }
+
+  for (const finding of findings) {
+    if (finding.kind === "unsettled" || finding.kind === "untranslated") {
+      const subject = finding.subject
+      const key = subject.kind === "research" ? "research" : subject.datasetId
+      place(finding.kind, key, () => ({
+        label: subject.kind === "research" ? t.research : into.naming(subject.datasetId),
+        href: subject.kind === "research" ? into.researchHref : into.datasetHref(subject.datasetId),
+        count: 1,
+        note: null,
+      }))
+      continue
+    }
+    if (finding.kind === "upstream-edited") {
+      place(finding.kind, finding.datasetId, () => ({
+        label: into.naming(finding.datasetId),
+        href: into.datasetHref(finding.datasetId),
+        count: 1,
+        note: t.overwrites(finding.theirs, finding.both),
+      }))
+      continue
+    }
+    if (finding.kind === "pin-disagrees-upstream") {
+      place(finding.kind, finding.datasetId, () => ({
+        label: finding.label,
+        href: null,
+        count: 1,
+        note: t.upstreamSays(finding.upstreamHumLabel),
+      }))
+      continue
+    }
+    if (finding.kind === "pin-unknown-upstream") {
+      place(finding.kind, finding.datasetId, () => ({
+        label: finding.label,
+        href: null,
+        count: 1,
+        note: null,
+      }))
+      continue
+    }
+    place(finding.kind, finding.datasetId, () => ({
+      label: into.naming(finding.datasetId),
+      href: finding.kind === "empty-dataset" ? into.datasetHref(finding.datasetId) : null,
+      count: 1,
+      note: null,
+    }))
+  }
+
+  return GATE_FINDING_KINDS.flatMap((kind) => {
+    const held = groups.get(kind)
+    if (held === undefined) return []
+    const places = [...held.values()]
+    return [{ kind, count: places.reduce((total, row) => total + row.count, 0), places }]
+  })
+}
+
+export type PublishResult
+  = | { status: "blocked" }
+    | { status: "unacknowledged" }
+    | { status: "conflict" }
+    | { status: "no-parent" }
+    /** A pin was refused because the label already names something. */
+    | { status: "taken" }
+
+/**
+ * Publishing, and pinning the labels that stop it. The pin is here because the
+ * screen is where the missing label is noticed, and because a publish that
+ * cannot proceed for want of one is not worth a detour.
+ */
+export async function publishAction(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<Response | PublishResult> {
+  const { db, actor, researchId, draftId } = await draftOf(request, params)
+
+  const form = await request.formData()
+  const intent = form.get("intent")
+
+  if (intent === "pin") {
+    await requireCapability(request, "manage-labels")
+    const kind = form.get("kind")
+    if (kind !== "hum" && kind !== "dataset") badRequest()
+    const label = form.get("label")
+    if (typeof label !== "string") badRequest()
+    const subjectId = kind === "hum" ? researchId : identity(readString(form, "datasetId"))
+
+    const outcome = await pinLabel(db, { kind, label, subjectId, isPrimary: true }, actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    if (outcome.status === "taken") return { status: "taken" }
+    return redirect(href(locale, adminDraftPublishPath(researchId, draftId)))
+  }
+
+  if (intent !== "publish") badRequest()
+  await requireCapability(request, "publish")
+
+  const revision = Number(form.get("revision"))
+  if (!Number.isInteger(revision)) badRequest()
+  const asFix = form.get("mode") === "fix"
+  const releaseDate = readString(form, "releaseDate") ?? ""
+  if (!asFix && !RELEASE_DATE.test(releaseDate)) badRequest()
+
+  const outcome = await publishDraft(db, {
+    at: { draftId, revision },
+    mode: asFix ? { kind: "fix" } : { kind: "version", releaseDate },
+    acknowledged: form.get("acknowledged") === "on",
+  }, actorOf(actor))
+
+  if (outcome.status === "published") return redirect(href(locale, adminResearchPath(researchId)))
+  if (outcome.status === "gone") notFound()
+  if (outcome.status === "blocked") return { status: "blocked" }
+  if (outcome.status === "unacknowledged") return { status: "unacknowledged" }
+  return { status: outcome.status }
+}
+
+const RELEASE_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+function readString(form: FormData, name: string): string | undefined {
+  const value = form.get(name)
+  return typeof value === "string" ? value : undefined
 }
 
 export type SaveResult

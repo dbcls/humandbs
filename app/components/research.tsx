@@ -85,6 +85,9 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
         </Section>
 
         <Section title={t.datasets}>
+          {!view.isLatest && (
+            <p className="mb-2 text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
+          )}
           {view.datasets.length === 0
             ? <Empty>{t.noDatasets}</Empty>
             : (

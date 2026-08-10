@@ -1,7 +1,7 @@
 # 認証と認可
 
 誰がサインインでき、何を許され、その状態がどこにあるか。何ができるかを使う側の話は
-[editing.md](editing.md) にある。
+[editing.md](editing.md) と [publishing.md](publishing.md) にある。
 
 ## 誰が何をできるか
 

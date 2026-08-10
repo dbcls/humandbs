@@ -486,37 +486,58 @@ export async function touchPresence(
     })
 }
 
+export type ConsumeOutcome
+  = | { status: "consumed", researchId: string }
+    | { status: "conflict" }
+    | { status: "gone" }
+
 /**
- * Throwing a draft away, with everything that hung off it — the changed dataset
- * entries, the undo stack, the comments, the share link, and any dataset
- * identity the draft itself introduced, all by cascade. A draft is not history,
- * so there is nowhere for any of it to go.
+ * Taking the draft away, with everything that hung off it — the changed dataset
+ * entries, the undo stack, the presence rows, the comments, the share link, and
+ * any dataset identity the draft introduced and nothing has adopted, all by
+ * cascade. A draft is not history, so there is nowhere for any of it to go.
  *
- * The revision is checked here too. Discarding cannot be undone, so a draft
- * somebody has edited since the screen was opened is worth stopping at.
+ * **Both discarding and publishing end here**, which is why it takes a
+ * transaction rather than opening one: publishing has a good deal to write
+ * first, and the whole of it has to fall together if the revision has moved.
+ * A publish adopts what it is publishing by clearing `originDraftId` before
+ * calling this; a dataset the draft made and left off the version is not
+ * adopted, and goes with the draft.
+ *
+ * The revision is checked here for the same reason it is checked on a save:
+ * neither operation can be undone, and a draft somebody has edited since the
+ * screen was opened is worth stopping at.
  */
+export async function consumeDraft(
+  db: Transaction,
+  at: DraftAt,
+): Promise<ConsumeOutcome> {
+  const rows = await db
+    .delete(researchDraft)
+    .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+    .returning({ researchId: researchDraft.researchId })
+
+  const row = rows[0]
+  if (row !== undefined) return { status: "consumed", researchId: row.researchId }
+  return { status: await draftExists(db, at.draftId) ? "conflict" : "gone" }
+}
+
+/** Throwing a draft away, leaving only the record that it was thrown away. */
 export async function discardDraft(
   db: Database,
   at: DraftAt,
   actor: EventActor,
 ): Promise<DiscardOutcome> {
   return db.transaction(async (tx) => {
-    const rows = await tx
-      .delete(researchDraft)
-      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
-      .returning({ researchId: researchDraft.researchId })
-
-    const row = rows[0]
-    if (row === undefined) {
-      return { status: await draftExists(tx, at.draftId) ? "conflict" : "gone" }
-    }
+    const outcome = await consumeDraft(tx, at)
+    if (outcome.status !== "consumed") return outcome
 
     await recordEvent(tx, {
       actor,
       action: "discard-draft",
       subjectType: "draft",
       subjectId: at.draftId,
-      detail: { researchId: row.researchId },
+      detail: { researchId: outcome.researchId },
     })
     return { status: "discarded" }
   })

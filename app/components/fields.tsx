@@ -329,6 +329,40 @@ export function ConflictBand({ locale, changed }: { locale: Locale, changed: str
   )
 }
 
+/**
+ * The published description has moved since this draft copied it.
+ *
+ * Not the same thing as a refused save, and said differently: nobody's save was
+ * rejected and nothing has to be dealt with before carrying on. What it warns
+ * about is publishing over somebody else's correction — so the fields only they
+ * touched can be taken in one go, and the ones both sides touched are marked
+ * where they are, to be chosen one at a time.
+ */
+export function UpstreamBand({ locale, only, both, onTakeAll }: {
+  locale: Locale
+  only: string[]
+  both: string[]
+  onTakeAll: () => void
+}) {
+  const t = messagesFor(locale).admin.upstream
+  return (
+    <div className="mb-4 rounded-sm border border-accent bg-surface px-4 py-3 text-sm">
+      <p className="font-semibold">{t.heading}</p>
+      <p className="mt-1">{t.body(only.length + both.length)}</p>
+      {only.length > 0 && (
+        <button
+          type="button"
+          onClick={onTakeAll}
+          className="mt-2 cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-xs"
+        >
+          {t.takeAll(only.length)}
+        </button>
+      )}
+      {both.length > 0 && <p className="mt-2 text-ink-muted text-xs">{t.both(both.length)}</p>}
+    </div>
+  )
+}
+
 export function ProblemBand({ locale, problems }: { locale: Locale, problems: FieldProblem[] }) {
   const t = messagesFor(locale).admin.editor
   return (

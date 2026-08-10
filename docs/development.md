@@ -71,7 +71,7 @@ docker compose exec db psql -U humandbs -d humandbs
 ```
 
 **role は 2 つある。** `humandbs` が schema を持ち、`humandbs_app` がアプリと test の繋ぐ先。分けるのは
-event を append-only にするためで (詳細は [editing.md](editing.md) の「証跡」)、その帰結として
+event を append-only にするためで (詳細は [publishing.md](publishing.md) の「証跡」)、その帰結として
 **`humandbs_app` はどのテーブルも TRUNCATE できない**。DB を空にする経路は owner に閉じている。psql は
 owner で入るので、上のコマンドには制限がかからない。
 

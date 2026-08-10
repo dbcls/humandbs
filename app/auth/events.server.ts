@@ -34,13 +34,21 @@ export interface EventEntry {
   detail?: Record<string, unknown>
 }
 
-export async function recordEvent(executor: Executor, entry: EventEntry): Promise<void> {
-  await executor.insert(event).values({
+/**
+ * The identity of the row is returned because one thing points at an event: the
+ * description a publish wrote over is kept beside the publish that did it.
+ */
+export async function recordEvent(executor: Executor, entry: EventEntry): Promise<string> {
+  const rows = await executor.insert(event).values({
     actorSub: entry.actor.sub,
     actorName: entry.actor.name,
     action: entry.action,
     subjectType: entry.subjectType,
     subjectId: entry.subjectId,
     detail: entry.detail ?? {},
-  })
+  }).returning({ id: event.id })
+
+  const row = rows[0]
+  if (row === undefined) throw new Error("the event insert returned no row")
+  return row.id
 }

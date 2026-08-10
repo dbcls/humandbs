@@ -20,6 +20,7 @@ import { useState } from "react"
 import { Link, useFetcher, type SubmitTarget } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
+import { takeAll } from "~/admin/merge"
 import {
   datasetContentInput,
   emptyValueInput,
@@ -52,6 +53,7 @@ import {
   ProblemBand,
   SingleField,
   StateSwitch,
+  UpstreamBand,
   emptySlot,
   moved,
   newId,
@@ -79,6 +81,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const [conflict, setConflict] = useState<
     { theirs: DatasetContentInput, changed: string[] } | null
   >(null)
+  const [upstream, setUpstream] = useState(view.upstream)
   const [problems, setProblems] = useState<FieldProblem[]>([])
   const [saved, setSaved] = useState(false)
   const [sent, setSent] = useState<DatasetContentInput>(view.input)
@@ -136,14 +139,36 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     void fetcher.submit(payload, { method: "post", encType: "application/json" })
   }
 
+  /**
+   * Taking everything only the other publish touched. What both sides touched
+   * is left where it is: each of those is a choice, and the mark beside the
+   * field is where it is made.
+   */
+  function takeUpstream(): void {
+    if (upstream === null) return
+    edit(takeAll(takeDatasetField, input, upstream.theirs, upstream.only))
+    setUpstream({ ...upstream, only: [] })
+  }
+
+  /**
+   * A field can be marked from two directions — a save somebody refused, and a
+   * publish that moved the description this draft copied. The refusal wins when
+   * both apply: it is the more recent of the two.
+   */
   function marksFor(path: string): Marks {
-    const changed = conflict?.changed.includes(path) ?? false
-    const theirs = conflict?.theirs
+    const refused = conflict?.changed.includes(path) ?? false
+    const moved = upstream?.both.includes(path) ?? false
+    const theirs = refused ? conflict?.theirs : moved ? upstream?.theirs : undefined
     return {
-      changed,
-      onTake: changed && theirs !== undefined
-        ? () => { edit(takeDatasetField(input, theirs, path)) }
-        : null,
+      changed: refused || moved,
+      onTake: theirs === undefined
+        ? null
+        : () => {
+            edit(takeDatasetField(input, theirs, path))
+            if (!refused && upstream !== null) {
+              setUpstream({ ...upstream, both: upstream.both.filter((held) => held !== path) })
+            }
+          },
       problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),
     }
   }
@@ -207,6 +232,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       </div>
 
       {conflict !== null && <ConflictBand locale={locale} changed={conflict.changed} />}
+      {upstream !== null && (upstream.only.length > 0 || upstream.both.length > 0) && (
+        <UpstreamBand
+          locale={locale}
+          only={upstream.only}
+          both={upstream.both}
+          onTakeAll={takeUpstream}
+        />
+      )}
       {problems.length > 0 && <ProblemBand locale={locale} problems={problems} />}
       {missing && (
         <p className="mb-4 rounded-sm border border-line bg-surface px-4 py-2 text-sm">

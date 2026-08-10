@@ -41,6 +41,11 @@ function pages(scope: string) {
       { id: `${scope}-admin-draft` },
     ),
     route(
+      "admin/research/:researchId/draft/:draftId/publish",
+      "routes/admin-draft-publish.tsx",
+      { id: `${scope}-admin-draft-publish` },
+    ),
+    route(
       "admin/research/:researchId/draft/:draftId/dataset",
       "routes/admin-draft-datasets.tsx",
       { id: `${scope}-admin-draft-datasets` },

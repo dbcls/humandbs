@@ -165,6 +165,8 @@ const EMPTY_TITLE: TranslatedText = {
 export interface ResearchDatasetRow {
   id: string
   label: string | null
+  /** The ledger row behind the label, which is what unpinning names. */
+  pinId: string | null
   published: boolean
 }
 
@@ -181,6 +183,7 @@ export async function researchDatasets(
     .select({
       id: dataset.id,
       label: labelPin.label,
+      pinId: labelPin.id,
       published: sql<boolean>`${datasetContent.datasetId} IS NOT NULL`,
     })
     .from(dataset)
@@ -216,7 +219,7 @@ export interface AdminDraftRow {
 
 export interface AdminResearchView {
   researchId: string
-  labels: { label: string, isPrimary: boolean }[]
+  labels: { id: string, label: string, isPrimary: boolean }[]
   versions: AdminVersionRow[]
   drafts: AdminDraftRow[]
   datasets: ResearchDatasetRow[]
@@ -235,7 +238,7 @@ export async function adminResearch(
 
   const [labels, versions, drafts, datasets] = await Promise.all([
     db
-      .select({ label: labelPin.label, isPrimary: labelPin.isPrimary })
+      .select({ id: labelPin.id, label: labelPin.label, isPrimary: labelPin.isPrimary })
       .from(labelPin)
       .where(and(eq(labelPin.kind, "hum"), eq(labelPin.researchId, researchId)))
       .orderBy(desc(labelPin.isPrimary), labelPin.label),
@@ -293,6 +296,7 @@ export interface DraftRecord {
   revision: number
   note: string
   content: ResearchContent
+  parentSnapshotId: string | null
 }
 
 export async function readDraft(db: Executor, draftId: string): Promise<DraftRecord | null> {
@@ -303,6 +307,7 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
       revision: researchDraft.revision,
       note: researchDraft.note,
       content: researchDraft.content,
+      parentSnapshotId: researchDraft.parentSnapshotId,
     })
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
@@ -310,9 +315,42 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
   return row ?? null
 }
 
+/**
+ * What the draft started from and what is published now, when the two have come
+ * apart. Null means nothing moved — either the draft was written from nothing,
+ * or the version it came from is still the one that is out there.
+ */
+export async function upstreamResearch(
+  db: Executor,
+  researchId: string,
+  parentSnapshotId: string | null,
+): Promise<{ base: ResearchContent, theirs: ResearchContent } | null> {
+  if (parentSnapshotId === null) return null
+
+  const [base] = await db
+    .select({ content: contentSnapshot.content })
+    .from(contentSnapshot)
+    .where(eq(contentSnapshot.id, parentSnapshotId))
+    .limit(1)
+  if (base === undefined) return null
+
+  const [latest] = await db
+    .select({ snapshotId: researchVersion.snapshotId, content: contentSnapshot.content })
+    .from(researchVersion)
+    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
+    .where(and(eq(researchVersion.researchId, researchId), eq(researchVersion.published, true)))
+    .orderBy(desc(researchVersion.number))
+    .limit(1)
+  if (latest === undefined || latest.snapshotId === parentSnapshotId) return null
+
+  return { base: base.content, theirs: latest.content }
+}
+
 export interface DatasetEntryRecord {
   revision: number
   content: DatasetContent
+  /** The published description when editing began; null for a dataset the draft made. */
+  baseContent: DatasetContent | null
 }
 
 /**
@@ -326,7 +364,11 @@ export async function readDatasetEntry(
   datasetId: string,
 ): Promise<DatasetEntryRecord | null> {
   const [row] = await db
-    .select({ revision: draftDatasetEntry.revision, content: draftDatasetEntry.content })
+    .select({
+      revision: draftDatasetEntry.revision,
+      content: draftDatasetEntry.content,
+      baseContent: draftDatasetEntry.baseContent,
+    })
     .from(draftDatasetEntry)
     .where(and(
       eq(draftDatasetEntry.draftId, draftId),

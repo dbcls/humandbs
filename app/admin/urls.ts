@@ -29,6 +29,11 @@ export function adminDraftDatasetsPath(researchId: string, draftId: string): str
   return `${adminDraftPath(researchId, draftId)}/dataset`
 }
 
+/** Where a draft is looked over one last time and turned into a version. */
+export function adminDraftPublishPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/publish`
+}
+
 export function adminDraftDatasetPath(
   researchId: string,
   draftId: string,

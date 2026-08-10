@@ -257,3 +257,66 @@ describe("rebuildSearchDocs", () => {
     expect(second).toEqual(first)
   })
 })
+
+/**
+ * A publish moves one research, and rebuilding everything for it would rewrite
+ * thousands of rows nothing touched. The scope has to reach everything that
+ * research owns and nothing that it does not — which holds because a dataset
+ * belongs to exactly one research, and so do its versions and its labels.
+ */
+describe("rebuilding one research", () => {
+  it("leaves every other research's rows exactly as they were", async () => {
+    const mine = await createResearch("hum0001")
+    await publish(mine, 1, [await createDataset(mine, "JGAD000001")])
+    const other = await createResearch("hum0002")
+    await publish(other, 1, [await createDataset(other, "JGAD000002")])
+    await rebuildSearchDocs(db)
+    const before = (await docs()).filter((row) => row.humLabel === "hum0002")
+
+    const counts = await rebuildSearchDocs(db, { researchIds: [mine] })
+
+    expect(counts).toMatchObject({ research: 1, researchVersions: 1, datasets: 1 })
+    expect((await docs()).filter((row) => row.humLabel === "hum0002")).toEqual(before)
+    expect(await docs()).toHaveLength(6)
+  })
+
+  it("derives the same rows the whole rebuild would", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [await createDataset(researchId, "JGAD000001")])
+    await rebuildSearchDocs(db)
+    const whole = await docs()
+
+    await rebuildSearchDocs(db, { researchIds: [researchId] })
+
+    expect(await docs()).toEqual(whole)
+  })
+
+  it("takes away the rows of a research that no longer has anything published", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [await createDataset(researchId, "JGAD000001")])
+    await rebuildSearchDocs(db)
+
+    await db.update(s.researchVersion).set({ published: false })
+    await rebuildSearchDocs(db, { researchIds: [researchId] })
+
+    expect(await docs()).toEqual([])
+  })
+
+  it("does nothing at all when asked for no research", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    const before = await docs()
+
+    const counts = await rebuildSearchDocs(db, { researchIds: [] })
+
+    expect(counts).toEqual({
+      research: 0,
+      researchVersions: 0,
+      datasets: 0,
+      facetTerms: 0,
+      facetNumbers: 0,
+    })
+    expect(await docs()).toEqual(before)
+  })
+})

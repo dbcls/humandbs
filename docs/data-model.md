@@ -78,10 +78,15 @@ label が変わっても参照が壊れない。
 secondary を合わせて台帳で一意で、上の規則はどちらにも同じく適用される。旧 id への外部参照を解決し
 続けるための仕組み。primary が identity ごとに 1 つであることは部分 unique index が守る。
 
-台帳に載る時期は 2 系統で違う。**hum ラベルは research identity に付き、draft 段階でも台帳を占有する**
-(research は draft の親なので、draft が何本あっても hum は 1 つ)。**dataset id が台帳に載るのは公開時**で、
-draft が新規に追加した dataset の identity は draft と運命を共にする。同じ accession の dataset を
-2 つの draft が別々に追加した場合、公開の時点で既存の identity があればそちらに寄せる。
+**どちらの系統も pin した時点で台帳に載る。公開を待たない。** hum ラベルは research identity に付く
+(research は draft の親なので、draft が何本あっても hum は 1 つ)。dataset id は dataset identity に付き、
+draft が新規に追加した dataset は identity ごと draft と運命を共にするので、draft を破棄すればその pin も
+消えて accession は再び使える。同じ accession を 2 つの draft が pin しようとしたら 2 つ目が弾かれる —
+台帳の一意性がそのまま収束を強制するので、公開時に identity を寄せる処理は持たない。
+
+公開時に載せる形は採れない。公開を止める検査が「その版が持つ全 dataset に dataset id が pin されて
+いる」を台帳に問うので ([publishing.md](publishing.md))、載せる時期を公開時にすると検査の相手が draft 側の
+「予定の id」になり、一意性の検査が 2 箇所に分かれる。
 
 ## research / experiment / dataset
 
@@ -105,6 +110,11 @@ Research (identity)                    <- hum label pinned in the ledger
 **dataset は versioning しない。履歴も持たない。** identity と、公開されている content を 1 つ持つ。
 dataset の実体 (アーカイブに登録されたデータ) は不変で、変わるのは記述の訂正・充実・表記統一なので、
 最新が正しい。
+
+**ただし公開が置き換えた dataset content は証跡の側に丸ごと残す** (`replaced_dataset_content`)。履歴では
+ないので番号を持たず、公開版から辿れず、画面にも出ない — 残す理由は、上書きされた記述を復元できる先が
+他に無いことだけ (draft の undo は公開した時点で draft ごと消える)。差分ではなく丸ごとにするのは 1 件が
+平均 8 KB と小さいためで、深さの上限は持たない (積まれる回数はその dataset を含む公開の回数)。
 
 **ContentSnapshot が持つのは dataset identity の順序つき列だけで、experiment の集合も順序も持たない。**
 したがって過去版を開くと、dataset の一覧は当時のもの、各 dataset の記述と experiment の一覧は最新になる。
@@ -138,7 +148,7 @@ composition に従って配下の dataset も消える。
 「その時点の研究の姿」であり、翻訳は同じ姿の別表現なので、言語で割れると版の意味が壊れる。
 
 **片言語が未翻訳のまま公開できる。** 英語版がそもそも存在しない研究が実在するので禁止は採れない。
-代わりに公開ゲートが未翻訳を列挙して確認させる ([editing.md](editing.md))。
+代わりに公開ゲートが未翻訳を列挙して確認させる ([publishing.md](publishing.md))。
 
 **未翻訳は欠損ではなく状態として扱い、値から導出する。** 翻訳対の field で**両方の言語が値を持ち、
 片方だけが空**なら未翻訳。両方空は未入力で、unknown と該当なしはそれぞれ別の状態 (「値の状態」)。
@@ -320,6 +330,10 @@ CAU・ダウンロード一覧・日付は content に無いので、公開表�
   「公開分を作り直す」の結果として消える
 - **全件再作成を常用の手段として持つ。** 検索用の行の作り方を変えたときも、catalog や語彙を触った
   ときも、まるごと作り直す
+- **research 単位でも作り直せる。** 1 つの公開が動かせるものは全部その research の中に閉じる
+  (dataset は 1 つの research に従属し、その版もラベルも同じ research のもの) ので、公開・pin の
+  付け外し・キャッシュの更新はこの単位で足りる。**導出そのものは 1 つの関数**で、範囲が変わるのは
+  どの行を捨ててどの行を読み直すかだけ
 - **語彙値の表示ラベルは焼かない。** catalog を join して引く
 - **ICD10 のロールアップは祖先の id の列で効かせる。** 3 桁を選ぶと配下の 4 桁がヒットする
 

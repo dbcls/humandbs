@@ -55,6 +55,9 @@ describe("writing to a draft", () => {
       "saveDatasetEntry",
       "createDatasetInDraft",
       "deleteDraftDataset",
+      // Taking the draft away. Publishing calls it too, inside its own
+      // transaction, which is how a publish stays inside this rule.
+      "consumeDraft",
       "discardDraft",
     ])
     // The two mutable rows under a draft, each checked against its own.

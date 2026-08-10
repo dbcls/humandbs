@@ -20,9 +20,18 @@
  * A full rebuild is a normal operation rather than a repair. The corpus is a
  * few thousand rows, and rebuilding it is how a change to the derivation, to
  * the catalog, or to a vocabulary reaches the search.
+ *
+ * **A research is also a unit on its own**, and it is the unit a publish uses.
+ * Everything a publish can move stays inside one research: a dataset belongs to
+ * exactly one, the versions its description reaches are that research's, and so
+ * are the labels. Rebuilding everything for one publish would be several
+ * seconds of rewriting rows nothing touched. The derivation is the same
+ * function either way — the scope only decides which rows are dropped and read
+ * back — so the two cannot drift.
  */
 
-import { eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
+import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
 import { publicDatasetContent, publicResearchContent, type CatalogKey } from "~/content/public"
 import type { DatasetContent, ResearchContent, Slot, TranslatedText, ValueSlot } from "~/content/types"
@@ -95,9 +104,33 @@ function valueSlots(content: DatasetContent): ValueSlot[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
 }
 
-export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
+const NOTHING: RebuildCounts = {
+  research: 0,
+  researchVersions: 0,
+  datasets: 0,
+  facetTerms: 0,
+  facetNumbers: 0,
+}
+
+/**
+ * Which research to derive. Omitted means all of them; a list means those and
+ * nothing else, and rows belonging to any other research are left alone.
+ */
+export interface RebuildScope {
+  researchIds: readonly string[]
+}
+
+export async function rebuildSearchDocs(
+  db: Executor,
+  scope?: RebuildScope,
+): Promise<RebuildCounts> {
+  const researchIds = scope?.researchIds
+  if (researchIds?.length === 0) return NOTHING
+  const within = (column: AnyPgColumn) =>
+    researchIds === undefined ? undefined : inArray(column, [...researchIds])
+
   // The facet rows reference this one, and both cascade.
-  await db.delete(searchDoc)
+  await db.delete(searchDoc).where(within(searchDoc.researchId))
 
   const pins = await db
     .select({
@@ -133,7 +166,7 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     })
     .from(researchVersion)
     .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-    .where(eq(researchVersion.published, true))
+    .where(and(eq(researchVersion.published, true), within(researchVersion.researchId)))
 
   const datasets = await db
     .select({
@@ -143,6 +176,7 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
     })
     .from(datasetContent)
     .innerJoin(dataset, eq(dataset.id, datasetContent.datasetId))
+    .where(within(dataset.researchId))
 
   // The archive owns the dates of an accession it issued; the content carries
   // one only for an id the portal issued itself. Resolving it here is what
@@ -232,7 +266,7 @@ export async function rebuildSearchDocs(db: Executor): Promise<RebuildCounts> {
   const datasetDocKeyOf = new Map<string, number>()
   const titleOfResearch = new Map<string, string>()
 
-  const researchRows = await db.select({ id: research.id }).from(research)
+  const researchRows = await db.select({ id: research.id }).from(research).where(within(research.id))
   for (const row of researchRows) {
     const held = versionsByResearch.get(row.id)
     const humLabel = humLabelOf.get(row.id)

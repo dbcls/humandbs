@@ -78,6 +78,9 @@ export function grantStatements(app: Connection, owner: Connection): string[] {
        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${role}`,
     `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${role}`,
     `REVOKE UPDATE, DELETE, TRUNCATE ON event FROM ${role}`,
+    // The description a publish wrote over is part of the same trail, and the
+    // cascade that removes it with its dataset runs as the table owner.
+    `REVOKE UPDATE, DELETE, TRUNCATE ON replaced_dataset_content FROM ${role}`,
   ]
 }
 

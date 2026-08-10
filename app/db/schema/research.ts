@@ -19,6 +19,7 @@ import type {
   ResearchContent,
 } from "~/content/types"
 
+import { event } from "./audit"
 import { createdAt, primaryId, updatedAt } from "./common"
 
 /**
@@ -105,6 +106,30 @@ export const datasetContent = pgTable("dataset_content", {
   content: jsonb().$type<DatasetContent>().notNull(),
   updatedAt: updatedAt(),
 })
+
+/**
+ * The published description a publish operation wrote over.
+ *
+ * A dataset has no versions, so an overwritten description is recoverable from
+ * nowhere: the undo stack shares the draft's fate and is gone the moment the
+ * draft is published. This is part of the trail rather than a history — it
+ * carries no number, no published version points at it, and no screen shows it.
+ *
+ * Whole values rather than diffs, because one is 8 KB on average and restoring
+ * from diffs would mean replaying them in order. Unbounded, because what bounds
+ * it is how often a dataset is part of a publish: the highest number of
+ * published versions any dataset is referenced by is 37.
+ */
+export const replacedDatasetContent = pgTable("replaced_dataset_content", {
+  id: primaryId(),
+  datasetId: uuid().notNull().references(() => dataset.id, { onDelete: "cascade" }),
+  content: jsonb().$type<DatasetContent>().notNull(),
+  /** The publish that replaced it, which is where the actor and the time are. */
+  eventId: uuid().notNull().references(() => event.id),
+  createdAt: createdAt(),
+}, (t) => [
+  index().on(t.datasetId, t.createdAt),
+])
 
 /**
  * An unpublished working copy. Several per research are allowed, which is why

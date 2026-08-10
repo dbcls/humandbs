@@ -63,6 +63,10 @@ JS を実行しないクライアントに届いていない。
 **experiment はここに出さない。** dataset に属するものなので dataset のページで見る。旧記事が
 分子データ節を assay 中心に並べていた順序は復元できないので、再現もしない。
 
+**過去版のページには「データセットの記述は現在のものを表示している」と明記する。** 版が凍結するのは
+research content と dataset の一覧までで、各 dataset の記述は最新になる ([data-model.md](data-model.md) の
+「research / experiment / dataset」)。断らないと、読者は版全体が当時の姿だと読む。
+
 **content にあってこの画面に出さない field がある** — 提供者の ORCID・メールアドレス・所在地。
 content にも JSON API にも残るが、公開ページには描かない。**画面に出す field を決めるのは描画側**で、
 公開表現 (`app/content/public.ts`) はこの判断をしない。落とすことしかしないという公開表現の性質と、

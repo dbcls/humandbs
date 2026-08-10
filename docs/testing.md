@@ -144,7 +144,7 @@ route ごと組んだ状態で回して、その内側の HTTP だけを境界�
 
 - DB を使う 2 階層は 1 つの開発 DB を共有し、各 test が前に空にする。したがって**ファイル並列は切る**
   (`fileParallelism: false`)。空にするのは owner の接続で、アプリが繋ぐ role には TRUNCATE が無い
-  ([editing.md](editing.md) の「証跡」)。**test 本体は必ずアプリの role で回す** — 権限まで含めて
+  ([publishing.md](publishing.md) の「証跡」)。**test 本体は必ずアプリの role で回す** — 権限まで含めて
   本番と同じ条件にするため
 - 直列で 60 秒を超えたら、worker ごとに DB を複製する形に切り替える (`CREATE DATABASE ... TEMPLATE` は
   数十 ms で終わる)

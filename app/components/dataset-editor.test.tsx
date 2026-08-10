@@ -83,6 +83,7 @@ function view(content: DatasetContent = emptyDatasetContent()): DatasetEditorVie
     catalog,
     presence: [],
     undo: [],
+    upstream: null,
   }
 }
 
