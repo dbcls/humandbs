@@ -1,11 +1,13 @@
 import { Link } from "react-router"
 
+import { FacetPanel } from "~/components/facets"
 import { AccessTypeBadge, Page, PageHead, Table, Td, Value } from "~/components/page"
 import {
   ConditionChips,
   InvalidQuery,
   NoResults,
   Pagination,
+  RefinableList,
   SearchForm,
   SortLinks,
 } from "~/components/search"
@@ -25,7 +27,7 @@ import type { Route } from "./+types/dataset-list"
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const locale = readLocale(url.pathname).locale
-  const canonical = canonicalRedirect(url, "dataset", locale)
+  const canonical = await canonicalRedirect(url, "dataset", locale)
   if (canonical !== null) throw canonical
   return datasetListPage({ locale, url })
 }
@@ -60,14 +62,31 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
     <Page>
       <PageHead label={messages.search.datasetList} />
       <div className="rounded-b border border-line border-t-0 px-5 py-5">
-        <SearchForm locale={locale} target="dataset" keyword={view.keyword} query={view.query} />
+        <SearchForm
+          locale={locale}
+          target="dataset"
+          keyword={view.keyword}
+          query={view.query}
+          facet={view.facet}
+          find={view.find}
+        />
         <ConditionChips conditions={view.conditions} locale={locale} />
 
         {view.parseError !== null
           ? <InvalidQuery locale={locale} column={view.parseError.column} />
           : (
-              <>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <RefinableList
+                panel={(
+                  <FacetPanel
+                    locale={locale}
+                    target="dataset"
+                    query={view.query}
+                    sort={view.requestedSort}
+                    panel={view.facets}
+                  />
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-ink-muted text-sm">
                     {view.total === 0
                       ? messages.search.results(0)
@@ -123,7 +142,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
                         />
                       </div>
                     )}
-              </>
+              </RefinableList>
             )}
       </div>
     </Page>

@@ -12,8 +12,8 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 
 | ファイル | 中身 |
 |---|---|
-| [docs/data-model.md](docs/data-model.md) | 何をどう持つか。identity と label、版と pin、公開表現、ファイル、外部キャッシュの不変条件 |
-| [docs/public-pages.md](docs/public-pages.md) | 読者が見る画面。URL 体系、言語の載せ方、各ページに何を出すか、一覧と公開検索 |
+| [docs/data-model.md](docs/data-model.md) | 何をどう持つか。identity と label、版と pin、公開表現、catalog と語彙、検索用の行、ファイル、外部キャッシュ |
+| [docs/public-pages.md](docs/public-pages.md) | 読者が見る画面。URL 体系、言語の載せ方、各ページに何を出すか、一覧と公開検索と絞り込み |
 | [docs/editing.md](docs/editing.md) | 書く側の不変条件。draft、保存の単位、同時編集、巻き戻し、ファイル、レビュー |
 | [docs/publishing.md](docs/publishing.md) | 出す側の不変条件。版と fix、公開ゲート、ラベルの pin、取り下げ、破棄と削除、証跡 |
 | [docs/auth.md](docs/auth.md) | 誰がサインインでき何を許されるか。capability、セッション、最初の admin |

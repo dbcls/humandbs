@@ -37,12 +37,21 @@ import type {
 
 import type { SlotState, TextInput, TextPairInput } from "./form"
 
-/** The editable kinds. The catalog uses these two and nothing else yet. */
-export type ValueKind = "text" | "vocabulary"
+/** The editable kinds. The catalog uses these three and nothing else yet. */
+export type ValueKind = "text" | "vocabulary" | "number"
 
 export type ValueBody
   = | { kind: "text", text: TextPairInput }
     | { kind: "vocabulary", state: SlotState, termIds: string[] }
+    /**
+     * What was typed and the unit it was typed in — not the converted value.
+     * The conversion happens once on the way in (`app/content/units.ts`), and
+     * the editor has to show the author what they wrote rather than what it
+     * became. **An empty box is not a number**: the slot is left out on save,
+     * because a number that is not there has no representation the way an empty
+     * piece of prose does.
+     */
+    | { kind: "number", state: SlotState, value: string, unit: string | null }
 
 export interface ValueInput {
   keyId: string
@@ -99,6 +108,15 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
       return value.termIds.state === "value"
         ? { kind: "vocabulary", state: "value", termIds: [...value.termIds.value] }
         : { kind: "vocabulary", state: value.termIds.state, termIds: [] }
+    case "number":
+      return value.value.state === "value"
+        ? {
+            kind: "number",
+            state: "value",
+            value: String(value.value.value.inputValue),
+            unit: value.value.value.inputUnit,
+          }
+        : { kind: "number", state: value.value.state, value: "", unit: null }
     default:
       throw new UneditableValueKind(keyId, value.kind)
   }
@@ -126,15 +144,24 @@ export function datasetContentInput(content: DatasetContent): DatasetContentInpu
   }
 }
 
-/** An empty slot under a key of the given kind, for adding one to a form. */
-export function emptyValueInput(keyId: string, kind: ValueKind): ValueInput {
-  return kind === "text"
-    ? {
+/**
+ * An empty slot under a key of the given kind, for adding one to a form. A
+ * number starts in the unit its key stores, which is the one an author is most
+ * likely to be reading off a table.
+ */
+export function emptyValueInput(keyId: string, kind: ValueKind, unit?: string | null): ValueInput {
+  switch (kind) {
+    case "text":
+      return {
         keyId,
         value: {
           kind: "text",
           text: { ja: { state: "value", text: "" }, en: { state: "value", text: "" } },
         },
       }
-    : { keyId, value: { kind: "vocabulary", state: "value", termIds: [] } }
+    case "vocabulary":
+      return { keyId, value: { kind: "vocabulary", state: "value", termIds: [] } }
+    case "number":
+      return { keyId, value: { kind: "number", state: "value", value: "", unit: unit ?? null } }
+  }
 }

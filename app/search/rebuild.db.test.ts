@@ -153,10 +153,62 @@ describe("rebuildSearchDocs", () => {
 
     const counts = await rebuildSearchDocs(db)
 
-    expect(counts.facetTerms).toBe(1)
-    const facet = only(await db.select().from(s.searchFacetTerm))
-    expect(facet.termId).toBe(childId)
-    expect(facet.ancestorIds).toEqual([parentId])
+    // One for the dataset and one for the research above it: both listings are
+    // filtered by the same shape of query, so both carry the value.
+    expect(counts.facetTerms).toBe(2)
+    const facets = await db
+      .select({ targetType: s.searchDoc.targetType, termId: s.searchFacetTerm.termId, ancestorIds: s.searchFacetTerm.ancestorIds })
+      .from(s.searchFacetTerm)
+      .innerJoin(s.searchDoc, eq(s.searchDoc.id, s.searchFacetTerm.docId))
+    expect(facets.map((row) => row.targetType).sort()).toEqual(["dataset", "research"])
+    for (const facet of facets) {
+      expect(facet.termId).toBe(childId)
+      expect(facet.ancestorIds).toEqual([parentId])
+    }
+  })
+
+  it("carries the facet values of a dataset into the row of the research it belongs to", async () => {
+    const researchId = await createResearch("hum0001")
+    const { id: setId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: wgs } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "wgs", labelEn: "WGS", source: "portal" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: rna } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "rna-seq", labelEn: "RNA-seq", source: "portal" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId, multiple: true })
+      .returning({ id: s.contentKey.id }))
+
+    const withValue = async (label: string, termIds: string[]) => {
+      const datasetId = await createDataset(researchId, label)
+      await db.update(s.datasetContent).set({
+        content: {
+          ...emptyDatasetContent(),
+          experiments: [{
+            id: "experiment-1",
+            label: filled(label),
+            values: [{ keyId, value: { kind: "vocabulary", termIds: filled(termIds) } }],
+          }],
+        },
+      }).where(eq(s.datasetContent.datasetId, datasetId))
+      return datasetId
+    }
+    // The same term twice below one research is one fact about the research.
+    const first = await withValue("JGAD000001", [wgs])
+    const second = await withValue("JGAD000002", [wgs, rna])
+    await publish(researchId, 1, [first, second])
+
+    await rebuildSearchDocs(db)
+
+    const rows = await db
+      .select({ targetType: s.searchDoc.targetType, termId: s.searchFacetTerm.termId })
+      .from(s.searchFacetTerm)
+      .innerJoin(s.searchDoc, eq(s.searchDoc.id, s.searchFacetTerm.docId))
+    const research = rows.filter((row) => row.targetType === "research")
+    expect(research.map((row) => row.termId).sort()).toEqual([wgs, rna].sort())
   })
 
   it("carries the text of a dataset into the row of the research it belongs to", async () => {
@@ -221,7 +273,7 @@ describe("rebuildSearchDocs", () => {
 
     const counts = await rebuildSearchDocs(db)
 
-    expect(counts.facetTerms).toBe(1)
+    expect(counts.facetTerms).toBe(2)
     const texts = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
     expect(texts.every((row) => !row.textJa.includes("内部メモ"))).toBe(true)
   })

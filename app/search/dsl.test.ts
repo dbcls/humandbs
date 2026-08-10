@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import { parseQuery, serializeQuery, type QueryNode } from "./dsl"
+import { BUILT_IN_ONLY, queryFields } from "./fields"
 
 function ast(input: string): QueryNode | null {
-  const parsed = parseQuery(input)
+  const parsed = parseQuery(input, BUILT_IN_ONLY)
   if (!parsed.ok) throw new Error(`${parsed.error.code} at ${parsed.error.column}`)
   return parsed.ast
 }
 
 function errorOf(input: string) {
-  const parsed = parseQuery(input)
+  const parsed = parseQuery(input, BUILT_IN_ONLY)
   if (parsed.ok) throw new Error("expected the query to be refused")
   return parsed.error
 }
@@ -135,5 +136,47 @@ describe("writing a query out", () => {
 
   it("writes nothing for the empty query", () => {
     expect(serializeQuery(null)).toBe("")
+  })
+})
+
+describe("the fields the catalog adds", () => {
+  const withFacets = queryFields([
+    { code: "platform", keyId: "key-platform", kind: "vocabulary", setId: "set-platform" },
+    { code: "read-length", keyId: "key-read-length", kind: "number", setId: null },
+  ])
+
+  function refused(input: string) {
+    const parsed = parseQuery(input, withFacets)
+    if (parsed.ok) throw new Error("expected the query to be refused")
+    return parsed.error
+  }
+
+  it("accepts a facet only while the catalog names it", () => {
+    const named = parseQuery("platform:hiseq-2500", withFacets)
+    expect(named.ok).toBe(true)
+    // The same query against the built-in fields alone is not a query at all.
+    const unnamed = parseQuery("platform:hiseq-2500", BUILT_IN_ONLY)
+    expect(unnamed.ok).toBe(false)
+    expect(refused("tissue:liver").code).toBe("unknown-field")
+  })
+
+  it("holds a numeric range open at either end", () => {
+    const parsed = parseQuery("read-length:[100 TO *]", withFacets)
+    expect(parsed.ok && parsed.ast).toEqual({
+      op: "field",
+      field: "read-length",
+      valueKind: "range",
+      value: { from: "100", to: "*" },
+    })
+    expect(refused("read-length:[a TO 10]").code).toBe("invalid-number-format")
+  })
+
+  it("refuses to leave a date range open, since the rows cannot answer it", () => {
+    expect(refused("date_published:[2020-01-01 TO *]").code).toBe("invalid-date-format")
+  })
+
+  it("refuses a range or a wildcard on a vocabulary, whose values are a closed set", () => {
+    expect(refused("platform:[a TO b]").code).toBe("invalid-operator-for-field")
+    expect(refused("platform:hiseq*").code).toBe("invalid-operator-for-field")
   })
 })

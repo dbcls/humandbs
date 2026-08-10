@@ -111,11 +111,42 @@ export interface EsResearchVersion {
   relatedPublication?: EsRelatedPublication[] | null
 }
 
+/**
+ * The layer v1 derived from the free text with a language model and kept beside
+ * it. v2 has no such layer: these become values under catalog keys, which is
+ * what makes them facets ([facets.ts](facets.ts)).
+ */
+export interface EsSearchable {
+  policies?: { id?: string | null, name?: EsBilingual | null }[] | null
+  assayType?: string[] | null
+  platforms?: { vendor?: string | null, model?: string | null }[] | null
+  libraryKits?: string[] | null
+  readType?: string | null
+  referenceGenome?: string[] | null
+  readLength?: number | null
+  tissues?: string[] | null
+  diseases?: { label?: string | null, icd10?: string | null }[] | null
+  population?: string[] | null
+  cohorts?: string[] | null
+  cellLine?: string[] | null
+  sex?: string | null
+  ageGroup?: string | null
+  healthStatus?: string | null
+  subjectCount?: number | null
+  subjectCountType?: string | null
+  isTumor?: string | null
+  hasPhenotypeData?: boolean | null
+  fileTypes?: string[] | null
+  processedDataTypes?: string[] | null
+  dataVolumeGb?: number | null
+}
+
 export interface EsExperiment {
   /** Keyed by the English display string, which is what v1 used as key identity. */
   data?: Record<string, EsBilingualRich> | null
   /** The line above the table in the source article; v2's experiment label. */
   header?: EsBilingualRich | null
+  searchable?: EsSearchable | null
 }
 
 export interface EsDataset {

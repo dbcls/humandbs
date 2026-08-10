@@ -24,11 +24,13 @@ import type {
   ContentValue,
   DatasetContent,
   Experiment,
+  NumberValue,
   RichText,
   Slot,
   TranslatedRichText,
   ValueSlot,
 } from "~/content/types"
+import { convert } from "~/content/units"
 
 import type { DatasetContentInput, ValueBody, ValueInput } from "./dataset-form"
 import type { FieldProblem } from "./form.server"
@@ -45,6 +47,12 @@ const valueBodySchema = z.discriminatedUnion("kind", [
     kind: z.literal("vocabulary"),
     state: slotState,
     termIds: z.array(z.uuid()),
+  }),
+  z.object({
+    kind: z.literal("number"),
+    state: slotState,
+    value: z.string(),
+    unit: z.string().nullable(),
   }),
 ])
 
@@ -118,21 +126,62 @@ function prosePair(
   return { ja: side(pair.ja, "ja"), en: side(pair.en, "en") }
 }
 
-function contentValue(body: ValueBody, path: string, problems: FieldProblem[]): ContentValue {
-  if (body.kind === "text") return { kind: "text", text: prosePair(body.text, path, problems) }
-  return {
-    kind: "vocabulary",
-    termIds: body.state === "value"
-      ? { state: "value", value: [...body.termIds] }
-      : { state: body.state },
-  }
+/**
+ * The stored form of a number: converted to the key's unit, with what was typed
+ * kept beside it. Null when there is nothing to store — an empty box, or a unit
+ * the key cannot convert from, which the catalog has already refused.
+ */
+function numberValue(
+  body: Extract<ValueBody, { kind: "number" }>,
+  canonical: string | null,
+): NumberValue | null {
+  const typed = Number(body.value.trim())
+  if (body.value.trim() === "" || !Number.isFinite(typed)) return null
+  const converted = convert(typed, body.unit, canonical)
+  if (converted === null) return null
+  return { value: converted, unit: canonical, inputValue: typed, inputUnit: body.unit }
 }
 
-function valueSlot(input: ValueInput, path: string, problems: FieldProblem[]): ValueSlot {
-  return {
-    keyId: input.keyId,
-    value: contentValue(input.value, `${path}.${input.keyId}`, problems),
+/** The unit a key stores its numbers in, for the keys that store numbers. */
+export type CanonicalUnits = (keyId: string) => string | null
+
+function contentValue(
+  body: ValueBody,
+  keyId: string,
+  path: string,
+  problems: FieldProblem[],
+  units: CanonicalUnits,
+): ContentValue | null {
+  if (body.kind === "text") return { kind: "text", text: prosePair(body.text, path, problems) }
+  if (body.kind === "vocabulary") {
+    return {
+      kind: "vocabulary",
+      termIds: body.state === "value"
+        ? { state: "value", value: [...body.termIds] }
+        : { state: body.state },
+    }
   }
+  if (body.state !== "value") return { kind: "number", value: { state: body.state } }
+  const held = numberValue(body, units(keyId))
+  // An empty box is not a number. There is no "empty number" to store, so the
+  // slot goes rather than becoming a value nobody can read.
+  return held === null ? null : { kind: "number", value: { state: "value", value: held } }
+}
+
+function valueSlot(
+  input: ValueInput,
+  path: string,
+  problems: FieldProblem[],
+  units: CanonicalUnits,
+): ValueSlot[] {
+  const value = contentValue(
+    input.value,
+    input.keyId,
+    `${path}.${input.keyId}`,
+    problems,
+    units,
+  )
+  return value === null ? [] : [{ keyId: input.keyId, value }]
 }
 
 /**
@@ -141,16 +190,19 @@ function valueSlot(input: ValueInput, path: string, problems: FieldProblem[]): V
  * read from the top of the screen down, and one that jumps about makes the
  * author hunt for each of them.
  */
-export function datasetContentOf(input: DatasetContentInput): DatasetContentResult {
+export function datasetContentOf(
+  input: DatasetContentInput,
+  units: CanonicalUnits,
+): DatasetContentResult {
   const problems: FieldProblem[] = []
 
-  const values = input.values.map((value) => valueSlot(value, "values", problems))
+  const values = input.values.flatMap((value) => valueSlot(value, "values", problems, units))
 
   const experiments: Experiment[] = input.experiments.map((experiment) => ({
     id: experiment.id,
     label: textSlot(experiment.label),
-    values: experiment.values.map((value) =>
-      valueSlot(value, `experiments.${experiment.id}.values`, problems)),
+    values: experiment.values.flatMap((value) =>
+      valueSlot(value, `experiments.${experiment.id}.values`, problems, units)),
   }))
 
   const content: DatasetContent = {

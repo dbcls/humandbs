@@ -9,7 +9,7 @@ import { datasetContentOf } from "./dataset-form.server"
 
 /** A content the save path accepted, or nothing when it refused the prose. */
 function through(content: DatasetContent): DatasetContent | null {
-  const result = datasetContentOf(datasetContentInput(content))
+  const result = datasetContentOf(datasetContentInput(content), () => null)
   return result.ok ? result.content : null
 }
 

@@ -14,12 +14,23 @@ import { PageLinks } from "./page"
  * redirect to the address the two make together — so the box works with
  * JavaScript turned off and a result can be shared by copying the address.
  */
-export function SearchForm({ locale, target, keyword, query, size = "normal" }: {
+export function SearchForm({
+  locale,
+  target,
+  keyword,
+  query,
+  facet = null,
+  find = "",
+  size = "normal",
+}: {
   locale: Locale
   target: "research" | "dataset"
   keyword: string
   /** The conditions to keep, written out; the box does not show these. */
   query: string
+  /** Which facet is open, so that searching again does not close it. */
+  facet?: string | null
+  find?: string
   size?: "normal" | "large"
 }) {
   const messages = messagesFor(locale)
@@ -27,6 +38,8 @@ export function SearchForm({ locale, target, keyword, query, size = "normal" }: 
   return (
     <form method="get" action={href(locale, listPath(target))} role="search" className="flex gap-2">
       <input type="hidden" name="q" value={query} />
+      {facet !== null && <input type="hidden" name="facet" value={facet} />}
+      {find !== "" && <input type="hidden" name="find" value={find} />}
       <input
         type="search"
         name="k"
@@ -42,6 +55,26 @@ export function SearchForm({ locale, target, keyword, query, size = "normal" }: 
         {messages.search.submit}
       </button>
     </form>
+  )
+}
+
+/**
+ * The listing beside its refinement panel.
+ *
+ * **The result comes first in the markup and the panel second**, so a narrow
+ * screen and a screen reader both reach what was searched for before the twenty
+ * ways of narrowing it. A wide screen puts the panel back on the left, which is
+ * where a reader of this kind of site looks for it.
+ */
+export function RefinableList({ panel, children }: {
+  panel: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="mt-4 flex flex-col gap-6 md:flex-row">
+      <div className="min-w-0 flex-1">{children}</div>
+      <div className="md:order-first md:w-56 md:shrink-0 lg:w-64">{panel}</div>
+    </div>
   )
 }
 

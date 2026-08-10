@@ -77,6 +77,13 @@ export interface SearchParams {
   q: string
   sort: string | null
   page: number
+  /**
+   * The facet whose values are shown in full, and what its own box holds. They
+   * say what the panel looks like rather than what the search is, which is why
+   * they sit beside the query instead of inside it.
+   */
+  facet?: string | null
+  find?: string | null
 }
 
 /**
@@ -89,6 +96,8 @@ export function searchQuery(params: SearchParams): string {
   if (params.q !== "") search.set("q", params.q)
   if (params.sort !== null) search.set("sort", params.sort)
   if (params.page > 1) search.set("page", String(params.page))
+  if (params.facet != null && params.facet !== "") search.set("facet", params.facet)
+  if (params.find != null && params.find !== "") search.set("find", params.find)
   const written = search.toString()
   return written === "" ? "" : `?${written}`
 }

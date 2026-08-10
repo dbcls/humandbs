@@ -5,6 +5,7 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import { parseQuery, type QueryNode } from "./dsl"
+import { BUILT_IN_ONLY } from "./fields"
 import { countMatches, searchDocs, type SearchTarget, type SortKey } from "./query.server"
 
 /**
@@ -13,7 +14,7 @@ import { countMatches, searchDocs, type SearchTarget, type SortKey } from "./que
 const db = getDb()
 
 function ast(input: string): QueryNode | null {
-  const parsed = parseQuery(input)
+  const parsed = parseQuery(input, BUILT_IN_ONLY)
   if (!parsed.ok) throw new Error(`${parsed.error.code} at ${parsed.error.column}`)
   return parsed.ast
 }
@@ -23,7 +24,7 @@ async function labels(
   target: SearchTarget = "research",
   sort: SortKey = "id",
 ): Promise<string[]> {
-  const result = await searchDocs(db, { target, ast: ast(input), sort, page: 1 })
+  const result = await searchDocs(db, { target, ast: ast(input), fields: BUILT_IN_ONLY, sort, page: 1 })
   return result.hits.map((hit) => hit.datasetLabel ?? hit.humLabel)
 }
 
@@ -130,7 +131,7 @@ describe("running a query against the published set", () => {
 
   it("answers the empty query with everything published", async () => {
     expect(await labels("")).toEqual(["hum0001", "hum0002", "hum0003"])
-    expect(await countMatches(db, { target: "dataset", ast: null })).toBe(3)
+    expect(await countMatches(db, { target: "dataset", ast: null, fields: BUILT_IN_ONLY })).toBe(3)
   })
 })
 
@@ -143,13 +144,13 @@ describe("the order rows come back in", () => {
   })
 
   it("never leaves two rows to swap places, so paging cannot repeat or skip one", async () => {
-    const first = await searchDocs(db, { target: "research", ast: null, sort: "relevance", page: 1 })
-    const again = await searchDocs(db, { target: "research", ast: null, sort: "relevance", page: 1 })
+    const first = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "relevance", page: 1 })
+    const again = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "relevance", page: 1 })
     expect(again.hits.map((hit) => hit.humLabel)).toEqual(first.hits.map((hit) => hit.humLabel))
   })
 
   it("holds a page inside the result rather than answering out of range", async () => {
-    const page = await searchDocs(db, { target: "research", ast: null, sort: "id", page: 99 })
+    const page = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "id", page: 99 })
     expect(page.page).toBe(1)
     expect(page.total).toBe(3)
     expect(page.pageCount).toBe(1)

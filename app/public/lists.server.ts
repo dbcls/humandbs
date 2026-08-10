@@ -25,7 +25,16 @@ import {
 } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { hasFreeText, parseQuery, serializeQuery, type QueryError, type QueryNode } from "~/search/dsl"
+import { loadFacetDefinitions } from "~/search/catalog.server"
+import {
+  hasFreeText,
+  OPEN_BOUND,
+  parseQuery,
+  serializeQuery,
+  type QueryError,
+  type QueryNode,
+} from "~/search/dsl"
+import { queryFields, type QueryFields } from "~/search/fields"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import {
   countMatches,
@@ -35,7 +44,9 @@ import {
   type SearchTarget,
   type SortKey,
 } from "~/search/query.server"
+import { withRange } from "~/search/selection"
 
+import { facetPanel, type FacetPanelView } from "./facets.server"
 import { loadCatalog } from "./queries.server"
 import { href, listPath, searchQuery } from "./urls"
 import {
@@ -67,6 +78,11 @@ interface ListShell {
   query: string
   parseError: QueryError | null
   sort: SortKey
+  /**
+   * What `?sort=` held, which is not the same as the ordering in force: an
+   * ordering nobody asked for is not written into the links the page builds.
+   */
+  requestedSort: string | null
   sortOptions: readonly SortKey[]
   total: number
   page: number
@@ -76,6 +92,10 @@ interface ListShell {
   rangeTo: number
   /** How many the other listing matches, or null when there is no query. */
   otherCount: number | null
+  /** Which facet is opened and what its box holds, for the form to carry on. */
+  facet: string | null
+  find: string
+  facets: FacetPanelView | null
 }
 
 export interface ResearchListView extends ListShell {
@@ -96,26 +116,48 @@ function readPage(value: string | null): number {
 }
 
 /**
- * A search arriving from the box is answered with the address it should have
- * had. Redirecting rather than rendering keeps one search at one address,
- * which is what makes the result shareable.
+ * A submission is answered with the address it should have had.
+ *
+ * **Both forms on the page arrive here**: the keyword box, which carries what
+ * was typed under `k`, and the range inputs of a numeric facet, which carry the
+ * key and the two ends. Neither is a way of asking a question the address
+ * cannot hold — they are turned into the query straight away and redirected to,
+ * so one search has one address and the result can be shared.
  */
-export function canonicalRedirect(
+export async function canonicalRedirect(
   url: URL,
   target: SearchTarget,
   locale: Locale,
-): Response | null {
+): Promise<Response | null> {
   const typed = url.searchParams.get("k")
-  if (typed === null) return null
-  const parsed = parseQuery(url.searchParams.get("q") ?? "")
-  const kept = parsed.ok ? splitKeyword(parsed.ast).conditions : []
-  const ast = joinKeyword(typed, kept)
+  const rangeKey = url.searchParams.get("rangeKey")
+  if (typed === null && rangeKey === null) return null
+
+  const fields = queryFields((await loadFacetDefinitions(getDb())).map((one) => one.field))
+  const parsed = parseQuery(url.searchParams.get("q") ?? "", fields)
+  const held = parsed.ok ? parsed.ast : null
+
+  const ast = typed !== null
+    ? joinKeyword(typed, splitKeyword(held).conditions)
+    : withRange(held, fields, rangeKey ?? "", {
+        from: bound(url.searchParams.get("rangeFrom")),
+        to: bound(url.searchParams.get("rangeTo")),
+      })
+
   const sort = url.searchParams.get("sort")
   return redirect(href(locale, listPath(target) + searchQuery({
     q: serializeQuery(ast),
     sort: isSortKey(sort) ? sort : null,
     page: 1,
+    facet: url.searchParams.get("facet"),
+    find: url.searchParams.get("find"),
   })))
+}
+
+/** An input left blank is an end that is not being asked about. */
+function bound(value: string | null): string {
+  const written = value?.trim() ?? ""
+  return written === "" || !Number.isFinite(Number(written)) ? OPEN_BOUND : written
 }
 
 function describeCondition(node: QueryNode, locale: Locale): string {
@@ -136,6 +178,33 @@ function describeCondition(node: QueryNode, locale: Locale): string {
   return serializeQuery(node)
 }
 
+/**
+ * Whether the panel is what shows this condition. Those are left off the chips
+ * above the result: the panel draws them as chosen values with a way to take
+ * each one off, and saying the same thing twice invites the two to disagree.
+ */
+function shownByPanel(node: QueryNode, fields: QueryFields): boolean {
+  if (node.op === "field") return fields.facet(node.field) !== undefined
+  if (node.op !== "OR") return false
+  return node.rules.every((rule) => rule.op === "field" && fields.facet(rule.field) !== undefined)
+}
+
+/** The chosen values of the panel, each with the link that takes it off. */
+function facetChips(panel: FacetPanelView | null): ConditionChip[] {
+  if (panel === null) return []
+  return panel.categories.flatMap((category) => category.facets.flatMap((facet) => {
+    const range = facet.range
+    if (range !== null && range.clearHref !== null) {
+      const from = range.from === "" ? "" : range.from
+      const to = range.to === "" ? "" : range.to
+      return [{ label: `${facet.label}: ${from} – ${to}`, href: range.clearHref }]
+    }
+    return facet.values
+      .filter((value) => value.selected)
+      .map((value) => ({ label: `${facet.label}: ${value.label}`, href: value.href }))
+  }))
+}
+
 interface Shell {
   shell: ListShell
   hits: SearchHit[]
@@ -147,10 +216,13 @@ async function listShell(
   request: { locale: Locale, url: URL },
 ): Promise<Shell> {
   const db = getDb()
-  const catalog = await loadCatalog(db)
+  const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
+  const fields = queryFields(definitions.map((one) => one.field))
   const locale = request.locale
-  const parsed = parseQuery(request.url.searchParams.get("q") ?? "")
+  const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
   const requestedSort = request.url.searchParams.get("sort")
+  const expanded = request.url.searchParams.get("facet")
+  const find = request.url.searchParams.get("find") ?? ""
   const ast = parsed.ok ? parsed.ast : null
   // Only a full-text match carries a score, so a query made of field
   // conditions alone has nothing to rank by.
@@ -170,6 +242,7 @@ async function listShell(
     query: serializeQuery(ast),
     parseError: parsed.ok ? null : parsed.error,
     sort,
+    requestedSort: isSortKey(requestedSort) ? requestedSort : null,
     sortOptions,
     total: 0,
     page: 1,
@@ -177,33 +250,56 @@ async function listShell(
     rangeFrom: 0,
     rangeTo: 0,
     otherCount: null,
+    facet: expanded,
+    find,
+    facets: null,
   }
   if (!parsed.ok) return { shell: empty, hits: [], catalog }
 
   const split = splitKeyword(ast)
   const other: SearchTarget = target === "research" ? "dataset" : "research"
-  const [result, otherCount] = await Promise.all([
-    searchDocs(db, { target, ast, sort, page: readPage(request.url.searchParams.get("page")) }),
-    ast === null ? Promise.resolve(null) : countMatches(db, { target: other, ast }),
+  const [result, otherCount, panel] = await Promise.all([
+    searchDocs(db, {
+      target,
+      ast,
+      fields,
+      sort,
+      page: readPage(request.url.searchParams.get("page")),
+    }),
+    ast === null ? Promise.resolve(null) : countMatches(db, { target: other, ast, fields }),
+    facetPanel(db, {
+      target,
+      ast,
+      fields,
+      definitions,
+      locale,
+      sort: isSortKey(requestedSort) ? requestedSort : null,
+      expanded,
+      find,
+    }),
   ])
 
-  const conditions = split.conditions.map((condition, at): ConditionChip => {
+  const conditions = split.conditions.flatMap((condition, at): ConditionChip[] => {
+    if (shownByPanel(condition, fields)) return []
     const rest = split.conditions.filter((_, index) => index !== at)
-    return {
+    return [{
       label: describeCondition(condition, locale),
       href: href(locale, listPath(target) + searchQuery({
         q: serializeQuery(joinKeyword(split.keyword, rest)),
         sort: isSortKey(requestedSort) ? requestedSort : null,
         page: 1,
+        facet: expanded,
+        find,
       })),
-    }
+    }]
   })
 
   return {
     shell: {
       ...empty,
       keyword: split.keyword,
-      conditions,
+      conditions: [...conditions, ...facetChips(panel)],
+      facets: panel,
       total: result.total,
       page: result.page,
       pageCount: result.pageCount,

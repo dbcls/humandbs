@@ -23,12 +23,12 @@ function build(rv: EsResearchVersion, datasetIdByLabel = new Map<string, string>
 const KEY_IDS = new Map([
   ["access-criteria", "key-criteria"],
   ["type-of-data", "key-type"],
-  ["platform", "key-platform"],
+  ["materials-and-participants", "key-materials"],
 ])
-const CODE_BY_SOURCE = new Map([["Platform", "platform"]])
+const CODE_BY_SOURCE = new Map([["Materials and Participants", "materials-and-participants"]])
 const TERM_IDS = new Map([
-  ["unrestricted-access", "term-unrestricted"],
-  ["controlled-access-type-1", "term-type-1"],
+  ["access-criteria/unrestricted-access", "term-unrestricted"],
+  ["access-criteria/controlled-access-type-1", "term-type-1"],
 ])
 
 function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: string | null = "2020-01-01") {
@@ -42,7 +42,7 @@ function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: s
     dataset: published,
     keyIdByCode: KEY_IDS,
     codeBySourceKey: CODE_BY_SOURCE,
-    termIdByCode: TERM_IDS,
+    termIdBySetAndCode: TERM_IDS,
     accessCriteriaKeyCode: "access-criteria",
     typeOfDataKeyCode: "type-of-data",
   })
@@ -169,13 +169,13 @@ describe("buildDatasetContent", () => {
 
   it("maps an experiment value onto the catalog key it belongs to", () => {
     const content = dataset({
-      experiments: [{ data: { Platform: { ja: { text: "Illumina" }, en: { text: "Illumina" } } } }],
+      experiments: [{ data: { "Materials and Participants": { ja: { text: "3 名" }, en: { text: "3 people" } } } }],
     })
     expect(first(content.experiments).values).toEqual([{
-      keyId: "key-platform",
+      keyId: "key-materials",
       value: {
         kind: "text",
-        text: { ja: filled([[{ text: "Illumina" }]]), en: filled([[{ text: "Illumina" }]]) },
+        text: { ja: filled([[{ text: "3 名" }]]), en: filled([[{ text: "3 people" }]]) },
       },
     }])
   })
@@ -186,7 +186,7 @@ describe("buildDatasetContent", () => {
   })
 
   it("drops a value that is empty in both languages", () => {
-    const content = dataset({ experiments: [{ data: { Platform: { ja: { text: "" } } } }] })
+    const content = dataset({ experiments: [{ data: { "Materials and Participants": { ja: { text: "" } } } }] })
     expect(first(content.experiments).values).toEqual([])
   })
 

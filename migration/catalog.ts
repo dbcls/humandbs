@@ -7,12 +7,16 @@
  * catalog carried over unchanged — it is hand-written knowledge, not something
  * derivable from the data.
  *
- * Only the access criteria is typed as a vocabulary. Deciding the type of every
- * other key means choosing which of them become facets and how their free text
- * is parsed into terms and numbers, which is work for the real migration.
+ * **A key's type is what makes it a facet**, so the typed keys are where the
+ * facets come from ([facets.ts](facets.ts)). Everything else stays free text:
+ * deciding what the rest ought to become means choosing how their prose is read
+ * into terms and numbers, which is work for the real migration.
  */
 
 import catalogDefaults from "./content-keys.json"
+import { NUMBER_FACETS, RETYPED_CODES, slugify, takesMany, VOCABULARY_FACETS } from "./facets"
+
+export { FACET_CATEGORIES, slugify } from "./facets"
 
 export interface ContentKeySeed {
   code: string
@@ -21,8 +25,11 @@ export interface ContentKeySeed {
   labelJa: string
   labelEn: string
   position: number
-  vocabularySetCode?: string
-  facetCategoryCode?: string
+  vocabularySetCode: string | null
+  facetCategoryCode: string | null
+  multiple: boolean
+  canonicalUnit: string | null
+  inputUnits: string[] | null
   showOnPublicPage: boolean
 }
 
@@ -30,10 +37,6 @@ export const ACCESS_CRITERIA_SET = "access-criteria"
 export const ACCESS_CRITERIA_KEY = "access-criteria"
 export const TYPE_OF_DATA_KEY = "type-of-data"
 export const BASIC_INFO_CATEGORY = "basic-info"
-
-export const FACET_CATEGORIES = [
-  { code: BASIC_INFO_CATEGORY, labelJa: "基本情報", labelEn: "Basic information", position: 0 },
-]
 
 /**
  * The three values `criteria` takes across every published dataset. The
@@ -48,8 +51,24 @@ export const ACCESS_CRITERIA_TERMS = [
 
 const defaults = catalogDefaults as [string, string][]
 
-export function slugify(value: string): string {
-  return value.replace(/[^0-9A-Za-z]+/g, "-").replace(/^-|-$/g, "").toLowerCase()
+/** What a key carries when nothing about it is a facet. */
+function freeText(seed: {
+  code: string
+  scope: "dataset" | "experiment"
+  labelJa: string
+  labelEn: string
+  position: number
+  showOnPublicPage: boolean
+}): ContentKeySeed {
+  return {
+    ...seed,
+    valueType: "text",
+    vocabularySetCode: null,
+    facetCategoryCode: null,
+    multiple: false,
+    canonicalUnit: null,
+    inputUnits: null,
+  }
 }
 
 /**
@@ -66,42 +85,107 @@ export function slugify(value: string): string {
  */
 export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Map<string, string> } {
   const codeBySourceKey = new Map<string, string>()
+  const vocabularyByCode = new Map(VOCABULARY_FACETS.map((facet) => [facet.code, facet]))
+  const numberByCode = new Map(NUMBER_FACETS.map((facet) => [facet.code, facet]))
+
   const keys: ContentKeySeed[] = [
     {
-      code: ACCESS_CRITERIA_KEY,
-      scope: "dataset",
+      ...freeText({
+        code: ACCESS_CRITERIA_KEY,
+        scope: "dataset",
+        labelJa: "アクセス制限",
+        labelEn: "Access type",
+        position: 0,
+        showOnPublicPage: true,
+      }),
       valueType: "vocabulary",
-      labelJa: "アクセス制限",
-      labelEn: "Access type",
-      position: 0,
       vocabularySetCode: ACCESS_CRITERIA_SET,
       facetCategoryCode: BASIC_INFO_CATEGORY,
-      showOnPublicPage: true,
     },
-    {
+    freeText({
       code: TYPE_OF_DATA_KEY,
       scope: "dataset",
-      valueType: "text",
       labelJa: "データの種類",
       labelEn: "Type of data",
       position: 1,
       showOnPublicPage: true,
-    },
+    }),
   ]
 
   defaults.forEach(([labelEn, labelJa], index) => {
     const code = slugify(labelEn)
     codeBySourceKey.set(labelEn, code)
     codeBySourceKey.set(labelJa, code)
-    keys.push({
+    const base = freeText({
       code,
       scope: "experiment",
-      valueType: "text",
       labelJa,
       labelEn,
       position: index,
+      // A key that was already on the public page stays on it: giving it a type
+      // changes how the value is held, not whether a reader sees it.
       showOnPublicPage: true,
     })
+    const vocabulary = vocabularyByCode.get(code)
+    if (vocabulary !== undefined) {
+      keys.push({
+        ...base,
+        valueType: "vocabulary",
+        vocabularySetCode: vocabulary.setCode,
+        facetCategoryCode: vocabulary.categoryCode,
+        multiple: takesMany(vocabulary),
+      })
+      return
+    }
+    const number = numberByCode.get(code)
+    if (number !== undefined) {
+      keys.push({
+        ...base,
+        valueType: "number",
+        facetCategoryCode: number.categoryCode,
+        canonicalUnit: number.canonicalUnit,
+        inputUnits: number.inputUnits,
+      })
+      return
+    }
+    keys.push(base)
+  })
+
+  // The keys v1 had no place for. They stand beside the free text they were
+  // read out of rather than replacing it, and they are not shown: they exist to
+  // be filtered by.
+  const newKeys = [
+    ...VOCABULARY_FACETS.filter((facet) => !RETYPED_CODES.has(facet.code)).map((facet) => ({
+      ...freeText({
+        code: facet.code,
+        scope: "experiment" as const,
+        labelJa: facet.labelJa,
+        labelEn: facet.labelEn,
+        position: 0,
+        showOnPublicPage: false,
+      }),
+      valueType: "vocabulary" as const,
+      vocabularySetCode: facet.setCode,
+      facetCategoryCode: facet.categoryCode,
+      multiple: takesMany(facet),
+    })),
+    ...NUMBER_FACETS.filter((facet) => !RETYPED_CODES.has(facet.code)).map((facet) => ({
+      ...freeText({
+        code: facet.code,
+        scope: "experiment" as const,
+        labelJa: facet.labelJa,
+        labelEn: facet.labelEn,
+        position: 0,
+        showOnPublicPage: false,
+      }),
+      valueType: "number" as const,
+      facetCategoryCode: facet.categoryCode,
+      canonicalUnit: facet.canonicalUnit,
+      inputUnits: facet.inputUnits,
+    })),
+  ]
+  newKeys.forEach((key, index) => {
+    keys.push({ ...key, position: defaults.length + index })
   })
 
   return { keys, codeBySourceKey }

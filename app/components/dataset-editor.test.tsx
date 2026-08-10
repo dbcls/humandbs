@@ -14,6 +14,7 @@ const TEXT_KEY = "00000000-0000-0000-0000-0000000000a1"
 const VOCAB_KEY = "00000000-0000-0000-0000-0000000000a2"
 const SPARE_KEY = "00000000-0000-0000-0000-0000000000a3"
 const EXPERIMENT_KEY = "00000000-0000-0000-0000-0000000000a4"
+const NUMBER_KEY = "00000000-0000-0000-0000-0000000000a5"
 const SET = "00000000-0000-0000-0000-0000000000b1"
 
 const catalog: EditableCatalog = {
@@ -28,6 +29,8 @@ const catalog: EditableCatalog = {
       position: 0,
       vocabularySetId: null,
       multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
     },
     {
       id: VOCAB_KEY,
@@ -39,6 +42,8 @@ const catalog: EditableCatalog = {
       position: 1,
       vocabularySetId: SET,
       multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
     },
     {
       id: SPARE_KEY,
@@ -50,6 +55,21 @@ const catalog: EditableCatalog = {
       position: 2,
       vocabularySetId: null,
       multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
+    },
+    {
+      id: NUMBER_KEY,
+      code: "data-volume-gb",
+      scope: "dataset",
+      valueType: "number",
+      labelJa: "データ量",
+      labelEn: "Data volume",
+      position: 3,
+      vocabularySetId: null,
+      multiple: false,
+      canonicalUnit: "GB",
+      inputUnits: ["MB", "GB", "TB"],
     },
     {
       id: EXPERIMENT_KEY,
@@ -61,11 +81,27 @@ const catalog: EditableCatalog = {
       position: 0,
       vocabularySetId: null,
       multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
     },
   ],
   terms: [
-    { id: "term-open", setId: SET, labelJa: "非制限公開", labelEn: "Unrestricted", position: 0 },
-    { id: "term-closed", setId: SET, labelJa: "制限公開", labelEn: "Controlled", position: 1 },
+    {
+      id: "term-open",
+      setId: SET,
+      code: "unrestricted",
+      labelJa: "非制限公開",
+      labelEn: "Unrestricted",
+      position: 0,
+    },
+    {
+      id: "term-closed",
+      setId: SET,
+      code: "controlled",
+      labelJa: "制限公開",
+      labelEn: "Controlled",
+      position: 1,
+    },
   ],
 }
 
@@ -121,16 +157,48 @@ describe("the dataset editing form", () => {
     expect(html).not.toContain("アクセス制限</span>")
   })
 
-  it("offers a vocabulary item as a choice between its terms, and none of them", () => {
+  it("shows the terms a vocabulary item holds and searches for the rest", () => {
     const html = render(view({
       ...emptyDatasetContent(),
       values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } }],
     }))
 
     expect(html).toContain("非制限公開")
-    expect(html).toContain("制限公開")
+    // The vocabulary is not listed: a set can hold thousands of terms, so the
+    // unchosen ones are reached by typing rather than by scrolling. The chosen
+    // label contains the unchosen one, so it is counted rather than looked for.
+    expect(html.split("制限公開").length - 1).toBe(1)
+    expect(html).toContain("語彙値をさがす")
+  })
+
+  it("shows nothing chosen as an empty vocabulary item rather than as no item", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled([]) } }],
+    }))
+
+    expect(html).toContain("アクセス制限")
     expect(html).toContain("未選択")
-    expect(html).toContain("type=\"radio\"")
+  })
+
+  it("shows a number as it was typed, beside the unit it was typed in", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          value: {
+            state: "value",
+            value: { value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB" },
+          },
+        },
+      }],
+    }))
+
+    expect(html).toContain("データ量")
+    expect(html).toContain("value=\"1.5\"")
+    expect(html).toContain("<option value=\"TB\" selected=\"\">TB</option>")
   })
 
   it("puts an experiment's items under the experiment rather than the dataset", () => {

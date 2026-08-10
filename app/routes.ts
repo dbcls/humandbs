@@ -39,6 +39,12 @@ function pages(scope: string) {
       { id: `${scope}-preview-dataset` },
     ),
     route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
+    route("admin/catalog", "routes/admin-catalog.tsx", { id: `${scope}-admin-catalog` }),
+    route(
+      "admin/catalog/vocabulary/:code",
+      "routes/admin-catalog-vocabulary.tsx",
+      { id: `${scope}-admin-catalog-vocabulary` },
+    ),
     route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
     route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
     route(

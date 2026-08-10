@@ -38,7 +38,7 @@ import type {
   ValueSlot,
 } from "~/content/types"
 
-import { accessCriteriaTermCode } from "./catalog"
+import { ACCESS_CRITERIA_SET, accessCriteriaTermCode } from "./catalog"
 import type {
   EsBilingual,
   EsBilingualRich,
@@ -48,6 +48,7 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
+import { facetValueSlots, RETYPED_CODES } from "./facets"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
 function held<T>(value: T): Slot<T> {
@@ -172,8 +173,8 @@ export interface DatasetContentInput {
   keyIdByCode: Map<string, string>
   /** The v1 key string of an experiment value to a `content_key.code`. */
   codeBySourceKey: Map<string, string>
-  /** `vocabulary_term.code` to identity, for the access criteria. */
-  termIdByCode: Map<string, string>
+  /** `{set code}/{term code}` to identity. */
+  termIdBySetAndCode: Map<string, string>
   accessCriteriaKeyCode: string
   typeOfDataKeyCode: string
 }
@@ -188,14 +189,14 @@ export function isPortalIssuedId(label: string): boolean {
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
-  const { dataset, keyIdByCode, codeBySourceKey, termIdByCode } = input
+  const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode } = input
   const doc = dataset.doc
 
   const values: ValueSlot[] = []
 
   const criteriaKeyId = keyIdByCode.get(input.accessCriteriaKeyCode)
   const termCode = doc.criteria ? accessCriteriaTermCode(doc.criteria) : null
-  const termId = termCode ? termIdByCode.get(termCode) : undefined
+  const termId = termCode ? termIdBySetAndCode.get(`${ACCESS_CRITERIA_SET}/${termCode}`) : undefined
   if (criteriaKeyId && termId) {
     values.push({
       keyId: criteriaKeyId,
@@ -220,16 +221,22 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   const experiments: Experiment[] = (doc.experiments ?? []).map((e, i) => ({
     id: `experiment-${i + 1}`,
     label: single(e.header?.ja?.text, e.header?.en?.text),
-    values: Object.entries(e.data ?? {}).flatMap(([sourceKey, value]) => {
-      const code = codeBySourceKey.get(sourceKey)
-      if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
-      const keyId = keyIdByCode.get(code)
-      if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
-      const ja = richTextFromMarkdown(value.ja?.text ?? "")
-      const en = richTextFromMarkdown(value.en?.text ?? "")
-      if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
-      return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
-    }),
+    values: [
+      ...Object.entries(e.data ?? {}).flatMap(([sourceKey, value]) => {
+        const code = codeBySourceKey.get(sourceKey)
+        if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
+        const keyId = keyIdByCode.get(code)
+        if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
+        // A key that is a facet now holds the typed value instead of the prose
+        // it was read out of; one key cannot carry both.
+        if (RETYPED_CODES.has(code)) return []
+        const ja = richTextFromMarkdown(value.ja?.text ?? "")
+        const en = richTextFromMarkdown(value.en?.text ?? "")
+        if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
+        return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
+      }),
+      ...facetValueSlots(e.searchable ?? {}, { keyIdByCode, termIdBySetAndCode }),
+    ],
   }))
 
   return {

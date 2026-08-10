@@ -27,6 +27,7 @@ import {
   type DatasetContentInput,
   type ExperimentInput,
   type ValueInput,
+  type ValueKind,
 } from "~/admin/dataset-form"
 import type { SlotState } from "~/admin/form"
 import type { FieldProblem } from "~/admin/form.server"
@@ -65,6 +66,12 @@ import {
   replacing,
   type Marks,
 } from "./fields"
+
+/**
+ * How many candidates the term picker offers at once. A vocabulary can hold
+ * thousands, and a list longer than this is not read — it is typed at again.
+ */
+const PICKER_RESULTS = 20
 
 function keyLabel(key: EditableKey, locale: Locale): string {
   return locale === "ja" ? key.labelJa : key.labelEn
@@ -430,38 +437,52 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
         const key = keyById.get(value.keyId)
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
+        const body = value.value
         return (
           <div key={value.keyId} className="mt-3">
-            {value.value.kind === "text"
-              ? (
-                  <PairField
-                    label={keyLabel(key, locale)}
-                    value={value.value.text}
-                    multiline
-                    marks={marksFor(at)}
-                    locale={locale}
-                    onChange={(text) => {
-                      replace(value.keyId, { keyId: value.keyId, value: { kind: "text", text } })
-                    }}
-                  />
-                )
-              : (
-                  <VocabularyField
-                    label={keyLabel(key, locale)}
-                    locale={locale}
-                    marks={marksFor(at)}
-                    terms={catalog.terms.filter((term) => term.setId === key.vocabularySetId)}
-                    multiple={key.multiple}
-                    state={value.value.state}
-                    termIds={value.value.termIds}
-                    onChange={(state, termIds) => {
-                      replace(value.keyId, {
-                        keyId: value.keyId,
-                        value: { kind: "vocabulary", state, termIds },
-                      })
-                    }}
-                  />
-                )}
+            {body.kind === "text" && (
+              <PairField
+                label={keyLabel(key, locale)}
+                value={body.text}
+                multiline
+                marks={marksFor(at)}
+                locale={locale}
+                onChange={(text) => {
+                  replace(value.keyId, { keyId: value.keyId, value: { kind: "text", text } })
+                }}
+              />
+            )}
+            {body.kind === "vocabulary" && (
+              <VocabularyField
+                label={keyLabel(key, locale)}
+                locale={locale}
+                marks={marksFor(at)}
+                terms={catalog.terms.filter((term) => term.setId === key.vocabularySetId)}
+                multiple={key.multiple}
+                state={body.state}
+                termIds={body.termIds}
+                onChange={(state, termIds) => {
+                  replace(value.keyId, {
+                    keyId: value.keyId,
+                    value: { kind: "vocabulary", state, termIds },
+                  })
+                }}
+              />
+            )}
+            {body.kind === "number" && (
+              <NumberField
+                label={keyLabel(key, locale)}
+                locale={locale}
+                marks={marksFor(at)}
+                units={key.inputUnits ?? []}
+                state={body.state}
+                value={body.value}
+                unit={body.unit}
+                onChange={(next) => {
+                  replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
+                }}
+              />
+            )}
             <div className="mt-1">
               <button
                 type="button"
@@ -479,7 +500,7 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
           locale={locale}
           keys={spare}
           onAdd={(key) => {
-            onChange([...values, emptyValueInput(key.id, key.valueType === "vocabulary" ? "vocabulary" : "text")])
+            onChange([...values, emptyValueInput(key.id, editableKind(key), key.canonicalUnit)])
           }}
         />
       )}
@@ -488,12 +509,18 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
 }
 
 /**
- * Whether the editor has an input control for a key. Only the two kinds the
- * catalog uses are editable; the rest arrive with the layer that gives them a
- * control, an aggregation and a unit.
+ * Whether the editor has an input control for a key, and which. Only the three
+ * kinds the catalog uses are editable; a key of any other type arrives with the
+ * layer that gives it a control, because **a value nobody can see is a value
+ * nobody can keep**.
  */
+function editableKind(key: EditableKey): ValueKind {
+  if (key.valueType === "vocabulary") return "vocabulary"
+  return key.valueType === "number" ? "number" : "text"
+}
+
 function isEditable(key: EditableKey): boolean {
-  return key.valueType === "text" || key.valueType === "vocabulary"
+  return key.valueType === "text" || key.valueType === "vocabulary" || key.valueType === "number"
 }
 
 function AddValue({ locale, keys, onAdd }: {
@@ -534,9 +561,77 @@ function AddValue({ locale, keys, onAdd }: {
 }
 
 /**
+ * A number and the unit it was typed in.
+ *
+ * The unit offered is the catalog's list, and the value is converted to the
+ * key's own unit on the way in (`app/content/units.ts`) — what is kept here is
+ * what the author wrote. **An empty box means the slot is not saved**: there is
+ * no "empty number" the way there is an empty piece of prose, so leaving it
+ * blank is the same as not having added the value at all.
+ */
+function NumberField({ label, locale, marks, units, state, value, unit, onChange }: {
+  label: string
+  locale: Locale
+  marks: Marks
+  units: string[]
+  state: SlotState
+  value: string
+  unit: string | null
+  onChange: (next: { state: SlotState, value: string, unit: string | null }) => void
+}) {
+  const t = messagesFor(locale).admin.datasetEditor
+  const disabled = state !== "value"
+
+  return (
+    <div className="mt-4 first:mt-0">
+      <FieldHead label={label} marks={marks} locale={locale} />
+      <div className="mt-1 flex flex-col gap-2 md:max-w-md">
+        <StateSwitch
+          state={state}
+          onChange={(next) => { onChange({ state: next, value, unit }) }}
+          locale={locale}
+        />
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            step="any"
+            value={value}
+            disabled={disabled}
+            aria-label={label}
+            onChange={(event) => { onChange({ state, value: event.target.value, unit }) }}
+            className="w-40 rounded border border-line bg-surface-input px-2 py-1"
+          />
+          {units.length > 1
+            ? (
+                <select
+                  value={unit ?? ""}
+                  disabled={disabled}
+                  aria-label={t.unit}
+                  onChange={(event) => { onChange({ state, value, unit: event.target.value }) }}
+                  className="rounded border border-line bg-surface-input px-2 py-1"
+                >
+                  {units.map((one) => <option key={one} value={one}>{one}</option>)}
+                </select>
+              )
+            : unit !== null && <span className="text-ink-muted text-sm">{unit}</span>}
+        </div>
+        {!disabled && value.trim() === "" && (
+          <p className="text-ink-muted text-xs">{t.emptyNumber}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
  * A value chosen from a controlled vocabulary. The state sits beside the choice
  * the same way it does beside text: a term that has not been settled is a
  * question, not an absent value.
+ *
+ * **The chosen values are listed and the rest are searched for**, whether the
+ * vocabulary holds three terms or twelve thousand. One shape means the screen
+ * does not change under the author when a vocabulary grows, and a list of every
+ * ICD10 code is not a control anybody can use.
  */
 function VocabularyField({ label, locale, marks, terms, multiple, state, termIds, onChange }: {
   label: string
@@ -549,7 +644,29 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
   onChange: (state: SlotState, termIds: string[]) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
+  const [find, setFind] = useState("")
   const disabled = state !== "value"
+  const byId = new Map(terms.map((term) => [term.id, term]))
+  const chosen = termIds.flatMap((id) => {
+    const term = byId.get(id)
+    return term === undefined ? [] : [term]
+  })
+
+  const needle = find.trim().toLowerCase()
+  const candidates = needle === ""
+    ? []
+    : terms
+        .filter((term) => !termIds.includes(term.id))
+        .filter((term) =>
+          term.code.toLowerCase().includes(needle)
+          || term.labelEn.toLowerCase().includes(needle)
+          || (term.labelJa ?? "").toLowerCase().includes(needle))
+        .slice(0, PICKER_RESULTS)
+
+  const add = (id: string) => {
+    onChange(state, multiple ? [...termIds, id] : [id])
+    setFind("")
+  }
 
   return (
     <div className="mt-4 first:mt-0">
@@ -560,45 +677,51 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
           onChange={(next) => { onChange(next, termIds) }}
           locale={locale}
         />
-        <ul className="flex flex-col gap-1 text-sm">
-          {!multiple && (
-            <li>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={termIds.length === 0}
-                  disabled={disabled}
-                  onChange={() => { onChange(state, []) }}
-                />
-                <span className="text-ink-muted">{t.noTerm}</span>
-              </label>
-            </li>
-          )}
-          {terms.map((term) => (
-            <li key={term.id}>
-              <label className="flex items-center gap-2">
-                <input
-                  type={multiple ? "checkbox" : "radio"}
-                  checked={termIds.includes(term.id)}
-                  disabled={disabled}
-                  onChange={(event) => {
-                    if (!multiple) {
-                      onChange(state, [term.id])
-                      return
-                    }
-                    onChange(
-                      state,
-                      event.target.checked
-                        ? [...termIds, term.id]
-                        : termIds.filter((id) => id !== term.id),
-                    )
-                  }}
-                />
-                {termLabel(term, locale)}
-              </label>
-            </li>
-          ))}
-        </ul>
+        {chosen.length === 0
+          ? <p className="text-ink-muted text-sm">{t.noTerm}</p>
+          : (
+              <ul className="flex flex-wrap gap-2">
+                {chosen.map((term) => (
+                  <li key={term.id}>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => { onChange(state, termIds.filter((id) => id !== term.id)) }}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-brand px-3 py-1 text-sm"
+                    >
+                      {termLabel(term, locale)}
+                      <span aria-hidden="true">×</span>
+                      <span className="sr-only">{t.removeTerm}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+        <input
+          type="search"
+          value={find}
+          disabled={disabled}
+          aria-label={t.findTerm}
+          placeholder={t.findTerm}
+          onChange={(event) => { setFind(event.target.value) }}
+          className="rounded border border-line bg-surface-input px-2 py-1 text-sm"
+        />
+        {candidates.length > 0 && (
+          <ul className="flex flex-col border border-line text-sm">
+            {candidates.map((term) => (
+              <li key={term.id}>
+                <button
+                  type="button"
+                  onClick={() => { add(term.id) }}
+                  className="flex w-full cursor-pointer items-baseline gap-2 px-2 py-1 text-left hover:bg-surface-hover"
+                >
+                  <code className="text-ink-muted text-xs">{term.code}</code>
+                  {termLabel(term, locale)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )

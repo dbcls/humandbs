@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { adminResearchListPath } from "~/admin/urls"
+import { adminCatalogPath, adminResearchListPath } from "~/admin/urls"
 import { requireActor } from "~/auth/actor.server"
 import { Card, Empty, KeyValue, Page, PageHead } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
@@ -47,6 +47,11 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
         {capabilities.includes("view-unpublished") && (
           <Link to={href(locale, adminResearchListPath())} className="text-white">
             {messages.admin.research.heading}
+          </Link>
+        )}
+        {capabilities.includes("manage-catalog") && (
+          <Link to={href(locale, adminCatalogPath())} className="text-white">
+            {messages.admin.catalog.heading}
           </Link>
         )}
       </PageHead>

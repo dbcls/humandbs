@@ -123,8 +123,13 @@ export const contentKey = pgTable("content_key", {
    */
   canonicalUnit: text(),
   inputUnits: text().array(),
+  /**
+   * Which heading the facet sits under in the refinement panel. Its order
+   * inside that heading is `position`, the same order the value has on the
+   * editing form and on the public page: one ordering of the keys, moved by one
+   * control.
+   */
   facetCategoryId: uuid().references(() => facetCategory.id, { onDelete: "set null" }),
-  facetPosition: integer().notNull().default(0),
   /**
    * Structured slots are facets by default and not shown on the public page.
    * Keeping this in the catalog means the decision can be revisited without a

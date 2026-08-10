@@ -50,7 +50,8 @@ import {
   FACET_CATEGORIES,
   TYPE_OF_DATA_KEY,
 } from "./catalog"
-import { loadDump, selectPublishedDatasets, versionNumber } from "./es"
+import { loadDump, selectPublishedDatasets, versionNumber, type PublishedDataset } from "./es"
+import { collectTerms, vocabularySetSeeds } from "./facets"
 
 const CHUNK = 500
 
@@ -59,12 +60,6 @@ function identityOf<Key>(identities: Map<Key, string>, key: Key, what: string): 
   const id = identities.get(key)
   if (id === undefined) throw new Error(`${what} ${String(key)} has no identity`)
   return id
-}
-
-function one<Row>(rows: Row[]): Row {
-  const [row] = rows
-  if (row === undefined) throw new Error("an insert returned no row")
-  return row
 }
 
 async function insertReturning<Row, Key>(
@@ -93,38 +88,90 @@ async function insertChunked<Row>(
   return rows.length
 }
 
-async function seedCatalog(tx: Executor) {
+/**
+ * The catalog, the vocabularies, and every term the dump turns out to use.
+ *
+ * The terms are minted from the data rather than declared, because what a
+ * controlled set ought to hold is a decision and this load is not the place for
+ * it. Roots go in before the terms that roll up into them, so that a child has
+ * an identity to point at — the only vocabulary with a shape at all is ICD10.
+ */
+async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
   const categories = await insertReturning(
     FACET_CATEGORIES,
     (c) => c.code,
     (chunk) => tx.insert(facetCategory).values(chunk).returning({ id: facetCategory.id }),
   )
 
-  const criteriaSet = one(await tx
-    .insert(vocabularySet)
-    .values({
+  const sets = [
+    {
       code: ACCESS_CRITERIA_SET,
       labelJa: "アクセス制限",
       labelEn: "Access criteria",
-      source: "portal",
-    })
-    .returning({ id: vocabularySet.id }))
+      external: false,
+      hierarchical: false,
+    },
+    ...vocabularySetSeeds(),
+  ]
+  const setIdByCode = await insertReturning(
+    sets,
+    (s) => s.code,
+    (chunk) => tx
+      .insert(vocabularySet)
+      .values(chunk.map((s) => ({
+        code: s.code,
+        labelJa: s.labelJa,
+        labelEn: s.labelEn,
+        source: s.external ? ("external" as const) : ("portal" as const),
+        hierarchical: s.hierarchical,
+      })))
+      .returning({ id: vocabularySet.id }),
+  )
+  const sourceOfSet = new Map(sets.map((s) => [s.code, s.external] as const))
 
-  const termIdByCode = await insertReturning(
-    ACCESS_CRITERIA_TERMS,
-    (t) => t.code,
+  const searchables = datasets.flatMap((d) =>
+    (d.doc.experiments ?? []).flatMap((e) => (e.searchable ? [e.searchable] : [])))
+  const terms = [
+    ...ACCESS_CRITERIA_TERMS.map((t) => ({ setCode: ACCESS_CRITERIA_SET, ...t, parentCode: null })),
+    ...[...collectTerms(searchables)].flatMap(([setCode, held]) =>
+      held.map((term) => ({ setCode, ...term }))),
+  ]
+  const termRow = (
+    term: (typeof terms)[number],
+    index: number,
+    parentId: string | null,
+  ) => ({
+    setId: identityOf(setIdByCode, term.setCode, "vocabulary set"),
+    code: term.code,
+    labelJa: term.labelJa,
+    labelEn: term.labelEn,
+    source: sourceOfSet.get(term.setCode) === true ? ("external" as const) : ("portal" as const),
+    position: index,
+    parentId,
+  })
+  const termKey = (term: { setCode: string, code: string }) => `${term.setCode}/${term.code}`
+
+  const rootIds = await insertReturning(
+    terms.filter((term) => term.parentCode === null),
+    termKey,
     (chunk) => tx
       .insert(vocabularyTerm)
-      .values(chunk.map((t, i) => ({
-        setId: criteriaSet.id,
-        code: t.code,
-        labelJa: t.labelJa,
-        labelEn: t.labelEn,
-        source: "portal" as const,
-        position: i,
-      })))
+      .values(chunk.map((term, i) => termRow(term, i, null)))
       .returning({ id: vocabularyTerm.id }),
   )
+  const childIds = await insertReturning(
+    terms.filter((term) => term.parentCode !== null),
+    termKey,
+    (chunk) => tx
+      .insert(vocabularyTerm)
+      .values(chunk.map((term, i) => termRow(
+        term,
+        i,
+        rootIds.get(`${term.setCode}/${term.parentCode ?? ""}`) ?? null,
+      )))
+      .returning({ id: vocabularyTerm.id }),
+  )
+  const termIdBySetAndCode = new Map([...rootIds, ...childIds])
 
   const { keys, codeBySourceKey } = contentKeySeeds()
   const keyIdByCode = await insertReturning(
@@ -139,8 +186,13 @@ async function seedCatalog(tx: Executor) {
         labelJa: k.labelJa,
         labelEn: k.labelEn,
         position: k.position,
-        vocabularySetId: k.vocabularySetCode === undefined ? null : criteriaSet.id,
-        facetCategoryId: k.facetCategoryCode === undefined
+        vocabularySetId: k.vocabularySetCode === null
+          ? null
+          : identityOf(setIdByCode, k.vocabularySetCode, "vocabulary set"),
+        multiple: k.multiple,
+        canonicalUnit: k.canonicalUnit,
+        inputUnits: k.inputUnits,
+        facetCategoryId: k.facetCategoryCode === null
           ? null
           : identityOf(categories, k.facetCategoryCode, "facet category"),
         showOnPublicPage: k.showOnPublicPage,
@@ -148,7 +200,7 @@ async function seedCatalog(tx: Executor) {
       .returning({ id: contentKey.id }),
   )
 
-  return { keyIdByCode, termIdByCode, codeBySourceKey }
+  return { keyIdByCode, termIdBySetAndCode, codeBySourceKey }
 }
 
 /**
@@ -232,7 +284,10 @@ async function load() {
                      document, news, alert CASCADE
     `)
 
-    const { keyIdByCode, termIdByCode, codeBySourceKey } = await seedCatalog(tx)
+    const { keyIdByCode, termIdBySetAndCode, codeBySourceKey } = await seedCatalog(
+      tx,
+      selection.datasets,
+    )
 
     const humIds = [...new Set(dump.publishedVersions.map((v) => v.humId))].sort()
     const researchIdByHum = await insertReturning(
@@ -271,7 +326,7 @@ async function load() {
         dataset: d,
         keyIdByCode,
         codeBySourceKey,
-        termIdByCode,
+        termIdBySetAndCode,
         accessCriteriaKeyCode: ACCESS_CRITERIA_KEY,
         typeOfDataKeyCode: TYPE_OF_DATA_KEY,
       }) satisfies DatasetContent,

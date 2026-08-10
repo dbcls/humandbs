@@ -11,11 +11,12 @@
  * content, so a value the catalog hides and a value nobody has settled cannot
  * be found by searching for it.
  *
- * A research row carries the text of its datasets as well as its own. A dataset
- * belongs to exactly one research, so this duplicates nothing, and it is what
- * makes "find the study whose analysis method mentions this" work in the
- * research list. A version row carries only its datasets' labels: versions are
- * the ledger of what is published rather than something the lists search.
+ * A research row carries the text and the facet values of its datasets as well
+ * as its own. A dataset belongs to exactly one research, so this duplicates
+ * nothing, and it is what makes "find the study whose analysis method mentions
+ * this" work in the research list and what lets both listings be filtered by
+ * one shape of query. A version row carries only its datasets' labels: versions
+ * are the ledger of what is published rather than something the lists search.
  *
  * A full rebuild is a normal operation rather than a repair. The corpus is a
  * few thousand rows, and rebuilding it is how a change to the derivation, to
@@ -102,6 +103,52 @@ function latest(dates: string[]): string | null {
 /** Every value slot a dataset carries, its own and its experiments'. */
 function valueSlots(content: DatasetContent): ValueSlot[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
+}
+
+interface TermFacet {
+  keyId: string
+  termId: string
+  ancestorIds: string[]
+}
+
+interface NumberFacet {
+  keyId: string
+  value: number
+}
+
+/**
+ * The facet values a dataset holds. **They come from the content and not from
+ * the projection**: a key the catalog keeps off the public page is exactly what
+ * a facet is made of, so projecting first would delete the facets that are
+ * meant to exist. Unsettled and not-applicable slots are in neither.
+ *
+ * Each value appears once. A dataset saying the same thing under the same key
+ * in two experiments is one fact about the dataset.
+ */
+function facetValuesOf(
+  content: DatasetContent,
+  ancestorsOf: (id: string) => string[],
+): { terms: TermFacet[], numbers: NumberFacet[] } {
+  const terms = new Map<string, TermFacet>()
+  const numbers = new Map<string, NumberFacet>()
+  for (const slot of valueSlots(content)) {
+    const value = slot.value
+    if (value.kind === "vocabulary" && value.termIds.state === "value") {
+      for (const termId of value.termIds.value) {
+        terms.set(`${slot.keyId}/${termId}`, {
+          keyId: slot.keyId,
+          termId,
+          ancestorIds: ancestorsOf(termId),
+        })
+      }
+    }
+    // The canonical unit is what the facet compares; the entered one is not.
+    if (value.kind === "number" && value.value.state === "value") {
+      const held = value.value.value.value
+      numbers.set(`${slot.keyId}/${held}`, { keyId: slot.keyId, value: held })
+    }
+  }
+  return { terms: [...terms.values()], numbers: [...numbers.values()] }
 }
 
 const NOTHING: RebuildCounts = {
@@ -219,19 +266,14 @@ export async function rebuildSearchDocs(
     for (const id of (version.content).datasetIds) listedDatasetIds.add(id)
   }
 
-  // Datasets first: a research row carries the text of the ones below it.
-  //
-  // The text comes from the projection and the facets come from the content,
-  // and the difference is deliberate. A key the catalog keeps off the public
-  // page is exactly what a facet is made of, so projecting before collecting
-  // them would delete the facets that are meant to exist. Unsettled slots are
-  // left out of both.
+  // Datasets first: a research row carries the text and the facets of the ones
+  // below it. The text is derived from the projection and the facets from the
+  // content (`facetValuesOf`), which is why both are kept here.
   interface DatasetProjection {
     id: string
     researchId: string
     label: string
     content: DatasetContent
-    projected: DatasetContent
     text: SearchText
   }
   const projectedDatasets: DatasetProjection[] = []
@@ -248,7 +290,6 @@ export async function rebuildSearchDocs(
       researchId: row.researchId,
       label,
       content: row.content,
-      projected,
       text,
     })
     const held = datasetTextByResearch.get(row.researchId) ?? []
@@ -264,6 +305,7 @@ export async function rebuildSearchDocs(
   type DocRow = typeof searchDoc.$inferInsert
   const docs: DocRow[] = []
   const datasetDocKeyOf = new Map<string, number>()
+  const researchDocKeyOf = new Map<string, number>()
   const titleOfResearch = new Map<string, string>()
 
   const researchRows = await db.select({ id: research.id }).from(research).where(within(research.id))
@@ -276,6 +318,7 @@ export async function rebuildSearchDocs(
     const title = titleOf(content.title)
     titleOfResearch.set(row.id, title)
     const dates = held.map((v) => v.releaseDate)
+    researchDocKeyOf.set(row.id, docs.length)
     docs.push({
       targetType: "research",
       targetId: row.id,
@@ -341,28 +384,38 @@ export async function rebuildSearchDocs(
     ids.push(...returned.map((r) => r.id))
   }
 
+  // A research carries the facet values of the datasets below it, so that both
+  // listings are filtered and counted by one shape of query. It is a union
+  // rather than a copy: asking a research for two facets asks whether anything
+  // below it has each, not whether one dataset has both.
   const termRows: (typeof searchFacetTerm.$inferInsert)[] = []
   const numberRows: (typeof searchFacetNumber.$inferInsert)[] = []
+  const researchTerms = new Map<string, Map<string, TermFacet>>()
+  const researchNumbers = new Map<string, Map<string, NumberFacet>>()
+  const docIdAt = (at: number | undefined): string | undefined =>
+    at === undefined ? undefined : ids[at]
+
   for (const row of projectedDatasets) {
-    const at = datasetDocKeyOf.get(row.id)
-    if (at === undefined) continue
-    const docId = ids[at]
+    const facets = facetValuesOf(row.content, ancestorsOf)
+    const docId = docIdAt(datasetDocKeyOf.get(row.id))
+    if (docId !== undefined) {
+      for (const term of facets.terms) termRows.push({ docId, ...term })
+      for (const number of facets.numbers) numberRows.push({ docId, ...number })
+    }
+    const terms = researchTerms.get(row.researchId) ?? new Map<string, TermFacet>()
+    for (const term of facets.terms) terms.set(`${term.keyId}/${term.termId}`, term)
+    researchTerms.set(row.researchId, terms)
+    const numbers = researchNumbers.get(row.researchId) ?? new Map<string, NumberFacet>()
+    for (const number of facets.numbers) numbers.set(`${number.keyId}/${number.value}`, number)
+    researchNumbers.set(row.researchId, numbers)
+  }
+
+  for (const [researchId, terms] of researchTerms) {
+    const docId = docIdAt(researchDocKeyOf.get(researchId))
     if (docId === undefined) continue
-    const seen = new Set<string>()
-    for (const slot of valueSlots(row.content)) {
-      const value = slot.value
-      if (value.kind === "vocabulary" && value.termIds.state === "value") {
-        for (const termId of value.termIds.value) {
-          const key = `${slot.keyId}/${termId}`
-          if (seen.has(key)) continue
-          seen.add(key)
-          termRows.push({ docId, keyId: slot.keyId, termId, ancestorIds: ancestorsOf(termId) })
-        }
-      }
-      if (value.kind === "number" && value.value.state === "value") {
-        // The canonical unit is what the facet compares; the entered one is not.
-        numberRows.push({ docId, keyId: slot.keyId, value: value.value.value.value })
-      }
+    for (const term of terms.values()) termRows.push({ docId, ...term })
+    for (const number of researchNumbers.get(researchId)?.values() ?? []) {
+      numberRows.push({ docId, ...number })
     }
   }
 

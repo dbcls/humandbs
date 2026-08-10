@@ -2,6 +2,7 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { parseQuery, serializeQuery, type QueryNode } from "./dsl"
+import { BUILT_IN_ONLY } from "./fields"
 
 /**
  * Values a query can hold. Deliberately hostile: the characters the grammar
@@ -60,7 +61,7 @@ describe("a query and its written form", () => {
   it("is the same query after being written out and read back", () => {
     fc.assert(fc.property(node, (tree) => {
       const written = serializeQuery(tree)
-      const parsed = parseQuery(written)
+      const parsed = parseQuery(written, BUILT_IN_ONLY)
       expect(parsed.ok, `${written} was refused`).toBe(true)
       if (parsed.ok) expect(parsed.ast).toEqual(tree)
     }))
@@ -69,7 +70,7 @@ describe("a query and its written form", () => {
   it("writes the same form however many times it goes round", () => {
     fc.assert(fc.property(node, (tree) => {
       const once = serializeQuery(tree)
-      const parsed = parseQuery(once)
+      const parsed = parseQuery(once, BUILT_IN_ONLY)
       expect(parsed.ok).toBe(true)
       if (parsed.ok) expect(serializeQuery(parsed.ast)).toBe(once)
     }))
@@ -79,7 +80,7 @@ describe("a query and its written form", () => {
 describe("reading anything at all", () => {
   it("either gives a tree or says where it stopped, and never throws", () => {
     fc.assert(fc.property(fc.string(), (input) => {
-      const parsed = parseQuery(input)
+      const parsed = parseQuery(input, BUILT_IN_ONLY)
       if (!parsed.ok) expect(parsed.error.column).toBeGreaterThanOrEqual(1)
     }))
   })

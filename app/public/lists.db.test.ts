@@ -7,6 +7,7 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
+import type { FacetPanelView, FacetView } from "./facets.server"
 import { canonicalRedirect, datasetListPage, researchListPage } from "./lists.server"
 
 /**
@@ -201,8 +202,8 @@ describe("the dataset listing", () => {
 })
 
 describe("a search submitted from the box", () => {
-  it("is answered with the address it should have, so it can be shared", () => {
-    const answer = canonicalRedirect(
+  it("is answered with the address it should have, so it can be shared", async () => {
+    const answer = await canonicalRedirect(
       new URL("http://localhost/research?k=NGS%28Exome%29"),
       "research",
       "ja",
@@ -211,8 +212,8 @@ describe("a search submitted from the box", () => {
     expect(answer?.headers.get("location")).toBe("/research?q=%22NGS%28Exome%29%22")
   })
 
-  it("keeps the conditions the box does not show", () => {
-    const answer = canonicalRedirect(
+  it("keeps the conditions the box does not show", async () => {
+    const answer = await canonicalRedirect(
       new URL("http://localhost/research?k=%E8%A7%A3%E6%9E%90&q=title%3A%E3%82%B2%E3%83%8E%E3%83%A0"),
       "research",
       "ja",
@@ -222,16 +223,254 @@ describe("a search submitted from the box", () => {
     expect(written).toBe("解析 AND title:ゲノム")
   })
 
-  it("is left alone when the box was not used", () => {
-    expect(canonicalRedirect(new URL("http://localhost/research?q=a"), "research", "ja")).toBeNull()
+  it("is left alone when the box was not used", async () => {
+    const answer = await canonicalRedirect(new URL("http://localhost/research?q=a"), "research", "ja")
+    expect(answer).toBeNull()
   })
 
-  it("writes the address of the other language when that is where it came from", () => {
-    const answer = canonicalRedirect(
+  it("turns a range typed into a numeric facet into the address it stands for", async () => {
+    await db.insert(s.contentKey).values({
+      code: "read-length",
+      scope: "experiment",
+      valueType: "number",
+      labelJa: "リード長",
+      labelEn: "Read Length",
+      canonicalUnit: "bp",
+      inputUnits: ["bp"],
+    })
+
+    const answer = await canonicalRedirect(
+      new URL("http://localhost/dataset?rangeKey=read-length&rangeFrom=100&rangeTo="),
+      "dataset",
+      "ja",
+    )
+    // An end left blank is an end that is not being asked about.
+    expect(answer?.headers.get("location")).toBe("/dataset?q=read-length%3A%5B100+TO+*%5D")
+  })
+
+  it("leaves the search alone when the range names something that is not a facet", async () => {
+    const answer = await canonicalRedirect(
+      new URL("http://localhost/dataset?q=cancer&rangeKey=not-a-facet&rangeFrom=1&rangeTo=2"),
+      "dataset",
+      "ja",
+    )
+    expect(answer?.headers.get("location")).toBe("/dataset?q=cancer")
+  })
+
+  it("writes the address of the other language when that is where it came from", async () => {
+    const answer = await canonicalRedirect(
       new URL("http://localhost/en/dataset?k=cancer"),
       "dataset",
       "en",
     )
     expect(answer?.headers.get("location")).toBe("/en/dataset?q=cancer")
+  })
+})
+
+/**
+ * A vocabulary with a shape, a key typed against it, and datasets filed under
+ * its narrow codes. This is what the panel is drawn from end to end.
+ */
+async function withDiseases(): Promise<void> {
+  const { id: setId } = only(await db.insert(s.vocabularySet)
+    .values({
+      code: "icd10",
+      labelJa: "ICD10",
+      labelEn: "ICD10",
+      source: "external",
+      hierarchical: true,
+    })
+    .returning({ id: s.vocabularySet.id }))
+  const { id: category } = only(await db.insert(s.facetCategory)
+    .values({ code: "experiment", labelJa: "実験", labelEn: "Experiment" })
+    .returning({ id: s.facetCategory.id }))
+  const term = async (code: string, parentId?: string) => only(await db.insert(s.vocabularyTerm)
+    .values({ setId, code, labelEn: code, source: "external", parentId })
+    .returning({ id: s.vocabularyTerm.id })).id
+  const lung = await term("C34")
+  const lungUnspecified = await term("C349", lung)
+  const prostate = await term("C61")
+  const { id: keyId } = only(await db.insert(s.contentKey)
+    .values({
+      code: "disease-icd10",
+      scope: "experiment",
+      valueType: "vocabulary",
+      labelJa: "疾患",
+      labelEn: "Disease",
+      vocabularySetId: setId,
+      facetCategoryId: category,
+      multiple: true,
+      showOnPublicPage: false,
+    })
+    .returning({ id: s.contentKey.id }))
+
+  const filed = async (humLabel: string, datasetLabel: string, termId: string) => {
+    const researchId = await createResearch(humLabel)
+    const datasetId = await createDataset(researchId, datasetLabel)
+    await db.update(s.datasetContent).set({
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("WES"),
+          values: [{ keyId, value: { kind: "vocabulary", termIds: filled([termId]) } }],
+        }],
+      },
+    }).where(eq(s.datasetContent.datasetId, datasetId))
+    await publish(researchId, 1, [datasetId], humLabel)
+  }
+  await filed("hum0001", "JGAD000001", lungUnspecified)
+  await filed("hum0002", "JGAD000002", prostate)
+  await rebuildSearchDocs(db)
+}
+
+function facetOf(view: { facets: FacetPanelView | null }, code: string): FacetView {
+  const held = (view.facets?.categories ?? [])
+    .flatMap((category) => category.facets)
+    .find((facet) => facet.code === code)
+  if (held === undefined) throw new Error(`the panel has no ${code}`)
+  return held
+}
+
+describe("refining a listing", () => {
+  it("offers a hierarchical facet at the top of its tree, counted over the result", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset"))
+
+    const disease = facetOf(view, "disease-icd10")
+    expect(disease.values.map((value) => [value.code, value.count]))
+      .toEqual([["C34", 1], ["C61", 1]])
+  })
+
+  it("matches what is filed under a narrower code when a broad one is chosen", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset?q=disease-icd10%3AC34"))
+
+    expect(view.rows.map((row) => row.label)).toEqual(["JGAD000001"])
+    // The chosen value is drawn as chosen, and the address beside it takes it off.
+    const chosen = facetOf(view, "disease-icd10").values.find((value) => value.selected)
+    expect(chosen?.code).toBe("C34")
+    expect(chosen?.href).toBe("/dataset")
+  })
+
+  it("refines the research listing by the values of the datasets below it", async () => {
+    await withDiseases()
+
+    const view = await researchListPage(request("/research?q=disease-icd10%3AC34"))
+
+    expect(view.rows.map((row) => row.humLabel)).toEqual(["hum0001"])
+  })
+
+  it("counts a facet with its own condition lifted, so a second value is reachable", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset?q=disease-icd10%3AC34"))
+
+    // One row matches, and the value that is not chosen still says what it
+    // would add — a count taken under the whole query would be zero and gone.
+    expect(view.total).toBe(1)
+    expect(facetOf(view, "disease-icd10").values.map((value) => [value.code, value.count]))
+      .toEqual([["C34", 1], ["C61", 1]])
+  })
+
+  it("shows what a chosen value is as a chip, and where to take it off", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset?q=disease-icd10%3AC34"))
+
+    expect(view.conditions.map((chip) => chip.label)).toEqual(["疾患: C34"])
+    expect(view.conditions.map((chip) => chip.href)).toEqual(["/dataset"])
+  })
+
+  it("shows what sits under a value only once the facet has been opened", async () => {
+    await withDiseases()
+
+    const shut = facetOf(await datasetListPage(request("/dataset")), "disease-icd10")
+    expect(shut.values.every((value) => value.children.length === 0)).toBe(true)
+
+    const open = facetOf(
+      await datasetListPage(request("/dataset?facet=disease-icd10")),
+      "disease-icd10",
+    )
+    expect(open.expanded).toBe(true)
+    expect(open.values.find((value) => value.code === "C34")?.children.map((one) => one.code))
+      .toEqual(["C349"])
+  })
+
+  it("looks for a value by its code inside an opened facet", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset?facet=disease-icd10&find=C6"))
+
+    expect(facetOf(view, "disease-icd10").values.map((value) => value.code)).toEqual(["C61"])
+  })
+})
+
+describe("a facet with more values than the panel shows", () => {
+  /** A flat vocabulary with one more term than the panel has room for. */
+  async function withManyMethods(count: number): Promise<void> {
+    const { id: setId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({
+        code: "assay",
+        scope: "experiment",
+        valueType: "vocabulary",
+        labelJa: "実験方法",
+        labelEn: "Assay",
+        vocabularySetId: setId,
+        multiple: true,
+      })
+      .returning({ id: s.contentKey.id }))
+
+    for (let at = 0; at < count; at += 1) {
+      const code = `method-${String(at).padStart(2, "0")}`
+      const { id: termId } = only(await db.insert(s.vocabularyTerm)
+        .values({ setId, code, labelEn: code, source: "portal" })
+        .returning({ id: s.vocabularyTerm.id }))
+      const humLabel = `hum${String(at + 1).padStart(4, "0")}`
+      const researchId = await createResearch(humLabel)
+      const datasetId = await createDataset(researchId, `JGAD${String(at + 1).padStart(6, "0")}`)
+      await db.update(s.datasetContent).set({
+        content: {
+          ...emptyDatasetContent(),
+          experiments: [{
+            id: "experiment-1",
+            label: filled(code),
+            values: [{ keyId, value: { kind: "vocabulary", termIds: filled([termId]) } }],
+          }],
+        },
+      }).where(eq(s.datasetContent.datasetId, datasetId))
+      await publish(researchId, 1, [datasetId], humLabel)
+    }
+    await rebuildSearchDocs(db)
+  }
+
+  it("shows ten of them and offers the rest one link away", async () => {
+    await withManyMethods(11)
+
+    const shut = facetOf(await datasetListPage(request("/dataset")), "assay")
+    expect(shut.values).toHaveLength(10)
+    expect(shut.moreHref).toBe("/dataset?facet=assay")
+
+    const open = facetOf(await datasetListPage(request("/dataset?facet=assay")), "assay")
+    expect(open.values).toHaveLength(11)
+    expect(open.moreHref).toBeNull()
+  })
+
+  it("keeps a chosen value on the panel even when nothing matches it any more", async () => {
+    await withManyMethods(2)
+
+    // A keyword nothing carries, so every count is zero and every unchosen
+    // value is gone; the chosen one has to stay or it cannot be taken off.
+    const view = await datasetListPage(request("/dataset?q=zzzz+assay%3Amethod-00"))
+
+    expect(view.total).toBe(0)
+    const values = facetOf(view, "assay").values
+    expect(values.map((value) => [value.code, value.count, value.selected]))
+      .toEqual([["method-00", 0, true]])
   })
 })

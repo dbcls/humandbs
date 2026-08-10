@@ -503,11 +503,16 @@ export interface EditableKey {
   position: number
   vocabularySetId: string | null
   multiple: boolean
+  /** Set for a number: the unit it is stored in, and the ones input offers. */
+  canonicalUnit: string | null
+  inputUnits: string[] | null
 }
 
 export interface EditableTerm {
   id: string
   setId: string
+  /** Shown beside the label in the picker: a code is what ICD10 is searched by. */
+  code: string
   labelJa: string | null
   labelEn: string
   position: number
@@ -536,6 +541,8 @@ export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog
         position: contentKey.position,
         vocabularySetId: contentKey.vocabularySetId,
         multiple: contentKey.multiple,
+        canonicalUnit: contentKey.canonicalUnit,
+        inputUnits: contentKey.inputUnits,
       })
       .from(contentKey)
       .orderBy(contentKey.position, contentKey.code),
@@ -543,6 +550,7 @@ export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog
       .select({
         id: vocabularyTerm.id,
         setId: vocabularyTerm.setId,
+        code: vocabularyTerm.code,
         labelJa: vocabularyTerm.labelJa,
         labelEn: vocabularyTerm.labelEn,
         position: vocabularyTerm.position,

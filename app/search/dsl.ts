@@ -28,12 +28,18 @@
  * it was typed.
  */
 
-import { fieldType, operatorFor, type ValueKind } from "./fields"
+import { operatorFor, type QueryFields, type ValueKind } from "./fields"
 
+/**
+ * The two ends of a range. `*` is an end that is not there, which is how one
+ * side of a numeric filter is left open; a date range has to name both.
+ */
 export interface DslRange {
   from: string
   to: string
 }
+
+export const OPEN_BOUND = "*"
 
 export interface FreeTextNode {
   op: "free_text"
@@ -59,6 +65,7 @@ export type QueryErrorCode
     | "unknown-field"
     | "invalid-operator-for-field"
     | "invalid-date-format"
+    | "invalid-number-format"
     | "missing-value"
     | "too-complex"
 
@@ -202,15 +209,31 @@ function checkWildcard(value: string, column: number): void {
   if (at < 2) fail("invalid-operator-for-field", column, value)
 }
 
-function fieldClause(field: string, token: Token, column: number): FieldNode {
-  const type = fieldType(field)
+function isNumber(value: string): boolean {
+  return value.trim() !== "" && Number.isFinite(Number(value))
+}
+
+/** One end of a range, checked against what the field's type admits. */
+function checkBound(type: "date" | "number", value: string, column: number): void {
+  if (value === OPEN_BOUND) {
+    // A date range is a pair of days; leaving one end open would mean "before
+    // the data begins", which the rows have no way to answer.
+    if (type === "date") fail("invalid-date-format", column)
+    return
+  }
+  if (type === "date" && !isRealDate(value)) fail("invalid-date-format", column)
+  if (type === "number" && !isNumber(value)) fail("invalid-number-format", column)
+}
+
+function fieldClause(field: string, token: Token, column: number, fields: QueryFields): FieldNode {
+  const type = fields.typeOf(field)
   if (type === undefined) fail("unknown-field", column, field)
 
   if (token.kind === "range") {
     if (operatorFor(type, "range") === null) fail("invalid-operator-for-field", column, field)
-    if (!isRealDate(token.value.from) || !isRealDate(token.value.to)) {
-      fail("invalid-date-format", token.column)
-    }
+    const bound = type === "number" ? "number" : "date"
+    checkBound(bound, token.value.from, token.column)
+    checkBound(bound, token.value.to, token.column)
     return { op: "field", field, valueKind: "range", value: token.value }
   }
   if (token.kind !== "word" && token.kind !== "phrase" && token.kind !== "wildcard") {
@@ -225,6 +248,7 @@ function fieldClause(field: string, token: Token, column: number): FieldNode {
   if (operatorFor(type, kind) === null) fail("invalid-operator-for-field", column, field)
   if (kind === "wildcard") checkWildcard(value, token.column)
   if (type === "date" && !isRealDate(value)) fail("invalid-date-format", token.column)
+  if (type === "number" && !isNumber(value)) fail("invalid-number-format", token.column)
 
   return { op: "field", field, valueKind: kind, value }
 }
@@ -255,7 +279,7 @@ class Parser {
   private at = 0
   private nodes = 0
 
-  constructor(private readonly tokens: Token[]) {}
+  constructor(private readonly tokens: Token[], private readonly fields: QueryFields) {}
 
   private peek(): Token | undefined {
     return this.tokens[this.at]
@@ -340,7 +364,7 @@ class Parser {
     if (token.kind === "word") {
       if (this.peek()?.kind === "colon") {
         this.at += 1
-        return fieldClause(token.value, this.take(), token.column)
+        return fieldClause(token.value, this.take(), token.column, this.fields)
       }
       return { op: "free_text", value: token.value }
     }
@@ -350,12 +374,19 @@ class Parser {
   }
 }
 
-/** An empty query is not an error — it is the whole published set. */
-export function parseQuery(input: string): ParseResult {
+/**
+ * An empty query is not an error — it is the whole published set.
+ *
+ * The fields have to be handed in because the catalog decides most of them
+ * ([fields.ts](fields.ts)). **Values are not checked against the vocabulary**:
+ * a code that names no term is a query that matches nothing, which is the
+ * honest answer and keeps this module free of the database.
+ */
+export function parseQuery(input: string, fields: QueryFields): ParseResult {
   try {
     const tokens = tokenize(input)
     if (tokens.length === 0) return { ok: true, ast: null }
-    return { ok: true, ast: new Parser(tokens).parse() }
+    return { ok: true, ast: new Parser(tokens, fields).parse() }
   } catch (error) {
     if (error instanceof ParseFailure) return { ok: false, error: error.error }
     throw error

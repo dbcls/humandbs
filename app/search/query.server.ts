@@ -19,7 +19,8 @@ import { sql, type SQL } from "drizzle-orm"
 
 import type { Executor } from "~/db/client.server"
 
-import type { FieldNode, QueryNode } from "./dsl"
+import { OPEN_BOUND, type FieldNode, type QueryNode } from "./dsl"
+import type { FacetField, QueryFields } from "./fields"
 
 export const PAGE_SIZE = 20
 
@@ -35,9 +36,14 @@ export interface SearchHit {
   dateModified: string | null
 }
 
-export interface SearchRequest {
+/** What a query needs to be answered: the tree, and what its fields mean. */
+export interface SearchQuery {
   target: SearchTarget
   ast: QueryNode | null
+  fields: QueryFields
+}
+
+export interface SearchRequest extends SearchQuery {
   sort: SortKey
   /** 1-based. Out of range gives an empty page rather than an error. */
   page: number
@@ -66,7 +72,58 @@ function likePattern(value: string): string {
     .replace(/\?/g, "_")
 }
 
-function compileField(node: FieldNode, target: SearchTarget): SQL {
+/**
+ * A facet condition is a row the object has, so it compiles to an existence
+ * test rather than to a comparison on the search row.
+ *
+ * **A term matches its own rows and the rows of everything beneath it.** The
+ * ancestors are carried on the facet row, so asking for a 3-character ICD10 code
+ * finds the datasets filed under a 4-character one without walking the tree at
+ * query time. The chosen term is looked up by its code inside the key's own set,
+ * which means a code naming no term matches nothing — the honest answer for a
+ * condition nobody can satisfy.
+ */
+function termPredicate(facet: FacetField, code: string): SQL {
+  const chosen = sql`(
+    SELECT vt.id FROM vocabulary_term vt
+    WHERE vt.set_id = ${facet.setId}::uuid AND vt.code = ${code}
+  )`
+  return sql`EXISTS (
+    SELECT 1 FROM search_facet_term f
+    WHERE f.doc_id = s.id AND f.key_id = ${facet.keyId}::uuid
+      AND (f.term_id = ${chosen} OR ${chosen} = ANY(f.ancestor_ids))
+  )`
+}
+
+/**
+ * The values are already in the key's canonical unit, so the bounds are read as
+ * they are written. An open end is left out of the test rather than filled with
+ * an extreme, which keeps `[100 TO *]` meaning "at least 100" whatever is stored.
+ */
+function numberPredicate(facet: FacetField, node: FieldNode): SQL {
+  const value = node.value
+  const bounds: SQL[] = []
+  if (typeof value === "string") bounds.push(sql`f.value = ${Number(value)}`)
+  else {
+    if (value.from !== OPEN_BOUND) bounds.push(sql`f.value >= ${Number(value.from)}`)
+    if (value.to !== OPEN_BOUND) bounds.push(sql`f.value <= ${Number(value.to)}`)
+  }
+  const [first, ...rest] = bounds
+  const within = first === undefined ? sql`TRUE` : sql.join([first, ...rest], sql` AND `)
+  return sql`EXISTS (
+    SELECT 1 FROM search_facet_number f
+    WHERE f.doc_id = s.id AND f.key_id = ${facet.keyId}::uuid AND ${within}
+  )`
+}
+
+function compileField(node: FieldNode, query: SearchQuery): SQL {
+  const facet = query.fields.facet(node.field)
+  if (facet !== undefined) {
+    if (facet.kind === "number") return numberPredicate(facet, node)
+    // A vocabulary takes no range; the parser has already refused one.
+    return typeof node.value === "string" ? termPredicate(facet, node.value) : sql`FALSE`
+  }
+
   const value = node.value
   if (typeof value !== "string") {
     const column = node.field === "date_modified" ? sql`s.date_modified` : sql`s.date_published`
@@ -75,8 +132,8 @@ function compileField(node: FieldNode, target: SearchTarget): SQL {
   switch (node.field) {
     case "id":
       return node.valueKind === "wildcard"
-        ? sql`${labelColumn(target)} ILIKE ${likePattern(value)}`
-        : sql`lower(${labelColumn(target)}) = lower(${value})`
+        ? sql`${labelColumn(query.target)} ILIKE ${likePattern(value)}`
+        : sql`lower(${labelColumn(query.target)}) = lower(${value})`
     case "title":
       return node.valueKind === "wildcard"
         ? sql`s.title ILIKE ${likePattern(value)}`
@@ -88,27 +145,33 @@ function compileField(node: FieldNode, target: SearchTarget): SQL {
   }
 }
 
-function compile(node: QueryNode, target: SearchTarget): SQL {
+function compile(node: QueryNode, query: SearchQuery): SQL {
   if (node.op === "free_text") return sql`s.text_all &@ ${node.value}`
-  if (node.op === "field") return compileField(node, target)
+  if (node.op === "field") return compileField(node, query)
   if (node.op === "NOT") {
     const [only] = node.rules
-    return only === undefined ? sql`TRUE` : sql`NOT coalesce(${compile(only, target)}, FALSE)`
+    return only === undefined ? sql`TRUE` : sql`NOT coalesce(${compile(only, query)}, FALSE)`
   }
-  const parts = node.rules.map((rule) => compile(rule, target))
+  const parts = node.rules.map((rule) => compile(rule, query))
   const [first, ...rest] = parts
   if (first === undefined) return sql`TRUE`
   const keyword = node.op === "AND" ? sql` AND ` : sql` OR `
   return sql`(${sql.join([first, ...rest], keyword)})`
 }
 
-function hitsCte(request: Pick<SearchRequest, "target" | "ast">): SQL {
-  const predicate = request.ast === null ? sql`TRUE` : compile(request.ast, request.target)
+/**
+ * The matching rows, named `hits`. The identity is carried alongside the rest
+ * because the facet counts are aggregates over exactly this set — asking twice
+ * with two different sets is how a count could disagree with its own listing.
+ */
+export function hitsCte(query: SearchQuery): SQL {
+  const predicate = query.ast === null ? sql`TRUE` : compile(query.ast, query)
   return sql`hits AS MATERIALIZED (
-    SELECT s.target_id, s.hum_label, s.dataset_label, s.date_published, s.date_modified,
+    SELECT s.id AS doc_id, s.target_id, s.hum_label, s.dataset_label,
+           s.date_published, s.date_modified,
            pgroonga_score(s.tableoid, s.ctid) AS score
     FROM search_doc s
-    WHERE s.target_type = ${request.target}::search_target_type AND (${predicate})
+    WHERE s.target_type = ${query.target}::search_target_type AND (${predicate})
   )`
 }
 
@@ -140,12 +203,9 @@ interface HitRow extends Record<string, unknown> {
 }
 
 /** How many rows the query matches, without reading any of them. */
-export async function countMatches(
-  db: Executor,
-  request: Pick<SearchRequest, "target" | "ast">,
-): Promise<number> {
+export async function countMatches(db: Executor, query: SearchQuery): Promise<number> {
   const result = await db.execute<{ total: number }>(
-    sql`WITH ${hitsCte(request)} SELECT count(*)::int AS total FROM hits`,
+    sql`WITH ${hitsCte(query)} SELECT count(*)::int AS total FROM hits`,
   )
   return result.rows[0]?.total ?? 0
 }

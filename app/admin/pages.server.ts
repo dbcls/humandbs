@@ -32,6 +32,7 @@ import { redirect } from "react-router"
 
 import { requireCapability } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
+import { convertible } from "~/content/units"
 import type { DatasetContent, DraftSnapshot, ResearchContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb } from "~/db/client.server"
@@ -618,6 +619,13 @@ function catalogAccepts(input: DatasetContentInput, catalog: EditableCatalog): b
       const key = keyById.get(slot.keyId)
       if (key?.scope !== scope) return false
       if (key.valueType !== slot.value.kind) return false
+      if (slot.value.kind === "number") {
+        // A unit the key does not offer is a form that was gone around; a value
+        // the catalog cannot convert would be stored in nobody's unit.
+        if (slot.value.state !== "value" || slot.value.unit === null) return true
+        return (key.inputUnits ?? []).includes(slot.value.unit)
+          && convertible(slot.value.unit, key.canonicalUnit)
+      }
       if (slot.value.kind !== "vocabulary") return true
       if (!key.multiple && slot.value.termIds.length > 1) return false
       return slot.value.termIds.every((id) => setOfTerm.get(id) === key.vocabularySetId)
@@ -647,7 +655,8 @@ export async function saveDatasetAction(
   const catalog = await loadEditableCatalog(db)
   if (!catalogAccepts(payload.data.content, catalog)) badRequest()
 
-  const content = datasetContentOf(payload.data.content)
+  const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
+  const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)
   if (!content.ok) return { status: "invalid", problems: content.problems }
 
   const outcome = await saveDatasetEntry(

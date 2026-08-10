@@ -107,3 +107,15 @@ export function listingQuery(query: ListingQuery): string {
   const written = search.toString()
   return written === "" ? "" : `?${written}`
 }
+
+/**
+ * The catalog. It hangs off `/admin` rather than off a research: a key and a
+ * vocabulary belong to the portal, not to one study.
+ */
+export function adminCatalogPath(): string {
+  return "/admin/catalog"
+}
+
+export function adminVocabularyPath(code: string): string {
+  return `${adminCatalogPath()}/vocabulary/${encodeURIComponent(code)}`
+}
