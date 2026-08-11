@@ -1,0 +1,14 @@
+{
+  "name": "NBDC ヒトデータベース",
+  "short_name": "NBDC HumanDBs",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#1a5fbd",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}

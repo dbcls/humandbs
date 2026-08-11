@@ -1,29 +1,42 @@
 @import "tailwindcss";
 
 /*
- * The palette is the one the portal already has. It is carried over by value,
- * not by name: v1 called these primary / secondary / tetriary, which says
- * nothing about what they are for, held one colour under two names twice, and
- * misspelled tertiary. Nothing else from v1's stylesheet is kept — the type
- * scale there is built on a 10px root (`html { font-size: 62.5% }`), and
- * inheriting that would put the workaround into every new screen.
+ * The palette is the portal's own, carried over by value rather than by name:
+ * v1 called these primary / secondary / tetriary, which says nothing about what
+ * they are for, held one colour under two names twice, and misspelled tertiary.
+ * Nothing else from v1's stylesheet is kept — the type scale there is built on a
+ * 10px root (`html { font-size: 62.5% }`), and inheriting that would put the
+ * workaround into every new screen.
+ *
+ * **Three of the values are a shade off v1's, and deliberately.** White text on
+ * v1's own band ran to 2.2:1, its pink read 4.4:1, and the rule it drew input
+ * borders with 2.1:1 — all below what WCAG asks of a page anybody may read
+ * (4.5:1 for text, 3:1 for the edge of a control). Each was moved down one step
+ * in lightness with its hue kept, so the site looks the same and can be read.
+ * The numbers are checked by `app/app.contrast.test.ts`, which is where the
+ * requirement lives; changing a value here without changing that test fails.
  */
 @theme {
-  /* Links, headings, and anything the eye should land on first. */
+  /* Links, headings, and the left end of a band. */
   --color-brand: #1a5fbd;
-  --color-brand-light: #1a96d2;
-  --color-brand-lighter: #2ebedb;
+  /* The right end of a band. */
+  --color-brand-light: #157bac;
 
   /* Reserved for the few things that must be noticed over the brand colour. */
-  --color-accent: #eb0075;
-  --color-accent-light: #ff618e;
+  --color-accent: #d6006b;
+  --color-accent-light: #eb0075;
 
-  /* Body text. */
-  --color-ink: #002245;
+  /* The band of a page that is about one thing with a name of its own. */
+  --color-deep: #002245;
+
+  /* Body text, and the labels and asides set beside it. */
+  --color-ink: #292929;
   --color-ink-muted: #2a5b73;
 
-  /* Rules, borders, and text that should recede. */
+  /* Rules and dividers, which carry no meaning of their own... */
   --color-line: #abb4c4;
+  /* ...and the edge of something you can type into or press, which does. */
+  --color-line-strong: #818fa7;
 
   /* Panels and page background. */
   --color-surface: #edeff2;
@@ -31,6 +44,9 @@
   --color-surface-input: #f7f7f7;
 
   --color-danger: #d51616;
+  /* Something that needs looking at but is not an error: an untranslated
+     field, a label the upstream system disagrees about. */
+  --color-warning: #a16207;
   --color-visited: #6b21a8;
 }
 
@@ -43,6 +59,15 @@
 
   a {
     @apply text-brand underline hover:text-brand-light visited:text-visited;
+  }
+
+  /*
+   * Keyboard focus is visible everywhere, and a control may not turn it off.
+   * The ring is drawn outside the element so that it does not move anything,
+   * and it is the same on every control so that "where am I" is one shape.
+   */
+  :focus-visible {
+    @apply outline-2 outline-brand outline-offset-2;
   }
 }
 

@@ -124,8 +124,14 @@ export function SiteHeader({ locale, alerts, account }: {
         {messages.skipToContent}
       </a>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link to={href(locale, "/")} className="font-bold text-lg no-underline">
-          {messages.siteName}
+        {/*
+          The wordmark is the portal's own artwork, carried over as it is; the
+          site's name in the reader's language is set under it rather than drawn
+          into it, so that it can be translated and read aloud.
+        */}
+        <Link to={href(locale, "/")} className="flex flex-col gap-1 no-underline">
+          <img src="/HumanDB.svg" alt="" width={240} height={33} className="w-48 sm:w-60" />
+          <span className="text-center font-semibold text-brand text-xs">{messages.siteName}</span>
         </Link>
         <div className="flex items-center gap-4">
           <Link
@@ -161,10 +167,10 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
 
   return (
-    <footer className="mt-16 border-line border-t bg-surface">
+    <footer className="mt-16 border-line border-t bg-white">
       <nav aria-label={messages.siteMap} className="mx-auto max-w-6xl px-4 py-8">
         <h2 className="font-semibold text-ink-muted text-sm">{messages.siteMap}</h2>
-        <div className="mt-4 columns-1 gap-8 sm:columns-2 lg:columns-3">
+        <div className="mt-4 columns-1 gap-8 sm:columns-2 lg:columns-4">
           {FOOTER.map((entry) => (
             <section key={entry.path} className="mb-6 break-inside-avoid">
               <h3 className="text-ink-muted text-xs">
@@ -183,8 +189,11 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           ))}
         </div>
       </nav>
-      <div className="mx-auto max-w-6xl border-line border-t px-4 py-4 text-ink-muted text-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-line border-t px-4 py-4 text-ink-muted text-sm">
         {messages.siteName}
+        <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
+          <img src="/logo_dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
+        </a>
       </div>
     </footer>
   )

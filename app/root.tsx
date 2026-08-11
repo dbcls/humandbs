@@ -53,6 +53,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
+/**
+ * The site's own marks, served from `public/` and carried over from v1 as they
+ * are — a favicon is the one thing a reader recognises in a row of tabs, so
+ * changing it would be changing the site rather than rebuilding it.
+ */
+export const links: Route.LinksFunction = () => [
+  { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+  { rel: "icon", href: "/favicon-192x192.png", type: "image/png", sizes: "192x192" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+  { rel: "manifest", href: "/site.webmanifest" },
+]
+
 export function Layout({ children }: { children: React.ReactNode }) {
   // The layout also wraps the error boundary, which renders when the loader
   // above did not run.
@@ -69,7 +81,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="flex min-h-screen flex-col">
         <SiteHeader locale={locale} alerts={data?.alerts ?? []} account={data?.account ?? null} />
-        <div className="flex-1">{children}</div>
+        {/* The page sits on a tint, so that the white boxes a screen is built
+            from read as boxes rather than as the page itself. */}
+        <div className="flex-1 bg-surface">{children}</div>
         <SiteFooter locale={locale} />
         <ScrollRestoration />
         <Scripts />

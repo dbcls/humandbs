@@ -1,5 +1,6 @@
 import { Link } from "react-router"
 
+import { Fold } from "~/components/base"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
@@ -18,6 +19,14 @@ import type { SearchTarget } from "~/search/query.server"
  * A value is shown with the number of rows it would leave, counted with this
  * facet's own condition lifted, so that a second value of the same facet is
  * still reachable after the first has been chosen.
+ *
+ * **Each facet folds, and the panel is a list of what can be refined by.** Open
+ * at once, the twenty-odd facets run to several thousand pixels and the reader
+ * has to scroll past the whole vocabulary to reach the results. Folded, the
+ * dimensions themselves stay in view, which is what somebody who has not chosen
+ * anything yet is reading. What is open is derived rather than remembered: a
+ * facet holding a condition is open, because a filter in force that cannot be
+ * seen is a listing that lies about itself.
  */
 export function FacetPanel({ locale, target, query, sort, panel }: {
   locale: Locale
@@ -38,7 +47,7 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
           <Link to={panel.clearHref} className="text-xs">{messages.clear}</Link>
         )}
       </div>
-      {panel.categories.map((category) => (
+      {panel.categories.map((category, index) => (
         <section key={category.code ?? "-"} className="mt-4">
           {category.label !== null && (
             <h3 className="text-ink-muted text-xs uppercase tracking-wide">{category.label}</h3>
@@ -51,6 +60,10 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
               query={query}
               sort={sort}
               facet={facet}
+              // The first group is the one a reader who has chosen nothing is
+              // most likely to choose from, and a panel that opened nothing at
+              // all would read as having nothing to offer.
+              open={index === 0 || chosen(facet) > 0 || facet.expanded}
             />
           ))}
         </section>
@@ -59,22 +72,36 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   )
 }
 
-function Facet({ locale, target, query, sort, facet }: {
+/** How many of a facet's values are in force, roll-ups included. */
+function chosen(facet: FacetView): number {
+  if (facet.range !== null) return facet.range.from === "" && facet.range.to === "" ? 0 : 1
+  return facet.values.filter((value) =>
+    value.selected || value.children.some((child) => child.selected)).length
+}
+
+function Facet({ locale, target, query, sort, facet, open }: {
   locale: Locale
   target: SearchTarget
   query: string
   sort: string | null
   facet: FacetView
+  open: boolean
 }) {
   const messages = messagesFor(locale).search.refine
+  const count = chosen(facet)
   return (
-    <div className="mt-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h4 className="font-semibold">{facet.label}</h4>
-        {facet.closeHref !== null && (
+    <Fold
+      summary={facet.label}
+      open={open}
+      note={count === 0
+        ? undefined
+        : <span className="text-brand">{messages.count(count)}</span>}
+    >
+      {facet.closeHref !== null && (
+        <div className="flex justify-end">
           <Link to={facet.closeHref} className="text-xs">{messages.close}</Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {facet.expanded && facet.kind === "vocabulary" && (
         <form method="get" action={href(locale, listPath(target))} className="mt-1 flex gap-1">
@@ -141,7 +168,7 @@ function Facet({ locale, target, query, sort, facet }: {
       {facet.moreHref !== null && (
         <Link to={facet.moreHref} className="mt-1 inline-block text-xs">{messages.seeAll}</Link>
       )}
-    </div>
+    </Fold>
   )
 }
 

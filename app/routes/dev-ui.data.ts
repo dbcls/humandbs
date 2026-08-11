@@ -1,0 +1,1138 @@
+/**
+ * The rows `/dev/ui` draws the parts against.
+ *
+ * **Real values, frozen.** They were taken once out of the development data, so
+ * a title is a title somebody wrote and an accession list is as long as they
+ * really get — invented rows make a part look better than it is. Freezing them
+ * is what makes the page a baseline: reading the database instead would empty
+ * the catalogue every time the database tests run, and then a part that broke
+ * and a table with nothing in it would look the same.
+ *
+ * Refresh by hand when a view's shape changes; the types below are the ones the
+ * listings are drawn from, so a change that matters stops the build.
+ */
+
+import type { FacetPanelView } from "~/public/facets.server"
+import type { ResearchListRowView } from "~/public/view.server"
+
+/** How many rows the search these came from actually matched. */
+export const TOTAL = 397
+
+export const ROWS: ResearchListRowView[] = [
+  {
+    humLabel: "hum0197",
+    title: {
+      state: "plain",
+      text: "多層的オミクス解析による疾患病態の解明",
+      untranslated: false,
+    },
+    datasetLabels: [
+      "JGAD000290",
+      "JGAD000363",
+      "JGAD000427",
+      "JGAD000532",
+      "JGAD000649",
+      "JGAD000650",
+      "hum0197.v2.gwas.v1",
+      "hum0197.v3.gwas.v1",
+      "hum0197.v5.gwas.v1",
+      "hum0197.v5.finemap.v1",
+      "JGAD000621",
+      "hum0197.v6.eqtl.v1",
+    ],
+    typeOfData: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "メタゲノム SNP-chip NGS （WGS、RNA-seq、scRNA-seq、snRNA-seq、snATAC-seq） eHHV-6の有無、アネロウイルス量 プロテオミクス",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    methods: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "メタゲノム ゲノムワイド関連 発現 eQTL クロマチン構造",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    targets: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "日本人集団：95＋103＋227＋30＋141＋136＋88＋5＋524名",
+          },
+        ],
+        [
+          {
+            text: "BBJ：180,215名",
+          },
+        ],
+        [
+          {
+            text: "UKバイオバンク：377,583名",
+          },
+        ],
+        [
+          {
+            text: "FinnGen：136,000＋224,352名",
+          },
+        ],
+        [
+          {
+            text: "BCAC：247,173名",
+          },
+        ],
+        [
+          {
+            text: "PRACTICAL：140,254名",
+          },
+        ],
+        [
+          {
+            text: "肺胞蛋白症：198症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：395名",
+          },
+        ],
+        [
+          {
+            text: "潰瘍性大腸炎：35症例",
+          },
+        ],
+        [
+          {
+            text: "クローン病：39症例",
+          },
+        ],
+        [
+          {
+            text: "健常対照者：40名",
+          },
+        ],
+        [
+          {
+            text: "頭蓋内胚細胞腫瘍：133症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：762名",
+          },
+        ],
+        [
+          {
+            text: "COVID-19：30＋43＋15症例",
+          },
+        ],
+        [
+          {
+            text: "健常対照者：31＋44＋27名",
+          },
+        ],
+        [
+          {
+            text: "健常者：73名",
+          },
+        ],
+        [
+          {
+            text: "間質性膀胱炎ハンナ型：144症例",
+          },
+        ],
+        [
+          {
+            text: "2型糖尿病：27,642症例（BBJ）",
+          },
+        ],
+        [
+          {
+            text: "対照者：70,242名（BBJ）",
+          },
+        ],
+        [
+          {
+            text: "2型糖尿病：27,642症例（UKバイオバンク）",
+          },
+        ],
+        [
+          {
+            text: "対照者：70,242名（UKバイオバンク）",
+          },
+        ],
+        [
+          {
+            text: "不育症：1,728症例",
+          },
+        ],
+        [
+          {
+            text: "自己免疫疾患：2,238症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：2,919名",
+          },
+        ],
+        [
+          {
+            text: "HPV関連中咽頭癌：32症例",
+          },
+        ],
+        [
+          {
+            text: "HPV非関連中咽頭癌：17症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：2名",
+          },
+        ],
+        [
+          {
+            text: "視神経脊髄炎関連疾患：240症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：50,578名",
+          },
+        ],
+        [
+          {
+            text: "乾癬：204症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：1,231名",
+          },
+        ],
+        [
+          {
+            text: "日本人男性：161,026名（BBJ、JCTF、TMM、COVC、HERPACC、JPHC）",
+          },
+        ],
+        [
+          {
+            text: "日本人男性気管支喘息：3症例",
+          },
+        ],
+        [
+          {
+            text: "日本人男性COVID-19：4症例",
+          },
+        ],
+        [
+          {
+            text: "重症筋無力症：1,434症例",
+          },
+        ],
+        [
+          {
+            text: "対照者：42,913名",
+          },
+        ],
+        [
+          {
+            text: "もやもや病：401症例",
+          },
+        ],
+        [
+          {
+            text: "多発性硬化症：20症例",
+          },
+        ],
+        [
+          {
+            text: "多発性硬化症：688症例（日本人集団）",
+          },
+        ],
+        [
+          {
+            text: "対照者：205,199名",
+          },
+        ],
+        [
+          {
+            text: "多発性硬化症：27,572症例（ヨーロッパ人集団）",
+          },
+        ],
+        [
+          {
+            text: "対照者：1,436,801名",
+          },
+        ],
+        [
+          {
+            text: "多発性硬化症：819症例（アフリカ人集団）",
+          },
+        ],
+        [
+          {
+            text: "対照者：155,904名",
+          },
+        ],
+        [
+          {
+            text: "多発性硬化症：295症例（アメリカ人集団）",
+          },
+        ],
+        [
+          {
+            text: "対照者：45,569名",
+          },
+        ],
+        [
+          {
+            text: "（日本人、イギリス人、フィンランド人、アフリカ人、アメリカ人）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    accessTypes: [
+      {
+        code: "unrestricted-access",
+        label: "非制限公開",
+      },
+      {
+        code: "controlled-access-type-1",
+        label: "制限公開（Type I）",
+      },
+    ],
+    datePublished: "2019-11-15",
+    dateModified: "2026-07-31",
+  },
+  {
+    humLabel: "hum0210",
+    title: {
+      state: "plain",
+      text: "造血器腫瘍における遺伝子異常の網羅的解析",
+      untranslated: false,
+    },
+    datasetLabels: [
+      "JGAD000297",
+      "JGAD001065",
+    ],
+    typeOfData: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "NGS （Exome、RNA-seq）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    methods: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "配列決定 発現",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    targets: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "急性骨髄性白血病と縦隔胚細胞腫瘍の合併症例：1症例",
+          },
+        ],
+        [
+          {
+            text: "成人T細胞白血病リンパ腫：5症例",
+          },
+        ],
+        [
+          {
+            text: "（日本人）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    accessTypes: [
+      {
+        code: "controlled-access-type-1",
+        label: "制限公開（Type I）",
+      },
+    ],
+    datePublished: "2020-04-06",
+    dateModified: "2026-07-30",
+  },
+  {
+    humLabel: "hum0511",
+    title: {
+      state: "plain",
+      text: "百寿者サンプルを用いた老化における分子マーカーの探索と分子基盤の解明",
+      untranslated: false,
+    },
+    datasetLabels: [
+      "JGAD000957",
+      "E-GEAD-1107",
+      "E-GEAD-1108",
+    ],
+    typeOfData: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "NGS（scRNA-seq、scTCR-seq、scCITE-seq）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    methods: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "発現",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    targets: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "健常者：28名",
+          },
+        ],
+        [
+          {
+            text: "（日本人）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    accessTypes: [
+      {
+        code: "unrestricted-access",
+        label: "非制限公開",
+      },
+      {
+        code: "controlled-access-type-1",
+        label: "制限公開（Type I）",
+      },
+    ],
+    datePublished: "2026-07-30",
+    dateModified: "2026-07-30",
+  },
+  {
+    humLabel: "hum0574",
+    title: {
+      state: "plain",
+      text: "悪性腫瘍におけるゲノム解析データベース構築に関する研究",
+      untranslated: false,
+    },
+    datasetLabels: [
+      "JGAD001063",
+      "JGAD001064",
+    ],
+    typeOfData: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "NGS（Exome、RNA-seq）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    methods: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "配列決定、発現",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    targets: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "直腸癌:2症例、胃腺癌:4症例（日本人）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    accessTypes: [
+      {
+        code: "controlled-access-type-1",
+        label: "制限公開（Type I）",
+      },
+    ],
+    datePublished: "2026-07-24",
+    dateModified: "2026-07-24",
+  },
+  {
+    humLabel: "hum0588",
+    title: {
+      state: "plain",
+      text: "ヒトiPS細胞における正確なゲノム編集条件の探索による疾患モデルおよび細胞移植治療法の開発",
+      untranslated: false,
+    },
+    datasetLabels: [
+      "JGAD001067",
+    ],
+    typeOfData: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "NGS（RNA-seq）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    methods: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "発現",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    targets: {
+      state: "rich",
+      text: [
+        [
+          {
+            text: "未分化iPS細胞および分化誘導した心筋細胞：12検体（細胞株）",
+          },
+        ],
+      ],
+      untranslated: false,
+    },
+    accessTypes: [
+      {
+        code: "controlled-access-type-1",
+        label: "制限公開（Type I）",
+      },
+    ],
+    datePublished: "2026-07-19",
+    dateModified: "2026-07-19",
+  },
+]
+
+/** Nothing chosen: every facet closed but the first group. */
+export const FACETS: FacetPanelView = {
+  categories: [
+    {
+      code: "basic-info",
+      label: "基本情報",
+      facets: [
+        {
+          code: "access-criteria",
+          label: "アクセス制限",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "controlled-access-type-1",
+              label: "制限公開（Type I）",
+              count: 348,
+              selected: false,
+              href: "/research?q=access-criteria%3Acontrolled-access-type-1",
+              children: [],
+            },
+            {
+              code: "unrestricted-access",
+              label: "非制限公開",
+              count: 80,
+              selected: false,
+              href: "/research?q=access-criteria%3Aunrestricted-access",
+              children: [],
+            },
+            {
+              code: "controlled-access-type-2",
+              label: "制限公開（Type II）",
+              count: 2,
+              selected: false,
+              href: "/research?q=access-criteria%3Acontrolled-access-type-2",
+              children: [],
+            },
+          ],
+          moreHref: null,
+          range: null,
+        },
+      ],
+    },
+    {
+      code: "experiment",
+      label: "実験",
+      facets: [
+        {
+          code: "disease-icd10",
+          label: "疾患 (ICD10)",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "C34",
+              label: "Primary lung cancer",
+              count: 33,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC34",
+              children: [],
+            },
+            {
+              code: "C18",
+              label: "Colorectal cancer",
+              count: 31,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC18",
+              children: [],
+            },
+            {
+              code: "C22",
+              label: "Malignant neoplasm of liver and intrahepatic bile ducts",
+              count: 23,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC22",
+              children: [],
+            },
+            {
+              code: "C16",
+              label: "Gastric cancer",
+              count: 20,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC16",
+              children: [],
+            },
+            {
+              code: "C50",
+              label: "Breast cancer",
+              count: 17,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC50",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=disease-icd10",
+          range: null,
+        },
+        {
+          code: "experimental-method",
+          label: "実験方法",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "rna-seq",
+              label: "RNA-seq",
+              count: 143,
+              selected: false,
+              href: "/research?q=experimental-method%3Arna-seq",
+              children: [],
+            },
+            {
+              code: "wes",
+              label: "WES",
+              count: 120,
+              selected: false,
+              href: "/research?q=experimental-method%3Awes",
+              children: [],
+            },
+            {
+              code: "targeted-dna-sequencing",
+              label: "Targeted DNA sequencing",
+              count: 74,
+              selected: false,
+              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
+              children: [],
+            },
+            {
+              code: "wgs",
+              label: "WGS",
+              count: 70,
+              selected: false,
+              href: "/research?q=experimental-method%3Awgs",
+              children: [],
+            },
+            {
+              code: "scrna-seq",
+              label: "scRNA-seq",
+              count: 56,
+              selected: false,
+              href: "/research?q=experimental-method%3Ascrna-seq",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=experimental-method",
+          range: null,
+        },
+        {
+          code: "tissue",
+          label: "組織",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "peripheral-blood",
+              label: "peripheral blood",
+              count: 158,
+              selected: false,
+              href: "/research?q=tissue%3Aperipheral-blood",
+              children: [],
+            },
+            {
+              code: "tumor-tissue",
+              label: "tumor tissue",
+              count: 114,
+              selected: false,
+              href: "/research?q=tissue%3Atumor-tissue",
+              children: [],
+            },
+            {
+              code: "normal-tissue",
+              label: "normal tissue",
+              count: 55,
+              selected: false,
+              href: "/research?q=tissue%3Anormal-tissue",
+              children: [],
+            },
+            {
+              code: "pbmc",
+              label: "PBMC",
+              count: 25,
+              selected: false,
+              href: "/research?q=tissue%3Apbmc",
+              children: [],
+            },
+            {
+              code: "bone-marrow",
+              label: "bone marrow",
+              count: 19,
+              selected: false,
+              href: "/research?q=tissue%3Abone-marrow",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=tissue",
+          range: null,
+        },
+      ],
+    },
+    {
+      code: "subjects",
+      label: "対象者",
+      facets: [
+        {
+          code: "subject-count",
+          label: "対象者数",
+          kind: "number",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            min: 1,
+            max: 1872937,
+            unit: null,
+            clearHref: null,
+          },
+        },
+      ],
+    },
+    {
+      code: "platform",
+      label: "手法とプラットフォーム",
+      facets: [
+        {
+          code: "platform",
+          label: "プラットフォーム",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "illumina-novaseq-6000",
+              label: "Illumina NovaSeq 6000",
+              count: 127,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-novaseq-6000",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-2500",
+              label: "Illumina HiSeq 2500",
+              count: 103,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-2500",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-2000",
+              label: "Illumina HiSeq 2000",
+              count: 61,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-2000",
+              children: [],
+            },
+            {
+              code: "illumina-miseq",
+              label: "Illumina MiSeq",
+              count: 23,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-miseq",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-x-ten",
+              label: "Illumina HiSeq X Ten",
+              count: 21,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-x-ten",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=platform",
+          range: null,
+        },
+      ],
+    },
+  ],
+  clearHref: null,
+  target: "research",
+}
+
+/** One value chosen and one facet opened, which is where the panel earns its keep. */
+export const REFINED_FACETS: FacetPanelView = {
+  categories: [
+    {
+      code: "basic-info",
+      label: "基本情報",
+      facets: [
+        {
+          code: "access-criteria",
+          label: "アクセス制限",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "controlled-access-type-1",
+              label: "制限公開（Type I）",
+              count: 348,
+              selected: true,
+              href: "/research",
+              children: [],
+            },
+            {
+              code: "unrestricted-access",
+              label: "非制限公開",
+              count: 80,
+              selected: false,
+              href: "/research?q=access-criteria%3Aunrestricted-access",
+              children: [],
+            },
+            {
+              code: "controlled-access-type-2",
+              label: "制限公開（Type II）",
+              count: 2,
+              selected: false,
+              href: "/research?q=access-criteria%3Acontrolled-access-type-2",
+              children: [],
+            },
+          ],
+          moreHref: null,
+          range: null,
+        },
+      ],
+    },
+    {
+      code: "experiment",
+      label: "実験",
+      facets: [
+        {
+          code: "disease-icd10",
+          label: "疾患 (ICD10)",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "C34",
+              label: "Primary lung cancer",
+              count: 33,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC34",
+              children: [],
+            },
+            {
+              code: "C18",
+              label: "Colorectal cancer",
+              count: 31,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC18",
+              children: [],
+            },
+            {
+              code: "C22",
+              label: "Malignant neoplasm of liver and intrahepatic bile ducts",
+              count: 23,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC22",
+              children: [],
+            },
+            {
+              code: "C16",
+              label: "Gastric cancer",
+              count: 20,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC16",
+              children: [],
+            },
+            {
+              code: "C50",
+              label: "Breast cancer",
+              count: 17,
+              selected: false,
+              href: "/research?q=disease-icd10%3AC50",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=disease-icd10",
+          range: null,
+        },
+        {
+          code: "experimental-method",
+          label: "実験方法",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "rna-seq",
+              label: "RNA-seq",
+              count: 143,
+              selected: false,
+              href: "/research?q=experimental-method%3Arna-seq",
+              children: [],
+            },
+            {
+              code: "wes",
+              label: "WES",
+              count: 120,
+              selected: false,
+              href: "/research?q=experimental-method%3Awes",
+              children: [],
+            },
+            {
+              code: "targeted-dna-sequencing",
+              label: "Targeted DNA sequencing",
+              count: 74,
+              selected: false,
+              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
+              children: [],
+            },
+            {
+              code: "wgs",
+              label: "WGS",
+              count: 70,
+              selected: false,
+              href: "/research?q=experimental-method%3Awgs",
+              children: [],
+            },
+            {
+              code: "scrna-seq",
+              label: "scRNA-seq",
+              count: 56,
+              selected: false,
+              href: "/research?q=experimental-method%3Ascrna-seq",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=experimental-method",
+          range: null,
+        },
+        {
+          code: "tissue",
+          label: "組織",
+          kind: "vocabulary",
+          expanded: true,
+          find: "",
+          closeHref: "/research?q=access-criteria%3Acontrolled-access-type-1",
+          values: [
+            {
+              code: "peripheral-blood",
+              label: "peripheral blood",
+              count: 158,
+              selected: false,
+              href: "/research?q=tissue%3Aperipheral-blood",
+              children: [],
+            },
+            {
+              code: "tumor-tissue",
+              label: "tumor tissue",
+              count: 114,
+              selected: false,
+              href: "/research?q=tissue%3Atumor-tissue",
+              children: [],
+            },
+            {
+              code: "normal-tissue",
+              label: "normal tissue",
+              count: 55,
+              selected: false,
+              href: "/research?q=tissue%3Anormal-tissue",
+              children: [],
+            },
+            {
+              code: "pbmc",
+              label: "PBMC",
+              count: 25,
+              selected: false,
+              href: "/research?q=tissue%3Apbmc",
+              children: [],
+            },
+            {
+              code: "bone-marrow",
+              label: "bone marrow",
+              count: 19,
+              selected: false,
+              href: "/research?q=tissue%3Abone-marrow",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=tissue",
+          range: null,
+        },
+      ],
+    },
+    {
+      code: "subjects",
+      label: "対象者",
+      facets: [
+        {
+          code: "subject-count",
+          label: "対象者数",
+          kind: "number",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            min: 1,
+            max: 1872937,
+            unit: null,
+            clearHref: null,
+          },
+        },
+      ],
+    },
+    {
+      code: "platform",
+      label: "手法とプラットフォーム",
+      facets: [
+        {
+          code: "platform",
+          label: "プラットフォーム",
+          kind: "vocabulary",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          values: [
+            {
+              code: "illumina-novaseq-6000",
+              label: "Illumina NovaSeq 6000",
+              count: 127,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-novaseq-6000",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-2500",
+              label: "Illumina HiSeq 2500",
+              count: 103,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-2500",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-2000",
+              label: "Illumina HiSeq 2000",
+              count: 61,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-2000",
+              children: [],
+            },
+            {
+              code: "illumina-miseq",
+              label: "Illumina MiSeq",
+              count: 23,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-miseq",
+              children: [],
+            },
+            {
+              code: "illumina-hiseq-x-ten",
+              label: "Illumina HiSeq X Ten",
+              count: 21,
+              selected: false,
+              href: "/research?q=platform%3Aillumina-hiseq-x-ten",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=platform",
+          range: null,
+        },
+      ],
+    },
+  ],
+  clearHref: "/research",
+  target: "research",
+}

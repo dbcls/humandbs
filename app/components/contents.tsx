@@ -15,7 +15,8 @@ import type { ContentsResult, LocaleEditor } from "~/admin/contents.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Badge, Field, Result, Submit, TextArea } from "./form"
+import { Badge } from "./base"
+import { Field, Result, Submit, TextArea } from "./form"
 
 /**
  * What the last form did. A refused body says which language and which line,

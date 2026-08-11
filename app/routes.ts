@@ -150,11 +150,33 @@ const api = [
   route(OPENAPI_PATH, OPENAPI_FILE),
 ]
 
+/**
+ * The parts catalogue, which is not part of the site.
+ *
+ * `/dev/ui` draws every part against real rows so that a change to one of them
+ * can be looked at rather than reasoned about. **It is left out of the
+ * production build entirely** rather than hidden behind a check at request
+ * time: a setting can be got wrong, and a route that is not registered cannot
+ * be reached. In production the address falls through to the catch-all and is
+ * answered like any slug that does not exist — `dev` is reserved in
+ * `SCREEN_PATHS`, so a document cannot take it and change that in one
+ * environment but not the other.
+ *
+ * **`npm run build` sets `NODE_ENV` itself** (`package.json`) rather than
+ * trusting what it inherits: the container the image is built in carries
+ * `NODE_ENV=development`, so a build reading the ambient value would have put
+ * the catalogue into the deployed server.
+ */
+const dev = process.env.NODE_ENV === "production"
+  ? []
+  : [route("dev/ui", "routes/dev-ui.tsx")]
+
 export default [
   route("healthz", "routes/healthz.ts"),
   ...auth,
   ...api,
   ...editing,
+  ...dev,
   ...pages("ja"),
   ...prefix("en", pages("en")),
   route("*", "routes/document.tsx"),

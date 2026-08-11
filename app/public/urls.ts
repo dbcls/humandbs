@@ -135,7 +135,9 @@ export function filePath(humLabel: string, name: string): string {
  *
  * `/files` and `/private` are here although no route serves them: the proxy
  * takes both to the store, so a document by either name would be shadowed by
- * something a route cannot even see.
+ * something a route cannot even see. `/dev` is here although the route under it
+ * exists only outside production, so that a slug is refused or accepted the
+ * same way in every environment.
  *
  * **It is the first segment that is taken**, not the whole address: the routes
  * above own everything below theirs, so `news/x` is as unreachable as `news`.
@@ -156,6 +158,7 @@ export const SCREEN_PATHS = [
   "/healthz",
   "/files",
   "/private",
+  "/dev",
 ] as const
 
 /**

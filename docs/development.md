@@ -265,6 +265,22 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip
 `X-Content-Type-Options: nosniff` が付き、画像と PDF 以外に `Content-Disposition: attachment` が
 付いていれば正しい。
 
+## 部品を見る
+
+`http://localhost:8080/dev/ui` に全部品が並んでいる。**画面の見た目を変えたら、変える前と後で
+この 1 枚を見比べる** — 部品は 33 画面が共有しているので、1 つ触ると触っていない画面が動く。
+
+**本番の build には入らない。** route の登録が `NODE_ENV` で分かれていて (`app/routes.ts`)、
+本番ではこのアドレスは存在しない slug と同じ 404 になる。`npm run build` は `NODE_ENV` を自分で
+指定する — container が `NODE_ENV=development` を持っているので、環境から受け取る形にすると
+本番の build に入ってしまう。この不変条件は `app/routes.test.ts` が守っている。
+
+**並んでいる行は開発用データから 1 度取って凍結したもの** (`app/routes/dev-ui.data.ts`)。
+DB を読むと db test を回すたびに空になり、部品が壊れたのか行が 0 件なのか区別できなくなる。
+view の型が変わったら手で取り直す。
+
+規則は [ui.md](ui.md)。
+
 ## 作り直す
 
 ```bash

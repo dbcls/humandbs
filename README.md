@@ -18,6 +18,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 | [docs/editing.md](docs/editing.md) | 書く側の不変条件。draft、保存の単位、同時編集、巻き戻し、ファイル、レビュー |
 | [docs/publishing.md](docs/publishing.md) | 出す側の不変条件。版と fix、公開ゲート、ラベルの pin、取り下げ、破棄と削除、証跡 |
 | [docs/auth.md](docs/auth.md) | 誰がサインインでき何を許されるか。capability、セッション、admin の付け外し |
+| [docs/ui.md](docs/ui.md) | 画面の部品。帯と見出しの使い分け、色とコントラスト、バッジとボタンの階層、タブ、表 |
 | [docs/glossary.md](docs/glossary.md) | ドメインの語の ja/en 対。画面・API・facet・語彙が従う訳語 |
 | [docs/testing.md](docs/testing.md) | テストの 5 階層。何を test にするか、mock の境界、e2e のシナリオ |
 | [docs/development.md](docs/development.md) | 開発環境の手順。起動、lint と test、DB とファイルストアの触り方、上流のキャッシュの更新 |
