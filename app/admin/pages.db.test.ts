@@ -182,6 +182,82 @@ describe("the listing", () => {
     expect((await researchListPage(get(token, "/admin/research?q=肝臓"), "ja")).rows)
       .toHaveLength(0)
   })
+
+  async function pinHum(researchId: string, label: string): Promise<void> {
+    await db.insert(s.labelPin).values({ kind: "hum", label, researchId, isPrimary: true })
+  }
+
+  async function pinDataset(datasetId: string, label: string): Promise<void> {
+    await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId, isPrimary: true })
+  }
+
+  async function flagsOfTheOnlyRow(token: string) {
+    const view = await researchListPage(get(token, "/admin/research"), "ja")
+    return only(view.rows).flags
+  }
+
+  it("flags a shortcoming when a dataset of the research carries no pinned id", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    await db.insert(s.dataset).values({ researchId })
+
+    expect((await flagsOfTheOnlyRow(token)).noDatasetLabel).toBe(true)
+  })
+
+  it("flags a shortcoming when a pinned accession is absent from the upstream ledger", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    const dataset = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    await pinDataset(dataset.id, "JGAD000001")
+
+    const flags = await flagsOfTheOnlyRow(token)
+    expect(flags.upstreamMismatch).toBe(true)
+    expect(flags.noDatasetLabel).toBe(false)
+  })
+
+  it("flags a shortcoming when a pinned accession's upstream hum disagrees with the pinned one", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    const dataset = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    await pinDataset(dataset.id, "JGAD000001")
+    await db.insert(s.humAccession)
+      .values({ accession: "JGAD000001", humLabel: "hum0002", kind: "jga-dataset" })
+
+    expect((await flagsOfTheOnlyRow(token)).upstreamMismatch).toBe(true)
+  })
+
+  it("settles both the pin and the upstream shortcoming when every pin matches upstream", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    const dataset = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    await pinDataset(dataset.id, "JGAD000001")
+    await db.insert(s.humAccession)
+      .values({ accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset" })
+
+    const flags = await flagsOfTheOnlyRow(token)
+    expect(flags.noDatasetLabel).toBe(false)
+    expect(flags.upstreamMismatch).toBe(false)
+  })
+
+  it("leaves an id the portal issued out of the upstream check, even absent from the ledger", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    const dataset = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    await pinDataset(dataset.id, "hum0001-NHA001")
+
+    const flags = await flagsOfTheOnlyRow(token)
+    expect(flags.noDatasetLabel).toBe(false)
+    expect(flags.upstreamMismatch).toBe(false)
+  })
 })
 
 describe("opening a draft", () => {
@@ -519,6 +595,23 @@ describe("the dataset screens of a draft", () => {
       { keyId: catalog.vocabKey, value: { kind: "vocabulary", state: "value", termIds: catalog.terms } },
     ]))).toBe(400)
 
+    expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+  })
+
+  it("refuses a file selection on a dataset an archive issued, which the picker never offers", async () => {
+    const token = await signIn(CURATOR, true)
+    await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "JGAD000123", datasetId, isPrimary: true })
+    const params = { researchId, draftId, datasetId }
+
+    const payload = {
+      revision: null,
+      content: { releaseDate: "", fileSelection: ["a.fastq.gz"], values: [], experiments: [] },
+    }
+
+    expect((await thrown(() => saveDatasetAction(postJson(token, "/x", payload), params))).status).toBe(400)
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
   })
 

@@ -101,7 +101,7 @@ describe("the box", () => {
       <BoxTable
         locale="ja"
         humLabel="hum0009"
-        rows={[entry({ isPublic: false, pending: { action: "publish", failed: false } })]}
+        rows={[entry({ isPublic: false, pending: { action: "publish", failed: false, lastError: null } })]}
       />,
     )
 
@@ -113,7 +113,7 @@ describe("the box", () => {
       <BoxTable
         locale="ja"
         humLabel="hum0009"
-        rows={[entry({ pending: { action: "unpublish", failed: true } })]}
+        rows={[entry({ pending: { action: "unpublish", failed: true, lastError: null } })]}
       />,
     )
 

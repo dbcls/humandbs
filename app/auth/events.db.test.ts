@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
+import { emptyDatasetContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -32,6 +33,39 @@ async function anEvent(): Promise<void> {
     subjectType: "research-version",
     subjectId: "hum0001-v2",
     detail: { humLabel: "hum0001" },
+  })
+}
+
+function one<T>(rows: T[]): T {
+  const row = rows[0]
+  if (row === undefined) throw new Error("the insert returned no row")
+  return row
+}
+
+/**
+ * A row in `replaced_dataset_content`, with the research, dataset and event it
+ * references. The row itself is reached through the app role, same as
+ * everywhere else here — only its prerequisites need real identities.
+ */
+async function aReplacedContent(): Promise<void> {
+  const researchRow = one(await db.insert(s.research).values({}).returning({ id: s.research.id }))
+  const datasetRow = one(
+    await db.insert(s.dataset).values({ researchId: researchRow.id }).returning({ id: s.dataset.id }),
+  )
+  const eventRow = one(await db
+    .insert(s.event)
+    .values({
+      actorSub: "0f3a",
+      actorName: "curator",
+      action: "publish-fix",
+      subjectType: "dataset",
+      subjectId: datasetRow.id,
+    })
+    .returning({ id: s.event.id }))
+  await db.insert(s.replacedDatasetContent).values({
+    datasetId: datasetRow.id,
+    content: emptyDatasetContent(),
+    eventId: eventRow.id,
   })
 }
 
@@ -107,5 +141,23 @@ describe("append-only の担保", () => {
     await anEvent()
 
     expect(await db.select().from(s.event)).toHaveLength(2)
+  })
+
+  it("アプリが繋ぐ role は replaced_dataset_content を書き換えられない", async () => {
+    await aReplacedContent()
+
+    await expectPermissionDenied(() =>
+      db.update(s.replacedDatasetContent).set({ content: emptyDatasetContent() }),
+    )
+  })
+
+  it("アプリが繋ぐ role は replaced_dataset_content を消せない", async () => {
+    await aReplacedContent()
+
+    await expectPermissionDenied(() => db.delete(s.replacedDatasetContent))
+  })
+
+  it("アプリが繋ぐ role は replaced_dataset_content を空にできない", async () => {
+    await expectPermissionDenied(() => db.execute(sql`TRUNCATE replaced_dataset_content`))
   })
 })

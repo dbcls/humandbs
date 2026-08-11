@@ -2,9 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FileListView, ResearchView } from "~/public/view.server"
+import type { FileListView, LinksView, ResearchView } from "~/public/view.server"
 
-import { ResearchVersionPage } from "./research"
+import { ResearchBody, ResearchVersionPage } from "./research"
 
 /**
  * The download section is the one part of this page that comes from outside the
@@ -16,7 +16,9 @@ import { ResearchVersionPage } from "./research"
 
 const NOTHING: FileListView = { rows: [], total: 0, page: 1, pageCount: 1 }
 
-function view(files: FileListView): ResearchView {
+const NO_LINKS: LinksView = { state: "value", value: [], untranslated: false }
+
+function view(files: FileListView, links: LinksView = NO_LINKS): ResearchView {
   return {
     humLabel: "hum0001",
     versionNumber: 1,
@@ -30,7 +32,7 @@ function view(files: FileListView): ResearchView {
       aims: { state: "rich", text: [], untranslated: false },
       methods: { state: "rich", text: [], untranslated: false },
       targets: { state: "rich", text: [], untranslated: false },
-      links: [],
+      links,
     },
     datasets: [],
     dataProviders: [],
@@ -42,12 +44,22 @@ function view(files: FileListView): ResearchView {
   }
 }
 
-function render(files: FileListView): string {
+function render(files: FileListView, links: LinksView = NO_LINKS): string {
   const Stub = createRoutesStub([{
     path: "/",
-    Component: () => <ResearchVersionPage view={view(files)} locale="ja" />,
+    Component: () => <ResearchVersionPage view={view(files, links)} locale="ja" />,
   }])
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
+}
+
+/**
+ * The preview draws `ResearchBody` directly, without the version chrome the
+ * public page adds around it (`app/components/preview.tsx`). Its loader keeps
+ * an unsettled URL as `unsettled` rather than projecting it away first, which
+ * is the one difference this file has to cover that the public render does not.
+ */
+function renderPreview(links: LinksView): string {
+  return renderToStaticMarkup(<ResearchBody view={view(NOTHING, links)} locale="ja" />)
 }
 
 describe("the research page", () => {
@@ -76,5 +88,30 @@ describe("the research page", () => {
     })
 
     expect(html).toContain("href=\"/?files=2\"")
+  })
+})
+
+/**
+ * A URL carries the same four states as any other value on its way to a
+ * screen (docs/data-model.md's table of value states): settled information,
+ * an open question, or an answer with content.
+ */
+describe("the state a links value carries to the page", () => {
+  it("draws a not-applicable URL as the not-applicable notice on the public page", () => {
+    const html = render(NOTHING, { state: "not-applicable" })
+
+    expect(html).toContain("該当なし")
+  })
+
+  it("draws an unsettled URL as the unsettled frame in a preview", () => {
+    const html = renderPreview({ state: "unsettled" })
+
+    expect(html).toContain("未確定")
+  })
+
+  it("leaves the row out entirely when the resolved links are an empty list", () => {
+    const html = render(NOTHING, { state: "value", value: [], untranslated: false })
+
+    expect(html).not.toContain("URL")
   })
 })

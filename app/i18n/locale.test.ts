@@ -70,12 +70,19 @@ describe("resolveLinks", () => {
   const ja = [{ id: "l1", url: "https://example.jp/", text: "研究室" }]
 
   it("returns the links of the wanted language", () => {
-    expect(resolveLinks({ ja: filled(ja), en: filled([]) }, "ja")).toEqual(ja)
+    expect(resolveLinks({ ja: filled(ja), en: filled([]) }, "ja"))
+      .toEqual({ state: "value", value: ja, untranslated: false })
   })
 
   it("returns nothing rather than the other language's destinations", () => {
-    expect(resolveLinks({ ja: filled(ja), en: filled([]) }, "en")).toEqual([])
-    expect(resolveLinks({ ja: filled(ja), en: UNKNOWN }, "en")).toEqual([])
+    expect(resolveLinks({ ja: filled(ja), en: filled([]) }, "en"))
+      .toEqual({ state: "value", value: [], untranslated: false })
+  })
+
+  it("carries the state of the wanted language out rather than emptying it", () => {
+    expect(resolveLinks({ ja: filled(ja), en: UNKNOWN }, "en")).toEqual({ state: "unsettled" })
+    expect(resolveLinks({ ja: filled(ja), en: NOT_APPLICABLE }, "en"))
+      .toEqual({ state: "not-applicable" })
   })
 })
 

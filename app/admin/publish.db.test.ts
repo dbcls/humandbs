@@ -77,7 +77,9 @@ async function ready(options: { describe?: boolean } = {}) {
   })
   const made = await createDatasetInDraft(db, { draftId: created.draftId, revision: 2 }, created.researchId)
   if (made.status !== "created") throw new Error(made.status)
-  await pinDataset(made.datasetId, "JGAD000001")
+  // An id the portal issued, so that the upstream check has nothing to say
+  // about it: an accession missing from the cache is upstream not knowing it.
+  await pinDataset(made.datasetId, "hum0001-NHA001")
   if (options.describe !== false) {
     const saved = await saveDatasetEntry(
       db,

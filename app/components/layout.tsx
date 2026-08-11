@@ -112,6 +112,17 @@ export function SiteHeader({ locale, alerts, account }: {
 
   return (
     <header className="border-line border-b bg-white">
+      {/*
+        The first thing focus reaches, and out of the way until it is reached.
+        Every page puts the same id on its <main>, so this needs nothing from
+        the page it is on.
+      */}
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:bg-white focus:px-3 focus:py-2"
+      >
+        {messages.skipToContent}
+      </a>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link to={href(locale, "/")} className="font-bold text-lg no-underline">
           {messages.siteName}

@@ -16,7 +16,9 @@ import {
   Annotation,
   Card,
   Empty,
+  hasLinks,
   KeyValue,
+  LinksValue,
   Page,
   PageHead,
   Section,
@@ -105,15 +107,9 @@ export function ResearchBody({ view, locale, datasetHref }: {
           <KeyValue title={t.targets} at="summary.targets">
             <Value field={view.summary.targets} locale={locale} />
           </KeyValue>
-          {view.summary.links.length > 0 && (
+          {hasLinks(view.summary.links) && (
             <KeyValue title={t.url} at="summary.url">
-              <ul>
-                {view.summary.links.map((link) => (
-                  <li key={link.id} className="break-all">
-                    <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
-                  </li>
-                ))}
-              </ul>
+              <LinksValue links={view.summary.links} locale={locale} />
             </KeyValue>
           )}
         </dl>
@@ -199,13 +195,7 @@ export function ResearchBody({ view, locale, datasetHref }: {
                   <Annotation at={`researchProjects.${project.id}.name`} />
                 </Td>
                 <Td className="break-all">
-                  <ul>
-                    {project.links.map((link) => (
-                      <li key={link.id}>
-                        <a href={link.url} target="_blank" rel="noreferrer">{link.text}</a>
-                      </li>
-                    ))}
-                  </ul>
+                  <LinksValue links={project.links} locale={locale} />
                   <Annotation at={`researchProjects.${project.id}.url`} />
                 </Td>
               </tr>

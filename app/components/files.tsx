@@ -192,9 +192,14 @@ function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   const t = messagesFor(locale).admin.files
   if (entry.pending !== null) {
     const moving = entry.pending.action === "publish" ? t.movingToPublic : t.movingToPrivate
+    if (!entry.pending.failed) return <span className="text-accent text-xs">{moving}</span>
     return (
-      <span className={entry.pending.failed ? "text-danger text-xs" : "text-accent text-xs"}>
-        {entry.pending.failed ? t.failed : moving}
+      <span className="text-danger text-xs">
+        {t.failed}
+        {/* The store's own words, untranslated: a message nobody wrote cannot be. */}
+        {entry.pending.lastError !== null && (
+          <span className="ml-1 text-ink-muted">{entry.pending.lastError}</span>
+        )}
       </span>
     )
   }

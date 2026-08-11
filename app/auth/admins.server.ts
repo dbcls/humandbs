@@ -97,6 +97,6 @@ export async function revokeAdmin(db: Database, actor: EventActor, sub: string):
 export async function refreshAdminName(db: Executor, sub: string, name: string): Promise<void> {
   await db
     .update(adminUser)
-    .set({ displayName: name, updatedAt: new Date() })
+    .set({ displayName: name })
     .where(eq(adminUser.keycloakSub, sub))
 }

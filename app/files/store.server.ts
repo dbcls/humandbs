@@ -22,6 +22,7 @@ import {
   CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -101,6 +102,20 @@ export interface ObjectRef {
  * one file to a reader, and hiding it behind a folder the box has no other
  * notion of would take it out of the listing.
  */
+/**
+ * Whether the store answers for both buckets.
+ *
+ * **Both, because a bucket is the published state.** A store that answers for
+ * one of them can neither publish a file nor take one back, and a missing
+ * bucket is not created as a side effect of writing to it — so a health check
+ * that only proved the endpoint is up would pass on a store the app cannot use.
+ */
+export async function pingStore(): Promise<void> {
+  await Promise.all([PUBLIC_BUCKET, PRIVATE_BUCKET].map(async (bucket) => {
+    await getStore().send(new HeadBucketCommand({ Bucket: bucket }))
+  }))
+}
+
 export async function listPrefix(bucket: Bucket, prefix: string): Promise<StoredNode[]> {
   const nodes: StoredNode[] = []
   let token: string | undefined

@@ -20,7 +20,7 @@ import { changedDatasetFromPublished, changedFromPublished } from "~/admin/chang
 import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
-import { publicDatasetContent, publicResearch } from "~/content/public"
+import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
 import { adminBox, boxRows, fileListOf, readFilePage } from "~/files/listing.server"
 import type { ResearchContent } from "~/content/types"
 import { getDb } from "~/db/client.server"
@@ -45,7 +45,12 @@ import {
 
 import { sharedDraftByToken, type SharedDraft } from "./access.server"
 import { anchorOf, isAnchorPath, type AnchorSubject } from "./anchors"
-import { checkComment, type CommentProblem, type ThreadView } from "./comments"
+import {
+  checkComment,
+  threadsOfSubjects,
+  type CommentProblem,
+  type ThreadView,
+} from "./comments"
 import {
   acknowledgeDraft,
   readAcknowledgements,
@@ -111,12 +116,22 @@ export interface PreviewDatasetPageView extends PreviewShell {
   previous: Record<string, AnchoredValue>
 }
 
+/**
+ * What every preview screen carries.
+ *
+ * **The threads are narrowed to what this screen draws.** A draft's threads
+ * include ones about datasets the version does not list, and those are not
+ * drawn — but a loader's return value is serialised into the page, so leaving
+ * them in would hand their text to anybody holding the share link, and the count
+ * of unanswered comments would include places the reader cannot reach.
+ */
 async function shellOf(
   request: Request,
   locale: Locale,
   draft: SharedDraft,
   publishedNumber: number | null,
   humLabel: string | null,
+  drawn: readonly AnchorSubject[],
 ): Promise<PreviewShell> {
   const db = getDb()
   const [actor, threads, acknowledgements] = await Promise.all([
@@ -129,7 +144,7 @@ async function shellOf(
     token: draft.token,
     humLabel,
     signedInName: actor?.name ?? null,
-    threads,
+    threads: threadsOfSubjects(threads, drawn),
     acknowledgements,
     publishedNumber,
   }
@@ -173,16 +188,19 @@ export async function previewResearchPage(
   const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
 
   const projected = publicResearch(draft.content, { cau, files: listing }, PREVIEW)
-  const rows: DatasetRowInput[] = datasets.map((row) => ({
-    id: row.id,
-    label: row.label ?? "",
-    content: publicDatasetContent(
+  const rows: DatasetRowInput[] = datasets.map((row) => {
+    const dataset = publicDataset(
       row.content,
-      { keys: catalog.keyById, files: listing },
+      { keys: catalog.keyById, files: listing, archive: row.archive },
       PREVIEW,
-    ),
-    datePublished: row.datePublished,
-  }))
+    )
+    return {
+      id: row.id,
+      label: row.label ?? "",
+      content: dataset.content,
+      datePublished: dataset.dates.datePublished,
+    }
+  })
   const nextNumber = (published?.number ?? 0) + 1
 
   const anchored = anchoredResearchView({
@@ -206,7 +224,10 @@ export async function previewResearchPage(
       )
 
   return {
-    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel),
+    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel, [
+      { kind: "research" },
+      ...draft.content.datasetIds.map((id) => ({ kind: "dataset" as const, datasetId: id })),
+    ]),
     view: anchored.view,
     changed,
     previous: changed.length === 0 || published === null
@@ -271,16 +292,17 @@ export async function previewDatasetPage(
   if (row === undefined) notFound()
   const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
 
+  const dataset = publicDataset(
+    row.content,
+    { keys: catalog.keyById, files: listing, archive: row.archive },
+    PREVIEW,
+  )
   const anchored = anchoredDatasetView({
     label: row.label ?? "",
     humLabel: humLabel ?? "",
-    content: publicDatasetContent(
-      row.content,
-      { keys: catalog.keyById, files: listing },
-      PREVIEW,
-    ),
-    datePublished: row.datePublished,
-    dateModified: row.dateModified,
+    content: dataset.content,
+    datePublished: dataset.dates.datePublished,
+    dateModified: dataset.dates.dateModified,
     files: listing,
   }, locale, catalog)
 
@@ -307,7 +329,9 @@ export async function previewDatasetPage(
       }, locale, catalog).byAnchor)
 
   return {
-    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel),
+    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel, [
+      { kind: "dataset", datasetId },
+    ]),
     datasetId,
     datasetLabel: row.label,
     view: anchored.view,

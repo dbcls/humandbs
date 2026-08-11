@@ -10,7 +10,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core"
 
-import { createdAt, primaryId, updatedAt } from "./common"
+import { primaryId } from "./common"
 
 export const vocabularySource = pgEnum("vocabulary_source", ["portal", "external"])
 
@@ -31,8 +31,6 @@ export const vocabularySet = pgTable("vocabulary_set", {
   labelEn: text().notNull(),
   source: vocabularySource().notNull(),
   hierarchical: boolean().notNull().default(false),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 })
 
 /**
@@ -55,8 +53,6 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   /** Deactivated terms stay resolvable for data that already references them. */
   active: boolean().notNull().default(true),
   position: integer().notNull().default(0),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 }, (t) => [
   unique("vocabulary_term_code_unique").on(t.setId, t.code),
   index().on(t.parentId),
@@ -69,8 +65,6 @@ export const facetCategory = pgTable("facet_category", {
   labelJa: text().notNull(),
   labelEn: text().notNull(),
   position: integer().notNull().default(0),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 })
 
 export const contentKeyScope = pgEnum("content_key_scope", ["dataset", "experiment"])
@@ -136,8 +130,6 @@ export const contentKey = pgTable("content_key", {
    * migration.
    */
   showOnPublicPage: boolean().notNull().default(false),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 }, (t) => [
   index().on(t.scope, t.position),
 ])

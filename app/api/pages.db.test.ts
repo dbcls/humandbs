@@ -253,3 +253,56 @@ describe("the correspondence supplied to DDBJ Search", () => {
     expect(answer.status).toBe(422)
   })
 })
+
+describe("what apiSearch answers about its own parameters", () => {
+  async function problemType(answer: Response): Promise<{ status: number, type: string }> {
+    expect(answer.headers.get("content-type")).toBe("application/problem+json; charset=utf-8")
+    const problem = await body(answer) as { status: number, type: string }
+    return { status: problem.status, type: problem.type }
+  }
+
+  it("refuses a ?q= it cannot parse as a query with 422", async () => {
+    const answer = await apiSearch(get("/api/research?q=%22unterminated"), "research")
+    const { status, type } = await problemType(answer)
+    expect(status).toBe(422)
+    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-query")
+  })
+
+  it("accepts a ?q= it can parse as a query with 200", async () => {
+    await rebuildSearchDocs(db)
+    const answer = await apiSearch(get("/api/research?q=title:cancer"), "research")
+    expect(answer.status).toBe(200)
+    expect(answer.headers.get("content-type")).toBe("application/json; charset=utf-8")
+  })
+
+  it("refuses sort=relevance when the query has no free-text word to score", async () => {
+    await rebuildSearchDocs(db)
+    const answer = await apiSearch(
+      get("/api/research?q=date_published:2020-01-01&sort=relevance"),
+      "research",
+    )
+    const { status, type } = await problemType(answer)
+    expect(status).toBe(422)
+    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-sort")
+  })
+
+  it("accepts sort=relevance once the query carries a free-text word", async () => {
+    await rebuildSearchDocs(db)
+    const answer = await apiSearch(get("/api/research?q=cancer&sort=relevance"), "research")
+    expect(answer.status).toBe(200)
+  })
+
+  it("refuses a negative page with 422", async () => {
+    const answer = await apiSearch(get("/api/research?page=-1"), "research")
+    const { status, type } = await problemType(answer)
+    expect(status).toBe(422)
+    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-parameter")
+  })
+
+  it("refuses a non-integer page with 422", async () => {
+    const answer = await apiSearch(get("/api/research?page=1.5"), "research")
+    const { status, type } = await problemType(answer)
+    expect(status).toBe(422)
+    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-parameter")
+  })
+})

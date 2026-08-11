@@ -30,12 +30,14 @@ import type {
   TranslatedText,
   ValueSlot,
 } from "~/content/types"
+import { catalogLabel } from "~/i18n/catalog-label"
 import {
   resolveBilingual,
   resolveLinks,
   resolveRichText,
   resolveText,
   type Locale,
+  type Resolved,
 } from "~/i18n/locale"
 
 /**
@@ -51,6 +53,15 @@ export type FieldView
     | { state: "plain", text: string, untranslated: boolean }
 
 /**
+ * Links as a page shows them. A URL is the one kind of value whose two
+ * languages are different resources rather than translations, so it never falls
+ * back — but it carries the same four states as everything else, and both
+ * `unsettled` and `not-applicable` have to survive the trip to the screen.
+ * Collapsing them into an empty list is what would make a preview stop asking.
+ */
+export type LinksView = Resolved<Link[]>
+
+/**
  * One place a page draws, kept under the anchor it draws it at.
  *
  * The anchors are the path vocabulary of the editing form, which is what makes
@@ -62,7 +73,7 @@ export type FieldView
  */
 export type AnchoredValue
   = | { kind: "field", field: FieldView }
-    | { kind: "links", links: Link[] }
+    | { kind: "links", links: LinksView }
     | { kind: "list", items: string[] }
     | { kind: "term", term: TermView | null }
 
@@ -73,7 +84,7 @@ export interface Anchored<T> {
 
 interface Anchors {
   field: (at: string, field: FieldView) => FieldView
-  links: (at: string, links: Link[]) => Link[]
+  links: (at: string, links: LinksView) => LinksView
   list: (at: string, items: string[]) => string[]
   term: (at: string, term: TermView | null) => TermView | null
   taken: () => Record<string, AnchoredValue>
@@ -140,14 +151,6 @@ export function anchorUnderCode(catalog: CatalogView, code: string): string | nu
   return key === undefined ? null : `values.${key.id}`
 }
 
-export function keyLabel(key: CatalogKeyView, locale: Locale): string {
-  return locale === "ja" ? key.labelJa : key.labelEn
-}
-
-export function termLabel(term: VocabularyTermView, locale: Locale): string {
-  return locale === "ja" ? term.labelJa ?? term.labelEn : term.labelEn
-}
-
 /**
  * Records whether anything on the page fell back to the other language. The
  * notice is per page rather than per field: a reader needs to know the page is
@@ -190,7 +193,7 @@ function prose(pair: TranslatedRichText, locale: Locale, fallbacks: Fallbacks): 
   }
 }
 
-function linksOf(pair: LocalizedLinks, locale: Locale): Link[] {
+function linksOf(pair: LocalizedLinks, locale: Locale): LinksView {
   return resolveLinks(pair, locale)
 }
 
@@ -224,7 +227,7 @@ function valueField(
       const labels = slot.value
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
-        .map((term) => termLabel(term, locale))
+        .map((term) => catalogLabel(term, locale))
       return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
     }
     case "number": {
@@ -259,7 +262,7 @@ function valueViews(
       if (key === undefined) return []
       return [{
         keyId: value.keyId,
-        label: keyLabel(key, locale),
+        label: catalogLabel(key, locale),
         field: valueField(value.value, locale, catalog, fallbacks),
         position: key.position,
       }]
@@ -316,7 +319,7 @@ function firstTerm(
   if (value?.kind !== "vocabulary" || value.termIds.state !== "value") return null
   const [termId] = value.termIds.value
   const term = termId === undefined ? undefined : catalog.termById.get(termId)
-  return term === undefined ? null : { code: term.code, label: termLabel(term, locale) }
+  return term === undefined ? null : { code: term.code, label: catalogLabel(term, locale) }
 }
 
 function datasetRowView(
@@ -376,10 +379,10 @@ export interface ResearchView {
   latestVersionNumber: number
   untranslated: boolean
   title: FieldView
-  summary: { aims: FieldView, methods: FieldView, targets: FieldView, links: Link[] }
+  summary: { aims: FieldView, methods: FieldView, targets: FieldView, links: LinksView }
   datasets: DatasetRowView[]
   dataProviders: { id: string, representative: FieldView, organization: FieldView }[]
-  researchProjects: { id: string, name: FieldView, links: Link[] }[]
+  researchProjects: { id: string, name: FieldView, links: LinksView }[]
   grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
   relatedPublications: { id: string, title: FieldView, doi: FieldView, datasetLabels: string[] }[]
   cau: CauView[]
@@ -705,7 +708,7 @@ export function researchListRowView(
     targets: prose(short.targets, locale, fallbacks),
     accessTypes: input.accessTermIds.flatMap((id) => {
       const term = catalog.termById.get(id)
-      return term === undefined ? [] : [{ code: term.code, label: termLabel(term, locale) }]
+      return term === undefined ? [] : [{ code: term.code, label: catalogLabel(term, locale) }]
     }),
     datePublished: input.datePublished,
     dateModified: input.dateModified,

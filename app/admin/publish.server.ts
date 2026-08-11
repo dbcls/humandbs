@@ -133,7 +133,6 @@ interface Ground {
   datasets: Map<string, DatasetRow>
   entries: Map<string, { content: DatasetContent, baseContent: DatasetContent | null }>
   versions: VersionRow[]
-  upstreamLoaded: boolean
   upstreamHumLabelOf: Map<string, string>
 }
 
@@ -225,9 +224,6 @@ async function readGround(
       content: row.content,
       datasetIds: row.content.datasetIds,
     })),
-    // An empty cache is a cache that has never been fetched, not an upstream
-    // that knows nothing.
-    upstreamLoaded: upstreamRows.length > 0,
     upstreamHumLabelOf: new Map(upstreamRows.map((row) => [row.accession, row.humLabel])),
   }
 }
@@ -353,7 +349,7 @@ export async function publishPreview(
       content: ground.draft.content,
       datasets,
       previousDatasetIds: previous?.datasetIds ?? [],
-      upstream: { loaded: ground.upstreamLoaded, humLabelOf: ground.upstreamHumLabelOf },
+      upstream: ground.upstreamHumLabelOf,
       privateFiles,
     })
 
@@ -464,7 +460,7 @@ export async function publishDraft(
       content: ground.draft.content,
       datasets,
       previousDatasetIds: previous?.datasetIds ?? [],
-      upstream: { loaded: ground.upstreamLoaded, humLabelOf: ground.upstreamHumLabelOf },
+      upstream: ground.upstreamHumLabelOf,
       privateFiles: request.privateFiles,
     })
     if (gate.blocks.length > 0) return { status: "blocked", blocks: gate.blocks }
@@ -478,7 +474,7 @@ export async function publishDraft(
     if (listedIds.length > 0) {
       await tx
         .update(dataset)
-        .set({ originDraftId: null, updatedAt: sql`now()` })
+        .set({ originDraftId: null })
         .where(and(inArray(dataset.id, listedIds), isNotNull(dataset.originDraftId)))
     }
 
@@ -627,7 +623,7 @@ async function writeDatasets(
       .values({ datasetId: row.datasetId, content: next })
       .onConflictDoUpdate({
         target: datasetContent.datasetId,
-        set: { content: next, updatedAt: sql`now()` },
+        set: { content: next },
       })
     await recordEvent(tx, {
       actor: into.actor,

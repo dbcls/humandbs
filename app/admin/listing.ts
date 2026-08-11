@@ -8,8 +8,14 @@
  * Several words all have to match, as they do in the public box.
  *
  * The filters are separate axes and combine as an AND: a status, and any number
- * of the three shortcomings. Nothing here reaches the database, so a rule can
- * be checked against a row without one.
+ * of the shortcomings. Nothing here reaches the database, so a rule can be
+ * checked against a row without one.
+ *
+ * **The shortcomings are the ones a row can be built with**, which is a wider
+ * line than "derived from the content": two of them come from the pin ledger and
+ * one from the upstream cache. What decides it is whether the listing query can
+ * reach it — a publish the gate would stop has to be visible before the curator
+ * walks all the way to the confirmation screen.
  */
 
 import type { TranslatedText } from "~/content/types"
@@ -25,11 +31,21 @@ export const ADMIN_STATUSES: readonly AdminStatus[] = ["published", "withdrawn",
 export interface AdminFlags extends ContentFlags {
   /** No hum label is pinned, which alone is enough to stop a version publishing. */
   noHumLabel: boolean
+  /** Some dataset of this research carries no id, which stops a publish just as hard. */
+  noDatasetLabel: boolean
+  /** A pinned JGA accession upstream does not know, or holds against another research. */
+  upstreamMismatch: boolean
 }
 
 export type AdminFlagKey = keyof AdminFlags
 
-export const ADMIN_FLAG_KEYS: readonly AdminFlagKey[] = ["noHumLabel", "unsettled", "untranslated"]
+export const ADMIN_FLAG_KEYS: readonly AdminFlagKey[] = [
+  "noHumLabel",
+  "noDatasetLabel",
+  "unsettled",
+  "untranslated",
+  "upstreamMismatch",
+]
 
 export function isAdminStatus(value: string | null): value is AdminStatus {
   return value !== null && (ADMIN_STATUSES as readonly string[]).includes(value)

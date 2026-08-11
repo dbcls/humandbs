@@ -403,7 +403,6 @@ async function updateKey(db: Executor, form: FormData): Promise<CatalogResult> {
       labelEn,
       showOnPublicPage: form.get("showOnPublicPage") !== null,
       facetCategoryId: categoryId === "" ? null : categoryId,
-      updatedAt: new Date(),
     })
     .where(eq(contentKey.id, id))
     .returning({ id: contentKey.id })
@@ -477,7 +476,7 @@ async function updateCategory(db: Executor, form: FormData): Promise<CatalogResu
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
   const updated = await db
     .update(facetCategory)
-    .set({ labelJa, labelEn, updatedAt: new Date() })
+    .set({ labelJa, labelEn })
     .where(eq(facetCategory.id, id))
     .returning({ id: facetCategory.id })
   return updated.length === 0 ? { status: "unknown-target" } : { status: "ok" }
@@ -572,7 +571,7 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   if (term.source !== "portal") return { status: "not-editable" }
   await db
     .update(vocabularyTerm)
-    .set({ labelEn, labelJa: labelJa === "" ? null : labelJa, updatedAt: new Date() })
+    .set({ labelEn, labelJa: labelJa === "" ? null : labelJa })
     .where(eq(vocabularyTerm.id, id))
   return { status: "ok" }
 }
@@ -584,7 +583,7 @@ async function setTermActive(db: Executor, form: FormData): Promise<CatalogResul
   if (term.source !== "portal") return { status: "not-editable" }
   await db
     .update(vocabularyTerm)
-    .set({ active: text(form, "active") === "true", updatedAt: new Date() })
+    .set({ active: text(form, "active") === "true" })
     .where(eq(vocabularyTerm.id, id))
   return { status: "ok" }
 }

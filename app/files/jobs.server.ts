@@ -139,6 +139,7 @@ export async function pendingSwitches(
       fileName: filePublishJob.fileName,
       action: filePublishJob.action,
       state: filePublishJob.state,
+      lastError: filePublishJob.lastError,
     })
     .from(filePublishJob)
     .where(eq(filePublishJob.researchId, researchId))
@@ -146,6 +147,7 @@ export async function pendingSwitches(
     fileName: row.fileName,
     action: row.action,
     failed: row.state === "failed",
+    lastError: row.lastError,
   }))
 }
 

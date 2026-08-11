@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import type { ContentValue } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -296,17 +297,154 @@ describe("rebuildSearchDocs", () => {
     expect(row.dateModified).toBe("2023-11-15")
   })
 
-  it("produces the same rows when run again", async () => {
-    const researchId = await createResearch("hum0001")
-    const datasetId = await createDataset(researchId, "JGAD000001")
-    await publish(researchId, 1, [datasetId])
+  it("produces the same search_doc, facet-term, and facet-number rows when rebuilt again over its own existing rows", async () => {
+    // A vocabulary set with a rollup (ICD10-shaped) and a flat one, plus a
+    // number key, so both facet tables and the ancestor rollup are exercised.
+    const { id: icd10SetId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", source: "external", hierarchical: true })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: parentTermId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId: icd10SetId, code: "E11", labelEn: "E11", source: "external" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: childTermId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId: icd10SetId, code: "E11.9", labelEn: "E11.9", parentId: parentTermId, source: "external" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: assaySetId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: rnaSeqTermId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId: assaySetId, code: "rna-seq", labelEn: "RNA-seq", source: "portal" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: diseaseKeyId } = only(await db.insert(s.contentKey)
+      .values({ code: "disease", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: icd10SetId })
+      .returning({ id: s.contentKey.id }))
+    const { id: assayKeyId } = only(await db.insert(s.contentKey)
+      .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: assaySetId })
+      .returning({ id: s.contentKey.id }))
+    const { id: volumeKeyId } = only(await db.insert(s.contentKey)
+      .values({ code: "data-volume", scope: "experiment", valueType: "number", labelJa: "データ量", labelEn: "Data volume", canonicalUnit: "GB" })
+      .returning({ id: s.contentKey.id }))
+
+    const withExperiments = async (
+      researchId: string,
+      label: string,
+      experiments: { id: string, keyId: string, value: ContentValue }[],
+    ) => {
+      const datasetId = await createDataset(researchId, label)
+      await db.update(s.datasetContent).set({
+        content: {
+          ...emptyDatasetContent(),
+          experiments: experiments.map((e) => ({
+            id: e.id,
+            label: filled(e.id),
+            values: [{ keyId: e.keyId, value: e.value }],
+          })),
+        },
+      }).where(eq(s.datasetContent.datasetId, datasetId))
+      return datasetId
+    }
+
+    // research 1: two datasets, one of them with two experiments — a vocabulary
+    // facet (with an ancestor to roll up to) and a number facet.
+    const research1 = await createResearch("hum0001")
+    const datasetA = await withExperiments(research1, "JGAD000001", [
+      { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", value: filled({ value: 5, unit: "GB", inputValue: 5, inputUnit: "GB" }) } },
+    ])
+    const datasetB = await withExperiments(research1, "JGAD000002", [
+      { id: "experiment-1", keyId: assayKeyId, value: { kind: "vocabulary", termIds: filled([rnaSeqTermId]) } },
+    ])
+    const { id: snapshot1Id } = only(await db.insert(s.contentSnapshot)
+      .values({
+        researchId: research1,
+        content: {
+          ...emptyResearchContent(),
+          title: { ja: filled("癌ゲノム研究"), en: filled("Cancer Genome Study") },
+          datasetIds: [datasetA, datasetB],
+        },
+      })
+      .returning({ id: s.contentSnapshot.id }))
+    await db.insert(s.researchVersion)
+      .values({ researchId: research1, number: 1, snapshotId: snapshot1Id, releaseDate: "2020-01-01" })
+
+    // research 2: a second research, with its own dataset and its own values
+    // under the same keys, so nothing about research 1 can leak into it.
+    const research2 = await createResearch("hum0002")
+    const datasetC = await withExperiments(research2, "JGAD000003", [
+      { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", value: filled({ value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB" }) } },
+    ])
+    const { id: snapshot2Id } = only(await db.insert(s.contentSnapshot)
+      .values({
+        researchId: research2,
+        content: {
+          ...emptyResearchContent(),
+          title: { ja: filled("希少疾患コホート"), en: filled("Rare Disease Cohort") },
+          datasetIds: [datasetC],
+        },
+      })
+      .returning({ id: s.contentSnapshot.id }))
+    await db.insert(s.researchVersion)
+      .values({ researchId: research2, number: 1, snapshotId: snapshot2Id, releaseDate: "2021-06-15" })
+
+    const orderedDocs = () => db
+      .select({
+        targetType: s.searchDoc.targetType,
+        targetId: s.searchDoc.targetId,
+        researchId: s.searchDoc.researchId,
+        humLabel: s.searchDoc.humLabel,
+        versionNumber: s.searchDoc.versionNumber,
+        datasetLabel: s.searchDoc.datasetLabel,
+        datePublished: s.searchDoc.datePublished,
+        dateModified: s.searchDoc.dateModified,
+        title: s.searchDoc.title,
+        textJa: s.searchDoc.textJa,
+        textEn: s.searchDoc.textEn,
+      })
+      .from(s.searchDoc)
+      .orderBy(s.searchDoc.targetType, s.searchDoc.targetId)
+
+    // Facet rows reference a fresh `search_doc.id` every rebuild, so the two
+    // runs are compared by what the row is *about* (its document's stable
+    // target) rather than by that regenerated key.
+    const orderedFacetTerms = () => db
+      .select({
+        targetType: s.searchDoc.targetType,
+        targetId: s.searchDoc.targetId,
+        keyId: s.searchFacetTerm.keyId,
+        termId: s.searchFacetTerm.termId,
+        ancestorIds: s.searchFacetTerm.ancestorIds,
+      })
+      .from(s.searchFacetTerm)
+      .innerJoin(s.searchDoc, eq(s.searchDoc.id, s.searchFacetTerm.docId))
+      .orderBy(s.searchDoc.targetId, s.searchFacetTerm.keyId, s.searchFacetTerm.termId)
+
+    const orderedFacetNumbers = () => db
+      .select({
+        targetType: s.searchDoc.targetType,
+        targetId: s.searchDoc.targetId,
+        keyId: s.searchFacetNumber.keyId,
+        value: s.searchFacetNumber.value,
+      })
+      .from(s.searchFacetNumber)
+      .innerJoin(s.searchDoc, eq(s.searchDoc.id, s.searchFacetNumber.docId))
+      .orderBy(s.searchDoc.targetId, s.searchFacetNumber.keyId, s.searchFacetNumber.value)
 
     await rebuildSearchDocs(db)
-    const first = await docs()
-    await rebuildSearchDocs(db)
-    const second = await docs()
+    const firstDocs = await orderedDocs()
+    const firstFacetTerms = await orderedFacetTerms()
+    const firstFacetNumbers = await orderedFacetNumbers()
+    expect(firstDocs.length).toBeGreaterThan(0)
+    expect(firstFacetTerms.length).toBeGreaterThan(0)
+    expect(firstFacetNumbers.length).toBeGreaterThan(0)
 
-    expect(second).toEqual(first)
+    // The second run starts from a database that already holds the first
+    // run's rows, which is the case the rule actually has to hold under.
+    await rebuildSearchDocs(db)
+
+    expect(await orderedDocs()).toEqual(firstDocs)
+    expect(await orderedFacetTerms()).toEqual(firstFacetTerms)
+    expect(await orderedFacetNumbers()).toEqual(firstFacetNumbers)
   })
 })
 

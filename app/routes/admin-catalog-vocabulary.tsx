@@ -4,6 +4,7 @@ import { catalogAction, vocabularyPage, type TermRow } from "~/admin/catalog.ser
 import { adminCatalogPath, adminVocabularyPath } from "~/admin/urls"
 import { Badge, Field, Result, Submit } from "~/components/catalog"
 import { Card, Page, PageHead, PageLinks, Section } from "~/components/page"
+import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -49,7 +50,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
 
   return (
     <Page>
-      <PageHead label={`${t.terms} - ${locale === "ja" ? set.labelJa : set.labelEn}`}>
+      <PageHead label={`${t.terms} - ${catalogLabel(set, locale)}`}>
         <Link to={href(locale, adminCatalogPath())} className="text-white">{t.heading}</Link>
       </PageHead>
       <Card>

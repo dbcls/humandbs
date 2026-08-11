@@ -18,6 +18,7 @@ function thread(overrides: Partial<ThreadView> & { id: string }): ThreadView {
     anchor: { kind: "research-field", path: "title" },
     resolved: false,
     resolvedBy: null,
+    resolvedAt: null,
     comments: [],
     createdAt: "2026-08-01T00:00:00.000Z",
     ...overrides,

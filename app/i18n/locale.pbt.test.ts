@@ -102,7 +102,18 @@ describe("resolveLinks", () => {
   it("never returns a link the wanted language does not have", () => {
     fc.assert(fc.property(localizedLinksArb, localeArb, (links, locale) => {
       const slot = links[locale]
-      expect(resolveLinks(links, locale)).toEqual(slot.state === "value" ? slot.value : [])
+      const resolved = resolveLinks(links, locale)
+      expect(resolved.state === "value" ? resolved.value : []).toEqual(
+        slot.state === "value" ? slot.value : [],
+      )
+    }))
+  })
+
+  it("carries the state of the wanted language out unchanged", () => {
+    fc.assert(fc.property(localizedLinksArb, localeArb, (links, locale) => {
+      const slot = links[locale]
+      const resolved = resolveLinks(links, locale)
+      expect(resolved.state).toBe(slot.state === "unknown" ? "unsettled" : slot.state)
     }))
   })
 })

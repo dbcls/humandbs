@@ -98,10 +98,18 @@ export function resolveRichText(text: TranslatedRichText, locale: Locale): Resol
   return resolve(text, locale, [], isEmptyRichText)
 }
 
-/** No fallback: the languages of a link are different destinations, not translations. */
-export function resolveLinks(links: LocalizedLinks, locale: Locale): Link[] {
+/**
+ * No fallback: the languages of a link are different destinations, not
+ * translations. The state is carried out as it is for every other kind of value
+ * — a URL can be marked unsettled or not applicable per language, and a screen
+ * that collapsed both into "no links" would drop the very thing a preview is
+ * meant to show.
+ */
+export function resolveLinks(links: LocalizedLinks, locale: Locale): Resolved<Link[]> {
   const slot = links[locale]
-  return slot.state === "value" ? slot.value : []
+  if (slot.state === "not-applicable") return { state: "not-applicable" }
+  if (slot.state === "unknown") return { state: "unsettled" }
+  return { state: "value", value: slot.value, untranslated: false }
 }
 
 /**

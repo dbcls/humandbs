@@ -11,7 +11,13 @@ import {
   type AdminResearchRow,
 } from "./listing"
 
-const NOTHING = { noHumLabel: false, unsettled: false, untranslated: false }
+const NOTHING = {
+  noHumLabel: false,
+  noDatasetLabel: false,
+  unsettled: false,
+  untranslated: false,
+  upstreamMismatch: false,
+}
 
 function pair(ja: string, en: string): TranslatedText {
   return { ja: filled(ja), en: filled(en) }
@@ -90,7 +96,7 @@ describe("the filters", () => {
     row({
       researchId: "d",
       status: "unpublished",
-      flags: { noHumLabel: true, unsettled: true, untranslated: true },
+      flags: { ...NOTHING, noHumLabel: true, unsettled: true, untranslated: true },
     }),
   ]
 
@@ -107,6 +113,37 @@ describe("the filters", () => {
       status: null,
       flags: ["noHumLabel", "unsettled"],
     }).map((held) => held.researchId)).toEqual(["d"])
+  })
+
+  it("ANDs all five shortcomings together, including the two pin-derived ones", () => {
+    const withAllFive = [
+      row({
+        researchId: "e",
+        flags: {
+          noHumLabel: true,
+          noDatasetLabel: true,
+          unsettled: true,
+          untranslated: true,
+          upstreamMismatch: true,
+        },
+      }),
+      row({
+        researchId: "f",
+        flags: { ...NOTHING, noHumLabel: true, noDatasetLabel: true, upstreamMismatch: true },
+      }),
+    ]
+
+    expect(filterResearchRows(withAllFive, {
+      keyword: "",
+      status: null,
+      flags: ["noHumLabel", "noDatasetLabel", "unsettled", "untranslated", "upstreamMismatch"],
+    }).map((held) => held.researchId)).toEqual(["e"])
+
+    expect(filterResearchRows(withAllFive, {
+      keyword: "",
+      status: null,
+      flags: ["noDatasetLabel", "upstreamMismatch"],
+    }).map((held) => held.researchId)).toEqual(["e", "f"])
   })
 
   it("combines the box, the status and the shortcomings", () => {

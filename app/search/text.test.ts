@@ -87,6 +87,50 @@ describe("searchTextOf", () => {
     expect(text.ja).toContain("助成")
   })
 
+  it("leaves out the kind and state discriminants, which drive rendering branches rather than being read as text", () => {
+    const text = searchTextOf({
+      value: { kind: "vocabulary", state: "value", label: "選ばれた語" },
+    })
+    expect(text.ja).toContain("選ばれた語")
+    expect(text.ja).not.toContain("kind")
+    expect(text.ja).not.toContain("vocabulary")
+    expect(text.ja).not.toContain("state")
+  })
+
+  it("leaves out a dataset's file selection and its own release date, both resolved outside the projection's text", () => {
+    const text = searchTextOf({
+      fileSelection: ["important-file.zip"],
+      releaseDate: "2020-01-01",
+    })
+    expect(text.ja).not.toContain("important-file.zip")
+    expect(text.ja).not.toContain("2020-01-01")
+    expect(text.en).not.toContain("important-file.zip")
+    expect(text.en).not.toContain("2020-01-01")
+  })
+
+  it("keeps the converted number's text but drops the pre-conversion input, since the screen shows only the converted value", () => {
+    const text = searchTextOf({
+      dataVolume: {
+        value: "converted-magnitude",
+        inputValue: "raw-input-magnitude",
+        inputUnit: "raw-input-unit-label",
+      },
+    })
+    expect(text.ja).toContain("converted-magnitude")
+    expect(text.ja).not.toContain("raw-input-magnitude")
+    expect(text.ja).not.toContain("raw-input-unit-label")
+  })
+
+  it("leaves out the canonical unit even though it appears on screen, since one unit per key would match every row under it", () => {
+    const text = searchTextOf({
+      dataVolume: { value: "converted-magnitude", unit: "canonical-unit-label" },
+    })
+    expect(text.ja).toContain("converted-magnitude")
+    expect(text.ja).not.toContain("canonical-unit-label")
+    expect(text.en).toContain("converted-magnitude")
+    expect(text.en).not.toContain("canonical-unit-label")
+  })
+
   it("puts the labels it is handed into both languages", () => {
     const text = searchTextOf(emptyResearchContent(), ["hum0001", "hum0001-v2"])
     expect(text.ja).toContain("hum0001-v2")

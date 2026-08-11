@@ -92,7 +92,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             kind="hum"
             placeholder={t.pinPlaceholder}
             suggestion={null}
-            warn={view.everPublished && view.labels.length > 0}
             locale={locale}
           />
         </Section>
@@ -173,7 +172,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                               datasetId={row.id}
                               placeholder={t.pinDatasetPlaceholder}
                               suggestion={view.datasetIdSuggestion}
-                              warn={false}
                               locale={locale}
                             />
                           )
@@ -195,6 +193,21 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               {messages.admin.files.open}
             </Link>
           </p>
+        </Section>
+
+        {/*
+          Last, because it takes the whole research with it. The labels come
+          free again afterwards, and what is left of it is the event.
+        */}
+        <Section title={t.deleteResearch}>
+          <Confirm
+            label={t.deleteResearch}
+            warning={t.deleteResearchWarning}
+            confirm={t.deleteResearchConfirm}
+            locale={locale}
+          >
+            <input type="hidden" name="intent" value="delete-research" />
+          </Confirm>
         </Section>
       </Card>
     </Page>
@@ -293,15 +306,15 @@ function Unpin({ pinId, locale }: { pinId: string, locale: Locale }) {
 
 /**
  * Attaching a label. Making it primary demotes the one that was, which keeps
- * the old spelling resolving — that is what the warning is about when something
- * has already been published under it.
+ * the old spelling resolving: moving a label is not taking it away. What has to
+ * hold is that no two identities carry the same one, and that is the ledger's
+ * unique constraint rather than anything this form can check.
  */
-function PinForm({ kind, datasetId, placeholder, suggestion, warn, locale }: {
+function PinForm({ kind, datasetId, placeholder, suggestion, locale }: {
   kind: "hum" | "dataset"
   datasetId?: string
   placeholder: string
   suggestion: string | null
-  warn: boolean
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.detail
@@ -315,6 +328,7 @@ function PinForm({ kind, datasetId, placeholder, suggestion, warn, locale }: {
         type="text"
         name="label"
         required
+        aria-label={t.pinLabel}
         placeholder={placeholder}
         defaultValue={kind === "dataset" ? suggestion ?? "" : ""}
         className="rounded-sm border border-line px-2 py-1"
@@ -329,7 +343,6 @@ function PinForm({ kind, datasetId, placeholder, suggestion, warn, locale }: {
       >
         {t.pinSubmit}
       </button>
-      {warn && <span className="text-danger text-xs">{t.pinWarning}</span>}
     </Form>
   )
 }

@@ -52,14 +52,20 @@ export interface BoxEntry {
    * resolves the situation keeps that copy.
    */
   isPublic: boolean
-  /** A switch that has not finished, and whether the last attempt failed. */
-  pending: { action: SwitchAction, failed: boolean } | null
+  /** A switch that has not finished, and why the last attempt failed if it did. */
+  pending: { action: SwitchAction, failed: boolean, lastError: string | null } | null
 }
 
 export interface PendingSwitch {
   fileName: string
   action: SwitchAction
   failed: boolean
+  /**
+   * What the store said when the last attempt failed. Shown as it is: a copy
+   * that keeps failing is fixed by reading the reason, and "it failed" on its
+   * own sends an administrator to the logs of a process nobody is watching.
+   */
+  lastError: string | null
 }
 
 export function privatePrefix(researchId: string): string {
@@ -117,7 +123,9 @@ export function composeBox(
 
   for (const entry of entries.values()) {
     const row = queued.get(entry.name)
-    if (row !== undefined) entry.pending = { action: row.action, failed: row.failed }
+    if (row !== undefined) {
+      entry.pending = { action: row.action, failed: row.failed, lastError: row.lastError }
+    }
   }
 
   return [...entries.values()].sort((a, b) => a.name.localeCompare(b.name))

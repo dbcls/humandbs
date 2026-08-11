@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
 
+import { isPortalIssuedId } from "~/admin/labels"
 import { filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 
-import { buildCauRows, buildDatasetContent, buildResearchContent, isPortalIssuedId } from "./build"
+import { buildCauRows, buildDatasetContent, buildResearchContent } from "./build"
 import type { EsDataset, EsResearchVersion, PublishedDataset } from "./es"
 
 function version(overrides: Partial<EsResearchVersion> = {}): EsResearchVersion {

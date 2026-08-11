@@ -144,6 +144,8 @@ export function Thread({ context, thread, at, fetcher }: {
           ? (
               <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted">
                 {thread.resolvedBy === null ? t.resolved : t.resolvedBy(thread.resolvedBy)}
+                {/* The date only: the hour a thread was closed answers nothing. */}
+                {thread.resolvedAt !== null && ` (${thread.resolvedAt.slice(0, 10)})`}
               </span>
             )
           : <span className="text-accent">{t.unresolved}</span>}

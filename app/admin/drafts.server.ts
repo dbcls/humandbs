@@ -328,7 +328,6 @@ export async function saveDatasetEntry(
       .set({
         content,
         revision: sql`${draftDatasetEntry.revision} + 1`,
-        updatedAt: sql`now()`,
       })
       .where(and(
         eq(draftDatasetEntry.draftId, at.draftId),

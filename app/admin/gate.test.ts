@@ -9,12 +9,11 @@ import { countFindings, publishGate, type GateDataset, type GateInput } from "./
  * The two kinds of check, and the line between them.
  *
  * The interesting cases are the ones where a check has to decline to fire: an
- * upstream cache that has never been fetched, an accession no upstream is the
- * authority for, and a missing value that is already being counted as something
- * else.
+ * accession no upstream is the authority for, and a missing value that is
+ * already being counted as something else.
  */
 
-const CACHE_EMPTY = { loaded: false, humLabelOf: new Map<string, string>() }
+const NO_UPSTREAM = new Map<string, string>()
 
 function gate(over: Partial<GateInput> = {}) {
   return publishGate({
@@ -22,16 +21,21 @@ function gate(over: Partial<GateInput> = {}) {
     content: emptyResearchContent(),
     datasets: [],
     previousDatasetIds: [],
-    upstream: CACHE_EMPTY,
+    upstream: NO_UPSTREAM,
     privateFiles: new Set<string>(),
     ...over,
   })
 }
 
+/**
+ * An id the portal issued by default, so that the checks under test are the
+ * only ones that fire: an upstream accession with an empty cache is upstream
+ * not knowing it, which is a finding of its own.
+ */
 function dataset(over: Partial<GateDataset> = {}): GateDataset {
   return {
     datasetId: "d1",
-    label: "JGAD000001",
+    label: "hum0001-NHA001",
     content: emptyDatasetContent(),
     upstream: null,
     ...over,
@@ -133,17 +137,11 @@ describe("what is listed and passed", () => {
 })
 
 describe("checking the pins against the application system", () => {
-  const loaded = (pairs: [string, string][]) => ({ loaded: true, humLabelOf: new Map(pairs) })
-
-  it("does not run at all while the cache has never been fetched", () => {
-    const findings = gate({ datasets: [dataset()], upstream: CACHE_EMPTY }).findings
-
-    expect(findings).toEqual([])
-  })
+  const loaded = (pairs: [string, string][]) => new Map(pairs)
 
   it("names an accession the application system does not know", () => {
     const findings = gate({
-      datasets: [dataset()],
+      datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000999", "hum0001"]]),
     }).findings
 
@@ -154,7 +152,7 @@ describe("checking the pins against the application system", () => {
 
   it("names an accession the application system gives to another research", () => {
     const findings = gate({
-      datasets: [dataset()],
+      datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0777"]]),
     }).findings
 
@@ -168,7 +166,7 @@ describe("checking the pins against the application system", () => {
 
   it("says nothing when the two agree", () => {
     const findings = gate({
-      datasets: [dataset()],
+      datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0001"]]),
     }).findings
 
@@ -191,7 +189,7 @@ describe("checking the pins against the application system", () => {
   it("cannot compare anything for a research with no hum label of its own", () => {
     const findings = gate({
       humLabel: null,
-      datasets: [dataset()],
+      datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0777"]]),
     }).findings
 

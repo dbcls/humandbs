@@ -163,8 +163,22 @@ describe("what a research page carries", () => {
         },
       },
     })
-    expect(viewOf(content, "en").summary.links).toEqual([])
-    expect(viewOf(content, "ja").summary.links).toHaveLength(1)
+    expect(viewOf(content, "en").summary.links)
+      .toEqual({ state: "value", value: [], untranslated: false })
+    const ja = viewOf(content, "ja").summary.links
+    expect(ja.state === "value" && ja.value).toHaveLength(1)
+  })
+
+  it("carries the state of a link out to the page rather than emptying it", () => {
+    const unsettled = research({
+      summary: {
+        ...emptyResearchContent().summary,
+        url: { ja: UNKNOWN, en: NOT_APPLICABLE },
+      },
+    })
+
+    expect(viewOf(unsettled, "ja").summary.links).toEqual({ state: "unsettled" })
+    expect(viewOf(unsettled, "en").summary.links).toEqual({ state: "not-applicable" })
   })
 
   it("says a version is the latest only when it is", () => {

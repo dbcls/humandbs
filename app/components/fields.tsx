@@ -190,6 +190,11 @@ export function SlotEditor({ language, value, multiline, onChange, locale, probl
               onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
             />
           )}
+      {/* Said before it is broken rather than after: what prose can hold is a
+          short list, and a curator who knows it does not write a table. */}
+      {multiline === true && problems.length === 0 && (
+        <p className="text-ink-muted text-xs">{t.proseHint}</p>
+      )}
       {problems.length > 0 && (
         <ul className="text-danger text-xs">
           {problems.map((problem, at) => (

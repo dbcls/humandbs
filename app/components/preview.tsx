@@ -183,6 +183,7 @@ function PreviewHead({ shell, label, threads, locale }: {
               ? t.differsNone
               : t.differs(shell.changed.length)}
         </p>
+        {open.length === 0 && <p className="mt-2 text-ink-muted text-xs">{t.noComments}</p>}
         {open.length > 0 && (
           <div className="mt-2">
             <p className="text-ink-muted text-xs">
@@ -268,7 +269,12 @@ function Acknowledge({ shell, problem }: {
         >
           {t.lgtm}
         </button>
-        <span className="text-ink-muted text-xs">{t.lgtmHint}</span>
+        {/* Only a signed-in reader can be recognised in the list; a
+            self-declared name is whoever typed it this time. */}
+        {shell.signedInName !== null
+          && shell.acknowledgements.some((row) => row.name === shell.signedInName)
+          ? <span className="text-brand text-xs">{t.lgtmDone}</span>
+          : <span className="text-ink-muted text-xs">{t.lgtmHint}</span>}
       </Form>
 
       {problem !== null && (

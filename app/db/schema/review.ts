@@ -11,7 +11,7 @@ import {
 
 import type { CommentAnchor } from "~/content/types"
 
-import { createdAt, primaryId, updatedAt } from "./common"
+import { createdAt, primaryId } from "./common"
 import { researchDraft } from "./research"
 
 /**
@@ -35,7 +35,6 @@ export const commentThread = pgTable("comment_thread", {
   resolvedAt: timestamp({ withTimezone: true }),
   resolvedBySub: text(),
   createdAt: createdAt(),
-  updatedAt: updatedAt(),
 }, (t) => [
   index().on(t.draftId, t.resolved),
 ])

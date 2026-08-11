@@ -17,7 +17,7 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 |---|---|---|
 | research | 研究 | Research |
 | hum ラベル | 研究 ID | Research ID |
-| research の版 | バージョン | Version |
+| research の版 | 版 | Version |
 | dataset | データセット | Dataset |
 | dataset id | データセット ID | Dataset ID |
 | experiment | 解析手法 | Analysis method |

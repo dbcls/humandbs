@@ -6,13 +6,14 @@
  * published or not** — so these read the identity tables directly. Nothing in
  * this file is reachable without `view-unpublished`.
  *
- * The listing is assembled in memory rather than filtered in SQL. Two of the
- * three things it filters on (some value is unsettled, some pair is
- * untranslated) are derived by walking the content, and the derivation is the
- * same function the rest of the portal uses; expressing it a second time as a
- * JSON predicate would be two definitions of one rule. At the size of the real
- * data — a few hundred research, a few megabytes of content — reading it all is
- * cheaper than keeping the two in step.
+ * The listing is assembled in memory rather than filtered in SQL. The two
+ * content-derived filters (some value is unsettled, some pair is untranslated)
+ * come from walking the content, and the derivation is the same function the
+ * rest of the portal uses; expressing it a second time as a JSON predicate would
+ * be two definitions of one rule. At the size of the real data — a few hundred
+ * research, a few megabytes of content — reading it all is cheaper than keeping
+ * the two in step. The other three come from the pin ledger and the upstream
+ * cache, and are assembled the same way for the same reason.
  */
 
 import { and, asc, desc, eq, sql } from "drizzle-orm"
@@ -33,6 +34,7 @@ import {
   draftDatasetEntry,
   draftPresence,
   draftUndo,
+  humAccession,
   labelPin,
   research,
   researchDraft,
@@ -41,6 +43,8 @@ import {
 } from "~/db/schema"
 
 import { contentFlags, type ContentFlags } from "./flags"
+import { CHECKED_ACCESSION } from "./gate"
+import { isPortalIssuedId } from "./labels"
 import type { AdminResearchRow, AdminStatus } from "./listing"
 import { PRESENCE_WINDOW_SECONDS } from "./presence"
 
@@ -69,7 +73,16 @@ function flagsOf(drafts: readonly ResearchContent[], published: ResearchContent 
 
 /** Every research, with what the listing needs to show and to filter on. */
 export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow[]> {
-  const [researches, humLabels, datasetLabels, versions, snapshots, drafts] = await Promise.all([
+  const [
+    researches,
+    humLabels,
+    datasetLabels,
+    datasets,
+    upstreamRows,
+    versions,
+    snapshots,
+    drafts,
+  ] = await Promise.all([
     db.select({ id: research.id, updatedAt: research.updatedAt }).from(research),
     db
       .select({ researchId: labelPin.researchId, label: labelPin.label })
@@ -80,6 +93,10 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       .from(labelPin)
       .innerJoin(dataset, eq(dataset.id, labelPin.datasetId))
       .where(and(eq(labelPin.kind, "dataset"), eq(labelPin.isPrimary, true))),
+    db.select({ researchId: dataset.researchId }).from(dataset),
+    db
+      .select({ accession: humAccession.accession, humLabel: humAccession.humLabel })
+      .from(humAccession),
     db
       .select({
         researchId: researchVersion.researchId,
@@ -108,14 +125,20 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
   const humLabelOf = new Map(humLabels.flatMap((row) =>
     row.researchId === null ? [] : [[row.researchId, row.label] as const]))
   const publishedContentOf = new Map(snapshots.map((row) => [row.researchId, row.content]))
+  const upstreamHumLabelOf = new Map(upstreamRows.map((row) => [row.accession, row.humLabel]))
 
   const grouped = new Map(researches.map((row) => [row.id, {
     versions: 0,
     published: 0,
+    datasets: 0,
     datasetLabels: [] as string[],
     drafts: [] as ResearchContent[],
     dates: [row.updatedAt],
   }]))
+  for (const row of datasets) {
+    const held = grouped.get(row.researchId)
+    if (held !== undefined) held.datasets += 1
+  }
   for (const row of versions) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
@@ -141,20 +164,43 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     const publishedContent = publishedContentOf.get(row.id) ?? null
     const working = draftContents[0] ?? publishedContent
     const humLabel = humLabelOf.get(row.id) ?? null
+    const labels = held?.datasetLabels ?? []
 
     return {
       researchId: row.id,
       humLabel,
       title: working?.title ?? EMPTY_TITLE,
       providerNames: (working?.dataProviders ?? []).map((provider) => provider.name),
-      datasetLabels: (held?.datasetLabels ?? []).toSorted(),
+      datasetLabels: labels.toSorted(),
       status: statusOf(versionCount, publishedCount),
       publishedVersions: publishedCount,
       draftCount: draftContents.length,
-      flags: { noHumLabel: humLabel === null, ...flagsOf(draftContents, publishedContent) },
+      flags: {
+        noHumLabel: humLabel === null,
+        noDatasetLabel: labels.length < (held?.datasets ?? 0),
+        upstreamMismatch: disagreesWithUpstream(humLabel, labels, upstreamHumLabelOf),
+        ...flagsOf(draftContents, publishedContent),
+      },
       updatedAt: latest(held?.dates ?? [row.updatedAt]),
     }
   })
+}
+
+/**
+ * The same comparison the publish gate makes, over every dataset of a research
+ * rather than the ones one version lists. A research with no hum label of its
+ * own has nothing to compare against, so it stays out — its own missing label is
+ * already the finding.
+ */
+function disagreesWithUpstream(
+  humLabel: string | null,
+  labels: readonly string[],
+  upstreamHumLabelOf: ReadonlyMap<string, string>,
+): boolean {
+  if (humLabel === null) return false
+  return labels
+    .filter((label) => CHECKED_ACCESSION.test(label))
+    .some((label) => upstreamHumLabelOf.get(label) !== humLabel)
 }
 
 const EMPTY_TITLE: TranslatedText = {
@@ -168,6 +214,12 @@ export interface ResearchDatasetRow {
   /** The ledger row behind the label, which is what unpinning names. */
   pinId: string | null
   published: boolean
+  /**
+   * Whether the portal issued the id, read off its spelling. Only these may
+   * carry a file selection: an archive's dataset is distributed by the archive
+   * (docs/data-model.md の「ファイル」).
+   */
+  portalIssued: boolean
 }
 
 /**
@@ -195,7 +247,7 @@ export async function researchDatasets(
     .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
     .where(eq(dataset.researchId, researchId))
     .orderBy(sql`${labelPin.label} NULLS LAST`, dataset.id)
-  return rows
+  return rows.map((row) => ({ ...row, portalIssued: isPortalIssuedId(row.label) }))
 }
 
 export interface AdminVersionRow {

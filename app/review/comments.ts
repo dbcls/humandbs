@@ -34,6 +34,8 @@ export interface ThreadView {
   resolved: boolean
   /** The administrator who resolved it, when the account is still known. */
   resolvedBy: string | null
+  /** When it was resolved, as an ISO instant. Null while it is open. */
+  resolvedAt: string | null
   comments: CommentView[]
   createdAt: string
 }
@@ -57,6 +59,20 @@ export function threadsOfSubject(
   subject: AnchorSubject,
 ): ThreadView[] {
   return threads.filter((thread) => isSameSubject(subjectOf(thread.anchor), subject))
+}
+
+/**
+ * The threads about any of several subjects, for a screen that draws more than
+ * one of them. A preview narrows to this before the threads leave the loader:
+ * what the page does not draw is not sent, or the hydration payload would carry
+ * the text of comments on datasets this version does not list.
+ */
+export function threadsOfSubjects(
+  threads: readonly ThreadView[],
+  subjects: readonly AnchorSubject[],
+): ThreadView[] {
+  return threads.filter((thread) =>
+    subjects.some((subject) => isSameSubject(subjectOf(thread.anchor), subject)))
 }
 
 /** The threads of one subject, by the path each is attached to. */

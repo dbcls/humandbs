@@ -4,6 +4,7 @@ import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.
 import { adminVocabularyPath } from "~/admin/urls"
 import { Badge, Field, Result, Submit } from "~/components/catalog"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
+import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -42,7 +43,7 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
   const t = messages.admin.catalog
   const categories = view.categories.map((category) => ({
     id: category.id,
-    label: locale === "ja" ? category.labelJa : category.labelEn,
+    label: catalogLabel(category, locale),
   }))
 
   return (
@@ -95,7 +96,7 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
             {view.vocabularies.map((set) => (
               <li key={set.id} className="flex flex-wrap items-baseline gap-3 py-2 text-sm">
                 <code className="w-56 shrink-0">{set.code}</code>
-                <span className="flex-1">{locale === "ja" ? set.labelJa : set.labelEn}</span>
+                <span className="flex-1">{catalogLabel(set, locale)}</span>
                 <Badge>{set.external ? t.external : t.portal}</Badge>
                 {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
                 <span className="text-ink-muted">{t.termCount(set.terms)}</span>

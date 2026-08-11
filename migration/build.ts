@@ -21,6 +21,7 @@
  * - **Prose stops being markdown** (`richtext.ts`).
  */
 
+import { isPortalIssuedId } from "~/admin/labels"
 import { isEmptyRichText } from "~/content/richtext"
 import type {
   DataProvider,
@@ -179,15 +180,6 @@ export interface DatasetContentInput {
   typeOfDataKeyCode: string
 }
 
-/**
- * A dataset id that the portal issues itself rather than one from an external
- * archive. Only these carry a release date in content; the dates of external
- * accessions belong to the archive and are cached instead.
- */
-export function isPortalIssuedId(label: string): boolean {
-  return label.startsWith("hum")
-}
-
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode } = input
   const doc = dataset.doc
@@ -245,6 +237,37 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     values,
     experiments,
   }
+}
+
+export interface AccessionDateRow {
+  accession: string
+  datePublished: string | null
+  dateModified: null
+  source: string
+}
+
+/**
+ * The archive cache, filled from the dump for development.
+ *
+ * In production a batch takes these from upstream. Here the nearest thing the
+ * dump holds is the release date of the first published version that listed the
+ * dataset, which is not what the archive says — but the cache being empty is
+ * worse than it being approximate: the whole design says a reader never sees an
+ * unfilled cache, and a development database that has one puts that case back
+ * into every screen. `source` records where the values came from, so nothing
+ * mistakes them for the archive's own.
+ */
+export function buildAccessionDates(
+  datasets: readonly { label: string, firstListedOn: string | null }[],
+): AccessionDateRow[] {
+  return datasets
+    .filter((dataset) => !isPortalIssuedId(dataset.label) && dataset.firstListedOn !== null)
+    .map((dataset) => ({
+      accession: dataset.label,
+      datePublished: dataset.firstListedOn,
+      dateModified: null,
+      source: "v1-dump",
+    }))
 }
 
 export interface CauRow {

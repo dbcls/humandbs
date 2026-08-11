@@ -12,7 +12,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { AnchoredValue } from "~/public/view.server"
 
-import { AccessTypeBadge, Value } from "./page"
+import { AccessTypeBadge, LinksValue, Value } from "./page"
 
 export function PreviousMark({ locale, value, heading }: {
   locale: Locale
@@ -102,13 +102,7 @@ function PreviousValue({ locale, value }: { locale: Locale, value: AnchoredValue
     return value.term === null ? null : <AccessTypeBadge term={value.term} />
   }
   if (value.kind === "links") {
-    return (
-      <ul>
-        {value.links.map((link) => (
-          <li key={link.id} className="break-all">{link.text === "" ? link.url : link.text}</li>
-        ))}
-      </ul>
-    )
+    return <LinksValue links={value.links} locale={locale} linked={false} />
   }
   return (
     <ul>

@@ -49,6 +49,7 @@ export function PublishConfirmation({ view, result }: {
         <h2 className="mb-4 font-bold text-lg">{t.heading}</h2>
 
         {actionData?.status === "conflict" && <Warning>{t.conflict}</Warning>}
+        {actionData?.status === "gone" && <Warning>{t.gone}</Warning>}
         {actionData?.status === "unacknowledged" && <Warning>{t.acknowledgeRequired}</Warning>}
         {actionData?.status === "taken" && <Warning>{t.pinTaken}</Warning>}
         {view.staleAgainst !== null && <Warning>{t.stale(view.staleAgainst)}</Warning>}
@@ -194,6 +195,7 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
         type="text"
         name="label"
         required
+        aria-label={detail.pinLabel}
         defaultValue={suggestion ?? ""}
         placeholder={kind === "hum" ? detail.pinPlaceholder : detail.pinDatasetPlaceholder}
         className="rounded-sm border border-line px-2 py-1 text-sm"

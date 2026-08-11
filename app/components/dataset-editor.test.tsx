@@ -105,15 +105,19 @@ const catalog: EditableCatalog = {
   ],
 }
 
-function view(content: DatasetContent = emptyDatasetContent()): DatasetEditorView {
+function view(
+  content: DatasetContent = emptyDatasetContent(),
+  portalIssued = true,
+): DatasetEditorView {
   return {
     locale: "ja",
     researchId: "00000000-0000-0000-0000-000000000001",
     draftId: "00000000-0000-0000-0000-000000000002",
     datasetId: "00000000-0000-0000-0000-000000000003",
     humLabel: "hum0001",
-    datasetLabel: "JGAD000001",
+    datasetLabel: portalIssued ? "hum0001-NHA001" : "JGAD000001",
     published: true,
+    portalIssued,
     box: [],
     revision: 2,
     input: datasetContentInput(content),
@@ -249,6 +253,14 @@ describe("the dataset editing form", () => {
 
   it("offers nothing to restore while the stack is empty", () => {
     expect(render(view())).toContain("履歴はまだありません")
+  })
+
+  it("offers a file selection for a dataset the portal issued the id for", () => {
+    expect(render(view(emptyDatasetContent(), true))).toContain("この研究の箱にあるファイル")
+  })
+
+  it("does not offer a file selection for a dataset an archive issued the id for", () => {
+    expect(render(view(emptyDatasetContent(), false))).not.toContain("この研究の箱にあるファイル")
   })
 })
 

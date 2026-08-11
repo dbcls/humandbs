@@ -35,6 +35,7 @@ export async function readThreads(db: Executor, draftId: string): Promise<Thread
         anchor: commentThread.anchor,
         resolved: commentThread.resolved,
         resolvedBy: adminUser.displayName,
+        resolvedAt: commentThread.resolvedAt,
         createdAt: commentThread.createdAt,
       })
       .from(commentThread)
@@ -72,6 +73,7 @@ export async function readThreads(db: Executor, draftId: string): Promise<Thread
     anchor: thread.anchor,
     resolved: thread.resolved,
     resolvedBy: thread.resolvedBy,
+    resolvedAt: thread.resolvedAt?.toISOString() ?? null,
     comments: held.get(thread.id) ?? [],
     createdAt: thread.createdAt.toISOString(),
   }))

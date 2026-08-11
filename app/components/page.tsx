@@ -5,7 +5,7 @@ import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import type { FieldView, TermView } from "~/public/view.server"
+import type { FieldView, LinksView, TermView } from "~/public/view.server"
 
 /**
  * What a preview hangs beside a place the page draws — a comment mark, a note
@@ -34,7 +34,8 @@ export function Annotation({ at }: { at: string }) {
 }
 
 export function Page({ children }: { children: ReactNode }) {
-  return <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+  // The target of the skip link in the header, on every page that has one.
+  return <main id="content" className="mx-auto max-w-6xl px-4 py-8">{children}</main>
 }
 
 /** The bar that names what the page is about, and what sits next to it. */
@@ -197,6 +198,37 @@ export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
     return field.text.length === 0 ? null : <Prose text={field.text} />
   }
   return field.text === "" ? null : <>{field.text}</>
+}
+
+/**
+ * The same four states for a value that is a list of links. A URL never falls
+ * back between languages, but it is marked unsettled and not applicable like
+ * anything else, and a preview is where those two have to stay visible.
+ */
+/** Whether a links value has anything to draw, state included. */
+export function hasLinks(links: LinksView): boolean {
+  return links.state !== "value" || links.value.length > 0
+}
+
+export function LinksValue({ links, locale, linked = true }: {
+  links: LinksView
+  locale: Locale
+  /** A preview shows a private file's address as text; everywhere else it is a link. */
+  linked?: boolean
+}) {
+  if (links.state !== "value") return <Value field={links} locale={locale} />
+  if (links.value.length === 0) return null
+  return (
+    <ul>
+      {links.value.map((link) => (
+        <li key={link.id} className="break-all">
+          {linked
+            ? <a href={link.url} target="_blank" rel="noreferrer">{link.text === "" ? link.url : link.text}</a>
+            : (link.text === "" ? link.url : link.text)}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 /**

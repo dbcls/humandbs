@@ -107,11 +107,13 @@ import {
   type AdminFlags,
   type AdminStatus,
 } from "./listing"
+import { deleteResearch } from "./research.server"
 import {
   adminDraftDatasetPath,
   adminDraftDatasetsPath,
   adminDraftPath,
   adminDraftPublishPath,
+  adminResearchListPath,
   adminResearchPath,
 } from "./urls"
 
@@ -224,11 +226,6 @@ export interface AdminResearchPageView {
   versions: AdminVersionRow[]
   drafts: AdminDraftRow[]
   datasets: ResearchDatasetRow[]
-  /**
-   * Something has been published under this research, which is what makes
-   * moving a label to another identity worth warning about.
-   */
-  everPublished: boolean
   /** What the portal would propose for a dataset with no id yet. */
   datasetIdSuggestion: string | null
   /** Whether a link is out there for each draft, and what is unanswered. */
@@ -265,7 +262,6 @@ export async function researchDetailPage(
     versions: view.versions,
     drafts: view.drafts,
     datasets: view.datasets,
-    everPublished: view.versions.length > 0,
     datasetIdSuggestion: humLabel === null ? null : proposeDatasetId(humLabel, taken),
   }
 }
@@ -503,6 +499,13 @@ export interface DatasetEditorView {
    * rather than pretending the box is empty.
    */
   box: BoxEntry[] | null
+  /**
+   * Whether this dataset may carry a file selection at all, read off its id
+   * (docs/data-model.md の「ファイル」). An archive's dataset is distributed by
+   * the archive, so the screen does not offer the picker and the save refuses
+   * a selection.
+   */
+  portalIssued: boolean
 }
 
 /**
@@ -567,6 +570,7 @@ export async function datasetEditorPage(
       signedInName: actor.name,
     },
     box,
+    portalIssued: row.portalIssued,
   }
 }
 
@@ -650,7 +654,11 @@ export async function saveDatasetAction(
   if (!payload.success) badRequest()
 
   const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
-  if (!rows.some((row) => row.id === datasetId)) notFound()
+  const row = rows.find((candidate) => candidate.id === datasetId)
+  if (row === undefined) notFound()
+  // The picker is not drawn for an archive's dataset, so a selection on one is
+  // an input the form never offered.
+  if (!row.portalIssued && payload.data.content.fileSelection.length > 0) badRequest()
 
   const catalog = await loadEditableCatalog(db)
   if (!catalogAccepts(payload.data.content, catalog)) badRequest()
@@ -779,6 +787,13 @@ export async function researchDetailAction(
     )
     if (outcome.status === "gone") notFound()
     return outcome.status === "taken" ? { status: "taken" } : back
+  }
+
+  if (intent === "delete-research") {
+    const actor = await requireCapability(request, "delete-research")
+    const outcome = await deleteResearch(db, id, actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    return redirect(href(locale, adminResearchListPath()))
   }
 
   const actor = await requireCapability(request, "edit-content")
@@ -1027,6 +1042,13 @@ export type PublishResult
     | { status: "unacknowledged" }
     | { status: "conflict" }
     | { status: "no-parent" }
+    /**
+     * The draft is not there any more — somebody discarded it, or published it
+     * from another screen. Answered on the page rather than as a 404: the
+     * screen was reached legitimately, and what happened to the draft is the
+     * answer.
+     */
+    | { status: "gone" }
     /** A pin was refused because the label already names something. */
     | { status: "taken" }
 
@@ -1089,7 +1111,6 @@ export async function publishAction(
   }, actorOf(actor))
 
   if (outcome.status === "published") return redirect(href(locale, adminResearchPath(researchId)))
-  if (outcome.status === "gone") notFound()
   if (outcome.status === "blocked") return { status: "blocked" }
   if (outcome.status === "unacknowledged") return { status: "unacknowledged" }
   return { status: outcome.status }

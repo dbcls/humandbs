@@ -21,6 +21,7 @@ import { eq, sql } from "drizzle-orm"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getOwnerDb, type Executor } from "~/db/client.server"
 import {
+  accessionDate,
   alert,
   cauEntry,
   contentKey,
@@ -41,7 +42,12 @@ import {
 } from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { buildCauRows, buildDatasetContent, buildResearchContent } from "./build"
+import {
+  buildAccessionDates,
+  buildCauRows,
+  buildDatasetContent,
+  buildResearchContent,
+} from "./build"
 import { buildAlerts, buildDocuments, buildNews, loadCms } from "./cms"
 import {
   ACCESS_CRITERIA_KEY,
@@ -283,7 +289,7 @@ async function load() {
     // access.
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
-                     hum_accession, document, news, alert CASCADE
+                     hum_accession, accession_date, document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdBySetAndCode, codeBySourceKey } = await seedCatalog(
@@ -380,6 +386,11 @@ async function load() {
     const upstream = loadHumAccessions()
     await insertChunked(upstream, (chunk) => tx.insert(humAccession).values(chunk))
 
+    // The other half of the same cache. It is filled before the search rows are
+    // built, because those bake the date the projection resolves out of it.
+    const dates = buildAccessionDates(selection.datasets)
+    await insertChunked(dates, (chunk) => tx.insert(accessionDate).values(chunk))
+
     const site = await loadSiteContent(tx)
 
     const search = await rebuildSearchDocs(tx)
@@ -390,6 +401,7 @@ async function load() {
       datasets: datasets.length,
       cau: cauRows.length,
       upstream: upstream.length,
+      accessionDates: dates.length,
       ...site,
       search,
     }

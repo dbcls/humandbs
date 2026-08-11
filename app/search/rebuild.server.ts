@@ -34,7 +34,7 @@
 import { and, eq, inArray } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
-import { publicDatasetContent, publicResearchContent, type CatalogKey } from "~/content/public"
+import { publicDataset, publicResearchContent, type CatalogKey } from "~/content/public"
 import type { DatasetContent, ResearchContent, Slot, TranslatedText, ValueSlot } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
@@ -226,10 +226,10 @@ export async function rebuildSearchDocs(
     .where(within(dataset.researchId))
 
   // The archive owns the dates of an accession it issued; the content carries
-  // one only for an id the portal issued itself. Resolving it here is what
-  // makes the daily cache refresh reach the listings — the rows are rebuilt in
-  // the same transaction — and leaves one place that knows which of the two
-  // applies.
+  // one only for an id the portal issued itself. Which of the two applies is
+  // the projection's decision (`app/content/public.ts`) and its answer is baked
+  // into the row here, which is what makes the daily cache refresh reach every
+  // listing — the rows are rebuilt in the same transaction.
   const archiveDates = new Map(
     (await db
       .select({
@@ -238,7 +238,7 @@ export async function rebuildSearchDocs(
         dateModified: accessionDate.dateModified,
       })
       .from(accessionDate))
-      .map((row) => [row.accession, row]),
+      .map((row) => [row.accession, { datePublished: row.datePublished, dateModified: row.dateModified }]),
   )
 
   const terms = await db
@@ -274,6 +274,8 @@ export async function rebuildSearchDocs(
     researchId: string
     label: string
     content: DatasetContent
+    /** As the projection resolved them, which is the only place they are decided. */
+    dates: { datePublished: string | null, dateModified: string | null }
     text: SearchText
   }
   const projectedDatasets: DatasetProjection[] = []
@@ -283,13 +285,18 @@ export async function rebuildSearchDocs(
     const humLabel = humLabelOf.get(row.researchId)
     const label = datasetLabelOf.get(row.id)
     if (!humLabel || !label) continue
-    const projected = publicDatasetContent(row.content, { keys, files: [] }, PUBLISHED)
-    const text = searchTextOf(projected, [humLabel, label])
+    const projected = publicDataset(
+      row.content,
+      { keys, files: [], archive: archiveDates.get(label) ?? null },
+      PUBLISHED,
+    )
+    const text = searchTextOf(projected.content, [humLabel, label])
     projectedDatasets.push({
       id: row.id,
       researchId: row.researchId,
       label,
       content: row.content,
+      dates: projected.dates,
       text,
     })
     const held = datasetTextByResearch.get(row.researchId) ?? []
@@ -358,7 +365,6 @@ export async function rebuildSearchDocs(
   for (const row of projectedDatasets) {
     const humLabel = humLabelOf.get(row.researchId)
     if (!humLabel) continue
-    const archive = archiveDates.get(row.label)
     datasetDocKeyOf.set(row.id, docs.length)
     docs.push({
       targetType: "dataset",
@@ -367,8 +373,8 @@ export async function rebuildSearchDocs(
       humLabel,
       datasetLabel: row.label,
       title: titleOfResearch.get(row.researchId) ?? "",
-      datePublished: row.content.releaseDate ?? archive?.datePublished ?? null,
-      dateModified: archive?.dateModified ?? null,
+      datePublished: row.dates.datePublished,
+      dateModified: row.dates.dateModified,
       ...indexed(row.text),
     })
   }

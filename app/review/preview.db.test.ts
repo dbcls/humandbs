@@ -23,8 +23,9 @@ import {
   previewDatasetPage,
   previewResearchPage,
 } from "./preview.server"
-import { RESEARCH } from "./anchors"
-import { readThreads } from "./comments.server"
+import { anchorOf, RESEARCH } from "./anchors"
+import { unresolvedCount } from "./comments"
+import { readThreads, setThreadResolved, startThread } from "./comments.server"
 
 /**
  * The pages a share link opens.
@@ -217,6 +218,166 @@ describe("a dataset preview", () => {
     const stranger = "00000000-0000-0000-0000-000000000009"
 
     expect(await status(previewDatasetPage(get(), "ja", token, stranger))).toBe(404)
+  })
+
+  /**
+   * `app/search/rebuild.db.test.ts` resolves the same accession's date the same
+   * way, through the same projection (`app/content/public.ts`); the numbers
+   * here are chosen to match that test's so the two can be compared directly.
+   */
+  it("resolves the date the projection gives a portal-issued id, from the content", async () => {
+    const { token, datasetId } = await withDataset({
+      ...emptyDatasetContent(),
+      releaseDate: "2020-05-05",
+    })
+
+    const view = await previewDatasetPage(get(), "ja", token, datasetId)
+    expect(view.view.datePublished).toBe("2020-05-05")
+  })
+
+  it("resolves the date of an external accession from the archive cache", async () => {
+    const { token, datasetId } = await withDataset(emptyDatasetContent())
+    await db.insert(s.labelPin)
+      .values({ kind: "dataset", label: "JGAD000001", datasetId, isPrimary: true })
+    await db.insert(s.accessionDate).values({
+      accession: "JGAD000001",
+      source: "ddbj-search",
+      datePublished: "2018-04-02",
+      dateModified: "2023-11-15",
+    })
+
+    const view = await previewDatasetPage(get(), "ja", token, datasetId)
+    expect(view.view.datePublished).toBe("2018-04-02")
+    expect(view.view.dateModified).toBe("2023-11-15")
+  })
+})
+
+describe("the threads a preview shows", () => {
+  /**
+   * A draft that has since stopped listing one of its research's datasets:
+   * `unlistedId` still has an entry and could still be commented on from the
+   * editor, but no version and no preview page draws it any more.
+   */
+  async function withUnlistedDataset(): Promise<{
+    draftId: string
+    token: string
+    listedId: string
+    unlistedId: string
+  }> {
+    const { draftId, researchId, token } = await sharedDraft()
+    const listed = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+    if (listed.status !== "created") throw new Error("expected the listed dataset to be created")
+    const unlisted = await createDatasetInDraft(db, { draftId, revision: 3 }, researchId)
+    if (unlisted.status !== "created") throw new Error("expected the unlisted dataset to be created")
+    const saved = await saveDraftContent(
+      db,
+      { draftId, revision: 4 },
+      { note: "", content: { ...titled("題目"), datasetIds: [listed.datasetId] } },
+    )
+    if (saved.status !== "saved") throw new Error("expected the version's dataset list to save")
+    return { draftId, token, listedId: listed.datasetId, unlistedId: unlisted.datasetId }
+  }
+
+  it("returns research threads and threads of the datasets the version lists, and no others", async () => {
+    const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf(RESEARCH, "title"),
+      author: { sub: null, name: "reader" },
+      body: "on research",
+    })
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "on the listed dataset",
+    })
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "on the dropped dataset",
+    })
+
+    const view = await previewResearchPage(get(), "ja", token)
+
+    expect(view.threads.map((thread) => thread.comments[0]?.body).sort()).toEqual([
+      "on research",
+      "on the listed dataset",
+    ])
+  })
+
+  it("drops a dataset's threads once the version stops listing it, resolved or not", async () => {
+    const { draftId, token, unlistedId } = await withUnlistedDataset()
+    const open = await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "open",
+    })
+    const toResolve = await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k2"),
+      author: { sub: null, name: "reader" },
+      body: "resolved",
+    })
+    if (open.status !== "posted" || toResolve.status !== "posted") throw new Error("expected both threads to post")
+    await setThreadResolved(db, {
+      draftId,
+      threadId: toResolve.threadId,
+      resolved: true,
+      actorSub: "keycloak|admin",
+    })
+
+    const view = await previewResearchPage(get(), "ja", token)
+
+    expect(view.threads).toEqual([])
+  })
+
+  it("counts unresolved threads only among the ones the page draws", async () => {
+    const { draftId, token, unlistedId } = await withUnlistedDataset()
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf(RESEARCH, "title"),
+      author: { sub: null, name: "reader" },
+      body: "on research",
+    })
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "on the dropped dataset",
+    })
+
+    const view = await previewResearchPage(get(), "ja", token)
+
+    expect(unresolvedCount(view.threads)).toBe(1)
+  })
+
+  it("returns a dataset preview only the threads addressed to that dataset", async () => {
+    const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf(RESEARCH, "title"),
+      author: { sub: null, name: "reader" },
+      body: "on research",
+    })
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "on this dataset",
+    })
+    await startThread(db, {
+      draftId,
+      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      author: { sub: null, name: "reader" },
+      body: "on another dataset",
+    })
+
+    const view = await previewDatasetPage(get(), "ja", token, listedId)
+
+    expect(view.threads.map((thread) => thread.comments[0]?.body)).toEqual(["on this dataset"])
   })
 })
 

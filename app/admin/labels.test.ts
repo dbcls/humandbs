@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest"
 
-import { proposeDatasetId } from "./labels"
+import { isPortalIssuedId, proposeDatasetId } from "./labels"
+
+/**
+ * Whether a dataset may carry a file selection turns on this alone
+ * (docs/data-model.md's section on files).
+ */
+describe("whether an id is one the portal issued", () => {
+  it("calls a hum-prefixed id portal-issued, old numbering and new alike", () => {
+    expect(isPortalIssuedId("hum0009.v1.CpG.v1")).toBe(true)
+    expect(isPortalIssuedId("hum0014-NHA001")).toBe(true)
+  })
+
+  it("calls every archive accession external", () => {
+    expect(isPortalIssuedId("JGAD000123")).toBe(false)
+    expect(isPortalIssuedId("DRA000456")).toBe(false)
+    expect(isPortalIssuedId("E-GEAD-789")).toBe(false)
+    expect(isPortalIssuedId("MTBKS123")).toBe(false)
+    expect(isPortalIssuedId("PRJDB1234")).toBe(false)
+  })
+
+  it("calls a dataset with no primary pinned external", () => {
+    expect(isPortalIssuedId(null)).toBe(false)
+  })
+})
 
 /**
  * The proposal, which is a default and not a rule. What matters is that it does

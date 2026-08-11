@@ -165,14 +165,18 @@ describe("the queue", () => {
     expect(await jobs()).toHaveLength(0)
   })
 
-  it("says which switches have not finished, and which of them failed", async () => {
+  it("says which switches have not finished, which of them failed, and why", async () => {
     await research(label())
     await requestSwitch(db, [{ researchId, fileName: "a.zip", action: "publish" }])
-    await db.update(s.filePublishJob).set({ state: "failed" })
+    await db.update(s.filePublishJob).set({ state: "failed", lastError: "the store said no" })
       .where(eq(s.filePublishJob.fileName, "a.zip"))
 
-    expect(await pendingSwitches(db, researchId))
-      .toEqual([{ fileName: "a.zip", action: "publish", failed: true }])
+    expect(await pendingSwitches(db, researchId)).toEqual([{
+      fileName: "a.zip",
+      action: "publish",
+      failed: true,
+      lastError: "the store said no",
+    }])
   })
 })
 

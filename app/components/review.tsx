@@ -48,8 +48,17 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
         <Share view={view} />
 
         <section className="mt-8">
-          <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">
-            {`${messages.comment.heading} — ${messages.admin.detail.openComments(view.unresolved)}`}
+          <h2 className="mb-3 flex flex-wrap items-baseline gap-2 border-line border-b pb-1 font-semibold text-brand">
+            <span>
+              {`${messages.comment.heading} — ${messages.admin.detail.openComments(view.unresolved)}`}
+            </span>
+            {/* Answered ones are still listed; the count says how much of the
+                list is already dealt with. */}
+            {view.threads.length > view.unresolved && (
+              <span className="font-normal text-ink-muted text-xs">
+                {`${t.resolvedThreads} ${String(view.threads.length - view.unresolved)}`}
+              </span>
+            )}
           </h2>
           {view.threads.length === 0
             ? <p className="text-ink-muted text-sm">{t.noThreads}</p>
@@ -116,6 +125,13 @@ function Share({ view }: { view: ReviewPageView }) {
           ? <Link to={share.url}>{share.url}</Link>
           : <span className="text-ink-muted">{share.url}</span>}
       </p>
+      {/* The same address, named as what it opens: an administrator checking
+          what a provider sees is following it, not copying it. */}
+      {share.open && (
+        <p className="mt-1 text-xs">
+          <Link to={share.url} target="_blank" rel="noreferrer">{t.openPreview}</Link>
+        </p>
+      )}
 
       <Form method="post" className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         <input type="hidden" name="intent" value="share" />

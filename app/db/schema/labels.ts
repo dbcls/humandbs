@@ -10,7 +10,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core"
 
-import { createdAt, primaryId } from "./common"
+import { primaryId } from "./common"
 import { dataset, research } from "./research"
 
 export const labelKind = pgEnum("label_kind", ["hum", "dataset"])
@@ -40,7 +40,6 @@ export const labelPin = pgTable("label_pin", {
   researchId: uuid().references(() => research.id, { onDelete: "cascade" }),
   datasetId: uuid().references(() => dataset.id, { onDelete: "cascade" }),
   isPrimary: boolean().notNull(),
-  createdAt: createdAt(),
 }, (t) => [
   unique("label_pin_label_unique").on(t.kind, t.label),
   uniqueIndex().on(t.researchId).where(sql`${t.isPrimary}`),

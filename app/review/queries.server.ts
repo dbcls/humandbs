@@ -7,15 +7,17 @@
  * dataset editor does. The published description is carried alongside because
  * the preview marks what would change, and that is the thing it changes from.
  *
- * Dates resolve exactly as they do on the public side: an NHA ID carries its
- * own, and an external accession takes the archive cache's. A preview that
- * resolved them differently would not be showing the page that is about to be
- * published.
+ * Dates are read but not resolved here. The projection (`app/content/public.ts`)
+ * decides which of the content's own release date and the archive cache's value
+ * applies, and it is the only place that decides it — the public side reads that
+ * answer off the search row, and a preview, which has no search row, calls the
+ * same function.
  */
 
 import { and, count, desc, eq, inArray } from "drizzle-orm"
 
 import { emptyDatasetContent } from "~/content/empty"
+import type { ArchiveDates } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
@@ -39,8 +41,12 @@ export interface PreviewDatasetRow {
   content: DatasetContent
   /** What is published for it now, or null if it has never been published. */
   published: DatasetContent | null
-  datePublished: string | null
-  dateModified: string | null
+  /**
+   * The archive's dates for its accession. Carried unresolved: which of these
+   * and the content's own release date wins is the projection's decision, and
+   * making it here would be the second place that answer is written.
+   */
+  archive: ArchiveDates | null
 }
 
 export async function previewDatasets(
@@ -89,16 +95,16 @@ export async function previewDatasets(
   const datesOf = new Map(dates.map((row) => [row.accession, row]))
 
   return ids.map((id) => {
-    const content = entryOf.get(id) ?? publishedOf.get(id) ?? emptyDatasetContent()
     const label = labelOf.get(id) ?? null
-    const archive = label === null ? undefined : datesOf.get(label)
+    const dates = label === null ? undefined : datesOf.get(label)
     return {
       id,
       label,
-      content,
+      content: entryOf.get(id) ?? publishedOf.get(id) ?? emptyDatasetContent(),
       published: publishedOf.get(id) ?? null,
-      datePublished: content.releaseDate ?? archive?.datePublished ?? null,
-      dateModified: archive?.dateModified ?? null,
+      archive: dates === undefined
+        ? null
+        : { datePublished: dates.datePublished, dateModified: dates.dateModified },
     }
   })
 }

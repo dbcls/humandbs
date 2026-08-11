@@ -25,7 +25,7 @@ import { cookiesAreSecure, loadConfig } from "~/config.server"
 
 import { safeRedirectPath } from "./redirect"
 
-const FLOW_COOKIE = "humandbs_login"
+export const FLOW_COOKIE = "humandbs_login"
 const FLOW_MINUTES = 10
 const SCOPE = "openid profile"
 

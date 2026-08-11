@@ -42,6 +42,7 @@ import {
   draftUndoPath,
 } from "~/admin/urls"
 import type { DraftSnapshot } from "~/content/types"
+import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -72,14 +73,6 @@ import {
  * thousands, and a list longer than this is not read — it is typed at again.
  */
 const PICKER_RESULTS = 20
-
-function keyLabel(key: EditableKey, locale: Locale): string {
-  return locale === "ja" ? key.labelJa : key.labelEn
-}
-
-function termLabel(term: EditableTerm, locale: Locale): string {
-  return locale === "ja" ? term.labelJa ?? term.labelEn : term.labelEn
-}
 
 export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const locale = view.locale
@@ -187,7 +180,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   const subject = { kind: "dataset" as const, datasetId: view.datasetId }
-  const termLabelOf = new Map(view.catalog.terms.map((term) => [term.id, termLabel(term, locale)]))
+  const termLabelOf = new Map(view.catalog.terms.map((term) => [term.id, catalogLabel(term, locale)]))
   const review: FieldReviewData = {
     context: {
       locale,
@@ -311,16 +304,23 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
         />
       </section>
 
-      <section id="files" className="mt-8 scroll-mt-32">
-        <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{t.files}</h2>
-        <FieldHead label={t.files} marks={marksFor("fileSelection")} locale={locale} />
-        <FileSelection
-          locale={locale}
-          listing={view.box}
-          selected={input.fileSelection}
-          onChange={(fileSelection) => { edit({ ...input, fileSelection }) }}
-        />
-      </section>
+      {/*
+        Only a dataset the portal issued the id for. An archive's dataset is
+        distributed by the archive, so there is nothing here to choose from and
+        a selection on one is refused on save.
+      */}
+      {view.portalIssued && (
+        <section id="files" className="mt-8 scroll-mt-32">
+          <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{t.files}</h2>
+          <FieldHead label={t.files} marks={marksFor("fileSelection")} locale={locale} />
+          <FileSelection
+            locale={locale}
+            listing={view.box}
+            selected={input.fileSelection}
+            onChange={(fileSelection) => { edit({ ...input, fileSelection }) }}
+          />
+        </section>
+      )}
 
       <section id="experiments" className="mt-8 scroll-mt-32">
         <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">
@@ -442,7 +442,7 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
           <div key={value.keyId} className="mt-3">
             {body.kind === "text" && (
               <PairField
-                label={keyLabel(key, locale)}
+                label={catalogLabel(key, locale)}
                 value={body.text}
                 multiline
                 marks={marksFor(at)}
@@ -454,7 +454,7 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
             )}
             {body.kind === "vocabulary" && (
               <VocabularyField
-                label={keyLabel(key, locale)}
+                label={catalogLabel(key, locale)}
                 locale={locale}
                 marks={marksFor(at)}
                 terms={catalog.terms.filter((term) => term.setId === key.vocabularySetId)}
@@ -471,7 +471,7 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
             )}
             {body.kind === "number" && (
               <NumberField
-                label={keyLabel(key, locale)}
+                label={catalogLabel(key, locale)}
                 locale={locale}
                 marks={marksFor(at)}
                 units={key.inputUnits ?? []}
@@ -541,7 +541,7 @@ function AddValue({ locale, keys, onAdd }: {
       >
         <option value="">{t.chooseKey}</option>
         {keys.map((key) => (
-          <option key={key.id} value={key.id}>{keyLabel(key, locale)}</option>
+          <option key={key.id} value={key.id}>{catalogLabel(key, locale)}</option>
         ))}
       </select>
       <button
@@ -689,7 +689,7 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
                       onClick={() => { onChange(state, termIds.filter((id) => id !== term.id)) }}
                       className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-brand px-3 py-1 text-sm"
                     >
-                      {termLabel(term, locale)}
+                      {catalogLabel(term, locale)}
                       <span aria-hidden="true">×</span>
                       <span className="sr-only">{t.removeTerm}</span>
                     </button>
@@ -716,7 +716,7 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
                   className="flex w-full cursor-pointer items-baseline gap-2 px-2 py-1 text-left hover:bg-surface-hover"
                 >
                   <code className="text-ink-muted text-xs">{term.code}</code>
-                  {termLabel(term, locale)}
+                  {catalogLabel(term, locale)}
                 </button>
               </li>
             ))}

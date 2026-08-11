@@ -1,6 +1,6 @@
 import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 
-import { createdAt, primaryId, updatedAt } from "./common"
+import { createdAt, primaryId } from "./common"
 
 /**
  * Who may administer the portal. This is deliberately not a Keycloak role: the
@@ -15,7 +15,6 @@ export const adminUser = pgTable("admin_user", {
   keycloakSub: text().notNull().unique(),
   displayName: text().notNull(),
   createdAt: createdAt(),
-  updatedAt: updatedAt(),
 })
 
 /**
@@ -48,7 +47,6 @@ export const session = pgTable("session", {
   lastSeenAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   /** The absolute limit, set when the session is created and never extended. */
   expiresAt: timestamp({ withTimezone: true }).notNull(),
-  createdAt: createdAt(),
 }, (t) => [
   index().on(t.keycloakSub),
 ])

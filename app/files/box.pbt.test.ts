@@ -31,6 +31,7 @@ const pendingArb = fc.array(
     fileName: nameArb,
     action: fc.constantFrom("publish" as const, "unpublish" as const),
     failed: fc.boolean(),
+    lastError: fc.option(fc.string({ maxLength: 40 }), { nil: null }),
   }),
   { maxLength: 6 },
 )

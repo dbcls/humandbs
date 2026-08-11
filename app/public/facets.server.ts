@@ -18,6 +18,7 @@
  */
 
 import type { Executor } from "~/db/client.server"
+import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import type { FacetDefinition } from "~/search/catalog.server"
 import { resolveTerms } from "~/search/catalog.server"
@@ -105,10 +106,6 @@ export interface FacetPanelRequest {
   find: string
 }
 
-function labelOf(locale: Locale, ja: string | null, en: string): string {
-  return locale === "ja" ? (ja ?? en) : en
-}
-
 /** A value is looked for by its code and its label, in whichever language. */
 function matches(find: string, value: { code: string, label: string }): boolean {
   if (find === "") return true
@@ -187,7 +184,7 @@ export async function facetPanel(
   const views = definitions.map((one): FacetView => {
     const code = one.field.code
     const expanded = request.expanded === code
-    const label = labelOf(locale, one.labelJa, one.labelEn)
+    const label = catalogLabel(one, locale)
     const find = expanded ? request.find : ""
     const shell = {
       code,
@@ -222,8 +219,8 @@ export async function facetPanel(
       return {
         code: termCode,
         label: row !== undefined
-          ? labelOf(locale, row.labelJa, row.labelEn)
-          : term === undefined ? termCode : labelOf(locale, term.labelJa, term.labelEn),
+          ? catalogLabel(row, locale)
+          : term === undefined ? termCode : catalogLabel(term, locale),
         count: row?.count ?? 0,
         selected,
         href: address(toggleTerm(ast, fields, code, termCode)),
@@ -298,7 +295,7 @@ function childrenOf(
     .filter((child) => child.rootId === root.termId && child.termId !== root.termId)
     .map((child) => ({
       code: child.code,
-      label: labelOf(locale, child.labelJa, child.labelEn),
+      label: catalogLabel(child, locale),
       count: child.count,
       selected: false,
       href: address(toggleTerm(ast, fields, definition.field.code, child.code)),
@@ -350,7 +347,10 @@ function categorise(
       code,
       label: code === null
         ? null
-        : labelOf(locale, definition.categoryLabelJa, definition.categoryLabelEn ?? code),
+        : catalogLabel(
+            { labelJa: definition.categoryLabelJa, labelEn: definition.categoryLabelEn ?? code },
+            locale,
+          ),
       facets: [view],
     })
   })

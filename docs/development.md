@@ -151,9 +151,11 @@ docker compose exec app npm run db:load-dev-data
 1 つの JSON オブジェクトにまとめたものを読む。
 
 TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ送っているのと
-同じもの。**本番ではバッチがこのキャッシュを更新する**が、そのバッチはまだ無いので開発では
-ファイルから入れる。公開ゲートの検算と、DDBJ Search へ供給する endpoint
-([public-api.md](public-api.md)) がこれを読む。
+同じもの。外部 accession の日付は v1 の dump が持つ初出日から作る。**本番では上流のバッチがこの 3 つの
+キャッシュを更新する**が、JGA 申請管理システム DB への接続がまだ無いので、開発ではどれもファイルと
+dump から入れる。公開ゲートの検算と、DDBJ Search へ供給する endpoint
+([public-api.md](public-api.md))、公開表現の日付 ([data-model.md](data-model.md) の「外部キャッシュ」)
+がこれを読む。
 
 `migration/input/` は git 管理外。10 秒ほどで終わり、**全部を 1 つのトランザクションで置き換える**ので、
 途中で落ちても前のデータが残る。**test は開発用 DB を空にする**ので、test の後は入れ直す。
@@ -244,4 +246,7 @@ schema が固まるまで migration file を持たないので、schema を変�
 - **Keycloak から `sub` を取る script を持たない。** サインインして `/admin` を開けば出る
 - **`db` 以外の port をホストに出さない。** S3 と filer を直接叩ける口を作らない
 - **フォーマッタを別に入れない。** 整形は eslint (`@stylistic`) が持つので、`npm run lint:fix` で直す
+- **i18n ライブラリを入れない。** UI 文言の辞書は `app/i18n/messages.ts` に TS の値として持つ。言語は
+  ja / en の 2 つに固定で、書くのは開発者だけ。しかも画面に出る文字列の大半は UI 文言ではなく content の
+  翻訳対で、そちらはどの i18n ライブラリの管轄でもない
 - **ホストでの実行を前提にした script を置かない**

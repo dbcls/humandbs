@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 import { contentKey, vocabularyTerm } from "./catalog"
-import { createdAt, primaryId } from "./common"
+import { primaryId } from "./common"
 import { research } from "./research"
 
 export const searchTargetType = pgEnum("search_target_type", [
@@ -58,7 +58,6 @@ export const searchDoc = pgTable("search_doc", {
    * so the two languages cannot drift apart from what is indexed.
    */
   textAll: text().generatedAlwaysAs(sql`text_ja || ' ' || text_en`),
-  createdAt: createdAt(),
 }, (t) => [
   unique("search_doc_target_unique").on(t.targetType, t.targetId),
   index().on(t.researchId),

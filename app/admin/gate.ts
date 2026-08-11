@@ -11,10 +11,6 @@
  *
  * Nothing here is checked while a draft is being saved. A draft is expected to
  * be incomplete; that is what a draft is for.
- *
- * The upstream check is skipped entirely while the cache has never been
- * fetched. An empty cache read as "upstream does not know this accession" would
- * list every dataset, and a list that is always long is a list nobody reads.
  */
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
@@ -23,7 +19,7 @@ import { datasetProblems, researchProblems, type Language } from "./flags"
 import { isEmptyThreeWay, type ThreeWay } from "./merge"
 
 /** Only the accessions the application system is the authority for. */
-const CHECKED_ACCESSION = /^JGA[DS]\d+$/
+export const CHECKED_ACCESSION = /^JGA[DS]\d+$/
 
 export type GateBlock
   = | { kind: "hum-label-missing" }
@@ -68,12 +64,6 @@ export interface GateDataset {
   upstream: ThreeWay | null
 }
 
-export interface UpstreamAccessions {
-  /** False until the cache has been fetched once, which skips the check. */
-  loaded: boolean
-  humLabelOf: ReadonlyMap<string, string>
-}
-
 export interface GateInput {
   humLabel: string | null
   content: ResearchContent
@@ -81,7 +71,12 @@ export interface GateInput {
   datasets: readonly GateDataset[]
   /** What the most recent published version listed, for spotting what fell off. */
   previousDatasetIds: readonly string[]
-  upstream: UpstreamAccessions
+  /**
+   * Which hum label the application system holds for each JGA accession. The
+   * cache is built once and only ever gains rows, so an accession missing from
+   * it is upstream not knowing it rather than the portal not having looked.
+   */
+  upstream: ReadonlyMap<string, string>
   /**
    * The names sitting in the private bucket. A selection naming one of them
    * would draw nothing on the published page, and making them public is a
@@ -186,12 +181,12 @@ function findingsOf(input: GateInput): GateFinding[] {
  */
 function pinFindings(input: GateInput): GateFinding[] {
   const humLabel = input.humLabel
-  if (!input.upstream.loaded || humLabel === null) return []
+  if (humLabel === null) return []
 
   return input.datasets.flatMap((dataset): GateFinding[] => {
     const label = dataset.label
     if (label === null || !CHECKED_ACCESSION.test(label)) return []
-    const upstreamHumLabel = input.upstream.humLabelOf.get(label)
+    const upstreamHumLabel = input.upstream.get(label)
     if (upstreamHumLabel === undefined) {
       return [{ kind: "pin-unknown-upstream", datasetId: dataset.datasetId, label }]
     }

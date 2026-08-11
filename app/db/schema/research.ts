@@ -29,7 +29,6 @@ import { createdAt, primaryId, updatedAt } from "./common"
  */
 export const research = pgTable("research", {
   id: primaryId(),
-  createdAt: createdAt(),
   updatedAt: updatedAt(),
 })
 
@@ -45,7 +44,6 @@ export const contentSnapshot = pgTable("content_snapshot", {
   id: primaryId(),
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   content: jsonb().$type<ResearchContent>().notNull(),
-  createdAt: createdAt(),
 }, (t) => [
   index().on(t.researchId),
 ])
@@ -68,7 +66,6 @@ export const researchVersion = pgTable("research_version", {
   /** Defaults to today at publish time; the admin can change it. */
   releaseDate: date().notNull(),
   published: boolean().notNull().default(true),
-  createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [
   unique("research_version_number_unique").on(t.researchId, t.number),
@@ -88,8 +85,6 @@ export const dataset = pgTable("dataset", {
   id: primaryId(),
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   originDraftId: uuid().references((): AnyPgColumn => researchDraft.id, { onDelete: "cascade" }),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 }, (t) => [
   index().on(t.researchId),
   index().on(t.originDraftId),
@@ -104,7 +99,6 @@ export const dataset = pgTable("dataset", {
 export const datasetContent = pgTable("dataset_content", {
   datasetId: uuid().primaryKey().references(() => dataset.id, { onDelete: "cascade" }),
   content: jsonb().$type<DatasetContent>().notNull(),
-  updatedAt: updatedAt(),
 })
 
 /**
@@ -126,9 +120,8 @@ export const replacedDatasetContent = pgTable("replaced_dataset_content", {
   content: jsonb().$type<DatasetContent>().notNull(),
   /** The publish that replaced it, which is where the actor and the time are. */
   eventId: uuid().notNull().references(() => event.id),
-  createdAt: createdAt(),
 }, (t) => [
-  index().on(t.datasetId, t.createdAt),
+  index().on(t.datasetId),
 ])
 
 /**
@@ -180,8 +173,6 @@ export const draftDatasetEntry = pgTable("draft_dataset_entry", {
   content: jsonb().$type<DatasetContent>().notNull(),
   baseContent: jsonb().$type<DatasetContent>(),
   revision: integer().notNull().default(1),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
 }, (t) => [
   unique("draft_dataset_entry_unique").on(t.draftId, t.datasetId),
 ])
