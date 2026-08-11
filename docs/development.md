@@ -12,7 +12,8 @@ Docker と Docker Compose だけ。Node もホストには要らない。
 
 - **production 環境。** 検証は staging で行う。ここからのコピーは読み取りだけで、書き戻す経路を作らない
 - **JGA 申請管理システムの DB (jga-shinsei)。** 他プロジェクトの所管なので、schema の変更も直接の
-  書き込みもしない。ポータルはキャッシュを持つ読み手にとどまる ([data-model.md](data-model.md))
+  書き込みもしない。ポータルはキャッシュを持つ読み手にとどまる ([data-model.md](data-model.md))。
+  **この DB だけは staging に実データが無い**ので読むのは production だが、接続は read-only に固定する
 
 ## 書くときの約束
 
@@ -81,6 +82,7 @@ docker compose exec app npm run build       # 本番ビルド
 docker compose exec app npm run db:push     # schema 定義を DB に反映し、権限を張り直す
 docker compose exec app npm run s3:buckets  # 2 つの bucket を作る (無ければ)
 docker compose exec app npm run admin:list  # admin の一覧
+docker compose exec app npm run upstream:refresh  # 上流のキャッシュを取り直す
 ```
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
@@ -151,9 +153,9 @@ docker compose exec app npm run db:load-dev-data
 1 つの JSON オブジェクトにまとめたものを読む。
 
 TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ送っているのと
-同じもの。外部 accession の日付は v1 の dump が持つ初出日から作る。**本番では上流のバッチがこの 3 つの
-キャッシュを更新する**が、JGA 申請管理システム DB への接続がまだ無いので、開発ではどれもファイルと
-dump から入れる。公開ゲートの検算と、DDBJ Search へ供給する endpoint
+同じもの。外部 accession の日付は v1 の dump が持つ初出日から作る。**本番ではこの 3 つを上流のバッチが
+更新する**が (下の「上流のキャッシュを更新する」)、申請管理システム DB へは手元から届かないので、開発では
+ファイルと dump を出発点にする。公開ゲートの検算と、DDBJ Search へ供給する endpoint
 ([public-api.md](public-api.md))、公開表現の日付 ([data-model.md](data-model.md) の「外部キャッシュ」)
 がこれを読む。
 
@@ -208,6 +210,41 @@ docker compose exec app npm run admin:grant -- <sub> "表示名"
 サインアウトは Keycloak 側のセッションも終わらせるので、押した後は DDBJ アカウントのログインから
 やり直しになる。
 
+## 上流のキャッシュを更新する
+
+アプリのプロセスが日次で回す。同じものを手からも叩ける。
+
+```bash
+docker compose exec app npm run upstream:refresh
+docker compose exec app npm run upstream:refresh -- --source=archive-date
+```
+
+取得元は 4 つで、独立に失敗する — `cau` / `hum-accession` / `jgad-date` (申請管理システム DB) と
+`archive-date` (DDBJ Search)。**成功したものだけが書き換わり、失敗した取得元は前回の値をそのまま
+残す** ([data-model.md](data-model.md) の「外部キャッシュ」)。結果は `/admin` に出る
+([editing.md](editing.md))。**CLI は「まだ期限が来ていない」で何もしないことはしない** — 手で叩く人は
+いま実行したいので、期限と排他はプロセスのループだけが見る。
+
+| 変数 | 中身 |
+|---|---|
+| `HUMANDBS_JGA_DATABASE_URL` | 申請管理システム DB への接続。**空なら `cau` / `hum-accession` / `jgad-date` を skip する** |
+| `HUMANDBS_JGA_DB_SCHEMA` | schema 名。既定は `jgasys` |
+
+`archive-date` は認証が要らないので手元でも回る。
+
+**申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、試すときは tunnel を
+1 本掘って container から見える宛先に向ける。`extra_hosts` で `host.docker.internal` を通してあるので、
+ホスト側で docker のブリッジに bind すれば container から引ける。
+
+```bash
+ssh -f -N -L 172.17.0.1:15432:<申請管理システム DB のホスト>:5432 <踏み台>
+# .env
+HUMANDBS_JGA_DATABASE_URL=postgres://<user>:<password>@host.docker.internal:15432/jgadb
+```
+
+**接続は read-only を強制する** (`default_transaction_read_only`)。他プロジェクトの所管なので、設定の
+間違いで書き込みが通る余地を残さない。**staging は使えない** — hum が 3 件しか無く、検証にならない。
+
 ## ファイルストアを触る
 
 bucket は自動では作られない。
@@ -250,3 +287,5 @@ schema が固まるまで migration file を持たないので、schema を変�
   ja / en の 2 つに固定で、書くのは開発者だけ。しかも画面に出る文字列の大半は UI 文言ではなく content の
   翻訳対で、そちらはどの i18n ライブラリの管轄でもない
 - **ホストでの実行を前提にした script を置かない**
+- **上流のキャッシュを画面から取り直せるようにしない。** 走らせるのはプロセスのループと CLI で、
+  管理画面は結果を出すだけ

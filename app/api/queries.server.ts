@@ -171,7 +171,6 @@ export async function cauByHumLabel(
   for (const row of rows) {
     const held = byLabel.get(row.humLabel) ?? []
     held.push({
-      applicationId: row.applicationId,
       principalInvestigator: { ja: row.piNameJa, en: row.piNameEn },
       affiliation: { ja: row.affiliationJa, en: row.affiliationEn },
       country: row.country,

@@ -199,13 +199,20 @@ export async function publishedDatasetLabels(
   return new Map(rows.flatMap((row) => row.label === null ? [] : [[row.datasetId, row.label]]))
 }
 
+/**
+ * The usage records of one research, in the order upstream's project numbering
+ * puts them. `applicationId` orders the rows and never leaves this function:
+ * the column exists to match a cached row to upstream, and the pages and the
+ * JSON API show what a reader is meant to see (docs/data-model.md の
+ * 「外部キャッシュ」).
+ */
 export async function controlledAccessUsers(db: Executor, humLabel: string): Promise<CauInput[]> {
   const rows = await db
     .select()
     .from(cauEntry)
     .where(eq(cauEntry.humLabel, humLabel))
+    .orderBy(cauEntry.applicationId)
   return rows.map((row) => ({
-    applicationId: row.applicationId,
     principalInvestigator: { ja: row.piNameJa, en: row.piNameEn },
     affiliation: { ja: row.affiliationJa, en: row.affiliationEn },
     country: row.country,

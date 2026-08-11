@@ -16,6 +16,7 @@ import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { activeAlerts } from "~/public/site.server"
 import { readLocale } from "~/public/urls"
+import { startUpstreamRunner } from "~/upstream/runner.server"
 
 import type { Route } from "./+types/root"
 
@@ -35,12 +36,14 @@ import "./app.css"
  * Capabilities are derived per request where they are checked, and putting them
  * in a loader's answer would send an authorisation decision to the browser.
  *
- * The loop that moves files between the buckets is started from here because
- * every request passes through: it belongs to the process rather than to a
- * screen, and starting it again while it runs does nothing.
+ * The two background loops — the one that moves files between the buckets, and
+ * the one that refreshes the upstream caches — are started from here because
+ * every request passes through: they belong to the process rather than to a
+ * screen, and starting one again while it runs does nothing.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   startFileRunner()
+  startUpstreamRunner()
   const locale = readLocale(new URL(request.url).pathname).locale
   const actor = await readActor(request)
   return {

@@ -276,8 +276,10 @@ export function ResearchBody({ view, locale, datasetHref }: {
             messages.dataset.datasets,
           ]}
           >
-            {view.cau.map((usage) => (
-              <tr key={usage.applicationId}>
+            {view.cau.map((usage, index) => (
+              // No identifier a reader may see reaches this table, and the rows
+              // arrive in a fixed order that nothing here reorders.
+              <tr key={index}>
                 <Td>{usage.principalInvestigator}</Td>
                 <Td>{usage.affiliation}</Td>
                 <Td>{usage.country}</Td>

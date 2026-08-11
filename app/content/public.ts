@@ -64,8 +64,12 @@ export interface CatalogKey {
  * application system. Not content: curators cannot edit it, and its two
  * languages are whatever upstream has, so it is never counted as untranslated.
  */
+/**
+ * One usage of a research's controlled-access data. **The usage project it came
+ * from is not here** — that is how the cached row is matched to upstream, not
+ * something the portal publishes (docs/data-model.md の「外部キャッシュ」).
+ */
 export interface CauUsage {
-  applicationId: string
   principalInvestigator: Bilingual
   affiliation: Bilingual
   /** Upstream holds this in English only. */

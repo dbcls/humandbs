@@ -34,7 +34,58 @@ describe("loadConfig", () => {
         accessKeyId: VALID.HUMANDBS_S3_ACCESS_KEY,
         secretAccessKey: VALID.HUMANDBS_S3_SECRET_KEY,
       },
+      applicationDb: null,
     })
+  })
+})
+
+/**
+ * The one connection that is allowed to be absent. Outside production the JGA
+ * application system is not reachable at all, so an environment without it has
+ * to start — the sources that read it are skipped instead
+ * (docs/data-model.md の「外部キャッシュ」).
+ */
+describe("loadConfig と申請管理システムの接続", () => {
+  const withDb = (extra: Record<string, string | undefined>) => ({ ...VALID, ...extra })
+
+  it("is absent when nothing is configured, rather than a failure to start", () => {
+    expect(loadConfig(VALID).applicationDb).toBeNull()
+  })
+
+  it("is absent when the variable is present but empty, which is how .env.example ships", () => {
+    expect(loadConfig(withDb({ HUMANDBS_JGA_DATABASE_URL: "  " })).applicationDb).toBeNull()
+  })
+
+  it("defaults the schema, because only one deployment names it differently", () => {
+    const url = "postgres://reader:secret@jga:5432/jgadb"
+    expect(loadConfig(withDb({ HUMANDBS_JGA_DATABASE_URL: url })).applicationDb)
+      .toEqual({ url, schema: "jgasys" })
+  })
+
+  it("takes the configured schema, which differs between that system's deployments", () => {
+    const url = "postgres://reader:secret@jga:5432/jgadb"
+    const config = loadConfig(withDb({
+      HUMANDBS_JGA_DATABASE_URL: url,
+      HUMANDBS_JGA_DB_SCHEMA: "ts_jgasys",
+    }))
+    expect(config.applicationDb?.schema).toBe("ts_jgasys")
+  })
+
+  it("rejects a schema that is not a plain identifier, because it goes into the queries as one", () => {
+    expect(() => loadConfig(withDb({
+      HUMANDBS_JGA_DATABASE_URL: "postgres://reader:secret@jga:5432/jgadb",
+      HUMANDBS_JGA_DB_SCHEMA: "jgasys; DROP TABLE accession",
+    }))).toThrow("HUMANDBS_JGA_DB_SCHEMA must be a plain identifier")
+  })
+
+  it("rejects a connection that is not postgres, so a typo fails at start rather than at refresh", () => {
+    expect(() => loadConfig(withDb({ HUMANDBS_JGA_DATABASE_URL: "http://jga:5432/jgadb" })))
+      .toThrow("HUMANDBS_JGA_DATABASE_URL must use one of: postgres:, postgresql:")
+  })
+
+  it("rejects a value that is not a URL at all", () => {
+    expect(() => loadConfig(withDb({ HUMANDBS_JGA_DATABASE_URL: "jga:5432/jgadb" })))
+      .toThrow(ConfigError)
   })
 
   it("accepts the postgresql:// spelling", () => {

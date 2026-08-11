@@ -253,7 +253,6 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
     })),
     datasets: labelsOf(input.content.datasetIds),
     controlledAccessUsers: input.cau.map((usage) => ({
-      applicationId: usage.applicationId,
       // The cache of an upstream system holds two languages and no state, so an
       // empty side is a language upstream does not have.
       principalInvestigator: plainPair(usage.principalInvestigator.ja, usage.principalInvestigator.en),

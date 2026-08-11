@@ -126,7 +126,6 @@ export const researchSchema = z.object({
     description: "Dataset ids this version lists. Only published ones appear.",
   }),
   controlledAccessUsers: z.array(z.object({
-    applicationId: z.string(),
     principalInvestigator: textSchema,
     affiliation: textSchema,
     country: z.string(),

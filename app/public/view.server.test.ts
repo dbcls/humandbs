@@ -113,7 +113,6 @@ describe("the untranslated notice", () => {
 
   it("ignores a controlled-access usage, which no curator can translate", () => {
     const cau: CauInput[] = [{
-      applicationId: "a1",
       principalInvestigator: { ja: "山田", en: "" },
       affiliation: { ja: "大学", en: "" },
       country: "Japan",

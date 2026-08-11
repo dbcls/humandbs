@@ -2,9 +2,11 @@ import { Link } from "react-router"
 
 import { adminCatalogPath, adminResearchListPath } from "~/admin/urls"
 import { requireActor } from "~/auth/actor.server"
-import { Card, Empty, KeyValue, Page, PageHead } from "~/components/page"
+import { Card, Empty, KeyValue, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { getDb } from "~/db/client.server"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
+import { upstreamStatus } from "~/upstream/status.server"
 
 import type { Route } from "./+types/admin"
 
@@ -18,14 +20,21 @@ import type { Route } from "./+types/admin"
  * granted by `sub`, nothing else displays one, and somebody has to be able to
  * read theirs before anybody can be granted anything. It discloses nothing but
  * the reader's own identity.
+ *
+ * **How the upstream fetches are going is here too**, for readers who may see
+ * unpublished state. A failed fetch deliberately leaves the previous values in
+ * place, so without a screen a refresh that stopped a week ago looks exactly
+ * like one that ran this morning (docs/editing.md の「管理画面」).
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const actor = await requireActor(request)
+  const maySeeUpstream = actor.capabilities.has("view-unpublished")
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
     sub: actor.sub,
     name: actor.name,
     capabilities: [...actor.capabilities],
+    upstream: maySeeUpstream ? await upstreamStatus(getDb()) : null,
   }
 }
 
@@ -38,8 +47,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Admin({ loaderData }: Route.ComponentProps) {
-  const { locale, sub, name, capabilities } = loaderData
+  const { locale, sub, name, capabilities, upstream } = loaderData
   const messages = messagesFor(locale)
+  const words = messages.admin.caches
 
   return (
     <Page>
@@ -78,6 +88,24 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                 )}
           </KeyValue>
         </dl>
+
+        {upstream !== null && (
+          <Section title={words.heading}>
+            <Table headers={[words.source, words.lastSuccess, words.rows, words.state]}>
+              {upstream.map((row) => (
+                <tr key={row.source}>
+                  <Td>{words.sources[row.source]}</Td>
+                  <Td className="text-nowrap">{row.succeededAt?.slice(0, 10) ?? "—"}</Td>
+                  <Td className="text-nowrap">{row.rowCount ?? "—"}</Td>
+                  <Td>
+                    {row.failure ?? (row.succeededAt === null ? words.never : words.ok)}
+                  </Td>
+                </tr>
+              ))}
+            </Table>
+            <Empty>{words.note}</Empty>
+          </Section>
+        )}
       </Card>
     </Page>
   )

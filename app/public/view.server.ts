@@ -338,8 +338,12 @@ function datasetRowView(
   }
 }
 
+/**
+ * A usage record as the public side sees it. **The usage project it came from
+ * is deliberately absent** — that is how the cached row is matched to upstream,
+ * not something the portal publishes (docs/data-model.md の「外部キャッシュ」).
+ */
 export interface CauInput {
-  applicationId: string
   principalInvestigator: Bilingual
   affiliation: Bilingual
   country: string

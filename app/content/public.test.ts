@@ -183,7 +183,6 @@ describe("publicDataset", () => {
 describe("publicResearch", () => {
   it("passes through the usage records and the listing it was given", () => {
     const cau = [{
-      applicationId: "A-1",
       principalInvestigator: { ja: "山田", en: "Yamada" },
       affiliation: { ja: "大学", en: "University" },
       country: "Japan",

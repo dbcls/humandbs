@@ -20,7 +20,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 | [docs/auth.md](docs/auth.md) | 誰がサインインでき何を許されるか。capability、セッション、admin の付け外し |
 | [docs/glossary.md](docs/glossary.md) | ドメインの語の ja/en 対。画面・API・facet・語彙が従う訳語 |
 | [docs/testing.md](docs/testing.md) | テストの 5 階層。何を test にするか、mock の境界、e2e のシナリオ |
-| [docs/development.md](docs/development.md) | 開発環境の手順。起動、lint と test、DB とファイルストアの触り方 |
+| [docs/development.md](docs/development.md) | 開発環境の手順。起動、lint と test、DB とファイルストアの触り方、上流のキャッシュの更新 |
 
 ## 動かす
 

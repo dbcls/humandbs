@@ -306,3 +306,42 @@ describe("what apiSearch answers about its own parameters", () => {
     expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-parameter")
   })
 })
+
+/**
+ * The usage records are a cache of an upstream table, and the key that matches
+ * a cached row to that table is the one column in it no reader may see
+ * (docs/data-model.md の「外部キャッシュ」). Types cannot hold that: the column
+ * is there and the projection simply has to not carry it, so this is what says
+ * it does not.
+ */
+describe("the usage project a cached usage record came from", () => {
+  it("appears in no answer, though the row it came from carries it", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [])
+    await db.insert(s.cauEntry).values({
+      humLabel: "hum0001",
+      applicationId: "J-DU000131",
+      piNameJa: "山田 太郎",
+      piNameEn: "Taro Yamada",
+      affiliationJa: "研究科, 大学",
+      affiliationEn: "School, University",
+      country: "Japan",
+      researchTitleJa: "課題",
+      researchTitleEn: "Project",
+      periodStart: "2023-04-10",
+      periodEnd: "2024-03-31",
+      datasetAccessions: ["JGAD000251"],
+    })
+    await rebuildSearchDocs(db)
+
+    const answer = await researchEntry(get("/api/research/hum0001"), "hum0001", "latest")
+    const text = await answer.clone().text()
+    const research = await body(answer) as { controlledAccessUsers: Record<string, unknown>[] }
+
+    expect(research.controlledAccessUsers).toHaveLength(1)
+    expect(research.controlledAccessUsers[0]).not.toHaveProperty("applicationId")
+    expect(text).not.toContain("J-DU000131")
+    // The rest of the record is what the page shows, and it is all there.
+    expect(text).toContain("Taro Yamada")
+  })
+})

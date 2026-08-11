@@ -159,5 +159,7 @@ describe.skipIf(!existsSync(DUMP))("ナビの行き先", () => {
     const screens: string[] = [...SCREEN_PATHS]
     expect(navigationPaths().filter((path) => !screens.includes(path) && !slugs.has(path)))
       .toEqual([])
-  })
+    // Reading the whole dump and converting every document is seconds of real
+    // work, which the default allowance leaves no room for on a busy machine.
+  }, 30_000)
 })

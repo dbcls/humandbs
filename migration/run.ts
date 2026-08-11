@@ -289,7 +289,7 @@ async function load() {
     // access.
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
-                     hum_accession, accession_date, document, news, alert CASCADE
+                     hum_accession, accession_date, upstream_refresh, document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdBySetAndCode, codeBySourceKey } = await seedCatalog(

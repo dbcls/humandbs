@@ -10,6 +10,7 @@
 
 | アドレス | 何の画面か |
 |---|---|
+| `/admin` | 入口。自分の `sub` と capability、上流の取得の状態 |
 | `/admin/research` | 研究の一覧 |
 | `/admin/research/:researchId` | 1 研究。pin されたラベル・公開版・draft・データセット |
 | `/admin/research/:researchId/files` | 研究の箱。upload・公開状態の切り替え・削除 (下の「ファイル」) |
@@ -34,6 +35,12 @@ hum ↔ accession のキャッシュ、残りは content の純関数判定で�
 最新公開版を見る** (直すのは draft の側なので)。境界は「content から導出できるか」ではなく「行を組む
 ときに引ける範囲か」で、**述語は公開ゲートと同じものを共有する** ([publishing.md](publishing.md)) —
 公開を止めるものを一覧が出さないと、curator は確認画面まで行かないと直す対象を知れない。
+
+**上流の取得の状態は `/admin` に出す。** ソースごとに最終成功の日・取り込んだ件数・直近の失敗理由を
+並べ、`view-unpublished` を持つ人にだけ見せる。キャッシュは取得に失敗しても前回値が残るので
+([data-model.md](data-model.md) の「外部キャッシュ」)、**画面に出さないと「更新が止まっている」が
+誰にも見えない**。画面から取得を走らせることはできない — 走らせるのはプロセスと CLI
+([development.md](development.md))。
 
 ## draft
 

@@ -30,6 +30,24 @@ export interface StoreConfig {
   secretAccessKey: string
 }
 
+/**
+ * How the application reaches the JGA application system.
+ *
+ * **Read-only, and optional.** The database belongs to another project, so the
+ * portal never alters it and the connection forces that at the session level
+ * rather than trusting the queries. It is optional because the database is not
+ * reachable outside production: an environment without it is a normal
+ * environment, and the sources that read it are skipped rather than treated as
+ * broken (docs/data-model.md の「外部キャッシュ」).
+ *
+ * The schema name is configured because it differs between the deployments of
+ * the upstream system.
+ */
+export interface ApplicationDbConfig {
+  url: string
+  schema: string
+}
+
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
   databaseUrl: string
@@ -40,6 +58,7 @@ export interface AppConfig {
   ownerDatabaseUrl: string
   auth: AuthConfig
   store: StoreConfig
+  applicationDb: ApplicationDbConfig | null
 }
 
 export class ConfigError extends Error {
@@ -67,7 +86,36 @@ export function loadConfig(env: Env): AppConfig {
       accessKeyId: readRequired(env, "HUMANDBS_S3_ACCESS_KEY"),
       secretAccessKey: readRequired(env, "HUMANDBS_S3_SECRET_KEY"),
     },
+    applicationDb: readApplicationDb(env),
   }
+}
+
+const DEFAULT_APPLICATION_DB_SCHEMA = "jgasys"
+
+function readApplicationDb(env: Env): ApplicationDbConfig | null {
+  const url = env.HUMANDBS_JGA_DATABASE_URL?.trim()
+  if (url === undefined || url === "") return null
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new ConfigError("HUMANDBS_JGA_DATABASE_URL must be a URL")
+  }
+  if (!POSTGRES_PROTOCOLS.includes(parsed.protocol)) {
+    throw new ConfigError(`HUMANDBS_JGA_DATABASE_URL must use one of: ${POSTGRES_PROTOCOLS.join(", ")}`)
+  }
+
+  const configured = env.HUMANDBS_JGA_DB_SCHEMA?.trim()
+  const schema = configured === undefined || configured === ""
+    ? DEFAULT_APPLICATION_DB_SCHEMA
+    : configured
+  // The name goes into the queries as an identifier, which no parameter can
+  // carry, so the shape is checked once here rather than trusted at each use.
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(schema)) {
+    throw new ConfigError("HUMANDBS_JGA_DB_SCHEMA must be a plain identifier")
+  }
+  return { url, schema }
 }
 
 /**
