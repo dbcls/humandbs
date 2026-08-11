@@ -51,6 +51,9 @@ describe("writing to a draft", () => {
     const source = readFileSync(WRITER, "utf8")
 
     expect(changingFunctions(source)).toEqual([
+      // Seeding datasets from upstream changes which ones the version lists,
+      // which is a change to the draft's own content like any other.
+      "addDatasetsFromUpstream",
       "saveDraftContent",
       "saveDatasetEntry",
       "createDatasetInDraft",
@@ -71,7 +74,7 @@ describe("writing to a draft", () => {
     const exported = [...source.matchAll(/export async function (\w+)/g)]
       .map((match) => match[1] ?? "")
 
-    // Two of these create a row, which has no earlier version of itself to
+    // Three of these create a row, which has no earlier version of itself to
     // disagree with. The rest are not content: presence, which nobody reads for
     // correctness and where a lost write costs one heartbeat, and the two share
     // settings, where the last press winning is the answer and a check would
@@ -79,6 +82,7 @@ describe("writing to a draft", () => {
     expect(exported.filter((name) => !changing.has(name)))
       .toEqual([
         "createResearchWithDraft",
+        "createResearchFromUpstream",
         "createDraft",
         "touchPresence",
         "setDraftSharing",

@@ -69,6 +69,13 @@ function pages(scope: string) {
       { id: `${scope}-admin-contents-files` },
     ),
     route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
+    // Before the identity, so that `upstream` is a screen rather than a research
+    // that could never be found.
+    route(
+      "admin/research/upstream",
+      "routes/admin-research-upstream.tsx",
+      { id: `${scope}-admin-research-upstream` },
+    ),
     route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
     route(
       "admin/research/:researchId/files",
@@ -94,6 +101,11 @@ function pages(scope: string) {
       "admin/research/:researchId/draft/:draftId/dataset",
       "routes/admin-draft-datasets.tsx",
       { id: `${scope}-admin-draft-datasets` },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset/upstream",
+      "routes/admin-draft-dataset-upstream.tsx",
+      { id: `${scope}-admin-draft-dataset-upstream` },
     ),
     route(
       "admin/research/:researchId/draft/:draftId/dataset/:datasetId",

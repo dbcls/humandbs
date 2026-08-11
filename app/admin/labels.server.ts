@@ -30,7 +30,7 @@
  * a fact about that version, and what is visible now is a different question.
  */
 
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Database, Transaction } from "~/db/client.server"
@@ -112,6 +112,58 @@ export async function pinLabel(
     wakeFileRunner()
   }
   return done.outcome
+}
+
+export type PinManyOutcome
+  = | { status: "pinned" }
+    | { status: "taken", label: string }
+
+/**
+ * Attaching several labels at once, inside a transaction somebody else opened.
+ *
+ * Seeding a draft from an approved application pins a hum label and one
+ * accession per dataset, and a research can arrive carrying two hundred of them
+ * — so the ledger is checked once for the whole set rather than once per label
+ * (docs/editing.md の「上流からの下書き」).
+ *
+ * **Nothing here demotes and nothing derives the search rows.** The identities
+ * being labelled were made a moment ago and hold no earlier label, and nothing
+ * unpublished appears in a search row, so there is neither an old primary to
+ * keep resolving nor a listing to change.
+ */
+export async function pinLabelsIn(
+  tx: Transaction,
+  requests: readonly PinRequest[],
+  actor: EventActor,
+): Promise<PinManyOutcome> {
+  if (requests.length === 0) return { status: "pinned" }
+
+  const held = await tx
+    .select({ kind: labelPin.kind, label: labelPin.label })
+    .from(labelPin)
+    .where(inArray(labelPin.label, requests.map((request) => request.label)))
+  for (const request of requests) {
+    if (held.some((row) => row.kind === request.kind && row.label === request.label)) {
+      return { status: "taken", label: request.label }
+    }
+  }
+
+  for (const request of requests) {
+    await tx.insert(labelPin).values({
+      kind: request.kind,
+      label: request.label,
+      ...subjectColumns(request),
+      isPrimary: request.isPrimary,
+    })
+    await recordEvent(tx, {
+      actor,
+      action: "pin-label",
+      subjectType: "label",
+      subjectId: request.label,
+      detail: { kind: request.kind, subject: request.subjectId, isPrimary: request.isPrimary },
+    })
+  }
+  return { status: "pinned" }
 }
 
 export async function unpinLabel(

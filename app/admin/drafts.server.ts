@@ -51,6 +51,8 @@ import {
   researchVersion,
 } from "~/db/schema"
 
+import { pinLabelsIn, type PinRequest } from "./labels.server"
+
 const SHARE_TOKEN_BYTES = 32
 
 /** The eleventh push drops the oldest. */
@@ -195,6 +197,161 @@ export async function createResearchWithDraft(
       .returning({ id: researchDraft.id }))
     return { researchId: created.id, draftId: draft.id }
   })
+}
+
+/** A dataset a seeded draft brings with it: its accession and its description. */
+export interface SeededDataset {
+  /** The accession, pinned as the dataset's primary id as it is created. */
+  label: string
+  content: DatasetContent
+}
+
+export type SeedOutcome
+  = | { status: "created", researchId: string, draftId: string }
+    /** A label the seed would pin already names something else. */
+    | { status: "taken", label: string }
+
+export type AddDatasetsOutcome
+  = | { status: "added", datasetIds: string[] }
+    | { status: "conflict" }
+    | { status: "gone" }
+    | { status: "taken", label: string }
+
+/** Thrown to undo the transaction, because returning from one commits it. */
+class LabelTaken extends Error {
+  constructor(readonly label: string) {
+    super(`the label ${label} already names something`)
+  }
+}
+
+async function taken<T>(run: () => Promise<T>): Promise<T | { status: "taken", label: string }> {
+  try {
+    return await run()
+  } catch (error) {
+    if (error instanceof LabelTaken) return { status: "taken", label: error.label }
+    throw error
+  }
+}
+
+function pinRequests(
+  humLabel: string | null,
+  researchId: string,
+  datasets: readonly { id: string, label: string }[],
+): PinRequest[] {
+  const hum: PinRequest[] = humLabel === null
+    ? []
+    : [{ kind: "hum", label: humLabel, subjectId: researchId, isPrimary: true }]
+  return [
+    ...hum,
+    ...datasets.map((entry): PinRequest => ({
+      kind: "dataset",
+      label: entry.label,
+      subjectId: entry.id,
+      isPrimary: true,
+    })),
+  ]
+}
+
+/**
+ * A research written from what an upstream system already says about it, with
+ * its datasets in the same breath (docs/editing.md の「上流からの下書き」).
+ *
+ * **The labels are pinned as the identities are made.** A draft holding two
+ * hundred datasets that are told apart only by an internal identity is a draft
+ * nobody can work in, and the ledger's uniqueness is what decides whether this
+ * research may be started at all — a hum label somebody else holds means the
+ * research already exists.
+ */
+export async function createResearchFromUpstream(
+  db: Database,
+  seed: { humLabel: string | null, content: ResearchContent, datasets: SeededDataset[] },
+  actor: EventActor,
+): Promise<SeedOutcome> {
+  return taken(() => db.transaction(async (tx): Promise<SeedOutcome> => {
+    const created = one(await tx.insert(research).values({}).returning({ id: research.id }))
+    const datasets = seed.datasets.map((entry) => ({ ...entry, id: randomUUID() }))
+
+    const draft = one(await tx
+      .insert(researchDraft)
+      .values({
+        researchId: created.id,
+        content: { ...seed.content, datasetIds: datasets.map((entry) => entry.id) },
+        shareToken: newShareToken(),
+      })
+      .returning({ id: researchDraft.id }))
+
+    await writeSeededDatasets(tx, created.id, draft.id, datasets)
+    const pinned = await pinLabelsIn(tx, pinRequests(seed.humLabel, created.id, datasets), actor)
+    if (pinned.status === "taken") throw new LabelTaken(pinned.label)
+
+    return { status: "created", researchId: created.id, draftId: draft.id }
+  }))
+}
+
+/**
+ * More datasets for a draft that is already open, written from upstream.
+ *
+ * Adding one changes which datasets the version lists, so the draft's revision
+ * is checked exactly as it is when one is created by hand.
+ */
+export async function addDatasetsFromUpstream(
+  db: Database,
+  at: DraftAt,
+  seed: { researchId: string, datasets: SeededDataset[] },
+  actor: EventActor,
+): Promise<AddDatasetsOutcome> {
+  return taken(() => db.transaction(async (tx): Promise<AddDatasetsOutcome> => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    const datasets = seed.datasets.map((entry) => ({ ...entry, id: randomUUID() }))
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: {
+          ...before.content,
+          datasetIds: [...before.content.datasetIds, ...datasets.map((entry) => entry.id)],
+        },
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+    if (rows[0] === undefined) return { status: "conflict" }
+
+    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets)
+    const pinned = await pinLabelsIn(tx, pinRequests(null, seed.researchId, datasets), actor)
+    if (pinned.status === "taken") throw new LabelTaken(pinned.label)
+
+    return { status: "added", datasetIds: datasets.map((entry) => entry.id) }
+  }))
+}
+
+/**
+ * The identity and the description of each seeded dataset.
+ *
+ * They belong to the draft until it is published, like any dataset made inside
+ * one, and their entries carry no base: there is no published description for a
+ * three-way diff to have started from.
+ */
+async function writeSeededDatasets(
+  tx: Transaction,
+  researchId: string,
+  draftId: string,
+  datasets: readonly { id: string, content: DatasetContent }[],
+): Promise<void> {
+  if (datasets.length === 0) return
+  await tx.insert(dataset).values(
+    datasets.map((entry) => ({ id: entry.id, researchId, originDraftId: draftId })),
+  )
+  await tx.insert(draftDatasetEntry).values(
+    datasets.map((entry) => ({
+      draftId,
+      datasetId: entry.id,
+      content: entry.content,
+      baseContent: null,
+    })),
+  )
 }
 
 /**

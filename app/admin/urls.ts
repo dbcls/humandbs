@@ -17,6 +17,15 @@ export function adminResearchListPath(): string {
   return "/admin/research"
 }
 
+/**
+ * Where a research is started from what an approved application already says.
+ * It is a fixed segment beside the identities, which is why a research is never
+ * addressed by anything that could be the word `upstream`.
+ */
+export function adminUpstreamResearchPath(): string {
+  return "/admin/research/upstream"
+}
+
 export function adminResearchPath(researchId: string): string {
   return `/admin/research/${researchId}`
 }
@@ -64,6 +73,27 @@ export function adminDraftReviewPath(researchId: string, draftId: string): strin
  */
 export function draftCommentsPath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/comments`
+}
+
+/** Where datasets are added to a draft from what an archive already holds. */
+export function adminUpstreamDatasetPath(researchId: string, draftId: string): string {
+  return `${adminDraftDatasetsPath(researchId, draftId)}/upstream`
+}
+
+/** What an upstream screen was looking at, kept so the address can be shared. */
+export function upstreamQuery(query: {
+  keyword?: string
+  applicationId?: string | null
+  accession?: string | null
+}): string {
+  const search = new URLSearchParams()
+  if (query.keyword !== undefined && query.keyword !== "") search.set("q", query.keyword)
+  if (query.applicationId != null && query.applicationId !== "") {
+    search.set("application", query.applicationId)
+  }
+  if (query.accession != null && query.accession !== "") search.set("accession", query.accession)
+  const written = search.toString()
+  return written === "" ? "" : `?${written}`
 }
 
 export function adminDraftDatasetPath(

@@ -126,23 +126,23 @@ import {
   type DraftReviewSummary,
 } from "~/review/queries.server"
 
-function notFound(): never {
+export function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
 }
 
-function badRequest(): never {
+export function badRequest(): never {
   throw new Response(null, { status: 400, statusText: "Bad Request" })
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** An address that cannot name a row answers as a row that is not there. */
-function identity(value: string | undefined): string {
+export function identity(value: string | undefined): string {
   if (value === undefined || !UUID.test(value)) notFound()
   return value
 }
 
-function actorOf(actor: { sub: string, name: string }): EventActor {
+export function actorOf(actor: { sub: string, name: string }): EventActor {
   return { sub: actor.sub, name: actor.name }
 }
 

@@ -232,18 +232,16 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date
 
 `archive-date` は認証が要らないので手元でも回る。
 
-**申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、試すときは tunnel を
-1 本掘って container から見える宛先に向ける。`extra_hosts` で `host.docker.internal` を通してあるので、
-ホスト側で docker のブリッジに bind すれば container から引ける。
-
-```bash
-ssh -f -N -L 172.17.0.1:15432:<申請管理システム DB のホスト>:5432 <踏み台>
-# .env
-HUMANDBS_JGA_DATABASE_URL=postgres://<user>:<password>@host.docker.internal:15432/jgadb
-```
+**申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、試すときは
+`ssh -L` で tunnel を 1 本掘る。**compose の container からホストの tunnel には届かない** (ホストが
+bridge からの入力を落とす) ので、掘り先は `127.0.0.1` にして **`--network host` の container** で回す。
+v2 の Postgres も `127.0.0.1:5432` に publish してあるので、その container から両方に届く。
 
 **接続は read-only を強制する** (`default_transaction_read_only`)。他プロジェクトの所管なので、設定の
 間違いで書き込みが通る余地を残さない。**staging は使えない** — hum が 3 件しか無く、検証にならない。
+
+同じ接続を上流からの下書き ([editing.md](editing.md)) も使う。こちらはキャッシュではなく画面からの
+直読みなので、**接続が無ければその画面が繋がっていないと言う**。
 
 ## ファイルストアを触る
 

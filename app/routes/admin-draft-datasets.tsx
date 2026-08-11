@@ -3,7 +3,12 @@ import { data, Form, Link } from "react-router"
 
 import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.server"
 import type { DraftDatasetRow } from "~/admin/queries.server"
-import { adminDraftDatasetPath, adminDraftPath, draftPresencePath } from "~/admin/urls"
+import {
+  adminDraftDatasetPath,
+  adminDraftPath,
+  adminUpstreamDatasetPath,
+  draftPresencePath,
+} from "~/admin/urls"
 import { PresenceLine } from "~/components/draft-tools"
 import { Card, Empty, Page, PageHead } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -91,16 +96,24 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
               </ul>
             )}
 
-        <Form method="post" className="mt-6">
-          <input type="hidden" name="intent" value="create-dataset" />
-          <input type="hidden" name="revision" value={view.revision} />
-          <button
-            type="submit"
-            className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <Form method="post">
+            <input type="hidden" name="intent" value="create-dataset" />
+            <input type="hidden" name="revision" value={view.revision} />
+            <button
+              type="submit"
+              className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+            >
+              {t.createDataset}
+            </button>
+          </Form>
+          <Link
+            to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
+            className="text-sm"
           >
-            {t.createDataset}
-          </button>
-        </Form>
+            {messagesFor(locale).admin.templates.openDataset}
+          </Link>
+        </div>
       </Card>
     </Page>
   )

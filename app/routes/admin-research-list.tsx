@@ -7,7 +7,12 @@ import {
   type AdminFlagKey,
   type AdminStatus,
 } from "~/admin/listing"
-import { adminResearchListPath, adminResearchPath, listingQuery } from "~/admin/urls"
+import {
+  adminResearchListPath,
+  adminResearchPath,
+  adminUpstreamResearchPath,
+  listingQuery,
+} from "~/admin/urls"
 import { Empty, Page, PageHead, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -52,9 +57,14 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   return (
     <Page>
       <PageHead label={t.heading}>
-        <Form method="post">
-          <button type="submit" className="cursor-pointer underline">{t.create}</button>
-        </Form>
+        <div className="flex items-center gap-4">
+          <Form method="post">
+            <button type="submit" className="cursor-pointer underline">{t.create}</button>
+          </Form>
+          <Link to={href(locale, adminUpstreamResearchPath())} className="text-white">
+            {messages.admin.templates.open}
+          </Link>
+        </div>
       </PageHead>
       <div className="rounded-b border border-line border-t-0 px-5 py-5">
         <Filters view={view} locale={locale} />

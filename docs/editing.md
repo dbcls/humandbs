@@ -12,10 +12,12 @@
 |---|---|
 | `/admin` | 入口。自分の `sub` と capability、上流の取得の状態 |
 | `/admin/research` | 研究の一覧 |
+| `/admin/research/upstream` | 申請から研究を作る (下の「上流からの下書き」) |
 | `/admin/research/:researchId` | 1 研究。pin されたラベル・公開版・draft・データセット |
 | `/admin/research/:researchId/files` | 研究の箱。upload・公開状態の切り替え・削除 (下の「ファイル」) |
 | `…/draft/:draftId` | draft の research content を書く |
 | `…/draft/:draftId/dataset` | その draft から見たデータセットの一覧 |
+| `…/draft/:draftId/dataset/upstream` | 上流からデータセットを足す (下の「上流からの下書き」) |
 | `…/draft/:draftId/dataset/:datasetId` | データセット 1 件を書く (experiment を含む) |
 | `…/draft/:draftId/publish` | 公開の確認 ([publishing.md](publishing.md)) |
 | `…/draft/:draftId/review` | 共有リンクとコメント (下の「レビュー」) |
@@ -63,12 +65,73 @@ draft ごとに変更エントリを持つのは、draft を複数許す決定�
 **draft の保存には完全性の制約を置かない。** 未確定を抱えたまま保存して共有するのが標準の作業状態で、
 検査は公開操作のときだけ行う。
 
-**draft が作られる経路は 2 つ。** 新しい研究を作る (identity と空の content を同時に作る) か、既存の
-research から作る (最新公開版の ContentSnapshot を parent にして content をコピーする)。公開版が 1 つも
-無い research では空から始まり parent を持たない。
+**draft が作られる経路は 3 つ。** 新しい研究を作る (identity と空の content を同時に作る)、既存の
+research から作る (最新公開版の ContentSnapshot を parent にして content をコピーする)、そして上流から
+引いた値で埋めた content で新しい研究を作る (下の「上流からの下書き」)。公開版が 1 つも無い research では
+空から始まり parent を持たない。
 
 **公開は draft を消費する。** 版として出たものが draft としても残ると、同じ内容が 2 か所にあって
 どちらが正かを言えなくなる。続きを書くときは最新の公開版から新しい draft を作る。
+
+## 上流からの下書き
+
+研究の記述は申請書に既に書かれていて、dataset の identity は上流が発行している。**上流から引いた値で
+埋めた content で draft を作る経路**を持ち、手で打ち直すところから始めない。
+
+| 入力 | 出所 | 何ができるか |
+|---|---|---|
+| J-DS の承認枝番 | 申請管理システム DB | research + draft + 選んだ JGAD の dataset |
+| JGAD | 申請管理システム DB | dataset 1 件 (既存の draft に足す) |
+| DRA の submission | DDBJ Search | dataset 1 件 (既存の draft に足す) |
+
+**入力の単位は J-DS の枝番。** 枝番 1 本が登録 1 回 (JGAS 1 + JGAD n) に対応し、hum ラベルが付くのも
+承認枝番になる。案件 (`J-DS`) は申請の窓口の単位で、1 hum が複数の案件にまたがることも 1 案件に複数の
+hum が入ることもあるので、案件では「今回登録された分」が切れない。
+
+**上流のキャッシュを経由しない。** hum ↔ accession のキャッシュも accession の日付も公開済みしか
+持たないが ([data-model.md](data-model.md) の「外部キャッシュ」)、下書きを作るのはこれから公開する
+研究に対してなので、そこには届かない。JGAD の題目と種類も同じ理由で申請管理システム DB の登録 XML から
+読む。**XML の取り出しは Postgres の `xpath()` で行い、アプリは parser を持たない。**
+
+**`relation` を読まない。** index が無く 2,446 万行の seq scan になるので、要求のたびには叩けない。
+枝番から accession へは登録単位の id と `accession.alias` が持つ JSUB 番号で辿る。同じ理由で JGAD から
+JGAX (experiment) へは降りず、assay は JGAD 自身の `DATASET_TYPE` から取る — 1 JGAD あたり JGAX は
+平均 381・最大 111,974 あり、全部の XML を読む形は成立しない。
+
+### 何が入るか
+
+**research content に入るのは、そのまま公開ページに出る値だけ。** 申請書は氏名・メール・電話・住所・
+所属長・研究分担者を持つが、下書きに移すのは題目・研究目的・実験方法・対象者と、PI の氏名・所属・国に
+限る。キャッシュに引いた線 ([data-model.md](data-model.md) の「外部キャッシュ」) を content への
+流し込みにも同じく適用する — content のメールアドレスと ORCID は public API に出るので
+([public-api.md](public-api.md))、申請書の連絡先が自動で外に出る経路を作らない。
+
+**dataset は 1 accession = 1 件で、experiment を 1 件持つ。** JGAD は `DATASET_TYPE` を label にした
+1 件、DRA は library strategy ごとに 1 件。**DRX 1 本を 1 experiment にはしない** — DRA の submission は
+DRX を数十から数百持つのに対し、ここでいう experiment は記事の分子データテーブル 1 枚の単位になる。
+外部アーカイブの dataset なので日付は入らない — 上流の値がそのまま出るため ([data-model.md](data-model.md) の
+「日付」)。
+
+- **片方の言語しか無いときは、もう片方を空のままにする。** 両方が値を持ち片方だけが空であることが
+  未翻訳の定義なので、公開ゲートがそれを列挙する。**`unknown` は立てない** — curator が明示的に立てた
+  印なので、上流が黙っているだけの field をそれにすると意味が変わる
+- **語彙は code の完全一致だけを引き当てる。** 上流の綴りは catalog の語彙と揃っていない (INSDC の
+  `WXS` に対して catalog は `WES`)。**当たらなかった値は下書きを作る前に画面が列挙する**ので、
+  `/admin/catalog` で語を足してから取り直せる。**この経路が語彙値を作ることはない**
+- **ラベルは作ると同時に pin する。** pin しないと dataset が identity のまま並んで見分けられない。
+  したがってこの操作は `edit-content` と `manage-labels` の両方を要求する
+- **選んだ枝番の hum が既に pin されていたら、新しい研究は作らせずその research へ導く。** 台帳の
+  一意性が pin を弾くので、作った後に気づく形にしない
+
+### 引くとき
+
+- **確認画面と作成で 2 回引く。** 画面が送るのは何を作るかの選択だけで、値は server が引き直す。上流は
+  日単位でしか動かないので、見た値を hidden field で運ぶ必要が無い
+- **部分的に取れなかったものは列挙した上で作らせる。** 下書きは破棄できるので、止める側に倒す理由が
+  無い。入力そのものが取れないときだけ作れない
+- **申請管理システム DB への接続を持たない環境では、画面がそう言う。** 入口は消さない。本番以外から
+  この DB には届かないので ([development.md](development.md))、設定が無いことを異常にしない。DRA は
+  DDBJ Search なので同じ環境でも動く
 
 ## 保存の単位
 
@@ -420,6 +483,9 @@ document / news / alert は research とは別の流れで編集する。版も 
 | experiment に独立した revision を持たせること | dataset content の中の要素なので、属する dataset の照合で足りる |
 | 編集フォームを JS 無しで動かすこと | 状態の切り替え・配列の並べ替え・409 の取り込みがどれも画面の中の操作。読む側の画面は JS 無しでも動く |
 | 編集画面から catalog にキーを足すこと | 打った文字列がそのまま catalog に載ることが、キーの揺れを生んできた |
+| 上流からの下書きが語彙値を作ること | 同じ理由。当たらなかった値を列挙して `/admin/catalog` へ送る |
+| 上流からの下書きが既存の draft の research content を書き換えること | 上流の更新を content に入れることは 3-way の取り込みと同じ操作になる。足せるのは dataset だけ |
+| 申請書の関連論文・研究分担者・連絡先を下書きに入れること | 関連論文は承認枝番の半分がプレースホルダ (`N/A` / `投稿中`)。残る 2 つは公開ページに出ない値 |
 | コメントのテキスト範囲アンカー | 第一のユースケース (値の無いスロット) に届かず、再アンカーの実装が重い |
 | 人ごとの共有リンク | 相手を数えるためのものではない。誰に渡ったかは、返ってきたコメントの署名で分かる |
 | 通知 | メール送信基盤が無い |
