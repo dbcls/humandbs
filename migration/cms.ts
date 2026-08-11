@@ -14,9 +14,12 @@
  * - **the draft rows.** 68 of the 80 are byte-identical shadows of what is
  *   published, and a development database does not need the one that is not
  *
- * Past versions become documents of their own, at the address they already
- * answer at (`{slug}/version/{n}`), and the version-less slug points at the
- * newest through `latestOfId`.
+ * A slug with more than one published version becomes one document per version,
+ * at the address it already answers at (`{slug}/version/{n}`) — **the newest
+ * included**, so none of those addresses is lost — plus a series row at the
+ * version-less slug naming the newest. A slug with a single version is just a
+ * document: the version machinery is an artefact of v1's CMS rather than
+ * something the page carries.
  */
 
 import { readFileSync } from "node:fs"
@@ -89,10 +92,23 @@ export interface BuiltDocumentContent {
 
 export interface BuiltDocument {
   slug: string
-  /** The slug this one is a past version of, if it is. */
-  latestOfSlug: string | null
-  position: number
   contents: BuiltDocumentContent[]
+}
+
+export interface BuiltSeries {
+  slug: string
+  /** The slug of the revision this one currently names. */
+  currentSlug: string
+}
+
+export interface BuiltSiteDocuments {
+  documents: BuiltDocument[]
+  series: BuiltSeries[]
+}
+
+/** Where a revision of `slug` answers. The shape the pointer looks for. */
+export function versionSlug(slug: string, versionNumber: number): string {
+  return `${slug}/version/${versionNumber}`
 }
 
 function body(version: CmsDocumentVersion): string {
@@ -109,27 +125,30 @@ function publishedOn(version: CmsDocumentVersion): string | null {
   return stamp === null ? null : stamp.slice(0, 10)
 }
 
-export function buildDocuments(documents: CmsDocument[]): BuiltDocument[] {
+export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
   const built: BuiltDocument[] = []
+  const series: BuiltSeries[] = []
 
-  for (const [position, source] of documents.entries()) {
+  for (const source of documents) {
     if (SCREEN_SLUGS.includes(source.slug)) continue
 
     const published = source.versions.filter((v) => v.status === "published" && isLocale(v.locale))
     if (published.length === 0) continue
 
-    const newest = Math.max(...published.map((v) => v.versionNumber))
     const byNumber = new Map<number, CmsDocumentVersion[]>()
     for (const version of published) {
       byNumber.set(version.versionNumber, [...byNumber.get(version.versionNumber) ?? [], version])
     }
 
-    for (const [number, versions] of [...byNumber].sort((a, b) => a[0] - b[0])) {
-      const isNewest = number === newest
+    const numbered = [...byNumber].sort((a, b) => a[0] - b[0])
+    // One version is v1's bookkeeping rather than a revision anybody published:
+    // 54 of the 59 documents carry exactly one, and giving each a pointer would
+    // put a second address in front of a page that never had one.
+    const versioned = numbered.length > 1
+
+    for (const [number, versions] of numbered) {
       built.push({
-        slug: isNewest ? source.slug : `${source.slug}/version/${number}`,
-        latestOfSlug: isNewest ? null : source.slug,
-        position,
+        slug: versioned ? versionSlug(source.slug, number) : source.slug,
         contents: versions.map((version) => ({
           // `isLocale` above already narrowed this; the filter cannot express it.
           locale: version.locale as Locale,
@@ -141,9 +160,14 @@ export function buildDocuments(documents: CmsDocument[]): BuiltDocument[] {
         })),
       })
     }
+
+    const newest = numbered.at(-1)
+    if (versioned && newest !== undefined) {
+      series.push({ slug: source.slug, currentSlug: versionSlug(source.slug, newest[0]) })
+    }
   }
 
-  return built
+  return { documents: built, series }
 }
 
 export interface BuiltNews {

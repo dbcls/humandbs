@@ -20,6 +20,7 @@ export const CAPABILITIES = [
   "manage-labels",
   "manage-files",
   "manage-catalog",
+  "manage-site-content",
   "manage-admins",
   "delete-research",
 ] as const

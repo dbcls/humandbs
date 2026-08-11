@@ -16,7 +16,7 @@
  * data in place.
  */
 
-import { eq, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getOwnerDb, type Executor } from "~/db/client.server"
@@ -30,6 +30,7 @@ import {
   datasetContent,
   document,
   documentContent,
+  documentSeries,
   facetCategory,
   humAccession,
   labelPin,
@@ -212,31 +213,33 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
 }
 
 /**
- * Site content. Documents are inserted parents-first so that a past version can
- * point at the one that superseded it, and each locale that was published gets
- * its row — publication is per locale here, so a Japanese-only document stays
- * Japanese-only rather than gaining an empty English side.
+ * Site content. Each locale that was published gets its row — publication is
+ * per locale here, so a Japanese-only document stays Japanese-only rather than
+ * gaining an empty English side.
+ *
+ * The version-less slug of a guideline becomes a series row naming the newest
+ * revision, and every revision keeps its own numbered address.
  */
 async function loadSiteContent(tx: Executor) {
   const cms = loadCms()
 
-  const documents = buildDocuments(cms.documents)
+  const { documents, series } = buildDocuments(cms.documents)
   const idBySlug = await insertReturning(
     documents,
     (d) => d.slug,
     (chunk) => tx
       .insert(document)
-      .values(chunk.map((d) => ({ slug: d.slug, position: d.position })))
+      .values(chunk.map((d) => ({ slug: d.slug })))
       .returning({ id: document.id }),
   )
 
-  for (const past of documents) {
-    if (past.latestOfSlug === null) continue
-    await tx
-      .update(document)
-      .set({ latestOfId: identityOf(idBySlug, past.latestOfSlug, "document") })
-      .where(eq(document.id, identityOf(idBySlug, past.slug, "document")))
-  }
+  await insertChunked(
+    series.map((s) => ({
+      slug: s.slug,
+      currentId: identityOf(idBySlug, s.currentSlug, "document"),
+    })),
+    (chunk) => tx.insert(documentSeries).values(chunk),
+  )
 
   await insertChunked(
     documents.flatMap((d) => d.contents.map((c) => ({
@@ -272,7 +275,12 @@ async function loadSiteContent(tx: Executor) {
   const alerts = buildAlerts(cms.alerts)
   await insertChunked(alerts, (chunk) => tx.insert(alert).values(chunk))
 
-  return { documents: documents.length, news: items.length, alerts: alerts.length }
+  return {
+    documents: documents.length,
+    series: series.length,
+    news: items.length,
+    alerts: alerts.length,
+  }
 }
 
 async function load() {
@@ -418,6 +426,7 @@ console.log("datasets           ", counts.datasets)
 console.log("controlled-access  ", counts.cau)
 console.log("upstream accessions", counts.upstream)
 console.log("documents          ", counts.documents)
+console.log("document series    ", counts.series)
 console.log("news               ", counts.news)
 console.log("alerts             ", counts.alerts)
 console.log("search docs        ", counts.search)

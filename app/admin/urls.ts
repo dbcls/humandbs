@@ -119,3 +119,38 @@ export function adminCatalogPath(): string {
 export function adminVocabularyPath(code: string): string {
   return `${adminCatalogPath()}/vocabulary/${encodeURIComponent(code)}`
 }
+
+/**
+ * Site content. Documents are addressed by identity like everything else here:
+ * a slug is an address readers hold, it can be corrected, and the screen that
+ * corrects it cannot be reached through the value it is about to change.
+ */
+export function adminContentsPath(): string {
+  return "/admin/contents"
+}
+
+export function adminDocumentPath(documentId: string): string {
+  return `${adminContentsPath()}/document/${documentId}`
+}
+
+export function adminNewsListPath(): string {
+  return `${adminContentsPath()}/news`
+}
+
+export function adminNewsPath(newsId: string): string {
+  return `${adminNewsListPath()}/${newsId}`
+}
+
+/** The `common/` box: the images and PDFs the article bodies link to. */
+export function adminContentFilesPath(): string {
+  return `${adminContentsPath()}/files`
+}
+
+/**
+ * Where that box asks for a signature. **No language prefix**: nothing it
+ * answers with is interface text, and an upload that changed language
+ * mid-transfer would be talking to a second address.
+ */
+export function contentFileUploadPath(): string {
+  return `${adminContentFilesPath()}/upload`
+}

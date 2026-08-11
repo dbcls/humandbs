@@ -2,7 +2,7 @@ import { Form, Link } from "react-router"
 
 import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.server"
 import { adminVocabularyPath } from "~/admin/urls"
-import { Badge, Field, Result, Submit } from "~/components/catalog"
+import { Badge, Field, Result, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"

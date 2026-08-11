@@ -136,6 +136,10 @@ export function filePath(humLabel: string, name: string): string {
  * `/files` and `/private` are here although no route serves them: the proxy
  * takes both to the store, so a document by either name would be shadowed by
  * something a route cannot even see.
+ *
+ * **It is the first segment that is taken**, not the whole address: the routes
+ * above own everything below theirs, so `news/x` is as unreachable as `news`.
+ * The screen that creates a document reads this list to say so.
  */
 export const SCREEN_PATHS = [
   "/",
@@ -148,6 +152,8 @@ export const SCREEN_PATHS = [
   "/preview",
   "/admin",
   "/auth",
+  "/api",
+  "/healthz",
   "/files",
   "/private",
 ] as const

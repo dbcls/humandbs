@@ -113,6 +113,45 @@ describe("document の公開", () => {
   })
 })
 
+describe("版なし slug", () => {
+  async function series(slug: string, currentSlug: string, sides: Side[]): Promise<void> {
+    const currentId = await createDocument(currentSlug, sides)
+    await db.insert(s.documentSeries).values({ slug, currentId })
+  }
+
+  it("**本文を持たず、いまの版の本文を 200 で返す**", async () => {
+    await series("guidelines/sharing", "guidelines/sharing/version/9", [
+      { locale: "ja", body: "第 9 版の本文" },
+    ])
+
+    const page = await documentPage("guidelines/sharing", "ja")
+    expect(page.html).toContain("第 9 版の本文")
+    // The revision keeps its own address as well: both answer, neither
+    // redirects, the same as a research's newest version.
+    expect((await documentPage("guidelines/sharing/version/9", "ja")).html)
+      .toContain("第 9 版の本文")
+  })
+
+  it("公開状態は指し先のものになる", async () => {
+    await series("guidelines/sharing", "guidelines/sharing/version/9", [
+      { locale: "ja" },
+      { locale: "en", published: false },
+    ])
+
+    expect(await status(documentPage("guidelines/sharing", "ja"))).toBe(200)
+    expect(await status(documentPage("guidelines/sharing", "en"))).toBe(404)
+  })
+
+  it("同じ slug の document があれば、そちらが先に答える", async () => {
+    // The save path refuses to create this; the resolution is settled anyway so
+    // that one address cannot resolve to two pages.
+    await series("x", "x/version/1", [{ locale: "ja", body: "版の本文" }])
+    await createDocument("x", [{ locale: "ja", body: "document の本文" }])
+
+    expect((await documentPage("x", "ja")).html).toContain("document の本文")
+  })
+})
+
 describe("news の一覧", () => {
   it("公開されていない翻訳は一覧にも個別にも出てこない", async () => {
     const id = await createNews("2026-01-01", [{ locale: "ja", published: false }])

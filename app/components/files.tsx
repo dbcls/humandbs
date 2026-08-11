@@ -1,7 +1,6 @@
 import { useRef, useState } from "react"
 import { Form } from "react-router"
 
-import { fileUploadPath } from "~/admin/urls"
 import {
   formatSize,
   isUploadableName,
@@ -229,9 +228,10 @@ interface Progress {
  * There is no resume. Closing the page abandons whatever is in flight, and the
  * file is sent again from the beginning under the same name, which overwrites.
  */
-export function UploadPanel({ locale, researchId, threshold, partSize }: {
+export function UploadPanel({ locale, endpoint, threshold, partSize }: {
   locale: Locale
-  researchId: string
+  /** Where the signatures are asked for. The box is whatever answers there. */
+  endpoint: string
   threshold: number
   partSize: number
 }) {
@@ -258,7 +258,7 @@ export function UploadPanel({ locale, researchId, threshold, partSize }: {
           row.name === file.name ? { ...row, percent } : row))
       }
       try {
-        await sendOne(researchId, file, { threshold, partSize }, at, controller.signal)
+        await sendOne(endpoint, file, { threshold, partSize }, at, controller.signal)
       } catch {
         setProgress((rows) => rows.map((row) =>
           row.name === file.name ? { ...row, failed: true } : row))
@@ -315,7 +315,7 @@ interface UploadShape {
 }
 
 async function sendOne(
-  researchId: string,
+  endpoint: string,
   file: File,
   shape: UploadShape,
   onProgress: (percent: number) => void,
@@ -324,7 +324,7 @@ async function sendOne(
   const contentType = file.type === "" ? "application/octet-stream" : file.type
 
   if (file.size <= shape.threshold) {
-    const answer = await ask(researchId, {
+    const answer = await ask(endpoint, {
       kind: "single",
       name: file.name,
       size: file.size,
@@ -337,7 +337,7 @@ async function sendOne(
   }
 
   const partCount = Math.ceil(file.size / shape.partSize)
-  const begun = await ask(researchId, {
+  const begun = await ask(endpoint, {
     kind: "begin",
     name: file.name,
     size: file.size,
@@ -348,7 +348,7 @@ async function sendOne(
 
   try {
     const parts = await sendParts(file, shape.partSize, begun.urls, onProgress, signal)
-    await ask(researchId, {
+    await ask(endpoint, {
       kind: "complete",
       name: file.name,
       uploadId: begun.uploadId,
@@ -358,7 +358,7 @@ async function sendOne(
   } catch (error) {
     // The store keeps the parts of an upload nobody finished, so an abandoned
     // one is told to forget them rather than left to be found later.
-    await ask(researchId, {
+    await ask(endpoint, {
       kind: "abort",
       name: file.name,
       uploadId: begun.uploadId,
@@ -470,11 +470,11 @@ interface UploadAnswer {
 }
 
 async function ask(
-  researchId: string,
+  endpoint: string,
   body: UploadAsk,
   signal: AbortSignal | undefined,
 ): Promise<{ kind: "single", url: string } | { kind: "begin", uploadId: string, urls: string[] } | { kind: "done" }> {
-  const response = await fetch(fileUploadPath(researchId), {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

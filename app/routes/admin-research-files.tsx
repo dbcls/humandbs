@@ -1,6 +1,6 @@
 import { data, Link } from "react-router"
 
-import { adminResearchFilesPath, adminResearchPath } from "~/admin/urls"
+import { adminResearchFilesPath, adminResearchPath, fileUploadPath } from "~/admin/urls"
 import { BoxTable, UploadPanel } from "~/components/files"
 import { Card, Empty, Page, PageHead, PageLinks, Section } from "~/components/page"
 import { formatSize } from "~/files/box"
@@ -63,7 +63,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
         <Section title={t.upload}>
           <UploadPanel
             locale={locale}
-            researchId={view.researchId}
+            endpoint={fileUploadPath(view.researchId)}
             threshold={view.multipartThreshold}
             partSize={view.partSize}
           />

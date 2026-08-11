@@ -1,10 +1,14 @@
 /**
- * The controls the catalog screens are built from.
+ * The controls the management forms are built from.
  *
  * They are plain forms. A row offers save, move and delete side by side, and
  * **which one was pressed is the button's own value** — a form holds one value
  * per name, so a direction cannot be a field of its own without the other
  * button's direction going along with it.
+ *
+ * Nothing here needs JavaScript. The screens that edit a research do (a state
+ * toggle and a merge are moves inside a page), but a catalog row and a document
+ * body are a form and a submit.
  */
 
 export function Badge({ children }: { children: React.ReactNode }) {
@@ -29,6 +33,27 @@ export function Field({ label, name, value, width = "w-48" }: {
         name={name}
         defaultValue={value}
         className={`${width} rounded border border-line bg-surface-input px-2 py-1`}
+      />
+    </label>
+  )
+}
+
+/** A body: markdown, written as it will be stored. */
+export function TextArea({ label, name, value, rows = 16 }: {
+  label: string
+  name: string
+  value?: string
+  rows?: number
+}) {
+  return (
+    <label className="flex flex-col text-sm">
+      {label}
+      <textarea
+        name={name}
+        defaultValue={value}
+        rows={rows}
+        spellCheck={false}
+        className="rounded border border-line bg-surface-input px-2 py-1 font-mono text-xs"
       />
     </label>
   )

@@ -20,10 +20,11 @@ import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
 
-import { adminResearchFilesPath } from "~/admin/urls"
+import { adminContentFilesPath, adminResearchFilesPath } from "~/admin/urls"
 import { humLabelOf } from "~/admin/queries.server"
 
 import {
+  commonPrefix,
   isUploadableName,
   MULTIPART_PART_SIZE,
   MULTIPART_THRESHOLD,
@@ -33,9 +34,10 @@ import {
   publicPrefix,
   PUBLIC_BUCKET,
   type BoxEntry,
+  type StoredNode,
 } from "./box"
 import { boxesOf, forgetSwitches, switchFiles, type SwitchRequest } from "./jobs.server"
-import { adminBox } from "./listing.server"
+import { adminBox, commonBox } from "./listing.server"
 import { wakeFileRunner } from "./runner.server"
 import {
   abortMultipart,
@@ -276,6 +278,120 @@ export async function fileUploadAction(
   }
   if (body.kind === "complete") {
     await completeMultipart(ref, body.uploadId, body.parts)
+    return { kind: "done" }
+  }
+  await abortMultipart(ref, body.uploadId)
+  return { kind: "done" }
+}
+
+export interface CommonFilesView {
+  locale: Locale
+  /** Null when the store did not answer; the screen says so and offers nothing. */
+  rows: StoredNode[] | null
+  total: number
+  page: number
+  pageCount: number
+  multipartThreshold: number
+  partSize: number
+}
+
+/**
+ * The article assets. One box, one bucket, no switching: what is here is public,
+ * so the only operations are putting a file in and taking one out.
+ */
+export async function commonFilesPage(
+  request: Request,
+  locale: Locale,
+): Promise<CommonFilesView> {
+  await requireCapability(request, "manage-site-content")
+
+  const box = await commonBox()
+  const wanted = Number(new URL(request.url).searchParams.get("page") ?? "1")
+  const page = pageOfBox(box ?? [], Number.isInteger(wanted) ? wanted : 1)
+
+  return {
+    locale,
+    rows: box === null ? null : page.rows,
+    total: page.total,
+    page: page.page,
+    pageCount: page.pageCount,
+    multipartThreshold: MULTIPART_THRESHOLD,
+    partSize: MULTIPART_PART_SIZE,
+  }
+}
+
+export async function commonFilesAction(
+  request: Request,
+  locale: Locale,
+): Promise<Response | FilesActionResult> {
+  const actor = await requireCapability(request, "manage-site-content")
+
+  const form = await request.formData()
+  if (form.get("intent") !== "delete") badRequest()
+  const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
+  if (names.length === 0) return { status: "nothing-selected" }
+
+  for (const name of names) {
+    await deleteObject({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
+  }
+  await getDb().transaction(async (tx) => {
+    for (const name of names) {
+      await recordEvent(tx, {
+        actor: actorOf(actor),
+        action: "delete-file",
+        subjectType: "file",
+        subjectId: commonPrefix() + name,
+      })
+    }
+  })
+
+  return redirect(href(locale, adminContentFilesPath()))
+}
+
+/**
+ * The signatures for one upload into the article assets.
+ *
+ * **This box is public**, so unlike a research's box the arrival changes what
+ * readers can fetch — and it is written down. The record is made where the
+ * portal last takes part: when a single PUT is signed, and when a multipart
+ * upload is completed. Nothing later reports back, so a signature that was
+ * never used leaves a record of an intent rather than of an object
+ * (docs/publishing.md の「証跡」).
+ */
+export async function commonUploadAction(request: Request): Promise<UploadAnswer> {
+  const actor = await requireCapability(request, "manage-site-content")
+
+  const payload = uploadRequest.safeParse(await request.json())
+  if (!payload.success) badRequest()
+  const body = payload.data
+  if (!isUploadableName(body.name)) badRequest()
+
+  const ref: ObjectRef = { bucket: PUBLIC_BUCKET, key: commonPrefix() + body.name }
+  const record = async () => {
+    await recordEvent(getDb(), {
+      actor: actorOf(actor),
+      action: "publish-file",
+      subjectType: "file",
+      subjectId: ref.key,
+    })
+  }
+
+  if (body.kind === "single") {
+    if (body.size > MULTIPART_THRESHOLD) badRequest()
+    const url = await presignPut(ref, { contentType: body.contentType, size: body.size })
+    await record()
+    return { kind: "single", url }
+  }
+  if (body.kind === "begin") {
+    const begun = await beginMultipart(ref, {
+      contentType: body.contentType,
+      partCount: body.partCount,
+    })
+    return { kind: "begin", uploadId: begun.uploadId, urls: begun.urls }
+  }
+  if (body.kind === "complete") {
+    await completeMultipart(ref, body.uploadId, body.parts)
+    await record()
     return { kind: "done" }
   }
   await abortMultipart(ref, body.uploadId)

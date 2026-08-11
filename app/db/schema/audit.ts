@@ -14,6 +14,8 @@ export const eventAction = pgEnum("event_action", [
   "publish-file",
   "unpublish-file",
   "delete-file",
+  "publish-site-content",
+  "unpublish-site-content",
   "grant-admin",
   "revoke-admin",
   "pass-publish-gate",
@@ -29,6 +31,9 @@ export type EventSubjectType
     | "draft"
     | "label"
     | "file"
+    | "document"
+    | "news"
+    | "alert"
     | "admin"
 
 /**

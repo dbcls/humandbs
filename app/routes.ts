@@ -47,6 +47,27 @@ function pages(scope: string) {
       "routes/admin-catalog-vocabulary.tsx",
       { id: `${scope}-admin-catalog-vocabulary` },
     ),
+    route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
+    route(
+      "admin/contents/document/:documentId",
+      "routes/admin-contents-document.tsx",
+      { id: `${scope}-admin-contents-document` },
+    ),
+    route(
+      "admin/contents/news",
+      "routes/admin-contents-news.tsx",
+      { id: `${scope}-admin-contents-news` },
+    ),
+    route(
+      "admin/contents/news/:newsId",
+      "routes/admin-contents-news-item.tsx",
+      { id: `${scope}-admin-contents-news-item` },
+    ),
+    route(
+      "admin/contents/files",
+      "routes/admin-contents-files.tsx",
+      { id: `${scope}-admin-contents-files` },
+    ),
     route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
     route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
     route(
@@ -92,6 +113,7 @@ const editing = [
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
+  route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),
 ]
 
 /**

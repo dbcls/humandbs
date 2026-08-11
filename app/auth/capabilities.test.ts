@@ -26,6 +26,7 @@ describe("capability の一覧", () => {
       "manage-labels",
       "manage-files",
       "manage-catalog",
+      "manage-site-content",
       "manage-admins",
       "delete-research",
     ])

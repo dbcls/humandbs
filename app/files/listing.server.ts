@@ -16,6 +16,7 @@ import type { Executor } from "~/db/client.server"
 import type { FileListView, FileRowView } from "~/public/view.server"
 
 import {
+  commonPrefix,
   composeBox,
   pageOfBox,
   privatePrefix,
@@ -88,6 +89,14 @@ export async function everyPublicBox(): Promise<Map<string, StoredNode[]>> {
     boxes.set(box, held)
   }
   return boxes
+}
+
+/**
+ * The article assets. One bucket rather than two, because this box has no
+ * private side: a file put here is public from that moment.
+ */
+export async function commonBox(): Promise<StoredNode[] | null> {
+  return tolerantly(() => listPrefix(PUBLIC_BUCKET, commonPrefix()))
 }
 
 /**

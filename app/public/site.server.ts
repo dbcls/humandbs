@@ -10,12 +10,17 @@
  * per locale here — the rule that it goes by version rather than by language is
  * a statement about versions — so a document that exists only in Japanese
  * answers only in Japanese, and the English address for it says so.
+ *
+ * **A slug resolves to a document, or to the revision a series names.** The
+ * version-less address of a guideline holds no body of its own; it answers with
+ * whichever revision is current, at 200 rather than through a redirect, the way
+ * `/research/{humId}` answers with the newest version.
  */
 
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, or, sql } from "drizzle-orm"
 
 import { getDb } from "~/db/client.server"
-import { alert, document, documentContent, news, newsContent } from "~/db/schema"
+import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { resolveBilingual } from "~/i18n/locale"
 import type { Locale } from "~/i18n/locale"
 
@@ -34,15 +39,22 @@ export interface ArticleView {
 
 export async function findDocument(slug: string, locale: Locale): Promise<ArticleView | null> {
   const db = getDb()
+  const ownSlug = sql<boolean>`${document.slug} = ${slug}`
   const rows = await db
     .select({ content: documentContent.content })
     .from(documentContent)
     .innerJoin(document, eq(document.id, documentContent.documentId))
+    .leftJoin(documentSeries, eq(documentSeries.currentId, document.id))
     .where(and(
-      eq(document.slug, slug),
+      or(eq(document.slug, slug), eq(documentSeries.slug, slug)),
       eq(documentContent.locale, locale),
       eq(documentContent.published, true),
     ))
+    // A document answers at its own slug before it answers as somebody's
+    // current revision, so one address cannot resolve to two pages. The two
+    // cannot both exist — the save path refuses it — and this settles what
+    // happens if they ever do.
+    .orderBy(desc(ownSlug))
     .limit(1)
 
   const row = rows[0]

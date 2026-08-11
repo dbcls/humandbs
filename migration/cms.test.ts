@@ -31,16 +31,17 @@ function version(
 
 describe("document の組み立て", () => {
   it("画面になった slug は document にならない", () => {
-    const built = buildDocuments(SCREEN_SLUGS.map((slug) => document(slug, [version("ja", 1)])))
-    expect(built).toEqual([])
+    const screens = SCREEN_SLUGS.map((slug) => document(slug, [version("ja", 1)]))
+    expect(buildDocuments(screens).documents).toEqual([])
   })
 
   it("draft しか無い document は落ちる", () => {
-    expect(buildDocuments([document("x", [version("ja", 1, { status: "draft" })])])).toEqual([])
+    const { documents } = buildDocuments([document("x", [version("ja", 1, { status: "draft" })])])
+    expect(documents).toEqual([])
   })
 
   it("draft は published の隣にあっても持ち込まれない", () => {
-    const built = buildDocuments([document("x", [
+    const { documents: built } = buildDocuments([document("x", [
       version("ja", 1),
       version("ja", 1, { status: "draft", content: "draft body" }),
     ])])
@@ -48,63 +49,63 @@ describe("document の組み立て", () => {
     expect(built[0]?.contents).toHaveLength(1)
   })
 
-  it("最新版は元の slug を保ち、過去版は /version/{n} に分かれる", () => {
-    const built = buildDocuments([document("guidelines/x", [
+  it("最新版も番号の slug を持ち、版なし slug は本文を持たない", () => {
+    const { documents, series } = buildDocuments([document("guidelines/x", [
       version("ja", 1), version("ja", 2), version("ja", 3),
     ])])
 
-    expect(built.map((d) => d.slug)).toEqual([
+    expect(documents.map((d) => d.slug)).toEqual([
       "guidelines/x/version/1",
       "guidelines/x/version/2",
-      "guidelines/x",
+      "guidelines/x/version/3",
     ])
+    expect(series).toEqual([{ slug: "guidelines/x", currentSlug: "guidelines/x/version/3" }])
   })
 
-  it("過去版は最新版を指し、最新版は誰も指さない", () => {
-    const built = buildDocuments([document("x", [version("ja", 1), version("ja", 2)])])
-    expect(built.map((d) => d.latestOfSlug)).toEqual(["x", null])
-  })
-
-  it("版が 1 つだけなら分岐しない", () => {
-    const built = buildDocuments([document("x", [version("ja", 1), version("en", 1)])])
-    expect(built).toHaveLength(1)
-    expect(built[0]?.slug).toBe("x")
-    expect(built[0]?.contents.map((c) => c.locale).sort()).toEqual(["en", "ja"])
+  it("版が 1 つだけなら指し先を作らない", () => {
+    const { documents, series } = buildDocuments([document("x", [
+      version("ja", 1), version("en", 1),
+    ])])
+    expect(documents).toHaveLength(1)
+    expect(documents[0]?.slug).toBe("x")
+    expect(documents[0]?.contents.map((c) => c.locale).sort()).toEqual(["en", "ja"])
+    expect(series).toEqual([])
   })
 
   it("片言語しか公開されていない版は片言語のまま入る", () => {
-    const built = buildDocuments([document("x", [
+    const { documents: built } = buildDocuments([document("x", [
       version("ja", 1),
       version("en", 1, { status: "draft" }),
     ])])
     expect(built[0]?.contents.map((c) => c.locale)).toEqual(["ja"])
   })
 
-  it("最新版の判定は言語ごとではなく document 単位で行う", () => {
+  it("指し先は言語ごとではなく document 単位で決まる", () => {
     // English skipped a revision; the newest number is still the newest page.
-    const built = buildDocuments([document("x", [
+    const { documents: built, series } = buildDocuments([document("x", [
       version("ja", 1), version("ja", 2), version("en", 2),
     ])])
-    expect(built.find((d) => d.slug === "x")?.contents.map((c) => c.locale).sort())
+    expect(series[0]?.currentSlug).toBe("x/version/2")
+    expect(built.find((d) => d.slug === "x/version/2")?.contents.map((c) => c.locale).sort())
       .toEqual(["en", "ja"])
   })
 
   it("published_at が無い版は created_at の日付で公開される", () => {
-    const built = buildDocuments([document("x", [
+    const { documents: built } = buildDocuments([document("x", [
       version("ja", 1, { createdAt: "2015-02-27 10:00:00", publishedAt: null }),
     ])])
     expect(built[0]?.contents[0]?.publishedAt).toBe("2015-02-27")
   })
 
   it("published_at があればそちらを採る", () => {
-    const built = buildDocuments([document("x", [
+    const { documents: built } = buildDocuments([document("x", [
       version("ja", 1, { createdAt: "2026-07-20 10:00:00", publishedAt: "2024-04-01 09:00:00" }),
     ])])
     expect(built[0]?.contents[0]?.publishedAt).toBe("2024-04-01")
   })
 
   it("本文の HTML は markdown になり、/public-files/ は /files/common/ に移る", () => {
-    const built = buildDocuments([document("x", [
+    const { documents: built } = buildDocuments([document("x", [
       version("ja", 1, { content: "<p><a href=\"/public-files/a.pdf\">x</a></p>" }),
     ])])
     expect(built[0]?.contents[0]?.content.body).toBe("[x](/files/common/a.pdf)")
@@ -154,8 +155,10 @@ describe("alert の組み立て", () => {
 const DUMP = join(process.cwd(), "migration", "input", "cms.json")
 
 describe.skipIf(!existsSync(DUMP))("ナビの行き先", () => {
-  it("route が持つ address か、この移行が作る document の slug のどちらかである", () => {
-    const slugs = new Set(buildDocuments(loadCms().documents).map((d) => `/${d.slug}`))
+  it("route が持つ address か、この移行が作る slug のどちらかである", () => {
+    const { documents, series } = buildDocuments(loadCms().documents)
+    // A version-less slug answers through its pointer, so it counts as reachable.
+    const slugs = new Set([...documents, ...series].map((d) => `/${d.slug}`))
     const screens: string[] = [...SCREEN_PATHS]
     expect(navigationPaths().filter((path) => !screens.includes(path) && !slugs.has(path)))
       .toEqual([])

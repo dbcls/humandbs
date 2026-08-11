@@ -206,11 +206,16 @@ research の行を、dataset の一覧は dataset の行を引く。**版の行�
 `guidelines` (改定履歴のリンク集) や `dac` (審査委員会の回ごとのリンク) のように、項目が増えていくが
 本文を持つものは document のまま残す — 増えるかどうかは境界ではない。
 
-### ガイドラインの過去版
+### ガイドラインの版
 
-**過去版は独立した document で、slug は `{slug}/version/{n}`。** 版なしの slug がつねに最新を指し、
-過去版は `latestOfId` で親を指す。版なし slug は外部の submission metadata に焼き込まれているので、
-**恒久的に 200 を返し続ける必要がある。**
+**各版が独立した document で、slug は `{slug}/version/{n}`。最新版も番号の slug を持つ。** 版なし slug は
+本文を持たず現在の版を指すので、`/guidelines/data-sharing-guidelines` は指し先の本文を 200 で返す
+([data-model.md](data-model.md) の「サイトコンテンツ」)。版なし slug は外部の submission metadata に
+焼き込まれているので、**恒久的に応答し続ける必要がある。**
+
+**redirect にしない。** research の最新公開版が `/research/{humId}` と `/research/{humId}/v{n}` の両方で
+200 を返すのと同じで、版なし slug は「いまのガイドライン」を名指す独立したアドレスになる。redirect に
+すると、引用しようとした人が版付きのアドレスを写して、次の改定で古い版を指すことになる。
 
 ### グローバルナビとフッタ
 
@@ -242,7 +247,9 @@ document の slug のどちらかであることを確かめる。
 この 2 つは公開時にしか行が生まれないので、draft と同じ DB に居ても公開ページには出てこない。
 
 **サイトコンテンツは公開状態の列そのものが根拠になる。** 版も pin も検索行も持たないので、
-`document_content` / `news_content` の `published` が立っている行が公開されているものになる。
+`document_content` / `news_content` の `published` が立っている行が公開されているものになる。**版なし
+slug は指し先を 1 段辿ってから同じ判定を受ける**ので、公開されていない版を指したまま張り替えを忘れると
+その言語で 404 になる (「ガイドラインの版」)。
 
 **secondary のラベルで辿り着いたら primary のアドレスへ redirect する。** 旧 dataset id と typo された
 hum ラベルは記事の地の文・申請書・URL の fragment から参照されていて書き換えられない

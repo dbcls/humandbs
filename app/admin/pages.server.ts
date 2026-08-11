@@ -51,6 +51,7 @@ import {
   describedResearch,
   type ShownLine,
 } from "./changes"
+import { today } from "./dates"
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
 import { datasetContentOf, saveDatasetSchema } from "./dataset-form.server"
 import {
@@ -914,7 +915,7 @@ export async function publishPage(
     nextNumber: preview.nextNumber,
     fixNumber: preview.fixes?.number ?? null,
     staleAgainst: preview.stale?.number ?? null,
-    today: new Date().toISOString().slice(0, 10),
+    today: today(),
     blocks: preview.gate.blocks.map((block) => ({
       kind: block.kind,
       datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,

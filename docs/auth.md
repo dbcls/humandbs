@@ -24,6 +24,7 @@
 | `manage-labels` | hum ラベルと dataset id の pin と解除 |
 | `manage-files` | ファイルの upload と公開状態の切り替え |
 | `manage-catalog` | catalog のキーと語彙 |
+| `manage-site-content` | document / news / alert の編集と公開、指し先の張り替え、`common/` の箱 |
 | `manage-admins` | admin の付け外し |
 | `delete-research` | research の削除 |
 

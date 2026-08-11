@@ -77,6 +77,18 @@ export function publicPrefix(humLabel: string): string {
 }
 
 /**
+ * The box the article assets live in — the images and PDFs a document body
+ * links to. It belongs to no research, so it has no private counterpart: it is
+ * **public bucket only**, and what is put there is public from that moment
+ * (docs/data-model.md の「ファイル」).
+ */
+export const COMMON_BOX = "common"
+
+export function commonPrefix(): string {
+  return `${COMMON_BOX}/`
+}
+
+/**
  * A name the screen is allowed to create.
  *
  * A key is the prefix followed by the name, so a name carrying a separator

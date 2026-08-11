@@ -9,7 +9,6 @@ import {
   primaryKey,
   text,
   uuid,
-  type AnyPgColumn,
 } from "drizzle-orm/pg-core"
 
 import type { AlertContent, ArticleContent } from "~/content/types"
@@ -23,20 +22,14 @@ export const locale = pgEnum("locale", ["ja", "en"])
  * the ledger and fixes apply to research only, and site content is not part of
  * the public search either.
  *
- * Past revisions of a guideline are separate documents, not versions of one:
- * each is a self-contained text, and treating them as versions is what left the
- * English side of several of them as empty shells.
- *
- * `latestOfId` is how a version-less slug points at whichever revision is
- * current. An admin moves the pointer. It cannot be automatic: the slug without
- * a version is baked into submission metadata held elsewhere and must keep
- * answering forever.
+ * Each revision of a guideline is a document of its own, at the address it
+ * already answers at (`{slug}/version/{n}`), including the current one. Each is
+ * a self-contained text, and treating them as versions of one thing is what
+ * left the English side of several of them as empty shells.
  */
 export const document = pgTable("document", {
   id: primaryId(),
   slug: text().notNull().unique(),
-  latestOfId: uuid().references((): AnyPgColumn => document.id, { onDelete: "set null" }),
-  position: integer().notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })
@@ -46,6 +39,10 @@ export const document = pgTable("document", {
  * Splitting by locale is right here precisely because there is no version: the
  * rule that publication is per version rather than per language is a statement
  * about versions.
+ *
+ * The draft sits beside the published body rather than in a table of its own,
+ * and publishing moves it across. None of the machinery a research draft needs
+ * applies — there is no version to compare against and no second editor.
  */
 export const documentContent = pgTable("document_content", {
   documentId: uuid().notNull().references(() => document.id, { onDelete: "cascade" }),
@@ -59,6 +56,29 @@ export const documentContent = pgTable("document_content", {
 }, (t) => [
   primaryKey({ columns: [t.documentId, t.locale] }),
 ])
+
+/**
+ * A version-less slug, and the revision it currently names.
+ *
+ * It holds no body of its own: a document either has a body or points at one,
+ * so the current guideline exists once rather than as two copies that drift.
+ * An admin moves the pointer; nothing does it on publish.
+ *
+ * `currentId` is NOT NULL and the row it names cannot be deleted, because this
+ * slug is baked into submission metadata held elsewhere and has to keep
+ * answering. What is left to run into is a target that is unpublished in one
+ * language, which the management screen reports.
+ *
+ * **The slug space spans this table and `document`**, so uniqueness across the
+ * two is checked where writes happen rather than by a constraint.
+ */
+export const documentSeries = pgTable("document_series", {
+  id: primaryId(),
+  slug: text().notNull().unique(),
+  currentId: uuid().notNull().references(() => document.id, { onDelete: "restrict" }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+})
 
 /**
  * A news item. Separate from documents because it is an announcement with a
