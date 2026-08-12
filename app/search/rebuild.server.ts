@@ -34,7 +34,7 @@
 import { and, eq, inArray } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
-import { publicDataset, publicResearchContent, type CatalogKey } from "~/content/public"
+import { publicDataset, publicResearchContent, PUBLISHED, type CatalogKey } from "~/content/public"
 import type { DatasetContent, ResearchContent, Slot, TranslatedText, ValueSlot } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
@@ -63,9 +63,6 @@ export interface RebuildCounts {
 }
 
 const INSERT_CHUNK = 500
-
-/** Nothing on the public side is ever derived with unsettled values kept. */
-const PUBLISHED = { keepUnsettled: false }
 
 async function insertAll<T>(
   rows: T[],
@@ -368,20 +365,23 @@ export async function rebuildSearchDocs(
     })
   }
 
+  // **Labels and nothing else.** A version is the ledger of what was published
+  // at a number, not a page either listing searches (`SearchTarget` names the
+  // two that are), so flattening its body again would index a copy of the
+  // research row for every version and gain nothing to match it with.
   for (const version of versions) {
     const humLabel = humLabelOf.get(version.researchId)
     if (!humLabel) continue
-    const content = publicResearchContent(version.content, PUBLISHED)
     docs.push({
       targetType: "research-version",
       targetId: version.id,
       researchId: version.researchId,
       humLabel,
       versionNumber: version.number,
-      title: titleOf(content.title),
+      title: titleOfResearch.get(version.researchId) ?? "",
       datePublished: version.releaseDate,
       dateModified: version.releaseDate,
-      ...indexed(searchTextOf(content, [
+      ...indexed(searchTextOf(null, [
         humLabel,
         `${humLabel}-v${version.number}`,
         ...datasetLabelsOfVersion(version.content),
@@ -406,15 +406,17 @@ export async function rebuildSearchDocs(
     })
   }
 
-  // Identities are needed to attach the facet rows, so the insert returns them
-  // in the order the rows were given.
-  const ids: string[] = []
+  // Identities are needed to attach the facet rows. They come back keyed by the
+  // target the row is for rather than by position: `RETURNING` says nothing
+  // about the order it answers in, and a facet hung on the wrong document is a
+  // wrong answer nothing would raise.
+  const idOfTarget = new Map<string, string>()
   for (let i = 0; i < docs.length; i += INSERT_CHUNK) {
     const returned = await db
       .insert(searchDoc)
       .values(docs.slice(i, i + INSERT_CHUNK))
-      .returning({ id: searchDoc.id })
-    ids.push(...returned.map((r) => r.id))
+      .returning({ id: searchDoc.id, targetType: searchDoc.targetType, targetId: searchDoc.targetId })
+    for (const row of returned) idOfTarget.set(`${row.targetType}/${row.targetId}`, row.id)
   }
 
   // A research carries the facet values of the datasets below it, so that both
@@ -425,12 +427,10 @@ export async function rebuildSearchDocs(
   const numberRows: (typeof searchFacetNumber.$inferInsert)[] = []
   const researchTerms = new Map<string, Map<string, TermFacet>>()
   const researchNumbers = new Map<string, Map<string, NumberFacet>>()
-  const docIdAt = (at: number | undefined): string | undefined =>
-    at === undefined ? undefined : ids[at]
 
   for (const row of projectedDatasets) {
     const facets = facetValuesOf(row.content, ancestorsOf)
-    const docId = docIdAt(datasetDocKeyOf.get(row.id))
+    const docId = idOfTarget.get(`dataset/${row.id}`)
     if (docId !== undefined) {
       for (const term of facets.terms) termRows.push({ docId, ...term })
       for (const number of facets.numbers) numberRows.push({ docId, ...number })
@@ -444,7 +444,7 @@ export async function rebuildSearchDocs(
   }
 
   for (const [researchId, terms] of researchTerms) {
-    const docId = docIdAt(researchDocKeyOf.get(researchId))
+    const docId = idOfTarget.get(`research/${researchId}`)
     if (docId === undefined) continue
     for (const term of terms.values()) termRows.push({ docId, ...term })
     for (const number of researchNumbers.get(researchId)?.values() ?? []) {

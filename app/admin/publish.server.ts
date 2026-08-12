@@ -155,53 +155,56 @@ async function readGround(
   const [draft] = await (lock ? held.for("update") : held)
   if (draft === undefined) return null
 
-  const [humLabels, datasetRows, entryRows, versionRows, upstreamRows] = await Promise.all([
-    tx
-      .select({ label: labelPin.label })
-      .from(labelPin)
-      .where(and(
-        eq(labelPin.kind, "hum"),
-        eq(labelPin.isPrimary, true),
-        eq(labelPin.researchId, draft.researchId),
-      ))
-      .limit(1),
-    tx
-      .select({
-        id: dataset.id,
-        originDraftId: dataset.originDraftId,
-        label: labelPin.label,
-        published: datasetContent.content,
-      })
-      .from(dataset)
-      .leftJoin(labelPin, and(
-        eq(labelPin.datasetId, dataset.id),
-        eq(labelPin.kind, "dataset"),
-        eq(labelPin.isPrimary, true),
-      ))
-      .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
-      .where(eq(dataset.researchId, draft.researchId)),
-    tx
-      .select({
-        datasetId: draftDatasetEntry.datasetId,
-        content: draftDatasetEntry.content,
-        baseContent: draftDatasetEntry.baseContent,
-      })
-      .from(draftDatasetEntry)
-      .where(eq(draftDatasetEntry.draftId, draftId)),
-    tx
-      .select({
-        id: researchVersion.id,
-        number: researchVersion.number,
-        published: researchVersion.published,
-        snapshotId: researchVersion.snapshotId,
-        content: contentSnapshot.content,
-      })
-      .from(researchVersion)
-      .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-      .where(eq(researchVersion.researchId, draft.researchId))
-      .orderBy(desc(researchVersion.number)),
-    tx.select({ accession: humAccession.accession, humLabel: humAccession.humLabel }).from(humAccession),
-  ])
+  // **One at a time.** A transaction is a single connection, so asking for the
+  // five at once wins no time and asks the driver to start a query on a client
+  // that is already running one.
+  const humLabels = await tx
+    .select({ label: labelPin.label })
+    .from(labelPin)
+    .where(and(
+      eq(labelPin.kind, "hum"),
+      eq(labelPin.isPrimary, true),
+      eq(labelPin.researchId, draft.researchId),
+    ))
+    .limit(1)
+  const datasetRows = await tx
+    .select({
+      id: dataset.id,
+      originDraftId: dataset.originDraftId,
+      label: labelPin.label,
+      published: datasetContent.content,
+    })
+    .from(dataset)
+    .leftJoin(labelPin, and(
+      eq(labelPin.datasetId, dataset.id),
+      eq(labelPin.kind, "dataset"),
+      eq(labelPin.isPrimary, true),
+    ))
+    .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
+    .where(eq(dataset.researchId, draft.researchId))
+  const entryRows = await tx
+    .select({
+      datasetId: draftDatasetEntry.datasetId,
+      content: draftDatasetEntry.content,
+      baseContent: draftDatasetEntry.baseContent,
+    })
+    .from(draftDatasetEntry)
+    .where(eq(draftDatasetEntry.draftId, draftId))
+  const versionRows = await tx
+    .select({
+      id: researchVersion.id,
+      number: researchVersion.number,
+      published: researchVersion.published,
+      snapshotId: researchVersion.snapshotId,
+      content: contentSnapshot.content,
+    })
+    .from(researchVersion)
+    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
+    .where(eq(researchVersion.researchId, draft.researchId))
+    .orderBy(desc(researchVersion.number))
+  const upstreamRows = await tx
+    .select({ accession: humAccession.accession, humLabel: humAccession.humLabel })
+    .from(humAccession)
 
   return {
     draft,

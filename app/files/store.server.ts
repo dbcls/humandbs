@@ -95,14 +95,6 @@ export interface ObjectRef {
 }
 
 /**
- * Everything under a prefix, with the prefix stripped off.
- *
- * No delimiter is passed, so a key with a separator in it comes back as a name
- * with a separator in it. That is deliberate: `common/dac/DAC_summary-1.pdf` is
- * one file to a reader, and hiding it behind a folder the box has no other
- * notion of would take it out of the listing.
- */
-/**
  * Whether the store answers for both buckets.
  *
  * **Both, because a bucket is the published state.** A store that answers for
@@ -116,6 +108,14 @@ export async function pingStore(): Promise<void> {
   }))
 }
 
+/**
+ * Everything under a prefix, with the prefix stripped off.
+ *
+ * No delimiter is passed, so a key with a separator in it comes back as a name
+ * with a separator in it. That is deliberate: `common/dac/DAC_summary-1.pdf` is
+ * one file to a reader, and hiding it behind a folder the box has no other
+ * notion of would take it out of the listing.
+ */
 export async function listPrefix(bucket: Bucket, prefix: string): Promise<StoredNode[]> {
   const nodes: StoredNode[] = []
   let token: string | undefined

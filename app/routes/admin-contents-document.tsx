@@ -66,7 +66,8 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
           <Empty>{t.renameNote}</Empty>
 
           {seriesOf === null && (
-            <Form method="post" className="mt-4 flex flex-wrap items-center gap-3">
+            <Form method="post" className="mt-4 flex flex-wrap items-end gap-3">
+              <Field label={t.versionNumber} name="number" type="number" width="w-24" value="1" />
               <Submit intent="cut-into-version">{t.cut}</Submit>
               <Empty>{t.cutNote(slug)}</Empty>
             </Form>

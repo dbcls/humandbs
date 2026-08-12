@@ -63,6 +63,33 @@ function subjectColumns(request: PinRequest) {
     : { researchId: null, datasetId: request.subjectId }
 }
 
+/**
+ * The ledger row and the record that it was made, which are one act. Both ways
+ * of pinning go through here so that what an event carries is decided once —
+ * the trail is append-only, and a detail that two writers spell differently
+ * cannot be corrected afterwards.
+ */
+async function writePin(
+  tx: Transaction,
+  request: PinRequest,
+  label: string,
+  actor: EventActor,
+): Promise<void> {
+  await tx.insert(labelPin).values({
+    kind: request.kind,
+    label,
+    ...subjectColumns(request),
+    isPrimary: request.isPrimary,
+  })
+  await recordEvent(tx, {
+    actor,
+    action: "pin-label",
+    subjectType: "label",
+    subjectId: label,
+    detail: { kind: request.kind, subject: request.subjectId, isPrimary: request.isPrimary },
+  })
+}
+
 export async function pinLabel(
   db: Database,
   request: PinRequest,
@@ -82,22 +109,9 @@ export async function pinLabel(
       .limit(1)
     if (held !== undefined) return { outcome: { status: "taken" } as PinOutcome }
 
-    const columns = subjectColumns(request)
     const demoted = request.isPrimary ? await demote(tx, request) : null
 
-    await tx.insert(labelPin).values({
-      kind: request.kind,
-      label,
-      ...columns,
-      isPrimary: request.isPrimary,
-    })
-    await recordEvent(tx, {
-      actor,
-      action: "pin-label",
-      subjectType: "label",
-      subjectId: label,
-      detail: { kind: request.kind, subject: request.subjectId, isPrimary: request.isPrimary },
-    })
+    await writePin(tx, request, label, actor)
     await rebuildSearchDocs(tx, { researchIds: [researchId] })
     return {
       outcome: { status: "pinned" } as PinOutcome,
@@ -149,19 +163,7 @@ export async function pinLabelsIn(
   }
 
   for (const request of requests) {
-    await tx.insert(labelPin).values({
-      kind: request.kind,
-      label: request.label,
-      ...subjectColumns(request),
-      isPrimary: request.isPrimary,
-    })
-    await recordEvent(tx, {
-      actor,
-      action: "pin-label",
-      subjectType: "label",
-      subjectId: request.label,
-      detail: { kind: request.kind, subject: request.subjectId, isPrimary: request.isPrimary },
-    })
+    await writePin(tx, request, request.label, actor)
   }
   return { status: "pinned" }
 }

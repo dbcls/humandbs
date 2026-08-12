@@ -14,8 +14,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
 import { redirect } from "react-router"
 
-import { publicDatasetContent, publicResearchContent } from "~/content/public"
-import { getDb } from "~/db/client.server"
+import { publicDatasetContent, publicResearchContent, PUBLISHED } from "~/content/public"
+import { getDb, type Executor } from "~/db/client.server"
 import {
   contentSnapshot,
   datasetContent,
@@ -40,9 +40,13 @@ import { queryFields, type QueryFields } from "~/search/fields"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import {
   countMatches,
+  isSortKey,
   PAGE_SIZE,
   searchDocs,
+  sortOffer,
   type SearchHit,
+  type SearchRequest,
+  type SearchResult,
   type SearchTarget,
   type SortKey,
 } from "~/search/query.server"
@@ -59,11 +63,6 @@ import {
   type DatasetListRowView,
   type ResearchListRowView,
 } from "./view.server"
-
-/** Nothing on a public page is ever rendered with unsettled values kept. */
-const PUBLISHED = { keepUnsettled: false }
-
-const SORT_KEYS: readonly SortKey[] = ["relevance", "dateModified", "datePublished", "id"]
 
 export interface ConditionChip {
   label: string
@@ -108,13 +107,23 @@ export interface DatasetListView extends ListShell {
   rows: DatasetListRowView[]
 }
 
-function isSortKey(value: string | null): value is SortKey {
-  return value !== null && (SORT_KEYS as readonly string[]).includes(value)
-}
-
 function readPage(value: string | null): number {
   const page = Number(value ?? "1")
   return Number.isInteger(page) && page >= 1 ? page : 1
+}
+
+/**
+ * The last page rather than an empty one.
+ *
+ * A reader who followed a link from when there were more results is looking for
+ * the results, not for a page saying there are none here. **The API answers the
+ * question as it was asked** (`app/search/query.server.ts`), because something
+ * walking the pages needs the walk to end.
+ */
+async function lastPageInstead(db: Executor, request: SearchRequest): Promise<SearchResult> {
+  const result = await searchDocs(db, request)
+  if (result.page <= result.pageCount) return result
+  return searchDocs(db, { ...request, page: result.pageCount })
 }
 
 /**
@@ -244,16 +253,10 @@ async function listShell(
   const expanded = request.url.searchParams.get("facet")
   const find = request.url.searchParams.get("find") ?? ""
   const ast = parsed.ok ? parsed.ast : null
-  // Only a full-text match carries a score, so a query made of field
-  // conditions alone has nothing to rank by.
-  const ranked = hasFreeText(ast)
-  const sortOptions = ranked ? SORT_KEYS : SORT_KEYS.filter((key) => key !== "relevance")
-  const fallbackSort: SortKey = ranked
-    ? "relevance"
-    : target === "research" ? "dateModified" : "id"
+  const { offered: sortOptions, fallback } = sortOffer(hasFreeText(ast), target)
   const sort = isSortKey(requestedSort) && sortOptions.includes(requestedSort)
     ? requestedSort
-    : fallbackSort
+    : fallback
 
   const empty: ListShell = {
     locale,
@@ -279,7 +282,7 @@ async function listShell(
   const split = splitKeyword(ast)
   const other: SearchTarget = target === "research" ? "dataset" : "research"
   const [result, otherCount, panel] = await Promise.all([
-    searchDocs(db, {
+    lastPageInstead(db, {
       target,
       ast,
       fields,
@@ -392,12 +395,17 @@ async function accessTermsByResearch(
 ): Promise<Map<string, string[]>> {
   const key = catalog.keyByCode.get(ACCESS_TYPE_KEY)
   if (key === undefined) return new Map()
+  // **The research rows only.** A research row already holds the union of what
+  // its datasets carry (`app/search/rebuild.server.ts`), so leaving the dataset
+  // rows in would read the same values twice over and then throw the second
+  // copy away.
   const rows = await getDb()
-    .selectDistinct({ researchId: searchDoc.researchId, termId: searchFacetTerm.termId })
+    .select({ researchId: searchDoc.researchId, termId: searchFacetTerm.termId })
     .from(searchFacetTerm)
     .innerJoin(searchDoc, eq(searchDoc.id, searchFacetTerm.docId))
     .where(and(
       eq(searchFacetTerm.keyId, key.id),
+      eq(searchDoc.targetType, "research"),
       inArray(searchDoc.researchId, [...researchIds]),
     ))
   const byResearch = new Map<string, string[]>()

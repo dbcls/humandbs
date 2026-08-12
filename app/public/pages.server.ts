@@ -13,7 +13,7 @@
 
 import { redirect } from "react-router"
 
-import { publicDatasetContent, publicResearch } from "~/content/public"
+import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/public"
 import { fileListOf, publicBox, publicRows } from "~/files/listing.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -50,9 +50,6 @@ import {
 function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
 }
-
-/** Nothing on a public page is ever rendered with unsettled values kept. */
-const PUBLISHED = { keepUnsettled: false }
 
 export interface ResearchPageRequest {
   locale: Locale

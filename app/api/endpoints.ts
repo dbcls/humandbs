@@ -14,6 +14,8 @@
 
 import { z } from "zod"
 
+import { SORT_KEYS } from "../search/sort"
+
 import {
   datasetSchema,
   datasetSearchSchema,
@@ -51,7 +53,7 @@ const searchQuery = z.object({
   q: z.string().optional().meta({
     description: "The query language, the same one the site's own addresses carry.",
   }),
-  sort: z.enum(["relevance", "dateModified", "datePublished", "id"]).optional().meta({
+  sort: z.enum(SORT_KEYS).optional().meta({
     description: "`relevance` needs a full-text term; without one it is not offered.",
   }),
   page: z.coerce.number().int().min(1).optional().meta({

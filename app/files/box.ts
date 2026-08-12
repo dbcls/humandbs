@@ -6,7 +6,7 @@
  * one is keyed by the research identity because files start arriving before a
  * hum number has been issued; the public one is keyed by the hum label so that
  * `/files/hum0009/hum0009.v1.CpG.v1.zip` resolves without anything having to be
- * looked up (docs/data-model.md の「ファイル」).
+ * looked up (docs/files.md).
  *
  * **The file name is the same on both sides**, which is what lets an
  * administrator see one list rather than two, and what makes the correspondence
@@ -80,7 +80,7 @@ export function publicPrefix(humLabel: string): string {
  * The box the article assets live in — the images and PDFs a document body
  * links to. It belongs to no research, so it has no private counterpart: it is
  * **public bucket only**, and what is put there is public from that moment
- * (docs/data-model.md の「ファイル」).
+ * (docs/files.md).
  */
 export const COMMON_BOX = "common"
 

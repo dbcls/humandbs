@@ -1,10 +1,10 @@
 import { Form, Link } from "react-router"
 
-import type { TreeEntry } from "~/admin/contents"
+import { nextVersionNumber, type TreeEntry } from "~/admin/contents"
 import { contentsAction, contentsPage, type AlertRow } from "~/admin/contents.server"
 import { adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
 import { ResultLine, StateBadges } from "~/components/contents"
-import { Badge } from "~/components/base"
+import { Badge, Confirm } from "~/components/base"
 import { Field, Result, Submit, TextArea } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -139,8 +139,30 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
           </select>
         </label>
         <Submit intent="repoint-series">{t.repoint}</Submit>
+      </Form>
+
+      <Form method="post" className="mt-2 flex flex-wrap items-end gap-2">
+        <input type="hidden" name="seriesId" value={series.id} />
+        <Field
+          label={t.versionNumber}
+          name="number"
+          type="number"
+          width="w-24"
+          value={String(nextVersionNumber(series.slug, series.revisions.map((one) => one.slug)))}
+        />
         <Submit intent="add-version">{t.addVersion}</Submit>
-        <Submit intent="flatten-series">{t.flatten}</Submit>
+      </Form>
+
+      <Form method="post" className="mt-2">
+        <Confirm
+          label={t.removeSeries}
+          warning={t.removeSeriesNote(series.revisions.length)}
+          confirm={t.removeSeriesConfirm}
+          cancel={t.cancel}
+        >
+          <input type="hidden" name="intent" value="delete-series" />
+          <input type="hidden" name="seriesId" value={series.id} />
+        </Confirm>
       </Form>
 
       <details className="mt-2">

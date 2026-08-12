@@ -16,6 +16,7 @@
  */
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
+import type { PgColumn } from "drizzle-orm/pg-core"
 import { redirect } from "react-router"
 
 import { requireCapability } from "~/auth/actor.server"
@@ -37,7 +38,7 @@ import {
   adminNewsPath,
 } from "./urls"
 import {
-  nextVersionSlug,
+  parseVersionNumber,
   siteTree,
   slugProblem,
   unansweredLocales,
@@ -48,6 +49,18 @@ import {
   type SeriesRow,
   type TreeEntry,
 } from "./contents"
+
+/**
+ * A row named by an identifier that arrived in the address.
+ *
+ * The comparison casts the column rather than the value, because a `uuid`
+ * column will not compare with a string that is not shaped like one — and an
+ * identifier from an address is whatever somebody typed. Casting the other way
+ * makes a mistyped id a 500 instead of "there is no such thing".
+ */
+function idIs(column: PgColumn, value: string) {
+  return sql`${column}::text = ${value}`
+}
 
 /** What a locale looks like before anybody has written its body. */
 const EMPTY_ARTICLE: ArticleContent = { title: "", body: "" }
@@ -60,6 +73,7 @@ export type ContentsProblem
     | "stale"
     | "in-use"
     | "not-a-revision"
+    | "malformed-version"
     | "unknown-target"
 
 export interface BodyProblem {
@@ -296,7 +310,7 @@ export async function documentPage(
     .from(document)
     // The address carries a uuid; anything else is not a document rather than a
     // malformed request for one.
-    .where(sql`${document.id}::text = ${documentId}`)
+    .where(idIs(document.id, documentId))
     .limit(1)
   if (row === undefined) return null
 
@@ -389,7 +403,7 @@ export async function newsPage(request: Request, newsId: string): Promise<NewsVi
   const [row] = await db
     .select({ id: news.id, publishedAt: news.publishedAt })
     .from(news)
-    .where(sql`${news.id}::text = ${newsId}`)
+    .where(idIs(news.id, newsId))
     .limit(1)
   if (row === undefined) return null
 
@@ -468,8 +482,8 @@ export async function contentsAction(request: Request): Promise<ContentsResult> 
         return repointSeries(tx, form)
       case "add-version":
         return addVersion(tx, form)
-      case "flatten-series":
-        return flattenSeries(tx, form)
+      case "delete-series":
+        return deleteSeries(tx, form, actor)
       case "create-alert":
         return createAlert(tx)
       case "update-alert":
@@ -498,14 +512,14 @@ async function repointSeries(tx: Executor, form: FormData): Promise<ContentsResu
   const [series] = await tx
     .select({ id: documentSeries.id, slug: documentSeries.slug })
     .from(documentSeries)
-    .where(sql`${documentSeries.id}::text = ${seriesId}`)
+    .where(idIs(documentSeries.id, seriesId))
     .limit(1)
   if (series === undefined) return { status: "unknown-target" }
 
   const [target] = await tx
     .select({ id: document.id, slug: document.slug })
     .from(document)
-    .where(sql`${document.id}::text = ${documentId}`)
+    .where(idIs(document.id, documentId))
     .limit(1)
   if (target === undefined) return { status: "unknown-target" }
   // Only a revision of this series may be named: the pointer says which version
@@ -519,21 +533,23 @@ async function repointSeries(tx: Executor, form: FormData): Promise<ContentsResu
   return { status: "ok" }
 }
 
-/** The next revision, empty, ready to be written and then pointed at. */
+/**
+ * The next revision, empty, ready to be written and then pointed at. The number
+ * comes from the form; the screen only fills the box with the one that follows.
+ */
 async function addVersion(tx: Executor, form: FormData): Promise<Applied> {
   const seriesId = text(form, "seriesId")
   const [series] = await tx
     .select({ slug: documentSeries.slug })
     .from(documentSeries)
-    .where(sql`${documentSeries.id}::text = ${seriesId}`)
+    .where(idIs(documentSeries.id, seriesId))
     .limit(1)
   if (series === undefined) return { status: "unknown-target" }
 
-  const existing = await tx
-    .select({ slug: document.slug })
-    .from(document)
-    .where(sql`${document.slug} like ${`${series.slug}/version/%`}`)
-  const slug = nextVersionSlug(series.slug, existing.map((one) => one.slug))
+  const number = parseVersionNumber(text(form, "number"))
+  if (number === null) return { status: "malformed-version" }
+
+  const slug = versionSlug(series.slug, number)
   if (await slugTaken(tx, slug)) return { status: "duplicate-slug" }
 
   const [created] = await tx.insert(document).values({ slug }).returning({ id: document.id })
@@ -542,22 +558,57 @@ async function addVersion(tx: Executor, form: FormData): Promise<Applied> {
 }
 
 /**
- * Undoing the split: the series goes away and its current revision takes the
- * version-less slug back. The other revisions keep their numbered addresses, so
- * nothing stops answering.
+ * Retiring a guideline: the version-less slug and every revision under it go at
+ * once.
+ *
+ * There is no way to take the versioning back off and keep the addresses — the
+ * body would have to move to the version-less slug, which is what the numbered
+ * address it left behind used to answer with. So a series is either kept or
+ * removed whole. One at a time would not do either: the revision the pointer
+ * names cannot be deleted on its own, so it would be the one thing left with
+ * nothing left to point at it.
  */
-async function flattenSeries(tx: Executor, form: FormData): Promise<ContentsResult> {
+async function deleteSeries(tx: Executor, form: FormData, actor: Actor): Promise<Applied> {
   const seriesId = text(form, "seriesId")
   const [series] = await tx
-    .select({ id: documentSeries.id, slug: documentSeries.slug, currentId: documentSeries.currentId })
+    .select({ id: documentSeries.id, slug: documentSeries.slug })
     .from(documentSeries)
-    .where(sql`${documentSeries.id}::text = ${seriesId}`)
+    .where(idIs(documentSeries.id, seriesId))
     .limit(1)
   if (series === undefined) return { status: "unknown-target" }
 
+  const revisions = await tx
+    .select({ id: document.id, slug: document.slug })
+    .from(document)
+    .where(sql`${document.slug} like ${`${series.slug}/version/%`}`)
+  const ids = revisions.map((one) => one.id)
+
+  const published = ids.length === 0
+    ? []
+    : await tx
+        .select({ documentId: documentContent.documentId, locale: documentContent.locale })
+        .from(documentContent)
+        .where(and(inArray(documentContent.documentId, ids), eq(documentContent.published, true)))
+
+  // The pointer goes first: it names a revision and refuses to let it go.
   await tx.delete(documentSeries).where(eq(documentSeries.id, series.id))
-  await tx.update(document).set({ slug: series.slug }).where(eq(document.id, series.currentId))
-  return { status: "ok" }
+  if (ids.length > 0) await tx.delete(document).where(inArray(document.id, ids))
+
+  const slugOf = new Map(revisions.map((one) => [one.id, one.slug]))
+  for (const id of new Set(published.map((one) => one.documentId))) {
+    await recordEvent(tx, {
+      actor,
+      action: "unpublish-site-content",
+      subjectType: "document",
+      subjectId: id,
+      detail: {
+        slug: slugOf.get(id) ?? series.slug,
+        deleted: true,
+        locales: published.filter((one) => one.documentId === id).map((one) => one.locale),
+      },
+    })
+  }
+  return { status: "ok", goTo: adminContentsPath() }
 }
 
 async function createAlert(tx: Executor): Promise<ContentsResult> {
@@ -575,7 +626,7 @@ async function updateAlert(
   const [before] = await tx
     .select({ id: alert.id, active: alert.active })
     .from(alert)
-    .where(sql`${alert.id}::text = ${id}`)
+    .where(idIs(alert.id, id))
     .limit(1)
   if (before === undefined) return { status: "unknown-target" }
 
@@ -607,7 +658,7 @@ async function deleteAlert(tx: Executor, form: FormData, actor: Actor): Promise<
   const [row] = await tx
     .select({ id: alert.id, active: alert.active })
     .from(alert)
-    .where(sql`${alert.id}::text = ${id}`)
+    .where(idIs(alert.id, id))
     .limit(1)
   if (row === undefined) return { status: "unknown-target" }
 
@@ -681,6 +732,21 @@ interface LocaleUpdate {
 }
 
 /**
+ * What a write to a locale sets, whichever of the two tables holds it. The two
+ * tables carry the same columns, so the shape of a save is decided here and the
+ * branches below differ only in which table and which owner column they name —
+ * which is the part the ORM's types cannot be made to share.
+ */
+function localeSet(revision: number, update: LocaleUpdate) {
+  return {
+    ...update.content === undefined ? {} : { content: update.content },
+    ...update.draftContent === undefined ? {} : { draftContent: update.draftContent },
+    ...update.published === undefined ? {} : { published: update.published },
+    revision: revision + 1,
+  }
+}
+
+/**
  * The one shape a write to a locale takes: match the revision the form read,
  * and step it. **A save that matched nothing is a 409** rather than a silent
  * overwrite of somebody else's edit.
@@ -696,13 +762,10 @@ async function updateLocale(
     const changed = await tx
       .update(documentContent)
       .set({
-        ...update.content === undefined ? {} : { content: update.content },
-        ...update.draftContent === undefined ? {} : { draftContent: update.draftContent },
-        ...update.published === undefined ? {} : { published: update.published },
+        ...localeSet(revision, update),
         ...update.stampPublishedAt === true
           ? { publishedAt: sql`coalesce(${documentContent.publishedAt}, ${today()}::date)` }
           : {},
-        revision: revision + 1,
       })
       .where(and(
         eq(documentContent.documentId, target.id),
@@ -715,12 +778,7 @@ async function updateLocale(
 
   const changed = await tx
     .update(newsContent)
-    .set({
-      ...update.content === undefined ? {} : { content: update.content },
-      ...update.draftContent === undefined ? {} : { draftContent: update.draftContent },
-      ...update.published === undefined ? {} : { published: update.published },
-      revision: revision + 1,
-    })
+    .set(localeSet(revision, update))
     .where(and(
       eq(newsContent.newsId, target.id),
       eq(newsContent.locale, locale),
@@ -845,7 +903,7 @@ export async function documentAction(
     const [row] = await tx
       .select({ id: document.id, slug: document.slug })
       .from(document)
-      .where(sql`${document.id}::text = ${documentId}`)
+      .where(idIs(document.id, documentId))
       .limit(1)
     if (row === undefined) return { status: "unknown-target" }
     const target: ContentTarget = { kind: "document", id: row.id, slug: row.slug }
@@ -862,7 +920,7 @@ export async function documentAction(
       case "discard-draft":
         return discardDraft(tx, target, form)
       case "cut-into-version":
-        return cutIntoVersion(tx, target)
+        return cutIntoVersion(tx, target, form)
       case "delete-document":
         return deleteDocument(tx, target, actor)
       default:
@@ -886,13 +944,18 @@ async function renameDocument(
 }
 
 /**
- * Giving a document its first version: the body moves to `{slug}/version/1` and
- * the address it had becomes a pointer at it. Nothing is copied, so there is
- * never a moment where the same text lives at two addresses.
+ * Giving a document its first version: the body moves to `{slug}/version/{n}`
+ * and the address it had becomes a pointer at it. Nothing is copied, so there
+ * is never a moment where the same text lives at two addresses.
+ *
+ * The number is typed rather than fixed at 1, because a guideline that is
+ * already at `Ver.9` when the portal first learns to version it should not
+ * start again from the beginning.
  */
 async function cutIntoVersion(
   tx: Executor,
   target: ContentTarget & { kind: "document" },
+  form: FormData,
 ): Promise<ContentsResult> {
   const series = await tx
     .select({ slug: documentSeries.slug, currentId: documentSeries.currentId })
@@ -904,7 +967,10 @@ async function cutIntoVersion(
     || versionNumberIn(one.slug, target.slug) !== null)
   if (already) return { status: "not-a-revision" }
 
-  const slug = versionSlug(target.slug, 1)
+  const number = parseVersionNumber(text(form, "number"))
+  if (number === null) return { status: "malformed-version" }
+
+  const slug = versionSlug(target.slug, number)
   if (await slugTaken(tx, slug)) return { status: "duplicate-slug" }
 
   await tx.update(document).set({ slug }).where(eq(document.id, target.id))
@@ -967,7 +1033,7 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
     const [row] = await tx
       .select({ id: news.id })
       .from(news)
-      .where(sql`${news.id}::text = ${newsId}`)
+      .where(idIs(news.id, newsId))
       .limit(1)
     if (row === undefined) return { status: "unknown-target" }
     const target: ContentTarget = { kind: "news", id: row.id }

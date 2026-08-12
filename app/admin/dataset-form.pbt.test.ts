@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest"
 
 import type { DatasetContent } from "~/content/types"
 
-import { datasetContentForEditorArb } from "./arbitraries/draft"
+import { CANONICAL_UNITS, datasetContentForEditorArb } from "./arbitraries/draft"
 import { datasetContentInput } from "./dataset-form"
 import { datasetContentOf } from "./dataset-form.server"
 
 /** A content the save path accepted, or nothing when it refused the prose. */
 function through(content: DatasetContent): DatasetContent | null {
-  const result = datasetContentOf(datasetContentInput(content), () => null)
+  const result = datasetContentOf(datasetContentInput(content), CANONICAL_UNITS)
   return result.ok ? result.content : null
 }
 

@@ -12,6 +12,8 @@
  * (docs/editing.md の「上流からの下書き」).
  */
 
+import { mapConcurrently } from "~/concurrency"
+
 import { fetchDbXrefs, fetchSraEntry } from "./ddbj-search.server"
 import { experimentOf, groupByStrategy, type DraExperimentGroup } from "./dra"
 
@@ -48,7 +50,7 @@ export async function fetchDraSubmission(accession: string): Promise<DraSubmissi
   )].sort()
 
   const unreachable: string[] = []
-  const experiments = (await mapConcurrently(experimentIds, async (id) => {
+  const experiments = (await mapConcurrently(experimentIds, CONCURRENCY, async (id) => {
     try {
       const found = await fetchSraEntry(EXPERIMENT, id)
       if (found === null) {
@@ -71,29 +73,4 @@ export async function fetchDraSubmission(accession: string): Promise<DraSubmissi
     groups: groupByStrategy(experiments),
     unreachable: unreachable.sort(),
   }
-}
-
-/**
- * Every item through `run`, a few at a time, answers in the order given.
- *
- * A pool rather than batches: a slow experiment holds up one worker instead of a
- * whole batch, which is what keeps a submission with a hundred and fifty of them
- * to seconds.
- */
-async function mapConcurrently<T, R>(
-  items: readonly T[],
-  run: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const answers = new Array<R>(items.length)
-  let next = 0
-  const worker = async (): Promise<void> => {
-    for (let index = next++; index < items.length; index = next++) {
-      const item = items[index]
-      if (item !== undefined) answers[index] = await run(item)
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker()),
-  )
-  return answers
 }

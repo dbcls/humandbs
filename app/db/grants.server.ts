@@ -37,8 +37,21 @@ export function parseConnection(url: string): Connection {
   return {
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
-    database: decodeURIComponent(parsed.pathname.replace(/^\//, "")),
+    database: decodeURIComponent(rawPathOf(url)),
   }
+}
+
+/**
+ * `new URL` applies the path semantics of the web to a path that has none: a
+ * database named `.` or `..` is folded away entirely, and libpq — which takes
+ * everything after the host as the name and percent-decodes it — would connect
+ * to a database this function says is unnamed. The authority cannot contain an
+ * unencoded `/`, so the first one after `//` starts the name.
+ */
+function rawPathOf(url: string): string {
+  const authority = url.slice(url.indexOf("//") + 2)
+  const slash = authority.indexOf("/")
+  return slash === -1 ? "" : authority.slice(slash + 1).replace(/[?#].*$/s, "")
 }
 
 export function quoteIdentifier(value: string): string {

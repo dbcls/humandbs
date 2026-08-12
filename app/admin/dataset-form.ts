@@ -9,10 +9,10 @@
  * **A value carries the kind of its catalog key.** The kind is stored with the
  * value rather than looked up, so a form can be built without the catalog, and
  * a value whose kind disagrees with its key never gets that far — the write
- * path checks it. Only the two kinds the catalog actually uses are editable
- * here; a key typed as a single value, an accession or a number has no input
- * control yet, and one turning up is a fault rather than something to render
- * blank, because a value nobody can see is a value nobody can keep.
+ * path checks it. Three of the five kinds are editable here; a key typed as a
+ * single value or an accession has no input control yet, and one turning up is
+ * a fault rather than something to render blank, because a value nobody can see
+ * is a value nobody can keep.
  *
  * **Experiments are part of this form.** They live inside the dataset's content
  * (`app/content/types.ts`), so editing one is a change to the dataset and is

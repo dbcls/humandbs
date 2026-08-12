@@ -21,6 +21,7 @@ import { loadConfig, publicOrigin } from "~/config.server"
 import {
   publicDatasetContent,
   publicResearch,
+  PUBLISHED,
   type CauUsage,
   type StoredFile,
 } from "~/content/public"
@@ -33,10 +34,17 @@ import {
   resolveDatasetLabel,
   resolveHumLabel,
 } from "~/public/queries.server"
+import { findVersion, latestOf } from "~/public/versions"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import { hasFreeText, parseQuery, serializeQuery } from "~/search/dsl"
 import { queryFields } from "~/search/fields"
-import { searchDocs, type SearchTarget, type SortKey } from "~/search/query.server"
+import {
+  isSortKey,
+  searchDocs,
+  sortOffer,
+  type SearchTarget,
+  type SortKey,
+} from "~/search/query.server"
 
 import {
   ACCESSION_TYPES,
@@ -66,20 +74,18 @@ import {
 import type { ApiDataset, ApiResearch } from "./schema"
 import { apiDataset, apiResearch, type ApiContext } from "./view"
 
-/** Nothing the API answers with keeps an unsettled value. */
-const PUBLISHED = { keepUnsettled: false }
-
-const SORT_KEYS: readonly SortKey[] = ["relevance", "dateModified", "datePublished", "id"]
-
-function isSortKey(value: string): value is SortKey {
-  return (SORT_KEYS as readonly string[]).includes(value)
+function originOf(): string {
+  return publicOrigin(loadConfig(process.env).auth)
 }
 
+/**
+ * What turning a stored object into an answer needs. **The catalog is read only
+ * where an answer holds content** — the relation endpoints DDBJ Search polls
+ * answer out of the labels alone, and reading a table they never look at would
+ * be a cost paid on every one of those calls.
+ */
 async function contextOf(): Promise<ApiContext> {
-  return {
-    origin: publicOrigin(loadConfig(process.env).auth),
-    catalog: await loadCatalog(getDb()),
-  }
+  return { origin: originOf(), catalog: await loadCatalog(getDb()) }
 }
 
 // --- research -------------------------------------------------------------
@@ -128,13 +134,10 @@ export async function researchEntry(
   if (resolved === null) return problemResponse(notFound(request, "research"))
 
   const versions = await publishedVersions(db, resolved.id)
-  const latest = versions.reduce<typeof versions[number] | null>(
-    (best, one) => best === null || one.number > best.number ? one : best,
-    null,
-  )
+  const latest = latestOf(versions)
   if (latest === null) return problemResponse(notFound(request, "research"))
-  const version = wanted === "latest" ? latest : versions.find((one) => one.number === wanted)
-  if (version === undefined) return problemResponse(notFound(request, "research-version"))
+  const version = wanted === "latest" ? latest : findVersion(versions, wanted)
+  if (version === null) return problemResponse(notFound(request, "research-version"))
 
   const [context, cau, boxes, labels] = await Promise.all([
     contextOf(),
@@ -250,12 +253,11 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   // Only a full-text match carries a score, so a query made of field conditions
   // alone has nothing to rank by. Asking for that ordering is reported rather
   // than quietly answered in a different one.
-  const ranked = hasFreeText(ast)
-  const offered = ranked ? SORT_KEYS : SORT_KEYS.filter((key) => key !== "relevance")
+  const { offered, fallback } = sortOffer(hasFreeText(ast), target)
   const asked = url.searchParams.get("sort")
   let sort: SortKey
   if (asked === null) {
-    sort = ranked ? "relevance" : target === "research" ? "dateModified" : "id"
+    sort = fallback
   } else if (isSortKey(asked) && offered.includes(asked)) {
     sort = asked
   } else {
@@ -317,8 +319,8 @@ export async function dblinkListing(request: Request, type: string): Promise<Res
   const subject = accessionTypeOr(request, type)
   if (typeof subject !== "string") return subject
 
-  const [edges, context] = await Promise.all([publishedEdges(getDb()), contextOf()])
-  return ndjsonResponse(linksBySubject(edges, subject, context.origin))
+  const edges = await publishedEdges(getDb())
+  return ndjsonResponse(linksBySubject(edges, subject, originOf()))
 }
 
 export async function dblinkEntry(
@@ -329,8 +331,8 @@ export async function dblinkEntry(
   const subject = accessionTypeOr(request, type)
   if (typeof subject !== "string") return subject
 
-  const [edges, context] = await Promise.all([publishedEdges(getDb()), contextOf()])
-  return jsonResponse(linksOfSubject(edges, subject, identifier, context.origin))
+  const edges = await publishedEdges(getDb())
+  return jsonResponse(linksOfSubject(edges, subject, identifier, originOf()))
 }
 
 function accessionTypeOr(request: Request, type: string): AccessionType | Response {

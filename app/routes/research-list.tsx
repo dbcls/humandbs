@@ -119,19 +119,19 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
                                 <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
                               </Td>
                               <Td className="min-w-64">
-                                <Clamped><Value field={row.title} locale={locale} /></Clamped>
+                                <ScrollCell><Value field={row.title} locale={locale} /></ScrollCell>
                               </Td>
                               <Td className="min-w-40">
                                 <Datasets labels={row.datasetLabels} humLabel={row.humLabel} locale={locale} />
                               </Td>
                               <Td className="min-w-48">
-                                <Clamped><Value field={row.typeOfData} locale={locale} /></Clamped>
+                                <ScrollCell><Value field={row.typeOfData} locale={locale} /></ScrollCell>
                               </Td>
                               <Td className="min-w-64">
-                                <Clamped><Value field={row.methods} locale={locale} /></Clamped>
+                                <ScrollCell><Value field={row.methods} locale={locale} /></ScrollCell>
                               </Td>
                               <Td className="min-w-64">
-                                <Clamped><Value field={row.targets} locale={locale} /></Clamped>
+                                <ScrollCell><Value field={row.targets} locale={locale} /></ScrollCell>
                               </Td>
                               <Td>
                                 <div className="flex flex-col gap-1">
@@ -162,8 +162,11 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
   )
 }
 
-/** A long cell scrolls inside itself rather than making the row tall. */
-function Clamped({ children }: { children: React.ReactNode }) {
+/**
+ * A long cell scrolls inside itself rather than making the row tall. Not
+ * `Clamped` from `~/components/base`, which cuts a list of items short.
+ */
+function ScrollCell({ children }: { children: React.ReactNode }) {
   return <div className="max-h-24 overflow-y-auto">{children}</div>
 }
 

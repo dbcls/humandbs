@@ -55,12 +55,25 @@ export function versionNumberIn(base: string, slug: string): number | null {
 }
 
 /**
- * The address the next revision of `base` takes. Numbers are not reused, so it
- * counts from the highest that exists rather than from how many there are.
+ * The number the next revision of `base` is offered. Numbers are not reused, so
+ * it counts from the highest that exists rather than from how many there are.
+ *
+ * **This is a suggestion rather than the answer.** An author types the number,
+ * because the `Ver.` a body announces is not always the count of the revisions
+ * before it, and a body that disagrees with its own address is worse than a gap
+ * in the numbering.
  */
-export function nextVersionSlug(base: string, slugs: readonly string[]): string {
+export function nextVersionNumber(base: string, slugs: readonly string[]): number {
   const numbers = slugs.map((slug) => versionNumberIn(base, slug) ?? 0)
-  return versionSlug(base, Math.max(0, ...numbers) + 1)
+  return Math.max(0, ...numbers) + 1
+}
+
+/** The revision number a form carries, or null if what it carries is not one. */
+export function parseVersionNumber(input: string): number | null {
+  const trimmed = input.trim()
+  if (!/^[0-9]+$/.test(trimmed)) return null
+  const number = Number(trimmed)
+  return number >= 1 ? number : null
 }
 
 /** What one language of a document or a news item is up to. */

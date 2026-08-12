@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  nextVersionSlug,
+  nextVersionNumber,
+  parseVersionNumber,
   siteTree,
   slugProblem,
   unansweredLocales,
@@ -64,17 +65,28 @@ describe("版の slug", () => {
     expect(versionNumberIn("x", "x/version/0")).toBeNull()
   })
 
-  it("次の版は、いちばん大きい番号の次になる", () => {
-    expect(nextVersionSlug("x", [])).toBe("x/version/1")
-    expect(nextVersionSlug("x", ["x/version/1", "x/version/2"])).toBe("x/version/3")
+  it("提案される次の版は、いちばん大きい番号の次になる", () => {
+    expect(nextVersionNumber("x", [])).toBe(1)
+    expect(nextVersionNumber("x", ["x/version/1", "x/version/2"])).toBe(3)
   })
 
   it("**番号は再利用しない** ので、抜けがあっても詰めない", () => {
-    expect(nextVersionSlug("x", ["x/version/1", "x/version/9"])).toBe("x/version/10")
+    expect(nextVersionNumber("x", ["x/version/1", "x/version/9"])).toBe(10)
   })
 
   it("他の slug の版は数に入らない", () => {
-    expect(nextVersionSlug("x", ["y/version/7"])).toBe("x/version/1")
+    expect(nextVersionNumber("x", ["y/version/7"])).toBe(1)
+  })
+
+  it("**版番号として通るのは 1 以上の整数だけ**", () => {
+    expect(parseVersionNumber("1")).toBe(1)
+    expect(parseVersionNumber(" 12 ")).toBe(12)
+    expect(parseVersionNumber("0")).toBeNull()
+    expect(parseVersionNumber("")).toBeNull()
+    expect(parseVersionNumber("1.5")).toBeNull()
+    expect(parseVersionNumber("-3")).toBeNull()
+    expect(parseVersionNumber("1e3")).toBeNull()
+    expect(parseVersionNumber("ⅴ")).toBeNull()
   })
 })
 

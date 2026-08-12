@@ -16,7 +16,7 @@ import type { Route } from "./+types/admin-research-files"
  * **It is not under a draft.** The box belongs to the research, holds no
  * versions, and making a file public is a separate operation from publishing a
  * version — putting it inside a draft would say the two happen together
- * (docs/editing.md の「ファイル」).
+ * (docs/files.md の「画面」).
  *
  * Switching is queued rather than done: a copy across buckets moves the actual
  * bytes, and the largest file here is measured in hundreds of gigabytes. The

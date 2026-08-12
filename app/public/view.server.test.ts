@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 
+import type { CauUsage } from "~/content/public"
+
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DataProvider, DatasetContent, ResearchContent, Slot } from "~/content/types"
 
@@ -10,7 +12,6 @@ import {
   researchView,
   type CatalogKeyView,
   type CatalogView,
-  type CauInput,
 } from "./view.server"
 
 const UNKNOWN: Slot<never> = { state: "unknown" }
@@ -55,7 +56,7 @@ function provider(overrides: Partial<DataProvider> = {}): DataProvider {
   }
 }
 
-function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauInput[] = []) {
+function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauUsage[] = []) {
   return researchView({
     humLabel: "hum0001",
     versionNumber: 2,
@@ -112,7 +113,7 @@ describe("the untranslated notice", () => {
   })
 
   it("ignores a controlled-access usage, which no curator can translate", () => {
-    const cau: CauInput[] = [{
+    const cau: CauUsage[] = [{
       principalInvestigator: { ja: "山田", en: "" },
       affiliation: { ja: "大学", en: "" },
       country: "Japan",

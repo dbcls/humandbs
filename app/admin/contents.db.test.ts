@@ -135,6 +135,7 @@ describe("slug", () => {
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
       intent: "cut-into-version",
+      number: "1",
     }), id)
     expect(result.status).toBe("duplicate-slug")
     expect(await slugOf(taken)).toBe("faq/version/1")
@@ -326,7 +327,7 @@ describe("版", () => {
     await publishSide(id, "ja", "ガイドラインの本文")
 
     const result = await documentAction(
-      post(token, adminDocumentPath(id), { intent: "cut-into-version" }),
+      post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }),
       id,
     )
 
@@ -341,34 +342,59 @@ describe("版", () => {
   it("版を 2 度は切り出せない", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
 
     const again = await documentAction(
-      post(token, adminDocumentPath(id), { intent: "cut-into-version" }),
+      post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }),
       id,
     )
     expect(again.status).toBe("not-a-revision")
   })
 
-  it("次の版を作ると、いちばん大きい番号の次に入る", async () => {
+  it("**版番号は打った番号がそのまま入る**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "9" }), id)
     const series = only(await db.select().from(s.documentSeries))
 
     const redirected = await thrown(() => contentsAction(
-      post(token, adminContentsPath(), { intent: "add-version", seriesId: series.id }),
+      post(token, adminContentsPath(), { intent: "add-version", seriesId: series.id, number: "10" }),
     ))
     expect(redirected.status).toBe(302)
 
     const slugs = (await db.select({ slug: s.document.slug }).from(s.document)).map((r) => r.slug)
-    expect(slugs.sort()).toEqual(["x/version/1", "x/version/2"])
+    expect(slugs.sort()).toEqual(["x/version/10", "x/version/9"])
+  })
+
+  it("既に使われている版番号は弾かれる", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "3" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+
+    const result = await contentsAction(
+      post(token, adminContentsPath(), { intent: "add-version", seriesId: series.id, number: "3" }),
+    )
+    expect(result.status).toBe("duplicate-slug")
+    expect(await db.select().from(s.document)).toHaveLength(1)
+  })
+
+  it("整数でない版番号は弾かれる", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+
+    const result = await documentAction(
+      post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1.5" }),
+      id,
+    )
+    expect(result.status).toBe("malformed-version")
+    expect(await db.select().from(s.documentSeries)).toHaveLength(0)
   })
 
   it("**指し先になれるのは自分の版だけ**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
     const series = only(await db.select().from(s.documentSeries))
     const stranger = await makeDocument("faq")
 
@@ -384,7 +410,7 @@ describe("版", () => {
     const token = await signIn(CURATOR, true)
     const first = await makeDocument("x")
     await publishSide(first, "ja", "一つ目")
-    await documentAction(post(token, adminDocumentPath(first), { intent: "cut-into-version" }), first)
+    await documentAction(post(token, adminDocumentPath(first), { intent: "cut-into-version", number: "1" }), first)
     const series = only(await db.select().from(s.documentSeries))
 
     const second = await makeDocument("x/version/2")
@@ -402,7 +428,7 @@ describe("版", () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
 
     expect(await findDocument("x", "ja")).not.toBeNull()
     expect(await findDocument("x", "en")).toBeNull()
@@ -414,7 +440,7 @@ describe("版", () => {
   it("**指し先になっている document は消せない**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
 
     const result = await documentAction(
       post(token, adminDocumentPath(id), { intent: "delete-document" }),
@@ -424,20 +450,42 @@ describe("版", () => {
     expect(await db.select().from(s.document)).toHaveLength(1)
   })
 
-  it("版をやめると、指し先だった本文が版なし slug に戻る", async () => {
+  it("**系列を消すと、版なし slug と配下の版が一緒に消える**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await publishSide(id, "ja", "本文だけ残る")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await publishSide(id, "ja", "一つ目")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
     const series = only(await db.select().from(s.documentSeries))
+    const second = await makeDocument("x/version/2")
+    await publishSide(second, "ja", "二つ目")
 
-    await contentsAction(
-      post(token, adminContentsPath(), { intent: "flatten-series", seriesId: series.id }),
-    )
+    await thrown(() => contentsAction(
+      post(token, adminContentsPath(), { intent: "delete-series", seriesId: series.id }),
+    ))
 
     expect(await db.select().from(s.documentSeries)).toHaveLength(0)
-    expect(await slugOf(id)).toBe("x")
-    expect((await findDocument("x", "ja"))?.html).toContain("本文だけ残る")
+    expect(await db.select().from(s.document)).toHaveLength(0)
+    expect(await findDocument("x", "ja")).toBeNull()
+    expect(await findDocument("x/version/1", "ja")).toBeNull()
+    expect(await findDocument("x/version/2", "ja")).toBeNull()
+  })
+
+  it("系列を消すと、公開されていた版ごとに証跡が残る", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+    await publishSide(id, "ja", "一つ目")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+    await makeDocument("x/version/2")
+
+    await thrown(() => contentsAction(
+      post(token, adminContentsPath(), { intent: "delete-series", seriesId: series.id }),
+    ))
+
+    const events = await db.select().from(s.event)
+    const removals = events.filter((one) => one.action === "unpublish-site-content")
+    expect(removals).toHaveLength(1)
+    expect(removals[0]?.detail).toMatchObject({ slug: "x/version/1", deleted: true, locales: ["ja"] })
   })
 })
 
@@ -541,7 +589,7 @@ describe("画面", () => {
   it("document の画面は、自分がどの版かを言う", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version" }), id)
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
 
     const view = await documentPage(get(token, adminDocumentPath(id)), id)
     expect(view?.seriesOf).toMatchObject({ slug: "x", number: 1, isCurrent: true })

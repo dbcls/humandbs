@@ -33,7 +33,7 @@ export function adminResearchPath(researchId: string): string {
 /**
  * The research's box. It sits outside any draft: the box belongs to the
  * research, holds no versions, and switching a file is a separate operation
- * from publishing one (docs/editing.md の「ファイル」).
+ * from publishing one (docs/files.md の「画面」).
  */
 export function adminResearchFilesPath(researchId: string): string {
   return `${adminResearchPath(researchId)}/files`

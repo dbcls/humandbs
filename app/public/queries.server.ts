@@ -18,6 +18,7 @@
 
 import { and, eq, inArray } from "drizzle-orm"
 
+import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
@@ -31,7 +32,7 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 
-import type { CatalogView, CauInput } from "./view.server"
+import type { CatalogView } from "./view.server"
 
 export interface ResolvedLabel {
   /** The identity the label names. */
@@ -206,7 +207,7 @@ export async function publishedDatasetLabels(
  * JSON API show what a reader is meant to see (docs/data-model.md の
  * 「外部キャッシュ」).
  */
-export async function controlledAccessUsers(db: Executor, humLabel: string): Promise<CauInput[]> {
+export async function controlledAccessUsers(db: Executor, humLabel: string): Promise<CauUsage[]> {
   const rows = await db
     .select()
     .from(cauEntry)

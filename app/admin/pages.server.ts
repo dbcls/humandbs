@@ -510,7 +510,7 @@ export interface DatasetEditorView {
   box: BoxEntry[] | null
   /**
    * Whether this dataset may carry a file selection at all, read off its id
-   * (docs/data-model.md の「ファイル」). An archive's dataset is distributed by
+   * (docs/files.md). An archive's dataset is distributed by
    * the archive, so the screen does not offer the picker and the save refuses
    * a selection.
    */

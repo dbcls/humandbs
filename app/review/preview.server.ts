@@ -44,7 +44,7 @@ import {
 } from "~/public/view.server"
 
 import { sharedDraftByToken, type SharedDraft } from "./access.server"
-import { anchorOf, isAnchorPath, type AnchorSubject } from "./anchors"
+import { isAnchorPath, type AnchorSubject } from "./anchors"
 import {
   checkComment,
   threadsOfSubjects,
@@ -56,11 +56,11 @@ import {
   readAcknowledgements,
   readThreads,
   replyToThread,
-  startThread,
+  postComment,
   type AcknowledgementView,
   type CommentAuthor,
 } from "./comments.server"
-import { anchorExists, latestPublishedVersion, previewDatasets } from "./queries.server"
+import { latestPublishedVersion, previewDatasets } from "./queries.server"
 
 /** A preview keeps what has not been settled. No public route can ask for this. */
 const PREVIEW = { keepUnsettled: true }
@@ -401,20 +401,19 @@ export async function previewAction(
 
   const path = form.get("path")
   if (!isAnchorPath(path)) badRequest()
-  const about = {
-    draftId: draft.draftId,
-    content: draft.content,
-    // A share link may comment on what the version shows, and nothing else.
-    datasetIds: draft.content.datasetIds,
-  }
-  if (!(await anchorExists(db, about, subject, path))) badRequest()
-
-  const outcome = await startThread(db, {
-    draftId: draft.draftId,
-    anchor: anchorOf(subject, path),
+  const outcome = await postComment(db, {
+    about: {
+      draftId: draft.draftId,
+      content: draft.content,
+      // A share link may comment on what the version shows, and nothing else.
+      datasetIds: draft.content.datasetIds,
+    },
+    subject,
+    path,
     author,
-    body: body.trim(),
+    body,
   })
+  if (outcome.status === "no-such-place") badRequest()
   if (outcome.status === "gone") notFound()
   return back
 }

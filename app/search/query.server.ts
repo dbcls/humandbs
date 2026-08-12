@@ -24,9 +24,12 @@ import type { FacetField, QueryFields } from "./fields"
 
 export const PAGE_SIZE = 20
 
-export type SearchTarget = "research" | "dataset"
+import type { SearchTarget } from "./target"
+import type { SortKey } from "./sort"
 
-export type SortKey = "relevance" | "dateModified" | "datePublished" | "id"
+export type { SearchTarget } from "./target"
+
+export { isSortKey, SORT_KEYS, sortOffer, type SortKey } from "./sort"
 
 export interface SearchHit {
   targetId: string
@@ -210,10 +213,17 @@ export async function countMatches(db: Executor, query: SearchQuery): Promise<nu
   return result.rows[0]?.total ?? 0
 }
 
+/**
+ * **A page past the end is empty, not the last one.** Something reading the
+ * search a page at a time stops when a page comes back with nothing in it, and
+ * answering the last page over again is an answer that never runs out. A screen
+ * that would rather show the last page asks for it (`app/public/lists.server.ts`).
+ */
 export async function searchDocs(db: Executor, request: SearchRequest): Promise<SearchResult> {
   const total = await countMatches(db, request)
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const page = Math.min(Math.max(1, request.page), pageCount)
+  const page = Math.max(1, request.page)
+  if (page > pageCount) return { total, page, pageCount, hits: [] }
   const result = await db.execute<HitRow>(sql`
     WITH ${hitsCte(request)}
     SELECT h.target_id, h.hum_label, h.dataset_label, h.date_published, h.date_modified

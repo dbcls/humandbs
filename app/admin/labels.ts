@@ -22,7 +22,7 @@ const WIDTH = 3
  * **Only the primary is asked**, and a dataset with none pinned yet answers no:
  * there is no spelling to read. That is the safe side, because the answer
  * decides whether a file selection can be made at all, and the datasets that
- * must not carry one are the archive's (docs/data-model.md の「ファイル」).
+ * must not carry one are the archive's (docs/files.md).
  */
 export function isPortalIssuedId(primaryLabel: string | null): boolean {
   return primaryLabel?.startsWith("hum") ?? false

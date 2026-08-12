@@ -26,10 +26,14 @@ import { createdAt, primaryId, updatedAt } from "./common"
  * The identity of a research. It carries no label of its own: the hum label is
  * pinned in the ledger, so a research can be created before a hum number has
  * been issued and can survive one being corrected.
+ *
+ * **Nothing else.** When it was made is what a row of it would say — every
+ * change to a research is a change to a version or to a draft, and the listing
+ * reads its "last touched" off those.
  */
 export const research = pgTable("research", {
   id: primaryId(),
-  updatedAt: updatedAt(),
+  createdAt: createdAt(),
 })
 
 /**

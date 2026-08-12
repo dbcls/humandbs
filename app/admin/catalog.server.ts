@@ -445,6 +445,23 @@ async function updateKey(db: Executor, form: FormData): Promise<CatalogResult> {
   return updated.length === 0 ? { status: "unknown-target" } : { status: "ok" }
 }
 
+/**
+ * Writing a reordered list back. **Every sibling is rewritten**, not just the
+ * two that swapped: `moved` renumbers from the order, which is what turns a
+ * list that arrived with gaps or duplicate positions into a consecutive one.
+ */
+async function renumber(
+  db: Executor,
+  rows: readonly { id: string }[],
+  id: string,
+  direction: "up" | "down",
+  write: (id: string, position: number) => Promise<unknown>,
+): Promise<CatalogResult> {
+  const next = moved(rows, id, direction)
+  for (const [at, row] of next.entries()) await write(row.id, at)
+  return { status: "ok" }
+}
+
 async function moveKey(
   db: Executor,
   form: FormData,
@@ -463,11 +480,8 @@ async function moveKey(
     .from(contentKey)
     .where(eq(contentKey.scope, key.scope))
     .orderBy(asc(contentKey.position), asc(contentKey.code))
-  const next = moved(siblings, id, direction)
-  for (const [at, sibling] of next.entries()) {
-    await db.update(contentKey).set({ position: at }).where(eq(contentKey.id, sibling.id))
-  }
-  return { status: "ok" }
+  return renumber(db, siblings, id, direction, (each, position) =>
+    db.update(contentKey).set({ position }).where(eq(contentKey.id, each)))
 }
 
 async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
@@ -528,11 +542,8 @@ async function moveCategory(
     .select({ id: facetCategory.id })
     .from(facetCategory)
     .orderBy(asc(facetCategory.position), asc(facetCategory.code))
-  const next = moved(held, id, direction)
-  for (const [at, category] of next.entries()) {
-    await db.update(facetCategory).set({ position: at }).where(eq(facetCategory.id, category.id))
-  }
-  return { status: "ok" }
+  return renumber(db, held, id, direction, (each, position) =>
+    db.update(facetCategory).set({ position }).where(eq(facetCategory.id, each)))
 }
 
 async function deleteCategory(db: Executor, form: FormData): Promise<CatalogResult> {

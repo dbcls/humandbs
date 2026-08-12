@@ -50,6 +50,15 @@ export interface PublicOptions {
 }
 
 /**
+ * How every public route derives, named once so that "the public side never
+ * keeps an unsettled value" is a single thing rather than a literal repeated
+ * wherever a projection is taken. **The preview says otherwise**, and that is
+ * the whole reason the option exists: a shared link is for asking a provider to
+ * settle what is unsettled, so it is the one place the question survives.
+ */
+export const PUBLISHED: PublicOptions = { keepUnsettled: false }
+
+/**
  * What the public side needs to know about a catalog key. Only the flag is read
  * here: labels are resolved and keys are ordered where they are rendered, since
  * doing either would add something the content does not hold.
@@ -63,11 +72,10 @@ export interface CatalogKey {
  * One usage of a research's controlled-access data, from the cache of the
  * application system. Not content: curators cannot edit it, and its two
  * languages are whatever upstream has, so it is never counted as untranslated.
- */
-/**
- * One usage of a research's controlled-access data. **The usage project it came
- * from is not here** — that is how the cached row is matched to upstream, not
- * something the portal publishes (docs/data-model.md の「外部キャッシュ」).
+ *
+ * **The usage project it came from is not here** — that is how the cached row
+ * is matched to upstream, not something the portal publishes
+ * (docs/data-model.md の「外部キャッシュ」).
  */
 export interface CauUsage {
   principalInvestigator: Bilingual

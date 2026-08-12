@@ -34,9 +34,15 @@ import type {
   TextPairInput,
 } from "./form"
 
-const slotState = z.enum(["value", "unknown", "not-applicable"])
+/**
+ * A slot means the same thing whichever form it was typed into, so its schema
+ * and the two conversions below are exported for the dataset save path
+ * (`dataset-form.server.ts`) rather than written out there again. Written
+ * twice, they drift the first time one of them is corrected.
+ */
+export const slotState = z.enum(["value", "unknown", "not-applicable"])
 
-const textInputSchema = z.object({ state: slotState, text: z.string() })
+export const textInputSchema = z.object({ state: slotState, text: z.string() })
 
 const linkInputSchema = z.object({
   id: z.string().min(1),
@@ -49,7 +55,7 @@ const linksInputSchema = z.object({
   links: z.array(linkInputSchema).refine(distinctIds, "links need distinct identities"),
 })
 
-const textPairSchema = z.object({ ja: textInputSchema, en: textInputSchema })
+export const textPairSchema = z.object({ ja: textInputSchema, en: textInputSchema })
 const linksPairSchema = z.object({ ja: linksInputSchema, en: linksInputSchema })
 
 /**
@@ -126,7 +132,7 @@ export type ContentResult
     | { ok: false, problems: FieldProblem[] }
 
 /** Whatever was typed is dropped once the state says there is no value. */
-function textSlot(input: TextInput): Slot<string> {
+export function textSlot(input: TextInput): Slot<string> {
   return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
 }
 
@@ -146,7 +152,7 @@ function linksPair(pair: LinksPairInput): LocalizedLinks {
  * Prose, and the problems it held. The language is part of the path so that a
  * table written into the English side is reported against the English side.
  */
-function prosePair(
+export function prosePair(
   pair: TextPairInput,
   path: string,
   problems: FieldProblem[],

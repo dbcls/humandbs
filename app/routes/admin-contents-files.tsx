@@ -2,7 +2,7 @@ import { data, Form, Link } from "react-router"
 
 import { adminContentFilesPath, adminContentsPath, contentFileUploadPath } from "~/admin/urls"
 import { UploadPanel } from "~/components/files"
-import { Submit } from "~/components/form"
+import { SelectAll, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { commonFilesAction, commonFilesPage } from "~/files/pages.server"
@@ -70,7 +70,7 @@ export default function AdminContentsFiles({ loaderData }: Route.ComponentProps)
           {view.rows !== null && view.rows.length === 0 && <Empty>{t.none}</Empty>}
           {view.rows !== null && view.rows.length > 0 && (
             <Form method="post">
-              <Table headers={["", t.name, t.size, t.updatedAt, t.url]}>
+              <Table headers={[<SelectAll key="all" name="name" label={messagesFor(locale).admin.files.selectAll} />, t.name, t.size, t.updatedAt, t.url]}>
                 {view.rows.map((row) => (
                   <tr key={row.name}>
                     <Td>

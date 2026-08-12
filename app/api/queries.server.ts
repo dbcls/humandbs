@@ -25,6 +25,7 @@ import {
   researchVersion,
   searchDoc,
 } from "~/db/schema"
+import { latestOf } from "~/public/versions"
 
 import type { Edge } from "./dblink"
 
@@ -100,10 +101,7 @@ export async function researchBundles(
 
   return identities.flatMap((identity) => {
     const held = byResearch.get(identity.researchId) ?? []
-    const latest = held.reduce<typeof held[number] | null>(
-      (best, version) => best === null || version.number > best.number ? version : best,
-      null,
-    )
+    const latest = latestOf(held)
     if (latest === null) return []
     return [{
       researchId: identity.researchId,
@@ -156,7 +154,13 @@ export async function datasetLabels(
   return new Map(rows.flatMap((row) => row.label === null ? [] : [[row.datasetId, row.label]]))
 }
 
-/** Who has used the controlled-access data, grouped by the label it attaches to. */
+/**
+ * Who has used the controlled-access data, grouped by the label it attaches to.
+ *
+ * **Ordered the same way the page orders it**, by upstream's project numbering:
+ * the two are the same list and a reader following a citation from one to the
+ * other should not have to work out that they agree.
+ */
 export async function cauByHumLabel(
   db: Executor,
   humLabels: readonly string[],
@@ -166,6 +170,7 @@ export async function cauByHumLabel(
     .select()
     .from(cauEntry)
     .where(inArray(cauEntry.humLabel, [...humLabels]))
+    .orderBy(cauEntry.applicationId)
 
   const byLabel = new Map<string, CauUsage[]>()
   for (const row of rows) {

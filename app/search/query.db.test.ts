@@ -149,9 +149,10 @@ describe("the order rows come back in", () => {
     expect(again.hits.map((hit) => hit.humLabel)).toEqual(first.hits.map((hit) => hit.humLabel))
   })
 
-  it("holds a page inside the result rather than answering out of range", async () => {
+  it("**a page past the end comes back empty**, so walking the pages ends", async () => {
     const page = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "id", page: 99 })
-    expect(page.page).toBe(1)
+    expect(page.hits).toEqual([])
+    expect(page.page).toBe(99)
     expect(page.total).toBe(3)
     expect(page.pageCount).toBe(1)
   })

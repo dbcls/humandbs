@@ -6,7 +6,7 @@
  * and wait — and `SKIP LOCKED` means several processes can run the loop without
  * either of them starting the same copy. A worker service would need its own
  * configuration, its own health check and its own place in the deployment, to
- * buy nothing (docs/data-model.md の「ファイル」).
+ * buy nothing (docs/files.md).
  *
  * It is woken as soon as something is queued, and otherwise looks every few
  * seconds. Attempts abandoned by a process that stopped are made to wait again

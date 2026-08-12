@@ -10,7 +10,7 @@ import type { Route } from "./+types/admin-terms"
  * It exists so that the weight of an editing screen does not follow the size of
  * the catalog: a vocabulary holds anything from three values to several
  * hundred, and only the handful that match is ever needed at once
- * (docs/editing.md の「値の入力」).
+ * (docs/editing.md の「編集フォーム」).
  */
 export async function loader({ request }: Route.LoaderArgs) {
   await requireCapability(request, "edit-content")

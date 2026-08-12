@@ -17,8 +17,8 @@
  * show them, so the reader cannot be sent looking for them.
  */
 
+import type { CauUsage } from "~/content/public"
 import type {
-  Bilingual,
   ContentValue,
   DatasetContent,
   Link,
@@ -339,21 +339,11 @@ function datasetRowView(
 }
 
 /**
- * A usage record as the public side sees it. **The usage project it came from
- * is deliberately absent** — that is how the cached row is matched to upstream,
- * not something the portal publishes (docs/data-model.md の「外部キャッシュ」).
+ * A usage record with one language chosen. The record itself is `CauUsage`
+ * (`app/content/public.ts`) — the pages and the JSON API read the same rows, so
+ * there is one shape for them and this is only what a page does to it.
  */
-export interface CauInput {
-  principalInvestigator: Bilingual
-  affiliation: Bilingual
-  country: string
-  researchTitle: Bilingual
-  periodStart: string | null
-  periodEnd: string | null
-  datasetAccessions: string[]
-}
-
-export interface CauView extends Omit<CauInput, "principalInvestigator" | "affiliation" | "researchTitle"> {
+export interface CauView extends Omit<CauUsage, "principalInvestigator" | "affiliation" | "researchTitle"> {
   principalInvestigator: string
   affiliation: string
   researchTitle: string
@@ -365,7 +355,7 @@ export interface CauView extends Omit<CauInput, "principalInvestigator" | "affil
  * name a defect nobody in the portal can fix. It carries no state either, which
  * is why it resolves through its own function.
  */
-function cauView(entry: CauInput, locale: Locale): CauView {
+function cauView(entry: CauUsage, locale: Locale): CauView {
   return {
     ...entry,
     principalInvestigator: resolveBilingual(entry.principalInvestigator, locale),
@@ -427,7 +417,7 @@ export interface ResearchViewInput {
   datasets: DatasetRowInput[]
   /** Dataset identity to primary label, for the publications that cite them. */
   datasetLabelById: ReadonlyMap<string, string>
-  cau: CauInput[]
+  cau: CauUsage[]
   files: FileListView
 }
 

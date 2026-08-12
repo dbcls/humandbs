@@ -38,16 +38,16 @@ export async function deleteResearch(
     if (held === undefined) return { status: "gone" }
 
     // Only hum labels hang off a research; a dataset id hangs off its dataset.
-    const [pins, versions] = await Promise.all([
-      tx
-        .select({ label: labelPin.label })
-        .from(labelPin)
-        .where(eq(labelPin.researchId, researchId)),
-      tx
-        .select({ number: researchVersion.number, published: researchVersion.published })
-        .from(researchVersion)
-        .where(eq(researchVersion.researchId, researchId)),
-    ])
+    // **One at a time**: a transaction is one connection, so asking for both at
+    // once wins nothing and asks the driver to run a query on a busy client.
+    const pins = await tx
+      .select({ label: labelPin.label })
+      .from(labelPin)
+      .where(eq(labelPin.researchId, researchId))
+    const versions = await tx
+      .select({ number: researchVersion.number, published: researchVersion.published })
+      .from(researchVersion)
+      .where(eq(researchVersion.researchId, researchId))
 
     await recordEvent(tx, {
       actor,

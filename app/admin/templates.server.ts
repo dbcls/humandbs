@@ -458,8 +458,12 @@ export async function upstreamDatasetAction(
   const catalog = await loadCatalogWithTerms(db)
   const seeds: DatasetSeed[] = []
 
-  for (const accession of [...wanted].filter((value) => DRA.test(value))) {
-    const submission = await fetchDraSubmission(accession)
+  // Each submission is a round trip to another service, and a curator can tick
+  // several at once, so they are asked for together rather than in turn.
+  const dra = await Promise.all([...wanted]
+    .filter((value) => DRA.test(value))
+    .map((accession) => fetchDraSubmission(accession)))
+  for (const submission of dra) {
     if (submission === null) notFound()
     seeds.push(draDatasetSeed(submission, null, catalog))
   }

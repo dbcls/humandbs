@@ -15,11 +15,13 @@
 
 import { and, asc, eq } from "drizzle-orm"
 
-import type { CommentAnchor } from "~/content/types"
+import type { CommentAnchor, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import { adminUser, comment, commentThread, reviewAcknowledgement } from "~/db/schema"
 
+import { anchorOf, type AnchorSubject } from "./anchors"
 import type { CommentView, ThreadView } from "./comments"
+import { anchorExists } from "./queries.server"
 
 export interface CommentAuthor {
   /** The Keycloak subject, when the writer was signed in. */
@@ -122,6 +124,38 @@ export async function replyToThread(
     body: input.body,
   })
   return { status: "posted", threadId: thread.id }
+}
+
+export type PostOutcome = ThreadOutcome | { status: "no-such-place" }
+
+/**
+ * Starting a thread about a place in a draft.
+ *
+ * **The anchor is checked here and not in the callers**, because there are two
+ * of them — the share link and the management screen — and a thread hung off a
+ * place the draft does not have is a thread no screen will ever draw. What the
+ * two disagree about is only which datasets are in range, and that is what
+ * `about.datasetIds` carries (`anchorExists`).
+ */
+export async function postComment(
+  db: Executor,
+  input: {
+    about: { draftId: string, content: ResearchContent, datasetIds: readonly string[] }
+    subject: AnchorSubject
+    path: string
+    author: CommentAuthor
+    body: string
+  },
+): Promise<PostOutcome> {
+  if (!(await anchorExists(db, input.about, input.subject, input.path))) {
+    return { status: "no-such-place" }
+  }
+  return startThread(db, {
+    draftId: input.about.draftId,
+    anchor: anchorOf(input.subject, input.path),
+    author: input.author,
+    body: input.body.trim(),
+  })
 }
 
 /**

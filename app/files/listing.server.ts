@@ -5,7 +5,7 @@
  * public bucket alone**; an administrator, and the preview a share link shows,
  * get both merged by name — at draft time nothing has been made public yet, so
  * showing only the public side would empty the download list exactly when it is
- * being checked (docs/data-model.md の「ファイル」).
+ * being checked (docs/files.md).
  *
  * **A store that does not answer is not an error here.** The download section
  * is left out rather than the page being lost: what the box holds is outside

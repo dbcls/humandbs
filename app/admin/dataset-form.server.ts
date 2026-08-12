@@ -19,27 +19,24 @@
 
 import { z } from "zod"
 
-import { parseRichText } from "~/content/parse.server"
 import type {
   ContentValue,
   DatasetContent,
   Experiment,
   NumberValue,
-  RichText,
-  Slot,
-  TranslatedRichText,
   ValueSlot,
 } from "~/content/types"
 import { convert } from "~/content/units"
 
 import type { DatasetContentInput, ValueBody, ValueInput } from "./dataset-form"
-import type { FieldProblem } from "./form.server"
-import type { TextInput, TextPairInput } from "./form"
-
-const slotState = z.enum(["value", "unknown", "not-applicable"])
-
-const textInputSchema = z.object({ state: slotState, text: z.string() })
-const textPairSchema = z.object({ ja: textInputSchema, en: textInputSchema })
+import {
+  prosePair,
+  slotState,
+  textInputSchema,
+  textPairSchema,
+  textSlot,
+  type FieldProblem,
+} from "./form.server"
 
 const valueBodySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: textPairSchema }),
@@ -103,28 +100,6 @@ export type SaveDatasetPayload = z.infer<typeof saveDatasetSchema>
 export type DatasetContentResult
   = | { ok: true, content: DatasetContent }
     | { ok: false, problems: FieldProblem[] }
-
-/** Whatever was typed is dropped once the state says there is no value. */
-function textSlot(input: TextInput): Slot<string> {
-  return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
-}
-
-function prosePair(
-  pair: TextPairInput,
-  path: string,
-  problems: FieldProblem[],
-): TranslatedRichText {
-  const side = (input: TextInput, language: string): Slot<RichText> => {
-    if (input.state !== "value") return { state: input.state }
-    const result = parseRichText(input.text)
-    if (result.ok) return { state: "value", value: result.value }
-    for (const problem of result.problems) {
-      problems.push({ path: `${path}.${language}`, syntax: problem.syntax, line: problem.line })
-    }
-    return { state: "value", value: [] }
-  }
-  return { ja: side(pair.ja, "ja"), en: side(pair.en, "en") }
-}
 
 /**
  * The stored form of a number: converted to the key's unit, with what was typed

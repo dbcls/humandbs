@@ -83,7 +83,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     snapshots,
     drafts,
   ] = await Promise.all([
-    db.select({ id: research.id, updatedAt: research.updatedAt }).from(research),
+    db.select({ id: research.id, createdAt: research.createdAt }).from(research),
     db
       .select({ researchId: labelPin.researchId, label: labelPin.label })
       .from(labelPin)
@@ -133,7 +133,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     datasets: 0,
     datasetLabels: [] as string[],
     drafts: [] as ResearchContent[],
-    dates: [row.updatedAt],
+    dates: [row.createdAt],
   }]))
   for (const row of datasets) {
     const held = grouped.get(row.researchId)
@@ -181,7 +181,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
         upstreamMismatch: disagreesWithUpstream(humLabel, labels, upstreamHumLabelOf),
         ...flagsOf(draftContents, publishedContent),
       },
-      updatedAt: latest(held?.dates ?? [row.updatedAt]),
+      updatedAt: latest(held?.dates ?? [row.createdAt]),
     }
   })
 }
@@ -217,7 +217,7 @@ export interface ResearchDatasetRow {
   /**
    * Whether the portal issued the id, read off its spelling. Only these may
    * carry a file selection: an archive's dataset is distributed by the archive
-   * (docs/data-model.md の「ファイル」).
+   * (docs/files.md).
    */
   portalIssued: boolean
 }

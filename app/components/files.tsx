@@ -7,10 +7,12 @@ import {
   MULTIPART_CONCURRENCY,
   type BoxEntry,
 } from "~/files/box"
+import { mapConcurrently } from "~/concurrency"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
+import { SelectAll } from "./form"
 import { Empty, PageLinks, Table, Td } from "./page"
 
 /**
@@ -115,7 +117,7 @@ export function BoxTable({ locale, rows, humLabel }: {
 
   return (
     <Form method="post">
-      <Table headers={["", t.name, t.size, t.updatedAt, t.state]}>
+      <Table headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}>
         {rows.map((row) => (
           <tr key={row.name}>
             <Td>
@@ -383,38 +385,24 @@ async function sendParts(
   onProgress: (percent: number) => void,
   signal: AbortSignal,
 ): Promise<UploadedPart[]> {
-  const parts: UploadedPart[] = []
   const sentOf = new Map<number, number>()
-  let next = 0
-
   const report = () => {
     const sent = [...sentOf.values()].reduce((total, value) => total + value, 0)
     onProgress(Math.min(99, Math.floor((sent / file.size) * 100)))
   }
 
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const index = next
-      next += 1
-      const url = urls[index]
-      if (url === undefined) return
-      const from = index * partSize
-      const blob = file.slice(from, Math.min(from + partSize, file.size))
-      const etag = await put(url, blob, "", (percent) => {
-        sentOf.set(index, (blob.size * percent) / 100)
-        report()
-      }, signal)
-      sentOf.set(index, blob.size)
+  return mapConcurrently(urls, MULTIPART_CONCURRENCY, async (url, index) => {
+    const from = index * partSize
+    const blob = file.slice(from, Math.min(from + partSize, file.size))
+    const etag = await put(url, blob, "", (percent) => {
+      sentOf.set(index, (blob.size * percent) / 100)
       report()
-      if (etag === null) throw new Error("the store returned no ETag for a part")
-      parts.push({ partNumber: index + 1, etag })
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(MULTIPART_CONCURRENCY, urls.length) }, worker),
-  )
-  return parts
+    }, signal)
+    sentOf.set(index, blob.size)
+    report()
+    if (etag === null) throw new Error("the store returned no ETag for a part")
+    return { partNumber: index + 1, etag }
+  })
 }
 
 /**

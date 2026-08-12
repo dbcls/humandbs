@@ -171,7 +171,7 @@ export async function facetPanel(
     ? null
     : typed.status === "no-data" ? "no-data" as const : "unknown-code" as const
 
-  const [shared, perFacet, sharedBounds, perFacetBounds, children] = await Promise.all([
+  const [shared, perFacet, sharedBounds, perFacetBounds, children, picked] = await Promise.all([
     countTerms(
       db,
       { target, ast, fields },
@@ -187,6 +187,7 @@ export async function facetPanel(
     Promise.all(numbers.filter((one) => !untouched(one)).map((one) =>
       numberBounds(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
     expandedChildren(db, request, basisFor),
+    chosenChildren(db, request, basisFor, chosenTerms),
   ])
 
   const counts = new Map<string, TermCount[]>()
@@ -195,6 +196,11 @@ export async function facetPanel(
   }
   const bounds = new Map(
     [...sharedBounds, ...perFacetBounds.flat()].map((row) => [row.keyId, row]),
+  )
+  // Counted at their own level rather than rolled up into a root, which is the
+  // only way a chosen four-digit code can say how many rows it matches.
+  const ownLevel = new Map(
+    [...children, ...picked].map((row) => [`${row.keyId}/${row.code}`, row]),
   )
 
   // A value that has been chosen but matches nothing any more still has to be
@@ -259,12 +265,16 @@ export async function facetPanel(
     }
 
     // The chosen values come first so that opening a facet never pushes one of
-    // them below the cut, where it could not be taken off again.
-    const picked = chosen.map((termCode) => valueOf(termCode, byCode.get(termCode), true))
+    // them below the cut, where it could not be taken off again. A chosen value
+    // that is not a root is not among the rolled-up counts, so it is looked for
+    // at its own level before it is given up on.
+    const chosenRow = (termCode: string): TermCount | undefined =>
+      byCode.get(termCode) ?? ownLevel.get(`${one.field.keyId}/${termCode}`)
+    const taken = chosen.map((termCode) => valueOf(termCode, chosenRow(termCode), true))
     const rest = found
       .filter((row) => !chosen.includes(row.code))
       .map((row) => valueOf(row.code, row, false))
-    const all = [...picked, ...rest]
+    const all = [...taken, ...rest]
 
     const shown = expanded
       ? all
@@ -273,7 +283,7 @@ export async function facetPanel(
           .map((value) => (matches(find, value)
             ? value
             : { ...value, children: value.children.filter((child) => matches(find, child)) }))
-      : [...picked, ...rest.slice(0, Math.max(0, PANEL_VALUES - picked.length))]
+      : [...taken, ...rest.slice(0, Math.max(0, PANEL_VALUES - taken.length))]
 
     return {
       ...empty,
@@ -298,6 +308,32 @@ export async function facetPanel(
     clearHref: anySelected ? address(cleared, { facet: null, find: "" }) : null,
     target,
   }
+}
+
+/**
+ * The chosen values of the hierarchical facets, counted at their own level.
+ *
+ * `countTerms` groups by the root a value hangs under, so a reader who picked a
+ * four-digit ICD10 code is not among its own rows — and a chosen value with no
+ * count reads as "this matched nothing", which is a different state the panel
+ * also has to be able to say. The expanded facet already has these counted.
+ */
+async function chosenChildren(
+  db: Executor,
+  request: FacetPanelRequest,
+  basisFor: (code: string) => QueryNode | null,
+  chosenTerms: (code: string) => string[],
+): Promise<ChildCount[]> {
+  const wanted = request.definitions.filter((one) =>
+    one.hierarchical
+    && one.field.code !== request.expanded
+    && chosenTerms(one.field.code).length > 0)
+  const counted = await Promise.all(wanted.map((one) => countTermChildren(
+    db,
+    { target: request.target, ast: basisFor(one.field.code), fields: request.fields },
+    one.field.keyId,
+  )))
+  return counted.flat()
 }
 
 /** The values beneath the roots of the expanded facet, when it has any. */

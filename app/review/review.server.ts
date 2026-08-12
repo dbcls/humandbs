@@ -28,17 +28,17 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { anchorOf, isAnchorPath, subjectOf, type AnchorSubject } from "./anchors"
+import { isAnchorPath, subjectOf, type AnchorSubject } from "./anchors"
 import { byAttention, checkComment, type CommentProblem, type ThreadView } from "./comments"
 import {
   readAcknowledgements,
   readThreads,
   replyToThread,
   setThreadResolved,
-  startThread,
+  postComment,
   type AcknowledgementView,
 } from "./comments.server"
-import { anchorExists, readShare } from "./queries.server"
+import { readShare } from "./queries.server"
 import { isShareExpired, isShareOpen } from "./share"
 import { previewPath } from "./urls"
 
@@ -233,21 +233,21 @@ export async function reviewAction(
   if (!isAnchorPath(path)) badRequest()
   const subject = readSubject(form)
   if (subject === null) badRequest()
-  // An administrator may comment on a dataset of this research whether or not
-  // the version lists it: the editing screens show all of them.
-  const about = {
-    draftId,
-    content: draft.content,
-    datasetIds: (await researchDatasets(db, researchId)).map((row) => row.id),
-  }
-  if (!(await anchorExists(db, about, subject, path))) badRequest()
 
-  const outcome = await startThread(db, {
-    draftId,
-    anchor: anchorOf(subject, path),
+  const outcome = await postComment(db, {
+    about: {
+      draftId,
+      content: draft.content,
+      // An administrator may comment on a dataset of this research whether or
+      // not the version lists it: the editing screens show all of them.
+      datasetIds: (await researchDatasets(db, researchId)).map((row) => row.id),
+    },
+    subject,
+    path,
     author,
-    body: body.trim(),
+    body,
   })
+  if (outcome.status === "no-such-place") badRequest()
   if (outcome.status === "gone") notFound()
   return done()
 }

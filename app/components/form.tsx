@@ -271,6 +271,32 @@ export function BilingualField({ label, name, ja, en, hint, error, disabled }: F
   )
 }
 
+/**
+ * The checkbox at the head of a column of checkboxes.
+ *
+ * It works on the form's own elements rather than on state, because the boxes
+ * it turns on and off are uncontrolled: the form posts what is ticked and
+ * nothing on the page reads the ticks before it is submitted. Holding them in
+ * state would re-render the whole table on every tick to no end.
+ */
+export function SelectAll({ name, label }: { name: string, label: string }) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={label}
+      onChange={(event) => {
+        const form = event.currentTarget.form
+        if (form === null) return
+        const checked = event.currentTarget.checked
+        const boxes = form.querySelectorAll<HTMLInputElement>(
+          `input[type="checkbox"][name="${name}"]`,
+        )
+        for (const box of boxes) box.checked = checked
+      }}
+    />
+  )
+}
+
 export function Submit({ children, intent, variant = "secondary", disabled }: {
   children: ReactNode
   intent?: string

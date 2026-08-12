@@ -24,6 +24,7 @@ import { takeAll } from "~/admin/merge"
 import {
   datasetContentInput,
   emptyValueInput,
+  UneditableValueKind,
   type DatasetContentInput,
   type ExperimentInput,
   type ValueInput,
@@ -521,10 +522,22 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
  * kinds the catalog uses are editable; a key of any other type arrives with the
  * layer that gives it a control, because **a value nobody can see is a value
  * nobody can keep**.
+ *
+ * The last case cannot be reached — only keys `isEditable` lets through get
+ * here — and it throws rather than falling back so that a fourth kind gaining a
+ * control is a change in one place rather than a slot quietly rendered as prose.
  */
 function editableKind(key: EditableKey): ValueKind {
-  if (key.valueType === "vocabulary") return "vocabulary"
-  return key.valueType === "number" ? "number" : "text"
+  switch (key.valueType) {
+    case "text":
+      return "text"
+    case "vocabulary":
+      return "vocabulary"
+    case "number":
+      return "number"
+    default:
+      throw new UneditableValueKind(key.id, key.valueType)
+  }
 }
 
 function isEditable(key: EditableKey): boolean {

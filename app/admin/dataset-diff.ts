@@ -29,6 +29,11 @@ import type {
 } from "./dataset-form"
 import { readAt, writeAt } from "./paths"
 
+/**
+ * **Every kind a form can hold is answered here.** A kind with no case would
+ * read as "always different", and a slot that is always different is one the
+ * screen marks as changed for ever and the publish rewrites on every fix.
+ */
 function sameValueBody(a: ValueBody, b: ValueBody): boolean {
   if (a.kind !== b.kind) return false
   if (a.kind === "text" && b.kind === "text") return sameTextPair(a.text, b.text)
@@ -37,6 +42,12 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
     // Chosen terms are invisible while the state says there is no value, the
     // same way half-typed text is.
     return a.state !== "value" || sameStrings(a.termIds, b.termIds)
+  }
+  if (a.kind === "number" && b.kind === "number") {
+    if (a.state !== b.state) return false
+    // What was typed and the unit it was typed in, for the same reason: neither
+    // is on screen while the state says there is no value.
+    return a.state !== "value" || (a.value === b.value && a.unit === b.unit)
   }
   return false
 }

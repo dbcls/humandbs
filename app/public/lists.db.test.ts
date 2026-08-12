@@ -382,6 +382,20 @@ describe("refining a listing", () => {
       .toEqual([["C34", 1], ["C61", 1]])
   })
 
+  it("**counts a chosen narrower code at its own level**, rather than saying it matches nothing", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request("/dataset?q=disease-icd10%3AC349"))
+
+    // The rolled-up counts are taken at the root, so a four-digit code is not
+    // among them. Reading zero off its own row would say the opposite of the
+    // result beside it.
+    expect(view.rows.map((row) => row.label)).toEqual(["JGAD000001"])
+    const chosen = facetOf(view, "disease-icd10").values.find((value) => value.selected)
+    expect(chosen?.code).toBe("C349")
+    expect(chosen?.count).toBe(1)
+  })
+
   it("shows what a chosen value is as a chip, and where to take it off", async () => {
     await withDiseases()
 

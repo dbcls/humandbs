@@ -4,7 +4,7 @@
  * **The bytes never come through here.** An upload asks for a signature, puts
  * straight to the store and says nothing afterwards: the bucket a file sits in
  * is the whole of its state, so there is nothing to write down when one arrives
- * (docs/data-model.md の「ファイル」).
+ * (docs/files.md).
  *
  * Switching and deleting are ordinary form posts, and both take several files
  * at once — a switch is a copy of the actual bytes and is therefore queued, so
@@ -235,10 +235,55 @@ const uploadRequest = z.discriminatedUnion("kind", [
   }),
 ])
 
+type UploadPayload = z.infer<typeof uploadRequest>
+
 export type UploadAnswer
   = | { kind: "single", url: string }
     | { kind: "begin", uploadId: string, urls: string[] }
     | { kind: "done" }
+
+/** What an upload asked for, or a 400 for a body no signature can be made from. */
+async function uploadBody(request: Request): Promise<UploadPayload> {
+  const payload = uploadRequest.safeParse(await request.json())
+  if (!payload.success) badRequest()
+  if (!isUploadableName(payload.data.name)) badRequest()
+  return payload.data
+}
+
+/**
+ * The four steps an upload can ask for, against an object already decided on.
+ *
+ * **Both boxes sign the same way** and differ only in where the object lands
+ * and in whether its arrival is written down, so what a signature covers — the
+ * type, the size, the part count — is settled here rather than once per box.
+ * `arrived` runs at the two moments the portal last takes part in an upload.
+ */
+async function signUpload(
+  body: UploadPayload,
+  ref: ObjectRef,
+  arrived?: () => Promise<void>,
+): Promise<UploadAnswer> {
+  if (body.kind === "single") {
+    if (body.size > MULTIPART_THRESHOLD) badRequest()
+    const url = await presignPut(ref, { contentType: body.contentType, size: body.size })
+    await arrived?.()
+    return { kind: "single", url }
+  }
+  if (body.kind === "begin") {
+    const begun = await beginMultipart(ref, {
+      contentType: body.contentType,
+      partCount: body.partCount,
+    })
+    return { kind: "begin", uploadId: begun.uploadId, urls: begun.urls }
+  }
+  if (body.kind === "complete") {
+    await completeMultipart(ref, body.uploadId, body.parts)
+    await arrived?.()
+    return { kind: "done" }
+  }
+  await abortMultipart(ref, body.uploadId)
+  return { kind: "done" }
+}
 
 /**
  * Hand out the signatures for one upload. **Everything lands in the private
@@ -251,37 +296,8 @@ export async function fileUploadAction(
 ): Promise<UploadAnswer> {
   await requireCapability(request, "manage-files")
   const id = identity(researchId)
-
-  const payload = uploadRequest.safeParse(await request.json())
-  if (!payload.success) badRequest()
-  const body = payload.data
-  if (!isUploadableName(body.name)) badRequest()
-
-  const ref: ObjectRef = {
-    bucket: PRIVATE_BUCKET,
-    key: privatePrefix(id) + body.name,
-  }
-
-  if (body.kind === "single") {
-    if (body.size > MULTIPART_THRESHOLD) badRequest()
-    return {
-      kind: "single",
-      url: await presignPut(ref, { contentType: body.contentType, size: body.size }),
-    }
-  }
-  if (body.kind === "begin") {
-    const begun = await beginMultipart(ref, {
-      contentType: body.contentType,
-      partCount: body.partCount,
-    })
-    return { kind: "begin", uploadId: begun.uploadId, urls: begun.urls }
-  }
-  if (body.kind === "complete") {
-    await completeMultipart(ref, body.uploadId, body.parts)
-    return { kind: "done" }
-  }
-  await abortMultipart(ref, body.uploadId)
-  return { kind: "done" }
+  const body = await uploadBody(request)
+  return signUpload(body, { bucket: PRIVATE_BUCKET, key: privatePrefix(id) + body.name })
 }
 
 export interface CommonFilesView {
@@ -360,40 +376,15 @@ export async function commonFilesAction(
  */
 export async function commonUploadAction(request: Request): Promise<UploadAnswer> {
   const actor = await requireCapability(request, "manage-site-content")
-
-  const payload = uploadRequest.safeParse(await request.json())
-  if (!payload.success) badRequest()
-  const body = payload.data
-  if (!isUploadableName(body.name)) badRequest()
-
+  const body = await uploadBody(request)
   const ref: ObjectRef = { bucket: PUBLIC_BUCKET, key: commonPrefix() + body.name }
-  const record = async () => {
+
+  return signUpload(body, ref, async () => {
     await recordEvent(getDb(), {
       actor: actorOf(actor),
       action: "publish-file",
       subjectType: "file",
       subjectId: ref.key,
     })
-  }
-
-  if (body.kind === "single") {
-    if (body.size > MULTIPART_THRESHOLD) badRequest()
-    const url = await presignPut(ref, { contentType: body.contentType, size: body.size })
-    await record()
-    return { kind: "single", url }
-  }
-  if (body.kind === "begin") {
-    const begun = await beginMultipart(ref, {
-      contentType: body.contentType,
-      partCount: body.partCount,
-    })
-    return { kind: "begin", uploadId: begun.uploadId, urls: begun.urls }
-  }
-  if (body.kind === "complete") {
-    await completeMultipart(ref, body.uploadId, body.parts)
-    await record()
-    return { kind: "done" }
-  }
-  await abortMultipart(ref, body.uploadId)
-  return { kind: "done" }
+  })
 }
