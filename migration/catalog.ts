@@ -14,7 +14,14 @@
  */
 
 import catalogDefaults from "./content-keys.json"
-import { NUMBER_FACETS, RETYPED_CODES, slugify, takesMany, VOCABULARY_FACETS } from "./facets"
+import {
+  NUMBER_FACETS,
+  RETYPED_CODES,
+  SHOWN_NEW_KEYS,
+  slugify,
+  takesMany,
+  VOCABULARY_FACETS,
+} from "./facets"
 
 export { FACET_CATEGORIES, slugify } from "./facets"
 
@@ -152,8 +159,8 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
   })
 
   // The keys v1 had no place for. They stand beside the free text they were
-  // read out of rather than replacing it, and they are not shown: they exist to
-  // be filtered by.
+  // read out of rather than replacing it, and they are not shown — they exist
+  // to be filtered by. The disease is the exception (`SHOWN_NEW_KEYS`).
   const newKeys = [
     ...VOCABULARY_FACETS.filter((facet) => !RETYPED_CODES.has(facet.code)).map((facet) => ({
       ...freeText({
@@ -162,7 +169,7 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
         labelJa: facet.labelJa,
         labelEn: facet.labelEn,
         position: 0,
-        showOnPublicPage: false,
+        showOnPublicPage: SHOWN_NEW_KEYS.has(facet.code),
       }),
       valueType: "vocabulary" as const,
       vocabularySetCode: facet.setCode,

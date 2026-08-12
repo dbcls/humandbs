@@ -461,11 +461,11 @@ describe("the research screen's forms", () => {
 describe("the dataset screens of a draft", () => {
   async function seedCatalog(): Promise<{ textKey: string, vocabKey: string, terms: string[] }> {
     const set = only(await db.insert(s.vocabularySet)
-      .values({ code: "access", labelJa: "アクセス制限", labelEn: "Access", source: "portal" })
+      .values({ code: "access", labelJa: "アクセス制限", labelEn: "Access" })
       .returning({ id: s.vocabularySet.id }))
     const terms = await db.insert(s.vocabularyTerm).values([
-      { setId: set.id, code: "open", labelEn: "Unrestricted", source: "portal" },
-      { setId: set.id, code: "closed", labelEn: "Controlled", source: "portal" },
+      { setId: set.id, code: "open", labelEn: "Unrestricted" },
+      { setId: set.id, code: "closed", labelEn: "Controlled" },
     ]).returning({ id: s.vocabularyTerm.id })
     const keys = await db.insert(s.contentKey).values([
       {

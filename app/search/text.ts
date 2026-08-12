@@ -117,6 +117,32 @@ export function searchTextOf(projection: unknown, extra: string[] = []): SearchT
   return { ja: ja.join(" "), en: en.join(" ") }
 }
 
+/**
+ * The vocabulary values a row carries, as text.
+ *
+ * The projection holds the identity of a term and not its label — resolving
+ * labels is the renderer's job, not the projection's (docs/data-model.md の
+ * 「公開表現」) — so the walk above cannot see the words a reader will see. This
+ * is where they are put back, for the slots that survived the projection and
+ * therefore for the keys the catalog shows.
+ *
+ * **The code goes into both languages.** It is what an ICD10 term is looked up
+ * by, and it is not a word in either language.
+ */
+export function termsSearchText(
+  terms: readonly { code: string, labelJa: string | null, labelEn: string }[],
+): SearchText {
+  const ja: string[] = []
+  const en: string[] = []
+  for (const term of terms) {
+    ja.push(term.code)
+    en.push(term.code)
+    if (term.labelJa !== null && term.labelJa !== "") ja.push(term.labelJa)
+    if (term.labelEn !== "") en.push(term.labelEn)
+  }
+  return { ja: ja.join(" "), en: en.join(" ") }
+}
+
 /** Both sides concatenated. A research row carries its datasets' text this way. */
 export function concatSearchText(parts: readonly SearchText[]): SearchText {
   return {

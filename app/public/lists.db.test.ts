@@ -277,7 +277,6 @@ async function withDiseases(): Promise<void> {
       code: "icd10",
       labelJa: "ICD10",
       labelEn: "ICD10",
-      source: "external",
       hierarchical: true,
     })
     .returning({ id: s.vocabularySet.id }))
@@ -285,7 +284,7 @@ async function withDiseases(): Promise<void> {
     .values({ code: "experiment", labelJa: "実験", labelEn: "Experiment" })
     .returning({ id: s.facetCategory.id }))
   const term = async (code: string, parentId?: string) => only(await db.insert(s.vocabularyTerm)
-    .values({ setId, code, labelEn: code, source: "external", parentId })
+    .values({ setId, code, labelEn: code, parentId })
     .returning({ id: s.vocabularyTerm.id })).id
   const lung = await term("C34")
   const lungUnspecified = await term("C349", lung)
@@ -322,6 +321,14 @@ async function withDiseases(): Promise<void> {
   await filed("hum0001", "JGAD000001", lungUnspecified)
   await filed("hum0002", "JGAD000002", prostate)
   await rebuildSearchDocs(db)
+  // The dictionary holds one more code than the vocabulary does, which is what
+  // lets "no data" be told apart from "no such code".
+  await db.insert(s.icd10Reference).values([
+    { code: "C34", titleEn: "Bronchus and lung", titleJa: "気管支及び肺" },
+    { code: "C349", titleEn: "Bronchus or lung", titleJa: "気管支又は肺" },
+    { code: "C61", titleEn: "Prostate", titleJa: "前立腺" },
+    { code: "A00", titleEn: "Cholera", titleJa: "コレラ" },
+  ])
 }
 
 function facetOf(view: { facets: FacetPanelView | null }, code: string): FacetView {
@@ -412,7 +419,7 @@ describe("a facet with more values than the panel shows", () => {
   /** A flat vocabulary with one more term than the panel has room for. */
   async function withManyMethods(count: number): Promise<void> {
     const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
       .returning({ id: s.vocabularySet.id }))
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({
@@ -429,7 +436,7 @@ describe("a facet with more values than the panel shows", () => {
     for (let at = 0; at < count; at += 1) {
       const code = `method-${String(at).padStart(2, "0")}`
       const { id: termId } = only(await db.insert(s.vocabularyTerm)
-        .values({ setId, code, labelEn: code, source: "portal" })
+        .values({ setId, code, labelEn: code })
         .returning({ id: s.vocabularyTerm.id }))
       const humLabel = `hum${String(at + 1).padStart(4, "0")}`
       const researchId = await createResearch(humLabel)
@@ -472,5 +479,102 @@ describe("a facet with more values than the panel shows", () => {
     const values = facetOf(view, "assay").values
     expect(values.map((value) => [value.code, value.count, value.selected]))
       .toEqual([["method-00", 0, true]])
+  })
+})
+
+describe("a disease named by its code", () => {
+  const typed = async (code: string) =>
+    canonicalRedirect(
+      new URL(`http://localhost/research?code=${encodeURIComponent(code)}`),
+      "research",
+      "ja",
+    )
+
+  it("becomes the condition choosing the value would have made", async () => {
+    await withDiseases()
+
+    const answer = await typed("c34.9")
+
+    // The same condition either way, so the rollup and the counting do not
+    // depend on how the reader got there.
+    expect(answer?.headers.get("location")).toBe("/research?q=disease-icd10%3AC349")
+  })
+
+  it("asks for a value that is already in force rather than taking it off", async () => {
+    await withDiseases()
+
+    const answer = await canonicalRedirect(
+      new URL("http://localhost/research?q=disease-icd10%3AC349&code=C349"),
+      "research",
+      "ja",
+    )
+
+    expect(answer?.headers.get("location")).toBe("/research?q=disease-icd10%3AC349")
+  })
+
+  it("is answered on the page when the classification holds it but nothing published does", async () => {
+    await withDiseases()
+
+    expect(await typed("A00")).toBeNull()
+    const view = await researchListPage(request("/research?code=A00"))
+    expect(facetOf(view, "disease-icd10").codeEntry)
+      .toEqual({ value: "A00", problem: "no-data" })
+  })
+
+  it("is answered on the page when the classification does not hold it at all", async () => {
+    await withDiseases()
+
+    expect(await typed("Z99")).toBeNull()
+    const view = await researchListPage(request("/research?code=Z99"))
+    expect(facetOf(view, "disease-icd10").codeEntry)
+      .toEqual({ value: "Z99", problem: "unknown-code" })
+  })
+
+  it("says the same of something that is not shaped like a code", async () => {
+    await withDiseases()
+
+    const view = await researchListPage(request("/research?code=肺がん"))
+    expect(facetOf(view, "disease-icd10").codeEntry?.problem).toBe("unknown-code")
+  })
+
+  it("offers the box on the disease facet and on no other", async () => {
+    await withDiseases()
+    const { id: setId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: termId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "wgs", labelEn: "WGS" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({
+        code: "assay",
+        scope: "experiment",
+        valueType: "vocabulary",
+        labelJa: "実験方法",
+        labelEn: "Assay",
+        vocabularySetId: setId,
+      })
+      .returning({ id: s.contentKey.id }))
+    for (const row of await db.select().from(s.datasetContent)) {
+      const held = row.content
+      await db.update(s.datasetContent).set({
+        content: {
+          ...held,
+          experiments: held.experiments.map((experiment) => ({
+            ...experiment,
+            values: [
+              ...experiment.values,
+              { keyId, value: { kind: "vocabulary" as const, termIds: filled([termId]) } },
+            ],
+          })),
+        },
+      }).where(eq(s.datasetContent.datasetId, row.datasetId))
+    }
+    await rebuildSearchDocs(db)
+
+    const view = await researchListPage(request("/research"))
+
+    expect(facetOf(view, "disease-icd10").codeEntry).toEqual({ value: "", problem: null })
+    expect(facetOf(view, "assay").codeEntry).toBeNull()
   })
 })

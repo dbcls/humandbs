@@ -39,14 +39,14 @@ async function labels(input: string, target: SearchTarget = "dataset"): Promise<
 
 async function set(code: string, hierarchical: boolean): Promise<string> {
   const { id } = only(await db.insert(s.vocabularySet)
-    .values({ code, labelJa: code, labelEn: code, source: "portal", hierarchical })
+    .values({ code, labelJa: code, labelEn: code, hierarchical })
     .returning({ id: s.vocabularySet.id }))
   return id
 }
 
 async function term(setId: string, code: string, parentId?: string): Promise<string> {
   const { id } = only(await db.insert(s.vocabularyTerm)
-    .values({ setId, code, labelEn: code, labelJa: null, parentId, source: "portal" })
+    .values({ setId, code, labelEn: code, labelJa: null, parentId })
     .returning({ id: s.vocabularyTerm.id }))
   return id
 }

@@ -407,18 +407,16 @@ describe("search_facet_term", () => {
       code: "icd10",
       labelJa: "ICD10",
       labelEn: "ICD10",
-      source: "external",
       hierarchical: true,
     }).returning({ id: s.vocabularySet.id }))
     const parent = only(await db.insert(s.vocabularyTerm).values({
-      setId: set.id, code: "E11", labelEn: "Type 2 diabetes mellitus", source: "external",
+      setId: set.id, code: "E11", labelEn: "Type 2 diabetes mellitus",
     }).returning({ id: s.vocabularyTerm.id }))
     const child = only(await db.insert(s.vocabularyTerm).values({
       setId: set.id,
       code: "E11.9",
       labelEn: "Type 2 diabetes mellitus without complications",
       parentId: parent.id,
-      source: "external",
     }).returning({ id: s.vocabularyTerm.id }))
     const key = only(await db.insert(s.contentKey).values({
       code: "disease-icd10",
@@ -458,10 +456,10 @@ describe("search_facet_term", () => {
 
   it("refuses the same term twice under one key on one document", async () => {
     const set = only(await db.insert(s.vocabularySet).values({
-      code: "tissue", labelJa: "組織", labelEn: "Tissue", source: "portal",
+      code: "tissue", labelJa: "組織", labelEn: "Tissue",
     }).returning({ id: s.vocabularySet.id }))
     const term = only(await db.insert(s.vocabularyTerm).values({
-      setId: set.id, code: "blood", labelEn: "Blood", source: "portal",
+      setId: set.id, code: "blood", labelEn: "Blood",
     }).returning({ id: s.vocabularyTerm.id }))
     const key = only(await db.insert(s.contentKey).values({
       code: "tissues", scope: "experiment", valueType: "vocabulary",

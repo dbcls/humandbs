@@ -25,6 +25,8 @@ import {
 } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { ICD10_SET_CODE } from "~/icd10/codes"
+import { resolveTypedCode } from "~/icd10/entry.server"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import {
   hasFreeText,
@@ -44,7 +46,7 @@ import {
   type SearchTarget,
   type SortKey,
 } from "~/search/query.server"
-import { withRange } from "~/search/selection"
+import { withRange, withTerm } from "~/search/selection"
 
 import { facetPanel, type FacetPanelView } from "./facets.server"
 import { loadCatalog } from "./queries.server"
@@ -118,11 +120,16 @@ function readPage(value: string | null): number {
 /**
  * A submission is answered with the address it should have had.
  *
- * **Both forms on the page arrive here**: the keyword box, which carries what
- * was typed under `k`, and the range inputs of a numeric facet, which carry the
- * key and the two ends. Neither is a way of asking a question the address
- * cannot hold — they are turned into the query straight away and redirected to,
- * so one search has one address and the result can be shared.
+ * **All three forms on the page arrive here**: the keyword box, which carries
+ * what was typed under `k`; the range inputs of a numeric facet, which carry
+ * the key and the two ends; and the disease facet's code box. None of them is a
+ * way of asking a question the address cannot hold — they are turned into the
+ * query straight away and redirected to, so one search has one address and the
+ * result can be shared.
+ *
+ * **A code that names nothing is the one submission with no address of its
+ * own.** It is left where it is so that the panel can say which of the two
+ * things went wrong (`facets.server.ts`).
  */
 export async function canonicalRedirect(
   url: URL,
@@ -131,18 +138,31 @@ export async function canonicalRedirect(
 ): Promise<Response | null> {
   const typed = url.searchParams.get("k")
   const rangeKey = url.searchParams.get("rangeKey")
-  if (typed === null && rangeKey === null) return null
+  const code = url.searchParams.get("code")
+  if (typed === null && rangeKey === null && code === null) return null
 
-  const fields = queryFields((await loadFacetDefinitions(getDb())).map((one) => one.field))
+  const db = getDb()
+  const definitions = await loadFacetDefinitions(db)
+  const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(url.searchParams.get("q") ?? "", fields)
   const held = parsed.ok ? parsed.ast : null
 
-  const ast = typed !== null
-    ? joinKeyword(typed, splitKeyword(held).conditions)
-    : withRange(held, fields, rangeKey ?? "", {
-        from: bound(url.searchParams.get("rangeFrom")),
-        to: bound(url.searchParams.get("rangeTo")),
-      })
+  let ast: QueryNode | null
+  if (typed !== null) {
+    ast = joinKeyword(typed, splitKeyword(held).conditions)
+  } else if (rangeKey !== null) {
+    ast = withRange(held, fields, rangeKey, {
+      from: bound(url.searchParams.get("rangeFrom")),
+      to: bound(url.searchParams.get("rangeTo")),
+    })
+  } else {
+    const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
+    const setId = icd10?.field.setId ?? null
+    if (icd10 === undefined || setId === null) return null
+    const resolved = await resolveTypedCode(db, setId, code ?? "")
+    if (resolved.status !== "found") return null
+    ast = withTerm(held, fields, icd10.field.code, resolved.code)
+  }
 
   const sort = url.searchParams.get("sort")
   return redirect(href(locale, listPath(target) + searchQuery({
@@ -276,6 +296,7 @@ async function listShell(
       sort: isSortKey(requestedSort) ? requestedSort : null,
       expanded,
       find,
+      code: request.url.searchParams.get("code") ?? "",
     }),
   ])
 

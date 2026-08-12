@@ -42,6 +42,7 @@ import {
   draftUndoPath,
 } from "~/admin/urls"
 import type { DraftSnapshot } from "~/content/types"
+import { termsPath } from "~/admin/urls"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -180,7 +181,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   const subject = { kind: "dataset" as const, datasetId: view.datasetId }
-  const termLabelOf = new Map(view.catalog.terms.map((term) => [term.id, catalogLabel(term, locale)]))
+  const termLabelOf = new Map(view.terms.map((term) => [term.id, catalogLabel(term, locale)]))
   const review: FieldReviewData = {
     context: {
       locale,
@@ -296,6 +297,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
         <Values
           locale={locale}
           catalog={view.catalog}
+          terms={view.terms}
           scope="dataset"
           path="values"
           values={input.values}
@@ -344,6 +346,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             <Experiment
               locale={locale}
               catalog={view.catalog}
+              terms={view.terms}
               experiment={experiment}
               marksFor={marksFor}
               onChange={(next) => {
@@ -369,9 +372,10 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   )
 }
 
-function Experiment({ locale, catalog, experiment, marksFor, onChange }: {
+function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: {
   locale: Locale
   catalog: EditableCatalog
+  terms: EditableTerm[]
   experiment: ExperimentInput
   marksFor: (path: string) => Marks
   onChange: (next: ExperimentInput) => void
@@ -391,6 +395,7 @@ function Experiment({ locale, catalog, experiment, marksFor, onChange }: {
       <Values
         locale={locale}
         catalog={catalog}
+        terms={terms}
         scope="experiment"
         path={`${path}.values`}
         values={experiment.values}
@@ -409,9 +414,11 @@ function Experiment({ locale, catalog, experiment, marksFor, onChange }: {
  * which is what keeps the set of keys a decision somebody made rather than a
  * side effect of typing — the way the previous portal's catalog drifted.
  */
-function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
+function Values({ locale, catalog, terms, scope, path, values, marksFor, onChange }: {
   locale: Locale
   catalog: EditableCatalog
+  /** The terms the document names, for the chosen values to be readable. */
+  terms: EditableTerm[]
   scope: "dataset" | "experiment"
   path: string
   values: ValueInput[]
@@ -457,7 +464,8 @@ function Values({ locale, catalog, scope, path, values, marksFor, onChange }: {
                 label={catalogLabel(key, locale)}
                 locale={locale}
                 marks={marksFor(at)}
-                terms={catalog.terms.filter((term) => term.setId === key.vocabularySetId)}
+                setId={key.vocabularySetId}
+                chosen={terms}
                 multiple={key.multiple}
                 state={body.state}
                 termIds={body.termIds}
@@ -632,12 +640,29 @@ function NumberField({ label, locale, marks, units, state, value, unit, onChange
  * vocabulary holds three terms or twelve thousand. One shape means the screen
  * does not change under the author when a vocabulary grows, and a list of every
  * ICD10 code is not a control anybody can use.
+ *
+ * **The candidates come from the server.** Sending a whole vocabulary so that
+ * the box can filter it here would make the weight of the page follow the size
+ * of the catalog; what is chosen already came with the document, so the choices
+ * stay readable whether or not the box is ever used.
  */
-function VocabularyField({ label, locale, marks, terms, multiple, state, termIds, onChange }: {
+function VocabularyField({
+  label,
+  locale,
+  marks,
+  setId,
+  chosen: known,
+  multiple,
+  state,
+  termIds,
+  onChange,
+}: {
   label: string
   locale: Locale
   marks: Marks
-  terms: EditableTerm[]
+  setId: string | null
+  /** The terms the document names, which is what the chosen list is drawn from. */
+  chosen: EditableTerm[]
   multiple: boolean
   state: SlotState
   termIds: string[]
@@ -645,23 +670,26 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const [find, setFind] = useState("")
+  const search = useFetcher<EditableTerm[]>()
   const disabled = state !== "value"
-  const byId = new Map(terms.map((term) => [term.id, term]))
+  const byId = new Map(known.map((term) => [term.id, term]))
   const chosen = termIds.flatMap((id) => {
     const term = byId.get(id)
     return term === undefined ? [] : [term]
   })
 
-  const needle = find.trim().toLowerCase()
-  const candidates = needle === ""
-    ? []
-    : terms
-        .filter((term) => !termIds.includes(term.id))
-        .filter((term) =>
-          term.code.toLowerCase().includes(needle)
-          || term.labelEn.toLowerCase().includes(needle)
-          || (term.labelJa ?? "").toLowerCase().includes(needle))
-        .slice(0, PICKER_RESULTS)
+  const needle = find.trim()
+  const candidates = (search.data ?? [])
+    .filter((term) => term.setId === setId && !termIds.includes(term.id))
+    .slice(0, PICKER_RESULTS)
+
+  const look = (value: string) => {
+    setFind(value)
+    if (setId === null || value.trim() === "") return
+    void search.load(
+      `${termsPath()}?${new URLSearchParams({ set: setId, q: value.trim() }).toString()}`,
+    )
+  }
 
   const add = (id: string) => {
     onChange(state, multiple ? [...termIds, id] : [id])
@@ -703,9 +731,12 @@ function VocabularyField({ label, locale, marks, terms, multiple, state, termIds
           disabled={disabled}
           aria-label={t.findTerm}
           placeholder={t.findTerm}
-          onChange={(event) => { setFind(event.target.value) }}
+          onChange={(event) => { look(event.target.value) }}
           className="rounded border border-line bg-surface-input px-2 py-1 text-sm"
         />
+        {needle !== "" && candidates.length === 0 && search.state === "idle" && (
+          <p className="text-ink-muted text-sm">{t.noCandidate}</p>
+        )}
         {candidates.length > 0 && (
           <ul className="flex flex-col border border-line text-sm">
             {candidates.map((term) => (

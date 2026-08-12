@@ -127,13 +127,13 @@ describe("rebuildSearchDocs", () => {
   it("carries the ancestors of a term so a broad code matches a narrow one", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", source: "external", hierarchical: true })
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
       .returning({ id: s.vocabularySet.id }))
     const { id: parentId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId, code: "E11", labelEn: "E11", source: "external" })
+      .values({ setId, code: "E11", labelEn: "E11" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: childId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId, code: "E11.9", labelEn: "E11.9", parentId, source: "external" })
+      .values({ setId, code: "E11.9", labelEn: "E11.9", parentId })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "disease", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
@@ -168,16 +168,67 @@ describe("rebuildSearchDocs", () => {
     }
   })
 
+  it("indexes the code and both labels of a value the catalog shows", async () => {
+    const researchId = await createResearch("hum0001")
+    const { id: setId } = only(await db.insert(s.vocabularySet)
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
+      .returning({ id: s.vocabularySet.id }))
+    const { id: termId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "C349", labelEn: "Bronchus or lung", labelJa: "気管支又は肺" })
+      .returning({ id: s.vocabularyTerm.id }))
+    const shown = only(await db.insert(s.contentKey)
+      .values({ code: "disease-icd10", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId, showOnPublicPage: true })
+      .returning({ id: s.contentKey.id }))
+    const hidden = only(await db.insert(s.contentKey)
+      .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId })
+      .returning({ id: s.contentKey.id }))
+
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await db.update(s.datasetContent).set({
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("WES"),
+          values: [
+            { keyId: shown.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
+            { keyId: hidden.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
+          ],
+        }],
+      },
+    }).where(eq(s.datasetContent.datasetId, datasetId))
+    await publish(researchId, 1, [datasetId])
+
+    await rebuildSearchDocs(db)
+
+    // The projection carries the identity of a term and the page resolves the
+    // label, so the words a reader sees have to be put back here — otherwise a
+    // value shown on the page cannot be found from the search box.
+    const [row] = await db
+      .select({ ja: s.searchDoc.textJa, en: s.searchDoc.textEn })
+      .from(s.searchDoc)
+      .where(eq(s.searchDoc.targetType, "dataset"))
+    expect(row?.en).toContain("Bronchus or lung")
+    expect(row?.ja).toContain("気管支又は肺")
+    // The code belongs to both, because it is a word of neither language and is
+    // what an ICD10 value is looked up by.
+    expect(row?.ja).toContain("C349")
+    expect(row?.en).toContain("C349")
+    // One shown key and one hidden one carry the same value: it is indexed
+    // once, by way of the projection rather than of the content.
+    expect(row?.en.split("Bronchus or lung").length).toBe(2)
+  })
+
   it("carries the facet values of a dataset into the row of the research it belongs to", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
       .returning({ id: s.vocabularySet.id }))
     const { id: wgs } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId, code: "wgs", labelEn: "WGS", source: "portal" })
+      .values({ setId, code: "wgs", labelEn: "WGS" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: rna } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId, code: "rna-seq", labelEn: "RNA-seq", source: "portal" })
+      .values({ setId, code: "rna-seq", labelEn: "RNA-seq" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId, multiple: true })
@@ -238,10 +289,10 @@ describe("rebuildSearchDocs", () => {
   it("leaves a value the catalog hides out of the text while still counting it as a facet", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "tissue", labelJa: "組織", labelEn: "Tissue", source: "portal" })
+      .values({ code: "tissue", labelJa: "組織", labelEn: "Tissue" })
       .returning({ id: s.vocabularySet.id }))
     const { id: termId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId, code: "liver", labelEn: "Liver", source: "portal" })
+      .values({ setId, code: "liver", labelEn: "Liver" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: hiddenTerms } = only(await db.insert(s.contentKey)
       .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId, showOnPublicPage: false })
@@ -301,19 +352,19 @@ describe("rebuildSearchDocs", () => {
     // A vocabulary set with a rollup (ICD10-shaped) and a flat one, plus a
     // number key, so both facet tables and the ancestor rollup are exercised.
     const { id: icd10SetId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", source: "external", hierarchical: true })
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
       .returning({ id: s.vocabularySet.id }))
     const { id: parentTermId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId: icd10SetId, code: "E11", labelEn: "E11", source: "external" })
+      .values({ setId: icd10SetId, code: "E11", labelEn: "E11" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: childTermId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId: icd10SetId, code: "E11.9", labelEn: "E11.9", parentId: parentTermId, source: "external" })
+      .values({ setId: icd10SetId, code: "E11.9", labelEn: "E11.9", parentId: parentTermId })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: assaySetId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "assay", labelJa: "手法", labelEn: "Assay", source: "portal" })
+      .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
       .returning({ id: s.vocabularySet.id }))
     const { id: rnaSeqTermId } = only(await db.insert(s.vocabularyTerm)
-      .values({ setId: assaySetId, code: "rna-seq", labelEn: "RNA-seq", source: "portal" })
+      .values({ setId: assaySetId, code: "rna-seq", labelEn: "RNA-seq" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: diseaseKeyId } = only(await db.insert(s.contentKey)
       .values({ code: "disease", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: icd10SetId })

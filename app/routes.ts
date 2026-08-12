@@ -124,6 +124,7 @@ const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
+  route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
   route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),
 ]

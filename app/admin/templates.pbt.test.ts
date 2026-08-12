@@ -9,7 +9,7 @@ import {
   dsBranchArb,
   jgadRegistrationArb,
 } from "./arbitraries/upstream"
-import type { EditableCatalog } from "./queries.server"
+import type { CatalogWithTerms } from "./queries.server"
 import { draDatasetSeed, icd10Codes, jgadDatasetSeed, researchContentFrom, type DatasetSeed } from "./templates"
 
 /**
@@ -34,7 +34,7 @@ function slotsOf(content: DatasetContent): { scope: "dataset" | "experiment", sl
 }
 
 /** Whether one slot could be saved through the editing screen's own check. */
-function acceptable(catalog: EditableCatalog, scope: string, slot: ValueSlot): boolean {
+function acceptable(catalog: CatalogWithTerms, scope: string, slot: ValueSlot): boolean {
   const key = KEY_BY_ID.get(slot.keyId)
   if (key?.scope !== scope) return false
   if (key.valueType !== slot.value.kind) return false

@@ -20,7 +20,7 @@
  * already points at it.
  */
 
-import { and, asc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, sql } from "drizzle-orm"
 import { alias } from "drizzle-orm/pg-core"
 
 import { requireCapability } from "~/auth/actor.server"
@@ -33,6 +33,8 @@ import {
   vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
+import { ICD10_SET_CODE, icd10Parent } from "~/icd10/codes"
+import { lookUpCode, searchDictionary } from "~/icd10/dictionary.server"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
@@ -58,7 +60,6 @@ export interface VocabularyRow {
   code: string
   labelJa: string
   labelEn: string
-  external: boolean
   hierarchical: boolean
   terms: number
 }
@@ -85,9 +86,16 @@ export interface TermRow {
   labelEn: string
   parentCode: string | null
   active: boolean
-  external: boolean
   /** How many published objects carry this value. */
   used: number
+}
+
+/** One candidate of the ICD10 dictionary, and whether the vocabulary has it. */
+export interface DictionaryRow {
+  code: string
+  titleEn: string | null
+  titleJa: string | null
+  held: boolean
 }
 
 export interface VocabularyView {
@@ -97,6 +105,13 @@ export interface VocabularyView {
   page: number
   pageCount: number
   find: string
+  /**
+   * Set on the ICD10 vocabulary: what was typed into the dictionary's box and
+   * what it answered. The dictionary is where a new term's labels come from, so
+   * that a code is never filed under a name somebody invented at the keyboard
+   * (docs/data-model.md の「ICD10」).
+   */
+  dictionary: { find: string, rows: DictionaryRow[] } | null
 }
 
 /** What a form did, when it did not simply work. */
@@ -112,6 +127,9 @@ export type CatalogProblem
 export type CatalogResult = { status: "ok" } | { status: CatalogProblem }
 
 const TERMS_PER_PAGE = 50
+
+/** How many codes one search of the dictionary answers with. */
+const DICTIONARY_CANDIDATES = 20
 
 async function keyRows(db: Executor): Promise<CatalogKeyRow[]> {
   return db
@@ -144,7 +162,6 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
         code: vocabularySet.code,
         labelJa: vocabularySet.labelJa,
         labelEn: vocabularySet.labelEn,
-        source: vocabularySet.source,
         hierarchical: vocabularySet.hierarchical,
         terms: sql<number>`count(${vocabularyTerm.id})::int`,
       })
@@ -166,7 +183,7 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
     keys,
-    vocabularies: sets.map((set) => ({ ...set, external: set.source === "external" })),
+    vocabularies: sets,
     categories,
   }
 }
@@ -179,6 +196,7 @@ export async function vocabularyPage(
   const db = getDb()
   const url = new URL(request.url)
   const find = url.searchParams.get("find") ?? ""
+  const lookUp = url.searchParams.get("dictionary") ?? ""
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
 
   const [set] = await db
@@ -187,7 +205,6 @@ export async function vocabularyPage(
       code: vocabularySet.code,
       labelJa: vocabularySet.labelJa,
       labelEn: vocabularySet.labelEn,
-      source: vocabularySet.source,
       hierarchical: vocabularySet.hierarchical,
     })
     .from(vocabularySet)
@@ -217,7 +234,6 @@ export async function vocabularyPage(
       labelEn: vocabularyTerm.labelEn,
       parentCode: parent.code,
       active: vocabularyTerm.active,
-      source: vocabularyTerm.source,
     })
     .from(vocabularyTerm)
     .leftJoin(parent, eq(parent.id, vocabularyTerm.parentId))
@@ -229,16 +245,36 @@ export async function vocabularyPage(
   const used = await usageOfTerms(db, rows.map((row) => row.id))
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
-    set: { ...set, external: set.source === "external", terms: total?.count ?? 0 },
-    terms: rows.map((row) => ({
-      ...row,
-      external: row.source === "external",
-      used: used.get(row.id) ?? 0,
-    })),
+    set: { ...set, terms: total?.count ?? 0 },
+    terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0 })),
     page: at,
     pageCount,
     find,
+    dictionary: set.code === ICD10_SET_CODE
+      ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }
+      : null,
   }
+}
+
+/** What the dictionary offers for what was typed, minus nothing: a code the
+ * vocabulary already holds is shown as held rather than hidden, because that is
+ * the answer to "is this one in?". */
+async function dictionaryRows(
+  db: Executor,
+  setId: string,
+  find: string,
+): Promise<DictionaryRow[]> {
+  const entries = await searchDictionary(db, find, DICTIONARY_CANDIDATES)
+  if (entries.length === 0) return []
+  const held = new Set((await db
+    .select({ code: vocabularyTerm.code })
+    .from(vocabularyTerm)
+    .where(and(
+      eq(vocabularyTerm.setId, setId),
+      inArray(vocabularyTerm.code, entries.map((entry) => entry.code)),
+    )))
+    .map((row) => row.code))
+  return entries.map((entry) => ({ ...entry, held: held.has(entry.code) }))
 }
 
 /**
@@ -514,24 +550,19 @@ async function deleteCategory(db: Executor, form: FormData): Promise<CatalogResu
   return removed.length === 0 ? { status: "unknown-target" } : { status: "ok" }
 }
 
-/** The set a term belongs to, and whether an administrator may write to it. */
-async function editableSet(db: Executor, setId: string): Promise<boolean> {
-  const [set] = await db
-    .select({ source: vocabularySet.source })
-    .from(vocabularySet)
-    .where(eq(vocabularySet.id, setId))
-    .limit(1)
-  return set?.source === "portal"
-}
-
 async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> {
   const setId = text(form, "setId")
   const code = text(form, "code")
   const labelEn = text(form, "labelEn")
   const labelJa = text(form, "labelJa")
-  if (!await editableSet(db, setId)) return { status: "not-editable" }
   if (labelEn === "") return { status: "missing-label" }
   if (termCodeProblem(code) !== null) return { status: "malformed-code" }
+  const [set] = await db
+    .select({ code: vocabularySet.code })
+    .from(vocabularySet)
+    .where(eq(vocabularySet.id, setId))
+    .limit(1)
+  if (set === undefined) return { status: "unknown-target" }
   const [held] = await db
     .select({ id: vocabularyTerm.id })
     .from(vocabularyTerm)
@@ -545,14 +576,49 @@ async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> 
     // English is required and Japanese is not: whether a concept is written in
     // Japanese varies inside one vocabulary, so an empty one is not a gap.
     labelJa: labelJa === "" ? null : labelJa,
-    source: "portal",
+    parentId: set.code === ICD10_SET_CODE ? await icd10Root(db, setId, code) : null,
   })
   return { status: "ok" }
 }
 
+/**
+ * The three-character term a longer ICD10 code hangs under, made if it is not
+ * there yet.
+ *
+ * **A four-character code without its root would count as a root itself**, and
+ * the rule that the disease facet is counted by three characters would quietly
+ * stop holding for it. The root is named from the dictionary, so nothing is
+ * invented by making it.
+ */
+async function icd10Root(
+  db: Executor,
+  setId: string,
+  code: string,
+): Promise<string | null> {
+  const parent = icd10Parent(code)
+  if (parent === null) return null
+  const [held] = await db
+    .select({ id: vocabularyTerm.id })
+    .from(vocabularyTerm)
+    .where(and(eq(vocabularyTerm.setId, setId), eq(vocabularyTerm.code, parent)))
+    .limit(1)
+  if (held !== undefined) return held.id
+  const entry = await lookUpCode(db, parent)
+  const [made] = await db
+    .insert(vocabularyTerm)
+    .values({
+      setId,
+      code: parent,
+      labelEn: entry?.titleEn ?? entry?.titleJa ?? parent,
+      labelJa: entry?.titleJa ?? null,
+    })
+    .returning({ id: vocabularyTerm.id })
+  return made?.id ?? null
+}
+
 async function termFor(db: Executor, id: string) {
   const [term] = await db
-    .select({ id: vocabularyTerm.id, source: vocabularyTerm.source })
+    .select({ id: vocabularyTerm.id })
     .from(vocabularyTerm)
     .where(eq(vocabularyTerm.id, id))
     .limit(1)
@@ -566,9 +632,6 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   if (labelEn === "") return { status: "missing-label" }
   const term = await termFor(db, id)
   if (term === undefined) return { status: "unknown-target" }
-  // A term from an external standard is replaced wholesale at the next import,
-  // so a correction here would vanish without a trace.
-  if (term.source !== "portal") return { status: "not-editable" }
   await db
     .update(vocabularyTerm)
     .set({ labelEn, labelJa: labelJa === "" ? null : labelJa })
@@ -580,7 +643,6 @@ async function setTermActive(db: Executor, form: FormData): Promise<CatalogResul
   const id = text(form, "termId")
   const term = await termFor(db, id)
   if (term === undefined) return { status: "unknown-target" }
-  if (term.source !== "portal") return { status: "not-editable" }
   await db
     .update(vocabularyTerm)
     .set({ active: text(form, "active") === "true" })
@@ -592,7 +654,6 @@ async function deleteTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   const id = text(form, "termId")
   const term = await termFor(db, id)
   if (term === undefined) return { status: "unknown-target" }
-  if (term.source !== "portal") return { status: "not-editable" }
   if (await termInUse(db, id)) return { status: "in-use" }
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, id))
   return { status: "ok" }

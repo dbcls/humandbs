@@ -32,6 +32,7 @@ docker compose run --rm --no-deps app npm install
 docker compose up -d
 docker compose exec app npm run db:push
 docker compose exec app npm run s3:buckets
+docker compose exec app npm run icd10:import
 ```
 
 `http://localhost:8080/` が開けば起動している。`/healthz` は依存サービスの疎通を返し、1 つでも
@@ -42,7 +43,8 @@ docker compose exec app npm run s3:buckets
 アプリが繋ぐ role をそれが作るから** (「[DB を触る](#db-を触る)」)。**`s3:buckets` が要るのは、bucket を
 書き込みの副作用で作らないから** — どちらの bucket に居るかがファイルの公開状態そのものなので、
 最初の書き込みで bucket が生まれる形にすると公開が操作の順序に依存する
-([data-model.md](data-model.md) の「ファイル」)。
+([data-model.md](data-model.md) の「ファイル」)。**`icd10:import` が要るのは、分類の配布物を repo に
+置かないから** (下の「[ICD10 の辞書を入れる](#icd10-の辞書を入れる)」)。
 
 ## サービス
 
@@ -160,7 +162,15 @@ TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron
 がこれを読む。
 
 `migration/input/` は git 管理外。10 秒ほどで終わり、**全部を 1 つのトランザクションで置き換える**ので、
-途中で落ちても前のデータが残る。**test は開発用 DB を空にする**ので、test の後は入れ直す。
+途中で落ちても前のデータが残る。**疾患のラベルは ICD10 の辞書から埋める**ので、辞書を入れる前に流すと
+コードだけの語彙になる (下の「[ICD10 の辞書を入れる](#icd10-の辞書を入れる)」)。
+
+**test は開発用 DB を空にする**ので、test の後は辞書と開発用データの両方を入れ直す。
+
+```bash
+docker compose exec app npm run icd10:import
+docker compose exec app npm run db:load-dev-data
+```
 
 意図的にやっていないことがある。どれも機械的な変換ではなく判断が要るもので、本番のデータを作る移行の
 側で決める。
@@ -209,6 +219,30 @@ docker compose exec app npm run admin:grant -- <sub> "表示名"
 
 サインアウトは Keycloak 側のセッションも終わらせるので、押した後は DDBJ アカウントのログインから
 やり直しになる。
+
+## ICD10 の辞書を入れる
+
+```bash
+docker compose exec app npm run icd10:import
+```
+
+ICD10 の分類を辞書として取り込む ([data-model.md](data-model.md) の「ICD10」)。**英語は WHO の
+ICD-10 2019 Meta、日本語は e-Stat の「疾病、傷害及び死因の統計分類 (基本分類)」**から取り、
+`icd10_reference` を全置換する。**語彙 (`vocabulary_term`) には触らない** ので、admin が直した
+ラベルが取り込みで消えることはない。
+
+**配布物を repo に置かないので、初回セットアップと `test:db` の後に打つ必要がある。** 落としたものは
+`migration/input/` (git 管理外) に残り、2 回目からはそこを読むので外に出ない。手で置いた版を使いたい
+ときは同じ場所に同じ名前で置く。
+
+| ファイル | 出所 |
+|---|---|
+| `icd10-who-2019.txt` | `https://icdcdn.who.int/icd10/meta/icd102019enMeta.zip` の `icd102019syst_codes.txt` |
+| `icd10-estat-2013.csv` | e-Stat の統計分類 40 (`kaiteiCode=03`) の CSV |
+
+**版が違うので片方しか無いコードが出る。** 辞書なので欠けたまま入れる — 実データに当てると英語
+99.8% / 日本語 97.5% が埋まる。**取り込むのは 3〜5 桁のコードと名前だけ**で、章・ブロック・索引・
+注記は入れない。
 
 ## 上流のキャッシュを更新する
 

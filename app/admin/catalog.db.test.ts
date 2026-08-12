@@ -15,8 +15,10 @@ import { catalogAction, catalogPage, vocabularyPage } from "./catalog.server"
  * The catalog screens with their guard on, against the development database.
  *
  * What is worth watching here is the line between what an administrator may
- * change and what only a development change may: a type, an external
- * vocabulary, and anything the data already points at.
+ * change and what only a development change may: a type, and anything the data
+ * already points at. Every vocabulary value is editable — ICD10 arrives as a
+ * dictionary that seeds and checks the terms rather than as a vocabulary of its
+ * own.
  */
 const db = getDb()
 
@@ -65,16 +67,16 @@ async function thrown(work: () => Promise<unknown>): Promise<Response> {
   return result
 }
 
-async function portalSet(code: string): Promise<string> {
+async function vocabulary(code: string): Promise<string> {
   const { id } = only(await db.insert(s.vocabularySet)
-    .values({ code, labelJa: code, labelEn: code, source: "portal" })
+    .values({ code, labelJa: code, labelEn: code })
     .returning({ id: s.vocabularySet.id }))
   return id
 }
 
-async function term(setId: string, code: string, source: "portal" | "external"): Promise<string> {
+async function term(setId: string, code: string): Promise<string> {
   const { id } = only(await db.insert(s.vocabularyTerm)
-    .values({ setId, code, labelEn: code, source })
+    .values({ setId, code, labelEn: code })
     .returning({ id: s.vocabularyTerm.id }))
   return id
 }
@@ -192,7 +194,7 @@ describe("the keys an administrator may take away", () => {
 
   it("keeps a typed key, because taking a facet away is a development change", async () => {
     const token = await signIn(CURATOR, true)
-    const setId = await portalSet("assay")
+    const setId = await vocabulary("assay")
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
@@ -213,29 +215,31 @@ describe("the keys an administrator may take away", () => {
 })
 
 describe("the terms of a vocabulary", () => {
-  it("refuses to change one that came from an external standard", async () => {
+  it("lets the label of an ICD10 term be corrected", async () => {
     const token = await signIn(CURATOR, true)
     const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", source: "external", hierarchical: true })
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
       .returning({ id: s.vocabularySet.id }))
-    const termId = await term(setId, "C34", "external")
+    const termId = await term(setId, "C91")
 
-    expect(await catalogAction(post(token, { intent: "update-term", termId, labelEn: "Lung" })))
-      .toEqual({ status: "not-editable" })
-    expect(await catalogAction(post(token, { intent: "delete-term", termId })))
-      .toEqual({ status: "not-editable" })
+    // The dictionary seeds the label; it never owns it. v1 filed C91 as
+    // "Lymphoma" when the code is lymphoid leukaemia, and that has to be
+    // fixable in place.
     expect(await catalogAction(post(token, {
-      intent: "create-term",
-      setId,
-      code: "C61",
-      labelEn: "Prostate",
-    }))).toEqual({ status: "not-editable" })
+      intent: "update-term",
+      termId,
+      labelEn: "Lymphoid leukaemia",
+      labelJa: "リンパ性白血病",
+    }))).toEqual({ status: "ok" })
+    const held = only(await db.select().from(s.vocabularyTerm))
+    expect(held.labelEn).toBe("Lymphoid leukaemia")
+    expect(held.labelJa).toBe("リンパ性白血病")
   })
 
   it("deactivates a term in use rather than letting it be deleted", async () => {
     const token = await signIn(CURATOR, true)
-    const setId = await portalSet("assay")
-    const termId = await term(setId, "wgs", "portal")
+    const setId = await vocabulary("assay")
+    const termId = await term(setId, "wgs")
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
@@ -253,8 +257,8 @@ describe("the terms of a vocabulary", () => {
 
   it("renames a term without touching what points at it", async () => {
     const token = await signIn(CURATOR, true)
-    const setId = await portalSet("assay")
-    const termId = await term(setId, "wgs", "portal")
+    const setId = await vocabulary("assay")
+    const termId = await term(setId, "wgs")
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
@@ -274,8 +278,8 @@ describe("the terms of a vocabulary", () => {
 
   it("shows how many published objects carry a term", async () => {
     const token = await signIn(CURATOR, true)
-    const setId = await portalSet("assay")
-    const termId = await term(setId, "wgs", "portal")
+    const setId = await vocabulary("assay")
+    const termId = await term(setId, "wgs")
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
@@ -314,5 +318,98 @@ describe("changing what a key shows", () => {
 
     const hidden = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
     expect(hidden.every((row) => !row.textJa.includes("x"))).toBe(true)
+  })
+})
+
+describe("the ICD10 dictionary", () => {
+  async function icd10(): Promise<string> {
+    const { id } = only(await db.insert(s.vocabularySet)
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
+      .returning({ id: s.vocabularySet.id }))
+    await db.insert(s.icd10Reference).values([
+      { code: "C34", titleEn: "Malignant neoplasm of bronchus and lung", titleJa: "気管支及び肺の悪性新生物" },
+      { code: "C349", titleEn: "Bronchus or lung, unspecified", titleJa: "気管支又は肺，部位不明" },
+    ])
+    return id
+  }
+
+  it("offers the codes it holds, and says which the vocabulary already has", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await icd10()
+    await term(setId, "C34")
+
+    const view = await vocabularyPage(
+      get(token, "/admin/catalog/vocabulary/icd10?dictionary=bronchus"),
+      "icd10",
+    )
+
+    expect(view?.dictionary?.rows).toEqual([
+      {
+        code: "C34",
+        titleEn: "Malignant neoplasm of bronchus and lung",
+        titleJa: "気管支及び肺の悪性新生物",
+        held: true,
+      },
+      {
+        code: "C349",
+        titleEn: "Bronchus or lung, unspecified",
+        titleJa: "気管支又は肺，部位不明",
+        held: false,
+      },
+    ])
+  })
+
+  it("is not offered on a vocabulary that is not ICD10", async () => {
+    const token = await signIn(CURATOR, true)
+    await vocabulary("assay")
+
+    const view = await vocabularyPage(get(token, "/admin/catalog/vocabulary/assay"), "assay")
+
+    expect(view?.dictionary).toBeNull()
+  })
+
+  it("files a new four-character code under its root, making the root if it is missing", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await icd10()
+
+    expect(await catalogAction(post(token, {
+      intent: "create-term",
+      setId,
+      code: "C349",
+      labelEn: "Bronchus or lung, unspecified",
+      labelJa: "気管支又は肺，部位不明",
+    }))).toEqual({ status: "ok" })
+
+    // Without the root the four-character code would count as a root itself,
+    // and "the disease facet is counted by three characters" would quietly stop
+    // holding for it. The root is named from the dictionary, so nothing is
+    // invented by making it.
+    const terms = await db.select().from(s.vocabularyTerm)
+    const root = terms.find((one) => one.code === "C34")
+    const child = terms.find((one) => one.code === "C349")
+    expect(root?.labelEn).toBe("Malignant neoplasm of bronchus and lung")
+    expect(root?.labelJa).toBe("気管支及び肺の悪性新生物")
+    expect(child?.parentId).toBe(root?.id)
+  })
+
+  it("hangs a new code under the root that is already there rather than a second one", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await icd10()
+    const rootId = await term(setId, "C34")
+
+    await catalogAction(post(token, { intent: "create-term", setId, code: "C349", labelEn: "x" }))
+
+    const terms = await db.select().from(s.vocabularyTerm)
+    expect(terms).toHaveLength(2)
+    expect(terms.find((one) => one.code === "C349")?.parentId).toBe(rootId)
+  })
+
+  it("leaves a flat vocabulary flat", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+
+    await catalogAction(post(token, { intent: "create-term", setId, code: "wgs", labelEn: "WGS" }))
+
+    expect(only(await db.select().from(s.vocabularyTerm)).parentId).toBeNull()
   })
 })

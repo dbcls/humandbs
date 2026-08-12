@@ -98,7 +98,6 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
               <li key={set.id} className="flex flex-wrap items-baseline gap-3 py-2 text-sm">
                 <code className="w-56 shrink-0">{set.code}</code>
                 <span className="flex-1">{catalogLabel(set, locale)}</span>
-                <Badge>{set.external ? t.external : t.portal}</Badge>
                 {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
                 <span className="text-ink-muted">{t.termCount(set.terms)}</span>
                 <Link to={href(locale, adminVocabularyPath(set.code))}>{t.openSet}</Link>

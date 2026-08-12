@@ -16,7 +16,7 @@
  * cache, and are assembled the same way for the same reason.
  */
 
-import { and, asc, desc, eq, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm"
 
 import type {
   DatasetContent,
@@ -572,46 +572,118 @@ export interface EditableTerm {
 
 export interface EditableCatalog {
   keys: EditableKey[]
+}
+
+/** The catalog and every term of it. Server side only (see below). */
+export interface CatalogWithTerms extends EditableCatalog {
   terms: EditableTerm[]
+}
+
+/** How many candidates one search of a vocabulary answers with. */
+export const TERM_CANDIDATES = 20
+
+const TERM_COLUMNS = {
+  id: vocabularyTerm.id,
+  setId: vocabularyTerm.setId,
+  code: vocabularyTerm.code,
+  labelJa: vocabularyTerm.labelJa,
+  labelEn: vocabularyTerm.labelEn,
+  position: vocabularyTerm.position,
 }
 
 /**
  * The catalog as the editor needs it: with the type of every key, which the
  * public projection has no use for. **The type decides which input control a
  * value gets**, so a screen without it could only guess.
+ *
+ * **It carries no terms.** A vocabulary holds anything from three values to
+ * several hundred, and sending all of them so that a box can filter them in the
+ * browser makes the size of the page follow the size of the catalog. The values
+ * a document already names are resolved by identity (`termsByIds`) and the rest
+ * are searched for (`findTerms`).
  */
 export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog> {
-  const [keys, terms] = await Promise.all([
+  const keys = await db
+    .select({
+      id: contentKey.id,
+      code: contentKey.code,
+      scope: contentKey.scope,
+      valueType: contentKey.valueType,
+      labelJa: contentKey.labelJa,
+      labelEn: contentKey.labelEn,
+      position: contentKey.position,
+      vocabularySetId: contentKey.vocabularySetId,
+      multiple: contentKey.multiple,
+      canonicalUnit: contentKey.canonicalUnit,
+      inputUnits: contentKey.inputUnits,
+    })
+    .from(contentKey)
+    .orderBy(contentKey.position, contentKey.code)
+  return { keys }
+}
+
+/**
+ * The catalog with every active term.
+ *
+ * **Only what runs on the server may ask for this.** Matching what an archive
+ * spells against the vocabulary needs the whole of it, and nothing of it
+ * reaches a page.
+ */
+export async function loadCatalogWithTerms(db: Executor): Promise<CatalogWithTerms> {
+  const [catalog, terms] = await Promise.all([
+    loadEditableCatalog(db),
     db
-      .select({
-        id: contentKey.id,
-        code: contentKey.code,
-        scope: contentKey.scope,
-        valueType: contentKey.valueType,
-        labelJa: contentKey.labelJa,
-        labelEn: contentKey.labelEn,
-        position: contentKey.position,
-        vocabularySetId: contentKey.vocabularySetId,
-        multiple: contentKey.multiple,
-        canonicalUnit: contentKey.canonicalUnit,
-        inputUnits: contentKey.inputUnits,
-      })
-      .from(contentKey)
-      .orderBy(contentKey.position, contentKey.code),
-    db
-      .select({
-        id: vocabularyTerm.id,
-        setId: vocabularyTerm.setId,
-        code: vocabularyTerm.code,
-        labelJa: vocabularyTerm.labelJa,
-        labelEn: vocabularyTerm.labelEn,
-        position: vocabularyTerm.position,
-      })
+      .select(TERM_COLUMNS)
       .from(vocabularyTerm)
       .where(eq(vocabularyTerm.active, true))
       .orderBy(vocabularyTerm.position, vocabularyTerm.labelEn),
   ])
-  return { keys, terms }
+  return { ...catalog, terms }
+}
+
+/**
+ * The terms these identities name. **Deactivated ones are included** — a value
+ * that already names one still has to be readable, and taking a term out of the
+ * candidates is not the same as taking it out of the documents.
+ */
+export async function termsByIds(
+  db: Executor,
+  ids: readonly string[],
+): Promise<EditableTerm[]> {
+  if (ids.length === 0) return []
+  return db
+    .select(TERM_COLUMNS)
+    .from(vocabularyTerm)
+    .where(inArray(vocabularyTerm.id, [...new Set(ids)]))
+}
+
+/**
+ * The candidates for what was typed into a vocabulary's box: by code or by
+ * either label, the active ones only, capped. **The cap is why an empty box
+ * answers with nothing** rather than with an arbitrary twenty.
+ */
+export async function findTerms(
+  db: Executor,
+  setId: string,
+  needle: string,
+): Promise<EditableTerm[]> {
+  const find = needle.trim()
+  if (find === "") return []
+  const like = `%${find}%`
+  return db
+    .select(TERM_COLUMNS)
+    .from(vocabularyTerm)
+    .where(and(
+      eq(vocabularyTerm.setId, setId),
+      eq(vocabularyTerm.active, true),
+      or(
+        sql`${vocabularyTerm.code} ILIKE ${like}`,
+        sql`${vocabularyTerm.labelEn} ILIKE ${like}`,
+        sql`coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${like}`,
+      ),
+    ))
+    .orderBy(vocabularyTerm.code)
+    .limit(TERM_CANDIDATES)
 }
 
 export async function humLabelOf(db: Executor, researchId: string): Promise<string | null> {

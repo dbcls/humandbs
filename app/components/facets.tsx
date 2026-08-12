@@ -3,7 +3,12 @@ import { Link } from "react-router"
 import { Fold } from "~/components/base"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
+import type {
+  FacetCodeEntryView,
+  FacetPanelView,
+  FacetValueView,
+  FacetView,
+} from "~/public/facets.server"
 import { href, listPath } from "~/public/urls"
 import type { SearchTarget } from "~/search/query.server"
 
@@ -19,6 +24,12 @@ import type { SearchTarget } from "~/search/query.server"
  * A value is shown with the number of rows it would leave, counted with this
  * facet's own condition lifted, so that a second value of the same facet is
  * still reachable after the first has been chosen.
+ *
+ * **The disease facet has a second way in: its code.** Its values are spread
+ * over hundreds of roots, so reading the list to find one means opening the
+ * list first. What the box produces is the condition the value would have
+ * produced, so nothing about the rollup or the counting changes with the way
+ * in.
  *
  * **Each facet folds, and the panel is a list of what can be refined by.** Open
  * at once, the twenty-odd facets run to several thousand pixels and the reader
@@ -120,6 +131,17 @@ function Facet({ locale, target, query, sort, facet, open }: {
         </form>
       )}
 
+      {facet.codeEntry !== null && (
+        <CodeEntry
+          locale={locale}
+          target={target}
+          query={query}
+          sort={sort}
+          facet={facet}
+          entry={facet.codeEntry}
+        />
+      )}
+
       {facet.range !== null
         ? (
             <form method="get" action={href(locale, listPath(target))} className="mt-1">
@@ -169,6 +191,46 @@ function Facet({ locale, target, query, sort, facet, open }: {
         <Link to={facet.moreHref} className="mt-1 inline-block text-xs">{messages.seeAll}</Link>
       )}
     </Fold>
+  )
+}
+
+/**
+ * The box a code is typed into. A GET form like the range inputs: the listing
+ * answers it with the address of the refined search, and only what could not be
+ * turned into one comes back here to be explained.
+ */
+function CodeEntry({ locale, target, query, sort, facet, entry }: {
+  locale: Locale
+  target: SearchTarget
+  query: string
+  sort: string | null
+  facet: FacetView
+  entry: FacetCodeEntryView
+}) {
+  const messages = messagesFor(locale).search.refine
+  return (
+    <form method="get" action={href(locale, listPath(target))} className="mt-1">
+      <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
+      <div className="flex gap-1">
+        <input
+          type="text"
+          name="code"
+          defaultValue={entry.value}
+          aria-label={messages.code}
+          placeholder={messages.codeHint}
+          aria-invalid={entry.problem !== null ? true : undefined}
+          className="min-w-0 flex-1 rounded border border-line bg-surface-input px-2 py-1"
+        />
+        <button type="submit" className="rounded border border-line px-2 py-1">
+          {messages.apply}
+        </button>
+      </div>
+      {entry.problem !== null && (
+        <p role="status" className="mt-1 text-accent text-xs">
+          {entry.problem === "unknown-code" ? messages.codeUnknown : messages.codeNoData}
+        </p>
+      )}
+    </form>
   )
 }
 

@@ -14,10 +14,9 @@ import type { Route } from "./+types/admin-catalog-vocabulary"
 /**
  * One vocabulary and its terms.
  *
- * **A term from an external standard is read-only.** The set is replaced
- * wholesale at the next import, so a correction made here would disappear
- * without leaving a trace of having been made (docs/data-model.md の
- * 「catalog と語彙」).
+ * **Every term is editable.** ICD10 arrives as a dictionary that seeds and
+ * checks the terms rather than as a vocabulary of its own, so there is no set
+ * whose values an import would overwrite (docs/data-model.md の「ICD10」).
  *
  * **A term in use is deactivated rather than deleted.** Deactivating takes it
  * out of the input control while leaving it resolvable for the values that
@@ -63,11 +62,9 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
 
         <p className="mb-4 flex flex-wrap items-baseline gap-3 text-sm">
           <code>{set.code}</code>
-          <Badge>{set.external ? t.external : t.portal}</Badge>
           {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
           <span className="text-ink-muted">{t.termCount(set.terms)}</span>
         </p>
-        {set.external && <p className="mb-4 text-ink-muted text-sm">{t.externalReadOnly}</p>}
 
         <form method="get" className="mb-4 flex gap-2">
           <input
@@ -101,18 +98,58 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
           next={messages.search.nextPage}
         />
 
-        {!set.external && (
-          <Section title={t.addTerm}>
-            <Form method="post" className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="intent" value="create-term" />
-              <input type="hidden" name="setId" value={set.id} />
-              <Field label={t.code} name="code" />
-              <Field label={t.labelEn} name="labelEn" />
-              <Field label={t.labelJa} name="labelJa" />
-              <Submit>{t.addTerm}</Submit>
-            </Form>
+        {view.dictionary !== null && (
+          <Section title={t.dictionary}>
+            <p className="mb-2 text-ink-muted text-sm">{t.dictionaryNote}</p>
+            <form method="get" className="mb-3 flex gap-2">
+              {view.find !== "" && <input type="hidden" name="find" value={view.find} />}
+              <input
+                type="search"
+                name="dictionary"
+                defaultValue={view.dictionary.find}
+                aria-label={t.dictionaryFind}
+                placeholder={t.dictionaryFind}
+                className="w-72 rounded border border-line bg-surface-input px-2 py-1 text-sm"
+              />
+              <Submit>{t.dictionaryFind}</Submit>
+            </form>
+            {view.dictionary.find !== "" && view.dictionary.rows.length === 0 && (
+              <p className="text-ink-muted text-sm">{t.dictionaryEmpty}</p>
+            )}
+            <ul className="flex flex-col divide-y divide-line">
+              {view.dictionary.rows.map((row) => (
+                <li key={row.code} className="py-2">
+                  <Form method="post" className="flex flex-wrap items-baseline gap-2 text-sm">
+                    <input type="hidden" name="intent" value="create-term" />
+                    <input type="hidden" name="setId" value={set.id} />
+                    <input type="hidden" name="code" value={row.code} />
+                    <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
+                    <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
+                    <code className="w-24 shrink-0">{row.code}</code>
+                    <span className="flex-1 min-w-0 break-words">
+                      {row.titleEn ?? "—"}
+                      {row.titleJa !== null && ` / ${row.titleJa}`}
+                    </span>
+                    {row.held
+                      ? <Badge>{t.dictionaryHeld}</Badge>
+                      : <Submit>{t.addTerm}</Submit>}
+                  </Form>
+                </li>
+              ))}
+            </ul>
           </Section>
         )}
+
+        <Section title={t.addTerm}>
+          <Form method="post" className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="intent" value="create-term" />
+            <input type="hidden" name="setId" value={set.id} />
+            <Field label={t.code} name="code" />
+            <Field label={t.labelEn} name="labelEn" />
+            <Field label={t.labelJa} name="labelJa" />
+            <Submit>{t.addTerm}</Submit>
+          </Form>
+        </Section>
       </Card>
     </Page>
   )
@@ -132,33 +169,18 @@ function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
             {term.parentCode}
           </span>
         )}
-        {term.external
-          ? (
-              <span className="flex-1 self-center">
-                {term.labelEn}
-                {term.labelJa !== null && ` / ${term.labelJa}`}
-              </span>
-            )
-          : (
-              <>
-                <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
-                <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
-              </>
-            )}
+        <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
+        <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
         <span className="self-center text-ink-muted">
           {term.used === 0 ? t.unused : t.used(term.used)}
         </span>
         {!term.active && <Badge>{t.inactive}</Badge>}
-        {!term.external && (
-          <>
-            <Submit intent="update-term">{t.save}</Submit>
-            <input type="hidden" name="active" value={term.active ? "false" : "true"} />
-            <Submit intent="set-term-active">
-              {term.active ? t.deactivate : t.activate}
-            </Submit>
-            {term.used === 0 && <Submit intent="delete-term">{t.remove}</Submit>}
-          </>
-        )}
+        <Submit intent="update-term">{t.save}</Submit>
+        <input type="hidden" name="active" value={term.active ? "false" : "true"} />
+        <Submit intent="set-term-active">
+          {term.active ? t.deactivate : t.activate}
+        </Submit>
+        {term.used === 0 && <Submit intent="delete-term">{t.remove}</Submit>}
       </Form>
     </li>
   )

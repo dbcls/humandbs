@@ -35,7 +35,7 @@ import { emptyDatasetContent } from "~/content/empty"
 import { convertible } from "~/content/units"
 import type { DatasetContent, DraftSnapshot, ResearchContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
-import { getDb } from "~/db/client.server"
+import { getDb, type Executor } from "~/db/client.server"
 import type { BoxEntry } from "~/files/box"
 import { adminBox } from "~/files/listing.server"
 import { privateNames, switchFiles } from "~/files/jobs.server"
@@ -83,6 +83,7 @@ import {
   draftDatasetRows,
   humLabelOf,
   loadEditableCatalog,
+  termsByIds,
   readDatasetEntry,
   readDraft,
   readPublishedDataset,
@@ -94,6 +95,7 @@ import {
   type AdminVersionRow,
   type DraftDatasetRow,
   type EditableCatalog,
+  type EditableTerm,
   type PresenceRow,
   type ResearchDatasetRow,
   type UndoEntryRow,
@@ -490,6 +492,12 @@ export interface DatasetEditorView {
   revision: number | null
   input: DatasetContentInput
   catalog: EditableCatalog
+  /**
+   * The terms this document names, and only those. The catalog carries none, so
+   * a chosen value is resolved by identity and everything else is searched for
+   * (`findTerms`).
+   */
+  terms: EditableTerm[]
   presence: PresenceView[]
   undo: UndoEntryRow[]
   upstream: UpstreamView<DatasetContentInput> | null
@@ -546,6 +554,12 @@ export async function datasetEditorPage(
   const content = entry?.content ?? published ?? emptyDatasetContent()
   const input = datasetContentInput(content)
   const changed = published === null ? [] : changedDatasetFromPublished(published, content)
+  // What is published is resolved too: the review marks show the value a field
+  // held before, and a term dropped from the draft still has to be named there.
+  const terms = await termsByIds(db, [
+    ...namedTerms(content),
+    ...(published === null ? [] : namedTerms(published)),
+  ])
 
   return {
     locale,
@@ -558,6 +572,7 @@ export async function datasetEditorPage(
     revision: entry?.revision ?? null,
     input,
     catalog,
+    terms,
     presence: presenceView(presence, actor.sessionId),
     undo,
     upstream: datasetUpstream(entry?.baseContent ?? null, published, input),
@@ -612,9 +627,27 @@ export type SaveDatasetResult
  * so none of them are things an author can fix. They are answered as a bad
  * request rather than as a problem against a field.
  */
-function catalogAccepts(input: DatasetContentInput, catalog: EditableCatalog): boolean {
+/** Every vocabulary value a dataset's description names. */
+function namedTerms(content: DatasetContent): string[] {
+  return [...content.values, ...content.experiments.flatMap((e) => e.values)]
+    .flatMap((slot) => (slot.value.kind === "vocabulary" && slot.value.termIds.state === "value"
+      ? slot.value.termIds.value
+      : []))
+}
+
+async function catalogAccepts(
+  db: Executor,
+  input: DatasetContentInput,
+  catalog: EditableCatalog,
+): Promise<boolean> {
   const keyById = new Map(catalog.keys.map((key) => [key.id, key]))
-  const setOfTerm = new Map(catalog.terms.map((term) => [term.id, term.setId]))
+  // Only the terms the payload names, because the catalog no longer carries
+  // all of them; an identity that resolves to nothing fails the test below.
+  const named = [
+    ...input.values,
+    ...input.experiments.flatMap((experiment) => experiment.values),
+  ].flatMap((slot) => (slot.value.kind === "vocabulary" ? slot.value.termIds : []))
+  const setOfTerm = new Map((await termsByIds(db, named)).map((term) => [term.id, term.setId]))
 
   const accepts = (
     values: DatasetContentInput["values"],
@@ -662,7 +695,7 @@ export async function saveDatasetAction(
   if (!row.portalIssued && payload.data.content.fileSelection.length > 0) badRequest()
 
   const catalog = await loadEditableCatalog(db)
-  if (!catalogAccepts(payload.data.content, catalog)) badRequest()
+  if (!await catalogAccepts(db, payload.data.content, catalog)) badRequest()
 
   const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
   const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)

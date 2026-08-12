@@ -18,6 +18,8 @@
  */
 
 import type { Executor } from "~/db/client.server"
+import { ICD10_SET_CODE } from "~/icd10/codes"
+import { resolveTypedCode } from "~/icd10/entry.server"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import type { FacetDefinition } from "~/search/catalog.server"
@@ -50,6 +52,20 @@ export interface FacetValueView {
   children: FacetValueView[]
 }
 
+/**
+ * The box a code is typed into, on the one facet that has one.
+ *
+ * A code that resolves never reaches the view — the listing answers it with a
+ * redirect to the refined address, the same as the range inputs. What arrives
+ * here is what could not be turned into a condition, and the two reasons are
+ * kept apart because they call for different things of the reader.
+ */
+export interface FacetCodeEntryView {
+  /** What was typed, so that the box comes back holding it. */
+  value: string
+  problem: "unknown-code" | "no-data" | null
+}
+
 export interface FacetRangeView {
   /** What the inputs hold; empty when that end is open. */
   from: string
@@ -76,6 +92,8 @@ export interface FacetView {
   /** What the expanded facet's own box holds. */
   find: string
   range: FacetRangeView | null
+  /** Set on the disease facet, whose values can also be named by code. */
+  codeEntry: FacetCodeEntryView | null
 }
 
 export interface FacetCategoryView {
@@ -104,6 +122,8 @@ export interface FacetPanelRequest {
   expanded: string | null
   /** `?find=`: what was typed into the expanded facet's box. */
   find: string
+  /** `?code=`: an ICD10 code that did not become a condition. */
+  code: string
 }
 
 /** A value is looked for by its code and its label, in whichever language. */
@@ -140,6 +160,16 @@ export async function facetPanel(
   const numbers = definitions.filter((one) => one.field.kind === "number")
   const untouched = (one: FacetDefinition) =>
     !selection.terms.has(one.field.code) && !selection.ranges.has(one.field.code)
+
+  const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
+  const typed = request.code !== "" && icd10?.field.setId
+    ? await resolveTypedCode(db, icd10.field.setId, request.code)
+    : null
+  // A code that resolved was answered with a redirect before the panel ran, so
+  // anything still here is one of the two the reader has to be told about.
+  const typedProblem = typed === null || typed.status === "found"
+    ? null
+    : typed.status === "no-data" ? "no-data" as const : "unknown-code" as const
 
   const [shared, perFacet, sharedBounds, perFacetBounds, children] = await Promise.all([
     countTerms(
@@ -194,7 +224,7 @@ export async function facetPanel(
       find,
       closeHref: expanded ? address(ast, { facet: null, find: "" }) : null,
     }
-    const empty = { ...shell, values: [], moreHref: null, range: null }
+    const empty = { ...shell, values: [], moreHref: null, range: null, codeEntry: null }
     if (one.field.kind === "number") {
       const chosenRange = selection.ranges.get(code)
       const span = bounds.get(one.field.keyId)
@@ -250,6 +280,9 @@ export async function facetPanel(
       values: shown,
       moreHref: !expanded && all.length > shown.length
         ? address(ast, { facet: code, find: "" })
+        : null,
+      codeEntry: one.setCode === ICD10_SET_CODE
+        ? { value: request.code, problem: typedProblem }
         : null,
     }
   })

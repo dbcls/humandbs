@@ -46,7 +46,7 @@ import {
   type SeededDataset,
 } from "./drafts.server"
 import { actorOf, badRequest, identity, notFound } from "./pages.server"
-import { loadEditableCatalog, readDraft, type EditableCatalog } from "./queries.server"
+import { loadCatalogWithTerms, readDraft, type CatalogWithTerms } from "./queries.server"
 import {
   draDatasetSeed,
   jgadDatasetSeed,
@@ -226,7 +226,7 @@ function fieldsOf(branch: DsBranchDetail): SeededFieldView[] {
 async function jgadSeeds(
   at: Connection,
   branch: DsBranchDetail,
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
 ): Promise<DatasetSeed[]> {
   const accessions = branch.accessions.filter((accession) => JGAD.test(accession))
   const registrations = await fetchJgadRegistrations(at.pool, at.schema, accessions)
@@ -297,7 +297,7 @@ export async function upstreamResearchPage(
   const keyword = url.searchParams.get("q") ?? ""
   const applicationId = url.searchParams.get("application")
 
-  const catalog = await loadEditableCatalog(db)
+  const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (at) => {
     const rows = await searchDsBranches(at.pool, at.schema, keyword, BRANCH_LIMIT)
     const branch = applicationId === null
@@ -333,7 +333,7 @@ export async function upstreamResearchAction(
   if (applicationId === null) badRequest()
   const wanted = accessionsIn(form)
 
-  const catalog = await loadEditableCatalog(db)
+  const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (at) => {
     const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
     return branch === null ? null : { branch, seeds: await jgadSeeds(at, branch, catalog) }
@@ -376,7 +376,7 @@ export async function upstreamDatasetPage(
   const keyword = url.searchParams.get("q") ?? ""
   const applicationId = url.searchParams.get("application")
   const accession = url.searchParams.get("accession") ?? ""
-  const catalog = await loadEditableCatalog(db)
+  const catalog = await loadCatalogWithTerms(db)
 
   const rows = await withApplicationDb((connection) =>
     searchDsBranches(connection.pool, connection.schema, keyword, BRANCH_LIMIT))
@@ -455,7 +455,7 @@ export async function upstreamDatasetAction(
   const wanted = accessionsIn(form)
   if (wanted.size === 0) badRequest()
 
-  const catalog = await loadEditableCatalog(db)
+  const catalog = await loadCatalogWithTerms(db)
   const seeds: DatasetSeed[] = []
 
   for (const accession of [...wanted].filter((value) => DRA.test(value))) {

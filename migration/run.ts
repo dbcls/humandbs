@@ -41,6 +41,7 @@ import {
   vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
+import { titlesOf } from "~/icd10/dictionary.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -59,7 +60,7 @@ import {
   TYPE_OF_DATA_KEY,
 } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber, type PublishedDataset } from "./es"
-import { collectTerms, vocabularySetSeeds } from "./facets"
+import { collectTerms, DISEASE_SET, vocabularySetSeeds } from "./facets"
 import { loadHumAccessions } from "./upstream"
 
 const CHUNK = 500
@@ -117,7 +118,6 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       code: ACCESS_CRITERIA_SET,
       labelJa: "アクセス制限",
       labelEn: "Access criteria",
-      external: false,
       hierarchical: false,
     },
     ...vocabularySetSeeds(),
@@ -131,12 +131,10 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
         code: s.code,
         labelJa: s.labelJa,
         labelEn: s.labelEn,
-        source: s.external ? ("external" as const) : ("portal" as const),
         hierarchical: s.hierarchical,
       })))
       .returning({ id: vocabularySet.id }),
   )
-  const sourceOfSet = new Map(sets.map((s) => [s.code, s.external] as const))
 
   const searchables = datasets.flatMap((d) =>
     (d.doc.experiments ?? []).flatMap((e) => (e.searchable ? [e.searchable] : [])))
@@ -145,19 +143,30 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
     ...[...collectTerms(searchables)].flatMap(([setCode, held]) =>
       held.map((term) => ({ setCode, ...term }))),
   ]
+  // The disease vocabulary takes its labels from the ICD10 dictionary rather
+  // than from the dump: v1 filed some codes under the wrong disease and left
+  // the rest named by the code itself (docs/data-model.md の「ICD10」).
+  const titles = await titlesOf(tx, terms.filter((t) => t.setCode === DISEASE_SET).map((t) => t.code))
+  const unnamed = terms.filter((t) => t.setCode === DISEASE_SET && !titles.has(t.code))
+  if (unnamed.length > 0) {
+    console.log(`icd10: ${unnamed.length} not in the dictionary (${unnamed.map((t) => t.code).join(", ")})`)
+  }
+
   const termRow = (
     term: (typeof terms)[number],
     index: number,
     parentId: string | null,
-  ) => ({
-    setId: identityOf(setIdByCode, term.setCode, "vocabulary set"),
-    code: term.code,
-    labelJa: term.labelJa,
-    labelEn: term.labelEn,
-    source: sourceOfSet.get(term.setCode) === true ? ("external" as const) : ("portal" as const),
-    position: index,
-    parentId,
-  })
+  ) => {
+    const title = term.setCode === DISEASE_SET ? titles.get(term.code) : undefined
+    return {
+      setId: identityOf(setIdByCode, term.setCode, "vocabulary set"),
+      code: term.code,
+      labelJa: title?.titleJa ?? term.labelJa,
+      labelEn: title?.titleEn ?? title?.titleJa ?? term.labelEn,
+      position: index,
+      parentId,
+    }
+  }
   const termKey = (term: { setCode: string, code: string }) => `${term.setCode}/${term.code}`
 
   const rootIds = await insertReturning(

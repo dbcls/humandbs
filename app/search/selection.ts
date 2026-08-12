@@ -130,6 +130,25 @@ export function toggleTerm(
   return recompose(parts)
 }
 
+/**
+ * The same search with this value asked for, whether or not it already was.
+ *
+ * Unlike toggling, this is what a typed code means: someone who writes a code
+ * that is already in force is asking for it, not asking for it to be dropped.
+ */
+export function withTerm(
+  ast: QueryNode | null,
+  fields: QueryFields,
+  field: string,
+  value: string,
+): QueryNode | null {
+  const parts = decompose(ast, fields)
+  const held = parts.facets.get(field) ?? []
+  if (held.some((node) => node.value === value)) return recompose(parts)
+  parts.facets.set(field, [...held, termNode(field, value)])
+  return recompose(parts)
+}
+
 /** The same search with nothing asked of this facet. */
 export function withoutFacet(
   ast: QueryNode | null,

@@ -184,3 +184,12 @@ export function adminContentFilesPath(): string {
 export function contentFileUploadPath(): string {
   return `${adminContentFilesPath()}/upload`
 }
+
+/**
+ * Where an editing screen looks a vocabulary's candidates up. The catalog does
+ * not carry the terms, so the box asks for the few that match what was typed
+ * (`queries.server.ts` の `findTerms`).
+ */
+export function termsPath(): string {
+  return "/admin/terms"
+}

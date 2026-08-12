@@ -17,7 +17,7 @@ import fc from "fast-check"
 import type { DsBranchDetail, JgadRegistration } from "~/upstream/application-db.server"
 import type { DraSubmission } from "~/upstream/dra.server"
 
-import type { EditableCatalog } from "../queries.server"
+import type { CatalogWithTerms } from "../queries.server"
 
 export const ACCESS_KEY = "key-access"
 export const TYPE_KEY = "key-type"
@@ -62,7 +62,7 @@ function term(setId: string, code: string, labelEn: string) {
 }
 
 /** The keys and terms a seeded draft may write under. */
-export const catalogFixture: EditableCatalog = {
+export const catalogFixture: CatalogWithTerms = {
   keys: [
     key({ id: ACCESS_KEY, code: "access-criteria", scope: "dataset", valueType: "vocabulary", setId: ACCESS_SET }),
     key({ id: TYPE_KEY, code: "type-of-data", scope: "dataset", valueType: "text" }),

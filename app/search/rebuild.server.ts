@@ -52,7 +52,7 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 
-import { concatSearchText, searchTextOf, type SearchText } from "./text"
+import { concatSearchText, searchTextOf, termsSearchText, type SearchText } from "./text"
 
 export interface RebuildCounts {
   research: number
@@ -103,6 +103,18 @@ function latest(dates: string[]): string | null {
 /** Every value slot a dataset carries, its own and its experiments'. */
 function valueSlots(content: DatasetContent): ValueSlot[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
+}
+
+/** Every vocabulary value a dataset holds, by identity. */
+function chosenTerms(content: DatasetContent): string[] {
+  const ids = new Set<string>()
+  for (const slot of valueSlots(content)) {
+    const value = slot.value
+    if (value.kind === "vocabulary" && value.termIds.state === "value") {
+      for (const id of value.termIds.value) ids.add(id)
+    }
+  }
+  return [...ids]
 }
 
 interface TermFacet {
@@ -242,9 +254,16 @@ export async function rebuildSearchDocs(
   )
 
   const terms = await db
-    .select({ id: vocabularyTerm.id, parentId: vocabularyTerm.parentId })
+    .select({
+      id: vocabularyTerm.id,
+      parentId: vocabularyTerm.parentId,
+      code: vocabularyTerm.code,
+      labelJa: vocabularyTerm.labelJa,
+      labelEn: vocabularyTerm.labelEn,
+    })
     .from(vocabularyTerm)
   const parentOf = new Map(terms.map((t) => [t.id, t.parentId]))
+  const termById = new Map(terms.map((t) => [t.id, t]))
   const ancestorsOf = (id: string): string[] => {
     const chain: string[] = []
     for (let at = parentOf.get(id); at; at = parentOf.get(at)) {
@@ -290,7 +309,15 @@ export async function rebuildSearchDocs(
       { keys, files: [], archive: archiveDates.get(label) ?? null },
       PUBLISHED,
     )
-    const text = searchTextOf(projected.content, [humLabel, label])
+    const text = concatSearchText([
+      searchTextOf(projected.content, [humLabel, label]),
+      // The labels of what the projection kept. A shown vocabulary value is
+      // text on the page, so it has to be text in the index.
+      termsSearchText(chosenTerms(projected.content).flatMap((id) => {
+        const term = termById.get(id)
+        return term === undefined ? [] : [term]
+      })),
+    ])
     projectedDatasets.push({
       id: row.id,
       researchId: row.researchId,

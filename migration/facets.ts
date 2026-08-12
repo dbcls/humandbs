@@ -23,6 +23,7 @@
  */
 
 import type { NumberValue, ValueSlot } from "~/content/types"
+import { icd10Code, icd10Parent } from "~/icd10/codes"
 
 import type { EsSearchable } from "./es"
 
@@ -45,7 +46,6 @@ export interface VocabularyFacet {
   categoryCode: string
   /** Where the values come from. Every key has a set of its own but ICD10. */
   setCode: string
-  external: boolean
   hierarchical: boolean
   /** Whether the key is already in the catalog as free text and stays visible. */
   retyped: boolean
@@ -92,30 +92,20 @@ function labelled(value: string | null | undefined, labels: Record<string, strin
   }]
 }
 
-/**
- * An ICD10 code as v1 wrote it: sometimes with the dot, sometimes without.
- * Anything that is not a code at all — v1 has a few sentences in this field —
- * is dropped rather than minted as a term.
- */
-function icd10Code(raw: string): string | null {
-  const code = raw.replace(/[\s.]/g, "").toUpperCase()
-  return /^[A-Z][0-9]{2}[0-9A-Z]{0,2}$/.test(code) ? code : null
-}
+/** The disease vocabulary, whose term codes are ICD10 codes. */
+export const DISEASE_SET = "icd10"
 
-const DISEASE_SET = "icd10"
+/** The catalog key the disease terms sit under. */
+export const DISEASE_KEY = "disease-icd10"
 
 function diseases(searchable: EsSearchable): TermSeed[] {
   return (searchable.diseases ?? []).flatMap((disease): TermSeed[] => {
     const code = icd10Code(disease.icd10 ?? "")
     if (code === null) return []
-    // The three-character code is the root of the tree, and the codes beneath it
-    // are what a dataset is usually filed under.
-    return [{
-      code,
-      labelEn: disease.label ?? code,
-      labelJa: null,
-      parentCode: code.length === 3 ? null : code.slice(0, 3),
-    }]
+    // The labels v1 wrote are not taken: the dictionary names these terms
+    // (`migration/run.ts`), because v1 filed some codes under the wrong disease
+    // and left others named by the code itself.
+    return [{ code, labelEn: code, labelJa: null, parentCode: icd10Parent(code) }]
   })
 }
 
@@ -126,7 +116,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Policies",
     categoryCode: "policy",
     setCode: "policies",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => (s.policies ?? []).flatMap((policy) => {
@@ -142,18 +131,16 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Experimental Method",
     categoryCode: "experiment",
     setCode: "experimental-method",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => plainList(s.assayType),
   },
   {
-    code: "disease-icd10",
+    code: DISEASE_KEY,
     labelJa: "疾患 (ICD10)",
     labelEn: "Disease (ICD10)",
     categoryCode: "experiment",
     setCode: DISEASE_SET,
-    external: true,
     hierarchical: true,
     retyped: false,
     read: diseases,
@@ -164,7 +151,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Tissue",
     categoryCode: "experiment",
     setCode: "tissue",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.tissues),
@@ -175,7 +161,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Health status",
     categoryCode: "experiment",
     setCode: "health-status",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => labelled(s.healthStatus, {
@@ -190,7 +175,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Tumour status",
     categoryCode: "experiment",
     setCode: "is-tumor",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => labelled(s.isTumor, { tumor: "腫瘍", normal: "非腫瘍", mixed: "混在" }),
@@ -201,7 +185,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Phenotype data",
     categoryCode: "experiment",
     setCode: "has-phenotype-data",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => (s.hasPhenotypeData == null
@@ -217,7 +200,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Cohort",
     categoryCode: "experiment",
     setCode: "cohort",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.cohorts),
@@ -228,7 +210,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Counted as",
     categoryCode: "subjects",
     setCode: "subject-count-type",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => labelled(s.subjectCountType, {
@@ -243,7 +224,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Sex",
     categoryCode: "subjects",
     setCode: "sex",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => labelled(s.sex, { male: "男性", female: "女性", mixed: "混在" }),
@@ -254,7 +234,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Age group",
     categoryCode: "subjects",
     setCode: "age-group",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => labelled(s.ageGroup, {
@@ -271,7 +250,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Population",
     categoryCode: "subjects",
     setCode: "population",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.population),
@@ -282,7 +260,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Cell line",
     categoryCode: "subjects",
     setCode: "cell-line",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.cellLine),
@@ -293,7 +270,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Platform",
     categoryCode: "platform",
     setCode: "platform",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => (s.platforms ?? []).flatMap((platform) => {
@@ -307,7 +283,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Reagents",
     categoryCode: "platform",
     setCode: "reagents",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => plainList(s.libraryKits),
@@ -318,7 +293,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Read Type",
     categoryCode: "platform",
     setCode: "read-type",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => labelled(s.readType, {
@@ -333,7 +307,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Reference Sequence",
     categoryCode: "platform",
     setCode: "reference-sequence",
-    external: false,
     hierarchical: false,
     retyped: true,
     read: (s) => plainList(s.referenceGenome),
@@ -344,7 +317,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "File format",
     categoryCode: "data-format",
     setCode: "file-type",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.fileTypes),
@@ -355,7 +327,6 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     labelEn: "Processed data type",
     categoryCode: "data-format",
     setCode: "processed-data-type",
-    external: false,
     hierarchical: false,
     retyped: false,
     read: (s) => plainList(s.processedDataTypes),
@@ -418,6 +389,17 @@ export const NUMBER_FACETS: NumberFacet[] = [
  * held is not loaded: the value now lives under the same key with a type, and
  * two values under one key is not something the content model can hold.
  */
+/**
+ * The new keys that are shown all the same.
+ *
+ * Structured slots are facets and nothing else by default, but the disease is
+ * a value a reader looks for on the dataset page — and **being in the public
+ * projection is what makes an ICD10 code findable from the search box**, since
+ * the full text is built from that projection (docs/public-pages.md の
+ * 「dataset」).
+ */
+export const SHOWN_NEW_KEYS = new Set([DISEASE_KEY])
+
 export const RETYPED_CODES = new Set([
   ...VOCABULARY_FACETS.filter((facet) => facet.retyped).map((facet) => facet.code),
   ...NUMBER_FACETS.filter((facet) => facet.retyped).map((facet) => facet.code),
@@ -427,7 +409,6 @@ export interface VocabularySetSeed {
   code: string
   labelJa: string
   labelEn: string
-  external: boolean
   hierarchical: boolean
 }
 
@@ -438,7 +419,6 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
       code: facet.setCode,
       labelJa: facet.labelJa,
       labelEn: facet.labelEn,
-      external: facet.external,
       hierarchical: facet.hierarchical,
     })
   }

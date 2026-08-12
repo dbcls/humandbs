@@ -85,25 +85,19 @@ const catalog: EditableCatalog = {
       inputUnits: null,
     },
   ],
-  terms: [
-    {
-      id: "term-open",
-      setId: SET,
-      code: "unrestricted",
-      labelJa: "非制限公開",
-      labelEn: "Unrestricted",
-      position: 0,
-    },
-    {
-      id: "term-closed",
-      setId: SET,
-      code: "controlled",
-      labelJa: "制限公開",
-      labelEn: "Controlled",
-      position: 1,
-    },
-  ],
 }
+
+/** Only what a document names comes with it; the rest is searched for. */
+const TERMS = [
+  {
+    id: "term-open",
+    setId: SET,
+    code: "unrestricted",
+    labelJa: "非制限公開",
+    labelEn: "Unrestricted",
+    position: 0,
+  },
+]
 
 function view(
   content: DatasetContent = emptyDatasetContent(),
@@ -118,6 +112,7 @@ function view(
     datasetLabel: portalIssued ? "hum0001-NHA001" : "JGAD000001",
     published: true,
     portalIssued,
+    terms: TERMS,
     box: [],
     revision: 2,
     input: datasetContentInput(content),

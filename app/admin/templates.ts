@@ -32,7 +32,7 @@ import type {
 import type { DsBranchDetail, JgadRegistration } from "~/upstream/application-db.server"
 import type { DraSubmission } from "~/upstream/dra.server"
 
-import type { EditableCatalog, EditableKey, EditableTerm } from "./queries.server"
+import type { CatalogWithTerms, EditableKey, EditableTerm } from "./queries.server"
 
 /** The catalog keys a seeded draft writes under. */
 const ACCESS_TYPE_KEY = "access-criteria"
@@ -140,7 +140,7 @@ function hasName(branch: DsBranchDetail): boolean {
 export function jgadDatasetSeed(
   registration: JgadRegistration,
   branch: DsBranchDetail | null,
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
 ): DatasetSeed {
   const dropped: DroppedValue[] = []
   const values: ValueSlot[] = []
@@ -179,7 +179,7 @@ export function jgadDatasetSeed(
 export function draDatasetSeed(
   submission: DraSubmission,
   branch: DsBranchDetail | null,
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
 ): DatasetSeed {
   const dropped: DroppedValue[] = []
   const values: ValueSlot[] = []
@@ -220,7 +220,7 @@ export function draDatasetSeed(
 }
 
 function experiment(
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
   dropped: DroppedValue[],
   label: string,
   diseases: ValueSlot[],
@@ -235,7 +235,7 @@ function experiment(
 /** The diseases the application names, as terms of the catalog's ICD10 set. */
 function diseasesOf(
   branch: DsBranchDetail | null,
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
   dropped: DroppedValue[],
 ): ValueSlot[] {
   if (branch === null) return []
@@ -276,7 +276,7 @@ function take(values: ValueSlot[], dropped: DroppedValue[], built: Built): void 
 }
 
 function keyOf(
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
   code: string,
   scope: "dataset" | "experiment",
 ): EditableKey | undefined {
@@ -315,7 +315,7 @@ function same(a: string, b: string): boolean {
 }
 
 function vocabulary(
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
   code: string,
   scope: "dataset" | "experiment",
   values: readonly string[],
@@ -337,7 +337,7 @@ function vocabulary(
 }
 
 function text(
-  catalog: EditableCatalog,
+  catalog: CatalogWithTerms,
   code: string,
   scope: "dataset" | "experiment",
   ja: string,
@@ -348,7 +348,7 @@ function text(
   return { slot: { keyId: key.id, value: { kind: "text", text: prose(ja, en) } }, dropped: [] }
 }
 
-function number(catalog: EditableCatalog, code: string, value: number): Built {
+function number(catalog: CatalogWithTerms, code: string, value: number): Built {
   const key = keyOf(catalog, code, "experiment")
   if (key === undefined) return { slot: null, dropped: named(code, [String(value)]) }
   const unit = key.canonicalUnit

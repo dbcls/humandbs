@@ -12,24 +12,22 @@ import {
 
 import { primaryId } from "./common"
 
-export const vocabularySource = pgEnum("vocabulary_source", ["portal", "external"])
-
 /**
  * A set of controlled terms. Flat unless `hierarchical` — only ICD10 needs a
  * tree, because selecting a 3-character code has to match the 4-character codes
  * under it.
  *
- * `source` decides who may edit the terms in it. Terms from an external
- * standard are read-only and replaced wholesale on re-import; without recording
- * where a term came from, a hand correction would vanish silently at the next
- * import.
+ * **Every set is editable; none is read-only.** Taking an external standard in
+ * as a vocabulary would leave no way to correct either the standard's own
+ * mistakes or a spelling it does not carry. ICD10 instead arrives as a
+ * dictionary (`icd10Reference`) that seeds and checks the terms without ever
+ * writing them.
  */
 export const vocabularySet = pgTable("vocabulary_set", {
   id: primaryId(),
   code: text().notNull().unique(),
   labelJa: text().notNull(),
   labelEn: text().notNull(),
-  source: vocabularySource().notNull(),
   hierarchical: boolean().notNull().default(false),
 })
 
@@ -49,14 +47,38 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   labelJa: text(),
   labelEn: text().notNull(),
   parentId: uuid().references((): AnyPgColumn => vocabularyTerm.id, { onDelete: "set null" }),
-  source: vocabularySource().notNull(),
   /** Deactivated terms stay resolvable for data that already references them. */
   active: boolean().notNull().default(true),
   position: integer().notNull().default(0),
 }, (t) => [
   unique("vocabulary_term_code_unique").on(t.setId, t.code),
   index().on(t.parentId),
+  /** The picker searches by code and by either label. */
+  index().on(t.setId, t.active),
 ])
+
+/**
+ * The ICD10 classification itself, held as a dictionary rather than as a
+ * vocabulary. **It is never read by the public side.** Its three uses are all
+ * on the editing side: seeding the labels of a new term, telling a code that
+ * does not exist apart from one that no published data carries, and finding a
+ * code by name in `/admin/catalog`.
+ *
+ * Keeping it out of `vocabularyTerm` is what lets every term be editable. An
+ * import replaces this table wholesale and touches nothing else, so a label a
+ * curator corrected cannot disappear at the next import.
+ *
+ * English comes from WHO's ICD-10 2019 meta files and Japanese from the
+ * Japanese statistical classification, which follows the 2013 version — the two
+ * do not cover exactly the same codes, and a row with only one of them is
+ * expected rather than broken.
+ */
+export const icd10Reference = pgTable("icd10_reference", {
+  /** The code without its point, as terms and the address write it. */
+  code: text().primaryKey(),
+  titleEn: text(),
+  titleJa: text(),
+})
 
 /** Display grouping for facets. Which group a facet sits in is an admin choice. */
 export const facetCategory = pgTable("facet_category", {

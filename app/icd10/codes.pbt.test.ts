@@ -1,0 +1,91 @@
+import fc from "fast-check"
+import { describe, expect, it } from "vitest"
+
+import { icd10Code, icd10Parent, mergeEntries, parseWhoMeta, type Icd10Entry } from "./codes"
+
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
+
+/** A code as one of the distributions writes it. */
+const code = fc
+  .tuple(
+    fc.constantFrom(...LETTERS),
+    fc.integer({ min: 0, max: 99 }),
+    fc.stringMatching(/^[0-9A-Z]{0,2}$/),
+  )
+  .map(([letter, digits, tail]) => `${letter}${String(digits).padStart(2, "0")}${tail}`)
+
+describe("reading a code", () => {
+  it("accepts what it itself produced, whatever the point and the case", () => {
+    fc.assert(fc.property(code, (written) => {
+      expect(icd10Code(written)).toBe(written)
+      expect(icd10Code(written.toLowerCase())).toBe(written)
+      const dotted = written.length > 3 ? `${written.slice(0, 3)}.${written.slice(3)}` : written
+      expect(icd10Code(dotted)).toBe(written)
+    }))
+  })
+
+  it("gives a parent that is itself a code, and roots that have none", () => {
+    fc.assert(fc.property(code, (written) => {
+      const parent = icd10Parent(written)
+      if (written.length === 3) {
+        expect(parent).toBeNull()
+        return
+      }
+      expect(parent).not.toBeNull()
+      expect(icd10Code(parent ?? "")).toBe(parent)
+      expect(icd10Parent(parent ?? "")).toBeNull()
+    }))
+  })
+})
+
+describe("merging", () => {
+  const entries = fc.array(fc.record({
+    code,
+    titleEn: fc.option(fc.string({ minLength: 1 }), { nil: null }),
+    titleJa: fc.option(fc.string({ minLength: 1 }), { nil: null }),
+  }))
+
+  it("holds each code once, and only codes that were given", () => {
+    fc.assert(fc.property(entries, entries, (a, b) => {
+      const held = mergeEntries(a, b)
+      const codes = held.map((entry) => entry.code)
+      expect(new Set(codes).size).toBe(codes.length)
+      const given = new Set([...a, ...b].map((entry) => entry.code))
+      for (const one of codes) expect(given.has(one)).toBe(true)
+    }))
+  })
+
+  it("never invents a title, and never drops one that was the only one", () => {
+    fc.assert(fc.property(entries, entries, (a, b) => {
+      const held = new Map(mergeEntries(a, b).map((entry) => [entry.code, entry]))
+      const titlesOf = (all: Icd10Entry[], of: string, side: "titleEn" | "titleJa") =>
+        all.filter((entry) => entry.code === of).map((entry) => entry[side])
+      for (const [one, entry] of held) {
+        for (const side of ["titleEn", "titleJa"] as const) {
+          const given = [...titlesOf(a, one, side), ...titlesOf(b, one, side)]
+          if (entry[side] === null) {
+            expect(given.every((title) => title === null)).toBe(true)
+          } else {
+            expect(given).toContain(entry[side])
+          }
+        }
+      }
+    }))
+  })
+})
+
+describe("reading WHO's distribution", () => {
+  it("never reads a line whose eighth field is not a code", () => {
+    const fields = fc.array(fc.string().filter((one) => !one.includes(";")), {
+      minLength: 9,
+      maxLength: 12,
+    })
+    fc.assert(fc.property(fc.array(fields), (lines) => {
+      const text = lines.map((one) => one.join(";")).join("\n")
+      for (const entry of parseWhoMeta(text)) {
+        expect(icd10Code(entry.code)).toBe(entry.code)
+        expect(entry.titleEn).not.toBe("")
+      }
+    }))
+  })
+})
