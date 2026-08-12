@@ -73,6 +73,17 @@ describe("parseRichText refuses what prose cannot hold", () => {
   it("refuses a list, however it is written", () => {
     expect(refusedAs("- one\n- two")).toEqual(["list"])
     expect(refusedAs("1. one")).toEqual(["list"])
+    expect(refusedAs("3) one")).toEqual(["list"])
+  })
+
+  it("refuses a numbered list the parser hands back as prose", () => {
+    expect(refusedAs("    indented\n\n3. one")).toEqual(["code", "list"])
+    expect(refusedAs("    indented\n\n3. one\n\n7. two")).toEqual(["code", "list", "list"])
+  })
+
+  it("leaves a number that opens a line of prose alone", () => {
+    expect(parsed("2026 was the year")).toEqual([[{ text: "2026 was the year" }]])
+    expect(parsed("3.5 mm of it")).toEqual([[{ text: "3.5 mm of it" }]])
   })
 
   it("refuses a table, which is why GFM is switched on at all", () => {

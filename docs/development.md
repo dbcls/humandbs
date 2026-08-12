@@ -165,6 +165,19 @@ TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron
 途中で落ちても前のデータが残る。**疾患のラベルは ICD10 の辞書から埋める**ので、辞書を入れる前に流すと
 コードだけの語彙になる (下の「[ICD10 の辞書を入れる](#icd10-の辞書を入れる)」)。
 
+記事が参照する画像と PDF は content に入らない。実体はファイルストアの `common/` の箱にあり、本文からは
+`/files/common/…` で参照される ([files.md](files.md))。**投入は本文の書き換えまでしかしない**ので、
+実体は別に運ぶ。
+
+```bash
+docker compose exec app npm run s3:common-assets
+```
+
+**運ぶものは本文が指しているものだけ**で、一覧は content から読むので引数は要らない。取ってきたものは
+`migration/input/public-files/` に残り、2 回目からは外に出ない。取得元は現行ポータルで、
+`HUMANDBS_LEGACY_ORIGIN` で変えられる。**箱の中身は test で消えない**ので、入れ直すのは本文が別のものを
+指し始めたときだけ。
+
 **test は開発用 DB を空にする**ので、test の後は辞書と開発用データの両方を入れ直す。
 
 ```bash

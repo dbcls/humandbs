@@ -19,6 +19,7 @@
     "db:grants": "tsx scripts/grants.ts",
     "db:load-dev-data": "tsx migration/run.ts",
     "s3:buckets": "tsx scripts/buckets.ts",
+    "s3:common-assets": "tsx scripts/common-assets.ts",
     "icd10:import": "tsx scripts/icd10-import.ts",
     "upstream:refresh": "tsx scripts/upstream-refresh.ts",
     "admin:list": "tsx scripts/admin.ts list",

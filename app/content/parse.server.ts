@@ -158,12 +158,38 @@ function lines(): Lines {
 
 interface Reader {
   source: string
+  /** The source split once, for reading the line a node begins on. */
+  sourceLines: string[]
   into: Lines
   problems: RichTextProblem[]
 }
 
 function refuse(reader: Reader, syntax: RichTextSyntax, node: Nodes): void {
   reader.problems.push({ syntax, line: node.position?.start.line ?? 1 })
+}
+
+/**
+ * The head of an ordered list: up to three spaces, digits, `.` or `)`, then a
+ * space or the end of the line. Past nine digits CommonMark stops reading it as
+ * a number.
+ */
+const ORDERED_HEAD = /^ {0,3}\d{1,9}[.)]([ \t]|$)/
+
+/**
+ * True when a paragraph is a numbered list the parser handed back as prose.
+ *
+ * An ordered list that does not start at 1 may not interrupt a paragraph, and
+ * remark carries the restriction past the end of an indented code block as
+ * well: `3. item` sitting after one arrives as a paragraph, where the CommonMark
+ * reference implementation has a list. **What the author wrote is a list either
+ * way**, and the same text is refused wherever else it stands, so the reading
+ * that lets it through is the one to close.
+ */
+function startsOrderedList(reader: Reader, node: Nodes): boolean {
+  const line = node.position?.start.line
+  if (line === undefined) return false
+  const head = reader.sourceLines[line - 1]
+  return head !== undefined && ORDERED_HEAD.test(head)
 }
 
 /**
@@ -220,6 +246,10 @@ function walk(node: RootContent, reader: Reader): void {
       else reader.into.text(linkText(node.children, reader))
       return
     case "paragraph":
+      if (startsOrderedList(reader, node)) {
+        refuse(reader, "list", node)
+        return
+      }
       walkInline(node.children, reader)
       reader.into.endLine()
       return
@@ -235,7 +265,7 @@ function walk(node: RootContent, reader: Reader): void {
  * with is two round trips for one edit.
  */
 export function parseRichText(source: string): RichTextResult {
-  const reader: Reader = { source, into: lines(), problems: [] }
+  const reader: Reader = { source, sourceLines: source.split("\n"), into: lines(), problems: [] }
   const root = processor.parse(source)
 
   root.children.forEach((child, index) => {
