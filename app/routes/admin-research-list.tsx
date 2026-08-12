@@ -108,7 +108,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
                             <li
                               key={flag}
-                              className="whitespace-nowrap rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs"
+                              className="whitespace-nowrap rounded border border-accent px-1.5 py-0.5 text-accent text-xs"
                             >
                               {t.flags[flag]}
                             </li>
@@ -147,7 +147,7 @@ function Filters({ view, locale }: ViewProps) {
           type="search"
           name="q"
           defaultValue={view.keyword}
-          className="w-80 rounded-sm border border-line px-2 py-1 text-sm"
+          className="w-80 rounded border border-line px-2 py-1 text-sm"
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -155,7 +155,7 @@ function Filters({ view, locale }: ViewProps) {
         <select
           name="status"
           defaultValue={view.status ?? ""}
-          className="rounded-sm border border-line px-2 py-1 text-sm"
+          className="rounded border border-line px-2 py-1 text-sm"
         >
           <option value="">{t.anyStatus}</option>
           {ADMIN_STATUSES.map((status: AdminStatus) => (
@@ -181,7 +181,7 @@ function Filters({ view, locale }: ViewProps) {
       </fieldset>
       <button
         type="submit"
-        className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 text-sm text-white"
+        className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
       >
         {t.apply}
       </button>

@@ -35,12 +35,12 @@ export function UpstreamSearch({ locale, action, keyword }: {
           type="search"
           name="q"
           defaultValue={keyword}
-          className="w-96 rounded-sm border border-line px-2 py-1 text-sm"
+          className="w-96 rounded border border-line px-2 py-1 text-sm"
         />
       </label>
       <button
         type="submit"
-        className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 text-sm text-white"
+        className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
       >
         {t.find}
       </button>
@@ -149,7 +149,7 @@ export function UpstreamChoice({ locale, choice, submit }: {
         <button
           type="submit"
           disabled={free.length === 0 && choice.fields.length === 0}
-          className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submit}
         </button>

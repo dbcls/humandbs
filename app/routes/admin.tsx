@@ -84,7 +84,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                     {capabilities.map((capability) => (
                       <li
                         key={capability}
-                        className="rounded-sm border border-line px-2 py-0.5 text-ink-muted text-xs"
+                        className="rounded border border-line px-2 py-0.5 text-ink-muted text-xs"
                       >
                         {capability}
                       </li>

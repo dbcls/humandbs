@@ -12,6 +12,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
+import { Badge, Stack } from "./base"
 import { SelectAll } from "./form"
 import { Empty, PageLinks, Table, Td } from "./page"
 
@@ -44,8 +45,8 @@ export function Downloads({ locale, humLabel, rows, total, page, pageCount, at }
   const t = messages.research
 
   return (
-    <>
-      <p className="mb-2 text-ink-muted text-sm">{t.fileCount(total)}</p>
+    <Stack gap="tight">
+      <p className="text-ink-muted text-sm">{t.fileCount(total)}</p>
       <Table headers={[t.downloadName, t.downloadSize]}>
         {rows.map((row) => (
           <tr key={row.name}>
@@ -66,7 +67,7 @@ export function Downloads({ locale, humLabel, rows, total, page, pageCount, at }
         previous={messages.search.previousPage}
         next={messages.search.nextPage}
       />
-    </>
+    </Stack>
   )
 }
 
@@ -85,9 +86,8 @@ function NotPublicYet({ locale, humLabel, name }: {
   return (
     <>
       <span>{name}</span>
-      <span className="ml-2 rounded-sm border border-line px-1.5 py-0.5 text-ink-muted text-xs">
-        {t.fileNotPublic}
-      </span>
+      {" "}
+      <Badge>{t.fileNotPublic}</Badge>
       {humLabel !== null && (
         <span className="mt-1 block text-ink-muted text-xs">
           {`${t.fileWillBeAt}: ${filePath(humLabel, name)}`}
@@ -142,7 +142,7 @@ export function BoxTable({ locale, rows, humLabel }: {
           type="submit"
           name="intent"
           value="publish"
-          className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand"
+          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand"
         >
           {t.publish}
         </button>
@@ -150,7 +150,7 @@ export function BoxTable({ locale, rows, humLabel }: {
           type="submit"
           name="intent"
           value="unpublish"
-          className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand"
+          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand"
         >
           {t.unpublish}
         </button>
@@ -162,7 +162,7 @@ export function BoxTable({ locale, rows, humLabel }: {
                   type="submit"
                   name="intent"
                   value="delete"
-                  className="cursor-pointer rounded-sm border border-danger px-3 py-1 text-danger"
+                  className="cursor-pointer rounded border border-danger px-3 py-1 text-danger"
                 >
                   {t.deleteConfirm}
                 </button>
@@ -279,7 +279,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
   const busy = progress.length > 0
 
   return (
-    <div className="rounded-sm border border-line px-4 py-3">
+    <div className="rounded border border-line px-4 py-3">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <input
           ref={input}
@@ -572,19 +572,19 @@ export function FileSelection({ locale, listing, selected, onChange }: {
                 <button
                   type="button"
                   onClick={() => { setPicking(true) }}
-                  className="mt-2 cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-xs"
+                  className="mt-2 cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
                 >
                   {t.addFile}
                 </button>
               )
             : (
-                <div className="mt-2 rounded-sm border border-line px-3 py-2">
+                <div className="mt-2 rounded border border-line px-3 py-2">
                   <input
                     type="search"
                     value={filter}
                     placeholder={t.filterFiles}
                     onChange={(event) => { setFilter(event.target.value) }}
-                    className="rounded-sm border border-line px-2 py-1 text-sm"
+                    className="rounded border border-line px-2 py-1 text-sm"
                     aria-label={t.filterFiles}
                   />
                   <span className="ml-2 text-ink-muted text-xs">

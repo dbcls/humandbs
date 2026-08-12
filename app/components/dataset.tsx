@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Band } from "~/components/base"
+import { Band, Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -18,6 +18,7 @@ import {
   KeyValue,
   Page,
   PageHead,
+  Pairs,
   Section,
   UntranslatedNotice,
   Value,
@@ -83,10 +84,10 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
   const t = messages.dataset
 
   return (
-    <>
+    <Stack gap="block">
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
-      <dl className="sm:columns-2">
+      <Pairs>
         {/* A date the upstream archive has not given us is left out rather
             than drawn as an empty row: "there is no value" and "the label is
             here but the value is missing" read the same and only one is true. */}
@@ -109,7 +110,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             <AccessTypeBadge term={view.accessType} />
           </KeyValue>
         )}
-      </dl>
+      </Pairs>
 
       {view.files.length > 0 && (
         <Section title={t.files}>
@@ -129,7 +130,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         {view.experiments.length === 0
           ? <Empty>{t.noExperiments}</Empty>
           : (
-              <div className="space-y-6">
+              <Stack gap="block">
                 {view.experiments.map((experiment) => (
                   <section key={experiment.id} className="rounded border border-line">
                     <Band className="rounded-t">
@@ -137,25 +138,25 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                         <Value field={experiment.label} locale={locale} />
                       </h3>
                     </Band>
-                    <div className="px-4 pt-2">
+                    <div className="px-4 py-3">
                       <Annotation at={`experiments.${experiment.id}.label`} />
+                      <Pairs>
+                        {experiment.values.map((value) => (
+                          <KeyValue
+                            key={value.keyId}
+                            title={value.label}
+                            at={`experiments.${experiment.id}.values.${value.keyId}`}
+                          >
+                            <Value field={value.field} locale={locale} />
+                          </KeyValue>
+                        ))}
+                      </Pairs>
                     </div>
-                    <dl className="px-4 py-3 sm:columns-2">
-                      {experiment.values.map((value) => (
-                        <KeyValue
-                          key={value.keyId}
-                          title={value.label}
-                          at={`experiments.${experiment.id}.values.${value.keyId}`}
-                        >
-                          <Value field={value.field} locale={locale} />
-                        </KeyValue>
-                      ))}
-                    </dl>
                   </section>
                 ))}
-              </div>
+              </Stack>
             )}
       </Section>
-    </>
+    </Stack>
   )
 }

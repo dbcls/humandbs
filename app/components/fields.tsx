@@ -93,12 +93,12 @@ export function FieldHead({ label, marks, locale, untranslated = false }: {
     <div className="flex flex-wrap items-center gap-2">
       <span className="font-semibold text-ink-muted text-xs">{label}</span>
       {untranslated && (
-        <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted text-xs">
+        <span className="rounded border border-line px-1.5 py-0.5 text-ink-muted text-xs">
           {t.untranslated}
         </span>
       )}
       {marks.changed && (
-        <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
+        <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
           {t.changed}
         </span>
       )}
@@ -130,7 +130,7 @@ export function StateSwitch({ state, onChange, locale }: {
           type="button"
           aria-pressed={state === candidate}
           onClick={() => { onChange(candidate) }}
-          className={`cursor-pointer rounded-sm border px-1.5 py-0.5 text-xs ${
+          className={`cursor-pointer rounded border px-1.5 py-0.5 text-xs ${
             state === candidate ? "border-brand bg-brand text-white" : "border-line text-ink-muted"
           }`}
         >
@@ -155,7 +155,7 @@ export function SlotEditor({ language, value, multiline, onChange, locale, probl
 }) {
   const t = messagesFor(locale).admin.editor
   const disabled = value.state !== "value"
-  const classes = `w-full rounded-sm border px-2 py-1 text-sm ${
+  const classes = `w-full rounded border px-2 py-1 text-sm ${
     problems.length > 0 ? "border-danger" : "border-line"
   } ${disabled ? "bg-surface text-ink-muted" : ""}`
 
@@ -271,7 +271,7 @@ export function RowButton({ label, onClick, disabled = false }: {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="cursor-pointer rounded-sm border border-line px-2 py-0.5 text-ink-muted text-xs disabled:opacity-50"
+      className="cursor-pointer rounded border border-line px-2 py-0.5 text-ink-muted text-xs disabled:opacity-50"
     >
       {label}
     </button>
@@ -288,7 +288,7 @@ export function ElementCard({ index, count, locale, onMove, onRemove, children }
 }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mt-4 rounded-sm border border-line px-4 py-3">
+    <div className="mt-4 rounded border border-line px-4 py-3">
       <div className="flex items-center justify-between">
         <span className="text-ink-muted text-xs">{index + 1}</span>
         <div className="flex gap-1">
@@ -312,7 +312,7 @@ export function AddElement({ label, onClick }: { label: string, onClick: () => v
       <button
         type="button"
         onClick={onClick}
-        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
       >
         {label}
       </button>
@@ -323,7 +323,7 @@ export function AddElement({ label, onClick }: { label: string, onClick: () => v
 export function ConflictBand({ locale, changed }: { locale: Locale, changed: string[] }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mb-4 rounded-sm border border-accent bg-surface px-4 py-3 text-sm">
+    <div className="mb-4 rounded border border-accent bg-surface px-4 py-3 text-sm">
       <p className="font-semibold">{t.conflictHeading}</p>
       <p className="mt-1">
         {changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}
@@ -331,7 +331,7 @@ export function ConflictBand({ locale, changed }: { locale: Locale, changed: str
       {changed.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">
           {changed.map((path) => (
-            <li key={path} className="rounded-sm border border-line px-2 py-0.5 text-xs">
+            <li key={path} className="rounded border border-line px-2 py-0.5 text-xs">
               <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
             </li>
           ))}
@@ -358,14 +358,14 @@ export function UpstreamBand({ locale, only, both, onTakeAll }: {
 }) {
   const t = messagesFor(locale).admin.upstream
   return (
-    <div className="mb-4 rounded-sm border border-accent bg-surface px-4 py-3 text-sm">
+    <div className="mb-4 rounded border border-accent bg-surface px-4 py-3 text-sm">
       <p className="font-semibold">{t.heading}</p>
       <p className="mt-1">{t.body(only.length + both.length)}</p>
       {only.length > 0 && (
         <button
           type="button"
           onClick={onTakeAll}
-          className="mt-2 cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-xs"
+          className="mt-2 cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
         >
           {t.takeAll(only.length)}
         </button>
@@ -378,7 +378,7 @@ export function UpstreamBand({ locale, only, both, onTakeAll }: {
 export function ProblemBand({ locale, problems }: { locale: Locale, problems: FieldProblem[] }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mb-4 rounded-sm border border-danger bg-surface px-4 py-3 text-sm">
+    <div className="mb-4 rounded border border-danger bg-surface px-4 py-3 text-sm">
       <p className="font-semibold text-danger">{t.problemsHeading}</p>
       <ul className="mt-2 flex flex-col gap-1 text-xs">
         {problems.map((problem, at) => (

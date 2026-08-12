@@ -1,6 +1,6 @@
 import { redirect } from "react-router"
 
-import { Heading } from "~/components/base"
+import { Heading, Stack } from "~/components/base"
 import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { messagesFor } from "~/i18n/messages"
@@ -54,8 +54,10 @@ export default function Document({ loaderData }: Route.ComponentProps) {
     <Page width="reading">
       <Crumbs locale={loaderData.locale} current={loaderData.article.title} />
       <Card under={false}>
-        <Heading title={loaderData.article.title} />
-        <Markdown html={loaderData.article.html} />
+        <Stack gap="normal">
+          <Heading title={loaderData.article.title} />
+          <Markdown html={loaderData.article.html} />
+        </Stack>
       </Card>
     </Page>
   )

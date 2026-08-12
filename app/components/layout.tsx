@@ -2,7 +2,15 @@ import { useState } from "react"
 import { Form, Link, useLocation } from "react-router"
 
 import { useCart } from "~/cart/store"
-import { Announcement, LanguagePills, Menu, RoundLink } from "~/components/base"
+import {
+  Announcement,
+  LanguagePills,
+  Menu,
+  MENU_ITEM,
+  MENU_PANEL,
+  RoundLink,
+  Stack,
+} from "~/components/base"
 import { Icon } from "~/components/icons"
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
@@ -49,14 +57,10 @@ function NavbarEntry({ entry, locale }: { entry: NavEntry, locale: Locale }) {
         )}
       </span>
       {children.length > 0 && (
-        <ul className="absolute top-full left-0 z-10 hidden min-w-max border border-line bg-white py-1 shadow-lg group-focus-within:block group-hover:block">
+        <ul className={`absolute top-full left-0 z-10 hidden ${MENU_PANEL} group-focus-within:flex group-hover:flex`}>
           {children.map((child) => (
             <li key={child.path}>
-              <NavItemLink
-                item={child}
-                locale={locale}
-                className="block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
-              />
+              <NavItemLink item={child} locale={locale} className={MENU_ITEM} />
             </li>
           ))}
         </ul>
@@ -142,17 +146,22 @@ function Announcements({ alerts, locale }: { alerts: string[], locale: Locale })
   return (
     <section
       aria-label={messages.announcements}
-      className="flex w-full flex-col gap-1 px-4 py-1.5 sm:px-page-gutter"
+      // Held to the width of a page rather than of the window: these are
+      // sentences to read, and a line of them across 1440px runs past a hundred
+      // characters. The bar above may be full width — a notice may not.
+      className="mx-auto w-full max-w-content-max px-4 py-2 sm:px-page-gutter"
     >
-      {showing.map(({ html, index }) => (
-        <Announcement
-          key={index}
-          dismiss={messages.dismissAnnouncement}
-          onDismiss={() => { setDismissed((was) => [...was, index]) }}
-        >
-          <Markdown html={html} />
-        </Announcement>
-      ))}
+      <Stack gap="tight">
+        {showing.map(({ html, index }) => (
+          <Announcement
+            key={index}
+            dismiss={messages.dismissAnnouncement}
+            onDismiss={() => { setDismissed((was) => [...was, index]) }}
+          >
+            <Markdown html={html} />
+          </Announcement>
+        ))}
+      </Stack>
     </section>
   )
 }
@@ -205,14 +214,16 @@ export function SiteHeader({ locale, alerts, account }: {
           into it, so that it can be translated and read aloud.
         */}
         <Link to={href(locale, "/")} className="flex shrink-0 flex-col no-underline">
-          <img src="/humandb.svg" alt="" width={240} height={33} className="w-44" />
-          <span className="text-center font-semibold text-[10px] text-brand">
+          <img src="/humandb.svg" alt="" width={240} height={33} className="w-48" />
+          <span className="text-center font-semibold text-brand text-xs">
             {messages.siteName}
           </span>
         </Link>
 
         <nav aria-label={messages.globalNavigation} className="min-w-0 flex-1">
-          <ul className="flex flex-wrap items-center">
+          {/* A gap between the entries rather than none: two links whose
+              rectangles touch send a press near the boundary to the wrong one. */}
+          <ul className="flex flex-wrap items-center gap-x-1">
             {NAVBAR.map((entry) => <NavbarEntry key={entry.path} entry={entry} locale={locale} />)}
           </ul>
         </nav>
@@ -288,46 +299,63 @@ export function SiteHeader({ locale, alerts, account }: {
  */
 export function SiteFooter({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
+  const named = FOOTER.filter((entry) => (entry.children ?? []).length > 0)
+  const rest = FOOTER.filter((entry) => (entry.children ?? []).length === 0)
 
   return (
-    <footer className="mt-16 border-line border-t bg-white">
+    <footer className="mt-8 border-line border-t bg-white">
       <nav
         aria-label={messages.siteMap}
         className="mx-auto w-full max-w-content-max px-4 py-8 sm:px-page-gutter"
       >
-        <div className="flex items-start justify-between gap-4">
-          <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>
-          <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
-            <img src="/logo-dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
-          </a>
-        </div>
-        {/*
-          A grid rather than CSS columns: columns balance their height, so a
-          sitemap this short collapses into three of the four and leaves the
-          last one empty. The sitemap is meant to be scanned across.
-        */}
-        <div className="mt-4 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
-          {FOOTER.map((entry) => (
-            <section key={entry.path} className="mb-6 break-inside-avoid">
-              <h3 className="text-xs">
-                <NavItemLink
-                  item={entry}
-                  locale={locale}
-                  className="text-ink-muted no-underline hover:text-brand"
-                />
-              </h3>
-              {(entry.children ?? []).length > 0 && (
-                <ul className="mt-2 flex flex-col gap-1">
+        <Stack gap="block">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>
+            <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
+              <img
+                src="/logo-dbcls.svg"
+                alt="DBCLS"
+                width={132}
+                height={60}
+                className="h-10 w-auto"
+              />
+            </a>
+          </div>
+          {/*
+            **Only the two entries that name documents get a column.** Eleven
+            destinations across four columns left three of them holding one line
+            against a column of four, and the row grew to the tallest of them —
+            a hole the height of the sitemap itself. The other nine are one
+            line each and read across, which is what they are.
+          */}
+          <div className="grid gap-8 sm:grid-cols-2">
+            {named.map((entry) => (
+              <Stack key={entry.path} gap="tight" as="section">
+                <h3 className="font-semibold text-sm">
+                  <NavItemLink
+                    item={entry}
+                    locale={locale}
+                    className="text-ink-muted no-underline hover:text-brand"
+                  />
+                </h3>
+                <Stack gap="tight" as="ul">
                   {(entry.children ?? []).map((child) => (
                     <li key={child.path}>
                       <NavItemLink item={child} locale={locale} className="text-xs" />
                     </li>
                   ))}
-                </ul>
-              )}
-            </section>
-          ))}
-        </div>
+                </Stack>
+              </Stack>
+            ))}
+          </div>
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+            {rest.map((entry) => (
+              <li key={entry.path}>
+                <NavItemLink item={entry} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </Stack>
       </nav>
       <div className="mx-auto w-full max-w-content-max border-line border-t px-4 py-4 text-ink-muted text-sm sm:px-page-gutter">
         {messages.siteName}

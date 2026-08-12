@@ -96,7 +96,7 @@ export function PublishConfirmation({ view, result }: {
                     type="date"
                     name="releaseDate"
                     defaultValue={view.today}
-                    className="rounded-sm border border-line px-2 py-1"
+                    className="rounded border border-line px-2 py-1"
                   />
                 </label>
               )}
@@ -123,7 +123,7 @@ export function PublishConfirmation({ view, result }: {
             <button
               type="submit"
               disabled={blocked}
-              className="cursor-pointer rounded-sm bg-brand px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded bg-brand px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t.submit}
             </button>
@@ -142,7 +142,7 @@ export function PublishConfirmation({ view, result }: {
 
 function Warning({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-4 rounded-sm border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
+    <p className="mb-4 rounded border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
   )
 }
 
@@ -198,9 +198,9 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
         aria-label={detail.pinLabel}
         defaultValue={suggestion ?? ""}
         placeholder={kind === "hum" ? detail.pinPlaceholder : detail.pinDatasetPlaceholder}
-        className="rounded-sm border border-line px-2 py-1 text-sm"
+        className="rounded border border-line px-2 py-1 text-sm"
       />
-      <button type="submit" className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm">
+      <button type="submit" className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm">
         {t.pin}
       </button>
     </Form>
@@ -229,7 +229,7 @@ function PrivateFiles({ view }: { view: PublishPageView }) {
       <span className="text-sm">{t.privateFileNote}</span>
       <button
         type="submit"
-        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
       >
         {`${t.publishFiles} (${group.fileNames.length})`}
       </button>

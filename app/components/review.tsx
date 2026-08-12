@@ -65,7 +65,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
             : (
                 <ul className="flex flex-col gap-4">
                   {view.threads.map((row) => (
-                    <li key={row.thread.id} className="rounded-sm border border-line px-4 py-3">
+                    <li key={row.thread.id} className="rounded border border-line px-4 py-3">
                       <p className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                         <span className="font-semibold">{row.subject}</span>
                         <code className="text-ink-muted">{row.thread.anchor.path}</code>
@@ -89,7 +89,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
                   {view.acknowledgements.map((row) => (
                     <li
                       key={`${row.name}-${row.createdAt}`}
-                      className="rounded-sm border border-line px-2 py-0.5"
+                      className="rounded border border-line px-2 py-0.5"
                     >
                       {`${row.name} — ${row.createdAt.slice(0, 10)}`}
                       {row.bySignedIn && <span aria-hidden="true"> 🅳</span>}
@@ -120,7 +120,7 @@ function Share({ view }: { view: ReviewPageView }) {
       <p className="text-sm">{share.open ? t.shareOn : t.shareOff}</p>
       {share.expired && <p className="mt-1 text-accent text-sm">{t.expired}</p>}
 
-      <p className="mt-2 break-all rounded-sm border border-line bg-surface px-3 py-2 text-sm">
+      <p className="mt-2 break-all rounded border border-line bg-surface px-3 py-2 text-sm">
         {share.open
           ? <Link to={share.url}>{share.url}</Link>
           : <span className="text-ink-muted">{share.url}</span>}
@@ -145,7 +145,7 @@ function Share({ view }: { view: ReviewPageView }) {
             type="date"
             name="expiresOn"
             defaultValue={share.expiresOn ?? ""}
-            className="rounded-sm border border-line px-2 py-1"
+            className="rounded border border-line px-2 py-1"
           />
         </label>
         <span className="text-ink-muted text-xs">
@@ -153,7 +153,7 @@ function Share({ view }: { view: ReviewPageView }) {
         </span>
         <button
           type="submit"
-          className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-xs"
+          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
         >
           {t.setExpiry}
         </button>

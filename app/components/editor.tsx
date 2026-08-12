@@ -242,7 +242,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       <Section id="note" title={t.sections.note}>
         <p className="mb-2 text-ink-muted text-sm">{t.noteHint}</p>
         <textarea
-          className="w-full rounded-sm border border-line px-2 py-1 text-sm"
+          className="w-full rounded border border-line px-2 py-1 text-sm"
           rows={3}
           value={input.note}
           onChange={(event) => { edit({ ...input, note: event.target.value }) }}
@@ -372,13 +372,13 @@ function PublishedBand({ view }: { view: AdminDraftPageView }) {
   if (review.changed.length === 0 && open === 0) return null
 
   return (
-    <div className="mb-4 rounded-sm border border-line bg-surface px-4 py-3 text-sm">
+    <div className="mb-4 rounded border border-line bg-surface px-4 py-3 text-sm">
       {review.changed.length > 0 && (
         <>
           <p>{t.differsCount(review.changed.length)}</p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {review.changed.map((path) => (
-              <li key={path} className="rounded-sm border border-line bg-white px-2 py-0.5 text-xs">
+              <li key={path} className="rounded border border-line bg-white px-2 py-0.5 text-xs">
                 <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
               </li>
             ))}
@@ -441,7 +441,7 @@ function TopBar({ view, dirty, saving, saved, onSave, onUndo, undoLoading }: {
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 font-semibold text-white disabled:opacity-60"
+            className="cursor-pointer rounded bg-brand px-4 py-1.5 font-semibold text-white disabled:opacity-60"
           >
             {saving ? t.saving : t.save}
           </button>
@@ -499,7 +499,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
                     type="text"
                     aria-label={t.url}
                     placeholder={t.url}
-                    className="min-w-40 flex-1 rounded-sm border border-line px-2 py-1 text-sm"
+                    className="min-w-40 flex-1 rounded border border-line px-2 py-1 text-sm"
                     disabled={side.state !== "value"}
                     value={link.url}
                     onChange={(event) => {
@@ -511,7 +511,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
                     type="text"
                     aria-label={t.linkText}
                     placeholder={t.linkText}
-                    className="min-w-32 flex-1 rounded-sm border border-line px-2 py-1 text-sm"
+                    className="min-w-32 flex-1 rounded border border-line px-2 py-1 text-sm"
                     disabled={side.state !== "value"}
                     value={link.text}
                     onChange={(event) => {
@@ -725,7 +725,7 @@ function GrantsSection({ locale, items, marksFor, onChange }: SectionProps<Grant
                     <input
                       type="text"
                       aria-label={t.grantIds}
-                      className="flex-1 rounded-sm border border-line px-2 py-1 text-sm"
+                      className="flex-1 rounded border border-line px-2 py-1 text-sm"
                       value={grantId}
                       onChange={(event) => {
                         set({

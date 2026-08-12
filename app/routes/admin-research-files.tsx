@@ -102,6 +102,6 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-4 rounded-sm border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
+    <p className="mb-4 rounded border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
   )
 }

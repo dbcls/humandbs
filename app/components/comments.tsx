@@ -17,6 +17,9 @@
 import { useSyncExternalStore } from "react"
 import { useFetcher } from "react-router"
 
+import { Badge, Button } from "~/components/base"
+import { CONTROL } from "~/components/form"
+import { Icon } from "~/components/icons"
 import type { AnchorSubject } from "~/review/anchors"
 import { unresolvedCount, type ThreadView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
@@ -93,24 +96,24 @@ export function CommentSpot({ context, at, threads }: {
   const open = unresolvedCount(shown)
 
   return (
-    <details className="mt-1 inline-block align-top text-sm" id={encodeURIComponent(at)}>
+    <details className="inline-block align-top text-sm" id={encodeURIComponent(at)}>
       <summary
         title={shown.length === 0 ? t.add : t.heading}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-sm border border-line px-2 py-0.5 text-ink-muted text-xs"
+        className="inline-flex min-h-tap min-w-tap cursor-pointer list-none items-center justify-center gap-1 rounded border border-line-strong px-2 text-ink-muted text-xs marker:content-none hover:bg-surface-hover"
       >
-        <span aria-hidden="true">💬</span>
+        <Icon name="comment" aria-hidden="true" />
         <span className="sr-only">{shown.length === 0 ? t.add : t.heading}</span>
         {shown.length > 0 && t.count(shown.length)}
         {open > 0 && <span className="text-accent">{t.unresolved}</span>}
       </summary>
 
-      <div className="mt-2 w-full min-w-64 max-w-xl rounded-sm border border-line bg-surface px-3 py-2">
+      <div className="mt-2 w-full min-w-64 max-w-xl rounded border border-line bg-surface px-3 py-2">
         {shown.map((thread) => (
           <Thread key={thread.id} context={context} thread={thread} at={at} fetcher={fetcher} />
         ))}
         <CommentForm context={context} at={at} fetcher={fetcher} intent="comment" />
         {answer?.status === "invalid" && (
-          <p className="mt-1 text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
+          <p className="mt-2 text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
         )}
       </div>
     </details>
@@ -138,15 +141,15 @@ export function Thread({ context, thread, at, fetcher }: {
   const post = fetcher ?? own
 
   return (
-    <div className="mb-3 border-line border-b pb-2 last:border-b-0">
+    <div className="mb-4 border-line border-b pb-2 last:border-b-0">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {thread.resolved
           ? (
-              <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted">
+              <Badge>
                 {thread.resolvedBy === null ? t.resolved : t.resolvedBy(thread.resolvedBy)}
                 {/* The date only: the hour a thread was closed answers nothing. */}
                 {thread.resolvedAt !== null && ` (${thread.resolvedAt.slice(0, 10)})`}
-              </span>
+              </Badge>
             )
           : <span className="text-accent">{t.unresolved}</span>}
         {context.canResolve && (
@@ -161,7 +164,7 @@ export function Thread({ context, thread, at, fetcher }: {
         )}
       </div>
 
-      <ul className="mt-1 flex flex-col gap-2">
+      <ul className="mt-2 flex flex-col gap-2">
         {thread.comments.map((comment) => (
           <li key={comment.id}>
             <div className="flex flex-wrap items-baseline gap-2 text-ink-muted text-xs">
@@ -205,7 +208,7 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
     <fetcher.Form
       method="post"
       action={context.action}
-      className="mt-2 flex flex-col gap-1"
+      className="mt-2 flex flex-col gap-2"
       onSubmit={(event) => {
         const typed = new FormData(event.currentTarget).get("name")
         if (typeof typed === "string" && typed.trim() !== "") rememberName(typed.trim())
@@ -228,7 +231,7 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
           defaultValue={remembered}
           placeholder={messagesFor(context.locale).preview.whoPlaceholder}
           aria-label={messagesFor(context.locale).preview.who}
-          className="rounded-sm border border-line px-2 py-1 text-sm"
+          className={`${CONTROL} text-sm`}
         />
       )}
       <textarea
@@ -236,16 +239,12 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
         rows={2}
         placeholder={intent === "reply" ? t.reply : t.bodyPlaceholder}
         aria-label={t.body}
-        className="rounded-sm border border-line px-2 py-1 text-sm"
+        className={`${CONTROL} text-sm`}
       />
       <div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="cursor-pointer rounded-sm border border-brand px-3 py-0.5 text-brand text-xs disabled:opacity-60"
-        >
+        <Button type="submit" size="xs" disabled={busy}>
           {busy ? t.posting : t.post}
-        </button>
+        </Button>
       </div>
     </fetcher.Form>
   )

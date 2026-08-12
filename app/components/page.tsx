@@ -1,7 +1,7 @@
 import { createContext, Fragment, useContext, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Band, BAND_FILL, type BandTone, Breadcrumb, Note } from "~/components/base"
+import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, Note, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -77,7 +77,7 @@ export function Crumbs({ locale, trail = [], current }: {
 }) {
   const messages = messagesFor(locale)
   return (
-    <div className="mb-3">
+    <div className="mb-2">
       <Breadcrumb
         label={messages.breadcrumb}
         trail={[{ label: messages.homeLabel, to: href(locale, "/") }, ...trail]}
@@ -122,13 +122,30 @@ export function PageHead({ tone = "deep", kicker, label, children }: {
  * where the tint stops. `under` squares off the top, for a box that follows a
  * band and is one thing with it.
  */
-export function Card({ under = true, children }: { under?: boolean, children: ReactNode }) {
+export function Card({ under = true, fill = false, children }: {
+  under?: boolean
+  /**
+   * Whether the box takes the height of the column it stands in. A page in two
+   * columns whose contents are of different lengths otherwise ends with one
+   * side stopping short and the background showing through beside it.
+   */
+  fill?: boolean
+  children: ReactNode
+}) {
   return (
-    <div className={`bg-white px-5 py-6 ${under ? "rounded-b" : "rounded"}`}>{children}</div>
+    <div className={`bg-white px-6 py-6 ${under ? "rounded-b" : "rounded"} ${fill ? "h-full" : ""}`}>
+      {children}
+    </div>
   )
 }
 
-/** A part of a page, named. No rule under it — the space is the separation. */
+/**
+ * A part of a page, named. No rule under it — the space is the separation.
+ *
+ * The distance to whatever is above is the `Stack` these sit in rather than a
+ * margin of their own: two rules for one gap is how a page ends up with an
+ * uneven one.
+ */
 export function Section({ title, at, children }: {
   title: string
   /** The anchor of the whole section, when it draws one field. */
@@ -136,21 +153,37 @@ export function Section({ title, at, children }: {
   children: ReactNode
 }) {
   return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-3 font-semibold text-brand text-lg">{title}</h2>
-      {at !== undefined && <Annotation at={at} />}
+    <Stack gap="tight" as="section">
+      {/* A mark for the whole section sits beside its name rather than under
+          it: on a line of its own it reads as belonging to the first value. */}
+      <h2 className="flex flex-wrap items-center gap-2 font-semibold text-brand text-lg">
+        {title}
+        {at !== undefined && <Annotation at={at} />}
+      </h2>
       {children}
-    </section>
+    </Stack>
   )
 }
 
 /**
  * One labelled value.
  *
- * The label is set in the brand colour above the value and each pair is closed
- * by a rule, which is how v1 draws the descriptive half of a research page. In
- * two columns the rules line the page into rows without a table having to.
+ * The label is set above the value and each pair is closed by a rule, which is
+ * how v1 draws the descriptive half of a research page.
+ *
+ * **The pairs are laid out on a grid rather than flowed into columns.** Flowed
+ * columns break wherever the height happens to fall, so the rules on the left
+ * and the rules on the right line up nowhere and the last column ends short —
+ * three values under a heading left a quarter of the box empty. On a grid the
+ * rules meet across the page and the rows read as rows.
  */
+export function Pairs({ children }: { children: ReactNode }) {
+  // `items-start` because the rule under a value has to sit under *that* value:
+  // stretched to the height of its row, the rule below a one-line answer would
+  // be drawn eight lines under it, beside a long one in the other column.
+  return <dl className="grid items-start gap-x-8 sm:grid-cols-2">{children}</dl>
+}
+
 export function KeyValue({ title, at, children }: {
   title: string
   /** The anchor of the value below, when the page has one for it. */
@@ -158,12 +191,14 @@ export function KeyValue({ title, at, children }: {
   children: ReactNode
 }) {
   return (
-    <div className="break-inside-avoid border-line border-b py-2">
-      <dt className="text-ink-muted text-xs">{title}</dt>
-      <dd className="mt-1">
-        {children}
-        {at !== undefined && <Annotation at={at} />}
-      </dd>
+    <div className="border-line border-b py-2">
+      <Stack gap="tight">
+        <dt className="text-ink-muted text-xs">{title}</dt>
+        <dd>
+          {children}
+          {at !== undefined && <Annotation at={at} />}
+        </dd>
+      </Stack>
     </div>
   )
 }
@@ -204,37 +239,6 @@ export function Table({ headers, children }: { headers: ReactNode[], children: R
   )
 }
 
-/**
- * A column header that also orders the table by its column.
- *
- * A link, so the ordering is in the address and can be shared, and so the table
- * needs no script to be sorted. The glyph says the column can be ordered; which
- * way it is ordered now is said in words, because two chevrons at 40% opacity is
- * not a difference everybody can see.
- */
-export function SortHeader({ label, to, direction, ascending, descending }: {
-  label: string
-  to: string
-  /** How this column is ordered now, or null if the table is ordered by another. */
-  direction: "asc" | "desc" | null
-  ascending: string
-  descending: string
-}) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center gap-1 text-white no-underline hover:underline"
-      aria-sort={direction === null ? undefined : direction === "asc" ? "ascending" : "descending"}
-    >
-      {label}
-      <Icon name={direction === null ? "sort" : direction === "asc" ? "chevron-up" : "chevron-down"} />
-      {direction !== null && (
-        <span className="sr-only">{direction === "asc" ? ascending : descending}</span>
-      )}
-    </Link>
-  )
-}
-
 export function Td({ children, nowrap = false, narrow = false, colSpan, className = "" }: {
   children?: ReactNode
   /** For a cell holding an identifier, which must not be broken to fit. */
@@ -266,6 +270,8 @@ export function Empty({ children }: { children: ReactNode }) {
  * box of ten thousand files, so what a reader gets is a link rather than a
  * script — and one address for one page, which can be shared.
  */
+const PAGE_STEP = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2 hover:bg-surface-hover"
+
 export function PageLinks({ label, page, pageCount, at, previous, next }: {
   label: string
   page: number
@@ -282,19 +288,28 @@ export function PageLinks({ label, page, pageCount, at, previous, next }: {
   ])].sort((a, b) => a - b)
 
   return (
-    <nav aria-label={label} className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-      {page > 1 && <Link to={at(page - 1)}>{previous}</Link>}
+    <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-sm">
+      {page > 1 && <Link to={at(page - 1)} className={PAGE_STEP}>{previous}</Link>}
       {window.map((number, index) => (
-        <span key={number} className="flex items-center gap-2">
+        <span key={number} className="flex items-center gap-1">
           {index > 0 && (window[index - 1] ?? 0) < number - 1 && (
             <span className="text-ink-muted" aria-hidden="true">…</span>
           )}
+          {/*
+            A page number is a two-character target. Without a box around it the
+            thing to press is the glyph itself, which is a tenth of the area of
+            anything else on the page that can be pressed.
+          */}
           {number === page
-            ? <span className="font-semibold" aria-current="page">{number}</span>
-            : <Link to={at(number)}>{number}</Link>}
+            ? (
+                <span className={`${PAGE_STEP} font-semibold`} aria-current="page">
+                  {number}
+                </span>
+              )
+            : <Link to={at(number)} className={PAGE_STEP}>{number}</Link>}
         </span>
       ))}
-      {page < pageCount && <Link to={at(page + 1)}>{next}</Link>}
+      {page < pageCount && <Link to={at(page + 1)} className={PAGE_STEP}>{next}</Link>}
     </nav>
   )
 }
@@ -338,11 +353,7 @@ export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
     return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
   }
   if (field.state === "unsettled") {
-    return (
-      <span className="rounded-sm border border-accent border-dashed px-2 py-0.5 text-accent text-xs">
-        {messagesFor(locale).unsettled}
-      </span>
-    )
+    return <Badge tone="accent" dashed>{messagesFor(locale).unsettled}</Badge>
   }
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />
@@ -388,11 +399,7 @@ export function LinksValue({ links, locale, linked = true }: {
  */
 export function UntranslatedNotice({ show, locale }: { show: boolean, locale: Locale }) {
   if (!show) return null
-  return (
-    <div className="mb-4">
-      <Note kind="tip">{messagesFor(locale).untranslatedNotice}</Note>
-    </div>
-  )
+  return <Note kind="tip">{messagesFor(locale).untranslatedNotice}</Note>
 }
 
 /**

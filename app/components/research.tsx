@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Badge } from "~/components/base"
+import { Badge, Stack } from "~/components/base"
 import { CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -26,6 +26,7 @@ import {
   LinksValue,
   Page,
   PageHead,
+  Pairs,
   Section,
   Table,
   Td,
@@ -74,14 +75,19 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
           </>
         )}
       >
+        {/*
+          Whether this is the newest version, and the way to the newest one if
+          it is not. The two are drawn the same way — a badge on the band —
+          because they answer the same question; the one that leads somewhere
+          is the rounded one, which is the shape v1 gives a badge that is a link.
+        */}
         {view.isLatest
           ? <Badge onBand>{t.latestVersion}</Badge>
           : (
-              <Link
-                to={href(locale, researchPath(view.humLabel))}
-                className="text-white visited:text-white"
-              >
-                {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
+              <Link to={href(locale, researchPath(view.humLabel))} className="no-underline">
+                <Badge onBand pill>
+                  {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
+                </Badge>
               </Link>
             )}
       </PageHead>
@@ -127,7 +133,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
     datasetHref === undefined ? href(locale, datasetPath(ref.label)) : datasetHref(ref)
 
   return (
-    <>
+    <Stack gap="block">
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
       <Section title={t.title} at="title">
@@ -141,7 +147,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       )}
 
       <Section title={t.overview}>
-        <dl className="sm:columns-2">
+        <Pairs>
           <KeyValue title={t.aims} at="summary.aims">
             <Value field={view.summary.aims} locale={locale} />
           </KeyValue>
@@ -156,56 +162,58 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
               <LinksValue links={view.summary.links} locale={locale} />
             </KeyValue>
           )}
-        </dl>
+        </Pairs>
       </Section>
 
       <Section title={t.datasets} at="datasetIds">
-        {!view.isLatest && (
-          <p className="mb-2 text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
-        )}
-        {view.datasets.length === 0
-          ? <Empty>{t.noDatasets}</Empty>
-          : (
-              <Table headers={[
-                ...(cart
-                  ? [
-                      <CartToggle
-                        key="cart"
-                        ids={view.datasets.map((row) => row.label)}
-                        locale={locale}
-                        whole
-                      />,
-                    ]
-                  : []),
-                messages.dataset.datasetId,
-                messages.dataset.accessType,
-                messages.dataset.typeOfData,
-                messages.dataset.datePublished,
-              ]}
-              >
-                {view.datasets.map((row, at) => {
-                  const name = row.label === ""
-                    ? `${messages.dataset.datasetId} ${at + 1}`
-                    : row.label
-                  const to = linkTo(row)
-                  return (
-                    <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
-                      {cart && (
-                        <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
-                      )}
-                      <Td className="break-all">
-                        {to === null ? name : <Link to={to}>{name}</Link>}
-                      </Td>
-                      <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
-                      <Td>
-                        {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
-                      </Td>
-                      <Td>{row.datePublished}</Td>
-                    </tr>
-                  )
-                })}
-              </Table>
-            )}
+        <Stack gap="tight">
+          {!view.isLatest && (
+            <p className="text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
+          )}
+          {view.datasets.length === 0
+            ? <Empty>{t.noDatasets}</Empty>
+            : (
+                <Table headers={[
+                  ...(cart
+                    ? [
+                        <CartToggle
+                          key="cart"
+                          ids={view.datasets.map((row) => row.label)}
+                          locale={locale}
+                          whole
+                        />,
+                      ]
+                    : []),
+                  messages.dataset.datasetId,
+                  messages.dataset.accessType,
+                  messages.dataset.typeOfData,
+                  messages.dataset.datePublished,
+                ]}
+                >
+                  {view.datasets.map((row, at) => {
+                    const name = row.label === ""
+                      ? `${messages.dataset.datasetId} ${at + 1}`
+                      : row.label
+                    const to = linkTo(row)
+                    return (
+                      <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
+                        {cart && (
+                          <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+                        )}
+                        <Td className="break-all">
+                          {to === null ? name : <Link to={to}>{name}</Link>}
+                        </Td>
+                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+                        <Td>
+                          {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+                        </Td>
+                        <Td>{row.datePublished}</Td>
+                      </tr>
+                    )
+                  })}
+                </Table>
+              )}
+        </Stack>
       </Section>
 
       {view.files.total > 0 && (
@@ -227,7 +235,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       {view.dataProviders.length > 0 && (
         <Section title={t.dataProvider} at="dataProviders">
           {view.dataProviders.map((provider) => (
-            <dl key={provider.id} className="sm:columns-2">
+            <Pairs key={provider.id}>
               <KeyValue title={t.representative} at={`dataProviders.${provider.id}.name`}>
                 <Value field={provider.representative} locale={locale} />
               </KeyValue>
@@ -237,7 +245,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
               >
                 <Value field={provider.organization} locale={locale} />
               </KeyValue>
-            </dl>
+            </Pairs>
           ))}
         </Section>
       )}
@@ -358,6 +366,6 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
           </Table>
         </Section>
       )}
-    </>
+    </Stack>
   )
 }

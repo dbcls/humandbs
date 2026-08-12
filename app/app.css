@@ -67,6 +67,40 @@
   --spacing-content-max: 1280px;
   --spacing-content-narrow: 880px;
   --spacing-page-gutter: 40px;
+
+  /*
+   * How large something you press has to be.
+   *
+   * A glyph with nothing beside it is the smallest control a page has, and it
+   * is the one a reader misses: 36px square is the size the header circles
+   * already were, and every other icon control is held to it rather than
+   * shrinking to fit its own drawing. It is also a row's height in a table
+   * (`py-2` around a line of `text-sm`), so a mark in a listing costs nothing.
+   */
+  --spacing-tap: 2.25rem;
+
+  /*
+   * How far apart two lines sit, by the size of the type.
+   *
+   * **Japanese prose is set looser than Tailwind's default.** The glyphs are
+   * full width and have no ascenders or descenders to separate one line from
+   * the next, so a paragraph at 1.5 reads as a block; 1.75 is what the eye
+   * needs to find the start of the following line. The smaller sizes are the
+   * interface rather than the prose — a cell in a listing of four hundred rows,
+   * a label over a value — and they stay tight, because there the cost of a
+   * loose line is a table nobody can scan. Headings go tighter still: a title
+   * that wraps should read as one thing, not two.
+   *
+   * **Nothing writes `leading-*`.** The size carries the line height with it,
+   * so a part cannot pick a different rhythm for the same size of type.
+   */
+  --text-xs--line-height: 1.5;
+  --text-sm--line-height: 1.6;
+  --text-base--line-height: 1.75;
+  --text-lg--line-height: 1.6;
+  --text-xl--line-height: 1.45;
+  --text-2xl--line-height: 1.35;
+  --text-3xl--line-height: 1.3;
 }
 
 @layer base {
@@ -97,9 +131,27 @@
  * (`app/public/markdown.server.ts`); nothing outside it can appear.
  */
 @layer components {
+  /*
+   * An article sits inside a `Stack`, whose gap is the distance to whatever is
+   * above and below it. A flex item does not collapse margins with its
+   * children, so the first paragraph's own top margin would be added to that
+   * gap and the article would sit lower than everything else on the page.
+   */
+  .markdown > :first-child { @apply mt-0; }
+  .markdown > :last-child { @apply mb-0; }
+
   .markdown :is(h1, h2, h3, h4, h5, h6) {
-    @apply mt-8 mb-3 font-semibold text-brand first:mt-0;
+    @apply mt-8 mb-3 font-semibold first:mt-0;
   }
+
+  /*
+   * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
+   * so the levels have to stay apart past the third. The first three are the
+   * brand colour and step down in size; below that the colour goes back to the
+   * text's own, which is a difference the eye reads even where the sizes meet.
+   */
+  .markdown :is(h1, h2, h3) { @apply text-brand; }
+  .markdown :is(h4, h5, h6) { @apply text-ink; }
 
   .markdown h1 { @apply text-2xl; }
   .markdown h2 { @apply border-line border-b pb-1 text-xl; }
@@ -112,7 +164,7 @@
   .markdown li { @apply my-1; }
   .markdown blockquote { @apply my-4 border-brand border-l-4 bg-surface px-4 py-2; }
   .markdown hr { @apply my-6 border-line; }
-  .markdown code { @apply rounded-sm bg-surface px-1 py-0.5 text-sm; }
+  .markdown code { @apply rounded bg-surface px-1 py-0.5 text-sm; }
   .markdown pre { @apply my-4 overflow-x-auto bg-surface p-4 text-sm; }
   .markdown pre code { @apply bg-transparent p-0; }
   .markdown img { @apply my-4 max-w-full; }

@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Button, Fold } from "~/components/base"
+import { Button, Fold, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -53,33 +53,39 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
 
   return (
     <nav aria-label={messages.heading} className="text-sm">
-      <div className="flex items-baseline justify-between border-line border-b pb-1">
-        <h2 className="font-bold">{messages.heading}</h2>
-        {panel.clearHref !== null && (
-          <Link to={panel.clearHref} className="text-brand text-xs">{messages.clear}</Link>
-        )}
-      </div>
-      {panel.categories.map((category, index) => (
-        <section key={category.code ?? "-"} className="mt-4">
-          {category.label !== null && (
-            <h3 className="text-ink-muted text-xs uppercase tracking-wide">{category.label}</h3>
+      <Stack gap="normal">
+        <div className="flex items-baseline justify-between border-line border-b pb-1">
+          <h2 className="font-bold">{messages.heading}</h2>
+          {panel.clearHref !== null && (
+            <Link to={panel.clearHref} className="text-brand">{messages.clear}</Link>
           )}
-          {category.facets.map((facet) => (
-            <Facet
-              key={facet.code}
-              locale={locale}
-              target={target}
-              query={query}
-              sort={sort}
-              facet={facet}
-              // The first group is the one a reader who has chosen nothing is
-              // most likely to choose from, and a panel that opened nothing at
-              // all would read as having nothing to offer.
-              open={index === 0 || chosen(facet) > 0 || facet.expanded}
-            />
-          ))}
-        </section>
-      ))}
+        </div>
+        {panel.categories.map((category, index) => (
+          <section key={category.code ?? "-"}>
+            {category.label !== null && (
+              <h3 className="mb-2 font-semibold text-ink-muted text-xs uppercase tracking-wide">
+                {category.label}
+              </h3>
+            )}
+            <div className="divide-y divide-line border-line border-b">
+              {category.facets.map((facet) => (
+                <Facet
+                  key={facet.code}
+                  locale={locale}
+                  target={target}
+                  query={query}
+                  sort={sort}
+                  facet={facet}
+                  // The first group is the one a reader who has chosen nothing
+                  // is most likely to choose from, and a panel that opened
+                  // nothing at all would read as having nothing to offer.
+                  open={index === 0 || chosen(facet) > 0 || facet.expanded}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </Stack>
     </nav>
   )
 }
@@ -109,86 +115,92 @@ function Facet({ locale, target, query, sort, facet, open }: {
         ? undefined
         : <span className="text-brand">{messages.count(count)}</span>}
     >
-      {facet.closeHref !== null && (
-        <div className="flex justify-end">
-          <Link to={facet.closeHref} className="text-brand text-xs">{messages.close}</Link>
-        </div>
-      )}
+      <Stack gap="tight">
+        {facet.closeHref !== null && (
+          <div className="flex justify-end">
+            <Link to={facet.closeHref} className="text-brand">{messages.close}</Link>
+          </div>
+        )}
 
-      {facet.expanded && facet.kind === "vocabulary" && (
-        <form method="get" action={href(locale, listPath(target))} className="mt-1 flex gap-1">
-          <Carried query={query} sort={sort} facet={facet.code} />
-          <input
-            type="search"
-            name="find"
-            defaultValue={facet.find}
-            aria-label={messages.find}
-            placeholder={messages.find}
-            className={`min-w-0 flex-1 ${CONTROL}`}
+        {facet.expanded && facet.kind === "vocabulary" && (
+          <form method="get" action={href(locale, listPath(target))} className="flex gap-1">
+            <Carried query={query} sort={sort} facet={facet.code} />
+            <input
+              type="search"
+              name="find"
+              defaultValue={facet.find}
+              aria-label={messages.find}
+              placeholder={messages.find}
+              className={`min-w-0 flex-1 ${CONTROL}`}
+            />
+            <Button variant="secondary">{messages.apply}</Button>
+          </form>
+        )}
+
+        {facet.codeEntry !== null && (
+          <CodeEntry
+            locale={locale}
+            target={target}
+            query={query}
+            sort={sort}
+            facet={facet}
+            entry={facet.codeEntry}
           />
-          <Button variant="secondary">{messages.apply}</Button>
-        </form>
-      )}
+        )}
 
-      {facet.codeEntry !== null && (
-        <CodeEntry
-          locale={locale}
-          target={target}
-          query={query}
-          sort={sort}
-          facet={facet}
-          entry={facet.codeEntry}
-        />
-      )}
+        {facet.range !== null
+          ? (
+              <form method="get" action={href(locale, listPath(target))}>
+                <Stack gap="tight">
+                  <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
+                  <input type="hidden" name="rangeKey" value={facet.code} />
+                  <div className="flex items-center gap-1">
+                    <Bound name="rangeFrom" label={messages.from} value={facet.range.from} />
+                    <span aria-hidden="true">–</span>
+                    <Bound name="rangeTo" label={messages.to} value={facet.range.to} />
+                    {facet.range.unit !== null && (
+                      <span className="text-ink-muted text-xs">{facet.range.unit}</span>
+                    )}
+                    <Button variant="secondary" size="xs">{messages.apply}</Button>
+                  </div>
+                  <div className="flex items-baseline justify-between text-ink-muted text-xs">
+                    {facet.range.min !== null && facet.range.max !== null && (
+                      <span>{messages.span(String(facet.range.min), String(facet.range.max))}</span>
+                    )}
+                    {facet.range.clearHref !== null && (
+                      <Link to={facet.range.clearHref} className="text-brand text-sm">
+                        {messages.clear}
+                      </Link>
+                    )}
+                  </div>
+                </Stack>
+              </form>
+            )
+          : (
+              <ul className="flex flex-col">
+                {facet.values.map((value) => (
+                  <li key={value.code}>
+                    <Value locale={locale} value={value} />
+                    {value.children.length > 0 && (
+                      <ul className="ml-4 flex flex-col border-line border-l pl-2">
+                        {value.children.map((child) => (
+                          <li key={child.code}>
+                            <Value locale={locale} value={child} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-      {facet.range !== null
-        ? (
-            <form method="get" action={href(locale, listPath(target))} className="mt-1">
-              <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
-              <input type="hidden" name="rangeKey" value={facet.code} />
-              <div className="flex items-center gap-1">
-                <Bound name="rangeFrom" label={messages.from} value={facet.range.from} />
-                <span aria-hidden="true">–</span>
-                <Bound name="rangeTo" label={messages.to} value={facet.range.to} />
-                {facet.range.unit !== null && (
-                  <span className="text-ink-muted text-xs">{facet.range.unit}</span>
-                )}
-                <Button variant="secondary" size="xs">{messages.apply}</Button>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between text-ink-muted text-xs">
-                {facet.range.min !== null && facet.range.max !== null && (
-                  <span>{messages.span(String(facet.range.min), String(facet.range.max))}</span>
-                )}
-                {facet.range.clearHref !== null && (
-                  <Link to={facet.range.clearHref} className="text-brand">{messages.clear}</Link>
-                )}
-              </div>
-            </form>
-          )
-        : (
-            <ul className="mt-1 flex flex-col">
-              {facet.values.map((value) => (
-                <li key={value.code}>
-                  <Value locale={locale} value={value} />
-                  {value.children.length > 0 && (
-                    <ul className="ml-4 flex flex-col border-line border-l pl-2">
-                      {value.children.map((child) => (
-                        <li key={child.code}>
-                          <Value locale={locale} value={child} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-      {facet.moreHref !== null && (
-        <Link to={facet.moreHref} className="mt-1 inline-block text-brand text-xs">
-          {messages.seeAll}
-        </Link>
-      )}
+        {facet.moreHref !== null && (
+          <Link to={facet.moreHref} className="inline-block text-brand">
+            {messages.seeAll}
+          </Link>
+        )}
+      </Stack>
     </Fold>
   )
 }
@@ -208,25 +220,27 @@ function CodeEntry({ locale, target, query, sort, facet, entry }: {
 }) {
   const messages = messagesFor(locale).search.refine
   return (
-    <form method="get" action={href(locale, listPath(target))} className="mt-1">
-      <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
-      <div className="flex gap-1">
-        <input
-          type="text"
-          name="code"
-          defaultValue={entry.value}
-          aria-label={messages.code}
-          placeholder={messages.codeHint}
-          aria-invalid={entry.problem !== null ? true : undefined}
-          className={`min-w-0 flex-1 ${CONTROL}`}
-        />
-        <Button variant="secondary">{messages.apply}</Button>
-      </div>
-      {entry.problem !== null && (
-        <p role="status" className="mt-1 text-accent text-xs">
-          {entry.problem === "unknown-code" ? messages.codeUnknown : messages.codeNoData}
-        </p>
-      )}
+    <form method="get" action={href(locale, listPath(target))}>
+      <Stack gap="tight">
+        <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
+        <div className="flex gap-1">
+          <input
+            type="text"
+            name="code"
+            defaultValue={entry.value}
+            aria-label={messages.code}
+            placeholder={messages.codeHint}
+            aria-invalid={entry.problem !== null ? true : undefined}
+            className={`min-w-0 flex-1 ${CONTROL}`}
+          />
+          <Button variant="secondary">{messages.apply}</Button>
+        </div>
+        {entry.problem !== null && (
+          <p role="status" className="text-accent text-xs">
+            {entry.problem === "unknown-code" ? messages.codeUnknown : messages.codeNoData}
+          </p>
+        )}
+      </Stack>
     </form>
   )
 }
@@ -268,7 +282,7 @@ function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
     <Link
       to={value.href}
       aria-current={value.selected ? "true" : undefined}
-      className={`flex items-baseline justify-between gap-2 py-0.5 no-underline hover:bg-surface-hover ${
+      className={`flex items-baseline justify-between gap-2 py-1 no-underline hover:bg-surface-hover ${
         value.selected ? "font-semibold text-ink" : "text-brand"
       }`}
     >

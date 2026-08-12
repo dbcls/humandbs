@@ -80,7 +80,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   {view.labels.map((label) => (
                     <li key={label.id} className="flex items-center gap-2">
                       <span>{label.label}</span>
-                      <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted text-xs">
+                      <span className="rounded border border-line px-1.5 py-0.5 text-ink-muted text-xs">
                         {label.isPrimary ? t.primary : t.secondary}
                       </span>
                       <Unpin pinId={label.id} locale={locale} />
@@ -132,7 +132,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             <input type="hidden" name="intent" value="create-draft" />
             <button
               type="submit"
-              className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+              className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
             >
               {t.createDraft}
             </button>
@@ -216,7 +216,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
 function Notice({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-4 rounded-sm border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
+    <p className="mb-4 rounded border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
   )
 }
 
@@ -331,7 +331,7 @@ function PinForm({ kind, datasetId, placeholder, suggestion, locale }: {
         aria-label={t.pinLabel}
         placeholder={placeholder}
         defaultValue={kind === "dataset" ? suggestion ?? "" : ""}
-        className="rounded-sm border border-line px-2 py-1"
+        className="rounded border border-line px-2 py-1"
       />
       <label className="flex items-center gap-1 text-xs">
         <input type="checkbox" name="isPrimary" defaultChecked />
@@ -339,7 +339,7 @@ function PinForm({ kind, datasetId, placeholder, suggestion, locale }: {
       </label>
       <button
         type="submit"
-        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-xs"
+        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
       >
         {t.pinSubmit}
       </button>
@@ -363,7 +363,7 @@ function DraftRow({ draft, review, researchId, locale }: {
   const flags = messages.admin.research.flags
 
   return (
-    <li className="rounded-sm border border-line px-4 py-3">
+    <li className="rounded border border-line px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <Link to={href(locale, adminDraftPath(researchId, draft.id))}>{t.edit}</Link>
@@ -377,7 +377,7 @@ function DraftRow({ draft, review, researchId, locale }: {
             </span>
           )}
           {review !== null && review.unresolved > 0 && (
-            <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
+            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
               {t.openComments(review.unresolved)}
             </span>
           )}
@@ -388,12 +388,12 @@ function DraftRow({ draft, review, researchId, locale }: {
             {`${t.parent}: ${draft.parentVersionNumber === null ? t.parentNone : `v${draft.parentVersionNumber}`}`}
           </span>
           {draft.flags.unsettled && (
-            <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
+            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
               {flags.unsettled}
             </span>
           )}
           {draft.flags.untranslated && (
-            <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
+            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
               {flags.untranslated}
             </span>
           )}

@@ -12,7 +12,17 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { AnchoredValue } from "~/public/view.server"
 
+import { Badge } from "./base"
 import { AccessTypeBadge, LinksValue, Value } from "./page"
+
+/**
+ * The mark itself: a badge, whether or not it opens. It was written out four
+ * times here — the same border, padding and colour — which is how the four
+ * copies came to disagree with the badge everything else uses.
+ */
+function Mark({ label }: { label: string }) {
+  return <Badge tone="accent">{label}</Badge>
+}
 
 export function PreviousMark({ locale, value, heading }: {
   locale: Locale
@@ -22,22 +32,16 @@ export function PreviousMark({ locale, value, heading }: {
 }) {
   const t = messagesFor(locale).preview
 
-  if (value === undefined) {
-    return (
-      <span className="ml-1 rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
-        {t.differsHere}
-      </span>
-    )
-  }
+  if (value === undefined) return <Mark label={t.differsHere} />
 
   return (
-    <details className="mt-1 ml-1 inline-block align-top">
-      <summary className="inline-block cursor-pointer rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
-        {t.differsHere}
+    <details className="inline-block align-top">
+      <summary className="inline-block cursor-pointer list-none marker:content-none">
+        <Mark label={t.differsHere} />
       </summary>
-      <div className="mt-1 w-full min-w-64 max-w-xl rounded-sm border border-line bg-surface px-3 py-2">
+      <div className="mt-2 w-full min-w-64 max-w-xl rounded border border-line bg-surface px-3 py-2">
         <p className="text-ink-muted text-xs">{heading}</p>
-        <div className="mt-1 text-sm">
+        <div className="mt-2 text-sm">
           <PreviousValue locale={locale} value={value} />
         </div>
       </div>
@@ -60,22 +64,16 @@ export function PreviousLines({ locale, lines, heading, termLabel }: {
   const t = messagesFor(locale).preview
   const states = messagesFor(locale)
 
-  if (lines === null || lines.length === 0) {
-    return (
-      <span className="rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
-        {t.differsHere}
-      </span>
-    )
-  }
+  if (lines === null || lines.length === 0) return <Mark label={t.differsHere} />
 
   return (
     <details className="inline-block align-top">
-      <summary className="inline-block cursor-pointer rounded-sm border border-accent px-1.5 py-0.5 text-accent text-xs">
-        {t.differsHere}
+      <summary className="inline-block cursor-pointer list-none marker:content-none">
+        <Mark label={t.differsHere} />
       </summary>
-      <div className="mt-1 w-full min-w-64 max-w-xl rounded-sm border border-line bg-surface px-3 py-2">
+      <div className="mt-2 w-full min-w-64 max-w-xl rounded border border-line bg-surface px-3 py-2">
         <p className="text-ink-muted text-xs">{heading}</p>
-        <dl className="mt-1 text-sm">
+        <dl className="mt-2 text-sm">
           {lines.map((line, at) => (
             <div key={`${at}-${line.label}`} className="flex gap-2">
               {line.label !== "" && <dt className="text-ink-muted text-xs">{line.label}</dt>}

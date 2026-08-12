@@ -247,7 +247,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               type="button"
               onClick={save}
               disabled={fetcher.state !== "idle"}
-              className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 font-semibold text-white disabled:opacity-60"
+              className="cursor-pointer rounded bg-brand px-4 py-1.5 font-semibold text-white disabled:opacity-60"
             >
               {fetcher.state === "idle"
                 ? messagesFor(locale).admin.editor.save
@@ -263,7 +263,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       </div>
 
       {view.review.changed.length > 0 && (
-        <p className="mb-4 rounded-sm border border-line bg-surface px-4 py-2 text-sm">
+        <p className="mb-4 rounded border border-line bg-surface px-4 py-2 text-sm">
           {messagesFor(locale).admin.editor.differsCount(view.review.changed.length)}
         </p>
       )}
@@ -278,7 +278,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       )}
       {problems.length > 0 && <ProblemBand locale={locale} problems={problems} />}
       {missing && (
-        <p className="mb-4 rounded-sm border border-line bg-surface px-4 py-2 text-sm">
+        <p className="mb-4 rounded border border-line bg-surface px-4 py-2 text-sm">
           {t.undoWithoutEntry}
         </p>
       )}
@@ -290,7 +290,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           <p className="mt-1 text-ink-muted text-xs">{t.releaseDateHint}</p>
           <input
             type="date"
-            className="mt-1 rounded-sm border border-line px-2 py-1 text-sm"
+            className="mt-1 rounded border border-line px-2 py-1 text-sm"
             value={input.releaseDate}
             onChange={(event) => { edit({ ...input, releaseDate: event.target.value }) }}
           />
@@ -556,7 +556,7 @@ function AddValue({ locale, keys, onAdd }: {
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <select
         aria-label={t.addValue}
-        className="rounded-sm border border-line px-2 py-1 text-sm"
+        className="rounded border border-line px-2 py-1 text-sm"
         value={chosen}
         onChange={(event) => { setChosen(event.target.value) }}
       >
@@ -573,7 +573,7 @@ function AddValue({ locale, keys, onAdd }: {
           if (key !== undefined) onAdd(key)
           setChosen("")
         }}
-        className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm disabled:opacity-50"
+        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm disabled:opacity-50"
       >
         {t.addValue}
       </button>

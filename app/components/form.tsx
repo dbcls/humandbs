@@ -22,7 +22,7 @@
 
 import { useId, type ReactNode } from "react"
 
-import { Button, type ButtonVariant } from "~/components/base"
+import { Button, type ButtonVariant, Note } from "~/components/base"
 import { Icon } from "~/components/icons"
 
 /**
@@ -35,8 +35,14 @@ import { Icon } from "~/components/icons"
  * nothing catches it — so the screens that cannot use `Field` (a refinement
  * panel names its boxes with `aria-label` rather than a visible label) take
  * this string instead of writing one.
+ *
+ * The edge is separate from the shape because the two search boxes are round
+ * and roomy while everything else is a small rectangle: what they share is the
+ * requirement, and a box that took the whole string had to override half of it.
  */
-export const CONTROL = "rounded border border-line-strong bg-surface-input px-2 py-1 text-ink"
+export const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
+
+export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1`
 
 /**
  * The frame every input sits in: what it is called, what it has to look like,
@@ -54,7 +60,7 @@ function Labelled({ id, label, hint, error, children, inline = false }: {
   inline?: boolean
 }) {
   return (
-    <div className={inline ? "flex items-start gap-2 text-sm" : "flex flex-col gap-1 text-sm"}>
+    <div className={inline ? "flex items-start gap-2 text-sm" : "flex flex-col gap-2 text-sm"}>
       {inline
         ? (
             <>
@@ -180,6 +186,8 @@ export function Checkbox({ label, name, value, checked, hint, error, disabled }:
         value={value}
         defaultChecked={checked}
         disabled={disabled}
+        /* Half a step down, so the box sits on the line of the label beside it
+           rather than on the top of the text box. */
         className="mt-0.5 size-4 accent-brand disabled:opacity-50"
         {...invalid(id, error)}
       />
@@ -202,7 +210,7 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
   disabled?: boolean
 }) {
   return (
-    <fieldset className="flex flex-col gap-1 text-sm" disabled={disabled}>
+    <fieldset className="flex flex-col gap-2 text-sm" disabled={disabled}>
       <legend className="font-semibold text-ink-muted text-xs">{label}</legend>
       <div className="flex flex-wrap gap-4">
         {options.map((option) => (
@@ -330,19 +338,15 @@ export function Submit({ children, intent, variant = "secondary", disabled }: {
 /**
  * What a form did, said once at the top of the screen.
  *
- * `role="status"` so that it is announced when it appears: a save that answers
- * on the same page is otherwise silent to anybody not watching that corner.
+ * It is a `Note` that announces itself when it appears: a save that answers on
+ * the same page is otherwise silent to anybody not watching that corner. The
+ * box it is drawn in is the one every other remark uses — this used to be a
+ * third hand-written arrangement of the same glyph, border and text.
  */
 export function Result({ ok, children }: { ok: boolean, children: ReactNode }) {
   return (
-    <p
-      role="status"
-      className={`mb-4 flex items-start gap-2 rounded border bg-white px-4 py-2 text-sm ${
-        ok ? "border-line-strong" : "border-danger text-danger"
-      }`}
-    >
-      <Icon name={ok ? "check" : "alert"} className="mt-1" />
-      <span className="min-w-0 text-ink">{children}</span>
-    </p>
+    <div className="mb-4">
+      <Note kind={ok ? "done" : "danger"} live>{children}</Note>
+    </div>
   )
 }

@@ -78,12 +78,12 @@ export default function AdminDraftDatasetUpstream({
                 name="accession"
                 defaultValue={view.accession}
                 placeholder="DRA000123"
-                className="w-64 rounded-sm border border-line px-2 py-1 font-mono text-sm"
+                className="w-64 rounded border border-line px-2 py-1 font-mono text-sm"
               />
             </label>
             <button
               type="submit"
-              className="cursor-pointer rounded-sm bg-brand px-4 py-1.5 text-sm text-white"
+              className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
             >
               {t.look}
             </button>
@@ -143,6 +143,6 @@ export default function AdminDraftDatasetUpstream({
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-4 rounded-sm border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
+    <p className="mb-4 rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
   )
 }

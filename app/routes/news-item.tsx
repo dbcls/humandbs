@@ -1,4 +1,4 @@
-import { Heading } from "~/components/base"
+import { Heading, Stack } from "~/components/base"
 import { Markdown } from "~/components/markdown"
 import { Card, Crumbs, Page } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
@@ -29,13 +29,15 @@ export default function NewsItem({ loaderData }: Route.ComponentProps) {
         current={item.title}
       />
       <Card under={false}>
-        <Heading title={item.title} />
-        <p className="mt-2 text-ink-muted text-sm">
-          {item.publishedAt ?? messages.news.undated}
-        </p>
-        <div className="mt-4">
+        <Stack gap="normal">
+          <Stack gap="tight">
+            <Heading title={item.title} />
+            <p className="text-ink-muted text-sm">
+              {item.publishedAt ?? messages.news.undated}
+            </p>
+          </Stack>
           <Markdown html={item.html} />
-        </div>
+        </Stack>
       </Card>
     </Page>
   )

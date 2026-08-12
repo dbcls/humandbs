@@ -18,6 +18,25 @@ import type { ResearchListRowView } from "~/public/view.server"
 /** How many rows the search these came from actually matched. */
 export const TOTAL = 397
 
+/** The three most recent announcements, as the front page lists them. */
+export const NEWS = [
+  {
+    id: "019ff4fb-317a-7729-9750-80fbd28eb1d1",
+    publishedAt: "2026-06-23",
+    title: "北里大学医学部 呼吸器内科学 からの制限公開データ（Type I）を公開しました（hum0556）",
+  },
+  {
+    id: "019ff4fb-317a-7fa1-bab8-8d05aa631723",
+    publishedAt: "2026-06-16",
+    title: "制限公開データ（Type I）1件が追加されました（hum0427.v2）",
+  },
+  {
+    id: "019ff4fb-317b-701f-86f1-e751251e4e4c",
+    publishedAt: "2026-06-10",
+    title: "大阪大学大学院医学系研究科 がんゲノム情報学 からの制限公開データ（Type I）を公開しました（hum0543）",
+  },
+]
+
 export const ROWS: ResearchListRowView[] = [
   {
     humLabel: "hum0197",

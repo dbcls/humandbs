@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 
 import { APPLICATION_FORM_URL, applicationPayload, useCart, useHydrated } from "~/cart/store"
-import { Button, ButtonLink, Heading, IconButton, Note } from "~/components/base"
+import { Button, ButtonLink, Fold, Heading, IconButton, Note, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Card, Crumbs, Empty, Page, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -63,22 +63,20 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
     <Page width="reading">
       <Crumbs locale={locale} current={messages.cart.heading} />
       <Card under={false}>
-        <Heading title={messages.cart.heading} count={messages.search.results(shown.length)} />
+        <Stack gap="normal">
+          <Heading title={messages.cart.heading} count={messages.search.results(shown.length)} />
 
-        {shown.length === 0
-          ? (
-              <div className="mt-6">
-                <Empty>{messages.cart.empty}</Empty>
-                <p className="mt-1 text-ink-muted text-sm">{messages.cart.emptyHint}</p>
-              </div>
-            )
-          : (
-              <>
-                <div className="mt-4">
+          {shown.length === 0
+            ? (
+                <Stack gap="tight">
+                  <Empty>{messages.cart.empty}</Empty>
+                  <p className="text-ink-muted text-sm">{messages.cart.emptyHint}</p>
+                </Stack>
+              )
+            : (
+                <Stack gap="normal">
                   <Note>{messages.cart.instructions}</Note>
-                </div>
 
-                <div className="mt-4">
                   <Table headers={[
                     messages.dataset.datasetId,
                     messages.research.researchId,
@@ -112,6 +110,11 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                             : (
                                 <>
                                   <Td nowrap>
+                                    <Icon
+                                      name="book"
+                                      aria-hidden="true"
+                                      className="mr-1 text-ink-muted"
+                                    />
                                     <Link to={href(locale, researchPath(row.humLabel))}>
                                       {row.humLabel}
                                     </Link>
@@ -134,42 +137,45 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                       )
                     })}
                   </Table>
-                </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <CopyPayload payload={payload} locale={locale} />
-                  <ButtonLink
-                    to={APPLICATION_FORM_URL}
-                    external
-                    newTab
-                    variant="accent"
-                    pill
-                    icon={<Icon name="external" />}
-                  >
-                    {messages.cart.apply}
-                  </ButtonLink>
-                </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <CopyPayload payload={payload} locale={locale} />
+                    {/*
+                      Brand rather than accent: the site colours its two halves,
+                      and applying to use data is the same errand as the blue
+                      buttons on 「データの利用」. Accent here would make the cart
+                      look like part of the other half.
+                    */}
+                    <ButtonLink
+                      to={APPLICATION_FORM_URL}
+                      external
+                      newTab
+                      variant="primary"
+                      pill
+                      icon={<Icon name="external" />}
+                    >
+                      {messages.cart.apply}
+                    </ButtonLink>
+                  </div>
 
-                {/*
-                  The JSON is what the button copies, not something to read —
-                  it is folded away, and focusable when opened because it
-                  scrolls (a hundred datasets are four hundred lines, and a box
-                  only a mouse can scroll is a box some readers cannot reach).
-                */}
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-ink-muted text-sm">
-                    {messages.cart.showPayload}
-                  </summary>
-                  <pre
-                    tabIndex={0}
-                    aria-label={messages.cart.payload}
-                    className="mt-2 max-h-96 overflow-auto rounded border border-line bg-surface p-4 text-xs"
-                  >
-                    <code>{payload}</code>
-                  </pre>
-                </details>
-              </>
-            )}
+                  {/*
+                    The JSON is what the button copies, not something to read —
+                    it is folded away, and focusable when opened because it
+                    scrolls (a hundred datasets are four hundred lines, and a box
+                    only a mouse can scroll is a box some readers cannot reach).
+                  */}
+                  <Fold summary={messages.cart.showPayload}>
+                    <pre
+                      tabIndex={0}
+                      aria-label={messages.cart.payload}
+                      className="max-h-96 overflow-auto rounded border border-line bg-surface p-4 text-xs"
+                    >
+                      <code>{payload}</code>
+                    </pre>
+                  </Fold>
+                </Stack>
+              )}
+        </Stack>
       </Card>
     </Page>
   )

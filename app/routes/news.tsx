@@ -1,12 +1,12 @@
 import { Link } from "react-router"
 
-import { Button, ButtonLink, Heading } from "~/components/base"
-import { CONTROL } from "~/components/form"
-import { Icon } from "~/components/icons"
+import { Heading, Stack } from "~/components/base"
 import { Card, Crumbs, Empty, Page } from "~/components/page"
+import { SearchBox } from "~/components/search"
+import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { newsList } from "~/public/site.server"
-import { href, newsItemPath, newsPath, readLocale } from "~/public/urls"
+import { href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/news"
 
@@ -44,57 +44,45 @@ export default function News({ loaderData }: Route.ComponentProps) {
     <Page width="reading">
       <Crumbs locale={locale} current={messages.news.all} />
       <Card under={false}>
-        <Heading title={messages.news.all} />
+        <Stack gap="normal">
+          <Heading title={messages.news.all} />
 
-        {/*
-          A GET form, so the search is in the address and can be linked to. It
-          is not the public search (`docs/public-pages.md`): announcements are
-          not indexed, and this is one `ILIKE` over 682 rows.
-        */}
-        <form method="get" action={href(locale, newsPath())} role="search" className="mt-4 flex gap-2">
-          <input
-            type="search"
-            name="find"
-            defaultValue={find}
-            aria-label={messages.news.find}
-            placeholder={messages.news.find}
-            className={`min-w-0 flex-1 rounded-full ${CONTROL}`}
-          />
-          <Button variant="secondary" pill icon={<Icon name="search" />}>
-            {messages.news.find}
-          </Button>
-          {find !== "" && (
-            <ButtonLink to={href(locale, newsPath())} variant="ghost" pill>
-              {messages.news.clearFind}
-            </ButtonLink>
-          )}
-        </form>
+          {/*
+            A GET form, so the search is in the address and can be linked to. It
+            is not the public search (`docs/public-pages.md`): announcements are
+            not indexed, and this is one `ILIKE` over 682 rows. It is drawn as
+            the same box all the same — which index answers is not something a
+            reader can see.
+          */}
+          <Stack gap="tight">
+            <SearchBox
+              action={href(locale, newsPath())}
+              name="find"
+              value={find}
+              label={messages.news.find}
+              placeholder={messages.news.find}
+              submit={messages.news.find}
+            />
+            {find !== "" && (
+              <p className="text-sm">
+                <Link to={href(locale, newsPath())}>{messages.news.clearFind}</Link>
+              </p>
+            )}
+          </Stack>
 
-        {items.length === 0 && find !== ""
-          ? <p className="mt-6 text-ink-muted">{messages.news.noMatch}</p>
-          : items.length === 0
-            ? <Empty>{messages.news.none}</Empty>
-            : (
-                <ul className="mt-4 flex flex-col divide-y divide-line">
-                  {items.map((item) => (
-                    <li key={item.id} className="py-3">
-                      <div className="text-ink-muted text-xs">
-                        {item.publishedAt ?? messages.news.undated}
-                      </div>
-                      <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {items.length === 0
+            ? <Empty>{find === "" ? messages.news.none : messages.news.noMatch}</Empty>
+            : <NewsList locale={locale} items={items} />}
 
-        <nav className="mt-6 flex justify-between text-sm">
-          {page > 1
-            ? <Link to={pageHref(page - 1)}>{messages.news.newer}</Link>
-            : <span />}
-          {hasNext
-            ? <Link to={pageHref(page + 1)}>{messages.news.older}</Link>
-            : <span />}
-        </nav>
+          <nav className="flex justify-between text-sm">
+            {page > 1
+              ? <Link to={pageHref(page - 1)}>{messages.news.newer}</Link>
+              : <span />}
+            {hasNext
+              ? <Link to={pageHref(page + 1)}>{messages.news.older}</Link>
+              : <span />}
+          </nav>
+        </Stack>
       </Card>
     </Page>
   )

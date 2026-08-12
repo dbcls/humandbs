@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Badge, Band } from "~/components/base"
+import { Badge, Band, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import {
   Card,
@@ -66,45 +66,47 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
         <Badge onBand>{t.releaseInfo}</Badge>
       </PageHead>
       <Card>
-        <UntranslatedNotice show={view.untranslated} locale={locale} />
-        <ul className="space-y-6">
-          {view.versions.map((version) => (
-            <li key={version.number} className="overflow-hidden rounded border border-line">
-              {/* The versions are what this page is a list of, so each one is
-                  named on a band: a grey strip is the weakest thing on a page
-                  whose whole job is to separate them. */}
-              <Band>
-                <h2 className="font-bold">
-                  <Link
-                    to={href(locale, researchVersionPath(view.humLabel, version.number))}
-                    className="text-white visited:text-white"
-                  >
-                    {version.label}
-                  </Link>
-                </h2>
-                <span className="text-sm">{version.releaseDate}</span>
-              </Band>
-              <div className="grid gap-6 bg-white px-4 py-4 sm:grid-cols-[18rem_1fr]">
-                <KeyValue title={t.datasetsAddedInRelease}>
-                  {version.addedDatasetLabels.length === 0
-                    ? <Empty>{t.noDatasetsAddedInRelease}</Empty>
-                    : (
-                        <ul className="space-y-1 text-sm">
-                          {version.addedDatasetLabels.map((label) => (
-                            <li key={label} className="break-all">
-                              <Link to={href(locale, datasetPath(label))}>{label}</Link>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                </KeyValue>
-                <KeyValue title={t.releaseNote}>
-                  <Value field={version.releaseNote} locale={locale} />
-                </KeyValue>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <Stack gap="block">
+          <UntranslatedNotice show={view.untranslated} locale={locale} />
+          <Stack gap="normal" as="ul">
+            {view.versions.map((version) => (
+              <li key={version.number} className="overflow-hidden rounded border border-line">
+                {/* The versions are what this page is a list of, so each one is
+                    named on a band: a grey strip is the weakest thing on a page
+                    whose whole job is to separate them. */}
+                <Band>
+                  <h2 className="font-bold">
+                    <Link
+                      to={href(locale, researchVersionPath(view.humLabel, version.number))}
+                      className="text-white visited:text-white"
+                    >
+                      {version.label}
+                    </Link>
+                  </h2>
+                  <span className="text-sm">{version.releaseDate}</span>
+                </Band>
+                <div className="grid gap-x-8 bg-white px-4 py-2 sm:grid-cols-[18rem_1fr]">
+                  <KeyValue title={t.datasetsAddedInRelease}>
+                    {version.addedDatasetLabels.length === 0
+                      ? <Empty>{t.noDatasetsAddedInRelease}</Empty>
+                      : (
+                          <Stack gap="tight" as="ul">
+                            {version.addedDatasetLabels.map((label) => (
+                              <li key={label} className="break-all text-sm">
+                                <Link to={href(locale, datasetPath(label))}>{label}</Link>
+                              </li>
+                            ))}
+                          </Stack>
+                        )}
+                  </KeyValue>
+                  <KeyValue title={t.releaseNote}>
+                    <Value field={version.releaseNote} locale={locale} />
+                  </KeyValue>
+                </div>
+              </li>
+            ))}
+          </Stack>
+        </Stack>
       </Card>
     </Page>
   )

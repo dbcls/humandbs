@@ -141,6 +141,6 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-4 rounded-sm border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
+    <p className="mb-4 rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
   )
 }

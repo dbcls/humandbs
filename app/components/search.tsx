@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Button, ButtonLink, Chip, Heading, Note, SwitchTabs } from "~/components/base"
+import { Button, ButtonLink, Chip, Heading, Note, Stack, SwitchTabs } from "~/components/base"
+import { CONTROL_EDGE } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -21,6 +22,57 @@ import { Card, Crumbs, Page, PageLinks } from "./page"
  * what it does with a glyph and its accessible name rather than a word: it is
  * the same control on the front page and over a listing, at two sizes.
  */
+/**
+ * The box itself: a rounded field and the round accent button beside it.
+ *
+ * **Every search on the site is this shape**, whatever it searches. The listings
+ * search the index and the announcements are one `ILIKE` over 682 rows, but a
+ * reader typing into a box does not know that and should not have to — the
+ * announcements screen used to draw its own field with an outlined pill button
+ * and a word on it, which read as a different kind of thing entirely.
+ */
+export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", children }: {
+  action: string
+  /** What the typed words are called in the address. */
+  name: string
+  value: string
+  label: string
+  placeholder: string
+  submit: string
+  /** The front page asks with a large one; everywhere else it sits over a list. */
+  size?: "normal" | "large"
+  /** What the form has to carry that the box does not show. */
+  children?: ReactNode
+}) {
+  const large = size === "large"
+  return (
+    <form method="get" action={action} role="search" className="flex items-center gap-2">
+      {children}
+      <input
+        type="search"
+        name={name}
+        defaultValue={value}
+        aria-label={label}
+        placeholder={placeholder}
+        className={`min-w-0 flex-1 rounded-full px-5 ${CONTROL_EDGE} ${large ? "py-3.5 text-lg" : "py-2"}`}
+      />
+      {/*
+        The button is a circle the height of the field it belongs to, which is
+        why the large one is not the standard tap size: a 36px circle beside a
+        56px field reads as something that fell off.
+      */}
+      <button
+        type="submit"
+        aria-label={submit}
+        title={submit}
+        className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-white hover:bg-accent-light ${large ? "size-14" : "size-tap"}`}
+      >
+        <Icon name="search" className={large ? "text-2xl" : "text-lg"} />
+      </button>
+    </form>
+  )
+}
+
 export function SearchForm({
   locale,
   target,
@@ -41,34 +93,20 @@ export function SearchForm({
   size?: "normal" | "large"
 }) {
   const messages = messagesFor(locale)
-  const large = size === "large"
   return (
-    <form
-      method="get"
+    <SearchBox
       action={href(locale, listPath(target))}
-      role="search"
-      className="flex items-center gap-2"
+      name="k"
+      value={keyword}
+      label={messages.search.label}
+      placeholder={messages.search.placeholder}
+      submit={messages.search.submit}
+      size={size}
     >
       <input type="hidden" name="q" value={query} />
       {facet !== null && <input type="hidden" name="facet" value={facet} />}
       {find !== "" && <input type="hidden" name="find" value={find} />}
-      <input
-        type="search"
-        name="k"
-        defaultValue={keyword}
-        aria-label={messages.search.label}
-        placeholder={messages.search.placeholder}
-        className={`min-w-0 flex-1 rounded-full border border-line-strong bg-surface-input px-5 ${large ? "py-3.5 text-lg" : "py-2"}`}
-      />
-      <button
-        type="submit"
-        aria-label={messages.search.submit}
-        title={messages.search.submit}
-        className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-white hover:bg-accent-light ${large ? "size-14" : "size-10"}`}
-      >
-        <Icon name="search" className={large ? "text-2xl" : "text-lg"} />
-      </button>
-    </form>
+    </SearchBox>
   )
 }
 
@@ -85,7 +123,7 @@ export function RefinableList({ panel, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="mt-4 flex flex-col gap-6 md:flex-row">
+    <div className="flex flex-col gap-6 md:flex-row">
       <div className="min-w-0 flex-1">{children}</div>
       <div className="md:order-first md:w-56 md:shrink-0 lg:w-64">{panel}</div>
     </div>
@@ -102,16 +140,17 @@ export function RefinableList({ panel, children }: {
 export function SearchExamples({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
       <span className="text-ink-muted">{messages.search.examples}</span>
       {messages.search.exampleQueries.map((example) => (
-        <Link
+        <ButtonLink
           key={example}
           to={href(locale, listPath("research") + searchQuery({ q: example, sort: null, page: 1 }))}
-          className="rounded-full bg-brand px-3 py-0.5 text-white text-xs no-underline visited:text-white hover:brightness-90"
+          variant="primary"
+          pill
         >
           {example}
-        </Link>
+        </ButtonLink>
       ))}
     </div>
   )
@@ -128,7 +167,7 @@ export function ConditionChips({ conditions, locale }: {
 }) {
   if (conditions.length === 0) return null
   return (
-    <ul className="mt-3 flex flex-wrap gap-2">
+    <ul className="flex flex-wrap gap-2">
       {conditions.map((condition) => (
         <li key={condition.label}>
           <Chip
@@ -151,7 +190,7 @@ export function SortLinks({ locale, target, query, sort, options }: {
 }) {
   const messages = messagesFor(locale)
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
       <span className="text-ink-muted">{messages.search.sort.label}</span>
       {options.map((option) => (
         <Link
@@ -199,16 +238,22 @@ export function Pagination({ locale, target, query, sort, page, pageCount }: {
 export function NoResults({ locale, other }: { locale: Locale, other?: React.ReactNode }) {
   const messages = messagesFor(locale)
   return (
-    <div className="mt-6 border border-line bg-surface px-5 py-6">
-      <p className="font-semibold">{messages.search.none}</p>
-      <p className="mt-1 text-ink-muted text-sm">{messages.search.noneHint}</p>
-      {other !== undefined && <p className="mt-3 text-sm">{other}</p>}
-      <h2 className="mt-5 font-semibold text-ink-muted text-xs">{messages.search.syntaxTitle}</h2>
-      <ul className="mt-1 flex flex-col gap-1 text-ink-muted text-sm">
-        <li>{messages.search.syntaxSpace}</li>
-        <li>{messages.search.syntaxComma}</li>
-        <li>{messages.search.syntaxQuote}</li>
-      </ul>
+    <div className="rounded border border-line bg-surface px-6 py-6">
+      <Stack gap="normal">
+        <Stack gap="tight">
+          <p className="font-semibold">{messages.search.none}</p>
+          <p className="text-ink-muted text-sm">{messages.search.noneHint}</p>
+          {other !== undefined && <p className="text-sm">{other}</p>}
+        </Stack>
+        <Stack gap="tight">
+          <h2 className="font-semibold text-ink-muted text-xs">{messages.search.syntaxTitle}</h2>
+          <Stack gap="tight" as="ul">
+            <li className="text-ink-muted text-sm">{messages.search.syntaxSpace}</li>
+            <li className="text-ink-muted text-sm">{messages.search.syntaxComma}</li>
+            <li className="text-ink-muted text-sm">{messages.search.syntaxQuote}</li>
+          </Stack>
+        </Stack>
+      </Stack>
     </div>
   )
 }
@@ -216,13 +261,11 @@ export function NoResults({ locale, other }: { locale: Locale, other?: React.Rea
 export function InvalidQuery({ locale, column }: { locale: Locale, column: number }) {
   const messages = messagesFor(locale)
   return (
-    <div className="mt-6">
-      <Note kind="danger">
-        {messages.search.invalid}
-        {" "}
-        <span className="text-ink-muted">{column}</span>
-      </Note>
-    </div>
+    <Note kind="danger">
+      {messages.search.invalid}
+      {" "}
+      <span className="text-ink-muted">{column}</span>
+    </Note>
   )
 }
 
@@ -323,71 +366,75 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
       </div>
 
       <Card under={false}>
-        <Heading title={heading} count={messages.search.results(view.total)}>
-          {/*
-            Nothing to hand over when the address could not be read: the query
-            the file would carry is the empty one, and that is the whole corpus
-            rather than the search on screen.
-          */}
-          {view.parseError === null && (
-            <ExportLinks locale={locale} target={target} query={view.query} sort={view.sort} />
-          )}
-        </Heading>
+        <Stack gap="normal">
+          <Heading title={heading} count={messages.search.results(view.total)}>
+            {/*
+              Nothing to hand over when the address could not be read: the query
+              the file would carry is the empty one, and that is the whole corpus
+              rather than the search on screen.
+            */}
+            {view.parseError === null && (
+              <ExportLinks locale={locale} target={target} query={view.query} sort={view.sort} />
+            )}
+          </Heading>
 
-        <div className="mt-4">
-          <SearchForm
-            locale={locale}
-            target={target}
-            keyword={view.keyword}
-            query={view.query}
-            facet={view.facet}
-            find={view.find}
-          />
-        </div>
-        <ConditionChips conditions={view.conditions} locale={locale} />
+          <Stack gap="tight">
+            <SearchForm
+              locale={locale}
+              target={target}
+              keyword={view.keyword}
+              query={view.query}
+              facet={view.facet}
+              find={view.find}
+            />
+            <ConditionChips conditions={view.conditions} locale={locale} />
+          </Stack>
 
-        {/* What the cart marks down the first column are for, said once. */}
-        <div className="mt-4">
+          {/* What the cart marks down the first column are for, said once. */}
           <Note>{messages.cart.hint}</Note>
-        </div>
 
-        {view.parseError !== null
-          ? <InvalidQuery locale={locale} column={view.parseError.column} />
-          : (
-              <RefinableList panel={panel}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-ink-muted text-sm">
-                    {view.total === 0
-                      ? messages.search.results(0)
-                      : messages.search.range(view.rangeFrom, view.rangeTo, view.total)}
-                  </p>
-                  <SortLinks
-                    locale={locale}
-                    target={target}
-                    query={view.query}
-                    sort={view.sort}
-                    options={view.sortOptions}
-                  />
-                </div>
-                {other !== undefined && <p className="mt-1 text-sm">{other}</p>}
-
-                {empty
-                  ? <NoResults locale={locale} other={other} />
-                  : (
-                      <div className="mt-4">
-                        {children}
-                        <Pagination
+          {view.parseError !== null
+            ? <InvalidQuery locale={locale} column={view.parseError.column} />
+            : (
+                <RefinableList panel={panel}>
+                  <Stack gap="normal">
+                    <Stack gap="tight">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-ink-muted text-sm">
+                          {view.total === 0
+                            ? messages.search.results(0)
+                            : messages.search.range(view.rangeFrom, view.rangeTo, view.total)}
+                        </p>
+                        <SortLinks
                           locale={locale}
                           target={target}
                           query={view.query}
                           sort={view.sort}
-                          page={view.page}
-                          pageCount={view.pageCount}
+                          options={view.sortOptions}
                         />
                       </div>
-                    )}
-              </RefinableList>
-            )}
+                      {other !== undefined && <p className="text-sm">{other}</p>}
+                    </Stack>
+
+                    {empty
+                      ? <NoResults locale={locale} other={other} />
+                      : (
+                          <Stack gap="normal">
+                            {children}
+                            <Pagination
+                              locale={locale}
+                              target={target}
+                              query={view.query}
+                              sort={view.sort}
+                              page={view.page}
+                              pageCount={view.pageCount}
+                            />
+                          </Stack>
+                        )}
+                  </Stack>
+                </RefinableList>
+              )}
+        </Stack>
       </Card>
     </Page>
   )

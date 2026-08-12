@@ -83,7 +83,7 @@ export function UndoMenu({ locale, entries, onPick, loading }: {
         {entries.length === 0 ? t.undoEmpty : t.undo}
       </button>
       {open && entries.length > 0 && (
-        <ul className="absolute right-0 z-20 mt-1 w-80 rounded-sm border border-line bg-white py-1 shadow">
+        <ul className="absolute right-0 z-20 mt-1 w-80 rounded border border-line bg-white py-1 shadow">
           {entries.map((entry) => (
             <li key={entry.id} className="flex items-center justify-between gap-2 px-3 py-1 text-xs">
               <span>{stamp(entry.createdAt)}</span>

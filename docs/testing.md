@@ -31,9 +31,11 @@ line / branch が 100% で mutation score が 4% だった実測例がある —
 書かない。
 
 **見た目の中にも test にできる不変条件はある。** どの画面がどう見えるかは test の対象ではないが、
-「色のコントラストが WCAG 2.1 AA を満たす」「部品カタログが本番の route 一覧に入らない」は
-どちらも真偽の決まる命題で、test が守る (`app/app.contrast.test.ts` と `app/routes.test.ts`)。
-前者は `app.css` から値を読んで計算するので、色を変えると落ちる。
+「色のコントラストが WCAG 2.1 AA を満たす」「公開画面が縦の margin を書かない」「角丸が 2 通りしか
+無い」「部品カタログが本番の route 一覧に入らない」は、どれも真偽の決まる命題で test が守る
+(`app/app.contrast.test.ts`、`app/app.spacing.test.ts`、`app/routes.test.ts`)。**どれも source を
+読んで判定する** — 色は `app.css` から値を取って計算し、寸法は `className` に書かれた語を数える。
+規範を実物 (`/dev/ui`) に置いた分、**文章で言えるところまでは機械に見張らせる**のがここの役割になる。
 
 ## 不変量 (PBT)
 

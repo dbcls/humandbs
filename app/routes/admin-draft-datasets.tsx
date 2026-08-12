@@ -69,12 +69,12 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
         />
 
         {actionData?.status === "conflict" && (
-          <p className="mt-3 rounded-sm border border-accent bg-surface px-4 py-2 text-sm">
+          <p className="mt-3 rounded border border-accent bg-surface px-4 py-2 text-sm">
             {t.listConflict}
           </p>
         )}
         {actionData?.status === "refused" && (
-          <p className="mt-3 rounded-sm border border-danger bg-surface px-4 py-2 text-sm">
+          <p className="mt-3 rounded border border-danger bg-surface px-4 py-2 text-sm">
             {t.deleteRefused}
           </p>
         )}
@@ -102,7 +102,7 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
             <input type="hidden" name="revision" value={view.revision} />
             <button
               type="submit"
-              className="cursor-pointer rounded-sm border border-brand px-3 py-1 text-brand text-sm"
+              className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
             >
               {t.createDataset}
             </button>
@@ -130,7 +130,7 @@ function DatasetRow({ row, locale, researchId, draftId, revision }: {
   const [confirming, setConfirming] = useState(false)
 
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-sm border border-line px-4 py-2 text-sm">
+    <li className="flex flex-wrap items-center gap-3 rounded border border-line px-4 py-2 text-sm">
       <Link
         to={href(locale, adminDraftDatasetPath(researchId, draftId, row.id))}
         className="min-w-48"
@@ -177,7 +177,7 @@ function DatasetRow({ row, locale, researchId, draftId, revision }: {
 
 function Mark({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-sm border border-line px-1.5 py-0.5 text-ink-muted text-xs">
+    <span className="rounded border border-line px-1.5 py-0.5 text-ink-muted text-xs">
       {children}
     </span>
   )

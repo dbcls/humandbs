@@ -1,7 +1,11 @@
 import type { ReactNode } from "react"
+import { Link } from "react-router"
 
-import { BigAction } from "~/components/base"
+import { BigAction, Stack } from "~/components/base"
 import type { IconName } from "~/components/icons"
+import type { Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
+import { href, newsItemPath } from "~/public/urls"
 
 /**
  * The pieces the screens are built from — the ones that are layout rather than
@@ -11,7 +15,9 @@ import type { IconName } from "~/components/icons"
  * are components now, so the markdown dialect does not have to carry them.
  */
 export function ActionRow({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-start justify-center gap-6">{children}</div>
+  // Left, with everything else on the page: centred buttons over left-set prose
+  // give the card two axes, and the eye follows the wrong one back up.
+  return <div className="flex flex-wrap items-start gap-6">{children}</div>
 }
 
 /**
@@ -42,7 +48,30 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
   )
 }
 
-/** The sentences under the buttons, centred, each one already HTML. */
-export function Notes({ children }: { children: ReactNode }) {
-  return <div className="mt-12 flex flex-col items-center gap-3 text-center">{children}</div>
+/**
+ * The announcements, newest first: when, and what.
+ *
+ * **The front page and the listing show the same list**, and used to draw it
+ * twice — the same `<ul>`, the same rule between the rows, the same small grey
+ * date — with the two copies already a step apart in how tall a row was.
+ */
+export function NewsList({ locale, items }: {
+  locale: Locale
+  items: { id: string, title: string, publishedAt: string | null }[]
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <ul className="flex flex-col divide-y divide-line">
+      {items.map((item) => (
+        <li key={item.id} className="py-3 first:pt-0">
+          <Stack gap="tight">
+            <span className="text-ink-muted text-xs">
+              {item.publishedAt ?? messages.news.undated}
+            </span>
+            <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
+          </Stack>
+        </li>
+      ))}
+    </ul>
+  )
 }

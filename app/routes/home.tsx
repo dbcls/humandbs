@@ -1,12 +1,13 @@
 import { Link } from "react-router"
 
-import { BigAction, Heading } from "~/components/base"
+import { BigAction, Heading, Stack } from "~/components/base"
 import { Markdown } from "~/components/markdown"
-import { Card, Page } from "~/components/page"
+import { Card, Empty, Page } from "~/components/page"
 import { SearchExamples, SearchForm } from "~/components/search"
+import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { findDocument, newsList } from "~/public/site.server"
-import { href, newsItemPath, newsPath, readLocale } from "~/public/urls"
+import { href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/home"
 
@@ -43,48 +44,46 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <Page>
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <Card under={false}>
-          {intro !== null && (
-            <>
-              <Heading title={intro.title} />
-              <Markdown html={intro.html} className="mt-4" />
-            </>
-          )}
+          <Stack gap="block">
+            {intro !== null && (
+              <Stack gap="normal">
+                <Heading title={intro.title} />
+                <Markdown html={intro.html} />
+              </Stack>
+            )}
 
-          <div className="mt-8">
-            <SearchForm locale={locale} target="research" keyword="" query="" size="large" />
-            <SearchExamples locale={locale} />
-          </div>
+            <Stack gap="normal">
+              <SearchForm locale={locale} target="research" keyword="" query="" size="large" />
+              <SearchExamples locale={locale} />
+            </Stack>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            <BigAction to={href(locale, "/data-submission")} tone="accent" icon="upload">
-              {messages.submission.heading}
-            </BigAction>
-            <BigAction to={href(locale, "/data-use")} tone="brand" icon="download">
-              {messages.use.heading}
-            </BigAction>
-          </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <BigAction to={href(locale, "/data-submission")} tone="accent" icon="upload">
+                {messages.submission.heading}
+              </BigAction>
+              <BigAction to={href(locale, "/data-use")} tone="brand" icon="download">
+                {messages.use.heading}
+              </BigAction>
+            </div>
+          </Stack>
         </Card>
 
+        {/*
+          The column takes the height of the one beside it: the front page is
+          two boxes on a tint, and a box that stopped short left the background
+          showing through beside the other one.
+        */}
         <aside>
-          <Card under={false}>
-            <Heading level="h2" title={messages.news.latest} />
-            {news.length === 0
-              ? <p className="mt-4 text-ink-muted text-sm">{messages.news.none}</p>
-              : (
-                  <ul className="mt-4 flex flex-col divide-y divide-line">
-                    {news.map((item) => (
-                      <li key={item.id} className="py-2 text-sm">
-                        <div className="text-ink-muted text-xs">
-                          {item.publishedAt ?? messages.news.undated}
-                        </div>
-                        <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-            <p className="mt-3 text-sm">
-              <Link to={href(locale, newsPath())}>{messages.news.all}</Link>
-            </p>
+          <Card under={false} fill>
+            <Stack gap="normal">
+              <Heading level="h2" title={messages.news.latest} />
+              {news.length === 0
+                ? <Empty>{messages.news.none}</Empty>
+                : <NewsList locale={locale} items={news} />}
+              <p className="text-sm">
+                <Link to={href(locale, newsPath())}>{messages.news.all}</Link>
+              </p>
+            </Stack>
           </Card>
         </aside>
       </div>

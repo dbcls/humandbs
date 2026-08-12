@@ -1,7 +1,7 @@
-import { Heading } from "~/components/base"
+import { Heading, Stack } from "~/components/base"
 import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
-import { ActionButton, ActionRow, Notes } from "~/components/site"
+import { ActionButton, ActionRow } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { renderMarkdown } from "~/public/markdown.server"
 import { href, readLocale } from "~/public/urls"
@@ -36,27 +36,29 @@ export default function DataUse({ loaderData }: Route.ComponentProps) {
     <Page width="reading">
       <Crumbs locale={locale} current={messages.heading} />
       <Card under={false}>
-        <Heading title={messages.heading} />
-        <ActionRow>
-          <ActionButton
-            href={href(locale, "/research")}
-            label={messages.find}
-            note={messages.findFor}
-            tone="brand"
-            icon="search"
-            external={false}
-          />
-          <ActionButton
-            href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
-            label={messages.apply}
-            note={messages.applyFor}
-            tone="brand"
-            icon="edit"
-          />
-        </ActionRow>
-        <Notes>
-          {loaderData.notes.map((html, index) => <Markdown key={index} html={html} />)}
-        </Notes>
+        <Stack gap="block">
+          <Heading title={messages.heading} />
+          <ActionRow>
+            <ActionButton
+              href={href(locale, "/research")}
+              label={messages.find}
+              note={messages.findFor}
+              tone="brand"
+              icon="search"
+              external={false}
+            />
+            <ActionButton
+              href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
+              label={messages.apply}
+              note={messages.applyFor}
+              tone="brand"
+              icon="edit"
+            />
+          </ActionRow>
+          <Stack gap="normal">
+            {loaderData.notes.map((html, index) => <Markdown key={index} html={html} />)}
+          </Stack>
+        </Stack>
       </Card>
     </Page>
   )

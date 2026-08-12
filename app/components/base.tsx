@@ -23,6 +23,81 @@ import { Link } from "react-router"
 
 import { Icon, type IconName } from "~/components/icons"
 
+/* ---------------------------------------------------------------- rhythm */
+
+/**
+ * How far apart two things sit when one is above the other.
+ *
+ * **There are three distances and a screen may not invent a fourth.** `tight`
+ * is a label and the thing it labels, `normal` is two things inside one box,
+ * and `block` is one part of a page and the next. The screens used to carry
+ * their own margins and had accumulated eleven different ones — `mt-1` beside
+ * `mt-2` beside `mt-3` for the same relationship on different pages — which is
+ * what makes a site look assembled rather than drawn.
+ *
+ * **A public screen writes no vertical margin at all**, which
+ * `app/app.spacing.test.ts` checks.
+ */
+const STACK_GAP = { tight: "gap-2", normal: "gap-4", block: "gap-8" }
+
+export function Stack({ gap = "normal", as: Tag = "div", children }: {
+  gap?: keyof typeof STACK_GAP
+  /** A list of things is a list; anything else is a plain box. */
+  as?: "div" | "ul" | "section" | "nav"
+  children: ReactNode
+}) {
+  return <Tag className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
+}
+
+/* ------------------------------------------------------- marks and boxes */
+
+/**
+ * A glyph at the head of a line of text.
+ *
+ * **The box is the height of the line, so nothing has to be nudged.** An icon
+ * set beside `text-sm` is shorter than the line it starts, and the three places
+ * that drew one had each corrected it by hand and by a different amount
+ * (`mt-0.5`, `mt-1`, nothing at all). Putting the drawing in a box the line's
+ * own height centres it wherever it is used.
+ */
+export function LineIcon({ name, className = "" }: { name: IconName, className?: string }) {
+  return (
+    <span className="flex size-6 shrink-0 items-center justify-center">
+      <Icon name={name} className={`text-base ${className}`} />
+    </span>
+  )
+}
+
+/**
+ * A remark with a glyph at its head: the notices above the page, the asides in
+ * an article, and what a form says it did.
+ *
+ * They differ in colour and in what they are for; the shape is one shape. Three
+ * of them used to be written out separately and had drifted apart in padding,
+ * in the gap, in the corner and in how the glyph was aligned.
+ */
+function Marked({ box, icon, iconClass = "", live = false, action, children }: {
+  box: string
+  icon: IconName
+  iconClass?: string
+  /** Whether the box appears in answer to something and should be announced. */
+  live?: boolean
+  /** A control belonging to the box itself, such as the way to close it. */
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div
+      role={live ? "status" : undefined}
+      className={`flex items-start gap-2 rounded border px-4 py-2 text-sm ${box}`}
+    >
+      <LineIcon name={icon} className={iconClass} />
+      <div className="min-w-0 flex-1 text-ink">{children}</div>
+      {action}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ bands */
 
 /**
@@ -105,39 +180,38 @@ const BADGE_TONE: Record<Tone, string> = {
   danger: "border-danger text-danger",
 }
 
-export function Badge({ tone = "muted", onBand = false, pill = false, icon, children }: {
+export function Badge({
+  tone = "muted",
+  onBand = false,
+  pill = false,
+  dashed = false,
+  icon,
+  children,
+}: {
   tone?: Tone
   /** A badge sitting on a band, where white is the badge rather than the page. */
   onBand?: boolean
   /** Fully rounded, which is the shape v1 gives the ones that lead somewhere. */
   pill?: boolean
+  /**
+   * A broken edge, for a value that has not been settled yet: what is drawn is
+   * the frame a value will go in rather than a value, and the dashes say so
+   * without a word.
+   */
+  dashed?: boolean
   icon?: ReactNode
   children: ReactNode
 }) {
   return (
     <span
       className={`inline-flex items-center gap-1 text-nowrap border px-2 py-0.5 text-xs ${
-        pill ? "rounded-full" : "rounded-sm"
-      } ${onBand ? "border-white/70 text-white" : `bg-white ${BADGE_TONE[tone]}`}`}
+        pill ? "rounded-full" : "rounded"
+      } ${dashed ? "border-dashed" : ""} ${
+        onBand ? "border-white/70 text-white" : `bg-white ${BADGE_TONE[tone]}`
+      }`}
     >
       {icon}
       {children}
-    </span>
-  )
-}
-
-/** A state that is worth a mark but not a word, beside the thing it is about. */
-export function Dot({ tone = "warning", label }: { tone?: Tone, label: string }) {
-  const fill: Record<Tone, string> = {
-    brand: "bg-brand",
-    accent: "bg-accent",
-    muted: "bg-line-strong",
-    warning: "bg-warning",
-    danger: "bg-danger",
-  }
-  return (
-    <span className={`inline-block size-2 rounded-full align-middle ${fill[tone]}`}>
-      <span className="sr-only">{label}</span>
     </span>
   )
 }
@@ -167,8 +241,8 @@ const BUTTON_VARIANT: Record<ButtonVariant, string> = {
 
 const BUTTON_SIZE = {
   /** Beside a value in a panel or a row, where the control is not the subject. */
-  xs: "gap-1 px-2 py-0.5 text-xs",
-  sm: "gap-1 px-3 py-1 text-sm",
+  xs: "gap-1 px-2 py-1 text-xs",
+  sm: "gap-1.5 px-3 py-1.5 text-sm",
   md: "gap-2 px-5 py-2",
   lg: "gap-2 px-8 py-4 text-lg",
 }
@@ -314,7 +388,7 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`inline-flex cursor-pointer items-center justify-center rounded p-1 ${look}`}
+      className={`inline-flex size-tap cursor-pointer items-center justify-center rounded ${look}`}
       {...rest}
     >
       <Icon name={name} className="text-base" />
@@ -332,7 +406,7 @@ export function Chip({ label, to, remove }: { label: ReactNode, to: string, remo
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1 rounded-full border border-brand bg-white px-3 py-0.5 text-brand text-sm no-underline hover:bg-surface-hover"
+      className="inline-flex items-center gap-1 rounded-full border border-brand bg-white px-3 py-1 text-brand text-sm no-underline hover:bg-surface-hover"
     >
       {label}
       <Icon name="close" aria-hidden="true" />
@@ -360,13 +434,16 @@ export function Announcement({ dismiss, onDismiss, children }: {
   children: ReactNode
 }) {
   return (
-    <div className="flex items-start gap-2 rounded-sm border border-warning bg-warning-surface px-3 py-1.5">
-      <Icon name="warning" className="mt-0.5 shrink-0 text-base text-warning" />
-      {/* Small, because there may be three of these above the page and the
-          reader came for what is under them. */}
-      <div className="min-w-0 flex-1 text-xs leading-relaxed">{children}</div>
-      {onDismiss !== undefined && <IconButton name="close" label={dismiss} onClick={onDismiss} />}
-    </div>
+    <Marked
+      box="border-warning bg-warning-surface"
+      icon="warning"
+      iconClass="text-warning"
+      action={onDismiss === undefined
+        ? undefined
+        : <IconButton name="close" label={dismiss} onClick={onDismiss} />}
+    >
+      {children}
+    </Marked>
   )
 }
 
@@ -384,14 +461,14 @@ export function LanguagePills({ label, options }: {
   options: { code: string, label: string, to: string, current: boolean }[]
 }) {
   return (
-    <nav aria-label={label} className="flex items-center gap-1">
+    <nav aria-label={label} className="flex items-center gap-2">
       {options.map((option) => (
         option.current
           ? (
               <span
                 key={option.code}
                 aria-current="true"
-                className="inline-flex size-8 items-center justify-center rounded-full bg-brand font-semibold text-white text-xs"
+                className="inline-flex size-tap items-center justify-center rounded-full bg-brand font-semibold text-white text-xs"
               >
                 {option.label}
               </span>
@@ -402,7 +479,7 @@ export function LanguagePills({ label, options }: {
                 to={option.to}
                 hrefLang={option.code}
                 lang={option.code}
-                className="inline-flex size-8 items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:bg-surface-hover"
+                className="inline-flex size-tap items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:bg-surface-hover"
               >
                 {option.label}
               </Link>
@@ -429,7 +506,7 @@ export function RoundLink({ to, name, label, count, filled = false, external = f
   /** For an address no client-side navigation can answer, such as `/auth/login`. */
   external?: boolean
 }) {
-  const className = `relative inline-flex size-9 items-center justify-center rounded-full border no-underline ${
+  const className = `relative inline-flex size-tap items-center justify-center rounded-full border no-underline ${
     filled
       ? "border-transparent bg-brand text-white hover:brightness-90"
       : "border-line text-ink-muted hover:bg-surface-hover hover:text-ink"
@@ -438,7 +515,7 @@ export function RoundLink({ to, name, label, count, filled = false, external = f
     <>
       <Icon name={name} className="text-base" />
       {count !== undefined && count > 0 && (
-        <span className="-top-1 -right-1 absolute inline-flex min-w-4 items-center justify-center rounded-full bg-accent px-1 font-semibold text-[10px] text-white">
+        <span className="-top-1 -right-1 absolute inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1 font-semibold text-white text-xs">
           {count}
         </span>
       )}
@@ -633,8 +710,11 @@ export function Fold({ summary, note, open = false, children }: {
   open?: boolean
   children: ReactNode
 }) {
+  // No rule of its own: a column of these wants one between them, which the
+  // column draws (`divide-y`), and a single one on a page wants none at all —
+  // a lone rule under one fold reads as the bottom of something.
   return (
-    <details open={open} className="group border-line border-b py-2">
+    <details open={open} className="group py-2">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold text-sm marker:content-none">
         <span className="flex items-center gap-1.5">
           <Icon name="chevron-right" className="text-ink-muted transition-transform group-open:rotate-90" />
@@ -642,7 +722,7 @@ export function Fold({ summary, note, open = false, children }: {
         </span>
         {note !== undefined && <span className="text-ink-muted text-xs">{note}</span>}
       </summary>
-      <div className="mt-1 pl-5">{children}</div>
+      <div className="mt-2 pl-5">{children}</div>
     </details>
   )
 }
@@ -667,7 +747,7 @@ export function Clamped({ items, shown = 3, more, children }: {
     <ul>
       {items.slice(0, shown).map((item, index) => <li key={index}>{item}</li>)}
       {rest > 0 && (
-        <li className="text-ink-muted text-xs">
+        <li className="text-ink-muted text-sm">
           {children ?? more(rest)}
         </li>
       )}
@@ -684,22 +764,32 @@ export function Clamped({ items, shown = 3, more, children }: {
  * public pages. The four kinds are the ones the old articles were written with,
  * and the markdown that came from them still names them.
  */
-export type NoteKind = "info" | "tip" | "warning" | "danger"
+export type NoteKind = "info" | "tip" | "warning" | "danger" | "done"
 
 const NOTE_KIND: Record<NoteKind, { icon: IconName, className: string }> = {
   info: { icon: "info", className: "border-brand text-brand" },
   tip: { icon: "tip", className: "border-ink-muted text-ink-muted" },
   warning: { icon: "warning", className: "border-warning text-warning" },
   danger: { icon: "alert", className: "border-danger text-danger" },
+  /** What a form did, when it did it. */
+  done: { icon: "check", className: "border-line-strong text-ink-muted" },
 }
 
-export function Note({ kind = "info", children }: { kind?: NoteKind, children: ReactNode }) {
+export function Note({ kind = "info", live = false, children }: {
+  kind?: NoteKind
+  /**
+   * Whether this appeared in answer to something the reader did. A save that
+   * replies on the same page is otherwise silent to anybody not watching that
+   * corner of the screen.
+   */
+  live?: boolean
+  children: ReactNode
+}) {
   const { icon, className } = NOTE_KIND[kind]
   return (
-    <div className={`flex gap-3 rounded border bg-white px-4 py-3 text-sm ${className}`}>
-      <Icon name={icon} className="mt-0.5 text-base" />
-      <div className="min-w-0 text-ink">{children}</div>
-    </div>
+    <Marked box={`bg-white ${className}`} icon={icon} live={live}>
+      {children}
+    </Marked>
   )
 }
 
@@ -740,6 +830,22 @@ export function Confirm({ label, warning, confirm, cancel, children }: {
 }
 
 /**
+ * The panel a menu opens, and one line inside it.
+ *
+ * **Exported because two things open menus and only one of them is `Menu`**: the
+ * navigation opens its children on hover, which a `<details>` cannot do, so it
+ * draws its own panel. Sharing the strings is what keeps the two the same
+ * object to a reader. The panel carries no `display` of its own — the caller
+ * decides whether it is shown, and a `hidden` beside a `flex` here would leave
+ * which of them wins to the order Tailwind happened to emit them in.
+ */
+export const MENU_PANEL
+  = "min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg"
+
+export const MENU_ITEM
+  = "block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+
+/**
  * A set of actions that would crowd the row they belong to.
  *
  * A `<details>` again, so the menu opens without script. It closes on choosing
@@ -757,26 +863,16 @@ export function Menu({ label, icon = "more", round = false, children }: {
       <summary
         aria-label={label}
         title={label}
-        className={`inline-flex cursor-pointer list-none items-center justify-center text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
-          round ? "size-9 rounded-full border border-line" : "rounded p-1"
+        className={`inline-flex size-tap cursor-pointer list-none items-center justify-center text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
+          round ? "rounded-full border border-line" : "rounded"
         }`}
       >
         <Icon name={icon} className="text-base" />
       </summary>
-      <div className="absolute right-0 z-20 mt-1 flex min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg">
+      <div className={`absolute right-0 z-20 mt-2 flex ${MENU_PANEL}`}>
         {children}
       </div>
     </details>
-  )
-}
-
-/** Work in progress, named so that it is not only a moving shape. */
-export function Busy({ label }: { label: string }) {
-  return (
-    <span role="status" className="inline-flex items-center gap-2 text-ink-muted text-sm">
-      <Icon name="spinner" className="animate-spin text-base" />
-      {label}
-    </span>
   )
 }
 
@@ -785,7 +881,7 @@ export function Progress({ label, done, total }: { label: string, done: number, 
   const id = useId()
   const percent = total === 0 ? 0 : Math.min(100, Math.round((done / total) * 100))
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-ink-muted text-xs">{label}</label>
       <progress id={id} value={done} max={total} className="h-2 w-full">
         {percent}

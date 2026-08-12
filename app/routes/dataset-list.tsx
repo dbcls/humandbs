@@ -1,5 +1,6 @@
 import { Link } from "react-router"
 
+import { isCartable } from "~/cart/store"
 import { CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
@@ -37,8 +38,13 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(locale)
   const d = messages.dataset
   const onThisPage = view.rows.map((row) => row.label)
+  // **The column is there only if anything on the page can go in the cart.**
+  // Most datasets are not applied for at all (the archives' own accessions are
+  // open), and a page of those left an empty column running down the table
+  // under an empty heading.
+  const cart = onThisPage.some(isCartable)
   const headers = [
-    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
+    ...(cart ? [<CartToggle key="cart" ids={onThisPage} locale={locale} whole />] : []),
     d.datasetId,
     messages.research.researchId,
     d.typeOfData,
@@ -74,7 +80,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
       <Table headers={headers}>
         {view.rows.map((row) => (
           <tr key={row.label}>
-            <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+            {cart && <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>}
             <Td nowrap>
               <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
               <Link to={href(locale, datasetPath(row.label))}>{row.label}</Link>
