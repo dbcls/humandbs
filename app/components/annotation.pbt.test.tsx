@@ -85,7 +85,11 @@ function researchAnchors(content: ResearchContent, datasets: { id: string, label
     files: { rows: [], total: 0, page: 1, pageCount: 1 },
   }, "ja", catalog)
 
-  const drawn = drawnAnchors(() => <ResearchBody view={anchored.view} locale="ja" />)
+  // As a preview draws it, which is the only reader of the marks: the
+  // published page draws a subset (it leaves out the release note).
+  const drawn = drawnAnchors(() => (
+    <ResearchBody view={anchored.view} locale="ja" releaseNote />
+  ))
   return { recorded: new Set(Object.keys(anchored.byAnchor)), drawn }
 }
 
@@ -118,6 +122,7 @@ function populated(): ResearchContent {
   return {
     ...emptyResearchContent(),
     title: pair("題目"),
+    releaseNote: prose("この版で変えたこと"),
     summary: {
       aims: prose("目的"),
       methods: prose("方法"),

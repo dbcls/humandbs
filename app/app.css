@@ -47,7 +47,26 @@
   /* Something that needs looking at but is not an error: an untranslated
      field, a label the upstream system disagrees about. */
   --color-warning: #a16207;
+  /* The ground an announcement is written on, and the only fill that is not a
+     neutral: a notice the site puts above every page has to be told apart from
+     the page at a glance. */
+  --color-warning-surface: #fffbeb;
   --color-visited: #6b21a8;
+
+  /*
+   * How wide a page may be, and how much room it keeps at its edges.
+   *
+   * **A table and a paragraph do not want the same width.** A listing of
+   * research needs every column it can get; a line of prose is read best at
+   * 45–75 characters and becomes hard to follow much past that, so an article
+   * is held to the narrower measure inside the same page.
+   *
+   * The three numbers are db-portal's, and the wide one is also v1's — the two
+   * sites sit under the same roof and a reader moves between them.
+   */
+  --spacing-content-max: 1280px;
+  --spacing-content-narrow: 880px;
+  --spacing-page-gutter: 40px;
 }
 
 @layer base {

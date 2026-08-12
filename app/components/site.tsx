@@ -1,5 +1,8 @@
 import type { ReactNode } from "react"
 
+import { BigAction } from "~/components/base"
+import type { IconName } from "~/components/icons"
+
 /**
  * The pieces the screens are built from — the ones that are layout rather than
  * text. These used to be written inside the CMS, as a markdown directive for
@@ -11,20 +14,29 @@ export function ActionRow({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap items-start justify-center gap-6">{children}</div>
 }
 
-export function ActionButton({ href, label, note }: {
+/**
+ * A way in, at the size the front page gives one.
+ *
+ * **The tone says which half of the site it belongs to** — providing data is
+ * accent, using it is brand — and it is the same on the front page and on the
+ * screen it leads to, so the two never disagree about what colour "データの
+ * 提供" is. Both leave for the application system, so both carry the arrow.
+ */
+export function ActionButton({ href, label, note, tone, icon, external = true }: {
   href: string
   label: string
   /** Who the way in is for. The front page has one button each and no note. */
   note?: string
+  tone: "accent" | "brand"
+  icon: IconName
+  /** All but one of these leave for the application system. */
+  external?: boolean
 }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <a
-        href={href}
-        className="flex min-h-24 w-80 max-w-full items-center justify-center rounded-xl bg-brand px-6 py-4 text-center font-bold text-white no-underline hover:bg-brand-light hover:text-white"
-      >
-        {label}
-      </a>
+    <div className="flex w-80 max-w-full flex-col items-center gap-2">
+      <div className="w-full">
+        <BigAction to={href} tone={tone} icon={icon} external={external}>{label}</BigAction>
+      </div>
       {note !== undefined && <span className="text-ink-muted text-sm">{note}</span>}
     </div>
   )

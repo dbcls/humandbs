@@ -1,6 +1,7 @@
 import { Link } from "react-router"
 
-import { Fold } from "~/components/base"
+import { Button, Fold } from "~/components/base"
+import { CONTROL } from "~/components/form"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type {
@@ -55,7 +56,7 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
       <div className="flex items-baseline justify-between border-line border-b pb-1">
         <h2 className="font-bold">{messages.heading}</h2>
         {panel.clearHref !== null && (
-          <Link to={panel.clearHref} className="text-xs">{messages.clear}</Link>
+          <Link to={panel.clearHref} className="text-brand text-xs">{messages.clear}</Link>
         )}
       </div>
       {panel.categories.map((category, index) => (
@@ -110,7 +111,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
     >
       {facet.closeHref !== null && (
         <div className="flex justify-end">
-          <Link to={facet.closeHref} className="text-xs">{messages.close}</Link>
+          <Link to={facet.closeHref} className="text-brand text-xs">{messages.close}</Link>
         </div>
       )}
 
@@ -123,11 +124,9 @@ function Facet({ locale, target, query, sort, facet, open }: {
             defaultValue={facet.find}
             aria-label={messages.find}
             placeholder={messages.find}
-            className="min-w-0 flex-1 rounded border border-line bg-surface-input px-2 py-1"
+            className={`min-w-0 flex-1 ${CONTROL}`}
           />
-          <button type="submit" className="rounded border border-line px-2 py-1">
-            {messages.apply}
-          </button>
+          <Button variant="secondary">{messages.apply}</Button>
         </form>
       )}
 
@@ -154,16 +153,14 @@ function Facet({ locale, target, query, sort, facet, open }: {
                 {facet.range.unit !== null && (
                   <span className="text-ink-muted text-xs">{facet.range.unit}</span>
                 )}
-                <button type="submit" className="rounded border border-line px-2 py-1 text-xs">
-                  {messages.apply}
-                </button>
+                <Button variant="secondary" size="xs">{messages.apply}</Button>
               </div>
               <div className="mt-1 flex items-baseline justify-between text-ink-muted text-xs">
                 {facet.range.min !== null && facet.range.max !== null && (
                   <span>{messages.span(String(facet.range.min), String(facet.range.max))}</span>
                 )}
                 {facet.range.clearHref !== null && (
-                  <Link to={facet.range.clearHref}>{messages.clear}</Link>
+                  <Link to={facet.range.clearHref} className="text-brand">{messages.clear}</Link>
                 )}
               </div>
             </form>
@@ -188,7 +185,9 @@ function Facet({ locale, target, query, sort, facet, open }: {
           )}
 
       {facet.moreHref !== null && (
-        <Link to={facet.moreHref} className="mt-1 inline-block text-xs">{messages.seeAll}</Link>
+        <Link to={facet.moreHref} className="mt-1 inline-block text-brand text-xs">
+          {messages.seeAll}
+        </Link>
       )}
     </Fold>
   )
@@ -219,11 +218,9 @@ function CodeEntry({ locale, target, query, sort, facet, entry }: {
           aria-label={messages.code}
           placeholder={messages.codeHint}
           aria-invalid={entry.problem !== null ? true : undefined}
-          className="min-w-0 flex-1 rounded border border-line bg-surface-input px-2 py-1"
+          className={`min-w-0 flex-1 ${CONTROL}`}
         />
-        <button type="submit" className="rounded border border-line px-2 py-1">
-          {messages.apply}
-        </button>
+        <Button variant="secondary">{messages.apply}</Button>
       </div>
       {entry.problem !== null && (
         <p role="status" className="mt-1 text-accent text-xs">
@@ -260,7 +257,7 @@ function Bound({ name, label, value }: { name: string, label: string, value: str
       name={name}
       defaultValue={value}
       aria-label={label}
-      className="w-16 rounded border border-line bg-surface-input px-1 py-1"
+      className={`w-16 ${CONTROL}`}
     />
   )
 }
@@ -272,7 +269,7 @@ function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
       to={value.href}
       aria-current={value.selected ? "true" : undefined}
       className={`flex items-baseline justify-between gap-2 py-0.5 no-underline hover:bg-surface-hover ${
-        value.selected ? "font-semibold text-ink" : ""
+        value.selected ? "font-semibold text-ink" : "text-brand"
       }`}
     >
       <span className="min-w-0 break-words">

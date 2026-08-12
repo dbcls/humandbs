@@ -81,9 +81,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="flex min-h-screen flex-col">
         <SiteHeader locale={locale} alerts={data?.alerts ?? []} account={data?.account ?? null} />
-        {/* The page sits on a tint, so that the white boxes a screen is built
-            from read as boxes rather than as the page itself. */}
-        <div className="flex-1 bg-surface">{children}</div>
+        {/*
+          The page sits on a tint, so that the white boxes a screen is built
+          from read as boxes rather than as the page itself. The portal's own
+          photograph is multiplied into that tint at the top of the page, which
+          is where v1 puts it — it is the site's backdrop and never the
+          background of anything anybody has to read, because the boxes cover
+          it. It is drawn once, at the width of the window, and does not repeat.
+        */}
+        <div className="flex-1 bg-surface bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply">
+          {children}
+        </div>
         <SiteFooter locale={locale} />
         <ScrollRestoration />
         <Scripts />

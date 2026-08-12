@@ -199,6 +199,59 @@ describe("news の一覧", () => {
   })
 })
 
+describe("news の検索", () => {
+  it("タイトルからも本文からも引ける", async () => {
+    await createNews("2026-01-01", [{ locale: "ja", title: "hum0103 を公開", body: "本文" }])
+    await createNews("2026-01-02", [{ locale: "ja", title: "別の告知", body: "hum0103 の続き" }])
+    await createNews("2026-01-03", [{ locale: "ja", title: "無関係", body: "無関係" }])
+
+    expect((await newsList("ja", 1, 20, "hum0103")).items).toHaveLength(2)
+  })
+
+  it("大文字と小文字を区別しない", async () => {
+    await createNews("2026-01-01", [{ locale: "ja", title: "JGAD000117 を公開" }])
+    expect((await newsList("ja", 1, 20, "jgad000117")).items).toHaveLength(1)
+  })
+
+  it("その言語の翻訳の中だけを見る", async () => {
+    await createNews("2026-01-01", [
+      { locale: "ja", title: "日本語だけの語" },
+      { locale: "en", title: "english only" },
+    ])
+
+    expect((await newsList("ja", 1, 20, "english")).items).toHaveLength(0)
+    expect((await newsList("en", 1, 20, "english")).items).toHaveLength(1)
+  })
+
+  it("公開されていない翻訳は検索でも出てこない", async () => {
+    await createNews("2026-01-01", [{ locale: "ja", title: "下書きの語", published: false }])
+    expect((await newsList("ja", 1, 20, "下書き")).items).toHaveLength(0)
+  })
+
+  // **The one that matters**: without escaping, `%` matches every row, so a
+  // reader who typed a percent sign would be told that every announcement
+  // contains it.
+  it("LIKE のワイルドカードを打っても全件にならない", async () => {
+    await createNews("2026-01-01", [{ locale: "ja", title: "ふつうの告知" }])
+    await createNews("2026-01-02", [{ locale: "ja", title: "50% 完了" }])
+
+    expect((await newsList("ja", 1, 20, "%")).items.map((item) => item.title))
+      .toEqual(["50% 完了"])
+    expect((await newsList("ja", 1, 20, "_")).items).toHaveLength(0)
+  })
+
+  it("前後の空白は語の一部にしない", async () => {
+    await createNews("2026-01-01", [{ locale: "ja", title: "hum0103" }])
+    expect((await newsList("ja", 1, 20, "  hum0103  ")).items).toHaveLength(1)
+  })
+
+  it("空の検索は絞り込みをしない", async () => {
+    await createNews("2026-01-01", [{ locale: "ja" }])
+    await createNews("2026-01-02", [{ locale: "ja" }])
+    expect((await newsList("ja", 1, 20, "   ")).items).toHaveLength(2)
+  })
+})
+
 describe("alert", () => {
   it("有効なものだけが出る", async () => {
     await db.insert(s.alert).values([

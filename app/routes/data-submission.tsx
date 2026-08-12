@@ -1,4 +1,5 @@
-import { Card, Page, PageHead } from "~/components/page"
+import { Heading } from "~/components/base"
+import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { ActionButton, ActionRow, Notes } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
@@ -32,19 +33,24 @@ export default function DataSubmission({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(loaderData.locale).submission
 
   return (
-    <Page>
-      <PageHead label={messages.heading} />
-      <Card>
+    <Page width="reading">
+      <Crumbs locale={loaderData.locale} current={messages.heading} />
+      <Card under={false}>
+        <Heading title={messages.heading} />
         <ActionRow>
           <ActionButton
             href="https://bsi.nig.ac.jp/submit"
             label={messages.navigator}
             note={messages.navigatorFor}
+            tone="accent"
+            icon="upload"
           />
           <ActionButton
             href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
             label={messages.apply}
             note={messages.applyFor}
+            tone="accent"
+            icon="edit"
           />
         </ActionRow>
         <Notes>

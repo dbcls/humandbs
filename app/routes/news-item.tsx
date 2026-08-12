@@ -1,8 +1,9 @@
-import { Card, Page, PageHead } from "~/components/page"
+import { Heading } from "~/components/base"
 import { Markdown } from "~/components/markdown"
+import { Card, Crumbs, Page } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { newsItemPage } from "~/public/site.server"
-import { readLocale } from "~/public/urls"
+import { href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/news-item"
 
@@ -21,12 +22,20 @@ export default function NewsItem({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(locale)
 
   return (
-    <Page>
-      <PageHead label={item.title}>
-        <span>{item.publishedAt ?? messages.news.undated}</span>
-      </PageHead>
-      <Card>
-        <Markdown html={item.html} />
+    <Page width="reading">
+      <Crumbs
+        locale={locale}
+        trail={[{ label: messages.news.all, to: href(locale, newsPath()) }]}
+        current={item.title}
+      />
+      <Card under={false}>
+        <Heading title={item.title} />
+        <p className="mt-2 text-ink-muted text-sm">
+          {item.publishedAt ?? messages.news.undated}
+        </p>
+        <div className="mt-4">
+          <Markdown html={item.html} />
+        </div>
       </Card>
     </Page>
   )

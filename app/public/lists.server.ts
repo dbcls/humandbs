@@ -38,10 +38,12 @@ import {
 } from "~/search/dsl"
 import { queryFields, type QueryFields } from "~/search/fields"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
+import type { ExportTable } from "~/search/export"
 import {
   countMatches,
   isSortKey,
   PAGE_SIZE,
+  searchAllDocs,
   searchDocs,
   sortOffer,
   type SearchHit,
@@ -58,6 +60,7 @@ import { href, listPath, searchQuery } from "./urls"
 import {
   ACCESS_TYPE_KEY,
   datasetListRowView,
+  fieldText,
   researchListRowView,
   type CatalogView,
   type DatasetListRowView,
@@ -70,7 +73,8 @@ export interface ConditionChip {
   href: string
 }
 
-interface ListShell {
+/** What both listings have in common, which is everything but the rows. */
+export interface ListShell {
   locale: Locale
   /** What the box shows. */
   keyword: string
@@ -341,7 +345,18 @@ export async function researchListPage(
 ): Promise<ResearchListView> {
   const { shell, hits, catalog } = await listShell("research", request)
   if (hits.length === 0) return { ...shell, rows: [] }
+  return { ...shell, rows: await researchRowsOf(hits, catalog, shell.locale) }
+}
 
+/**
+ * The rows behind a set of hits. The screen asks for a page of them and the
+ * export for all of them, and neither may show the other something different.
+ */
+async function researchRowsOf(
+  hits: SearchHit[],
+  catalog: CatalogView,
+  locale: Locale,
+): Promise<ResearchListRowView[]> {
   const db = getDb()
   const ids = hits.map((hit) => hit.targetId)
   const [snapshots, datasetRows, accessRows] = await Promise.all([
@@ -369,7 +384,7 @@ export async function researchListPage(
   const labelOf = new Map(datasetRows.flatMap((row) =>
     row.label === null ? [] : [[row.datasetId, row.label] as const]))
 
-  const rows = hits.flatMap((hit) => {
+  return hits.flatMap((hit) => {
     const snapshot = contentOf.get(hit.targetId)
     if (snapshot === undefined) return []
     const content = publicResearchContent(snapshot, PUBLISHED)
@@ -383,9 +398,8 @@ export async function researchListPage(
       accessTermIds: accessRows.get(hit.targetId) ?? [],
       datePublished: hit.datePublished,
       dateModified: hit.dateModified,
-    }, shell.locale, catalog)]
+    }, locale, catalog)]
   })
-  return { ...shell, rows }
 }
 
 /** Access types across a research's published datasets, from the facet rows. */
@@ -422,7 +436,14 @@ export async function datasetListPage(
 ): Promise<DatasetListView> {
   const { shell, hits, catalog } = await listShell("dataset", request)
   if (hits.length === 0) return { ...shell, rows: [] }
+  return { ...shell, rows: await datasetRowsOf(hits, catalog, shell.locale) }
+}
 
+async function datasetRowsOf(
+  hits: SearchHit[],
+  catalog: CatalogView,
+  locale: Locale,
+): Promise<DatasetListRowView[]> {
   const ids = hits.map((hit) => hit.targetId)
   const contents = await getDb()
     .select({ datasetId: datasetContent.datasetId, content: datasetContent.content })
@@ -430,7 +451,7 @@ export async function datasetListPage(
     .where(inArray(datasetContent.datasetId, ids))
   const contentOf = new Map(contents.map((row) => [row.datasetId, row.content]))
 
-  const rows = hits.flatMap((hit) => {
+  return hits.flatMap((hit) => {
     const content = contentOf.get(hit.targetId)
     if (content === undefined || hit.datasetLabel === null) return []
     return [datasetListRowView({
@@ -440,7 +461,139 @@ export async function datasetListPage(
       content: publicDatasetContent(content, { keys: catalog.keyById, files: [] }, PUBLISHED),
       datePublished: hit.datePublished,
       dateModified: hit.dateModified,
-    }, shell.locale, catalog)]
+    }, locale, catalog)]
   })
-  return { ...shell, rows }
+}
+
+/**
+ * The datasets a reader has collected, in the order they collected them.
+ *
+ * **Read from the same rows as the listings**, so a dataset that has since been
+ * withdrawn is simply not among them — the cart is held in the browser and can
+ * name something the portal no longer publishes, and the screen says so rather
+ * than inventing a row for it.
+ */
+export async function cartRows(
+  labels: readonly string[],
+  locale: Locale,
+): Promise<DatasetListRowView[]> {
+  if (labels.length === 0) return []
+  const db = getDb()
+  const catalog = await loadCatalog(db)
+  const docs = await db
+    .select({
+      targetId: searchDoc.targetId,
+      humLabel: searchDoc.humLabel,
+      datasetLabel: searchDoc.datasetLabel,
+      datePublished: searchDoc.datePublished,
+      dateModified: searchDoc.dateModified,
+    })
+    .from(searchDoc)
+    .where(and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.datasetLabel, [...labels])))
+
+  const found = new Map(docs.map((row) => [row.datasetLabel, row]))
+  const hits = labels.flatMap((label): SearchHit[] => {
+    const doc = found.get(label)
+    return doc === undefined ? [] : [{ ...doc }]
+  })
+  return datasetRowsOf(hits, catalog, locale)
+}
+
+/**
+ * Every hit a search matched, with no page and no panel.
+ *
+ * The export is the same search as the screen's and reads the address the same
+ * way, but none of the rest of a listing applies to a file: there are no chips
+ * to draw, no facet counts to run, and no other listing to count.
+ */
+async function everyHit(
+  target: SearchTarget,
+  request: { locale: Locale, url: URL },
+): Promise<{ hits: SearchHit[], catalog: CatalogView } | null> {
+  const db = getDb()
+  const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
+  const fields = queryFields(definitions.map((one) => one.field))
+  const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
+  // **A query that cannot be read has no answer.** Treating it as the empty
+  // query would hand over the whole corpus under the name of a search that
+  // matched nothing.
+  if (!parsed.ok) return null
+  const requestedSort = request.url.searchParams.get("sort")
+  const { offered, fallback } = sortOffer(hasFreeText(parsed.ast), target)
+  const sort = isSortKey(requestedSort) && offered.includes(requestedSort)
+    ? requestedSort
+    : fallback
+  return {
+    hits: await searchAllDocs(db, { target, ast: parsed.ast, fields, sort }),
+    catalog,
+  }
+}
+
+/**
+ * The research listing as a table.
+ *
+ * **Wider than the screen's table.** A page has to fit beside the refinement
+ * panel and a file does not, so the columns the screen leaves to the research's
+ * own page are here — which is also what v1 exports.
+ */
+export async function researchExportTable(
+  request: { locale: Locale, url: URL },
+): Promise<ExportTable | null> {
+  const found = await everyHit("research", request)
+  if (found === null) return null
+  const rows = await researchRowsOf(found.hits, found.catalog, request.locale)
+  const messages = messagesFor(request.locale)
+  const t = messages.research
+  return {
+    headers: [
+      t.researchId,
+      t.datasets,
+      t.title,
+      messages.dataset.typeOfData,
+      t.methods,
+      t.targets,
+      messages.dataset.accessType,
+      messages.dataset.datePublished,
+      messages.dataset.dateModified,
+    ],
+    rows: rows.map((row) => [
+      row.humLabel,
+      row.datasetLabels.join(", "),
+      fieldText(row.title),
+      fieldText(row.typeOfData),
+      fieldText(row.methods),
+      fieldText(row.targets),
+      row.accessTypes.map((term) => term.label).join(", "),
+      row.datePublished ?? "",
+      row.dateModified ?? "",
+    ]),
+  }
+}
+
+export async function datasetExportTable(
+  request: { locale: Locale, url: URL },
+): Promise<ExportTable | null> {
+  const found = await everyHit("dataset", request)
+  if (found === null) return null
+  const rows = await datasetRowsOf(found.hits, found.catalog, request.locale)
+  const messages = messagesFor(request.locale)
+  const d = messages.dataset
+  return {
+    headers: [
+      d.datasetId,
+      messages.research.researchId,
+      d.typeOfData,
+      d.accessType,
+      d.datePublished,
+      d.dateModified,
+    ],
+    rows: rows.map((row) => [
+      row.label,
+      row.humLabel,
+      row.typeOfData === null ? "" : fieldText(row.typeOfData),
+      row.accessType?.label ?? "",
+      row.datePublished ?? "",
+      row.dateModified ?? "",
+    ]),
+  }
 }

@@ -231,16 +231,36 @@ export async function searchDocs(db: Executor, request: SearchRequest): Promise<
     ORDER BY ${orderBy(request.sort, request.target)}
     LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}
   `)
+  return { total, page, pageCount, hits: result.rows.map(hitOf) }
+}
+
+/**
+ * Every hit at once, which is what handing a search over as a file needs.
+ *
+ * **No page and no ceiling.** The whole corpus is around two thousand rows, so
+ * the largest answer this can give is the corpus itself; a file that stopped at
+ * some arbitrary row would be a worse answer than a slow one. The ordering is
+ * the screen's, so the file is the listing rather than a second view of it.
+ */
+export async function searchAllDocs(
+  db: Executor,
+  request: Omit<SearchRequest, "page">,
+): Promise<SearchHit[]> {
+  const result = await db.execute<HitRow>(sql`
+    WITH ${hitsCte(request)}
+    SELECT h.target_id, h.hum_label, h.dataset_label, h.date_published, h.date_modified
+    FROM hits h
+    ORDER BY ${orderBy(request.sort, request.target)}
+  `)
+  return result.rows.map(hitOf)
+}
+
+function hitOf(row: HitRow): SearchHit {
   return {
-    total,
-    page,
-    pageCount,
-    hits: result.rows.map((row) => ({
-      targetId: row.target_id,
-      humLabel: row.hum_label,
-      datasetLabel: row.dataset_label,
-      datePublished: row.date_published,
-      dateModified: row.date_modified,
-    })),
+    targetId: row.target_id,
+    humLabel: row.hum_label,
+    datasetLabel: row.dataset_label,
+    datePublished: row.date_published,
+    dateModified: row.date_modified,
   }
 }

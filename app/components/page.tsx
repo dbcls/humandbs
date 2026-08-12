@@ -1,12 +1,13 @@
 import { createContext, Fragment, useContext, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Band, BAND_FILL, type BandTone } from "~/components/base"
+import { Band, BAND_FILL, type BandTone, Breadcrumb, Note } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { href } from "~/public/urls"
 import type { FieldView, LinksView, TermView } from "~/public/view.server"
 
 /**
@@ -35,9 +36,55 @@ export function Annotation({ at }: { at: string }) {
   return annotate === null ? null : <>{annotate(at)}</>
 }
 
-export function Page({ children }: { children: ReactNode }) {
+/**
+ * The area a screen draws in.
+ *
+ * **An article asks for the narrower measure.** A listing wants every column it
+ * can get, but a page that is mostly prose — a guideline, a news item, the four
+ * pages the code holds — is held to the reading width, which is what v1 does
+ * with the same two numbers (`app.css`).
+ */
+export function Page({ width = "wide", children }: {
+  width?: "wide" | "reading"
+  children: ReactNode
+}) {
   // The target of the skip link in the header, on every page that has one.
-  return <main id="content" className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+  return (
+    <main
+      id="content"
+      className={`mx-auto w-full px-4 py-8 sm:px-page-gutter ${
+        width === "reading" ? "max-w-content-narrow" : "max-w-content-max"
+      }`}
+    >
+      {children}
+    </main>
+  )
+}
+
+/**
+ * Where the page sits, said above it.
+ *
+ * The front page is always the first step and is added here rather than by
+ * every screen, so a trail is written as what lies between the front page and
+ * this one. It sits on the tint above the white box, which is where v1 puts it.
+ * The front page itself has none: it is the root, and a trail of one step
+ * naming the page you are on says nothing.
+ */
+export function Crumbs({ locale, trail = [], current }: {
+  locale: Locale
+  trail?: { label: string, to: string }[]
+  current: string
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <div className="mb-3">
+      <Breadcrumb
+        label={messages.breadcrumb}
+        trail={[{ label: messages.homeLabel, to: href(locale, "/") }, ...trail]}
+        current={current}
+      />
+    </div>
+  )
 }
 
 /**
@@ -141,8 +188,13 @@ export function Table({ headers, children }: { headers: ReactNode[], children: R
       <table className="min-w-full table-auto border-collapse text-sm">
         <thead>
           <tr className={`text-left text-white ${BAND_FILL.brand}`}>
+            {/*
+              A header asks for no width of its own: what a column needs is
+              decided by the cells under it, and a header that claimed a floor
+              would widen a column of marks to the width of the word above it.
+            */}
             {headers.map((header, index) => (
-              <th key={index} className="min-w-28 max-w-88 px-3 py-2 font-semibold">{header}</th>
+              <th key={index} className="max-w-88 px-3 py-2 font-semibold">{header}</th>
             ))}
           </tr>
         </thead>
@@ -183,15 +235,20 @@ export function SortHeader({ label, to, direction, ascending, descending }: {
   )
 }
 
-export function Td({ children, nowrap = false, className = "" }: {
+export function Td({ children, nowrap = false, narrow = false, colSpan, className = "" }: {
   children?: ReactNode
   /** For a cell holding an identifier, which must not be broken to fit. */
   nowrap?: boolean
+  /** For a cell holding a mark rather than a value, which needs no floor. */
+  narrow?: boolean
+  /** For a row that says one thing across several columns. */
+  colSpan?: number
   className?: string
 }) {
   return (
     <td
-      className={`min-w-28 max-w-88 border-line border-b px-3 py-2 align-top ${nowrap ? "whitespace-nowrap" : ""} ${className}`}
+      colSpan={colSpan}
+      className={`max-w-88 border-line border-b px-3 py-2 align-top ${narrow ? "" : "min-w-28"} ${nowrap ? "whitespace-nowrap" : ""} ${className}`}
     >
       {children}
     </td>
@@ -332,9 +389,9 @@ export function LinksValue({ links, locale, linked = true }: {
 export function UntranslatedNotice({ show, locale }: { show: boolean, locale: Locale }) {
   if (!show) return null
   return (
-    <p className="mb-4 rounded border border-line bg-surface px-4 py-2 text-ink-muted text-sm">
-      {messagesFor(locale).untranslatedNotice}
-    </p>
+    <div className="mb-4">
+      <Note kind="tip">{messagesFor(locale).untranslatedNotice}</Note>
+    </div>
   )
 }
 

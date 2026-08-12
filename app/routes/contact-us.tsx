@@ -1,4 +1,5 @@
-import { Card, Page, PageHead } from "~/components/page"
+import { Heading } from "~/components/base"
+import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { messagesFor } from "~/i18n/messages"
 import { renderMarkdown } from "~/public/markdown.server"
@@ -23,11 +24,31 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function ContactUs({ loaderData }: Route.ComponentProps) {
+  const messages = messagesFor(loaderData.locale).contact
+
   return (
-    <Page>
-      <PageHead label={messagesFor(loaderData.locale).contact.heading} />
-      <Card>
-        <Markdown html={loaderData.html} />
+    <Page width="reading">
+      <Crumbs locale={loaderData.locale} current={messages.heading} />
+      <Card under={false}>
+        <Heading title={messages.heading} />
+        {/*
+          **The form is on the page, the way it is on the current portal.** This
+          is the most-used way in, and a page whose whole content is a link to
+          somewhere else is a worse answer than embedding the thing being linked
+          to. The sentence under it is the way through for anybody whose browser
+          will not run the frame.
+        */}
+        <iframe
+          src={messages.embed}
+          title={messages.heading}
+          loading="lazy"
+          // Tall enough for the whole form: it scrolls inside itself
+          // otherwise, and a form in a letterbox is worse than no embed.
+          className="mt-4 h-[2000px] w-full border-0"
+        />
+        <div className="mt-2 text-sm">
+          <Markdown html={loaderData.html} />
+        </div>
       </Card>
     </Page>
   )

@@ -25,7 +25,18 @@ import { useId, type ReactNode } from "react"
 import { Button, type ButtonVariant } from "~/components/base"
 import { Icon } from "~/components/icons"
 
-const CONTROL = "rounded border border-line-strong bg-surface-input px-2 py-1 text-ink"
+/**
+ * What anything typed into looks like.
+ *
+ * **Exported because the edge is a requirement rather than a preference**: the
+ * border of something you can type into has to reach 3:1 against the page,
+ * which is why it is `line-strong` and not `line` ([ui.md](../../docs/ui.md)).
+ * A screen that writes its own input class gets that wrong by one word and
+ * nothing catches it — so the screens that cannot use `Field` (a refinement
+ * panel names its boxes with `aria-label` rather than a visible label) take
+ * this string instead of writing one.
+ */
+export const CONTROL = "rounded border border-line-strong bg-surface-input px-2 py-1 text-ink"
 
 /**
  * The frame every input sits in: what it is called, what it has to look like,

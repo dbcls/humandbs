@@ -1,16 +1,10 @@
 import { Link } from "react-router"
 
+import { CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
-import { AccessTypeBadge, Page, PageHead, Table, Td, Value } from "~/components/page"
-import {
-  ConditionChips,
-  InvalidQuery,
-  NoResults,
-  Pagination,
-  RefinableList,
-  SearchForm,
-  SortLinks,
-} from "~/components/search"
+import { Icon } from "~/components/icons"
+import { AccessTypeBadge, Table, Td, Value } from "~/components/page"
+import { ListingScreen } from "~/components/search"
 import { messagesFor } from "~/i18n/messages"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
 import { datasetPath, href, listPath, readLocale, researchPath, searchQuery } from "~/public/urls"
@@ -42,7 +36,9 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const d = messages.dataset
+  const onThisPage = view.rows.map((row) => row.label)
   const headers = [
+    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
     d.datasetId,
     messages.research.researchId,
     d.typeOfData,
@@ -59,92 +55,43 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
       )
 
   return (
-    <Page>
-      <PageHead label={messages.search.datasetList} />
-      <div className="rounded-b border border-line border-t-0 px-5 py-5">
-        <SearchForm
+    <ListingScreen
+      view={view}
+      target="dataset"
+      heading={messages.search.datasetList}
+      panel={(
+        <FacetPanel
           locale={locale}
           target="dataset"
-          keyword={view.keyword}
           query={view.query}
-          facet={view.facet}
-          find={view.find}
+          sort={view.requestedSort}
+          panel={view.facets}
         />
-        <ConditionChips conditions={view.conditions} locale={locale} />
-
-        {view.parseError !== null
-          ? <InvalidQuery locale={locale} column={view.parseError.column} />
-          : (
-              <RefinableList
-                panel={(
-                  <FacetPanel
-                    locale={locale}
-                    target="dataset"
-                    query={view.query}
-                    sort={view.requestedSort}
-                    panel={view.facets}
-                  />
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-ink-muted text-sm">
-                    {view.total === 0
-                      ? messages.search.results(0)
-                      : messages.search.range(view.rangeFrom, view.rangeTo, view.total)}
-                  </p>
-                  <SortLinks
-                    locale={locale}
-                    target="dataset"
-                    query={view.query}
-                    sort={view.sort}
-                    options={view.sortOptions}
-                  />
-                </div>
-                {otherLink !== undefined && <p className="mt-1 text-sm">{otherLink}</p>}
-
-                {view.rows.length === 0
-                  ? <NoResults locale={locale} other={otherLink} />
-                  : (
-                      <div className="mt-4">
-                        <Table headers={headers}>
-                          {view.rows.map((row) => (
-                            <tr key={row.label}>
-                              <Td className="whitespace-nowrap">
-                                <Link to={href(locale, datasetPath(row.label))}>{row.label}</Link>
-                              </Td>
-                              <Td className="whitespace-nowrap">
-                                <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
-                              </Td>
-                              <Td className="min-w-64">
-                                <div className="max-h-24 overflow-y-auto">
-                                  {row.typeOfData === null
-                                    ? null
-                                    : <Value field={row.typeOfData} locale={locale} />}
-                                </div>
-                              </Td>
-                              <Td>
-                                {row.accessType === null
-                                  ? null
-                                  : <AccessTypeBadge term={row.accessType} />}
-                              </Td>
-                              <Td className="whitespace-nowrap">{row.datePublished ?? "—"}</Td>
-                              <Td className="whitespace-nowrap">{row.dateModified ?? "—"}</Td>
-                            </tr>
-                          ))}
-                        </Table>
-                        <Pagination
-                          locale={locale}
-                          target="dataset"
-                          query={view.query}
-                          sort={view.sort}
-                          page={view.page}
-                          pageCount={view.pageCount}
-                        />
-                      </div>
-                    )}
-              </RefinableList>
-            )}
-      </div>
-    </Page>
+      )}
+      other={otherLink}
+      empty={view.rows.length === 0}
+    >
+      <Table headers={headers}>
+        {view.rows.map((row) => (
+          <tr key={row.label}>
+            <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+            <Td nowrap>
+              <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+              <Link to={href(locale, datasetPath(row.label))}>{row.label}</Link>
+            </Td>
+            <Td nowrap>
+              <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
+              <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
+            </Td>
+            <Td className="min-w-48">
+              {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+            </Td>
+            <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+            <Td nowrap>{row.datePublished}</Td>
+            <Td nowrap>{row.dateModified}</Td>
+          </tr>
+        ))}
+      </Table>
+    </ListingScreen>
   )
 }

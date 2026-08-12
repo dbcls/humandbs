@@ -1,4 +1,5 @@
-import { Card, Page, PageHead } from "~/components/page"
+import { Heading } from "~/components/base"
+import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { ActionButton, ActionRow, Notes } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
@@ -32,19 +33,25 @@ export default function DataUse({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(locale).use
 
   return (
-    <Page>
-      <PageHead label={messages.heading} />
-      <Card>
+    <Page width="reading">
+      <Crumbs locale={locale} current={messages.heading} />
+      <Card under={false}>
+        <Heading title={messages.heading} />
         <ActionRow>
           <ActionButton
             href={href(locale, "/research")}
             label={messages.find}
             note={messages.findFor}
+            tone="brand"
+            icon="search"
+            external={false}
           />
           <ActionButton
             href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
             label={messages.apply}
             note={messages.applyFor}
+            tone="brand"
+            icon="edit"
           />
         </ActionRow>
         <Notes>

@@ -28,6 +28,7 @@ function view(files: FileListView, links: LinksView = NO_LINKS): ResearchView {
     latestVersionNumber: 1,
     untranslated: false,
     title: { state: "plain", text: "題目", untranslated: false },
+    releaseNote: { state: "rich", text: [], untranslated: false },
     summary: {
       aims: { state: "rich", text: [], untranslated: false },
       methods: { state: "rich", text: [], untranslated: false },

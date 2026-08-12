@@ -84,17 +84,35 @@ export const NEWS_PER_PAGE = 20
  * Newest first, by the date the item carries rather than the row's age: the
  * announcements are dated by the release they announce.
  */
+/**
+ * Announcements, newest first, optionally narrowed by a word.
+ *
+ * **The word is matched against the title and the body with `ILIKE`, not
+ * through the search index.** Announcements are not part of the public search
+ * (`docs/public-pages.md`), and at 682 rows a scan is the whole cost — putting
+ * them into the index would mean maintaining a second kind of row for a
+ * listing that is read by date.
+ */
 export async function newsList(
   locale: Locale,
   page: number,
   perPage: number = NEWS_PER_PAGE,
+  find = "",
 ): Promise<NewsListView> {
   const db = getDb()
+  const wanted = find.trim()
   const rows = await db
     .select({ id: news.id, publishedAt: news.publishedAt, content: newsContent.content })
     .from(newsContent)
     .innerJoin(news, eq(news.id, newsContent.newsId))
-    .where(and(eq(newsContent.locale, locale), eq(newsContent.published, true)))
+    .where(and(
+      eq(newsContent.locale, locale),
+      eq(newsContent.published, true),
+      ...(wanted === ""
+        ? []
+        : [sql`(${newsContent.content} ->> 'title' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\'
+             OR ${newsContent.content} ->> 'body' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\')`]),
+    ))
     .orderBy(desc(news.publishedAt), desc(news.id))
     // One more than asked for, so "is there another page" needs no count.
     .limit(perPage + 1)
@@ -110,6 +128,11 @@ export async function newsList(
     page,
     hasNext,
   }
+}
+
+/** A literal to match, with what LIKE would otherwise read as a pattern escaped. */
+function likeEscaped(value: string): string {
+  return value.replaceAll(/[\\%_]/g, (char) => `\\${char}`)
 }
 
 export interface NewsItemView extends ArticleView {

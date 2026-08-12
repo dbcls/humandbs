@@ -373,6 +373,13 @@ export interface ResearchView {
   latestVersionNumber: number
   untranslated: boolean
   title: FieldView
+  /**
+   * What this version says it changed. **The published pages do not draw it** —
+   * it belongs to the release list, where the versions are read against each
+   * other — but a preview does, because the note is part of what the provider
+   * is being asked to check and there is no release list under a share link.
+   */
+  releaseNote: FieldView
   summary: { aims: FieldView, methods: FieldView, targets: FieldView, links: LinksView }
   datasets: DatasetRowView[]
   dataProviders: { id: string, representative: FieldView, organization: FieldView }[]
@@ -456,6 +463,7 @@ export function anchoredResearchView(
     isLatest: input.versionNumber === input.latestVersionNumber,
     latestVersionNumber: input.latestVersionNumber,
     title: at.field("title", translated(content.title, locale, fallbacks)),
+    releaseNote: at.field("releaseNote", prose(content.releaseNote, locale, fallbacks)),
     summary: {
       aims: at.field("summary.aims", prose(content.summary.aims, locale, fallbacks)),
       methods: at.field("summary.methods", prose(content.summary.methods, locale, fallbacks)),

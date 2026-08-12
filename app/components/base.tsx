@@ -105,18 +105,20 @@ const BADGE_TONE: Record<Tone, string> = {
   danger: "border-danger text-danger",
 }
 
-export function Badge({ tone = "muted", onBand = false, icon, children }: {
+export function Badge({ tone = "muted", onBand = false, pill = false, icon, children }: {
   tone?: Tone
   /** A badge sitting on a band, where white is the badge rather than the page. */
   onBand?: boolean
+  /** Fully rounded, which is the shape v1 gives the ones that lead somewhere. */
+  pill?: boolean
   icon?: ReactNode
   children: ReactNode
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 text-nowrap rounded-sm border px-2 py-0.5 text-xs ${
-        onBand ? "border-white/70 text-white" : `bg-white ${BADGE_TONE[tone]}`
-      }`}
+      className={`inline-flex items-center gap-1 text-nowrap border px-2 py-0.5 text-xs ${
+        pill ? "rounded-full" : "rounded-sm"
+      } ${onBand ? "border-white/70 text-white" : `bg-white ${BADGE_TONE[tone]}`}`}
     >
       {icon}
       {children}
@@ -164,6 +166,8 @@ const BUTTON_VARIANT: Record<ButtonVariant, string> = {
 }
 
 const BUTTON_SIZE = {
+  /** Beside a value in a panel or a row, where the control is not the subject. */
+  xs: "gap-1 px-2 py-0.5 text-xs",
   sm: "gap-1 px-3 py-1 text-sm",
   md: "gap-2 px-5 py-2",
   lg: "gap-2 px-8 py-4 text-lg",
@@ -209,22 +213,68 @@ export function Button({
   )
 }
 
-/** The same shape for something that navigates rather than acts. */
+/**
+ * The same shape for something that navigates rather than acts.
+ *
+ * `external` is for an address no client-side navigation can answer — a file to
+ * download, a redirect to the identity provider — where a `<Link>` would ask
+ * the route for data instead of following it. `newTab` is separate from it,
+ * because leaving in a new tab is something the words beside the control have
+ * to say.
+ */
 export function ButtonLink({
   to,
   variant = "secondary",
   size = "sm",
   pill = false,
+  external = false,
+  newTab = false,
   icon,
   className = "",
   children,
-}: ButtonLook & { to: string, children: ReactNode }) {
-  return (
-    <Link to={to} className={buttonClass(variant, size, pill, className)}>
+}: ButtonLook & { to: string, external?: boolean, newTab?: boolean, children: ReactNode }) {
+  const shape = buttonClass(variant, size, pill, className)
+  const inside = (
+    <>
       {icon}
       {children}
-    </Link>
+    </>
   )
+  if (!external) return <Link to={to} className={shape}>{inside}</Link>
+  // A new tab is only ever opened where the words say so, and `noreferrer`
+  // keeps the address of the page that opened it out of the other site's log.
+  return newTab
+    ? <a href={to} target="_blank" rel="noreferrer" className={shape}>{inside}</a>
+    : <a href={to} className={shape}>{inside}</a>
+}
+
+/**
+ * One of the two things the site is for, drawn at the size that says so.
+ *
+ * The front page offers exactly two: provide data, or use it. They are the same
+ * gradients as the bands and they are the only place a filled block of colour is
+ * this large — which is what makes them read as the way in rather than as two
+ * more links (v1 does the same, at the same size).
+ */
+export function BigAction({ to, tone, icon, external = false, children }: {
+  to: string
+  tone: "accent" | "brand"
+  icon: IconName
+  /** Leaves the site — the application system, the submission navigator. */
+  external?: boolean
+  children: ReactNode
+}) {
+  const shape = `flex min-h-20 items-center justify-center gap-3 rounded px-8 py-5 text-center font-bold text-lg text-white no-underline visited:text-white hover:brightness-95 ${BAND_FILL[tone]}`
+  const inside = (
+    <>
+      <Icon name={icon} className="text-2xl" />
+      {children}
+      {external && <Icon name="external" />}
+    </>
+  )
+  return external
+    ? <a href={to} target="_blank" rel="noreferrer" className={shape}>{inside}</a>
+    : <Link to={to} className={shape}>{inside}</Link>
 }
 
 /**
@@ -234,17 +284,37 @@ export function ButtonLink({
  * text under it: without one the control announces as "button" and is
  * unusable by anybody not looking at it.
  */
-export function IconButton({ name, label, onClick, type = "button", ...rest }: {
+export function IconButton({ name, label, pressed, onBand = false, onClick, type = "button", ...rest }: {
   name: IconName
   label: string
+  /**
+   * For a control that is on or off.
+   *
+   * **The state is announced, not only coloured** — and the name stays the same
+   * whichever way it is, because a control that renamed itself would be read as
+   * "remove … , pressed" and say two opposite things at once.
+   */
+  pressed?: boolean | "mixed"
+  /**
+   * On a band, where the page's own colours are unreadable: `ink-muted` on the
+   * brand fill is 1.2:1, and the focus ring (brand) disappears entirely. White
+   * is 6.2:1 there, and the pressed state becomes a fill rather than a tint.
+   */
+  onBand?: boolean
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
+  const look = onBand
+    ? (pressed === true
+        ? "bg-white text-brand focus-visible:outline-white"
+        : "text-white hover:bg-white/20 focus-visible:outline-white")
+    : (pressed === true ? "text-accent hover:bg-surface-hover" : "text-ink-muted hover:bg-surface-hover hover:text-ink")
   return (
     <button
       type={type}
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-ink-muted hover:bg-surface-hover hover:text-ink"
+      aria-pressed={pressed}
+      className={`inline-flex cursor-pointer items-center justify-center rounded p-1 ${look}`}
       {...rest}
     >
       <Icon name={name} className="text-base" />
@@ -269,6 +339,114 @@ export function Chip({ label, to, remove }: { label: ReactNode, to: string, remo
       <span className="sr-only">{remove}</span>
     </Link>
   )
+}
+
+/* ---------------------------------------------------------- announcements */
+
+/**
+ * A notice the site is showing every reader, and the way to put it away.
+ *
+ * Amber on cream behind a warning glyph, which is what v1 draws and what these
+ * are written for — a maintenance window, a delay in processing applications.
+ * **Closing one lasts as long as the page is open** and no longer: an
+ * announcement dismissed for good could be missed by somebody who never read
+ * it, and the notices are few and short-lived enough that the reader who closes
+ * one is not asked again on their way through the site.
+ */
+export function Announcement({ dismiss, onDismiss, children }: {
+  dismiss: string
+  /** Absent until the page is running in a browser, where closing is possible. */
+  onDismiss?: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-sm border border-warning bg-warning-surface px-3 py-1.5">
+      <Icon name="warning" className="mt-0.5 shrink-0 text-base text-warning" />
+      {/* Small, because there may be three of these above the page and the
+          reader came for what is under them. */}
+      <div className="min-w-0 flex-1 text-xs leading-relaxed">{children}</div>
+      {onDismiss !== undefined && <IconButton name="close" label={dismiss} onClick={onDismiss} />}
+    </div>
+  )
+}
+
+/* --------------------------------------------------------- header controls */
+
+/**
+ * The languages, as the row of round pills v1 puts at the top right.
+ *
+ * Both are always drawn, and the one being read is filled rather than removed:
+ * the pair is what tells a reader the site has another language at all, and a
+ * lone "English" says nothing about which one they are in now.
+ */
+export function LanguagePills({ label, options }: {
+  label: string
+  options: { code: string, label: string, to: string, current: boolean }[]
+}) {
+  return (
+    <nav aria-label={label} className="flex items-center gap-1">
+      {options.map((option) => (
+        option.current
+          ? (
+              <span
+                key={option.code}
+                aria-current="true"
+                className="inline-flex size-8 items-center justify-center rounded-full bg-brand font-semibold text-white text-xs"
+              >
+                {option.label}
+              </span>
+            )
+          : (
+              <Link
+                key={option.code}
+                to={option.to}
+                hrefLang={option.code}
+                lang={option.code}
+                className="inline-flex size-8 items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:bg-surface-hover"
+              >
+                {option.label}
+              </Link>
+            )
+      ))}
+    </nav>
+  )
+}
+
+/**
+ * A round control in the top bar: one glyph, a name it announces itself by, and
+ * — where it stands for a collection — how many things are in it.
+ *
+ * `filled` is for the one that starts something rather than showing something,
+ * which in the header is signing in.
+ */
+export function RoundLink({ to, name, label, count, filled = false, external = false }: {
+  to: string
+  name: IconName
+  label: string
+  /** Drawn only when there is something to count. */
+  count?: number
+  filled?: boolean
+  /** For an address no client-side navigation can answer, such as `/auth/login`. */
+  external?: boolean
+}) {
+  const className = `relative inline-flex size-9 items-center justify-center rounded-full border no-underline ${
+    filled
+      ? "border-transparent bg-brand text-white hover:brightness-90"
+      : "border-line text-ink-muted hover:bg-surface-hover hover:text-ink"
+  }`
+  const inside = (
+    <>
+      <Icon name={name} className="text-base" />
+      {count !== undefined && count > 0 && (
+        <span className="-top-1 -right-1 absolute inline-flex min-w-4 items-center justify-center rounded-full bg-accent px-1 font-semibold text-[10px] text-white">
+          {count}
+        </span>
+      )}
+    </>
+  )
+  return external
+    ? <a href={to} aria-label={label} title={label} className={className}>{inside}</a>
+    : <Link to={to} aria-label={label} title={label} className={className}>{inside}</Link>
 }
 
 /* ------------------------------------------------------------- breadcrumb */
@@ -567,14 +745,23 @@ export function Confirm({ label, warning, confirm, cancel, children }: {
  * A `<details>` again, so the menu opens without script. It closes on choosing
  * because choosing navigates or submits.
  */
-export function Menu({ label, children }: { label: string, children: ReactNode }) {
+export function Menu({ label, icon = "more", round = false, children }: {
+  label: string
+  icon?: IconName
+  /** In the top bar, where the controls on either side of it are circles. */
+  round?: boolean
+  children: ReactNode
+}) {
   return (
     <details className="relative inline-block">
       <summary
         aria-label={label}
-        className="inline-flex cursor-pointer list-none items-center rounded p-1 text-ink-muted hover:bg-surface-hover marker:content-none"
+        title={label}
+        className={`inline-flex cursor-pointer list-none items-center justify-center text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
+          round ? "size-9 rounded-full border border-line" : "rounded p-1"
+        }`}
       >
-        <Icon name="more" className="text-base" />
+        <Icon name={icon} className="text-base" />
       </summary>
       <div className="absolute right-0 z-20 mt-1 flex min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg">
         {children}

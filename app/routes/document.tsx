@@ -1,6 +1,7 @@
 import { redirect } from "react-router"
 
-import { Card, Page, PageHead } from "~/components/page"
+import { Heading } from "~/components/base"
+import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { messagesFor } from "~/i18n/messages"
 import { documentPage } from "~/public/site.server"
@@ -44,9 +45,10 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function Document({ loaderData }: Route.ComponentProps) {
   return (
-    <Page>
-      <PageHead label={loaderData.article.title} />
-      <Card>
+    <Page width="reading">
+      <Crumbs locale={loaderData.locale} current={loaderData.article.title} />
+      <Card under={false}>
+        <Heading title={loaderData.article.title} />
         <Markdown html={loaderData.article.html} />
       </Card>
     </Page>

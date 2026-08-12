@@ -20,9 +20,23 @@
 import { useState } from "react"
 import { Link } from "react-router"
 
+import { AddToCartButton, CartToggle } from "~/components/cart"
+import { Markdown } from "~/components/markdown"
 import {
+  ConditionChips,
+  NoResults,
+  SearchExamples,
+  SearchForm,
+  SortLinks,
+} from "~/components/search"
+import { ActionButton, ActionRow, Notes } from "~/components/site"
+
+import {
+  Announcement,
   Badge,
   Band,
+  BAND_FILL,
+  BigAction,
   Breadcrumb,
   Busy,
   Button,
@@ -34,8 +48,10 @@ import {
   Dot,
   Heading,
   IconButton,
+  LanguagePills,
   Menu,
   Note,
+  RoundLink,
   type NoteKind,
   Progress,
   SectionTabs,
@@ -80,18 +96,45 @@ export function meta() {
 
 const LOCALE = DEFAULT_LOCALE
 
+/**
+ * Everything the site-content renderer can emit, as one article. The markdown
+ * dialect is CommonMark plus GFM tables and nothing else, so this is the whole
+ * of what `app.css` has to style (`app/public/markdown.server.ts`).
+ */
+const PROSE = [
+  "<h2>見出し (h2)</h2>",
+  "<p>段落。<a href=\"/guidelines\">リンク</a>と<strong>強調</strong>と<code>コード</code>を含む。</p>",
+  "<h3>見出し (h3)</h3>",
+  "<ul><li>箇条書き</li><li>2 つ目</li></ul>",
+  "<ol><li>順序つき</li><li>2 つ目</li></ol>",
+  "<blockquote><p>引用。ガイドラインの条文を引くときに出る。</p></blockquote>",
+  "<table><thead><tr><th>データセット ID</th><th>アクセス制限</th></tr></thead>",
+  "<tbody><tr><td>JGAD000117</td><td>制限公開（Type I）</td></tr>",
+  "<tr><td>JGAD000403</td><td>制限公開（Type I）</td></tr></tbody></table>",
+  "<pre><code>hum0197.v3.gwas.v1</code></pre>",
+  "<hr />",
+  "<p>水平線の下。</p>",
+].join("")
+
 const SECTIONS = [
   ["colour", "色"],
   ["type", "文字"],
   ["icon", "アイコン"],
   ["band", "帯と見出し"],
   ["button", "ボタン"],
+  ["big-action", "大きな導線"],
   ["badge", "バッジと印"],
   ["note", "注記"],
+  ["announcement", "告知"],
+  ["header-controls", "ヘッダの操作"],
   ["trail", "パンくず"],
   ["tabs", "タブ"],
   ["table", "表"],
   ["panel", "絞り込みパネル"],
+  ["search", "検索まわり"],
+  ["cart", "カート"],
+  ["entry", "入り口"],
+  ["prose", "記事の本文"],
   ["input", "入力"],
   ["ask", "確認・メニュー・進行"],
   ["nothing", "何も無いとき"],
@@ -111,6 +154,7 @@ const COLOURS: [string, string, string][] = [
   ["surface-hover", "bg-surface-hover", "指した行"],
   ["surface-input", "bg-surface-input", "入力欄の地"],
   ["warning", "bg-warning", "見てほしいこと"],
+  ["warning-surface", "bg-warning-surface", "告知の地"],
   ["danger", "bg-danger", "戻せないこと"],
   ["visited", "bg-visited", "読んだリンク"],
 ]
@@ -250,6 +294,13 @@ export default function DevUi() {
           </div>
         </Section>
 
+        <Section title="大きな導線">
+          <div id="big-action" className="grid gap-4 sm:grid-cols-2">
+            <BigAction to="/data-submission" tone="accent" icon="upload">データの提供</BigAction>
+            <BigAction to="/data-use" tone="brand" icon="download">データの利用</BigAction>
+          </div>
+        </Section>
+
         <Section title="バッジと印">
           <div id="badge" className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -301,6 +352,39 @@ export default function DevUi() {
                 に公表されることになります。
               </Note>
             ))}
+          </div>
+        </Section>
+
+        <Section title="告知">
+          <div id="announcement" className="flex flex-col gap-2">
+            <Announcement dismiss="このお知らせを閉じる" onDismiss={() => undefined}>
+              現在、多数のデータ提供申請をいただいており、確認作業に通常よりも時間を要しております。
+              お待たせして大変申し訳ございませんが、何卒ご理解いただけますようお願い申し上げます。
+            </Announcement>
+            <Announcement dismiss="このお知らせを閉じる">
+              閉じる操作を持たない形。ページが読み込まれた直後の姿で、script が動くと × が付く。
+            </Announcement>
+          </div>
+        </Section>
+
+        <Section title="ヘッダの操作">
+          <div id="header-controls" className="flex flex-wrap items-center gap-3">
+            <LanguagePills
+              label="言語"
+              options={[
+                { code: "en", label: "EN", to: "/en", current: false },
+                { code: "ja", label: "JA", to: "/", current: true },
+              ]}
+            />
+            <RoundLink to="/research" name="search" label="キーワード検索" />
+            <RoundLink to="/cart" name="cart" label="カート" />
+            <RoundLink to="/cart" name="cart" label="カート（3 件）" count={3} />
+            <RoundLink to="/auth/login" name="log-in" label="ログイン" filled external />
+            <Menu label="アカウント" icon="menu" round>
+              <Link to="/admin" className="px-4 py-2 text-sm no-underline hover:bg-surface-hover">
+                管理
+              </Link>
+            </Menu>
           </div>
         </Section>
 
@@ -447,6 +531,110 @@ export default function DevUi() {
                 panel={REFINED_FACETS}
               />
             </div>
+          </div>
+        </Section>
+
+        <Section title="検索まわり">
+          <div id="search" className="flex flex-col gap-6">
+            <div>
+              <p className="mb-2 text-ink-muted text-sm">トップの窓 (large) と一覧の窓。</p>
+              <div className="flex flex-col gap-4">
+                <SearchForm locale="ja" target="research" keyword="" query="" size="large" />
+                <SearchForm locale="ja" target="research" keyword="肺がん" query="" />
+              </div>
+              <SearchExamples locale="ja" />
+            </div>
+            <div>
+              <p className="mb-2 text-ink-muted text-sm">
+                窓に出せない条件。チップ全体が「その条件を外す」リンク。
+              </p>
+              <ConditionChips
+                locale="ja"
+                conditions={[
+                  { label: "アクセス制限: 制限公開（Type I）", href: "/research" },
+                  { label: "除外: メチル化", href: "/research" },
+                ]}
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-ink-muted text-sm">並び替え。選ばれているものは押せない。</p>
+              <SortLinks
+                locale="ja"
+                target="research"
+                query=""
+                sort="dateModified"
+                options={["relevance", "dateModified", "datePublished", "id"]}
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-ink-muted text-sm">0 件のとき。緩めた検索は投げない。</p>
+              <NoResults locale="ja" />
+            </div>
+          </div>
+        </Section>
+
+        <Section title="カート">
+          <div id="cart" className="flex flex-col gap-4">
+            <p className="text-ink-muted text-sm">
+              押すと本当に入る (このページの sessionStorage を触る)。JGAD 以外は印が出ない。
+            </p>
+            <div className="flex flex-wrap items-center gap-6">
+              <span className="flex items-center gap-2 text-sm">
+                行:
+                <CartToggle ids={["JGAD000117"]} locale="ja" />
+              </span>
+              <span className="flex items-center gap-2 text-sm">
+                研究の行 (配下をまとめて):
+                <CartToggle ids={["JGAD000117", "JGAD000403", "DRA014188"]} locale="ja" />
+              </span>
+              <span className="flex items-center gap-2 text-sm">
+                入れられないものだけの行:
+                <CartToggle ids={["DRA014188"]} locale="ja" />
+                <span className="text-ink-muted text-xs">(何も出ない)</span>
+              </span>
+            </div>
+            <div className={`flex flex-wrap items-center gap-4 rounded p-3 ${BAND_FILL.deep}`}>
+              <span className="text-sm text-white">帯の上:</span>
+              <CartToggle ids={["JGAD000117", "JGAD000403"]} locale="ja" whole />
+              <AddToCartButton datasetLabel="JGAD000117" locale="ja" />
+            </div>
+          </div>
+        </Section>
+
+        <Section title="入り口">
+          <div id="entry" className="flex flex-col gap-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <BigAction to="/data-submission" tone="accent" icon="upload">データの提供</BigAction>
+              <BigAction to="/data-use" tone="brand" icon="download">データの利用</BigAction>
+            </div>
+            <ActionRow>
+              <ActionButton
+                href="https://example.org/"
+                label="登録ナビゲーション"
+                note="初めての方"
+                tone="accent"
+                icon="upload"
+              />
+              <ActionButton
+                href="https://example.org/"
+                label="データ提供申請を行う"
+                note="2 回目以降の方"
+                tone="accent"
+                icon="edit"
+              />
+            </ActionRow>
+            <Notes>
+              <p>ボタンの下に付く一文。中央寄せで、リンクを含む。</p>
+            </Notes>
+          </div>
+        </Section>
+
+        <Section title="記事の本文">
+          <div id="prose">
+            <p className="mb-2 text-ink-muted text-sm">
+              サイトコンテンツの markdown が出せる要素の全部。意匠は app.css が持つ。
+            </p>
+            <Markdown html={PROSE} />
           </div>
         </Section>
 

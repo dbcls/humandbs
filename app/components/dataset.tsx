@@ -1,8 +1,11 @@
 import { Link } from "react-router"
 
+import { Band } from "~/components/base"
+import { AddToCartButton } from "~/components/cart"
+import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href, researchPath } from "~/public/urls"
+import { href, listPath, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
 import { Downloads } from "./files"
@@ -10,6 +13,7 @@ import {
   AccessTypeBadge,
   Annotation,
   Card,
+  Crumbs,
   Empty,
   KeyValue,
   Page,
@@ -25,9 +29,26 @@ import {
  * research version that lists this dataset shows this same page.
  */
 export function DatasetPage({ view, locale }: { view: DatasetView, locale: Locale }) {
+  const messages = messagesFor(locale)
+
   return (
     <Page>
-      <PageHead label={view.label} />
+      <Crumbs
+        locale={locale}
+        trail={[{ label: messages.search.datasetList, to: href(locale, listPath("dataset")) }]}
+        current={view.label}
+      />
+      <PageHead
+        kicker={messages.dataset.datasetId}
+        label={(
+          <>
+            <Icon name="database" aria-hidden="true" />
+            {view.label}
+          </>
+        )}
+      >
+        <AddToCartButton datasetLabel={view.label} locale={locale} />
+      </PageHead>
       <Card>
         <DatasetBody
           view={view}
@@ -66,8 +87,15 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
       <dl className="sm:columns-2">
-        <KeyValue title={t.datePublished}>{view.datePublished}</KeyValue>
-        <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
+        {/* A date the upstream archive has not given us is left out rather
+            than drawn as an empty row: "there is no value" and "the label is
+            here but the value is missing" read the same and only one is true. */}
+        {view.datePublished !== null && (
+          <KeyValue title={t.datePublished}>{view.datePublished}</KeyValue>
+        )}
+        {view.dateModified !== null && (
+          <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
+        )}
         <KeyValue title={t.research}>
           <Link to={researchHref}>{view.humLabel}</Link>
         </KeyValue>
@@ -104,9 +132,11 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
               <div className="space-y-6">
                 {view.experiments.map((experiment) => (
                   <section key={experiment.id} className="rounded border border-line">
-                    <h3 className="bg-surface px-4 py-2 font-semibold">
-                      <Value field={experiment.label} locale={locale} />
-                    </h3>
+                    <Band className="rounded-t">
+                      <h3 className="font-semibold">
+                        <Value field={experiment.label} locale={locale} />
+                      </h3>
+                    </Band>
                     <div className="px-4 pt-2">
                       <Annotation at={`experiments.${experiment.id}.label`} />
                     </div>

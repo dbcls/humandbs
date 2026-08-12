@@ -52,6 +52,7 @@ export type IconName
     | "grip"
     | "more"
     | "menu"
+    | "log-in"
     | "spinner"
 
 const NODES: Record<IconName, ReactNode> = {
@@ -255,6 +256,13 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M4 5h16" />
       <path d="M4 12h16" />
       <path d="M4 19h16" />
+    </>
+  ),
+  "log-in": (
+    <>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="m10 17 5-5-5-5" />
+      <path d="M15 12H3" />
     </>
   ),
   "spinner": <path d="M21 12a9 9 0 1 1-6.219-8.56" />,

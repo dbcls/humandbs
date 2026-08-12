@@ -1,21 +1,21 @@
+import { useState } from "react"
 import { Form, Link, useLocation } from "react-router"
 
+import { useCart } from "~/cart/store"
+import { Announcement, LanguagePills, Menu, RoundLink } from "~/components/base"
+import { Icon } from "~/components/icons"
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { FOOTER, NAVBAR, navLabel, type NavEntry, type NavLink as NavLinkItem } from "~/public/navigation"
-import { href, readLocale } from "~/public/urls"
-
-/**
- * The language switch points at the same page in the other language rather than
- * at its front page: the two addresses of a page differ only by the prefix, so
- * the switch is the current address with a different prefix on it. **The query
- * string comes along** — on a listing it holds the search, and dropping it
- * would answer "read this in English" with a different page.
- */
-function otherLocale(locale: Locale): Locale {
-  return LOCALES.find((candidate) => candidate !== locale) ?? locale
-}
+import {
+  FOOTER,
+  NAVBAR,
+  NAVBAR_MORE,
+  navLabel,
+  type NavEntry,
+  type NavLink as NavLinkItem,
+} from "~/public/navigation"
+import { cartPath, href, listPath, readLocale } from "~/public/urls"
 
 function NavItemLink({ item, locale, className }: {
   item: NavLinkItem
@@ -38,11 +38,16 @@ function NavbarEntry({ entry, locale }: { entry: NavEntry, locale: Locale }) {
   const children = entry.children ?? []
   return (
     <li className="group relative">
-      <NavItemLink
-        item={entry}
-        locale={locale}
-        className="block whitespace-nowrap px-3 py-2 font-medium text-sm no-underline"
-      />
+      <span className="flex items-center">
+        <NavItemLink
+          item={entry}
+          locale={locale}
+          className="block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
+        />
+        {children.length > 0 && (
+          <Icon name="chevron-down" aria-hidden="true" className="-ml-1.5 text-ink-muted text-xs" />
+        )}
+      </span>
       {children.length > 0 && (
         <ul className="absolute top-full left-0 z-10 hidden min-w-max border border-line bg-white py-1 shadow-lg group-focus-within:block group-hover:block">
           {children.map((child) => (
@@ -69,46 +74,110 @@ export interface Account {
 /**
  * Signing in and out.
  *
- * The link is a plain anchor because `/auth/login` answers with a redirect to
+ * Signing in is a plain anchor because `/auth/login` answers with a redirect to
  * Keycloak and has no page behind it; a client-side navigation would ask it for
  * data instead of following it. Signing out is a POST, so that neither a link
  * nor an image somebody else placed can end a session.
+ *
+ * Once signed in the circle becomes a menu: a name, the way to the admin
+ * screens, and the way out. Those three would take more room across the top bar
+ * than they are worth, and none of them is wanted often.
  */
-function AccountMenu({ account, locale }: { account: Account | null, locale: Locale }) {
+function AccountControl({ account, locale }: { account: Account | null, locale: Locale }) {
   const messages = messagesFor(locale)
   const location = useLocation()
 
   if (account === null) {
     const back = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
     return (
-      <a href={`/auth/login?${back.toString()}`} className="text-sm">
-        {messages.account.logIn}
-      </a>
+      <RoundLink
+        to={`/auth/login?${back.toString()}`}
+        name="log-in"
+        label={messages.account.logIn}
+        filled
+        external
+      />
     )
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="text-ink-muted">{account.name}</span>
-      {account.isAdmin && <Link to={href(locale, "/admin")}>{messages.account.admin}</Link>}
+    <Menu label={messages.account.menu} icon="menu" round>
+      <span className="border-line border-b px-4 py-2 text-ink-muted text-sm">{account.name}</span>
+      {account.isAdmin && (
+        <Link
+          to={href(locale, "/admin")}
+          className="px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+        >
+          {messages.account.admin}
+        </Link>
+      )}
       <Form method="post" action="/auth/logout">
-        <button type="submit" className="cursor-pointer underline">
+        <button
+          type="submit"
+          className="w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-surface-hover"
+        >
           {messages.account.logOut}
         </button>
       </Form>
-    </div>
+    </Menu>
   )
 }
 
+/**
+ * The notices above every page.
+ *
+ * They are stacked rather than folded into one: each is a separate thing the
+ * office needs read, and there are two or three of them at a time. Closing one
+ * is remembered for as long as the page is open (`Announcement`), which is why
+ * this holds the state rather than the notice itself.
+ */
+function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
+  const messages = messagesFor(locale)
+  const [dismissed, setDismissed] = useState<number[]>([])
+  const showing = alerts
+    .map((html, index) => ({ html, index }))
+    .filter(({ index }) => !dismissed.includes(index))
+
+  if (showing.length === 0) return null
+  return (
+    <section
+      aria-label={messages.announcements}
+      className="flex w-full flex-col gap-1 px-4 py-1.5 sm:px-page-gutter"
+    >
+      {showing.map(({ html, index }) => (
+        <Announcement
+          key={index}
+          dismiss={messages.dismissAnnouncement}
+          onDismiss={() => { setDismissed((was) => [...was, index]) }}
+        >
+          <Markdown html={html} />
+        </Announcement>
+      ))}
+    </section>
+  )
+}
+
+/**
+ * The bar across the top of every page.
+ *
+ * **One row**, the way v1 has it: the wordmark, the navigation, and the
+ * controls that are not navigation — the language, the search, the cart, and
+ * the account. What the row cannot fit goes behind the overflow control at the
+ * end of the navigation rather than being dropped (`public/navigation.ts`).
+ *
+ * **The search here is a link to the research listing, not a box.** The two
+ * places a reader searches from are the front page and a listing, and a box in
+ * the header would be a third that behaves differently from both.
+ */
 export function SiteHeader({ locale, alerts, account }: {
   locale: Locale
   alerts: string[]
   account: Account | null
 }) {
   const messages = messagesFor(locale)
-  const other = otherLocale(locale)
   const location = useLocation()
   const { path } = readLocale(location.pathname)
+  const cart = useCart()
 
   return (
     <header className="border-line border-b bg-white">
@@ -123,58 +192,129 @@ export function SiteHeader({ locale, alerts, account }: {
       >
         {messages.skipToContent}
       </a>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      {/*
+        The bar runs the width of the window rather than stopping at the width
+        of a page: it holds nine destinations (eight plus the overflow) and four
+        controls, and v1's own header does the same. The page under it is
+        centred and narrower, which is where the reading happens.
+      */}
+      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-page-gutter">
         {/*
           The wordmark is the portal's own artwork, carried over as it is; the
           site's name in the reader's language is set under it rather than drawn
           into it, so that it can be translated and read aloud.
         */}
-        <Link to={href(locale, "/")} className="flex flex-col gap-1 no-underline">
-          <img src="/HumanDB.svg" alt="" width={240} height={33} className="w-48 sm:w-60" />
-          <span className="text-center font-semibold text-brand text-xs">{messages.siteName}</span>
+        <Link to={href(locale, "/")} className="flex shrink-0 flex-col no-underline">
+          <img src="/humandb.svg" alt="" width={240} height={33} className="w-44" />
+          <span className="text-center font-semibold text-[10px] text-brand">
+            {messages.siteName}
+          </span>
         </Link>
-        <div className="flex items-center gap-4">
-          <Link
-            to={`${href(other, path)}${location.search}`}
-            hrefLang={other}
-            lang={other}
-            className="text-sm"
-          >
-            {messages.otherLanguage}
-          </Link>
-          <AccountMenu account={account} locale={locale} />
+
+        <nav aria-label={messages.globalNavigation} className="min-w-0 flex-1">
+          <ul className="flex flex-wrap items-center">
+            {NAVBAR.map((entry) => <NavbarEntry key={entry.path} entry={entry} locale={locale} />)}
+          </ul>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {/*
+            The overflow sits between the navigation and the controls because
+            that is where the row runs out, and it holds navigation rather than
+            controls — so it names itself as such.
+          */}
+          <Menu label={messages.moreNavigation}>
+            {NAVBAR_MORE.map((item) => (
+              <NavItemLink
+                key={item.path}
+                item={item}
+                locale={locale}
+                className="block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+              />
+            ))}
+          </Menu>
+          {/*
+            The pills keep one order whichever language is being read (v1 puts
+            EN before JA), so that the pair does not swap places as the reader
+            switches and the one they want is where it was.
+          */}
+          <LanguagePills
+            label={messages.language}
+            options={[...LOCALES].sort().map((code) => ({
+              code,
+              label: code.toUpperCase(),
+              to: `${href(code, path)}${location.search}`,
+              current: code === locale,
+            }))}
+          />
+          <RoundLink
+            to={href(locale, listPath("research"))}
+            name="search"
+            label={messages.search.label}
+          />
+          {/*
+            The address carries what the cart holds, so that following it lands
+            on the rows rather than on an empty cart that fills in a moment
+            later. The count is in the name as well as on the glyph: a label
+            replaces what is inside a link, so a number left in the markup alone
+            would be read by nobody who cannot see it.
+          */}
+          <RoundLink
+            to={cart.ids.length === 0
+              ? href(locale, cartPath())
+              : `${href(locale, cartPath())}?${new URLSearchParams({ ids: cart.ids.join(",") }).toString()}`}
+            name="cart"
+            label={cart.ids.length === 0
+              ? messages.cart.open
+              : messages.cart.openWithCount(cart.ids.length)}
+            count={cart.ids.length}
+          />
+          <AccountControl account={account} locale={locale} />
         </div>
       </div>
 
-      <nav aria-label={messages.globalNavigation} className="border-line border-t">
-        <ul className="mx-auto flex max-w-6xl flex-wrap items-center px-1">
-          {NAVBAR.map((entry) => <NavbarEntry key={entry.path} entry={entry} locale={locale} />)}
-        </ul>
-      </nav>
-
-      {alerts.length > 0 && (
-        <div aria-label={messages.announcements} className="border-accent border-t-2 bg-surface">
-          <div className="mx-auto max-w-6xl px-4 py-3 text-sm">
-            {alerts.map((html, index) => <Markdown key={index} html={html} />)}
-          </div>
-        </div>
-      )}
+      <Announcements alerts={alerts} locale={locale} />
     </header>
   )
 }
 
+/**
+ * The sitemap at the foot of every page.
+ *
+ * Four columns of links under one heading, with the centre's mark opposite it —
+ * v1's arrangement, and the reason the footer carries more than the top bar
+ * does: it is where the four guidelines are named in full and where anything
+ * the bar had no room for can still be reached.
+ */
 export function SiteFooter({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
 
   return (
     <footer className="mt-16 border-line border-t bg-white">
-      <nav aria-label={messages.siteMap} className="mx-auto max-w-6xl px-4 py-8">
-        <h2 className="font-semibold text-ink-muted text-sm">{messages.siteMap}</h2>
-        <div className="mt-4 columns-1 gap-8 sm:columns-2 lg:columns-4">
+      <nav
+        aria-label={messages.siteMap}
+        className="mx-auto w-full max-w-content-max px-4 py-8 sm:px-page-gutter"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>
+          <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
+            <img src="/logo-dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
+          </a>
+        </div>
+        {/*
+          A grid rather than CSS columns: columns balance their height, so a
+          sitemap this short collapses into three of the four and leaves the
+          last one empty. The sitemap is meant to be scanned across.
+        */}
+        <div className="mt-4 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
           {FOOTER.map((entry) => (
             <section key={entry.path} className="mb-6 break-inside-avoid">
-              <h3 className="text-ink-muted text-xs">
-                <NavItemLink item={entry} locale={locale} className="no-underline" />
+              <h3 className="text-xs">
+                <NavItemLink
+                  item={entry}
+                  locale={locale}
+                  className="text-ink-muted no-underline hover:text-brand"
+                />
               </h3>
               {(entry.children ?? []).length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1">
@@ -189,11 +329,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           ))}
         </div>
       </nav>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-line border-t px-4 py-4 text-ink-muted text-sm">
+      <div className="mx-auto w-full max-w-content-max border-line border-t px-4 py-4 text-ink-muted text-sm sm:px-page-gutter">
         {messages.siteName}
-        <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
-          <img src="/logo_dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
-        </a>
       </div>
     </footer>
   )

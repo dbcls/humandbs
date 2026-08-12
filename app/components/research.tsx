@@ -1,10 +1,14 @@
 import { Link } from "react-router"
 
+import { Badge } from "~/components/base"
+import { CartToggle } from "~/components/cart"
+import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import {
   datasetPath,
   href,
+  listPath,
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
@@ -15,6 +19,7 @@ import {
   AccessTypeBadge,
   Annotation,
   Card,
+  Crumbs,
   Empty,
   hasLinks,
   KeyValue,
@@ -38,13 +43,39 @@ import {
  * each dataset describes its own.
  */
 export function ResearchVersionPage({ view, locale }: { view: ResearchView, locale: Locale }) {
-  const t = messagesFor(locale).research
+  const messages = messagesFor(locale)
+  const t = messages.research
 
   return (
     <Page>
-      <PageHead label={view.versionLabel}>
+      <Crumbs
+        locale={locale}
+        trail={[{ label: messages.search.researchList, to: href(locale, listPath("research")) }]}
+        current={view.humLabel}
+      />
+      {/*
+        The band names the version and carries the two things a reader does from
+        here: read the releases, or leave a past version for the current one.
+        The label above the number says what kind of identifier it is, which is
+        how v1 sets "NBDC Research ID:" over it.
+      */}
+      <PageHead
+        kicker={t.researchId}
+        label={(
+          <>
+            <Icon name="book" aria-hidden="true" />
+            {view.versionLabel}
+            <Link
+              to={href(locale, researchVersionsPath(view.humLabel))}
+              className="no-underline"
+            >
+              <Badge onBand pill>{t.releaseInfo}</Badge>
+            </Link>
+          </>
+        )}
+      >
         {view.isLatest
-          ? <span className="rounded-sm bg-white/20 px-2 py-0.5">{t.latestVersion}</span>
+          ? <Badge onBand>{t.latestVersion}</Badge>
           : (
               <Link
                 to={href(locale, researchPath(view.humLabel))}
@@ -53,15 +84,9 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
                 {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
               </Link>
             )}
-        <Link
-          to={href(locale, researchVersionsPath(view.humLabel))}
-          className="text-white visited:text-white"
-        >
-          {t.releaseInfo}
-        </Link>
       </PageHead>
 
-      <Card><ResearchBody view={view} locale={locale} /></Card>
+      <Card><ResearchBody view={view} locale={locale} cart /></Card>
     </Page>
   )
 }
@@ -78,10 +103,23 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
  * `datasetHref` exists because a draft's datasets may have no id pinned yet:
  * a preview addresses them by identity, the public page by label.
  */
-export function ResearchBody({ view, locale, datasetHref }: {
+export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false }: {
   view: ResearchView
   locale: Locale
   datasetHref?: (ref: { id: string | null, label: string }) => string | null
+  /**
+   * Whether the dataset table carries the cart marks. The published page does;
+   * a preview does not, because nothing under a share link can be applied for
+   * yet — the labels may not even be pinned.
+   */
+  cart?: boolean
+  /**
+   * Whether to draw what this version says it changed. A published page does
+   * not: the note belongs to the release list, where the versions can be read
+   * against each other. A preview has no release list, and the note is part of
+   * what the provider is being asked to check.
+   */
+  releaseNote?: boolean
 }) {
   const messages = messagesFor(locale)
   const t = messages.research
@@ -95,6 +133,12 @@ export function ResearchBody({ view, locale, datasetHref }: {
       <Section title={t.title} at="title">
         <p className="font-semibold text-lg"><Value field={view.title} locale={locale} /></p>
       </Section>
+
+      {releaseNote && (
+        <Section title={t.releaseNote} at="releaseNote">
+          <Value field={view.releaseNote} locale={locale} />
+        </Section>
+      )}
 
       <Section title={t.overview}>
         <dl className="sm:columns-2">
@@ -123,6 +167,16 @@ export function ResearchBody({ view, locale, datasetHref }: {
           ? <Empty>{t.noDatasets}</Empty>
           : (
               <Table headers={[
+                ...(cart
+                  ? [
+                      <CartToggle
+                        key="cart"
+                        ids={view.datasets.map((row) => row.label)}
+                        locale={locale}
+                        whole
+                      />,
+                    ]
+                  : []),
                 messages.dataset.datasetId,
                 messages.dataset.accessType,
                 messages.dataset.typeOfData,
@@ -136,6 +190,9 @@ export function ResearchBody({ view, locale, datasetHref }: {
                   const to = linkTo(row)
                   return (
                     <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
+                      {cart && (
+                        <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+                      )}
                       <Td className="break-all">
                         {to === null ? name : <Link to={to}>{name}</Link>}
                       </Td>

@@ -1,9 +1,9 @@
 import { Link } from "react-router"
 
-import { Page, Section } from "~/components/page"
+import { BigAction, Heading } from "~/components/base"
 import { Markdown } from "~/components/markdown"
+import { Card, Page } from "~/components/page"
 import { SearchExamples, SearchForm } from "~/components/search"
-import { ActionButton, ActionRow } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { findDocument, newsList } from "~/public/site.server"
 import { href, newsItemPath, newsPath, readLocale } from "~/public/urls"
@@ -42,10 +42,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <Page>
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        <div>
+        <Card under={false}>
           {intro !== null && (
             <>
-              <h1 className="font-bold text-2xl text-brand">{intro.title}</h1>
+              <Heading title={intro.title} />
               <Markdown html={intro.html} className="mt-4" />
             </>
           )}
@@ -55,26 +55,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <SearchExamples locale={locale} />
           </div>
 
-          <div className="mt-10">
-            <ActionRow>
-              <ActionButton
-                href={href(locale, "/data-submission")}
-                label={messages.submission.heading}
-              />
-              <ActionButton
-                href={href(locale, "/data-use")}
-                label={messages.use.heading}
-              />
-            </ActionRow>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <BigAction to={href(locale, "/data-submission")} tone="accent" icon="upload">
+              {messages.submission.heading}
+            </BigAction>
+            <BigAction to={href(locale, "/data-use")} tone="brand" icon="download">
+              {messages.use.heading}
+            </BigAction>
           </div>
-        </div>
+        </Card>
 
         <aside>
-          <Section title={messages.news.latest}>
+          <Card under={false}>
+            <Heading level="h2" title={messages.news.latest} />
             {news.length === 0
-              ? <p className="text-ink-muted text-sm">{messages.news.none}</p>
+              ? <p className="mt-4 text-ink-muted text-sm">{messages.news.none}</p>
               : (
-                  <ul className="flex flex-col divide-y divide-line">
+                  <ul className="mt-4 flex flex-col divide-y divide-line">
                     {news.map((item) => (
                       <li key={item.id} className="py-2 text-sm">
                         <div className="text-ink-muted text-xs">
@@ -88,7 +85,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <p className="mt-3 text-sm">
               <Link to={href(locale, newsPath())}>{messages.news.all}</Link>
             </p>
-          </Section>
+          </Card>
         </aside>
       </div>
     </Page>

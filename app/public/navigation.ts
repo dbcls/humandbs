@@ -145,11 +145,19 @@ export const NAVBAR: NavEntry[] = [
   DATA_PROCESSING,
   OFF_PREMISE_SERVER,
   DAC,
-  PUBLICATIONS,
-  VIOLATION,
   FAQ,
   CONTACT_US,
 ]
+
+/**
+ * What the bar has no room for, behind the overflow control at its end.
+ *
+ * The bar is one row and the row has a width; whatever does not fit has to go
+ * somewhere rather than be dropped, which is the arrangement v1 arrived at.
+ * These are the least often wanted of the destinations, and all three are also
+ * in the sitemap at the foot of the page.
+ */
+export const NAVBAR_MORE: NavLink[] = [PUBLICATIONS, VIOLATION, PRIVACY_POLICY]
 
 /**
  * The sitemap at the foot of every page. It repeats the bar and adds what the
@@ -169,9 +177,10 @@ export const FOOTER: NavEntry[] = [
   CONTACT_US,
 ]
 
-/** Every distinct destination either list points at, for the reachability test. */
+/** Every distinct destination the lists point at, for the reachability test. */
 export function navigationPaths(): string[] {
-  const paths = [...NAVBAR, ...FOOTER].flatMap(
+  const entries: NavEntry[] = [...NAVBAR, ...NAVBAR_MORE, ...FOOTER]
+  const paths = entries.flatMap(
     (entry) => [entry.path, ...(entry.children ?? []).map((child) => child.path)],
   )
   return [...new Set(paths)].sort()

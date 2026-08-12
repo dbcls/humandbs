@@ -70,6 +70,7 @@ export function PreviewResearchScreen({ view, problem }: {
           <ResearchBody
             view={view.view}
             locale={locale}
+            releaseNote
             datasetHref={(ref) => ref.id === null
               ? null
               : href(locale, previewDatasetPath(view.token, ref.id))}

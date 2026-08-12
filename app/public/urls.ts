@@ -110,6 +110,22 @@ export function newsItemPath(id: string): string {
   return `/news/${encodeURIComponent(id)}`
 }
 
+/** Where the datasets a reader has collected are listed. */
+export function cartPath(): string {
+  return "/cart"
+}
+
+/**
+ * Where a listing hands over its results as a table.
+ *
+ * Under the listing rather than beside it, so the two addresses cannot drift
+ * apart. Nothing is shadowed by it: a research is addressed by a hum label,
+ * which `export` is not.
+ */
+export function exportPath(target: "research" | "dataset"): string {
+  return `${listPath(target)}/export`
+}
+
 /**
  * Where a published file is fetched from.
  *
@@ -151,6 +167,7 @@ export const SCREEN_PATHS = [
   "/news",
   "/research",
   "/dataset",
+  "/cart",
   "/preview",
   "/admin",
   "/auth",

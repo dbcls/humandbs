@@ -62,6 +62,7 @@ describe("the palette", () => {
       "surface-input",
       "visited",
       "warning",
+      "warning-surface",
     ])
   })
 
@@ -104,5 +105,12 @@ describe("the palette", () => {
   it("reads body text on the tint the page sits on", () => {
     expect(contrast(colours.ink ?? "", colours.surface ?? "")).toBeGreaterThanOrEqual(TEXT)
     expect(contrast(colours["ink-muted"] ?? "", colours.surface ?? "")).toBeGreaterThanOrEqual(TEXT)
+  })
+
+  it("reads an announcement on its own ground", () => {
+    const ground = colours["warning-surface"] ?? ""
+    expect(contrast(colours.ink ?? "", ground)).toBeGreaterThanOrEqual(TEXT)
+    // The glyph beside it and the rule around it, which are what mark the notice out.
+    expect(contrast(colours.warning ?? "", ground)).toBeGreaterThanOrEqual(NON_TEXT)
   })
 })
