@@ -403,7 +403,7 @@
     "basic-info": "Basic Information"
   },
   "Pagination": {
-    "itemsPerPage": "Items per page",
+    "itemsPerPage": "Per page",
     "previous": "Previous",
     "next": "Next",
     "page": "Page",

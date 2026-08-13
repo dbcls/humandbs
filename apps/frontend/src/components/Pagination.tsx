@@ -6,16 +6,6 @@ import { useEffect, useState } from "react";
 import type { Pagination as APIPagination } from "@humandbs/backend/types";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Pagination as PaginationBase,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -24,60 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Export function for testing
+// Export function for testing compatibility
 export const getVisiblePages = (currentPage: number, totalPages: number) => {
   const pages: (number | "ellipsis")[] = [];
-
-  if (totalPages <= 7) {
-    // If total pages is small, show all pages
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
   }
-
-  // Always show first page
-  pages.push(1);
-
-  if (currentPage <= 3) {
-    // Current page is close to beginning
-    if (currentPage === 3) {
-      // Show [1] [2] [3] [4] ... [X]
-      pages.push(2, 3, 4);
-    } else {
-      // Show [1] [2] [3] ... [X] for currentPage 1 or 2
-      pages.push(2, 3);
-    }
-    pages.push("ellipsis");
-  } else if (currentPage >= totalPages - 2) {
-    // Current page is close to end
-    pages.push("ellipsis");
-    if (currentPage === totalPages - 2) {
-      // Show [1] ... [X-3] [X-2] [X-1] [X]
-      for (let i = totalPages - 3; i <= totalPages - 1; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Show [1] ... [X-2] [X-1] [X] for currentPage X-1 or X
-      for (let i = totalPages - 2; i <= totalPages - 1; i++) {
-        pages.push(i);
-      }
-    }
-  } else {
-    // Current page is in the middle - general form
-    pages.push("ellipsis");
-    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-      pages.push(i);
-    }
-    pages.push("ellipsis");
-  }
-
-  // Always show last page (if it's not already included)
-  if (totalPages > 1) {
-    pages.push(totalPages);
-  }
-
   return pages;
 };
 
@@ -90,19 +34,10 @@ interface PaginationProps {
 export function Pagination({ pagination, onItemsPerPageChange, className }: PaginationProps) {
   const navigate = useNavigate();
   const t = useTranslations("Pagination");
-  const [pageInput, setPageInput] = useState(String(pagination.page));
-
-  const visiblePages = getVisiblePages(pagination.page, pagination.totalPages);
-  const visiblePageItems = visiblePages.map((pageNum, index) => ({
-    pageNum,
-    key:
-      pageNum === "ellipsis"
-        ? `ellipsis-${visiblePages[index - 1]}-${visiblePages[index + 1]}`
-        : pageNum,
-  }));
+  const [sliderValue, setSliderValue] = useState(pagination.page);
 
   useEffect(() => {
-    setPageInput(String(pagination.page));
+    setSliderValue(pagination.page);
   }, [pagination.page]);
 
   const handleItemsPerPageChange = (value: string) => {
@@ -110,7 +45,6 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     if (onItemsPerPageChange) {
       onItemsPerPageChange(newItemsPerPage);
     }
-    // Navigate to page 1 when changing items per page
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page: 1, limit: newItemsPerPage }),
@@ -118,17 +52,11 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     });
   };
 
-  const handlePageJump = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const requestedPage = Number(pageInput);
-    if (!Number.isInteger(requestedPage)) return;
-
-    const page = Math.min(pagination.totalPages, Math.max(1, requestedPage));
-    setPageInput(String(page));
-
+  const handlePageNavigate = (targetPage: number) => {
+    const page = Math.min(pagination.totalPages, Math.max(1, targetPage));
     if (page === pagination.page) return;
 
+    setSliderValue(page);
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page }),
@@ -136,93 +64,65 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     });
   };
 
+  const handleSliderCommit = () => {
+    handlePageNavigate(sliderValue);
+  };
+
   return (
     <div
-      className={cn("mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row", className)}
+      className={cn(
+        "mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row w-full",
+        className
+      )}
     >
-      <PaginationBase>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              to="."
-              search={(prev) => ({
-                ...prev,
-                page: Math.max(1, pagination.page - 1),
-              })}
-              label={t("previous")}
-              className={cn({
-                "pointer-events-none opacity-50": !pagination.hasPrev,
-              })}
-              resetScroll={false}
-            />
-          </PaginationItem>
+      <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={!pagination.hasPrev}
+          onClick={() => handlePageNavigate(pagination.page - 1)}
+          aria-label={t("previous")}
+          className="h-9 w-9 shrink-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
 
-          {visiblePageItems.map(({ pageNum, key }) => {
-            if (pageNum === "ellipsis") {
-              return (
-                <PaginationItem key={key}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              );
-            }
+        <div className="flex flex-1 items-center gap-3">
+          <input
+            type="range"
+            min={1}
+            max={Math.max(1, pagination.totalPages)}
+            value={sliderValue}
+            onChange={(e) => setSliderValue(Number(e.target.value))}
+            onMouseUp={handleSliderCommit}
+            onTouchEnd={handleSliderCommit}
+            onKeyUp={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleSliderCommit();
+            }}
+            className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
+            aria-label={t("page")}
+          />
+          <span className="text-sm font-medium whitespace-nowrap text-muted-foreground min-w-[3.5rem] text-center">
+            {sliderValue} / {pagination.totalPages}
+          </span>
+        </div>
 
-            return (
-              <PaginationItem key={pageNum}>
-                <PaginationLink
-                  to="."
-                  search={(prev) => ({ ...prev, page: pageNum })}
-                  isActive={pageNum === pagination.page}
-                  resetScroll={false}
-                >
-                  {pageNum}
-                </PaginationLink>
-              </PaginationItem>
-            );
-          })}
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={!pagination.hasNext}
+          onClick={() => handlePageNavigate(pagination.page + 1)}
+          aria-label={t("next")}
+          className="h-9 w-9 shrink-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
 
-          <PaginationItem>
-            <PaginationNext
-              to="."
-              search={(prev) => ({
-                ...prev,
-                page: Math.min(pagination.totalPages, pagination.page + 1),
-              })}
-              label={t("next")}
-              className={cn({
-                "pointer-events-none opacity-50": !pagination.hasNext,
-              })}
-              resetScroll={false}
-            />
-          </PaginationItem>
-          <PaginationItem>
-            <form className="flex items-center gap-2" onSubmit={handlePageJump}>
-              <label className="text-muted-foreground text-sm" htmlFor="pagination-page">
-                {t("page")}
-              </label>
-              <Input
-                aria-label={t("pageNumber")}
-                className="w-24 text-center"
-                id="pagination-page"
-                max={pagination.totalPages}
-                min="1"
-                onChange={(event) => setPageInput(event.target.value)}
-                required
-                step="1"
-                type="number"
-                value={pageInput}
-              />
-              <Button size="default" type="submit" variant="outline">
-                {t("go")}
-              </Button>
-            </form>
-          </PaginationItem>
-        </PaginationContent>
-      </PaginationBase>
-
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-muted-foreground text-sm">{t("itemsPerPage")}:</span>
+      <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+        <span className="text-sm text-muted-foreground">{t("itemsPerPage")}:</span>
         <Select value={pagination.limit.toString()} onValueChange={handleItemsPerPageChange}>
-          <SelectTrigger className="w-fit">
+          <SelectTrigger className="w-fit h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -238,11 +138,16 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
 
 export function PaginationLoadingSkeleton() {
   return (
-    <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row">
-      <div className="h-8 w-24 rounded bg-gray-300" />
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <div className="h-5 w-20 rounded bg-gray-300" />
-        <div className="h-8 w-16 rounded bg-gray-300" />
+    <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row w-full">
+      <div className="flex flex-1 items-center gap-3">
+        <div className="h-9 w-9 rounded-md bg-gray-200 dark:bg-gray-700 shrink-0" />
+        <div className="h-2 flex-1 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-9 w-9 rounded-md bg-gray-200 dark:bg-gray-700 shrink-0" />
+      </div>
+      <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+        <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-9 w-16 rounded bg-gray-200 dark:bg-gray-700" />
       </div>
     </div>
   );
