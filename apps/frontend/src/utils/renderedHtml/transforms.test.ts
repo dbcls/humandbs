@@ -40,6 +40,26 @@ describe("renderBilingualField", () => {
 });
 
 describe("addResearchRenderedHtml", () => {
+  test("adds localized inline titles before rendering research summary fields", async () => {
+    const res = await addResearchRenderedHtml({
+      data: {
+        summary: {
+          aims: { ja: tv("目的の内容"), en: tv("aim content") },
+          methods: { ja: tv("方法の内容"), en: tv("method content") },
+          targets: { ja: tv("対象の内容"), en: tv("target content") },
+        },
+      },
+    });
+
+    expect(res.data.summary.aims.ja?.renderedHtml).toContain("<strong>目的:</strong> 目的の内容");
+    expect(res.data.summary.methods.en?.renderedHtml).toContain(
+      "<strong>Methods:</strong> method content",
+    );
+    expect(res.data.summary.targets.ja?.renderedHtml).toContain(
+      "<strong>対象:</strong> 対象の内容",
+    );
+  });
+
   test("renders aims/methods/targets + releaseNote, leaves rawHtml", async () => {
     const res = await addResearchRenderedHtml({
       meta: { _seq_no: 1 },

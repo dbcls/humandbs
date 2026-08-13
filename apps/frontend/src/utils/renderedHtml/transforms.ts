@@ -1,3 +1,4 @@
+import { messages } from "@/config/messages";
 import { renderMarkdown } from "@/utils/markdown";
 
 import type {
@@ -44,6 +45,33 @@ export async function renderBilingualField(
 }
 
 /**
+ * Add the localized inline titles shown with each research overview field.
+ *
+ * This stays in the shared render pipeline so public research reads and the
+ * admin's unsaved preview produce the same content.
+ */
+export function addTitlesToSummary(summary: ResearchRenderInput["data"]["summary"]) {
+  const prependTitle = (
+    field: BilingualTextValue | null | undefined,
+    title: "aims" | "methods" | "targets",
+  ) => ({
+    en: field?.en
+      ? { ...field.en, text: `**${messages.en.Research[title]}:** ${field.en.text}` }
+      : null,
+    ja: field?.ja
+      ? { ...field.ja, text: `**${messages.ja.Research[title]}:** ${field.ja.text}` }
+      : null,
+  });
+
+  return {
+    ...summary,
+    aims: prependTitle(summary?.aims, "aims"),
+    methods: prependTitle(summary?.methods, "methods"),
+    targets: prependTitle(summary?.targets, "targets"),
+  };
+}
+
+/**
  * Research detail: render aims, methods, targets, and releaseNote into
  * `renderedHtml`. Returns the widened research-detail view type.
  */
@@ -51,7 +79,7 @@ export async function addResearchRenderedHtml(
   response: ResearchRenderInput,
 ): Promise<RenderedResearchDetailResponse> {
   const data = response.data;
-  const summary = data.summary;
+  const summary = addTitlesToSummary(data.summary);
 
   const [aims, methods, targets, releaseNote] = await Promise.all([
     renderBilingualField(summary?.aims),
