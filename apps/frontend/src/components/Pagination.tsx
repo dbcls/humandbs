@@ -81,9 +81,9 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           disabled={!pagination.hasPrev}
           onClick={() => handlePageNavigate(pagination.page - 1)}
           aria-label={t("previous")}
-          className="flex aspect-square h-10 w-10 items-center justify-center rounded-full p-0 shrink-0"
+          className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-9 w-9" />
         </Button>
 
         <div className="flex flex-1 items-center gap-3">
@@ -111,9 +111,9 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           disabled={!pagination.hasNext}
           onClick={() => handlePageNavigate(pagination.page + 1)}
           aria-label={t("next")}
-          className="flex aspect-square h-10 w-10 items-center justify-center rounded-full p-0 shrink-0"
+          className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-9 w-9" />
         </Button>
       </div>
 
@@ -138,10 +138,10 @@ export function PaginationLoadingSkeleton() {
   return (
     <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row w-full">
       <div className="flex flex-1 items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+        <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
         <div className="h-2 flex-1 rounded bg-gray-200 dark:bg-gray-700" />
         <div className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
-        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+        <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
       </div>
       <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
         <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
