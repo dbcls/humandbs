@@ -83,7 +83,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           aria-label={t("previous")}
           className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronLeft className="h-9 w-9 -translate-x-[2px]" />
+          <ChevronLeft className="h-9 w-9 -translate-x-[1px]" />
         </Button>
 
         <div className="flex flex-1 items-center gap-3">
@@ -113,7 +113,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           aria-label={t("next")}
           className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronRight className="h-9 w-9 translate-x-[2px]" />
+          <ChevronRight className="h-9 w-9 translate-x-[1px]" />
         </Button>
       </div>
 
