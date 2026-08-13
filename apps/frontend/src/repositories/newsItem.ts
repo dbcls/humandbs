@@ -251,7 +251,10 @@ export function createNewsItemRepository(database: DB): NewsItemRepository {
           },
         },
         columns: { authorId: false },
-        orderBy: (table, { desc }) => [desc(table.createdAt)],
+        orderBy: (table, { desc }) => [
+          sql`${table.publishedAt} DESC NULLS LAST`,
+          desc(table.createdAt),
+        ],
         where: (table, { and, or, exists }) => {
           const conditions = [];
 

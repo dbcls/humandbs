@@ -111,27 +111,6 @@
     "criteria": "アクセス制限",
     "status": "ステータス"
   },
-  "VersionCard": {
-    "release-info": "リリース情報",
-    "researchOverview": "研究概要",
-    "aims": "目的",
-    "methods": "研究方法",
-    "targets": "対象",
-    "datasets": "データセット",
-    "dataProvider": "提供者情報",
-    "representative": "代表者",
-    "organization": "所属機関",
-    "researchTitle": "研究題目",
-    "relatedPublication": "関連論文",
-    "periodOfDataUse": "データ利用期間",
-    "publicationTitle": "タイトル",
-    "publicationDatasets": "データセット",
-    "controlledAccessUser": "制限公開データの利用者一覧",
-    "datasetId": "データセット ID",
-    "criteria": "アクセス制限",
-    "typeOfData": "データの種類",
-    "details": "詳細"
-  },
   "Dataset-list": {
     "cart-note": "利用申請したいJGADデータセットIDのカートアイコンをクリックすると、対象のデータセットがカートに追加されます。",
     "datasetId": "データセット ID",
@@ -154,7 +133,7 @@
     "releaseDate": "公開日",
     "versionReleaseDate": "更新日付",
     "dateModified": "更新日",
-    "parentJgaStudyId": "JGA Study ID",
+    "parentJgaStudyId": "JGA Study",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
     "experiments": "解析手法",
@@ -168,20 +147,7 @@
     "distribution-filter-placeholder": "名前で絞り込み",
     "distribution-no-matches": "一致するリンクはありません"
   },
-  "Person": {
-    "name": "名前",
-    "email": "メールアドレス",
-    "orcid": "ORCID",
-    "organization": "所属機関",
-    "datasetIds": "データセット ID",
-    "researchTitle": "研究題目",
-    "periodOfDataUse": "データ利用期間"
-  },
-  "Organization": {
-    "name": "名前",
-    "address": "住所",
-    "country": "国"
-  },
+
   "Research": {
     "cart-note": "利用申請したい研究IDまたはデータセットIDのカートアイコンをクリックして、カートに追加してください。",
     "research-id": "研究 ID",
@@ -198,13 +164,15 @@
     "title": "研究題目",
     "methods": "研究方法",
     "targets": "対象",
-    "dataProvider": "提供者情報",
-    "representative": "代表者",
-    "organization": "所属機関",
+    "dataProvider": {
+      "self": "提供者情報",
+      "representative": "研究代表者",
+      "organization": "所属機関",
+      "researchTitle": "研究題目"
+    },
     "Unrestricted-access": "非制限公開",
     "Controlled-access (Type I)": "制限公開（Type I）",
     "Controlled-access (Type II)": "制限公開（Type II）",
-    "researchTitle": "研究題目",
     "relatedPublication": "関連論文",
     "grant": {
       "self": "助成金情報",
@@ -217,12 +185,19 @@
       "name": "研究プロジェクト名",
       "URL": "URL"
     },
-    "periodOfDataUse": "データ利用期間",
+    "controlledAccessUser": {
+      "self": "制限公開データの利用者一覧",
+      "name": "研究代表者",
+      "organization": "所属機関",
+      "country": "国・州名",
+      "researchTitle": "研究題目",
+      "periodOfDataUse": "データ利用期間",
+      "datasets": "利用データID"
+    },
     "publicationTitle": "タイトル",
     "publicationDatasets": "データセット",
     "platforms": "プラットフォーム",
-    "controlledAccessUser": "制限公開データの利用者一覧",
-    "organization-country": "国",
+    "organization-country": "国・州名",
     "datasetId": "データセット ID",
     "criteria": "アクセス制限",
     "typeOfData": "データの種類",
