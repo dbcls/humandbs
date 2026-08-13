@@ -27,6 +27,7 @@ import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useDatasetParentHumIds } from "@/hooks/useDatasetParentHumIds";
 import { toDateString } from "@/utils/dates";
+import { normalizeDoiUrl } from "@/utils/doi";
 import type { RenderedResearchDetailData } from "@/utils/renderedHtml/types";
 
 export function VersionCard({
@@ -291,11 +292,14 @@ function createRelatedPublicationsColumns(parentHumIds: Record<string, string | 
     publicationsColumnHelper.accessor("doi", {
       id: "DOI",
       header: (ctx) => <SortHeader ctx={ctx} label={"DOI"} />,
-      cell: (info) => (
-        <a href={info.getValue() ?? undefined} className="break-all text-sm">
-          {info.renderValue()}
-        </a>
-      ),
+      cell: (info) => {
+        const doi = info.getValue();
+        return (
+          <a href={doi ? normalizeDoiUrl(doi) : undefined} className="break-all text-sm">
+            {info.renderValue()}
+          </a>
+        );
+      },
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",
