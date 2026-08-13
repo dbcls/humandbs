@@ -75,6 +75,7 @@ async function seedDocumentsFixture() {
       status: "published",
       locale: "en",
       title: "FAQ",
+      shortTitle: "FAQ",
       content: "<p>English FAQ</p>",
       authorId: AUTHOR_ID,
     },
@@ -84,6 +85,7 @@ async function seedDocumentsFixture() {
       status: "draft",
       locale: "ja",
       title: "FAQ JA",
+      shortTitle: "よくある質問",
       content: "<p>Japanese FAQ</p>",
       authorId: AUTHOR_ID,
     },
@@ -167,13 +169,22 @@ describe("createCmsDataTransferArchiveBuilder", () => {
 
     const documentsPayload = JSON.parse(files["categories/documents.json"] as string) as {
       documents: Array<{ id: string; contentId: string }>;
-      versions: Array<{ documentId: string; locale: string; status: string }>;
+      versions: Array<{
+        documentId: string;
+        locale: string;
+        status: string;
+        shortTitle?: string | null;
+      }>;
     };
 
     expect(documentsPayload.documents).toHaveLength(1);
     expect(documentsPayload.documents[0]?.contentId).toBe("faq");
     expect(documentsPayload.versions).toHaveLength(2);
     expect(documentsPayload.versions.map((v) => v.status).sort()).toEqual(["draft", "published"]);
+    expect(documentsPayload.versions.map((v) => v.shortTitle).sort()).toEqual([
+      "FAQ",
+      "よくある質問",
+    ]);
 
     expect(files["assets/logo.txt"]).toBe("asset-root");
     expect(files["assets/nested/diagram.txt"]).toBe("asset-nested");
@@ -478,6 +489,59 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     expect(restoredFiles).toContain("logo.txt");
     expect(restoredFiles).toContain(path.join("nested", "diagram.txt"));
     expect(restoredFiles).not.toContain("stale.txt");
+  });
+
+  test("restores legacy document archives that omit shortTitle", async () => {
+    await seedDocumentsFixture();
+
+    const buildArchive = createCmsDataTransferArchiveBuilder({
+      database: db,
+      createArchive: async (files) => {
+        const pack = tar.pack();
+        const chunks: Buffer[] = [];
+        const done = new Promise<Uint8Array<ArrayBufferLike>>((resolve, reject) => {
+          pack.on("data", (chunk) =>
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
+          );
+          pack.on("error", reject);
+          pack.on("end", () => {
+            const buffer = Buffer.concat(chunks);
+            resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
+          });
+        });
+
+        for (const [name, value] of Object.entries(files)) {
+          if (typeof value !== "string") {
+            throw new Error("This documents-only test archive should contain JSON text files.");
+          }
+          const text = value;
+          if (name === "categories/documents.json") {
+            const payload = JSON.parse(text) as { versions: Array<Record<string, unknown>> };
+            for (const version of payload.versions) delete version.shortTitle;
+            pack.entry({ name }, JSON.stringify(payload));
+          } else {
+            pack.entry({ name }, text);
+          }
+        }
+        pack.finalize();
+        return { bytes: async () => done };
+      },
+    });
+
+    const { bytes } = await buildArchive({ categories: ["documents"], createdBy: null });
+    await clearTables(db);
+
+    const restoreArchive = createCmsDataTransferArchiveRestorer({ database: db });
+    await restoreArchive({
+      fileName: "legacy-documents.tar",
+      bytes,
+      categories: ["documents"],
+      restoredByUserId: AUTHOR_ID,
+    });
+
+    const versions = await db.select().from(schema.documentVersion);
+    expect(versions).toHaveLength(2);
+    expect(versions.every((version) => version.shortTitle === null)).toBe(true);
   });
 
   test("restores Moldata keys only, with fresh IDs and an advanced target revision", async () => {

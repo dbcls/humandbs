@@ -36,11 +36,16 @@ export type DocumentListItemTranslation =
       status: typeof DOCUMENT_VERSION_STATUS.DRAFT;
       lang: Locale;
       title: string | undefined;
+      shortTitle?: string | undefined;
     }
   | {
       status: typeof DOCUMENT_VERSION_STATUS.PUBLISHED;
       lang: Locale;
       title: string | undefined;
+      shortTitle?: string | undefined;
+      /** Current draft values, when this published translation has a draft. */
+      editableTitle?: string | undefined;
+      editableShortTitle?: string | undefined;
       hasUnpublishedChanges: boolean;
     };
 
@@ -108,6 +113,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
                     eq(documentVersion.documentId, document.id),
                     or(
                       ilike(documentVersion.title, likePattern),
+                      ilike(documentVersion.shortTitle, likePattern),
                       ilike(documentVersion.content, likePattern),
                     ),
                   ),
@@ -142,6 +148,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
       lang: documentVersion.locale,
       status: documentVersion.status,
       title: documentVersion.title,
+      shortTitle: documentVersion.shortTitle,
       hasUnpublishedChanges: sql<boolean>`
       ${documentVersion.status} = 'published'
       AND EXISTS (
@@ -151,6 +158,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
           AND draft.locale = ${documentVersion.locale}
           AND draft.status = 'draft'
           AND (draft.name IS DISTINCT FROM ${documentVersion.title}
+            OR draft.short_title IS DISTINCT FROM ${documentVersion.shortTitle}
             OR draft.content IS DISTINCT FROM ${documentVersion.content})
       )
       `.as("hasUnpublishedChanges"),
@@ -192,6 +200,7 @@ export function createDocumentRepository(db: DB): DocumentRepo {
             status: "draft" as const,
             lang: locale,
             title: undefined,
+            shortTitle: undefined,
             hasUnpublishedChanges: false,
           })),
         };
@@ -243,6 +252,7 @@ export interface RawDocumentsListItem {
   lang: "ja" | "en" | null;
   status: "draft" | "published" | null;
   title: string | null;
+  shortTitle?: string | null;
   hasUnpublishedChanges: boolean;
 }
 
@@ -256,24 +266,27 @@ export function groupDocumentVersions(
 
         const existingTranslation = acc[curr.id].translations.find((t) => t.lang === curr.lang);
 
-        // If both draft and published exist, leave only the published row and preserve
-        // the SQL-computed diff result from whichever row order the database returns.
+        // If both draft and published exist, show the published values in normal CMS
+        // lists while preserving the draft values for Header & Footer preview labels.
         if (existingTranslation) {
-          const hasUnpublishedChanges =
-            translation.status === "published"
-              ? translation.hasUnpublishedChanges
-              : "hasUnpublishedChanges" in existingTranslation
-                ? existingTranslation.hasUnpublishedChanges
-                : true;
+          const published = translation.status === "published" ? translation : existingTranslation;
+          const draft = translation.status === "draft" ? translation : existingTranslation;
 
           acc[curr.id].translations = acc[curr.id].translations
             .filter((t) => t.lang !== translation.lang)
             .concat({
               lang: translation.lang,
-              title:
-                translation.status === "published" ? translation.title : existingTranslation.title,
+              title: published.title,
               status: "published",
-              hasUnpublishedChanges,
+              hasUnpublishedChanges:
+                published.status === "published"
+                  ? published.hasUnpublishedChanges
+                  : "hasUnpublishedChanges" in existingTranslation
+                    ? existingTranslation.hasUnpublishedChanges
+                    : true,
+              editableTitle: draft.title,
+              ...(published.shortTitle !== undefined ? { shortTitle: published.shortTitle } : {}),
+              ...(draft.shortTitle !== undefined ? { editableShortTitle: draft.shortTitle } : {}),
             });
         } else {
           acc[curr.id].translations.push(mapTranslation(curr));
@@ -313,12 +326,18 @@ export function mapTranslation(row: RawDocumentsListItem): DocumentListItemTrans
       status: row.status,
       lang: row.lang as Locale,
       title: row.title ?? undefined,
+      ...(row.shortTitle !== undefined && row.shortTitle !== null
+        ? { shortTitle: row.shortTitle }
+        : {}),
     };
   } else {
     return {
       status: row.status!,
       lang: row.lang as Locale,
       title: row.title ?? undefined,
+      ...(row.shortTitle !== undefined && row.shortTitle !== null
+        ? { shortTitle: row.shortTitle }
+        : {}),
       hasUnpublishedChanges: row.hasUnpublishedChanges,
     };
   }

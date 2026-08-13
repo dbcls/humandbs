@@ -59,6 +59,7 @@ describe("Document versions", () => {
       "en",
       {
         title: "Changed draft title",
+        shortTitle: "Changed short title",
         content: "Changed draft content",
       },
       AUTHOR_ID_1,
@@ -67,6 +68,7 @@ describe("Document versions", () => {
     const versionRows = await versionsRepo.getVersion(DOC_1_CONTENTID, 1);
 
     expect(versionRows.translations.en?.draft?.title).toBe("Changed draft title");
+    expect(versionRows.translations.en?.draft?.shortTitle).toBe("Changed short title");
     expect(versionRows.translations.en?.draft?.content).toBe("Changed draft content");
     const draftRow = await testDb.db.query.documentVersion.findFirst({
       where: (table, { and, eq }) =>
@@ -78,6 +80,34 @@ describe("Document versions", () => {
         ),
     });
     expect(draftRow?.updatedBy).toBe(AUTHOR_ID_1);
+  });
+
+  test("publishes, resets, and copies short titles with document versions", async () => {
+    await versionsRepo.saveDraft(
+      DOC_1_CONTENTID,
+      1,
+      "en",
+      { title: "Document 1-draft", shortTitle: "Draft label", content: "Lorem ipsum 1" },
+      AUTHOR_ID_1,
+    );
+    await versionsRepo.publish(DOC_1_CONTENTID, 1, "en");
+
+    await versionsRepo.saveDraft(
+      DOC_1_CONTENTID,
+      1,
+      "en",
+      { shortTitle: "Changed label" },
+      AUTHOR_ID_1,
+    );
+    await versionsRepo.resetDraft(DOC_1_CONTENTID, 1, "en");
+
+    let version = await versionsRepo.getVersion(DOC_1_CONTENTID, 1);
+    expect(version.translations.en?.published?.shortTitle).toBe("Draft label");
+    expect(version.translations.en?.draft?.shortTitle).toBe("Draft label");
+
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+    version = await versionsRepo.getVersion(DOC_1_CONTENTID, 2);
+    expect(version.translations.en?.draft?.shortTitle).toBe("Draft label");
   });
 
   test("publish all creates draft and published rows with empty content when no prior draft exists", async () => {
@@ -94,7 +124,11 @@ describe("Document versions", () => {
     });
 
     // Simulate what publishAll does: saveDraft with empty strings, then publish
-    await versionsRepo.saveDraft(NEW_DOC_CONTENTID, 1, "en", { title: "", content: "" });
+    await versionsRepo.saveDraft(NEW_DOC_CONTENTID, 1, "en", {
+      title: "",
+      shortTitle: "",
+      content: "",
+    });
     await versionsRepo.publish(NEW_DOC_CONTENTID, 1, "en");
 
     const rows = await testDb.db.query.documentVersion.findMany({
@@ -106,10 +140,12 @@ describe("Document versions", () => {
 
     expect(draftRow).toBeDefined();
     expect(draftRow?.title).toBe("");
+    expect(draftRow?.shortTitle).toBe("");
     expect(draftRow?.content).toBe("");
 
     expect(publishedRow).toBeDefined();
     expect(publishedRow?.title).toBe("");
+    expect(publishedRow?.shortTitle).toBe("");
     expect(publishedRow?.content).toBe("");
   });
 
@@ -331,10 +367,12 @@ describe("Grouping fn", () => {
           },
           published: {
             title: "Document 1",
+            shortTitle: "",
             content: "Lorem ipsum 1",
           },
           draft: {
             title: "Document 1-draft",
+            shortTitle: "",
             content: "Lorem ipsum 1",
           },
         },
@@ -347,10 +385,12 @@ describe("Grouping fn", () => {
           },
           published: {
             title: "Document 1 ja",
+            shortTitle: "",
             content: "Lorem ipsum 1 ja",
           },
           draft: {
             title: "Document 1-draft",
+            shortTitle: "",
             content: "Lorem ipsum 1 ja",
           },
         },

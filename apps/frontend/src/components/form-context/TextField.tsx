@@ -13,14 +13,21 @@ export default function TextField({
   type = "inline",
   className,
   afterField,
+  maxLength,
+  modified,
+  onReset,
 }: {
   label?: string;
   type?: "inline" | "col";
   className?: string;
   afterField?: React.ReactNode;
+  maxLength?: number;
+  /** Optional caller-provided modification state for domain-specific baselines. */
+  modified?: boolean;
+  onReset?: () => void;
 }) {
   const field = useFieldContext<string>();
-  const isModified = isFieldModified(field);
+  const isModified = modified ?? isFieldModified(field);
 
   const [isValid, errors] = useStore(field.store, (s) => [s.meta.isValid, s.meta.errors]);
 
@@ -45,13 +52,17 @@ export default function TextField({
             value={field.state.value ?? ""}
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={() => field.handleBlur()}
+            maxLength={maxLength}
             className={cn("group-disabled/fieldset:disabled-text-field flex-1", {
               "modified-field": isModified,
             })}
           />
           {isModified && (
             <ResetFieldButton
-              onClick={() => field.handleChange((getFieldDefaultValue(field) as string) ?? null)}
+              onClick={
+                onReset ??
+                (() => field.handleChange((getFieldDefaultValue(field) as string) ?? null))
+              }
             />
           )}
         </div>
@@ -59,12 +70,12 @@ export default function TextField({
       </div>
       {!isValid && (
         <em role="alert" className="inline-block space-y-1.5 text-danger text-xs">
-          {errors.map((e, i) => {
+          {errors.map((e) => {
             const msg =
               e && typeof e === "object" && "message" in e
                 ? (e as { message: string }).message
                 : String(e);
-            return <p key={i}>{msg}</p>;
+            return <p key={msg}>{msg}</p>;
           })}
         </em>
       )}

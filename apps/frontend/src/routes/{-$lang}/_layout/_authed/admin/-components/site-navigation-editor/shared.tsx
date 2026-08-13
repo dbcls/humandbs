@@ -7,18 +7,30 @@ import type { Locale } from "@/config/i18n";
 import type { NavigationItem } from "@/config/siteNavigation";
 import { cn } from "@/lib/utils";
 import type { DocumentsListItemResponse } from "@/repositories/document";
+import { getEffectiveDocumentNavigationLabel } from "@/utils/documentNavigationLabel";
 
 export function getDocumentLabel(doc: DocumentsListItemResponse, lang?: Locale): string {
+  const labelFor = (translation: DocumentsListItemResponse["translations"][number]) =>
+    getEffectiveDocumentNavigationLabel({
+      title:
+        translation.status === "published" && "editableTitle" in translation
+          ? translation.editableTitle
+          : translation.title,
+      shortTitle:
+        translation.status === "published" && "editableShortTitle" in translation
+          ? translation.editableShortTitle
+          : translation.shortTitle,
+    });
+
   if (lang) {
-    const currentTranslation = doc.translations.find((t) => t.lang === lang);
-    if (currentTranslation?.title) return currentTranslation.title;
+    const label = doc.translations.find((t) => t.lang === lang);
+    const resolved = label && labelFor(label);
+    if (resolved) return resolved;
   }
 
-  for (const t of doc.translations) {
-    if (t.status === "published" && t.title) return t.title;
-  }
-  for (const t of doc.translations) {
-    if (t.status === "draft" && t.title) return t.title;
+  for (const translation of doc.translations) {
+    const resolved = labelFor(translation);
+    if (resolved) return resolved;
   }
 
   return doc.contentId;

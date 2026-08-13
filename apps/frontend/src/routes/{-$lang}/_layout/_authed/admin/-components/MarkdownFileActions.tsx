@@ -9,35 +9,52 @@ interface MarkdownFileActionsProps {
   filename: string;
   content: string;
   title: string;
+  shortTitle: string;
   lang: string;
-  onUpload: (content: string, title?: string) => void;
+  onUpload: (content: string, title?: string, shortTitle?: string) => void;
   className?: string;
 }
 
-function buildFrontmatter(title: string, lang: string): string {
-  return `---\ntitle: "${title.replace(/"/g, '\\"')}"\nlang: ${lang}\n---\n\n`;
+export function buildFrontmatter(title: string, shortTitle: string, lang: string): string {
+  return `---\ntitle: ${JSON.stringify(title)}\nshortTitle: ${JSON.stringify(shortTitle)}\nlang: ${lang}\n---\n\n`;
 }
 
-function parseFrontmatter(text: string): {
+function parseFrontmatterValue(frontmatter: string, key: string): string | undefined {
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*(.*?)\\s*$`, "m"));
+  if (!match) return undefined;
+
+  const value = match[1] ?? "";
+  if (!value.startsWith('"')) return value;
+
+  try {
+    return JSON.parse(value) as string;
+  } catch {
+    return value.slice(1, value.endsWith('"') ? -1 : undefined).replace(/\\"/g, '"');
+  }
+}
+
+export function parseFrontmatter(text: string): {
   content: string;
   title?: string;
+  shortTitle?: string;
 } {
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n){0,2}/);
   if (!match) return { content: text };
 
   const frontmatter = match[1];
   const rest = text.slice(match[0].length);
 
-  const titleMatch = frontmatter.match(/^title:\s*"?(.*?)"?\s*$/m);
-  const title = titleMatch ? titleMatch[1].replace(/\\"/g, '"') : undefined;
+  const title = parseFrontmatterValue(frontmatter, "title");
+  const shortTitle = parseFrontmatterValue(frontmatter, "shortTitle");
 
-  return { content: rest, title };
+  return { content: rest, title, shortTitle };
 }
 
 export function MarkdownFileActions({
   filename,
   content,
   title,
+  shortTitle,
   lang,
   onUpload,
   className,
@@ -45,7 +62,7 @@ export function MarkdownFileActions({
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleDownload() {
-    const fullContent = buildFrontmatter(title, lang) + content;
+    const fullContent = buildFrontmatter(title, shortTitle, lang) + content;
     const blob = new Blob([fullContent], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -62,8 +79,12 @@ export function MarkdownFileActions({
     reader.onload = (ev) => {
       const text = ev.target?.result;
       if (typeof text === "string") {
-        const { content: parsedContent, title: parsedTitle } = parseFrontmatter(text);
-        onUpload(parsedContent, parsedTitle);
+        const {
+          content: parsedContent,
+          title: parsedTitle,
+          shortTitle: parsedShortTitle,
+        } = parseFrontmatter(text);
+        onUpload(parsedContent, parsedTitle, parsedShortTitle);
       }
     };
     reader.readAsText(file);

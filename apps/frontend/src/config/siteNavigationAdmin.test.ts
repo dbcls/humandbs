@@ -173,6 +173,40 @@ describe("mergeCommittedNavbarGroups", () => {
 });
 
 describe("buildSiteNavigation", () => {
+  test("uses resolved document labels in navbar children and footer links", () => {
+    const config: SiteNavigationConfig = {
+      items: [{ id: "faq", type: "document", contentId: "faq" }],
+      zones: {
+        navbar: {
+          groups: [
+            {
+              id: "navbar-group",
+              label: { en: "Help", ja: "ヘルプ" },
+              enabled: true,
+              priority: "important",
+              items: [{ id: "faq" }],
+            },
+          ],
+        },
+        footer: {
+          groups: [
+            {
+              id: "footer-group",
+              label: { en: "Help", ja: "ヘルプ" },
+              enabled: true,
+              items: [{ id: "faq" }],
+            },
+          ],
+        },
+      },
+    };
+
+    const navigation = buildSiteNavigation("en", config, () => "FAQ");
+
+    expect(navigation.navbar[0]?.children?.[0]?.label).toBe("FAQ");
+    expect(navigation.footer[0]?.items[0]?.label).toBe("FAQ");
+  });
+
   test("uses the item matching linkedItemId as the link target and the remaining enabled items as dropdown children", () => {
     const config: SiteNavigationConfig = {
       items: [

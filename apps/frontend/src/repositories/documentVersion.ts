@@ -17,6 +17,7 @@ interface BaseDoc {
   contentId: string;
   versionNumber: number;
   title: string | null;
+  shortTitle?: string | null;
   locale: Locale;
 }
 
@@ -73,7 +74,7 @@ interface DocumentVersionRepo {
     contentId: string,
     versionNumber: number,
     lang: Locale,
-    data: { title?: string; content?: string },
+    data: { title?: string; shortTitle?: string; content?: string },
     userId?: string,
   ) => Promise<{
     createdAt: Date;
@@ -137,6 +138,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           ),
         columns: {
           title: true,
+          shortTitle: true,
           versionNumber: true,
           documentId: true,
           locale: true,
@@ -159,6 +161,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           versionNumber: true,
@@ -189,6 +192,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           versionNumber: true,
@@ -217,6 +221,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           lang: documentVersion.locale,
           status: documentVersion.status,
           title: documentVersion.title,
+          shortTitle: documentVersion.shortTitle,
           hasUnpublishedChanges: sql<boolean>`${and(
             eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             exists(
@@ -231,6 +236,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
                     eq(draft.status, DOCUMENT_VERSION_STATUS.DRAFT),
                     or(
                       sql`${draft.title} IS DISTINCT FROM ${documentVersion.title}`,
+                      sql`${draft.shortTitle} IS DISTINCT FROM ${documentVersion.shortTitle}`,
                       sql`${draft.content} IS DISTINCT FROM ${documentVersion.content}`,
                     ),
                   ),
@@ -251,6 +257,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         lang: row.lang,
         status: row.status,
         title: row.title,
+        shortTitle: row.shortTitle,
         hasUnpublishedChanges: row.hasUnpublishedChanges,
       }));
 
@@ -278,6 +285,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           status: true,
@@ -307,9 +315,13 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
     saveDraft: async (contentId, versionNumber, lang, data, userId) => {
       const documentId = await resolveDocumentId(database, contentId);
       const existingUserId = await resolveExistingUserId(database, userId);
-      const conflictUpdateColumns = existingUserId
-        ? (["content", "title", "updatedAt", "updatedBy"] as const)
-        : (["content", "title", "updatedAt"] as const);
+      const conflictUpdateColumns: Array<
+        "content" | "title" | "shortTitle" | "updatedAt" | "updatedBy"
+      > = ["updatedAt"];
+      if (data.title !== undefined) conflictUpdateColumns.push("title");
+      if (data.shortTitle !== undefined) conflictUpdateColumns.push("shortTitle");
+      if (data.content !== undefined) conflictUpdateColumns.push("content");
+      if (existingUserId) conflictUpdateColumns.push("updatedBy");
       const [result] = await database
         .insert(documentVersion)
         .values({
@@ -327,7 +339,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             documentVersion.locale,
             documentVersion.status,
           ],
-          set: buildConflictUpdateColumns(documentVersion, [...conflictUpdateColumns]),
+          set: buildConflictUpdateColumns(documentVersion, conflictUpdateColumns),
         })
         .returning({
           createdAt: documentVersion.createdAt,
@@ -381,6 +393,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             ],
             set: {
               title: draft.title,
+              shortTitle: draft.shortTitle,
               content: draft.content,
               updatedAt: now,
               publishedAt: now,
@@ -406,6 +419,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           .update(documentVersion)
           .set({
             title: published.title,
+            shortTitle: published.shortTitle,
             content: published.content,
             updatedAt: new Date(),
           })
@@ -489,6 +503,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           columns: {
             locale: true,
             title: true,
+            shortTitle: true,
             content: true,
             versionNumber: true,
           },
@@ -497,13 +512,19 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
 
         const latestPublishedByLocale = new Map<
           string,
-          { locale: Locale; title: string | null; content: string | null }
+          {
+            locale: Locale;
+            title: string | null;
+            shortTitle: string | null;
+            content: string | null;
+          }
         >();
         for (const pv of allPublishedVersions) {
           if (!latestPublishedByLocale.has(pv.locale)) {
             latestPublishedByLocale.set(pv.locale, {
               locale: pv.locale,
               title: pv.title,
+              shortTitle: pv.shortTitle,
               content: pv.content,
             });
           }
@@ -518,6 +539,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
               status: DOCUMENT_VERSION_STATUS.DRAFT,
               locale: pv.locale,
               title: pv.title,
+              shortTitle: pv.shortTitle,
               content: pv.content,
               authorId,
             })),
@@ -529,6 +551,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             status: DOCUMENT_VERSION_STATUS.DRAFT,
             locale: i18n.defaultLocale as Locale,
             title: null,
+            shortTitle: null,
             content: null,
             authorId,
           });
@@ -578,12 +601,14 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
         author: verStatusLang.author,
         [verStatusLang.status]: {
           title: verStatusLang.title ?? "",
+          shortTitle: verStatusLang.shortTitle ?? "",
           content: verStatusLang.content ?? "",
         },
       };
     } else {
       translation[verStatusLang.status] = {
         title: verStatusLang.title ?? "",
+        shortTitle: verStatusLang.shortTitle ?? "",
         content: verStatusLang.content ?? "",
       };
       // keep the earliest createdAt across statuses for this locale
@@ -603,6 +628,7 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
       translation.draft = {
         content: translation.published?.content ?? "",
         title: translation.published?.title ?? "",
+        shortTitle: translation.published?.shortTitle ?? "",
       };
     }
 

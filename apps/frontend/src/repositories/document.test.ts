@@ -41,6 +41,45 @@ afterAll(async () => {
 });
 
 describe("group document's versions", () => {
+  test("retains short titles for document-list presentation and editable navigation labels", () => {
+    const grouped = groupDocumentVersions([
+      {
+        contentId: "faq",
+        id: "faq",
+        lang: "en",
+        status: "published",
+        title: "Frequently Asked Questions",
+        shortTitle: "FAQ",
+        latestVersionNumber: 1,
+        hideFromNav: false,
+        hasUnpublishedChanges: true,
+      },
+      {
+        contentId: "faq",
+        id: "faq",
+        lang: "en",
+        status: "draft",
+        title: "Frequently Asked Questions",
+        shortTitle: "Help",
+        latestVersionNumber: 1,
+        hideFromNav: false,
+        hasUnpublishedChanges: false,
+      },
+    ]);
+
+    expect(grouped[0]?.translations).toEqual([
+      {
+        status: "published",
+        lang: "en",
+        title: "Frequently Asked Questions",
+        shortTitle: "FAQ",
+        editableTitle: "Frequently Asked Questions",
+        editableShortTitle: "Help",
+        hasUnpublishedChanges: true,
+      },
+    ]);
+  });
+
   test("leave only published title if draft and published present", () => {
     const documentRows: RawDocumentsListItem[] = [
       {
@@ -73,6 +112,7 @@ describe("group document's versions", () => {
         hasUnpublishedChanges: true,
         lang: "en",
         title: "hello en published",
+        editableTitle: "hello en draft",
         status: "published",
       },
     ]);
@@ -156,12 +196,14 @@ describe("documentRepository db actions", () => {
         status: "published",
         lang: "ja",
         title: "Document 2 ja",
+        editableTitle: "Document 2-draft",
         hasUnpublishedChanges: true,
       },
       {
         status: "published",
         lang: "en",
         title: "Document 2",
+        editableTitle: "Document 2-draft",
         hasUnpublishedChanges: true,
       },
     ]);
@@ -279,12 +321,14 @@ describe("documentRepository db actions", () => {
         status: "published",
         lang: "ja",
         title: "Document 1 ja",
+        editableTitle: "Document 1-draft",
         hasUnpublishedChanges: true,
       },
       {
         status: "published",
         lang: "en",
         title: "Document 1",
+        editableTitle: "Document 1-draft",
         hasUnpublishedChanges: true,
       },
     ]);

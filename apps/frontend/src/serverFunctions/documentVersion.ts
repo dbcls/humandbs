@@ -61,7 +61,7 @@ export interface DocVersionResponse {
     Record<
       Locale,
       DocVersionTranslationMeta &
-        Partial<Record<DocVersionStatus, { title: string; content: string }>>
+        Partial<Record<DocVersionStatus, { title: string; shortTitle?: string; content: string }>>
     >
   >;
 }
@@ -107,11 +107,12 @@ export const getDocumentVersionQueryOptions = ({
 
 // === SAVE DRAFT
 
-const saveDocVersionDraftRequestSchema = z.object({
+export const saveDocVersionDraftRequestSchema = z.object({
   contentId: z.string(),
   versionNumber: z.number(),
   locale: localeSchema,
   title: z.string().optional(),
+  shortTitle: z.string().max(100).optional(),
   content: z.string().optional(),
 });
 
