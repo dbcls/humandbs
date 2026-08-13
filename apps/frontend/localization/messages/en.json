@@ -150,7 +150,7 @@
 
   "Research": {
     "research-id": "Research ID",
-    "research-list": "List of researches",
+    "research-list": "Research list",
     "humId": "Research ID",
     "datasets": "Datasets",
     "datasetsAddedInRelease": "Datasets added in this release",
@@ -559,7 +559,7 @@
     "researches": {
       "delete-title": "Delete Research",
       "delete-description": "Are you really want to delete research `{name}` ? All versions and linked datasets will be deleted.",
-      "empty": "No researches found",
+      "empty": "No research found",
       "delete-dataset-title": "Delete dataset?",
       "delete-dataset-description": "This will permanently delete {name}. This action cannot be undone.",
       "no-datasets": "No datasets yet.",
