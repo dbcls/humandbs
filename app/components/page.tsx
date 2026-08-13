@@ -52,7 +52,7 @@ export function Page({ width = "wide", children }: {
   return (
     <main
       id="content"
-      className={`mx-auto w-full px-4 py-8 sm:px-page-gutter ${
+      className={`mx-auto w-full px-4 py-4 sm:px-page-gutter ${
         width === "reading" ? "max-w-content-narrow" : "max-w-content-max"
       }`}
     >
@@ -122,18 +122,12 @@ export function PageHead({ tone = "deep", kicker, label, children }: {
  * where the tint stops. `under` squares off the top, for a box that follows a
  * band and is one thing with it.
  */
-export function Card({ under = true, fill = false, children }: {
+export function Card({ under = true, children }: {
   under?: boolean
-  /**
-   * Whether the box takes the height of the column it stands in. A page in two
-   * columns whose contents are of different lengths otherwise ends with one
-   * side stopping short and the background showing through beside it.
-   */
-  fill?: boolean
   children: ReactNode
 }) {
   return (
-    <div className={`bg-white px-6 py-6 ${under ? "rounded-b" : "rounded"} ${fill ? "h-full" : ""}`}>
+    <div className={`bg-white px-6 py-6 ${under ? "rounded-b" : "rounded"}`}>
       {children}
     </div>
   )
@@ -322,7 +316,9 @@ export function PageLinks({ label, page, pageCount, at, previous, next }: {
  */
 function SpanText({ span }: { span: Span }) {
   const href = span.href === undefined ? null : linkHref(span.href)
-  return href === null ? <>{span.text}</> : <a href={href}>{span.text}</a>
+  // Underlined: this is the one place on a research page where a link is a
+  // few words inside a sentence rather than a line of its own (`app.css`).
+  return href === null ? <>{span.text}</> : <a href={href} className="underline">{span.text}</a>
 }
 
 /** Lines of spans, and nothing else — the whole of what prose can hold. */

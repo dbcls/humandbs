@@ -75,14 +75,33 @@ describe("縦の間隔", () => {
   })
 })
 
+/**
+ * The corners a box may have (`docs/ui.md`). `rounded` and `rounded-full` are
+ * the two anything may take; `rounded-lg` belongs to the one block large enough
+ * for a 4px corner to disappear on it — the ways in on the front page — so it
+ * is allowed where the parts are written and refused where the screens are.
+ */
+const CHOSEN_CORNER = /^(sm:|md:|lg:|hover:|group-open:)*rounded-(sm|md|xl|2xl|3xl|none)$/
+const LARGE_CORNER = /^(sm:|md:|lg:|hover:|group-open:)*rounded-lg$/
+
 describe("角丸", () => {
-  it("丸めるのは 2 通りだけで、大きさを選ばない", async () => {
+  it("大きさを選べる角丸を使わない", async () => {
     const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
     const offenders: string[] = []
     for (const { name, text } of sources) {
       for (const list of classLists(text)) {
-        const hits = list.split(/\s+/).filter((one) =>
-          /^(sm:|md:|lg:|hover:|group-open:)*rounded-(sm|md|lg|xl|2xl|3xl|none)$/.test(one))
+        const hits = list.split(/\s+/).filter((one) => CHOSEN_CORNER.test(one))
+        if (hits.length > 0) offenders.push(`${name}: ${hits.join(" ")}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("画面が大きい角丸を書かない", async () => {
+    const offenders: string[] = []
+    for (const { name, text } of await sourcesUnder("routes")) {
+      for (const list of classLists(text)) {
+        const hits = list.split(/\s+/).filter((one) => LARGE_CORNER.test(one))
         if (hits.length > 0) offenders.push(`${name}: ${hits.join(" ")}`)
       }
     }

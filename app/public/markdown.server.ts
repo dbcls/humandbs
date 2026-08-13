@@ -13,6 +13,11 @@
  * one place instead of two. The migration converts the HTML that v1
  * accumulated into markdown, so nothing is lost by refusing it here.
  *
+ * The serialiser *is* allowed to write raw nodes, because this file puts one
+ * in: the glyph a note is drawn with (`notesFromQuotes`). **The two settings
+ * are on different ends** — nothing an author writes can become a raw node, so
+ * the only markup that reaches the page is markdown's or this file's.
+ *
  * **Refusing it means dropping it.** An inline tag loses the tag and keeps its
  * text; a block of HTML is dropped with its text inside it. That is the right
  * default for rendering — nothing an author writes can become markup on the
@@ -24,7 +29,9 @@
  * is published, and re-parsing it per reader buys nothing.
  */
 
-import type { Element, Root } from "hast"
+import type { Element, ElementContent, Root } from "hast"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import rehypeStringify from "rehype-stringify"
 import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
@@ -32,6 +39,8 @@ import remarkRehype from "remark-rehype"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 
+import { MARKED, NOTE_KIND } from "~/components/base"
+import { Icon } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 
 const HEADING = /^h([1-6])$/
@@ -83,13 +92,67 @@ function safeDestinations() {
   }
 }
 
+/**
+ * A blockquote in site content is an aside, not a quotation — "this document
+ * has been superseded", "violators are listed here" — so it is drawn as the
+ * design system's note (`components/base.tsx`) rather than as an indented
+ * paragraph with a rule.
+ *
+ * **The box and the glyph come from the parts, not from a copy of them.** The
+ * classes are `MARKED` and the drawing is `Icon`, both rendered once here, so a
+ * note in an article and a note on a screen cannot drift apart.
+ *
+ * The glyph is the one place a raw node is put into the tree, which is why the
+ * serialiser is allowed to emit them. **This does not let an author's HTML
+ * through**: `remark-rehype` still refuses to parse any, so a raw node can only
+ * be one this file constructed.
+ */
+const NOTE = NOTE_KIND.info
+const GLYPH = renderToStaticMarkup(createElement(Icon, { name: NOTE.icon, className: "text-base" }))
+
+function notesFromQuotes() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      if (node.tagName !== "blockquote") return
+      const only = node.children.filter((child) => child.type !== "text" || child.value.trim() !== "")
+      // A one-paragraph aside loses the paragraph, so that the note's own
+      // padding is the only space around the words. Longer ones keep theirs,
+      // with the outermost margins taken off.
+      const inside: ElementContent[] = only.length === 1 && only[0]?.type === "element"
+        && only[0].tagName === "p"
+        ? only[0].children
+        : node.children
+      node.tagName = "div"
+      // The note carries its own distance to the paragraphs around it. Left to a
+      // `.markdown div` rule it would land on the body inside the box as well,
+      // and one line of text would sit in a box three times its height.
+      node.properties = { className: [MARKED.box, "my-4 bg-white", NOTE.className] }
+      node.children = [
+        {
+          type: "element",
+          tagName: "span",
+          properties: { className: [MARKED.icon] },
+          children: [{ type: "raw", value: GLYPH } as unknown as ElementContent],
+        },
+        {
+          type: "element",
+          tagName: "div",
+          properties: { className: [MARKED.body, "[&>:first-child]:mt-0", "[&>:last-child]:mb-0"] },
+          children: inside,
+        },
+      ]
+    })
+  }
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
   .use(remarkRehype)
   .use(shiftHeadings)
   .use(safeDestinations)
-  .use(rehypeStringify)
+  .use(notesFromQuotes)
+  .use(rehypeStringify, { allowDangerousHtml: true })
 
 export function renderMarkdown(source: string): string {
   if (source.trim() === "") return ""

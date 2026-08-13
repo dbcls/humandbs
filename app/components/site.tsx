@@ -15,9 +15,20 @@ import { href, newsItemPath } from "~/public/urls"
  * are components now, so the markdown dialect does not have to carry them.
  */
 export function ActionRow({ children }: { children: ReactNode }) {
-  // Left, with everything else on the page: centred buttons over left-set prose
-  // give the card two axes, and the eye follows the wrong one back up.
-  return <div className="flex flex-wrap items-start gap-6">{children}</div>
+  // Centred in the card. The ways in are the one thing on a page that is
+  // addressed to the whole of it rather than read in sequence, and a pair of
+  // filled blocks set left leaves the card lopsided at the width they are held
+  // to; v1 centres them too.
+  //
+  // **They narrow rather than stack.** The pair is a choice between two halves
+  // of the site, and one above the other reads as a first step and a second.
+  // Below the phone breakpoint there is no width left to narrow into, so there
+  // they do wrap.
+  return (
+    <div className="flex flex-wrap items-start justify-center gap-4 sm:flex-nowrap sm:gap-6">
+      {children}
+    </div>
+  )
 }
 
 /**
@@ -39,11 +50,13 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
   external?: boolean
 }) {
   return (
-    <div className="flex w-80 max-w-full flex-col items-center gap-2">
+    // `w-80` is the width it wants; `min-w-0` is what lets the row take it back
+    // when there is not enough for two of them side by side.
+    <div className="flex w-80 min-w-0 max-w-full flex-col items-center gap-2">
       <div className="w-full">
         <BigAction to={href} tone={tone} icon={icon} external={external}>{label}</BigAction>
       </div>
-      {note !== undefined && <span className="text-ink-muted text-sm">{note}</span>}
+      {note !== undefined && <span className="text-center text-ink-muted text-sm">{note}</span>}
     </div>
   )
 }
@@ -52,8 +65,12 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
  * The announcements, newest first: when, and what.
  *
  * **The front page and the listing show the same list**, and used to draw it
- * twice — the same `<ul>`, the same rule between the rows, the same small grey
- * date — with the two copies already a step apart in how tall a row was.
+ * twice — the same `<ul>`, the same small grey date — with the two copies
+ * already a step apart in how tall a row was.
+ *
+ * **No rule between the entries.** The date above each title already opens it,
+ * so a line as well draws the same boundary twice; the space is the separation,
+ * as it is everywhere else on the site.
  */
 export function NewsList({ locale, items }: {
   locale: Locale
@@ -61,9 +78,9 @@ export function NewsList({ locale, items }: {
 }) {
   const messages = messagesFor(locale)
   return (
-    <ul className="flex flex-col divide-y divide-line">
+    <Stack gap="normal" as="ul">
       {items.map((item) => (
-        <li key={item.id} className="py-3 first:pt-0">
+        <li key={item.id}>
           <Stack gap="tight">
             <span className="text-ink-muted text-xs">
               {item.publishedAt ?? messages.news.undated}
@@ -72,6 +89,6 @@ export function NewsList({ locale, items }: {
           </Stack>
         </li>
       ))}
-    </ul>
+    </Stack>
   )
 }

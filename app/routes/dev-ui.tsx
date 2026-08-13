@@ -85,8 +85,11 @@ import {
   Value,
 } from "~/components/page"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
+import { renderMarkdown } from "~/public/markdown.server"
 
 import { FACETS, NEWS, REFINED_FACETS, ROWS, TOTAL } from "./dev-ui.data"
+
+import type { Route } from "./+types/dev-ui"
 
 export function meta() {
   return [{ title: "部品 - NBDC Human Database" }]
@@ -95,24 +98,29 @@ export function meta() {
 const LOCALE = DEFAULT_LOCALE
 
 /**
- * Everything the site-content renderer can emit, as one article. The markdown
- * dialect is CommonMark plus GFM tables and nothing else, so this is the whole
- * of what `app.css` has to style (`app/public/markdown.server.ts`).
+ * Everything the site-content renderer can emit, as one article — **written in
+ * the dialect rather than as the HTML it becomes**, so that the catalogue shows
+ * what the renderer actually produces. A blockquote, for one, does not stay a
+ * blockquote: it comes out as the design system's note
+ * (`app/public/markdown.server.ts`).
  */
 const PROSE = [
-  "<h2>見出し (h2)</h2>",
-  "<p>段落。<a href=\"/guidelines\">リンク</a>と<strong>強調</strong>と<code>コード</code>を含む。</p>",
-  "<h3>見出し (h3)</h3>",
-  "<ul><li>箇条書き</li><li>2 つ目</li></ul>",
-  "<ol><li>順序つき</li><li>2 つ目</li></ol>",
-  "<blockquote><p>引用。ガイドラインの条文を引くときに出る。</p></blockquote>",
-  "<table><thead><tr><th>データセット ID</th><th>アクセス制限</th></tr></thead>",
-  "<tbody><tr><td>JGAD000117</td><td>制限公開（Type I）</td></tr>",
-  "<tr><td>JGAD000403</td><td>制限公開（Type I）</td></tr></tbody></table>",
-  "<pre><code>hum0197.v3.gwas.v1</code></pre>",
-  "<hr />",
-  "<p>水平線の下。</p>",
-].join("")
+  "## 見出し (h2)",
+  "段落。[リンク](/guidelines)と**強調**と`コード`を含む。",
+  "### 見出し (h3)",
+  "- 箇条書き\n- 2 つ目",
+  "1. 順序つき\n2. 2 つ目",
+  "> 引用は注記として出る。ガイドラインの但し書きを引くときに使う。",
+  "| データセット ID | アクセス制限 |\n| --- | --- |"
+  + "\n| JGAD000117 | 制限公開（Type I） |\n| JGAD000403 | 制限公開（Type I） |",
+  "```\nhum0197.v3.gwas.v1\n```",
+  "---",
+  "水平線の下。",
+].join("\n\n")
+
+export function loader() {
+  return { prose: renderMarkdown(PROSE) }
+}
 
 const SECTIONS = [
   ["colour", "色"],
@@ -141,9 +149,11 @@ const SECTIONS = [
 
 const COLOURS: [string, string, string][] = [
   ["brand", "bg-brand", "リンク・見出し・帯の左端"],
-  ["brand-light", "bg-brand-light", "帯の右端"],
+  ["brand-light", "bg-brand-light", "帯の右端・添えものの塗り"],
+  ["brand-lighter", "bg-brand-lighter", "入り口の右端"],
   ["accent", "bg-accent", "強調"],
   ["accent-light", "bg-accent-light", "強調の帯の右端"],
+  ["accent-lighter", "bg-accent-lighter", "入り口の右端"],
   ["deep", "bg-deep", "主題の帯の左端"],
   ["ink", "bg-ink", "本文"],
   ["ink-muted", "bg-ink-muted", "添え字・主題の帯の右端"],
@@ -160,7 +170,7 @@ const COLOURS: [string, string, string][] = [
 
 const TEXT_SIZES = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl", "text-3xl"]
 
-const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "accent", "secondary", "danger", "ghost"]
+const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "soft", "accent", "secondary", "danger", "ghost"]
 const TONES: Tone[] = ["brand", "accent", "muted", "warning", "danger"]
 const NOTE_KINDS: NoteKind[] = ["info", "tip", "warning", "danger"]
 
@@ -171,7 +181,7 @@ const FIELD_TABS = [
   { id: "grant", label: "助成金情報" },
 ]
 
-export default function DevUi() {
+export default function DevUi({ loaderData }: Route.ComponentProps) {
   const [tab, setTab] = useState("title")
   const [listTab, setListTab] = useState<"research" | "dataset">("research")
   const first = ROWS[0]
@@ -302,6 +312,7 @@ export default function DevUi() {
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="soft" size="xs" pill>xs — 検索の例</Button>
                 <Button type="button" variant="primary" size="md">md</Button>
                 <Button type="button" variant="accent" size="lg">lg — 頁の呼びかけ</Button>
                 <Button type="button" variant="primary" disabled>変更がありません</Button>
@@ -638,7 +649,7 @@ export default function DevUi() {
               <p className="mb-2 text-ink-muted text-sm">
                 サイトコンテンツの markdown が出せる要素の全部。意匠は app.css が持つ。
               </p>
-              <Markdown html={PROSE} />
+              <Markdown html={loaderData.prose} />
             </div>
           </Section>
 

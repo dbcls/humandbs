@@ -20,9 +20,9 @@ describe("a rendered value", () => {
       .toBe("1.73m²<br/>next")
   })
 
-  it("links a span whose destination the page may follow", () => {
+  it("links a span whose destination the page may follow, and underlines it", () => {
     expect(prose([[{ text: "NBDC policy", href: "/nbdc-policy" }]]))
-      .toBe("<a href=\"/nbdc-policy\">NBDC policy</a>")
+      .toBe("<a href=\"/nbdc-policy\" class=\"underline\">NBDC policy</a>")
   })
 
   it("keeps the text of a span whose destination it may not, and drops the link", () => {

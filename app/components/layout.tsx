@@ -7,11 +7,9 @@ import {
   LanguagePills,
   Menu,
   MENU_ITEM,
-  MENU_PANEL,
   RoundLink,
   Stack,
 } from "~/components/base"
-import { Icon } from "~/components/icons"
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -19,11 +17,11 @@ import {
   FOOTER,
   NAVBAR,
   NAVBAR_MORE,
+  NAVBAR_STEP,
   navLabel,
-  type NavEntry,
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
-import { cartPath, href, listPath, readLocale } from "~/public/urls"
+import { cartPath, href, readLocale } from "~/public/urls"
 
 function NavItemLink({ item, locale, className }: {
   item: NavLinkItem
@@ -37,37 +35,9 @@ function NavItemLink({ item, locale, className }: {
   )
 }
 
-/**
- * An entry that has children opens on hover and on keyboard focus. It is not a
- * disclosure widget: the entry itself is a link to the same place its first
- * child points at, so the menu never becomes the only way through.
- */
-function NavbarEntry({ entry, locale }: { entry: NavEntry, locale: Locale }) {
-  const children = entry.children ?? []
-  return (
-    <li className="group relative">
-      <span className="flex items-center">
-        <NavItemLink
-          item={entry}
-          locale={locale}
-          className="block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
-        />
-        {children.length > 0 && (
-          <Icon name="chevron-down" aria-hidden="true" className="-ml-1.5 text-ink-muted text-xs" />
-        )}
-      </span>
-      {children.length > 0 && (
-        <ul className={`absolute top-full left-0 z-10 hidden ${MENU_PANEL} group-focus-within:flex group-hover:flex`}>
-          {children.map((child) => (
-            <li key={child.path}>
-              <NavItemLink item={child} locale={locale} className={MENU_ITEM} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </li>
-  )
-}
+/** How an entry in the top bar is drawn. */
+const NAV_ITEM
+  = "block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
 
 /** What the header knows about the person asking. Never their capabilities. */
 export interface Account {
@@ -130,12 +100,17 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
 /**
  * The notices above every page.
  *
+ * **They sit below the bar rather than inside it.** The bar is the site's own
+ * furniture and is white; a notice is something the office is saying today, and
+ * drawn on the same white it read as part of the furniture. Below the bar it is
+ * on the page's tint, which is where v1 puts it and what makes it look temporary.
+ *
  * They are stacked rather than folded into one: each is a separate thing the
  * office needs read, and there are two or three of them at a time. Closing one
  * is remembered for as long as the page is open (`Announcement`), which is why
  * this holds the state rather than the notice itself.
  */
-function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
+export function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
   const messages = messagesFor(locale)
   const [dismissed, setDismissed] = useState<number[]>([])
   const showing = alerts
@@ -146,10 +121,11 @@ function Announcements({ alerts, locale }: { alerts: string[], locale: Locale })
   return (
     <section
       aria-label={messages.announcements}
-      // Held to the width of a page rather than of the window: these are
-      // sentences to read, and a line of them across 1440px runs past a hundred
-      // characters. The bar above may be full width — a notice may not.
-      className="mx-auto w-full max-w-content-max px-4 py-2 sm:px-page-gutter"
+      // The width of the window, held to the same edge as the bar above: what
+      // the site says to everybody belongs to the window rather than to the
+      // page, and a notice indented to the width of a page under a full-width
+      // bar reads as belonging to the screen underneath it.
+      className="w-full px-4 pt-4 sm:px-page-gutter"
     >
       <Stack gap="tight">
         {showing.map(({ html, index }) => (
@@ -169,18 +145,17 @@ function Announcements({ alerts, locale }: { alerts: string[], locale: Locale })
 /**
  * The bar across the top of every page.
  *
- * **One row**, the way v1 has it: the wordmark, the navigation, and the
- * controls that are not navigation — the language, the search, the cart, and
- * the account. What the row cannot fit goes behind the overflow control at the
- * end of the navigation rather than being dropped (`public/navigation.ts`).
+ * **One row**, the way v1 has it: the wordmark, the navigation, and the three
+ * controls that are not navigation — the language, the cart, and the account.
+ * What the row cannot fit goes behind the overflow control at the end of the
+ * navigation rather than being dropped (`public/navigation.ts`).
  *
- * **The search here is a link to the research listing, not a box.** The two
- * places a reader searches from are the front page and a listing, and a box in
- * the header would be a third that behaves differently from both.
+ * **There is no way to search from here.** A reader searches from the front
+ * page or from a listing, and both of those have the box itself; a circle in
+ * the bar that only took you to the listing was a third thing to learn.
  */
-export function SiteHeader({ locale, alerts, account }: {
+export function SiteHeader({ locale, account }: {
   locale: Locale
-  alerts: string[]
   account: Account | null
 }) {
   const messages = messagesFor(locale)
@@ -188,8 +163,11 @@ export function SiteHeader({ locale, alerts, account }: {
   const { path } = readLocale(location.pathname)
   const cart = useCart()
 
+  // No rule along the bottom of the bar: it is white and the page under it is
+  // a tint, so where one stops is already drawn. A line there is a third edge
+  // between two that are visible.
   return (
-    <header className="border-line border-b bg-white">
+    <header className="bg-white">
       {/*
         The first thing focus reaches, and out of the way until it is reached.
         Every page puts the same id on its <main>, so this needs nothing from
@@ -206,44 +184,84 @@ export function SiteHeader({ locale, alerts, account }: {
         of a page: it holds nine destinations (eight plus the overflow) and four
         controls, and v1's own header does the same. The page under it is
         centred and narrower, which is where the reading happens.
+
+        It keeps the same room at its edges as everything else that reaches
+        them, so that the bar, the notices, the page and the sitemap begin on
+        one line down the left of the screen.
       */}
-      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-page-gutter">
+      {/*
+        The same room above and below, so that **the navigation and the
+        controls sit at the middle of the bar**. The site's name hangs into the
+        lower half of it (see the wordmark below), which is what the room at
+        the bottom is for.
+      */}
+      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 sm:px-page-gutter">
         {/*
           The wordmark is the portal's own artwork, carried over as it is; the
           site's name in the reader's language is set under it rather than drawn
           into it, so that it can be translated and read aloud.
+
+          **The name is taken out of the flow**, so that the pair is not a
+          two-line block whose centring would push the drawing far above the
+          line everything else sits on.
+
+          **The pair is then lifted off that line by a few pixels.** What hangs
+          under the wordmark still has weight, and a logo whose drawing is
+          exactly level with the navigation reads as sitting low in the bar. The
+          shift is a transform rather than a margin, so it moves the name with
+          the drawing and asks nothing of the row.
         */}
-        <Link to={href(locale, "/")} className="flex shrink-0 flex-col no-underline">
+        <Link
+          to={href(locale, "/")}
+          className="-translate-y-1 relative flex shrink-0 items-center no-underline"
+        >
           <img src="/humandb.svg" alt="" width={240} height={33} className="w-48" />
-          <span className="text-center font-semibold text-brand text-xs">
+          <span className="absolute inset-x-0 top-full text-center font-semibold text-brand text-xs">
             {messages.siteName}
           </span>
         </Link>
 
-        <nav aria-label={messages.globalNavigation} className="min-w-0 flex-1">
-          {/* A gap between the entries rather than none: two links whose
-              rectangles touch send a press near the boundary to the wrong one. */}
-          <ul className="flex flex-wrap items-center gap-x-1">
-            {NAVBAR.map((entry) => <NavbarEntry key={entry.path} entry={entry} locale={locale} />)}
+        <nav aria-label={messages.globalNavigation} className="flex min-w-0 flex-1 items-center gap-1">
+          {/*
+            **One row that never wraps.** A gap between the entries rather than
+            none: two links whose rectangles touch send a press near the
+            boundary to the wrong one. Each entry appears at the width its step
+            allows and is in the menu below that width — the two are written as
+            complements in `public/navigation.ts`, so nothing can fall out of
+            both.
+          */}
+          <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
+            {NAVBAR.map((item, index) => (
+              <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
+                <NavItemLink item={item} locale={locale} className={NAV_ITEM} />
+              </li>
+            ))}
           </ul>
+          {/*
+            The menu sits at the end of the navigation because that is where the
+            row runs out, and it holds destinations rather than actions — so it
+            carries its name rather than a glyph on its own.
+          */}
+          <Menu label={messages.moreNavigation} icon="menu" word>
+            {/*
+              What is here always, then what did not fit today. **No rule
+              between the two**: which side a destination falls on is an
+              accident of the window's width, so a line there tells the reader
+              about the bar rather than about where they can go — and at a width
+              where the bar holds everything, it has nothing under it at all.
+            */}
+            {NAVBAR_MORE.map((item) => (
+              <NavItemLink key={item.path} item={item} locale={locale} className={MENU_ITEM} />
+            ))}
+            {NAVBAR.map((item, index) => (
+              <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
+                <NavItemLink item={item} locale={locale} className={MENU_ITEM} />
+              </span>
+            ))}
+          </Menu>
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          {/*
-            The overflow sits between the navigation and the controls because
-            that is where the row runs out, and it holds navigation rather than
-            controls — so it names itself as such.
-          */}
-          <Menu label={messages.moreNavigation}>
-            {NAVBAR_MORE.map((item) => (
-              <NavItemLink
-                key={item.path}
-                item={item}
-                locale={locale}
-                className="block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
-              />
-            ))}
-          </Menu>
           {/*
             The pills keep one order whichever language is being read (v1 puts
             EN before JA), so that the pair does not swap places as the reader
@@ -257,11 +275,6 @@ export function SiteHeader({ locale, alerts, account }: {
               to: `${href(code, path)}${location.search}`,
               current: code === locale,
             }))}
-          />
-          <RoundLink
-            to={href(locale, listPath("research"))}
-            name="search"
-            label={messages.search.label}
           />
           {/*
             The address carries what the cart holds, so that following it lands
@@ -283,8 +296,6 @@ export function SiteHeader({ locale, alerts, account }: {
           <AccountControl account={account} locale={locale} />
         </div>
       </div>
-
-      <Announcements alerts={alerts} locale={locale} />
     </header>
   )
 }
@@ -296,6 +307,10 @@ export function SiteHeader({ locale, alerts, account }: {
  * v1's arrangement, and the reason the footer carries more than the top bar
  * does: it is where the four guidelines are named in full and where anything
  * the bar had no room for can still be reached.
+ *
+ * **Where the tint stops is the whole of the separation.** A gap above it and a
+ * rule along its top said the same thing twice, and the rule read as a stray
+ * line drawn under the page rather than as the start of the footer.
  */
 export function SiteFooter({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
@@ -303,24 +318,26 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   const rest = FOOTER.filter((entry) => (entry.children ?? []).length === 0)
 
   return (
-    <footer className="mt-8 border-line border-t bg-white">
+    <footer className="bg-white">
       <nav
         aria-label={messages.siteMap}
-        className="mx-auto w-full max-w-content-max px-4 py-8 sm:px-page-gutter"
+        className="relative mx-auto w-full max-w-content-max px-4 py-8 sm:px-page-gutter"
       >
-        <Stack gap="block">
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>
-            <a href="https://dbcls.rois.ac.jp/" target="_blank" rel="noreferrer">
-              <img
-                src="/logo-dbcls.svg"
-                alt="DBCLS"
-                width={132}
-                height={60}
-                className="h-10 w-auto"
-              />
-            </a>
-          </div>
+        {/*
+          The centre's mark sits in the corner and out of the flow. Set beside
+          the heading it was the tallest thing in that row, and the whole
+          sitemap started 40px lower than the words it belongs to.
+        */}
+        <a
+          href="https://dbcls.rois.ac.jp/"
+          target="_blank"
+          rel="noreferrer"
+          className="absolute top-8 right-4 sm:right-page-gutter"
+        >
+          <img src="/logo-dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
+        </a>
+        <Stack gap="normal">
+          <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>
           {/*
             **Only the two entries that name documents get a column.** Eleven
             destinations across four columns left three of them holding one line
@@ -328,20 +345,26 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             a hole the height of the sitemap itself. The other nine are one
             line each and read across, which is what they are.
           */}
+          {/*
+            **The name of a group is a label, and the group's own page is the
+            first link under it.** Drawn as the heading itself the destination
+            was there but did not look like one — a sitemap where one of the
+            eleven ways through is the only one not underlined. v1 lists the
+            parent among its children for the same reason.
+          */}
           <div className="grid gap-8 sm:grid-cols-2">
             {named.map((entry) => (
               <Stack key={entry.path} gap="tight" as="section">
-                <h3 className="font-semibold text-sm">
-                  <NavItemLink
-                    item={entry}
-                    locale={locale}
-                    className="text-ink-muted no-underline hover:text-brand"
-                  />
-                </h3>
+                {/* Lighter than what is under it: the name of a group is there
+                    to be skipped past on the way to a link. */}
+                <h3 className="text-ink-muted text-xs">{navLabel(entry.label, locale)}</h3>
+                {/* The size is on the line rather than on the link inside it:
+                    a list whose items are 12px text but whose own font is the
+                    page's leaves a 24px line box around every 18px line. */}
                 <Stack gap="tight" as="ul">
-                  {(entry.children ?? []).map((child) => (
-                    <li key={child.path}>
-                      <NavItemLink item={child} locale={locale} className="text-xs" />
+                  {[entry, ...entry.children ?? []].map((item) => (
+                    <li key={item.path} className="text-xs">
+                      <NavItemLink item={item} locale={locale} />
                     </li>
                   ))}
                 </Stack>
@@ -357,9 +380,6 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           </ul>
         </Stack>
       </nav>
-      <div className="mx-auto w-full max-w-content-max border-line border-t px-4 py-4 text-ink-muted text-sm sm:px-page-gutter">
-        {messages.siteName}
-      </div>
     </footer>
   )
 }

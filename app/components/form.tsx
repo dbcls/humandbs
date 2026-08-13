@@ -36,11 +36,12 @@ import { Icon } from "~/components/icons"
  * panel names its boxes with `aria-label` rather than a visible label) take
  * this string instead of writing one.
  *
- * The edge is separate from the shape because the two search boxes are round
- * and roomy while everything else is a small rectangle: what they share is the
- * requirement, and a box that took the whole string had to override half of it.
+ * The edge is separate from the shape so that a box which is not a small
+ * rectangle can take the requirement without the padding that comes with it.
+ * **The search box is not one of them** — it is drawn without an edge at all
+ * (`search.tsx`), being a filled pill with a coloured button in it.
  */
-export const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
+const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
 
 export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1`
 

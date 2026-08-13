@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { FOOTER, NAVBAR, navigationPaths } from "./navigation"
+import { FOOTER, NAVBAR, NAVBAR_MORE, NAVBAR_STEP, navigationPaths } from "./navigation"
 import { SCREEN_PATHS } from "./urls"
 
 /**
@@ -30,14 +30,35 @@ describe("グローバルナビとフッタ", () => {
     }
   })
 
-  it("開くのはフッタ側だけが増やしていて、バーの方は 1 つに留めてある", () => {
-    expect(NAVBAR.filter((entry) => entry.children !== undefined)).toHaveLength(1)
+  it("開くのはフッタだけで、バーの項目はどれも 1 つの行き先", () => {
     expect(FOOTER.filter((entry) => entry.children !== undefined)).toHaveLength(2)
   })
 
   it("開く項目の子に、その項目自身と同じ行き先が並ばない", () => {
-    for (const entry of [...NAVBAR, ...FOOTER]) {
+    for (const entry of FOOTER) {
       expect((entry.children ?? []).map((child) => child.path)).not.toContain(entry.path)
     }
+  })
+
+  it("バーの項目には 1 つずつ幅の段がある", () => {
+    expect(NAVBAR_STEP).toHaveLength(NAVBAR.length)
+  })
+
+  /**
+   * The bar and the menu are complements: an entry hidden from one is shown by
+   * the other at every width. Written by hand they could drift into a width
+   * where a destination is in neither, which no screenshot would catch.
+   */
+  it("どの幅でも、バーに出ないものはメニューに出る", () => {
+    for (const [index, step] of NAVBAR_STEP.entries()) {
+      const at = /(?:^|\s)([\w[\]-]+):block$/.exec(step.bar)?.[1] ?? null
+      const hides = step.menu === "" ? null : /^([\w[\]-]+):hidden$/.exec(step.menu)?.[1] ?? null
+      expect(hides, `${String(index)} 番目の段が対になっていない`).toBe(at)
+    }
+  })
+
+  it("バーに出ない行き先も、メニューか サイトマップにある", () => {
+    const inMenu = new Set([...NAVBAR_MORE, ...NAVBAR].map((item) => item.path))
+    for (const entry of FOOTER) expect(inMenu.has(entry.path) || entry.children !== undefined).toBe(true)
   })
 })

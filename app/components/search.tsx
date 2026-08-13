@@ -1,8 +1,16 @@
 import { useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Button, ButtonLink, Chip, Heading, Note, Stack, SwitchTabs } from "~/components/base"
-import { CONTROL_EDGE } from "~/components/form"
+import {
+  BAND_FILL,
+  Button,
+  ButtonLink,
+  Chip,
+  Heading,
+  Note,
+  Stack,
+  SwitchTabs,
+} from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -23,13 +31,18 @@ import { Card, Crumbs, Page, PageLinks } from "./page"
  * the same control on the front page and over a listing, at two sizes.
  */
 /**
- * The box itself: a rounded field and the round accent button beside it.
+ * The box itself: a rounded field with the round accent button inside it.
  *
  * **Every search on the site is this shape**, whatever it searches. The listings
  * search the index and the announcements are one `ILIKE` over 682 rows, but a
  * reader typing into a box does not know that and should not have to — the
  * announcements screen used to draw its own field with an outlined pill button
  * and a word on it, which read as a different kind of thing entirely.
+ *
+ * **This is the one control drawn without an edge** (`docs/ui.md`): a filled
+ * pill with a coloured button in it is not mistakable for anything else on the
+ * page, and the rule that asks for a visible edge is there for the fields that
+ * look like nothing until you find them.
  */
 export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", children }: {
   action: string
@@ -46,7 +59,10 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
 }) {
   const large = size === "large"
   return (
-    <form method="get" action={action} role="search" className="flex items-center gap-2">
+    // The button sits inside the field rather than beside it, the way v1 draws
+    // it: the two are one control, and set apart they read as a box and an
+    // unrelated circle. The field keeps room for it on the right.
+    <form method="get" action={action} role="search" className="relative flex items-center">
       {children}
       <input
         type="search"
@@ -54,20 +70,20 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
         defaultValue={value}
         aria-label={label}
         placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded-full px-5 ${CONTROL_EDGE} ${large ? "py-3.5 text-lg" : "py-2"}`}
+        className={`min-w-0 flex-1 rounded-full bg-surface py-2.5 text-ink ${large ? "pr-12 pl-5 text-base" : "pr-11 pl-4"}`}
       />
       {/*
-        The button is a circle the height of the field it belongs to, which is
-        why the large one is not the standard tap size: a 36px circle beside a
-        56px field reads as something that fell off.
+        The button is the standard tap size at both sizes, and the field is
+        deep enough to hold it: a circle that grew with the field would be the
+        one control on the site whose size depends on where it is.
       */}
       <button
         type="submit"
         aria-label={submit}
         title={submit}
-        className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-white hover:bg-accent-light ${large ? "size-14" : "size-tap"}`}
+        className={`absolute inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:brightness-90 ${BAND_FILL.accent} ${large ? "right-1.5" : "right-1"}`}
       >
-        <Icon name="search" className={large ? "text-2xl" : "text-lg"} />
+        <Icon name="search" className="text-base" />
       </button>
     </form>
   )
@@ -99,7 +115,7 @@ export function SearchForm({
       name="k"
       value={keyword}
       label={messages.search.label}
-      placeholder={messages.search.placeholder}
+      placeholder={messages.search.placeholder[target]}
       submit={messages.search.submit}
       size={size}
     >
@@ -136,6 +152,10 @@ export function RefinableList({ panel, children }: {
  * **Filled rather than outlined, and deliberately not a `Chip`**: an outlined
  * chip means a condition in force and carries the way to lift it. These are
  * examples to press. v1 draws the same distinction.
+ *
+ * **Small and `soft`**, because they are an aside under the box rather than
+ * what the page is asking for: at the size and weight of a button they compete
+ * with the two ways in further down.
  */
 export function SearchExamples({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
@@ -146,7 +166,8 @@ export function SearchExamples({ locale }: { locale: Locale }) {
         <ButtonLink
           key={example}
           to={href(locale, listPath("research") + searchQuery({ q: example, sort: null, page: 1 }))}
-          variant="primary"
+          variant="soft"
+          size="xs"
           pill
         >
           {example}
@@ -197,7 +218,7 @@ export function SortLinks({ locale, target, query, sort, options }: {
           key={option}
           to={href(locale, listPath(target) + searchQuery({ q: query, sort: option, page: 1 }))}
           aria-current={option === sort ? "true" : undefined}
-          className={option === sort ? "font-semibold no-underline text-ink" : ""}
+          className={option === sort ? "font-semibold text-ink" : ""}
         >
           {messages.search.sort[option]}
         </Link>

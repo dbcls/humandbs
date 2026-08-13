@@ -1,10 +1,8 @@
-import { Link } from "react-router"
-
-import { BigAction, Heading, Stack } from "~/components/base"
+import { Heading, MoreLink, Stack } from "~/components/base"
 import { Markdown } from "~/components/markdown"
 import { Card, Empty, Page } from "~/components/page"
 import { SearchExamples, SearchForm } from "~/components/search"
-import { NewsList } from "~/components/site"
+import { ActionButton, ActionRow, NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { findDocument, newsList } from "~/public/site.server"
 import { href, newsPath, readLocale } from "~/public/urls"
@@ -42,7 +40,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Card under={false}>
           <Stack gap="block">
             {intro !== null && (
@@ -57,32 +55,47 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <SearchExamples locale={locale} />
             </Stack>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <BigAction to={href(locale, "/data-submission")} tone="accent" icon="upload">
-                {messages.submission.heading}
-              </BigAction>
-              <BigAction to={href(locale, "/data-use")} tone="brand" icon="download">
-                {messages.use.heading}
-              </BigAction>
-            </div>
+            {/*
+              The same pair the two screens they lead to open with, at the same
+              width: the front page is where a reader decides which half of the
+              site they are in, and a button that stretched to half the card
+              would say that the choice is as wide as the page.
+            */}
+            <ActionRow>
+              <ActionButton
+                href={href(locale, "/data-submission")}
+                label={messages.submission.heading}
+                tone="accent"
+                icon="upload"
+                external={false}
+              />
+              <ActionButton
+                href={href(locale, "/data-use")}
+                label={messages.use.heading}
+                tone="brand"
+                icon="download"
+                external={false}
+              />
+            </ActionRow>
           </Stack>
         </Card>
 
         {/*
-          The column takes the height of the one beside it: the front page is
-          two boxes on a tint, and a box that stopped short left the background
-          showing through beside the other one.
+          The box is as tall as what is in it. Stretched to the height of the
+          column beside it, five news entries sat in a white field twice their
+          own height and the front page read as having a hole in it.
         */}
         <aside>
-          <Card under={false} fill>
+          <Card under={false}>
             <Stack gap="normal">
-              <Heading level="h2" title={messages.news.latest} />
+              {/* The way to the whole listing is on the heading rather than
+                  under the last entry: it belongs to the box, not to the list. */}
+              <Heading level="h2" title={messages.news.latest}>
+                <MoreLink to={href(locale, newsPath())}>{messages.news.all}</MoreLink>
+              </Heading>
               {news.length === 0
                 ? <Empty>{messages.news.none}</Empty>
                 : <NewsList locale={locale} items={news} />}
-              <p className="text-sm">
-                <Link to={href(locale, newsPath())}>{messages.news.all}</Link>
-              </p>
             </Stack>
           </Card>
         </aside>

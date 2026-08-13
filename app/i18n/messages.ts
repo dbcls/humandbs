@@ -28,7 +28,7 @@ const ja = {
   unsettled: "未確定",
   untranslatedNotice: "このページには未翻訳の項目があります。もう一方の言語の内容を表示しています。",
   globalNavigation: "グローバルナビゲーション",
-  moreNavigation: "その他のメニュー",
+  moreNavigation: "メニュー",
   breadcrumb: "現在地",
   homeLabel: "ホーム",
   language: "言語",
@@ -36,17 +36,17 @@ const ja = {
   announcements: "お知らせ",
   dismissAnnouncement: "このお知らせを閉じる",
   news: {
-    heading: "お知らせ",
-    find: "お知らせを検索",
+    heading: "ニュース",
+    find: "ニュースを検索",
     findHint: "タイトルと本文から探します",
-    noMatch: "その語を含むお知らせはありませんでした。",
+    noMatch: "その語を含むニュースはありませんでした。",
     clearFind: "検索を解除",
-    latest: "新着のお知らせ",
-    all: "お知らせ一覧",
-    none: "お知らせはありません。",
+    latest: "News",
+    all: "ニュース一覧",
+    none: "ニュースはありません。",
     undated: "日付未定",
-    newer: "新しいお知らせ",
-    older: "過去のお知らせ",
+    newer: "新しいニュース",
+    older: "過去のニュース",
   },
   submission: {
     heading: "データの提供",
@@ -76,7 +76,12 @@ const ja = {
   },
   search: {
     label: "キーワード検索",
-    placeholder: "キーワードで検索",
+    // The word for what is being looked through, so that the same box over two
+    // listings says which one it is over.
+    placeholder: {
+      research: "キーワードで研究を検索",
+      dataset: "キーワードでデータセットを検索",
+    },
     submit: "検索",
     examples: "よく検索されるキーワード",
     // Hand-written guidance, the same three v1 offers. Nothing in the data
@@ -832,7 +837,7 @@ const en: Messages = {
   unsettled: "Unsettled",
   untranslatedNotice: "Some items on this page are untranslated. The other language is shown instead.",
   globalNavigation: "Global navigation",
-  moreNavigation: "More",
+  moreNavigation: "Menu",
   breadcrumb: "Breadcrumb",
   homeLabel: "Home",
   language: "Language",
@@ -845,7 +850,7 @@ const en: Messages = {
     findHint: "Searches titles and bodies",
     noMatch: "No announcement contains that word.",
     clearFind: "Clear the search",
-    latest: "Latest news",
+    latest: "News",
     all: "All news",
     none: "There is no news.",
     undated: "Undated",
@@ -877,7 +882,10 @@ const en: Messages = {
   },
   search: {
     label: "Keyword search",
-    placeholder: "Search by keyword",
+    placeholder: {
+      research: "Search research by keyword",
+      dataset: "Search datasets by keyword",
+    },
     submit: "Search",
     examples: "Frequent searches",
     exampleQueries: ["Amyotrophic lateral sclerosis", "Liver disease", "NGS(Exome)"],

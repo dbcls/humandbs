@@ -9,7 +9,7 @@ import {
 } from "react-router"
 
 import { readActor } from "~/auth/actor.server"
-import { SiteFooter, SiteHeader } from "~/components/layout"
+import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
 import { startFileRunner } from "~/files/runner.server"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
@@ -79,17 +79,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="flex min-h-screen flex-col">
-        <SiteHeader locale={locale} alerts={data?.alerts ?? []} account={data?.account ?? null} />
-        {/*
-          The page sits on a tint, so that the white boxes a screen is built
-          from read as boxes rather than as the page itself. The portal's own
-          photograph is multiplied into that tint at the top of the page, which
-          is where v1 puts it — it is the site's backdrop and never the
-          background of anything anybody has to read, because the boxes cover
-          it. It is drawn once, at the width of the window, and does not repeat.
-        */}
-        <div className="flex-1 bg-surface bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply">
+      {/*
+        The page sits on a tint, so that the white boxes a screen is built from
+        read as boxes rather than as the page itself. The portal's own
+        photograph is multiplied into that tint and drawn once, at the width of
+        the window, without repeating.
+
+        **It hangs from the top of the document, not from the top of the page.**
+        The bar and the notices are opaque and cover their part of it, which is
+        what puts the photograph's subject where a reader meets it — the same
+        place v1 has it, and v1 sets it on the body for the same reason. Hung
+        below them instead it moves with however many notices are up that day.
+      */}
+      <body className="flex min-h-screen flex-col bg-surface bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply">
+        <SiteHeader locale={locale} account={data?.account ?? null} />
+        <Announcements alerts={data?.alerts ?? []} locale={locale} />
+        <div className="flex-1">
           {children}
         </div>
         <SiteFooter locale={locale} />

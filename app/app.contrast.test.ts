@@ -49,8 +49,10 @@ describe("the palette", () => {
     expect(Object.keys(colours).sort()).toEqual([
       "accent",
       "accent-light",
+      "accent-lighter",
       "brand",
       "brand-light",
+      "brand-lighter",
       "danger",
       "deep",
       "ink",
@@ -76,6 +78,9 @@ describe("the palette", () => {
       ["danger", TEXT],
       // Only ever the far end of the call-to-action band, whose label is large.
       ["accent-light", NON_TEXT],
+      // The far end of the two ways in, whose one word is large and bold.
+      ["accent-lighter", NON_TEXT],
+      ["brand-lighter", NON_TEXT],
     ])("on %s", (name, least) => {
       expect(contrast(WHITE, colours[name] ?? "")).toBeGreaterThanOrEqual(least)
     })

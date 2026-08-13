@@ -137,27 +137,67 @@ const CONTACT_US: NavLink = {
   label: { ja: "お問い合わせ", en: "Contact us" },
 }
 
-/** The bar across the top. Only "データの利用" opens; the rest are links. */
-export const NAVBAR: NavEntry[] = [
+/**
+ * The bar across the top, in the order it shows them.
+ *
+ * **Every entry is a link and none of them opens.** A drop-down in the bar is a
+ * second way to reach two listings that are in the bar themselves, and a menu
+ * that opens on hover is the one control a reader cannot use by looking at it.
+ *
+ * The order is what a reader comes for: the rules first, then the two listings
+ * they search, then the arrangements around them, then help.
+ */
+export const NAVBAR: NavLink[] = [
   GUIDELINES,
-  DATA_SUBMISSION,
-  { ...DATA_USE, children: [RESEARCH_LIST, DATASET_LIST] },
+  RESEARCH_LIST,
+  DATASET_LIST,
   DATA_PROCESSING,
   OFF_PREMISE_SERVER,
   DAC,
   FAQ,
   CONTACT_US,
+  VIOLATION,
+  PRIVACY_POLICY,
 ]
 
 /**
- * What the bar has no room for, behind the overflow control at its end.
+ * **How wide the window has to be before each entry appears in the bar.**
  *
- * The bar is one row and the row has a width; whatever does not fit has to go
- * somewhere rather than be dropped, which is the arrangement v1 arrived at.
- * These are the least often wanted of the destinations, and all three are also
- * in the sitemap at the foot of the page.
+ * The bar is one row and the row runs out; what does not fit goes behind the
+ * menu at its end rather than wrapping to a second line. The steps are written
+ * out as whole class names because Tailwind cannot see a class that is
+ * assembled at runtime, and the two columns are complements — an entry is in
+ * the bar exactly when it is not in the menu, so neither list can go missing.
+ *
+ * **The counts come from measuring the labels**, in both languages, against
+ * the room left over once the wordmark, the menu and the controls have taken
+ * theirs: 3 at 768, 5 at 1024, 7 at 1280, 8 at 1400, 9 at 1536, and all ten
+ * past 1750. Two of the steps are widths Tailwind has no name for, which is
+ * what the labels happen to need — the alternative is a bar that leaves 120px
+ * of room unused so that the numbers can be round.
  */
-export const NAVBAR_MORE: NavLink[] = [PUBLICATIONS, VIOLATION, PRIVACY_POLICY]
+export const NAVBAR_STEP: { bar: string, menu: string }[] = [
+  { bar: "hidden md:block", menu: "md:hidden" },
+  { bar: "hidden md:block", menu: "md:hidden" },
+  { bar: "hidden md:block", menu: "md:hidden" },
+  { bar: "hidden lg:block", menu: "lg:hidden" },
+  { bar: "hidden lg:block", menu: "lg:hidden" },
+  { bar: "hidden xl:block", menu: "xl:hidden" },
+  { bar: "hidden xl:block", menu: "xl:hidden" },
+  { bar: "hidden min-[1400px]:block", menu: "min-[1400px]:hidden" },
+  { bar: "hidden 2xl:block", menu: "2xl:hidden" },
+  { bar: "hidden min-[1750px]:block", menu: "min-[1750px]:hidden" },
+]
+
+/**
+ * What the menu holds whatever the width is.
+ *
+ * The two halves of the site have their own screens and the front page leads
+ * to both with a button each; in the bar they would take the room two listings
+ * need more. Publications is the least often wanted of the destinations. All
+ * three are in the sitemap at the foot of every page as well.
+ */
+export const NAVBAR_MORE: NavLink[] = [DATA_SUBMISSION, DATA_USE, PUBLICATIONS]
 
 /**
  * The sitemap at the foot of every page. It repeats the bar and adds what the

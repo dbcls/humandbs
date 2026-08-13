@@ -52,6 +52,20 @@ export function Stack({ gap = "normal", as: Tag = "div", children }: {
 /* ------------------------------------------------------- marks and boxes */
 
 /**
+ * The three parts a remark is made of, as class names.
+ *
+ * **Exported because site content has remarks too.** A blockquote in a document
+ * is an aside rather than a quotation, and the markdown pipeline builds this
+ * same box for it (`public/markdown.server.ts`). Two boxes assembled from two
+ * lists of classes drift apart; this is the one list.
+ */
+export const MARKED = {
+  box: "flex items-center gap-2 rounded border px-4 py-2 text-sm",
+  icon: "flex size-6 shrink-0 items-center justify-center",
+  body: "min-w-0 flex-1 text-ink",
+}
+
+/**
  * A glyph at the head of a line of text.
  *
  * **The box is the height of the line, so nothing has to be nudged.** An icon
@@ -62,7 +76,7 @@ export function Stack({ gap = "normal", as: Tag = "div", children }: {
  */
 export function LineIcon({ name, className = "" }: { name: IconName, className?: string }) {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center">
+    <span className={MARKED.icon}>
       <Icon name={name} className={`text-base ${className}`} />
     </span>
   )
@@ -75,6 +89,11 @@ export function LineIcon({ name, className = "" }: { name: IconName, className?:
  * They differ in colour and in what they are for; the shape is one shape. Three
  * of them used to be written out separately and had drifted apart in padding,
  * in the gap, in the corner and in how the glyph was aligned.
+ *
+ * **The glyph sits at the middle of the box rather than at its first line.** A
+ * notice runs to two or three lines as often as to one, and a mark left at the
+ * top of a paragraph reads as belonging to the first line of it rather than to
+ * the whole; v1 centres it for the same reason. The way out is centred with it.
  */
 function Marked({ box, icon, iconClass = "", live = false, action, children }: {
   box: string
@@ -89,10 +108,10 @@ function Marked({ box, icon, iconClass = "", live = false, action, children }: {
   return (
     <div
       role={live ? "status" : undefined}
-      className={`flex items-start gap-2 rounded border px-4 py-2 text-sm ${box}`}
+      className={`${MARKED.box} ${box}`}
     >
       <LineIcon name={icon} className={iconClass} />
-      <div className="min-w-0 flex-1 text-ink">{children}</div>
+      <div className={MARKED.body}>{children}</div>
       {action}
     </div>
   )
@@ -111,6 +130,11 @@ function Marked({ box, icon, iconClass = "", live = false, action, children }: {
  *
  * `deep` is the subject itself, `brand` the sections and tables under it,
  * `accent` the one call to action a page may have.
+ *
+ * **The filled round controls take the same three.** A circle in the top bar
+ * and the button in the search box are small enough that a flat fill and a
+ * gradient are told apart only when they sit beside a band — which is exactly
+ * where they sit, so they take the band's.
  */
 export type BandTone = "brand" | "deep" | "accent"
 
@@ -137,6 +161,15 @@ export function Band({ tone = "brand", className = "", children }: {
 /**
  * What a listing or an article opens with: a rule in the brand colour, the
  * title, and — where there is one — how many rows the reader is looking at.
+ *
+ * The rule is a mark beside the words rather than a second thing to read: at
+ * the weight of a heading's own stroke it reads as part of the letters, so it
+ * is kept thinner than they are.
+ *
+ * **It sits on the edge of the box, not inside it.** A heading opens a `Card`
+ * (`page.tsx`), and the rule is pulled out through that card's padding so that
+ * the title starts on the same line as everything under it. Left inside, the
+ * rule indents the title away from its own text and marks nothing.
  */
 export function Heading({ level = "h1", title, count, children }: {
   level?: "h1" | "h2"
@@ -146,8 +179,8 @@ export function Heading({ level = "h1", title, count, children }: {
 }) {
   const Tag = level
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-      <div className="flex items-baseline gap-3 border-brand border-l-6 pl-3">
+    <div className="-ml-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      <div className="flex items-baseline gap-3 border-brand border-l-4 pl-5">
         <Tag className={`font-bold text-brand ${level === "h1" ? "text-3xl" : "text-xl"}`}>
           {title}
         </Tag>
@@ -222,17 +255,21 @@ export function Badge({
  * What a control looks like, by what pressing it does.
  *
  * `primary` is the one thing the screen wants done, and there is at most one on
- * a screen. `danger` is reserved for what cannot be undone — unpublishing,
- * deleting, discarding a draft — so that its colour keeps meaning something.
+ * a screen. `soft` is an offer rather than an instruction — the words a reader
+ * might try in the search box — and there are several of them at once, so it is
+ * filled but lighter than the one thing being asked for. `danger` is reserved
+ * for what cannot be undone — unpublishing, deleting, discarding a draft — so
+ * that its colour keeps meaning something.
  *
  * `pill` is the outlined, fully rounded shape v1 gives the controls over a
  * listing (copy, export, refine). It is a shape rather than a rank, so it
  * combines with any variant.
  */
-export type ButtonVariant = "primary" | "accent" | "secondary" | "danger" | "ghost"
+export type ButtonVariant = "primary" | "soft" | "accent" | "secondary" | "danger" | "ghost"
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: "border-transparent bg-brand text-white hover:brightness-90",
+  soft: "border-transparent bg-brand-light text-white hover:brightness-90",
   accent: "border-transparent bg-accent text-white hover:brightness-90",
   secondary: "border-brand bg-white text-brand hover:bg-surface-hover",
   danger: "border-danger bg-white text-danger hover:bg-danger hover:text-white",
@@ -325,11 +362,25 @@ export function ButtonLink({
 /**
  * One of the two things the site is for, drawn at the size that says so.
  *
- * The front page offers exactly two: provide data, or use it. They are the same
- * gradients as the bands and they are the only place a filled block of colour is
- * this large — which is what makes them read as the way in rather than as two
- * more links (v1 does the same, at the same size).
+ * The front page offers exactly two: provide data, or use it. They are the only
+ * place a filled block of colour is this large, which is what makes them read as
+ * the way in rather than as two more links (v1 does the same, at the same size).
+ *
+ * **The glyph is above the words rather than beside them.** Set beside them the
+ * pair is as wide as the sentence and the button grows to the width of whatever
+ * column it stands in; stacked, the block is as wide as its longer line and can
+ * be held to the size of a thing you press.
+ *
+ * **Its gradient is its own, not a band's.** A band has to keep both ends at
+ * 4.5:1 for the small white text it carries, which leaves a shade's worth of
+ * travel; the one large bold word here is held to 3:1, so the gradient can go
+ * far enough to be seen (`app.css`).
  */
+const WAY_IN_FILL: Record<"accent" | "brand", string> = {
+  accent: "bg-linear-to-r from-accent to-accent-lighter",
+  brand: "bg-linear-to-r from-brand to-brand-lighter",
+}
+
 export function BigAction({ to, tone, icon, external = false, children }: {
   to: string
   tone: "accent" | "brand"
@@ -338,12 +389,14 @@ export function BigAction({ to, tone, icon, external = false, children }: {
   external?: boolean
   children: ReactNode
 }) {
-  const shape = `flex min-h-20 items-center justify-center gap-3 rounded px-8 py-5 text-center font-bold text-lg text-white no-underline visited:text-white hover:brightness-95 ${BAND_FILL[tone]}`
+  const shape = `flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg px-6 py-4 text-center font-bold text-lg text-white no-underline visited:text-white hover:brightness-95 ${WAY_IN_FILL[tone]}`
   const inside = (
     <>
       <Icon name={icon} className="text-2xl" />
-      {children}
-      {external && <Icon name="external" />}
+      <span className="flex items-center gap-2">
+        {children}
+        {external && <Icon name="external" />}
+      </span>
     </>
   )
   return external
@@ -393,6 +446,28 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
     >
       <Icon name={name} className="text-base" />
     </button>
+  )
+}
+
+/**
+ * The way from a few of something to all of it — the five newest announcements
+ * to the whole listing, a table's first page to the search behind it.
+ *
+ * **An arrow rather than a rule under the words.** It is not a link in a
+ * sentence but a way out of the box it closes, and it sits where a reader
+ * looks for one: at the end of the line that names what they are looking at.
+ * The words are small and set in the brand's weight, so that it reads as a
+ * control on the heading rather than as another entry in the list.
+ */
+export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-0.5 font-semibold text-brand text-xs"
+    >
+      {children}
+      <Icon name="chevron-right" aria-hidden="true" />
+    </Link>
   )
 }
 
@@ -461,14 +536,16 @@ export function LanguagePills({ label, options }: {
   options: { code: string, label: string, to: string, current: boolean }[]
 }) {
   return (
-    <nav aria-label={label} className="flex items-center gap-2">
+    // One track holding both, the way v1 draws it: the pair is a switch with a
+    // position, and two loose circles read as two separate controls.
+    <nav aria-label={label} className="flex items-center gap-1 rounded-full bg-surface p-1">
       {options.map((option) => (
         option.current
           ? (
               <span
                 key={option.code}
                 aria-current="true"
-                className="inline-flex size-tap items-center justify-center rounded-full bg-brand font-semibold text-white text-xs"
+                className={`inline-flex size-7 items-center justify-center rounded-full font-semibold text-white text-xs ${BAND_FILL.brand}`}
               >
                 {option.label}
               </span>
@@ -479,7 +556,7 @@ export function LanguagePills({ label, options }: {
                 to={option.to}
                 hrefLang={option.code}
                 lang={option.code}
-                className="inline-flex size-tap items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:bg-surface-hover"
+                className="inline-flex size-7 items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:text-ink"
               >
                 {option.label}
               </Link>
@@ -508,7 +585,7 @@ export function RoundLink({ to, name, label, count, filled = false, external = f
 }) {
   const className = `relative inline-flex size-tap items-center justify-center rounded-full border no-underline ${
     filled
-      ? "border-transparent bg-brand text-white hover:brightness-90"
+      ? `border-transparent text-white hover:brightness-90 ${BAND_FILL.brand}`
       : "border-line text-ink-muted hover:bg-surface-hover hover:text-ink"
   }`
   const inside = (
@@ -766,7 +843,7 @@ export function Clamped({ items, shown = 3, more, children }: {
  */
 export type NoteKind = "info" | "tip" | "warning" | "danger" | "done"
 
-const NOTE_KIND: Record<NoteKind, { icon: IconName, className: string }> = {
+export const NOTE_KIND: Record<NoteKind, { icon: IconName, className: string }> = {
   info: { icon: "info", className: "border-brand text-brand" },
   tip: { icon: "tip", className: "border-ink-muted text-ink-muted" },
   warning: { icon: "warning", className: "border-warning text-warning" },
@@ -851,23 +928,32 @@ export const MENU_ITEM
  * A `<details>` again, so the menu opens without script. It closes on choosing
  * because choosing navigates or submits.
  */
-export function Menu({ label, icon = "more", round = false, children }: {
+export function Menu({ label, icon = "more", round = false, word = false, children }: {
   label: string
   icon?: IconName
   /** In the top bar, where the controls on either side of it are circles. */
   round?: boolean
+  /**
+   * Whether the name is drawn beside the glyph.
+   *
+   * **The navigation's own menu says what it is.** A glyph alone is read as
+   * "more of what I am looking at" — which is what it means everywhere else on
+   * the site — and the one in the bar holds destinations rather than actions.
+   */
+  word?: boolean
   children: ReactNode
 }) {
   return (
     <details className="relative inline-block">
       <summary
-        aria-label={label}
-        title={label}
-        className={`inline-flex size-tap cursor-pointer list-none items-center justify-center text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
-          round ? "rounded-full border border-line" : "rounded"
+        aria-label={word ? undefined : label}
+        title={word ? undefined : label}
+        className={`inline-flex min-h-tap cursor-pointer list-none items-center justify-center gap-1.5 text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
+          word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"
         }`}
       >
         <Icon name={icon} className="text-base" />
+        {word && label}
       </summary>
       <div className={`absolute right-0 z-20 mt-2 flex ${MENU_PANEL}`}>
         {children}

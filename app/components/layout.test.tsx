@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import type { Locale } from "~/i18n/locale"
 import { NAVBAR } from "~/public/navigation"
 
-import { type Account, SiteFooter, SiteHeader } from "./layout"
+import { type Account, Announcements, SiteFooter, SiteHeader } from "./layout"
 
 /**
  * The header and the footer read the current address, so they need a router
@@ -17,13 +17,12 @@ function render(element: React.ReactElement, at: string): string {
   return renderToStaticMarkup(<Stub initialEntries={[at]} />)
 }
 
-function header(
-  locale: Locale,
-  at: string,
-  alerts: string[] = [],
-  account: Account | null = null,
-): string {
-  return render(<SiteHeader locale={locale} alerts={alerts} account={account} />, at)
+function header(locale: Locale, at: string, account: Account | null = null): string {
+  return render(<SiteHeader locale={locale} account={account} />, at)
+}
+
+function announcements(locale: Locale, alerts: string[]): string {
+  return render(<Announcements locale={locale} alerts={alerts} />, "/")
 }
 
 describe("サイトのヘッダ", () => {
@@ -49,17 +48,22 @@ describe("サイトのヘッダ", () => {
       .toContain("href=\"/en/research?q=%E7%B3%96%E5%B0%BF%E7%97%85&amp;page=2\"")
   })
 
-  it("alert が無いときはバナーの器ごと出さない", () => {
-    expect(header("ja", "/")).not.toContain("announcement")
+  it("alert はバーの中に出さない", () => {
     expect(header("ja", "/")).not.toContain("<div class=\"markdown")
+  })
+})
+
+describe("サイトの告知", () => {
+  it("alert が無いときは器ごと出さない", () => {
+    expect(announcements("ja", [])).toBe("")
   })
 
   it("alert があれば本文をそのまま出す", () => {
-    expect(header("ja", "/", ["<p>点検のお知らせ</p>"])).toContain("点検のお知らせ")
+    expect(announcements("ja", ["<p>点検のお知らせ</p>"])).toContain("点検のお知らせ")
   })
 
   it("2 件以上の alert を並べる", () => {
-    const html = header("ja", "/", ["<p>一つ目</p>", "<p>二つ目</p>"])
+    const html = announcements("ja", ["<p>一つ目</p>", "<p>二つ目</p>"])
     expect(html).toContain("一つ目")
     expect(html).toContain("二つ目")
   })
@@ -82,7 +86,7 @@ describe("ヘッダのログイン導線", () => {
   })
 
   it("ログイン済みなら名前とログアウトを出す。ログアウトは POST でしか押せない", () => {
-    const html = header("ja", "/", [], signedIn)
+    const html = header("ja", "/", signedIn)
     expect(html).toContain("someone")
     expect(html).toContain("action=\"/auth/logout\"")
     expect(html).toContain("method=\"post\"")
@@ -90,12 +94,12 @@ describe("ヘッダのログイン導線", () => {
   })
 
   it("admin でないログイン済みには管理リンクを出さない", () => {
-    expect(header("ja", "/", [], signedIn)).not.toContain("href=\"/admin\"")
+    expect(header("ja", "/", signedIn)).not.toContain("href=\"/admin\"")
   })
 
   it("admin には管理リンクを出し、英語では /en の下を指す", () => {
-    expect(header("ja", "/", [], admin)).toContain("href=\"/admin\"")
-    expect(header("en", "/en", [], admin)).toContain("href=\"/en/admin\"")
+    expect(header("ja", "/", admin)).toContain("href=\"/admin\"")
+    expect(header("en", "/en", admin)).toContain("href=\"/en/admin\"")
   })
 })
 

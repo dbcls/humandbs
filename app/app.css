@@ -26,6 +26,19 @@
   --color-accent: #d6006b;
   --color-accent-light: #eb0075;
 
+  /*
+   * The far end of the two ways in, and of nothing else.
+   *
+   * A band carries small white text, so both of its ends have to reach 4.5:1
+   * and the gradient across it can only be a shade wide — which reads as a flat
+   * fill. The front page's two buttons carry one large bold word each, so 3:1
+   * is the requirement there and the gradient can travel far enough to be seen
+   * as one. Keeping them under their own names is what stops a band from
+   * reaching for them.
+   */
+  --color-accent-lighter: #f7568a;
+  --color-brand-lighter: #1a95d2;
+
   /* The band of a page that is about one thing with a name of its own. */
   --color-deep: #002245;
 
@@ -61,12 +74,20 @@
    * 45–75 characters and becomes hard to follow much past that, so an article
    * is held to the narrower measure inside the same page.
    *
-   * The three numbers are db-portal's, and the wide one is also v1's — the two
-   * sites sit under the same roof and a reader moves between them.
+   * The wide one leaves the gutter and nothing else on the display the portal
+   * is read on, which is what v1 gives a listing: the columns a research row
+   * carries are what the width is for, and a laptop is where they run out. The
+   * reading measure is db-portal's, and the two sites sit under the same roof.
    */
-  --spacing-content-max: 1280px;
+  --spacing-content-max: 1440px;
   --spacing-content-narrow: 880px;
-  --spacing-page-gutter: 40px;
+  /*
+   * What the window keeps at its edges, and the one value everything that
+   * reaches the edge uses: the bar, the notices, the page, the sitemap. They
+   * are stacked one under another down the left of every screen, so a second
+   * value here shows up as a step in a line that ought to be straight.
+   */
+  --spacing-page-gutter: 24px;
 
   /*
    * How large something you press has to be.
@@ -110,8 +131,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /*
+   * **A link is underlined where it sits inside a sentence, and nowhere else.**
+   * What WCAG asks (1.4.1) is that colour not be the only thing telling a link
+   * from the words around it — which is a question only inside running text. A
+   * title in a listing, an entry in the sitemap, a step in a trail: those are
+   * links by their position, and underlining every one of them draws the page
+   * as a field of rules. The two places that are running text say so
+   * themselves: `.markdown a` below, and the prose spans of research content
+   * (`components/page.tsx`).
+   *
+   * Hovering underlines anything that is a link. A part that is a control
+   * rather than a link (a button, a round one in the bar, a chip, a row in the
+   * refinement panel) writes `no-underline`, which holds through hover.
+   */
   a {
-    @apply text-brand underline hover:text-brand-light visited:text-visited;
+    @apply text-brand hover:text-brand-light hover:underline visited:text-visited;
   }
 
   /*
@@ -157,12 +192,12 @@
   .markdown h2 { @apply border-line border-b pb-1 text-xl; }
   .markdown h3 { @apply text-lg; }
 
+  .markdown a { @apply underline; }
   .markdown p { @apply my-3; }
   .markdown :is(ul, ol) { @apply my-3 pl-6; }
   .markdown ul { @apply list-disc; }
   .markdown ol { @apply list-decimal; }
   .markdown li { @apply my-1; }
-  .markdown blockquote { @apply my-4 border-brand border-l-4 bg-surface px-4 py-2; }
   .markdown hr { @apply my-6 border-line; }
   .markdown code { @apply rounded bg-surface px-1 py-0.5 text-sm; }
   .markdown pre { @apply my-4 overflow-x-auto bg-surface p-4 text-sm; }

@@ -84,7 +84,7 @@ export function ResearchVersionPage({ view, locale }: { view: ResearchView, loca
         {view.isLatest
           ? <Badge onBand>{t.latestVersion}</Badge>
           : (
-              <Link to={href(locale, researchPath(view.humLabel))} className="no-underline">
+              <Link to={href(locale, researchPath(view.humLabel))}>
                 <Badge onBand pill>
                   {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
                 </Badge>
