@@ -165,8 +165,8 @@
     "targets": "Targets",
     "dataProvider": {
       "self": "Data provider",
-      "representative": "Representative",
-      "organization": "Organiation",
+      "representative": "Principal Investigator",
+      "organization": "Affiliation",
       "researchTitle": "Research title"
     },
     "Unrestricted-access": "Unrestricted-access",

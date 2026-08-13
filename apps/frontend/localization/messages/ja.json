@@ -166,7 +166,7 @@
     "targets": "対象",
     "dataProvider": {
       "self": "提供者情報",
-      "representative": "代表者",
+      "representative": "研究代表者",
       "organization": "所属機関",
       "researchTitle": "研究題目"
     },
