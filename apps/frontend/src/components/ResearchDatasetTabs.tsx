@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { ClientOnly, Link, useLocation } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
@@ -18,25 +18,25 @@ function buildTableSwitchSearch(
 ) {
   if (target === "research") {
     return {
-      dateModified: currentSearch.dateModified,
-      datePublished: currentSearch.datePublished,
-      datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
       limit: currentSearch.limit,
       order: currentSearch.order,
       page: 1,
-      query: currentSearch.query,
       sort: isStringInSet(currentSearch.sort, researchSorts) ? currentSearch.sort : undefined,
+      query: currentSearch.query,
+      datePublished: currentSearch.datePublished,
+      dateModified: currentSearch.dateModified,
+      datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
     };
   }
 
   return {
-    filters: currentSearch.filters ?? currentSearch.datasetFilters,
-    humId: currentSearch.humId,
     limit: currentSearch.limit,
     order: currentSearch.order,
     page: 1,
-    query: currentSearch.query,
     sort: isStringInSet(currentSearch.sort, datasetSorts) ? currentSearch.sort : undefined,
+    query: currentSearch.query,
+    humId: currentSearch.humId,
+    filters: currentSearch.filters ?? currentSearch.datasetFilters,
   };
 }
 
@@ -48,6 +48,14 @@ function getTableSwitchSearch(currentSearch: Record<string, unknown>) {
 }
 
 export function ResearchDatasetTabs() {
+  return (
+    <ClientOnly>
+      <ResearchDatasetTabsInner />
+    </ClientOnly>
+  );
+}
+
+function ResearchDatasetTabsInner() {
   const tCommon = useTranslations("common");
   const location = useLocation();
 
