@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { Pagination as APIPagination } from "@humandbs/backend/types";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -81,7 +81,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
   return (
     <div
       className={cn(
-        "mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row w-full",
+        "mt-4 flex flex-col items-center justify-between gap-6 sm:flex-row sm:gap-10 w-full",
         className
       )}
     >
@@ -146,15 +146,22 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
       </div>
 
       <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-        <span className="text-sm text-muted-foreground">{t("itemsPerPage")}:</span>
+        <span className="shrink-0 select-none whitespace-nowrap font-semibold text-secondary-light text-xs uppercase tracking-wider">
+          {t("itemsPerPage")}
+        </span>
         <Select value={pagination.limit.toString()} onValueChange={handleItemsPerPageChange}>
-          <SelectTrigger className="w-fit h-9">
+          <SelectTrigger
+            className={cn(
+              buttonVariants({ variant: "captionAction", size: "captionAction" }),
+              "cursor-pointer font-semibold text-xs text-secondary-light hover:bg-hover hover:text-secondary border-secondary-light gap-1.5 pl-4 pr-3 focus:ring-0 focus:ring-offset-0 focus:outline-none [&>svg]:fill-current [&>svg]:size-4 [&>svg]:text-secondary-light [&>svg]:opacity-100"
+            )}
+          >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
+          <SelectContent className="rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg font-semibold text-xs min-w-[5rem]">
+            <SelectItem value="20" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">20</SelectItem>
+            <SelectItem value="50" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">50</SelectItem>
+            <SelectItem value="100" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">100</SelectItem>
           </SelectContent>
         </Select>
       </div>

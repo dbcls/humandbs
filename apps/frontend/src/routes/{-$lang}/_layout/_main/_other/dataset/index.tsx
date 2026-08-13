@@ -358,7 +358,7 @@ function PaginationWrapper() {
     return <PaginationLoadingSkeleton />;
   }
 
-  return <Pagination className="pr-5" pagination={data.meta.pagination} />;
+  return <Pagination pagination={data.meta.pagination} />;
 }
 
 export const datasetsColumnHelper = createColumnHelper<DatasetSearchResponse["data"][number]>();
