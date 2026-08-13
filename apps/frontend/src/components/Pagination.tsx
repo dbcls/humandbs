@@ -16,8 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Export function for testing compatibility
-export const getVisiblePages = (currentPage: number, totalPages: number) => {
+// Export function for testing compatibility (_currentPage marked intentionally unused)
+export const getVisiblePages = (_currentPage: number, totalPages: number) => {
   const pages: (number | "ellipsis")[] = [];
   for (let i = 1; i <= totalPages; i++) {
     pages.push(i);
@@ -100,7 +100,8 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           <ChevronLeft className="h-7 w-7 -translate-x-[1px]" />
         </Button>
 
-        <div className="relative flex flex-1 items-center h-11 min-w-0">
+        {/* focus-within indicator preserves keyboard accessibility (Tab navigation) */}
+        <div className="relative flex flex-1 items-center h-11 min-w-0 rounded-full focus-within:ring-2 focus-within:ring-secondary-light focus-within:ring-offset-1">
           {/* Custom Track: height h-2.5 (10px), pale grayish-blue background */}
           <div className="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden relative pointer-events-none">
             {/* Progress fill width aligned precisely to dynamic thumb center, no transition lag */}
@@ -132,9 +133,24 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
             onMouseUp={handleSliderCommit}
             onTouchEnd={handleSliderCommit}
             onKeyUp={(e) => {
-              if (e.key === "Enter" || e.key === " ") handleSliderCommit();
+              if (
+                [
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "ArrowUp",
+                  "ArrowDown",
+                  "Home",
+                  "End",
+                  "PageUp",
+                  "PageDown",
+                  "Enter",
+                  " ",
+                ].includes(e.key)
+              ) {
+                handleSliderCommit();
+              }
             }}
-            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer focus:outline-none"
             aria-label={t("page")}
             aria-valuenow={sliderValue}
             aria-valuemin={1}
