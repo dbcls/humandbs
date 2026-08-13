@@ -111,27 +111,6 @@
     "criteria": "Access type",
     "status": "Status"
   },
-  "VersionCard": {
-    "release-info": "Release info",
-    "researchOverview": "Research overview",
-    "aims": "Aims:",
-    "methods": "Methods:",
-    "targets": "Targets:",
-    "datasets": "Datasets",
-    "dataProvider": "Data provider",
-    "representative": "Representative",
-    "organization": "Organization",
-    "researchTitle": "Project / research group name",
-    "relatedPublication": "Related publications",
-    "periodOfDataUse": "Period of data use",
-    "publicationTitle": "Title",
-    "publicationDatasets": "Datasets",
-    "controlledAccessUser": "Controlled access users",
-    "datasetId": "Dataset ID",
-    "criteria": "Access type",
-    "typeOfData": "Type of data",
-    "details": "Details"
-  },
   "Dataset-list": {
     "cart-note": "Click the cart icon next to the JGAD dataset ID you want to apply for to add it to your cart.",
     "datasetId": "Dataset ID",
@@ -154,7 +133,7 @@
     "releaseDate": "Release date",
     "versionReleaseDate": "Modification date",
     "dateModified": "Date modified",
-    "parentJgaStudyId": "JGA Study ID",
+    "parentJgaStudyId": "JGA Study",
     "typeOfData": "Type of data",
     "criteria": "Access type",
     "experiments": "Analysis method",
@@ -168,20 +147,7 @@
     "distribution-filter-placeholder": "Filter by name",
     "distribution-no-matches": "No matching links"
   },
-  "Person": {
-    "name": "Name",
-    "email": "Email",
-    "orcid": "ORCID",
-    "organization": "Organization",
-    "datasetIds": "Dataset IDs",
-    "researchTitle": "Research title",
-    "periodOfDataUse": "Period of data use"
-  },
-  "Organization": {
-    "name": "Name",
-    "address": "Address",
-    "country": "Country"
-  },
+
   "Research": {
     "research-id": "Research ID",
     "research-list": "List of researches",
@@ -197,15 +163,17 @@
     "title": "Title",
     "methods": "Methods",
     "targets": "Targets",
-    "dataProvider": "Data provider",
-    "representative": "Representative",
-    "organization": "Organiation",
+    "dataProvider": {
+      "self": "Data provider",
+      "representative": "Representative",
+      "organization": "Organiation",
+      "researchTitle": "Research title"
+    },
     "Unrestricted-access": "Unrestricted-access",
     "Controlled-access (Type I)": "Controlled-access (Type I)",
     "Controlled-access (Type II)": "Controlled-access (Type II)",
-    "researchTitle": "Research title",
     "relatedPublication": "Related publications",
-    "periodOfDataUse": "Period of data use",
+
     "grant": {
       "self": "Grants",
       "title": "Title",
@@ -217,18 +185,27 @@
       "name": "Name",
       "URL": "URL"
     },
+    "controlledAccessUser": {
+      "self": "Controlled access users",
+      "name": "Principal Investigator",
+      "organization": "Affiliation",
+      "country": "Country/Region",
+      "researchTitle": "Research title",
+      "periodOfDataUse": "Period of data use",
+      "datasets": "Data in use (Dataset ID)"
+    },
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
     "platforms": "Platforms",
-    "controlledAccessUser": "Controlled access users",
-    "organization-country": "Country",
+
+    "organization-country": "Country/Region",
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
     "details": "Details",
     "datePublished": "Date published",
     "dateModified": "Date modified",
-    "versionReleaseDate": "Version release date",
+    "versionReleaseDate": "Vdersion release date",
     "releaseNote": "Release note"
   },
   "DatasetVersionCard": {

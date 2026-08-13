@@ -22,7 +22,10 @@
   ["Chromogen", "発色試薬"],
   ["Washing", "洗浄"],
   ["Read Deduplication", "リード重複除去"],
-  ["Calibration for Re-alignment and Base Quality", "再アライメント・塩基品質補正"],
+  [
+    "Calibration for Re-alignment and Base Quality",
+    "再アライメント・塩基品質補正"
+  ],
   ["Library Construction", "ライブラリ構築"],
   ["Fragmentation", "断片化"],
   ["Read Type", "リードタイプ"],
@@ -46,8 +49,14 @@
   ["Histological Staining", "組織染色"],
   ["Bacteria Identification", "細菌同定"],
   ["miRNA Number", "miRNA数"],
-  ["TCR Repertoire Analysis Methods (Software)", "TCRレパトア解析方法（ソフトウェア）"],
-  ["Total Reads and Uniquely Mapped Reads", "総リード数とユニークマップリード数"],
+  [
+    "TCR Repertoire Analysis Methods (Software)",
+    "TCRレパトア解析方法（ソフトウェア）"
+  ],
+  [
+    "Total Reads and Uniquely Mapped Reads",
+    "総リード数とユニークマップリード数"
+  ],
   ["Gene Number", "遺伝子数"],
   ["SNV Number", "SNV数"],
   ["SV Number", "SV数"],
@@ -58,12 +67,21 @@
   ["Participant Attributes", "対象者属性"],
   ["NBDC Dataset Accession", "NBDCデータセットAccession"],
   ["Assembled Sequence", "アセンブル配列"],
-  ["Japanese Genotype-phenotype Archive Dataset Accession", "JGAデータセットAccession"],
+  [
+    "Japanese Genotype-phenotype Archive Dataset Accession",
+    "JGAデータセットAccession"
+  ],
   ["MetaboBank Accession", "MetaboBank Accession"],
   ["JPOST Accession", "JPOST Accession"],
-  ["DBCLS/DDBJ Processed Data ID", "DBCLSおよび生命情報・DDBJセンターによる加工データのID"],
+  [
+    "DBCLS/DDBJ Processed Data ID",
+    "DBCLSおよび生命情報・DDBJセンターによる加工データのID"
+  ],
   ["Sequence Read Archive Accession", "Sequence Read Archive Accession"],
-  ["Genomic Expression Archive Accession", "Genomic Expression Archive Accession"],
+  [
+    "Genomic Expression Archive Accession",
+    "Genomic Expression Archive Accession"
+  ],
   ["Gene Expression Omnibus Accession", "Gene Expression Omnibus Accession"],
   ["Data Download", "データダウンロード"],
   ["Dataset ID of the Processed Data by JGA", "JGA加工データのデータセットID"],

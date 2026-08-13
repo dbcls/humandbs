@@ -124,18 +124,24 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.dataProvider")}</ContentHeader>
+        <ContentHeader>{t("Research.dataProvider.self")}</ContentHeader>
         <ul>
           {versionData?.dataProvider.map((p) => {
             return (
               <dl key={`${p.name.ja?.text}-${p.name.en?.text}`} className="columns-2">
-                <KeyValueCard title={t("Research.representative")} value={p.name[lang]?.text} />
                 <KeyValueCard
-                  title={t("Research.organization")}
+                  title={t("Research.dataProvider.representative")}
+                  value={p.name[lang]?.text}
+                />
+                <KeyValueCard
+                  title={t("Research.dataProvider.organization")}
                   value={p.organization?.name[lang]?.text}
                 />
 
-                <KeyValueCard title={t("Research.researchTitle")} value={p.researchTitle?.[lang]} />
+                <KeyValueCard
+                  title={t("Research.dataProvider.researchTitle")}
+                  value={p.researchTitle?.[lang]}
+                />
                 <KeyValueCard title="ORCID" value={p.orcid} />
                 <KeyValueCard
                   title="Dataset IDs"
@@ -177,7 +183,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.controlledAccessUser")}</ContentHeader>
+        <ContentHeader>{t("Research.controlledAccessUser.self")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={dataUsedByColumns}
@@ -341,34 +347,51 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
   return [
     dataUsedByColumnsHelper.accessor("name", {
       id: "cau.name",
-      header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Person.name")} />,
+      header: (ctx) => (
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.controlledAccessUser.name")}
+        />
+      ),
       cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
     }),
     dataUsedByColumnsHelper.accessor("organization.name", {
       id: "cau.org.name",
       header: (ctx) => (
-        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.organization")} />
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.controlledAccessUser.organization")}
+        />
       ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
     }),
     dataUsedByColumnsHelper.accessor("organization.address.country", {
       id: "cau.org.country",
       header: (ctx) => (
-        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.organization-country")} />
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.controlledAccessUser.country")}
+        />
       ),
       cell: (ctx) => ctx.getValue(),
     }),
     dataUsedByColumnsHelper.accessor("researchTitle", {
       id: "cau.research-title",
       header: (ctx) => (
-        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchTitle")} />
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.controlledAccessUser.researchTitle")}
+        />
       ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
     }),
     dataUsedByColumnsHelper.accessor("periodOfDataUse", {
       id: "cau.periodOfDataUse",
       header: (ctx) => (
-        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.periodOfDataUse")} />
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.controlledAccessUser.periodOfDataUse")}
+        />
       ),
       cell: (ctx) => (
         <span className="text-nowrap text-sm">
@@ -384,7 +407,7 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
     }),
     dataUsedByColumnsHelper.accessor("datasetIds", {
       id: "cau.datasetIds",
-      header: (ctx) => ctx.table.options.meta?.t("Research.datasets"),
+      header: (ctx) => ctx.table.options.meta?.t("Research.controlledAccessUser.datasets"),
       cell: (ctx) => (
         <ModalCell
           triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {

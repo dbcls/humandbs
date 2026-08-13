@@ -86,7 +86,7 @@ function researchTableData(
     { header: labels.platforms, value: (row) => row.platforms.join(", ") },
     { header: labels.targets, value: (row) => row.targets },
     { header: labels.criteria, value: (row) => row.criteria.join(", ") },
-    { header: labels.dataProvider, value: (row) => row.dataProvider.join(", ") },
+    { header: labels.dataProvider.self, value: (row) => row.dataProvider.join(", ") },
   ];
 
   return {
