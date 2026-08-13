@@ -18,25 +18,25 @@ function buildTableSwitchSearch(
 ) {
   if (target === "research") {
     return {
-      page: 1,
-      limit: currentSearch.limit,
-      sort: isStringInSet(currentSearch.sort, researchSorts) ? currentSearch.sort : undefined,
-      order: currentSearch.order,
-      query: currentSearch.query,
-      datePublished: currentSearch.datePublished,
       dateModified: currentSearch.dateModified,
+      datePublished: currentSearch.datePublished,
       datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
+      limit: currentSearch.limit,
+      order: currentSearch.order,
+      page: 1,
+      query: currentSearch.query,
+      sort: isStringInSet(currentSearch.sort, researchSorts) ? currentSearch.sort : undefined,
     };
   }
 
   return {
-    page: 1,
-    limit: currentSearch.limit,
-    sort: isStringInSet(currentSearch.sort, datasetSorts) ? currentSearch.sort : undefined,
-    order: currentSearch.order,
-    query: currentSearch.query,
-    humId: currentSearch.humId,
     filters: currentSearch.filters ?? currentSearch.datasetFilters,
+    humId: currentSearch.humId,
+    limit: currentSearch.limit,
+    order: currentSearch.order,
+    page: 1,
+    query: currentSearch.query,
+    sort: isStringInSet(currentSearch.sort, datasetSorts) ? currentSearch.sort : undefined,
   };
 }
 
