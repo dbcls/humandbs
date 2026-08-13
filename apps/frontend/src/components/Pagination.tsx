@@ -68,6 +68,16 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     handlePageNavigate(sliderValue);
   };
 
+  const percentage =
+    pagination.totalPages > 1
+      ? ((sliderValue - 1) / (pagination.totalPages - 1)) * 100
+      : 0;
+
+  // Calculate dynamic thumb width: min 48px (perfect circle), expands as page digits grow
+  const pageStr = String(sliderValue);
+  const thumbWidth = Math.max(48, 32 + pageStr.length * 8);
+  const thumbLeft = `calc(${percentage}% + ${(0.5 - percentage / 100) * thumbWidth}px)`;
+
   return (
     <div
       className={cn(
@@ -86,7 +96,28 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           <ChevronLeft className="h-9 w-9 -translate-x-[1px]" />
         </Button>
 
-        <div className="flex flex-1 items-center gap-3">
+        <div className="relative flex flex-1 items-center h-12 min-w-0">
+          {/* Custom Track: height h-2.5 (10px), pale grayish-blue background */}
+          <div className="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden relative pointer-events-none">
+            {/* Progress fill width aligned precisely to dynamic thumb center */}
+            <div
+              className="h-full bg-secondary-light transition-all duration-75"
+              style={{ width: thumbLeft }}
+            />
+          </div>
+
+          {/* Custom Thumb: h-12 (48px), minimum 48px width (circle for <= 2 digits), expands for 3+ digits */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-10 flex h-12 items-center justify-center rounded-full bg-secondary-light text-white font-bold text-base shadow-md transition-all whitespace-nowrap px-3"
+            style={{
+              left: thumbLeft,
+              minWidth: `${thumbWidth}px`,
+            }}
+          >
+            {sliderValue}
+          </div>
+
+          {/* Transparent standard range input overlaid on top for native drag/touch/accessibility */}
           <input
             type="range"
             min={1}
@@ -98,12 +129,9 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
             onKeyUp={(e) => {
               if (e.key === "Enter" || e.key === " ") handleSliderCommit();
             }}
-            className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
+            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
             aria-label={t("page")}
           />
-          <span className="text-sm font-medium whitespace-nowrap text-muted-foreground min-w-[3.5rem] text-center">
-            {sliderValue} / {pagination.totalPages}
-          </span>
         </div>
 
         <Button
@@ -139,8 +167,7 @@ export function PaginationLoadingSkeleton() {
     <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row w-full">
       <div className="flex flex-1 items-center gap-3">
         <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
-        <div className="h-2 flex-1 rounded bg-gray-200 dark:bg-gray-700" />
-        <div className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700" />
         <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
       </div>
       <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
