@@ -73,10 +73,13 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
       ? ((sliderValue - 1) / (pagination.totalPages - 1)) * 100
       : 0;
 
-  // Calculate dynamic thumb width: min 48px (perfect circle), expands as page digits grow
+  // Root base font-size is 10px (62.5%), so 2.75rem = exactly 27.5px.
+  // Using w-max (width: max-content) + min-width: 2.75rem + px-3.5:
+  // 1-digit fits comfortably inside 2.75rem min-width -> perfect 27.5px x 27.5px circle!
+  // 2+ digits naturally exceed 2.75rem min-width with px-3.5 padding -> smoothly expands into capsule shape!
   const pageStr = String(sliderValue);
-  const thumbWidth = Math.max(48, 32 + pageStr.length * 8);
-  const thumbLeft = `calc(${percentage}% + ${(0.5 - percentage / 100) * thumbWidth}px)`;
+  const thumbWidthRem = Math.max(2.75, 1.5 + pageStr.length * 0.75);
+  const thumbLeft = `calc(${percentage}% + ${(0.5 - percentage / 100)} * ${thumbWidthRem}rem)`;
 
   return (
     <div
@@ -88,30 +91,32 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
       <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
         <Button
           variant="captionAction"
+          size="captionAction"
           disabled={!pagination.hasPrev}
           onClick={() => handlePageNavigate(pagination.page - 1)}
           aria-label={t("previous")}
-          className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
+          className="flex aspect-square h-11 w-11 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronLeft className="h-9 w-9 -translate-x-[1px]" />
+          <ChevronLeft className="h-7 w-7 -translate-x-[1px]" />
         </Button>
 
-        <div className="relative flex flex-1 items-center h-12 min-w-0">
+        <div className="relative flex flex-1 items-center h-11 min-w-0">
           {/* Custom Track: height h-2.5 (10px), pale grayish-blue background */}
           <div className="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden relative pointer-events-none">
-            {/* Progress fill width aligned precisely to dynamic thumb center */}
+            {/* Progress fill width aligned precisely to dynamic thumb center, no transition lag */}
             <div
-              className="h-full bg-secondary-light transition-all duration-75"
+              className="h-full bg-secondary-light"
               style={{ width: thumbLeft }}
             />
           </div>
 
-          {/* Custom Thumb: h-12 (48px), minimum 48px width (circle for <= 2 digits), expands for 3+ digits */}
+          {/* Custom Thumb: w-max + min-width: 2.75rem + px-3.5. 1-digit = strict circle, 2+ digits = natural capsule */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-10 flex h-12 items-center justify-center rounded-full bg-secondary-light text-white font-bold text-base shadow-md transition-all whitespace-nowrap px-3"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-10 flex h-11 w-max items-center justify-center rounded-full bg-secondary-light text-white font-bold text-xs shadow-md whitespace-nowrap box-border shrink-0 select-none px-3.5"
             style={{
               left: thumbLeft,
-              minWidth: `${thumbWidth}px`,
+              height: "2.75rem",
+              minWidth: "2.75rem",
             }}
           >
             {sliderValue}
@@ -131,17 +136,21 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
             }}
             className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
             aria-label={t("page")}
+            aria-valuenow={sliderValue}
+            aria-valuemin={1}
+            aria-valuemax={pagination.totalPages}
           />
         </div>
 
         <Button
           variant="captionAction"
+          size="captionAction"
           disabled={!pagination.hasNext}
           onClick={() => handlePageNavigate(pagination.page + 1)}
           aria-label={t("next")}
-          className="flex aspect-square h-12 w-12 items-center justify-center rounded-full p-0 shrink-0"
+          className="flex aspect-square h-11 w-11 items-center justify-center rounded-full p-0 shrink-0"
         >
-          <ChevronRight className="h-9 w-9 translate-x-[1px]" />
+          <ChevronRight className="h-7 w-7 translate-x-[1px]" />
         </Button>
       </div>
 
@@ -173,9 +182,9 @@ export function PaginationLoadingSkeleton() {
   return (
     <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row w-full">
       <div className="flex flex-1 items-center gap-3">
-        <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+        <div className="h-11 w-11 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
         <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700" />
-        <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+        <div className="h-11 w-11 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
       </div>
       <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
         <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
