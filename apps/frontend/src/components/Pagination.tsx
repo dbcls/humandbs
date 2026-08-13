@@ -178,15 +178,15 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
           <SelectTrigger
             className={cn(
               buttonVariants({ variant: "captionAction", size: "captionAction" }),
-              "cursor-pointer font-semibold text-xs text-secondary-light hover:bg-hover hover:text-secondary border-secondary-light gap-1.5 pl-4 pr-3 focus:ring-0 focus:ring-offset-0 focus:outline-none [&>svg]:fill-current [&>svg]:size-4 [&>svg]:text-secondary-light [&>svg]:opacity-100"
+              "cursor-pointer font-semibold text-xs text-secondary-light hover:bg-hover hover:text-secondary border-secondary-light gap-1.5 pl-4 pr-3 focus:ring-0 focus:ring-offset-0 focus:outline-none data-[state=open]:border-secondary data-[state=open]:bg-secondary data-[state=open]:text-white [&>svg]:fill-current [&>svg]:size-4 [&>svg]:text-current [&>svg]:opacity-100 transition-colors"
             )}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="rounded-xl border border-secondary-light bg-white py-1.5 shadow-lg font-semibold text-xs min-w-[5rem]">
-            <SelectItem value="20" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">20</SelectItem>
-            <SelectItem value="50" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">50</SelectItem>
-            <SelectItem value="100" className="px-4 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold">100</SelectItem>
+          <SelectContent className="rounded-xl border-none bg-white py-1.5 shadow-lg font-semibold text-sm min-w-[5rem]">
+            <SelectItem value="20" className="px-5 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold data-[state=checked]:font-bold data-[state=checked]:text-secondary">20</SelectItem>
+            <SelectItem value="50" className="px-5 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold data-[state=checked]:font-bold data-[state=checked]:text-secondary">50</SelectItem>
+            <SelectItem value="100" className="px-5 py-2 hover:bg-hover hover:text-secondary cursor-pointer font-semibold data-[state=checked]:font-bold data-[state=checked]:text-secondary">100</SelectItem>
           </SelectContent>
         </Select>
       </div>
