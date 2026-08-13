@@ -47,11 +47,11 @@ describe("newsItemRepository.list", () => {
     await db.insert(schema.newsItemTag).values(mockNewsItemTags);
   });
 
-  test("returns items ordered by createdAt desc", async () => {
+  test("returns items ordered by publishedAt desc, with undated items last", async () => {
     const list = await repo.list({});
 
     expect(list).toBeArrayOfSize(2);
-    expect(list.map((i) => i.id)).toEqual([NEWS_2_ID, NEWS_1_ID]);
+    expect(list.map((i) => i.id)).toEqual([NEWS_1_ID, NEWS_2_ID]);
   });
 
   test("returns a news item in the correct format", async () => {
@@ -115,8 +115,8 @@ describe("newsItemRepository.list", () => {
     const firstPage = await repo.list({ limit: 1, offset: 0 });
     const secondPage = await repo.list({ limit: 1, offset: 1 });
 
-    expect(firstPage.map((i) => i.id)).toEqual([NEWS_2_ID]);
-    expect(secondPage.map((i) => i.id)).toEqual([NEWS_1_ID]);
+    expect(firstPage.map((i) => i.id)).toEqual([NEWS_1_ID]);
+    expect(secondPage.map((i) => i.id)).toEqual([NEWS_2_ID]);
   });
 
   describe("filters", () => {
