@@ -403,7 +403,7 @@
     "basic-info": "基本情報"
   },
   "Pagination": {
-    "itemsPerPage": "1ページあたりのアイテム数",
+    "itemsPerPage": "表示件数",
     "previous": "前へ",
     "next": "次へ",
     "page": "ページ",

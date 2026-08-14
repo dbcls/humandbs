@@ -1,21 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { useEffect, useState } from "react";
 
 import type { Pagination as APIPagination } from "@humandbs/backend/types";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Pagination as PaginationBase,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -24,62 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-
-// Export function for testing
-export const getVisiblePages = (currentPage: number, totalPages: number) => {
-  const pages: (number | "ellipsis")[] = [];
-
-  if (totalPages <= 7) {
-    // If total pages is small, show all pages
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
-  }
-
-  // Always show first page
-  pages.push(1);
-
-  if (currentPage <= 3) {
-    // Current page is close to beginning
-    if (currentPage === 3) {
-      // Show [1] [2] [3] [4] ... [X]
-      pages.push(2, 3, 4);
-    } else {
-      // Show [1] [2] [3] ... [X] for currentPage 1 or 2
-      pages.push(2, 3);
-    }
-    pages.push("ellipsis");
-  } else if (currentPage >= totalPages - 2) {
-    // Current page is close to end
-    pages.push("ellipsis");
-    if (currentPage === totalPages - 2) {
-      // Show [1] ... [X-3] [X-2] [X-1] [X]
-      for (let i = totalPages - 3; i <= totalPages - 1; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Show [1] ... [X-2] [X-1] [X] for currentPage X-1 or X
-      for (let i = totalPages - 2; i <= totalPages - 1; i++) {
-        pages.push(i);
-      }
-    }
-  } else {
-    // Current page is in the middle - general form
-    pages.push("ellipsis");
-    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-      pages.push(i);
-    }
-    pages.push("ellipsis");
-  }
-
-  // Always show last page (if it's not already included)
-  if (totalPages > 1) {
-    pages.push(totalPages);
-  }
-
-  return pages;
-};
 
 interface PaginationProps {
   pagination: APIPagination;
@@ -90,19 +25,10 @@ interface PaginationProps {
 export function Pagination({ pagination, onItemsPerPageChange, className }: PaginationProps) {
   const navigate = useNavigate();
   const t = useTranslations("Pagination");
-  const [pageInput, setPageInput] = useState(String(pagination.page));
-
-  const visiblePages = getVisiblePages(pagination.page, pagination.totalPages);
-  const visiblePageItems = visiblePages.map((pageNum, index) => ({
-    pageNum,
-    key:
-      pageNum === "ellipsis"
-        ? `ellipsis-${visiblePages[index - 1]}-${visiblePages[index + 1]}`
-        : pageNum,
-  }));
+  const [sliderValue, setSliderValue] = useState(pagination.page);
 
   useEffect(() => {
-    setPageInput(String(pagination.page));
+    setSliderValue(pagination.page);
   }, [pagination.page]);
 
   const handleItemsPerPageChange = (value: string) => {
@@ -110,7 +36,6 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     if (onItemsPerPageChange) {
       onItemsPerPageChange(newItemsPerPage);
     }
-    // Navigate to page 1 when changing items per page
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page: 1, limit: newItemsPerPage }),
@@ -118,17 +43,11 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     });
   };
 
-  const handlePageJump = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const requestedPage = Number(pageInput);
-    if (!Number.isInteger(requestedPage)) return;
-
-    const page = Math.min(pagination.totalPages, Math.max(1, requestedPage));
-    setPageInput(String(page));
-
+  const handlePageNavigate = (targetPage: number) => {
+    const page = Math.min(pagination.totalPages, Math.max(1, targetPage));
     if (page === pagination.page) return;
 
+    setSliderValue(page);
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page }),
@@ -136,99 +55,137 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     });
   };
 
+  const percentage =
+    pagination.totalPages > 1 ? ((sliderValue - 1) / (pagination.totalPages - 1)) * 100 : 0;
+
+  // Root base font-size is 10px (62.5%), so 2.75rem = exactly 27.5px.
+  // Using w-max (width: max-content) + min-width: 2.75rem + px-3.5:
+  // 1-digit fits comfortably inside 2.75rem min-width -> perfect 27.5px x 27.5px circle!
+  // 2+ digits naturally exceed 2.75rem min-width with px-3.5 padding -> smoothly expands into capsule shape!
+  const pageStr = String(sliderValue);
+  const thumbWidthRem = Math.max(2.75, 1.5 + pageStr.length * 0.75);
+  const thumbLeft = `calc(${percentage}% + ${0.5 - percentage / 100} * ${thumbWidthRem}rem)`;
+
   return (
     <div
-      className={cn("mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row", className)}
+      className={cn(
+        "mt-4 flex w-full flex-col items-center justify-between gap-6 sm:flex-row sm:gap-10",
+        className,
+      )}
     >
-      <PaginationBase>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              to="."
-              search={(prev) => ({
-                ...prev,
-                page: Math.max(1, pagination.page - 1),
-              })}
-              label={t("previous")}
-              className={cn({
-                "pointer-events-none opacity-50": !pagination.hasPrev,
-              })}
-              resetScroll={false}
-            />
-          </PaginationItem>
+      <div className="flex w-full flex-1 items-center gap-3 sm:w-auto">
+        <Button
+          variant="captionAction"
+          size="captionAction"
+          disabled={!pagination.hasPrev}
+          onClick={() => handlePageNavigate(pagination.page - 1)}
+          aria-label={t("previous")}
+          className="flex aspect-square h-11 w-11 shrink-0 items-center justify-center rounded-full p-0"
+        >
+          <ChevronLeft className="h-7 w-7 -translate-x-px" />
+        </Button>
 
-          {visiblePageItems.map(({ pageNum, key }) => {
-            if (pageNum === "ellipsis") {
-              return (
-                <PaginationItem key={key}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              );
-            }
+        {/* focus-within indicator preserves keyboard accessibility (Tab navigation) */}
+        <div className="relative flex h-11 min-w-0 flex-1 items-center rounded-full has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-secondary-light has-[input:focus-visible]:ring-offset-1">
+          {/* Custom Track: height h-2.5 (10px), pale grayish-blue background */}
+          <div className="pointer-events-none relative h-2.5 w-full overflow-hidden rounded-full bg-slate-200/80">
+            {/* Progress fill width aligned precisely to dynamic thumb center, no transition lag */}
+            <div className="h-full bg-secondary-light" style={{ width: thumbLeft }} />
+          </div>
 
-            return (
-              <PaginationItem key={pageNum}>
-                <PaginationLink
-                  to="."
-                  search={(prev) => ({ ...prev, page: pageNum })}
-                  isActive={pageNum === pagination.page}
-                  resetScroll={false}
-                >
-                  {pageNum}
-                </PaginationLink>
-              </PaginationItem>
-            );
-          })}
+          {/* Custom Thumb: w-max + min-width: 2.75rem + px-3.5. 1-digit = strict circle, 2+ digits = natural capsule */}
+          <div
+            className="pointer-events-none absolute top-1/2 z-10 box-border flex h-11 w-max shrink-0 -translate-x-1/2 -translate-y-1/2 select-none items-center justify-center whitespace-nowrap rounded-full bg-secondary-light px-3.5 font-bold text-white text-xs shadow-md"
+            style={{
+              left: thumbLeft,
+              height: "2.75rem",
+              minWidth: "2.75rem",
+            }}
+          >
+            {sliderValue}
+          </div>
 
-          <PaginationItem>
-            <PaginationNext
-              to="."
-              search={(prev) => ({
-                ...prev,
-                page: Math.min(pagination.totalPages, pagination.page + 1),
-              })}
-              label={t("next")}
-              className={cn({
-                "pointer-events-none opacity-50": !pagination.hasNext,
-              })}
-              resetScroll={false}
-            />
-          </PaginationItem>
-          <PaginationItem>
-            <form className="flex items-center gap-2" onSubmit={handlePageJump}>
-              <label className="text-muted-foreground text-sm" htmlFor="pagination-page">
-                {t("page")}
-              </label>
-              <Input
-                aria-label={t("pageNumber")}
-                className="w-24 text-center"
-                id="pagination-page"
-                max={pagination.totalPages}
-                min="1"
-                onChange={(event) => setPageInput(event.target.value)}
-                required
-                step="1"
-                type="number"
-                value={pageInput}
-              />
-              <Button size="default" type="submit" variant="outline">
-                {t("go")}
-              </Button>
-            </form>
-          </PaginationItem>
-        </PaginationContent>
-      </PaginationBase>
+          {/* Transparent standard range input overlaid on top for native drag/touch/accessibility */}
+          <input
+            type="range"
+            min={1}
+            max={Math.max(1, pagination.totalPages)}
+            value={sliderValue}
+            onChange={(e) => setSliderValue(Number(e.target.value))}
+            onMouseUp={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onPointerUp={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onPointerCancel={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onBlur={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onKeyUp={(e) => {
+              if (
+                [
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "ArrowUp",
+                  "ArrowDown",
+                  "Home",
+                  "End",
+                  "PageUp",
+                  "PageDown",
+                  "Enter",
+                  " ",
+                ].includes(e.key)
+              ) {
+                handlePageNavigate(Number(e.currentTarget.value));
+              }
+            }}
+            className="absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0 focus:outline-none"
+            aria-label={t("page")}
+            aria-valuenow={sliderValue}
+            aria-valuemin={1}
+            aria-valuemax={pagination.totalPages}
+          />
+        </div>
 
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-muted-foreground text-sm">{t("itemsPerPage")}:</span>
+        <Button
+          variant="captionAction"
+          size="captionAction"
+          disabled={!pagination.hasNext}
+          onClick={() => handlePageNavigate(pagination.page + 1)}
+          aria-label={t("next")}
+          className="flex aspect-square h-11 w-11 shrink-0 items-center justify-center rounded-full p-0"
+        >
+          <ChevronRight className="h-7 w-7 translate-x-px" />
+        </Button>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+        <span className="shrink-0 select-none whitespace-nowrap font-semibold text-secondary-light text-xs uppercase tracking-wider">
+          {t("itemsPerPage")}
+        </span>
         <Select value={pagination.limit.toString()} onValueChange={handleItemsPerPageChange}>
-          <SelectTrigger className="w-fit">
+          <SelectTrigger
+            className={cn(
+              buttonVariants({ variant: "captionAction", size: "captionAction" }),
+              "cursor-pointer gap-1.5 border-secondary-light pr-3 pl-4 font-semibold text-secondary-light text-xs transition-colors hover:bg-hover hover:text-secondary focus:outline-none focus:ring-0 focus:ring-offset-0 data-[state=open]:border-secondary data-[state=open]:bg-secondary data-[state=open]:text-white [&>svg]:size-4 [&>svg]:fill-current [&>svg]:text-current [&>svg]:opacity-100",
+            )}
+          >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
+          <SelectContent className="min-w-[5rem] rounded-xl border-none bg-white py-1.5 font-semibold text-sm shadow-lg">
+            <SelectItem
+              value="20"
+              className="cursor-pointer px-5 py-2 font-semibold hover:bg-hover hover:text-secondary data-[state=checked]:font-bold data-[state=checked]:text-secondary"
+            >
+              20
+            </SelectItem>
+            <SelectItem
+              value="50"
+              className="cursor-pointer px-5 py-2 font-semibold hover:bg-hover hover:text-secondary data-[state=checked]:font-bold data-[state=checked]:text-secondary"
+            >
+              50
+            </SelectItem>
+            <SelectItem
+              value="100"
+              className="cursor-pointer px-5 py-2 font-semibold hover:bg-hover hover:text-secondary data-[state=checked]:font-bold data-[state=checked]:text-secondary"
+            >
+              100
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -238,11 +195,15 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
 
 export function PaginationLoadingSkeleton() {
   return (
-    <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row">
-      <div className="h-8 w-24 rounded bg-gray-300" />
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <div className="h-5 w-20 rounded bg-gray-300" />
-        <div className="h-8 w-16 rounded bg-gray-300" />
+    <div className="mt-4 flex w-full animate-pulse items-center justify-between gap-4 sm:flex-row">
+      <div className="flex flex-1 items-center gap-3">
+        <div className="h-11 w-11 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="h-11 w-11 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700" />
+      </div>
+      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+        <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-9 w-16 rounded bg-gray-200 dark:bg-gray-700" />
       </div>
     </div>
   );

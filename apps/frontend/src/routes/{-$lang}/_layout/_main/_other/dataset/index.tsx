@@ -358,7 +358,9 @@ function PaginationWrapper() {
     return <PaginationLoadingSkeleton />;
   }
 
-  return <Pagination className="pr-5" pagination={data.meta.pagination} />;
+  if (data.meta.pagination.totalPages === 0) return null;
+
+  return <Pagination pagination={data.meta.pagination} />;
 }
 
 export const datasetsColumnHelper = createColumnHelper<DatasetSearchResponse["data"][number]>();

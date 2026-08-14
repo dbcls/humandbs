@@ -115,10 +115,10 @@ export function SortDropdown({
             aria-haspopup="listbox"
             aria-expanded={isOpen}
             className={cn(
-              "flex h-full cursor-pointer select-none items-center gap-1.5 border-none bg-transparent pr-2.5 pl-4 font-semibold text-xs outline-none transition-colors focus-visible:bg-hover",
+              "flex h-full cursor-pointer select-none items-center gap-1.5 border-none bg-transparent pr-2.5 pl-4 font-semibold text-xs outline-none transition-colors",
               isOpen
-                ? "bg-secondary text-white focus-visible:bg-secondary/90"
-                : "text-secondary-light hover:bg-hover",
+                ? "bg-secondary text-white hover:bg-secondary hover:text-white"
+                : "text-secondary-light hover:bg-hover hover:text-secondary",
             )}
           >
             <span>{activeOption ? activeOption.label : ""}</span>
@@ -133,7 +133,12 @@ export function SortDropdown({
           {/* 右側：昇降順トグルボタン部分 */}
           <button
             type="button"
-            className="flex h-full shrink-0 cursor-pointer items-center justify-center px-3 text-secondary-light outline-none transition-colors hover:bg-hover hover:text-secondary focus-visible:bg-hover focus-visible:text-secondary"
+            className={cn(
+              "flex h-full shrink-0 cursor-pointer items-center justify-center px-3 outline-none transition-colors",
+              isOpen
+                ? "bg-secondary text-white hover:bg-secondary hover:text-white"
+                : "text-secondary-light hover:bg-hover hover:text-secondary",
+            )}
             onClick={handleOrderToggle}
             title={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}
             aria-label={currentOrder === "asc" ? t("sort-asc") : t("sort-desc")}

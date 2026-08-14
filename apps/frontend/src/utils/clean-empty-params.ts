@@ -1,10 +1,11 @@
 export const cleanEmptyParams = <T extends Record<string, any>>(search: T): T => {
-  const newSearch = Object.assign({}, search);
-  Object.keys(newSearch).forEach((key) => {
-    const value = newSearch[key];
-    if (value === undefined || value === "" || (typeof value === "number" && isNaN(value)))
-      delete newSearch[key];
+  const newSearch = {} as Record<string, any>;
+  Object.keys(search).forEach((key) => {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") return;
+    const value = search[key];
+    if (value !== undefined && value !== "" && !(typeof value === "number" && isNaN(value))) {
+      newSearch[key] = value;
+    }
   });
-
-  return newSearch;
+  return newSearch as T;
 };
