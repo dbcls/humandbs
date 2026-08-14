@@ -358,6 +358,8 @@ function PaginationWrapper() {
     return <PaginationLoadingSkeleton />;
   }
 
+  if (data.meta.pagination.totalPages === 0) return null;
+
   return <Pagination pagination={data.meta.pagination} />;
 }
 

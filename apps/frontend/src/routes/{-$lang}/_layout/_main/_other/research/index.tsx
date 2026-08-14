@@ -369,6 +369,8 @@ function PaginationWrapper() {
 
   if (!researchesData || (isFetching && !isPlaceholderData)) return <PaginationLoadingSkeleton />;
 
+  if (researchesData.meta.pagination.totalPages === 0) return null;
+
   return <Pagination pagination={researchesData.meta.pagination} />;
 }
 
