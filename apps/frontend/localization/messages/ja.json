@@ -537,6 +537,10 @@
     "documents": {
       "delete-title": "ドキュメントを削除しますか？",
       "delete-description": "「{name}」とそのすべてのバージョンを完全に削除します。この操作は元に戻せません。",
+      "delete-version-title": "ドキュメントのバージョンを削除しますか？",
+      "delete-version-description": "「{name}」のバージョン {version} にあるすべての下書きと公開済み翻訳を完全に削除します。この操作は元に戻せません。",
+      "delete-version-action": "バージョンを削除",
+      "delete-version-failed": "バージョンを削除できませんでした。以前のバージョンがある場合に限り、現在の最新バージョンだけを削除できます。ドキュメントを更新しました。",
       "change-id-title": "ドキュメントIDを変更",
       "change-id-description": "新しいIDを入力してください。すべての参照が更新されます。",
       "change-id-hint": "新しいドキュメントID",

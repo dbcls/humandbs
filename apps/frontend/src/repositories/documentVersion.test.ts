@@ -123,6 +123,8 @@ describe("Document versions", () => {
       createdAt: new Date("2024-01-01T00:00:00Z"),
     });
 
+    await versionsRepo.createVersionFromPublished(NEW_DOC_CONTENTID);
+
     // Simulate what publishAll does: saveDraft with empty strings, then publish
     await versionsRepo.saveDraft(NEW_DOC_CONTENTID, 1, "en", {
       title: "",
@@ -161,6 +163,8 @@ describe("Document versions", () => {
       hideTOC: false,
       createdAt: new Date("2024-01-01T00:00:00Z"),
     });
+
+    await versionsRepo.createVersionFromPublished(NEW_DOC_CONTENTID);
 
     const result = await versionsRepo.saveDraft(
       NEW_DOC_CONTENTID,
@@ -231,6 +235,58 @@ describe("Document versions", () => {
     expect(versionRows.translations.ja?.draft?.content).toBe(
       "Changed draft content without local user",
     );
+  });
+
+  test("deletes every locale and status of the latest version only", async () => {
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+    await versionsRepo.publish(DOC_1_CONTENTID, 2, "en");
+
+    await versionsRepo.delete(DOC_1_CONTENTID, 2);
+
+    const rows = await testDb.db.query.documentVersion.findMany({
+      where: (table, { eq }) => eq(table.documentId, DOC_1_ID),
+    });
+    expect(rows.filter((row) => row.versionNumber === 2)).toHaveLength(0);
+    expect(rows.filter((row) => row.versionNumber === 1)).toHaveLength(4);
+  });
+
+  test("rejects deletion of a sole, historical, or missing version without changing data", async () => {
+    const initialRows = await testDb.db.query.documentVersion.findMany({
+      where: (table, { eq }) => eq(table.documentId, DOC_1_ID),
+    });
+
+    await expect(versionsRepo.delete(DOC_1_CONTENTID, 1)).rejects.toThrow(
+      "Only the current latest version",
+    );
+
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+    await expect(versionsRepo.delete(DOC_1_CONTENTID, 1)).rejects.toThrow(
+      "Only the current latest version",
+    );
+    await expect(versionsRepo.delete(DOC_1_CONTENTID, 3)).rejects.toThrow(
+      "Only the current latest version",
+    );
+
+    const rows = await testDb.db.query.documentVersion.findMany({
+      where: (table, { eq }) => eq(table.documentId, DOC_1_ID),
+    });
+    expect(rows.filter((row) => row.versionNumber === 1)).toEqual(initialRows);
+    expect(rows.filter((row) => row.versionNumber === 2)).toHaveLength(2);
+  });
+
+  test("does not recreate a deleted version through a delayed draft save", async () => {
+    await versionsRepo.createVersionFromPublished(DOC_1_CONTENTID, AUTHOR_ID_1);
+    await versionsRepo.delete(DOC_1_CONTENTID, 2);
+
+    await expect(
+      versionsRepo.saveDraft(DOC_1_CONTENTID, 2, "en", { title: "Delayed save" }, AUTHOR_ID_1),
+    ).rejects.toThrow("Document version no longer exists");
+
+    const rows = await testDb.db.query.documentVersion.findMany({
+      where: (table, { and, eq }) =>
+        and(eq(table.documentId, DOC_1_ID), eq(table.versionNumber, 2)),
+    });
+    expect(rows).toHaveLength(0);
   });
 });
 

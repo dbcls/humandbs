@@ -537,6 +537,10 @@
     "documents": {
       "delete-title": "Delete document?",
       "delete-description": "This will permanently delete \"{name}\" and all its versions. This action cannot be undone.",
+      "delete-version-title": "Delete document version?",
+      "delete-version-description": "This will permanently delete every draft and published translation of \"{name}\" Version {version}. This action cannot be undone.",
+      "delete-version-action": "Delete version",
+      "delete-version-failed": "The version could not be deleted. Only the current latest version can be deleted when an earlier version exists. The document has been refreshed.",
       "change-id-title": "Change document ID",
       "change-id-description": "Enter a new ID for this document. This will update all references.",
       "change-id-hint": "New document ID",

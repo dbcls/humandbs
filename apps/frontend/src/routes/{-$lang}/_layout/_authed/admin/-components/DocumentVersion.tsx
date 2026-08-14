@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
-import { Loader2, Pencil, Plus, Save } from "lucide-react";
+import { Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
@@ -15,7 +15,6 @@ import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
@@ -45,6 +44,7 @@ import {
 import type { DocVersionResponse } from "@/serverFunctions/documentVersion";
 import {
   $createDocumentVersion,
+  $deleteDocumentVersion,
   $publishDocumentVersionDraft,
   $resetDocumentVersionDraft,
   $saveDocumentVersionDraft,
@@ -52,9 +52,11 @@ import {
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
+import useConfirmationStore from "@/stores/confirmationStore";
 import { isDocumentDraftValueUnpublished } from "@/utils/documentDraftState";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
+import { AdminStatusMessage } from "./AdminStatusMessage";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { TitleValue } from "./TitleValue";
 import { UnpublishedDot } from "./UnpublishedDot";
@@ -126,6 +128,8 @@ export function DocumentVersion({
     );
   }
 
+  if (selectedVersionNumber === undefined) return null;
+
   return (
     <Card
       className="flex h-full flex-1 flex-col"
@@ -155,19 +159,107 @@ export function DocumentVersion({
         <DocumentVersionContent
           key={selectedVersionNumber}
           contentId={contentId}
-          versionNumber={selectedVersionNumber!}
+          versionNumber={selectedVersionNumber}
+          versions={versions}
+          onSelectVersion={onSelectVersion}
         />
       </Suspense>
     </Card>
   );
 }
 
+function DeleteDocumentVersionButton({
+  contentId,
+  versionNumber,
+  versions,
+  onSelectVersion,
+}: {
+  contentId: string;
+  versionNumber: number | undefined;
+  versions: DocumentVersionsResponse[];
+  onSelectVersion: (versionNumber: number) => void;
+}) {
+  const tDocs = useTranslations("admin.documents");
+  const { openConfirmation } = useConfirmationStore();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const previousVersionNumber =
+    typeof versionNumber === "number"
+      ? versions.find((item) => item.versionNumber < versionNumber)?.versionNumber
+      : undefined;
+  const isDeletable =
+    typeof versionNumber === "number" &&
+    versions.at(0)?.versionNumber === versionNumber &&
+    previousVersionNumber !== undefined;
+
+  const { mutate: deleteVersion, isPending } = useMutation({
+    mutationKey: ["documentVersion", contentId, versionNumber, "delete"],
+    mutationFn: async () => {
+      if (typeof versionNumber !== "number") return;
+
+      // Let any in-flight autosave for this exact version finish before the
+      // server evaluates deletion eligibility.
+      await waitUntilNoMutations(queryClient, {
+        mutationKey: ["documentVersion", contentId, versionNumber, "draft", "save"],
+      });
+      await $deleteDocumentVersion({ data: { contentId, versionNumber } });
+    },
+    onSuccess: async () => {
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ["documents", contentId] });
+      await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (previousVersionNumber !== undefined) onSelectVersion(previousVersionNumber);
+    },
+    onError: async () => {
+      // The latest-version rule can change while the confirmation is open.
+      // Refetch in either failure case so the CMS immediately reflects reality.
+      await queryClient.invalidateQueries({ queryKey: ["documents", contentId] });
+      await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setError(tDocs("delete-version-failed"));
+    },
+  });
+
+  if (!isDeletable) return null;
+
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <Button
+        variant="outline"
+        size="lg"
+        className="border-red-700 text-red-700 enabled:hover:bg-red-50"
+        disabled={isPending}
+        onClick={() => {
+          setError(null);
+          openConfirmation({
+            title: tDocs("delete-version-title"),
+            description: tDocs("delete-version-description", {
+              name: contentId,
+              version: versionNumber,
+            }),
+            actionLabel: tDocs("delete-version-action"),
+            onAction: () => deleteVersion(),
+          });
+        }}
+      >
+        {isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+        {tDocs("delete-version-action")}
+      </Button>
+      {error ? <AdminStatusMessage className="max-w-xl">{error}</AdminStatusMessage> : null}
+    </div>
+  );
+}
+
 function DocumentVersionContent({
   contentId,
   versionNumber,
+  versions,
+  onSelectVersion,
 }: {
   contentId: string;
   versionNumber: number;
+  versions: DocumentVersionsResponse[];
+  onSelectVersion: (versionNumber: number) => void;
 }) {
   const [activeLocaleTab, setActiveLocaleTab] = useState<Locale>(i18n.defaultLocale);
 
@@ -234,6 +326,12 @@ function DocumentVersionContent({
         value={activeLocaleTab}
       >
         <div className="flex items-center justify-end gap-2 pb-1">
+          <DeleteDocumentVersionButton
+            contentId={contentId}
+            versionNumber={versionNumber}
+            versions={versions}
+            onSelectVersion={onSelectVersion}
+          />
           <Button
             variant="outline"
             size="lg"
@@ -435,7 +533,12 @@ function DocumentVersionContent({
                     }}
                   >
                     {(field) => {
-                      const isModified = isFieldModified(field);
+                      const published = selectedVersionContent.translations[loc]?.published;
+                      const isModified = isDocumentDraftValueUnpublished(
+                        field.state.value,
+                        published?.content,
+                        published !== undefined,
+                      );
                       return (
                         <field.ContentAreaField
                           label={
