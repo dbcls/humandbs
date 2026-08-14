@@ -28,10 +28,12 @@ export interface NavLink {
 }
 
 /**
- * An entry with children opens; one without is a link itself. **An entry is
- * always a link**, so its children are what it adds rather than a list that
- * repeats it — a group heading and a first child pointing at the same page is
- * the same link twice.
+ * A destination in the sitemap, with the documents that belong under it.
+ *
+ * **An entry with children becomes a column and an entry without becomes one
+ * line in the row below them** (`components/layout.tsx`). The name of a column
+ * is a label rather than a link, and the entry's own page is drawn as the first
+ * link under it — which is where a reader looks for it and what v1 does.
  */
 export interface NavEntry extends NavLink {
   children?: NavLink[]

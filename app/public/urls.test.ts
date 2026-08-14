@@ -4,6 +4,7 @@ import {
   datasetPath,
   href,
   legacyTarget,
+  normalizeQuery,
   parseVersionSegment,
   readLocale,
   researchPath,
@@ -128,5 +129,30 @@ describe("legacyTarget", () => {
     expect(legacyTarget("/hum0001/v2")).toBeNull()
     expect(legacyTarget("/humbug")).toBeNull()
     expect(legacyTarget("/hum0001-v2-notrelease")).toBeNull()
+  })
+})
+
+describe("normalizeQuery", () => {
+  it("writes the characters a browser leaves alone the way the server is handed them", () => {
+    expect(normalizeQuery("?q=a,b")).toBe("?q=a%2Cb")
+    expect(normalizeQuery("?q=a:b")).toBe("?q=a%3Ab")
+    expect(normalizeQuery("?q=NGS(Exome)")).toBe("?q=NGS%28Exome%29")
+    expect(normalizeQuery("?q=a|b")).toBe("?q=a%7Cb")
+    expect(normalizeQuery("?ids=JGAD000290,JGAD000363")).toBe("?ids=JGAD000290%2CJGAD000363")
+  })
+
+  it("leaves an address that is already written that way alone", () => {
+    expect(normalizeQuery("?q=a%2Cb")).toBe("?q=a%2Cb")
+    expect(normalizeQuery("?q=%E7%B3%96%E5%B0%BF%E7%97%85")).toBe("?q=%E7%B3%96%E5%B0%BF%E7%97%85")
+    expect(normalizeQuery("?page=2")).toBe("?page=2")
+  })
+
+  it("does not leave a bare question mark on an address with no query", () => {
+    expect(normalizeQuery("")).toBe("")
+    expect(normalizeQuery("?")).toBe("")
+  })
+
+  it("keeps every pair, in the order they were written", () => {
+    expect(normalizeQuery("?q=a&sort=id&page=2")).toBe("?q=a&sort=id&page=2")
   })
 })

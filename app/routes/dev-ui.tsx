@@ -48,6 +48,7 @@ import {
   IconButton,
   LanguagePills,
   Menu,
+  MoreLink,
   Note,
   RoundLink,
   type NoteKind,
@@ -294,6 +295,19 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <Button type="button" pill icon={<Icon name="filter" />}>絞り込み</Button>
                 </Heading>
               </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  切り詰めた箱から全部へ出る道は MoreLink。見出しの右端か、短くした一覧の足元に置く。
+                </p>
+                <Heading level="h2" title="News">
+                  <MoreLink to="/news">ニュース一覧</MoreLink>
+                </Heading>
+                <ul className="mt-2 text-sm">
+                  <li>JGAD000290</li>
+                  <li>JGAD000363</li>
+                  <li className="text-ink-muted"><MoreLink to="/research/hum0197">他 44 件</MoreLink></li>
+                </ul>
+              </div>
             </div>
           </Section>
 
@@ -477,7 +491,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               >
                 {ROWS.map((row) => (
                   <tr key={row.humLabel} className="bg-white hover:bg-surface-hover">
-                    <Td nowrap>
+                    {/* `narrow`: a cell holding a mark keeps no room above and
+                        below, so the 36px control rides inside the row that the
+                        words set rather than making it taller. */}
+                    <Td narrow>
                       <IconButton name="cart" label={`${row.humLabel} をカートに入れる`} />
                     </Td>
                     <Td nowrap>
@@ -497,9 +514,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                         ))}
                         more={(rest) => `他 ${String(rest)} 件`}
                       >
-                        <Link to={`/research/${row.humLabel}`}>
-                          {`他 ${String(row.datasetLabels.length - 3)} 件を見る`}
-                        </Link>
+                        <MoreLink to={`/research/${row.humLabel}`}>
+                          {`他 ${String(row.datasetLabels.length - 3)} 件`}
+                        </MoreLink>
                       </Clamped>
                     </Td>
                     <Td nowrap>
@@ -618,23 +635,26 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <BigAction to="/data-submission" tone="accent" icon="upload">データの提供</BigAction>
                 <BigAction to="/data-use" tone="brand" icon="download">データの利用</BigAction>
               </div>
+              <p className="text-ink-muted text-sm">
+                対で並べるときは ActionRow。片方の名前が 2 行になっても両方が同じ高さになり、
+                下に付く一文も同じ行から始まる。
+              </p>
               <ActionRow>
                 <ActionButton
                   href="https://example.org/"
-                  label="登録ナビゲーション"
-                  note="初めての方"
-                  tone="accent"
-                  icon="upload"
+                  label="利用可能なデータセットを探す"
+                  note="データセット ID が未特定の場合"
+                  tone="brand"
+                  icon="search"
                 />
                 <ActionButton
                   href="https://example.org/"
-                  label="データ提供申請を行う"
-                  note="2 回目以降の方"
-                  tone="accent"
+                  label="制限公開データの利用申請を行う"
+                  note="「JGAD」で始まるデータセット ID をお持ちの場合"
+                  tone="brand"
                   icon="edit"
                 />
               </ActionRow>
-              <p>ボタンの下に付く一文。リンクを含む。</p>
               <div className="max-w-96">
                 <p className="mb-2 text-ink-muted text-sm">
                   お知らせの並び。トップの右カラムと一覧が同じもの。

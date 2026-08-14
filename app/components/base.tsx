@@ -18,8 +18,8 @@
  * Every part is drawn against real rows at `/dev/ui`.
  */
 
-import { useId, useRef, useState, type ReactNode } from "react"
-import { Link } from "react-router"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { Link, useLocation } from "react-router"
 
 import { Icon, type IconName } from "~/components/icons"
 
@@ -457,13 +457,18 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
  * sentence but a way out of the box it closes, and it sits where a reader
  * looks for one: at the end of the line that names what they are looking at.
  * The words are small and set in the brand's weight, so that it reads as a
- * control on the heading rather than as another entry in the list.
+ * control on the heading rather than as another entry in the list — which is
+ * also what it is at the foot of a cut-short cell (`Clamped`), where it is a
+ * step smaller than the entries above it.
+ *
+ * It never wraps: the arrow says the words belong to it, and a line break
+ * between them leaves a chevron on a line of its own.
  */
 export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-0.5 font-semibold text-brand text-xs"
+      className="inline-flex items-center gap-0.5 whitespace-nowrap font-semibold text-brand text-xs"
     >
       {children}
       <Icon name="chevron-right" aria-hidden="true" />
@@ -906,27 +911,32 @@ export function Confirm({ label, warning, confirm, cancel, children }: {
   )
 }
 
-/**
- * The panel a menu opens, and one line inside it.
- *
- * **Exported because two things open menus and only one of them is `Menu`**: the
- * navigation opens its children on hover, which a `<details>` cannot do, so it
- * draws its own panel. Sharing the strings is what keeps the two the same
- * object to a reader. The panel carries no `display` of its own — the caller
- * decides whether it is shown, and a `hidden` beside a `flex` here would leave
- * which of them wins to the order Tailwind happened to emit them in.
- */
-export const MENU_PANEL
+/** The panel a menu opens. */
+const MENU_PANEL
   = "min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg"
 
+/**
+ * One line inside it. **Exported because the lines are the caller's** — the
+ * navigation puts links in its menu and the account puts a name, a link and a
+ * form, and the panel has no way to wrap what it is given without deciding
+ * which of those it is.
+ */
 export const MENU_ITEM
   = "block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
 
 /**
  * A set of actions that would crowd the row they belong to.
  *
- * A `<details>` again, so the menu opens without script. It closes on choosing
- * because choosing navigates or submits.
+ * A `<details>`, so what it holds is in the markup and its own control opens it.
+ *
+ * **It closes on Escape, on a press anywhere else, and on going somewhere.** A
+ * panel that only closes by pressing the same control again stays open over the
+ * page while the reader goes on doing something else — and the one in the bar
+ * covers the top right corner of every screen. The two listeners are on the
+ * document because the press that should close it is by definition not on this
+ * element; they are attached once and do nothing while it is shut. **Choosing
+ * an entry does not reload the page**, so arriving somewhere has to close it
+ * too, which is what the address is watched for.
  */
 export function Menu({ label, icon = "more", round = false, word = false, children }: {
   label: string
@@ -943,8 +953,40 @@ export function Menu({ label, icon = "more", round = false, word = false, childr
   word?: boolean
   children: ReactNode
 }) {
+  const box = useRef<HTMLDetailsElement>(null)
+  const { key } = useLocation()
+
+  useEffect(() => {
+    if (box.current !== null) box.current.open = false
+  }, [key])
+
+  useEffect(() => {
+    const element = box.current
+    if (element === null) return
+
+    const onPress = (event: PointerEvent) => {
+      if (!element.open) return
+      if (event.target instanceof Node && element.contains(event.target)) return
+      element.open = false
+    }
+    // Focus goes back to the control that opened it: closing a panel the
+    // reader is inside would otherwise leave focus on nothing.
+    const onKey = (event: KeyboardEvent) => {
+      if (!element.open || event.key !== "Escape") return
+      element.open = false
+      element.querySelector("summary")?.focus()
+    }
+
+    document.addEventListener("pointerdown", onPress)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", onPress)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [])
+
   return (
-    <details className="relative inline-block">
+    <details ref={box} className="relative inline-block">
       <summary
         aria-label={word ? undefined : label}
         title={word ? undefined : label}

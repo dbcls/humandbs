@@ -21,5 +21,5 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function ResearchVersion({ loaderData }: Route.ComponentProps) {
-  return <ResearchVersionPage view={loaderData.view} locale={loaderData.locale} />
+  return <ResearchVersionPage view={loaderData.view} locale={loaderData.locale} numbered />
 }

@@ -222,8 +222,20 @@ export function Table({ headers, children }: { headers: ReactNode[], children: R
               decided by the cells under it, and a header that claimed a floor
               would widen a column of marks to the width of the word above it.
             */}
+            {/*
+              **A header that is a control keeps no room of its own.** A mark is
+              36px against a line of 22.4px, so the padding a word needs would
+              make the band half as tall again — which is what made the two
+              listings, drawn from the same frame, open with bands of two
+              different heights.
+            */}
             {headers.map((header, index) => (
-              <th key={index} className="max-w-88 px-3 py-2 font-semibold">{header}</th>
+              <th
+                key={index}
+                className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-2" : "py-0"}`}
+              >
+                {header}
+              </th>
             ))}
           </tr>
         </thead>
@@ -237,7 +249,15 @@ export function Td({ children, nowrap = false, narrow = false, colSpan, classNam
   children?: ReactNode
   /** For a cell holding an identifier, which must not be broken to fit. */
   nowrap?: boolean
-  /** For a cell holding a mark rather than a value, which needs no floor. */
+  /**
+   * For a cell holding a mark rather than a value.
+   *
+   * It needs no floor, and **it keeps no room above and below**: a mark is
+   * `size-tap` (36px) against a line of 22.4px, so a cell that padded it would
+   * make the row half as tall again and leave the mark sitting seven pixels
+   * below the words beside it. Without the padding the row is as tall as its
+   * text and the mark rides inside it, at the size a finger still finds.
+   */
   narrow?: boolean
   /** For a row that says one thing across several columns. */
   colSpan?: number
@@ -246,7 +266,7 @@ export function Td({ children, nowrap = false, narrow = false, colSpan, classNam
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 py-2 align-top ${narrow ? "" : "min-w-28"} ${nowrap ? "whitespace-nowrap" : ""} ${className}`}
+      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? "py-0" : "min-w-28 py-2"} ${nowrap ? "whitespace-nowrap" : ""} ${className}`}
     >
       {children}
     </td>

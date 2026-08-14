@@ -24,8 +24,14 @@ export function ActionRow({ children }: { children: ReactNode }) {
   // of the site, and one above the other reads as a first step and a second.
   // Below the phone breakpoint there is no width left to narrow into, so there
   // they do wrap.
+  //
+  // **Two rows rather than a row of columns**: the blocks share the first and
+  // what is written under them shares the second, so a label that runs to two
+  // lines makes both blocks taller instead of leaving one of the pair short.
+  // The second row costs nothing where nothing is written under them — the
+  // distance to a note is on the note itself, so an empty row is an empty row.
   return (
-    <div className="flex flex-wrap items-start justify-center gap-4 sm:flex-nowrap sm:gap-6">
+    <div className="grid justify-center gap-x-4 gap-y-4 sm:auto-cols-[minmax(0,20rem)] sm:grid-flow-col sm:grid-rows-[1fr_auto] sm:gap-x-6 sm:gap-y-0">
       {children}
     </div>
   )
@@ -50,13 +56,13 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
   external?: boolean
 }) {
   return (
-    // `w-80` is the width it wants; `min-w-0` is what lets the row take it back
-    // when there is not enough for two of them side by side.
-    <div className="flex w-80 min-w-0 max-w-full flex-col items-center gap-2">
-      <div className="w-full">
-        <BigAction to={href} tone={tone} icon={icon} external={external}>{label}</BigAction>
-      </div>
-      {note !== undefined && <span className="text-center text-ink-muted text-sm">{note}</span>}
+    // 20rem is the width it wants, and the column it sits in gives it that or
+    // less. **It takes both of the row's rows** so that the block lands in the
+    // first and the note in the second, whatever either of them is doing in the
+    // other column.
+    <div className="grid w-full max-w-80 sm:row-span-2 sm:grid-rows-subgrid">
+      <BigAction to={href} tone={tone} icon={icon} external={external}>{label}</BigAction>
+      {note !== undefined && <span className="pt-2 text-center text-ink-muted text-sm">{note}</span>}
     </div>
   )
 }

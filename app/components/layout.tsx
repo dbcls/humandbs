@@ -21,7 +21,7 @@ import {
   navLabel,
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
-import { cartPath, href, readLocale } from "~/public/urls"
+import { cartPath, href, normalizeQuery, readLocale } from "~/public/urls"
 
 function NavItemLink({ item, locale, className }: {
   item: NavLinkItem
@@ -62,7 +62,11 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
   const location = useLocation()
 
   if (account === null) {
-    const back = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
+    // The query is read through `normalizeQuery`, so the address written into
+    // the way back is the same one whichever side drew this link.
+    const back = new URLSearchParams({
+      redirect: `${location.pathname}${normalizeQuery(location.search)}`,
+    })
     return (
       <RoundLink
         to={`/auth/login?${back.toString()}`}
@@ -266,13 +270,18 @@ export function SiteHeader({ locale, account }: {
             The pills keep one order whichever language is being read (v1 puts
             EN before JA), so that the pair does not swap places as the reader
             switches and the one they want is where it was.
+
+            **The search goes with them**, so that switching language on a
+            listing keeps the listing — read through `normalizeQuery`, which is
+            what makes the address the same one on the server and in the
+            browser (`public/urls.ts`).
           */}
           <LanguagePills
             label={messages.language}
             options={[...LOCALES].sort().map((code) => ({
               code,
               label: code.toUpperCase(),
-              to: `${href(code, path)}${location.search}`,
+              to: `${href(code, path)}${normalizeQuery(location.search)}`,
               current: code === locale,
             }))}
           />
@@ -352,7 +361,19 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             eleven ways through is the only one not underlined. v1 lists the
             parent among its children for the same reason.
           */}
-          <div className="grid gap-8 sm:grid-cols-2">
+          {/*
+            **The columns are as wide as what is in them, not half each.** The
+            names here are the guidelines' own, and the longest of them wants
+            eleven pixels more than half the page — which left two characters of
+            it alone on a second line, beside a column whose three entries are a
+            hundred pixels wide and had six hundred to sit in.
+
+            The floor on the second column is what stops the first from taking
+            everything on a narrow screen: Japanese breaks between any two
+            characters, so a column with no floor collapses to one glyph wide
+            rather than making the other one wrap.
+          */}
+          <div className="grid gap-8 sm:grid-cols-[auto_minmax(12rem,1fr)]">
             {named.map((entry) => (
               <Stack key={entry.path} gap="tight" as="section">
                 {/* Lighter than what is under it: the name of a group is there

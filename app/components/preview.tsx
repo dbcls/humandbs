@@ -146,7 +146,16 @@ export function PreviewDatasetScreen({ view, problem }: {
   )
 }
 
-/** Both marks of one place: what changed, and what has been said about it. */
+/**
+ * Both marks of one place: what changed, and what has been said about it.
+ *
+ * **They sit on the first line of the value and do not make it taller.** A mark
+ * is `size-tap` (36px) against a line of 22.4px, so a pair left to its own
+ * height opened the line to fit it — which pushed every row of every table down
+ * and left the marks reading seven pixels below the words they belong to. The
+ * negative margin takes the difference back out of the line while the thing a
+ * finger has to find keeps its size.
+ */
 function Marks({ context, at, view, threads, heading }: {
   context: CommentContext
   at: string
@@ -155,7 +164,7 @@ function Marks({ context, at, view, threads, heading }: {
   heading: string
 }) {
   return (
-    <span className="ml-2 inline-flex flex-wrap items-start gap-1 align-top">
+    <span className="-my-2 ml-2 inline-flex flex-wrap items-start gap-1 align-top">
       {view.changed.includes(at) && (
         <PreviousMark locale={context.locale} value={view.previous[at]} heading={heading} />
       )}

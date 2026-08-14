@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Clamped } from "~/components/base"
+import { Clamped, MoreLink } from "~/components/base"
 import { CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
@@ -131,10 +131,11 @@ function Datasets({ labels, humLabel, locale }: {
         </span>
       ))}
     >
-      <Link to={href(locale, researchPath(humLabel))} className="whitespace-nowrap text-brand">
+      {/* The same way out of a shortened box that the front page's News card
+          has, taken from the part rather than drawn again. */}
+      <MoreLink to={href(locale, researchPath(humLabel))}>
         {messagesFor(locale).search.andMore(labels.length - SHOWN_DATASETS)}
-        <Icon name="chevron-right" aria-hidden="true" />
-      </Link>
+      </MoreLink>
     </Clamped>
   )
 }

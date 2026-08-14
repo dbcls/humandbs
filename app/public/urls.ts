@@ -98,6 +98,30 @@ export function searchQuery(params: SearchParams): string {
   if (params.page > 1) search.set("page", String(params.page))
   if (params.facet != null && params.facet !== "") search.set("facet", params.facet)
   if (params.find != null && params.find !== "") search.set("find", params.find)
+  return writtenQuery(search)
+}
+
+/**
+ * The query of the address being read, spelled the one way.
+ *
+ * **The same address does not arrive as the same characters on both sides.** A
+ * comma, a colon and a bracket are legal in a query unencoded, so a browser
+ * keeps `?q=a,b` as it is while the page is rendered on the server from
+ * `?q=a%2Cb` — two spellings of one search. Anything that carries the current
+ * query into a link (the language pair, the way back after signing in) then
+ * draws one address on the server and a different one in the browser, and every
+ * page reached by a hand-written address hydrates with a mismatch.
+ *
+ * Reading it through `URLSearchParams` on both sides settles which spelling is
+ * written down. **The search is not changed** — the pairs are the same pairs,
+ * written the way this file writes every other address it builds.
+ */
+export function normalizeQuery(search: string): string {
+  return writtenQuery(new URLSearchParams(search))
+}
+
+/** An empty query is no query at all, rather than a bare `?`. */
+function writtenQuery(search: URLSearchParams): string {
   const written = search.toString()
   return written === "" ? "" : `?${written}`
 }

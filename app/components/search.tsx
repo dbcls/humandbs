@@ -114,7 +114,7 @@ export function SearchForm({
       action={href(locale, listPath(target))}
       name="k"
       value={keyword}
-      label={messages.search.label}
+      label={messages.search.placeholder[target]}
       placeholder={messages.search.placeholder[target]}
       submit={messages.search.submit}
       size={size}

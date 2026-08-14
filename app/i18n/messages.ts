@@ -75,9 +75,11 @@ const ja = {
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSfyKmqCoIegHhRvaDH6JUF4j8C6-2cWWnjwaSAJ9iMxKbukXw/viewform?embedded=true",
   },
   search: {
-    label: "キーワード検索",
     // The word for what is being looked through, so that the same box over two
-    // listings says which one it is over.
+    // listings says which one it is over. **It is the field's name as well as
+    // the grey word inside it** — a reader who cannot see the box is the one
+    // who most needs telling which of the two listings they are searching, and
+    // a name is what a screen reader announces instead of the placeholder.
     placeholder: {
       research: "キーワードで研究を検索",
       dataset: "キーワードでデータセットを検索",
@@ -881,7 +883,6 @@ const en: Messages = {
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSessVTsAHFeFNQnd_mS79T7ZRlOCVehbpQfSlrioOhmdYWdjg/viewform?embedded=true",
   },
   search: {
-    label: "Keyword search",
     placeholder: {
       research: "Search research by keyword",
       dataset: "Search datasets by keyword",

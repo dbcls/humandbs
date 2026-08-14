@@ -39,20 +39,33 @@ import {
  * `/research/{humId}/v{n}` render the same thing — the first is the second with
  * the number left out — so telling them apart on screen is only the badge.
  *
+ * **The trail is the one thing the two cannot share.** At a numbered address
+ * the research itself is a step above rather than where the reader is, and a
+ * trail ending in the bare label said they were on a page that is somewhere
+ * else and showing a different version.
+ *
  * Experiments are not here. They belong to a dataset, and the order the old
  * articles put them in cannot be recovered, so a version lists its datasets and
  * each dataset describes its own.
  */
-export function ResearchVersionPage({ view, locale }: { view: ResearchView, locale: Locale }) {
+export function ResearchVersionPage({ view, locale, numbered = false }: {
+  view: ResearchView
+  locale: Locale
+  /** Whether the address names the version (`/research/{humId}/v{n}`). */
+  numbered?: boolean
+}) {
   const messages = messagesFor(locale)
   const t = messages.research
+  const listing = { label: messages.search.researchList, to: href(locale, listPath("research")) }
 
   return (
     <Page>
       <Crumbs
         locale={locale}
-        trail={[{ label: messages.search.researchList, to: href(locale, listPath("research")) }]}
-        current={view.humLabel}
+        trail={numbered
+          ? [listing, { label: view.humLabel, to: href(locale, researchPath(view.humLabel)) }]
+          : [listing]}
+        current={numbered ? view.versionLabel : view.humLabel}
       />
       {/*
         The band names the version and carries the two things a reader does from

@@ -6,6 +6,7 @@ import { LOCALES } from "~/i18n/locale"
 import {
   href,
   legacyTarget,
+  normalizeQuery,
   parseVersionSegment,
   readLocale,
   researchPath,
@@ -64,6 +65,72 @@ describe("legacy resolution", () => {
     fc.assert(fc.property(humLabel, (label) => {
       expect(legacyTarget(researchPath(label))).toBeNull()
       expect(legacyTarget(researchVersionPath(label, 2))).toBeNull()
+    }))
+  })
+})
+
+/**
+ * The characters a browser leaves in a query although they can be encoded, and
+ * which the page is handed encoded when it is drawn on the server.
+ */
+const LOOSE = [",", ":", ";", "@", "$", "|", "(", ")", "!", "*", "'"]
+
+/** The keys the site's own addresses use. */
+const KEYS = ["q", "sort", "page", "facet", "find", "ids"] as const
+
+/**
+ * A value as it can arrive in an address. **`fc.string()` alone never produces
+ * one of the loose characters**, which is the whole of what this is about, so
+ * the alphabet is given.
+ */
+const queryValue = fc.oneof(
+  fc.string({ unit: "grapheme" }),
+  fc
+    .array(fc.constantFrom(...LOOSE, " ", "+", "&", "=", "%", "a", "1", "あ"), {
+      minLength: 1,
+      maxLength: 8,
+    })
+    .map((characters) => characters.join("")),
+)
+
+const queryPairs = fc.array(fc.tuple(fc.constantFrom(...KEYS), queryValue), { maxLength: 4 })
+
+/** The spelling a browser keeps: encoded, then the loose characters put back. */
+function looseSpelling(pairs: [string, string][]): string {
+  const written = pairs.map(([key, value]) => `${asLoose(key)}=${asLoose(value)}`).join("&")
+  return written === "" ? "" : `?${written}`
+}
+
+function asLoose(text: string): string {
+  return LOOSE.reduce(
+    (written, character) => written.replaceAll(encodeURIComponent(character), character),
+    encodeURIComponent(text),
+  )
+}
+
+/** The spelling the page is handed when it is drawn on the server. */
+function strictSpelling(pairs: [string, string][]): string {
+  const written = new URLSearchParams(pairs).toString()
+  return written === "" ? "" : `?${written}`
+}
+
+describe("the query of the address being read", () => {
+  it("comes out the same whichever of the two spellings it arrived in", () => {
+    fc.assert(fc.property(queryPairs, (pairs) => {
+      expect(normalizeQuery(looseSpelling(pairs))).toBe(normalizeQuery(strictSpelling(pairs)))
+    }))
+  })
+
+  it("carries the same pairs it was given", () => {
+    fc.assert(fc.property(queryPairs, (pairs) => {
+      expect([...new URLSearchParams(normalizeQuery(looseSpelling(pairs)))]).toEqual(pairs)
+    }))
+  })
+
+  it("is already written when it is read a second time", () => {
+    fc.assert(fc.property(queryPairs, (pairs) => {
+      const once = normalizeQuery(looseSpelling(pairs))
+      expect(normalizeQuery(once)).toBe(once)
     }))
   })
 })
