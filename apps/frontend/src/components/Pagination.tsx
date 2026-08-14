@@ -86,7 +86,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
         </Button>
 
         {/* focus-within indicator preserves keyboard accessibility (Tab navigation) */}
-        <div className="relative flex h-11 min-w-0 flex-1 items-center rounded-full focus-within:ring-2 focus-within:ring-secondary-light focus-within:ring-offset-1">
+        <div className="relative flex h-11 min-w-0 flex-1 items-center rounded-full has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-secondary-light has-[input:focus-visible]:ring-offset-1">
           {/* Custom Track: height h-2.5 (10px), pale grayish-blue background */}
           <div className="pointer-events-none relative h-2.5 w-full overflow-hidden rounded-full bg-slate-200/80">
             {/* Progress fill width aligned precisely to dynamic thumb center, no transition lag */}
