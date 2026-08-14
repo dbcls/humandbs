@@ -225,9 +225,9 @@ function DeleteDocumentVersionButton({
   return (
     <div className="flex flex-col items-end gap-2">
       <Button
-        variant="outline"
+        variant="danger"
         size="lg"
-        className="border-red-700 text-red-700 enabled:hover:bg-red-50"
+        className="flex gap-1"
         disabled={isPending}
         onClick={() => {
           setError(null);
@@ -242,8 +242,8 @@ function DeleteDocumentVersionButton({
           });
         }}
       >
-        {isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-        {tDocs("delete-version-action")}
+        {isPending ? <Loader2 className="size-5 animate-spin" /> : <Trash2 className="size-5" />}
+        <span>{tDocs("delete-version-action")}</span>
       </Button>
       {error ? <AdminStatusMessage className="max-w-xl">{error}</AdminStatusMessage> : null}
     </div>
