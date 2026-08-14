@@ -530,10 +530,38 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   </tr>
                 ))}
               </Table>
+              {/*
+                3 つ隣までは 1 つずつ、その先は倍々に離れて両端に着く。長い
+                一覧ほど番号は飛ぶが、出る数はページ数の対数でしか増えない。
+              */}
               <PageLinks
                 label="ページ送り"
                 page={3}
                 pageCount={20}
+                at={(page) => `?page=${String(page)}`}
+                previous="前へ"
+                next="次へ"
+              />
+              <p className="text-ink-muted text-sm">1,283 ページの真ん中あたり</p>
+              <PageLinks
+                label="ページ送り (長い一覧)"
+                page={639}
+                pageCount={1283}
+                at={(page) => `?page=${String(page)}`}
+                previous="前へ"
+                next="次へ"
+              />
+              {/*
+                置き場が狭いときは上限を渡せる。削るのは隣のページからで、
+                倍々の段は落とさない (回数を抑えているのはそちら)。段だけで
+                上限を超える長さの一覧では、上限より多く出ることがある。
+              */}
+              <p className="text-ink-muted text-sm">50 ページの真ん中を、置き場が狭いとき (most 9)</p>
+              <PageLinks
+                label="ページ送り (狭いところ)"
+                page={25}
+                pageCount={50}
+                most={9}
                 at={(page) => `?page=${String(page)}`}
                 previous="前へ"
                 next="次へ"
@@ -657,9 +685,15 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </ActionRow>
               <div className="max-w-96">
                 <p className="mb-2 text-ink-muted text-sm">
-                  お知らせの並び。トップの右カラムと一覧が同じもの。
+                  お知らせの並び。トップの右カラムは日付が上に乗る (幅が 408px しかない)。
                 </p>
                 <NewsList locale="ja" items={NEWS} />
+              </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  一覧では日付が自分の列を持ち、日付どうしが縦に揃う。
+                </p>
+                <NewsList locale="ja" items={NEWS} dateBeside />
               </div>
             </div>
           </Section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { renderMarkdown } from "./markdown.server"
+import { leadingText, renderMarkdown } from "./markdown.server"
 
 describe("サイトコンテンツの markdown", () => {
   it("生 HTML のブロックは中身ごと落ちる", () => {
@@ -66,5 +66,43 @@ describe("サイトコンテンツの markdown", () => {
   it("空文字と空白だけの本文は空文字を返す", () => {
     expect(renderMarkdown("")).toBe("")
     expect(renderMarkdown("   \n\n  ")).toBe("")
+  })
+})
+
+describe("一覧に出す本文の書き出し", () => {
+  it("記法ではなく語だけを返す", () => {
+    expect(leadingText("[研究のページ](/research/hum0001) をご覧ください"))
+      .toBe("研究のページ をご覧ください")
+    expect(leadingText("## 見出し\n\n**太字**と`コード`")).toBe("見出し 太字とコード")
+    expect(leadingText("| a | b |\n|---|---|\n| 1 | 2 |")).toBe("a b 1 2")
+  })
+
+  it("ブロックの境目で語を繋げない", () => {
+    // 繋げると「公開しました当該データの」のような、どこにも書かれていない語ができる。
+    expect(leadingText("公開しました。\n\n当該データの利用には")).toBe("公開しました。 当該データの利用には")
+    expect(leadingText("- 一つ目\n- 二つ目")).toBe("一つ目 二つ目")
+  })
+
+  it("空白を 1 つに畳む", () => {
+    expect(leadingText("a  \n  b\n\n\n\nc")).toBe("a b c")
+  })
+
+  it("長い本文は切って、切ったことを示す", () => {
+    const long = "あ".repeat(500)
+    const said = leadingText(long, 20)
+    expect(said).toBe(`${"あ".repeat(20)}…`)
+    // ガイドライン 1 本ぶんが一覧の payload に乗らないための上限なので、
+    // 既定でも本文全体が返ることはない。
+    expect(leadingText(long).length).toBeLessThanOrEqual(201)
+  })
+
+  it("上限に足りない本文には印を付けない", () => {
+    expect(leadingText("短い本文")).toBe("短い本文")
+    expect(leadingText("ちょうど", 4)).toBe("ちょうど")
+  })
+
+  it("本文が無ければ空文字を返す", () => {
+    expect(leadingText("")).toBe("")
+    expect(leadingText("   \n\n  ")).toBe("")
   })
 })

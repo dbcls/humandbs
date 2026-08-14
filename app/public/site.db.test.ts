@@ -176,16 +176,33 @@ describe("news の一覧", () => {
     expect((await newsList("en", 1)).items).toHaveLength(1)
   })
 
-  it("次のページがあるかどうかを、件数を数えずに返す", async () => {
+  it("そのページの行と、一覧全体の件数の両方を返す", async () => {
     for (let i = 0; i < 5; i += 1) await createNews(`2026-01-0${i + 1}`, [{ locale: "ja" }])
 
     const first = await newsList("ja", 1, 2)
     expect(first.items).toHaveLength(2)
-    expect(first.hasNext).toBe(true)
+    expect(first.total).toBe(5)
+    expect(first.pageCount).toBe(3)
 
     const last = await newsList("ja", 3, 2)
     expect(last.items).toHaveLength(1)
-    expect(last.hasNext).toBe(false)
+    expect(last.total).toBe(5)
+  })
+
+  it("一覧の外のページを求められたら、いちばん近い実在のページを返す", async () => {
+    for (let i = 0; i < 5; i += 1) await createNews(`2026-01-0${i + 1}`, [{ locale: "ja" }])
+
+    // 空のページを返すと、件数だけが出て行が 1 つも無い画面になる。
+    const far = await newsList("ja", 999, 2)
+    expect(far.page).toBe(3)
+    expect(far.items).toHaveLength(1)
+    expect(far.total).toBe(5)
+  })
+
+  it("1 件も無いときもページは 1 つある", async () => {
+    const empty = await newsList("ja", 1)
+    expect(empty.total).toBe(0)
+    expect(empty.pageCount).toBe(1)
   })
 
   it("id の形が uuid でなくても落ちずに 404 になる", async () => {

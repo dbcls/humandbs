@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react"
-import { Link } from "react-router"
+import { useRef, useState, type ReactNode } from "react"
+import { Link, useSubmit } from "react-router"
 
 import {
   BAND_FILL,
@@ -44,7 +44,22 @@ import { Card, Crumbs, Page, PageLinks } from "./page"
  * page, and the rule that asks for a visible edge is there for the fields that
  * look like nothing until you find them.
  */
-export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", children }: {
+/** How long the typing has to stop before a listing searches for itself. */
+export const SEARCH_AFTER_TYPING = 400
+
+/**
+ * Three depths of field, and **the button is the same 36px in all of them**
+ * (`docs/ui.md`). That is what sets the floor: `compact` is 38.4px, which is
+ * the button plus the little the field can hold it in, and there is nothing
+ * below it that does not make the one control smaller than a control may be.
+ */
+const SEARCH_FIELD = {
+  compact: "py-2 pr-11 pl-4 text-sm",
+  normal: "py-2.5 pr-11 pl-4",
+  large: "py-2.5 pr-12 pl-5 text-base",
+}
+
+export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", searchAsTyped = false, children }: {
   action: string
   /** What the typed words are called in the address. */
   name: string
@@ -52,17 +67,48 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   label: string
   placeholder: string
   submit: string
-  /** The front page asks with a large one; everywhere else it sits over a list. */
-  size?: "normal" | "large"
+  /**
+   * The front page asks with a large one; over a listing it sits at `normal`,
+   * and `compact` is for a box sharing its line with something else.
+   */
+  size?: keyof typeof SEARCH_FIELD
+  /**
+   * Whether the listing under the box searches as the words are typed.
+   *
+   * **Only where the box sits over what it searches.** The front page's box
+   * sends the reader to another screen, so running it early would mean leaving
+   * the page in the middle of a word.
+   */
+  searchAsTyped?: boolean
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const large = size === "large"
+  const runSearch = useSubmit()
+  const form = useRef<HTMLFormElement>(null)
+  const waiting = useRef<number | undefined>(undefined)
+  // Kana is typed as several keystrokes that are not yet a word; searching for
+  // the half-written form of it answers about something nobody asked for.
+  const composing = useRef(false)
+
+  function searchSoon() {
+    if (!searchAsTyped) return
+    window.clearTimeout(waiting.current)
+    waiting.current = window.setTimeout(() => {
+      const fields = form.current
+      if (composing.current || fields === null) return
+      const asked = new FormData(fields)
+      // An empty field is no condition at all, and an address is easier to read
+      // and to share without the parts of it that say nothing.
+      for (const [key, given] of [...asked]) if (given === "") asked.delete(key)
+      void runSearch(asked, { method: "get", action, replace: true })
+    }, SEARCH_AFTER_TYPING)
+  }
+
   return (
     // The button sits inside the field rather than beside it, the way v1 draws
     // it: the two are one control, and set apart they read as a box and an
     // unrelated circle. The field keeps room for it on the right.
-    <form method="get" action={action} role="search" className="relative flex items-center">
+    <form ref={form} method="get" action={action} role="search" className="relative flex items-center">
       {children}
       <input
         type="search"
@@ -70,18 +116,28 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
         defaultValue={value}
         aria-label={label}
         placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded-full bg-surface py-2.5 text-ink ${large ? "pr-12 pl-5 text-base" : "pr-11 pl-4"}`}
+        onChange={searchSoon}
+        onCompositionStart={() => { composing.current = true }}
+        onCompositionEnd={() => {
+          composing.current = false
+          searchSoon()
+        }}
+        className={`min-w-0 flex-1 rounded-full bg-surface text-ink ${SEARCH_FIELD[size]}`}
       />
       {/*
-        The button is the standard tap size at both sizes, and the field is
+        The button is the standard tap size at every depth, and the field is
         deep enough to hold it: a circle that grew with the field would be the
         one control on the site whose size depends on where it is.
+
+        **It stays even where the listing searches as the words are typed**: it
+        is what the box means with a keyboard and with no script at all, and
+        pressing it only asks for what is about to happen anyway.
       */}
       <button
         type="submit"
         aria-label={submit}
         title={submit}
-        className={`absolute inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:brightness-90 ${BAND_FILL.accent} ${large ? "right-1.5" : "right-1"}`}
+        className={`absolute inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:brightness-90 ${BAND_FILL.accent} ${size === "large" ? "right-1.5" : "right-1"}`}
       >
         <Icon name="search" className="text-base" />
       </button>
@@ -97,6 +153,7 @@ export function SearchForm({
   facet = null,
   find = "",
   size = "normal",
+  searchAsTyped = false,
 }: {
   locale: Locale
   target: "research" | "dataset"
@@ -107,6 +164,7 @@ export function SearchForm({
   facet?: string | null
   find?: string
   size?: "normal" | "large"
+  searchAsTyped?: boolean
 }) {
   const messages = messagesFor(locale)
   return (
@@ -118,6 +176,7 @@ export function SearchForm({
       placeholder={messages.search.placeholder[target]}
       submit={messages.search.submit}
       size={size}
+      searchAsTyped={searchAsTyped}
     >
       <input type="hidden" name="q" value={query} />
       {facet !== null && <input type="hidden" name="facet" value={facet} />}
@@ -364,6 +423,19 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
   const messages = messagesFor(locale)
   const carry = (which: "research" | "dataset") =>
     href(locale, listPath(which) + searchQuery({ q: view.query, sort: null, page: 1 }))
+  // Above the table as well as below it: a page of twenty rows is longer than
+  // the window, so the way to the next one was only ever reachable by reading
+  // to the end of a page the reader may already have decided against.
+  const pageLinks = (
+    <Pagination
+      locale={locale}
+      target={target}
+      query={view.query}
+      sort={view.sort}
+      page={view.page}
+      pageCount={view.pageCount}
+    />
+  )
 
   return (
     <Page>
@@ -407,6 +479,7 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
               query={view.query}
               facet={view.facet}
               find={view.find}
+              searchAsTyped
             />
             <ConditionChips conditions={view.conditions} locale={locale} />
           </Stack>
@@ -441,15 +514,9 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
                       ? <NoResults locale={locale} other={other} />
                       : (
                           <Stack gap="normal">
+                            {pageLinks}
                             {children}
-                            <Pagination
-                              locale={locale}
-                              target={target}
-                              query={view.query}
-                              sort={view.sort}
-                              page={view.page}
-                              pageCount={view.pageCount}
-                            />
+                            {pageLinks}
                           </Stack>
                         )}
                   </Stack>

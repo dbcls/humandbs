@@ -284,46 +284,106 @@ export function Empty({ children }: { children: ReactNode }) {
  * box of ten thousand files, so what a reader gets is a link rather than a
  * script — and one address for one page, which can be shared.
  */
-const PAGE_STEP = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2 hover:bg-surface-hover"
+/**
+ * A page number is a two-character target. Without a box around it the thing to
+ * press is the glyph itself, which is a tenth of the area of anything else on
+ * the page that can be pressed — so each number sits in one, and the page being
+ * read is the one that is filled in.
+ */
+const PAGE_BOX = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2"
+const PAGE_STEP = `${PAGE_BOX} border border-line bg-white hover:bg-surface-hover`
+const PAGE_HERE = `${PAGE_BOX} border-transparent bg-brand font-semibold text-white`
 
-export function PageLinks({ label, page, pageCount, at, previous, next }: {
+/** How many pages either side are offered one by one, before the steps double. */
+const NEAREST = 3
+
+/**
+ * Which pages to offer, on a logarithmic scale: a few either side, then steps
+ * that double — 1, 2, 3, 7, 15, 31, 63 … — out to the two ends, which are
+ * always offered.
+ *
+ * **Every page is then a few presses from every other.** A fixed window around
+ * the current page leaves the middle of a long listing reachable only by
+ * pressing "next" over and over or by starting again from an end. Measured as
+ * the worst case over every pair of pages, with the 34 pages of announcements:
+ * a window needs 9 presses and this needs 3. At 50 pages it is 13 against 3,
+ * and at 1,283 it is 321 against 6 — the count of links grows with the
+ * logarithm of the page count, so it stays around a dozen while the listing
+ * does not.
+ *
+ * `most` caps how many numbers are drawn, for a listing sitting somewhere too
+ * narrow to hold them. **The nearest pages are given up first and the doubling
+ * steps are never dropped**: the steps are what bounds the presses, and a
+ * neighbour is also one press on "next".
+ *
+ * **No ellipsis between the numbers.** At this scale almost every neighbouring
+ * pair is non-consecutive, so the marks would outnumber the pages; the gaps in
+ * the numbers themselves say the same thing.
+ */
+export function pageWindow(page: number, pageCount: number, most = Infinity): number[] {
+  if (pageCount < 1) return []
+  // A page outside the listing is one the reader asked for and does not exist;
+  // it stands in for the nearest one that does rather than being offered.
+  const at = Math.min(Math.max(page, 1), pageCount)
+  for (let nearest = NEAREST; nearest > 1; nearest--) {
+    const offered = offeredPages(at, pageCount, nearest)
+    if (offered.length <= most) return offered
+  }
+  return offeredPages(at, pageCount, 1)
+}
+
+function offeredPages(page: number, pageCount: number, nearest: number): number[] {
+  const offered = new Set([1, page, pageCount])
+  const add = (n: number) => {
+    if (n > 1 && n < pageCount) offered.add(n)
+  }
+  for (let near = 1; near <= nearest; near++) {
+    add(page - near)
+    add(page + near)
+  }
+  for (let step = 2 * NEAREST + 1; step < pageCount; step = step * 2 + 1) {
+    add(page - step)
+    add(page + step)
+  }
+  return [...offered].sort((a, b) => a - b)
+}
+
+export function PageLinks({ label, page, pageCount, at, previous, next, most }: {
   label: string
   page: number
   pageCount: number
   at: (page: number) => string
   previous: string
   next: string
+  /** At most this many page numbers, where the room for them is short. */
+  most?: number
 }) {
   if (pageCount <= 1) return null
-  const window = [...new Set([
-    1,
-    ...[page - 2, page - 1, page, page + 1, page + 2].filter((n) => n > 1 && n < pageCount),
-    pageCount,
-  ])].sort((a, b) => a - b)
 
+  // The two steps are drawn as arrows rather than words: they sit in a row of
+  // numbers, and a word among them is read as one more place to go rather than
+  // as the way to the place beside this one. The words stay as their names.
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-sm">
-      {page > 1 && <Link to={at(page - 1)} className={PAGE_STEP}>{previous}</Link>}
-      {window.map((number, index) => (
-        <span key={number} className="flex items-center gap-1">
-          {index > 0 && (window[index - 1] ?? 0) < number - 1 && (
-            <span className="text-ink-muted" aria-hidden="true">…</span>
-          )}
-          {/*
-            A page number is a two-character target. Without a box around it the
-            thing to press is the glyph itself, which is a tenth of the area of
-            anything else on the page that can be pressed.
-          */}
-          {number === page
-            ? (
-                <span className={`${PAGE_STEP} font-semibold`} aria-current="page">
-                  {number}
-                </span>
-              )
-            : <Link to={at(number)} className={PAGE_STEP}>{number}</Link>}
-        </span>
+      {page > 1 && (
+        <Link to={at(page - 1)} aria-label={previous} title={previous} className={PAGE_STEP}>
+          <Icon name="chevron-left" />
+        </Link>
+      )}
+      {pageWindow(page, pageCount, most).map((number) => (
+        number === page
+          ? (
+              <span key={number} className={PAGE_HERE} aria-current="page">
+                {number}
+              </span>
+            )
+          : <Link key={number} to={at(number)} className={PAGE_STEP}>{number}</Link>
       ))}
-      {page < pageCount && <Link to={at(page + 1)} className={PAGE_STEP}>{next}</Link>}
+      {page < pageCount && (
+        <Link to={at(page + 1)} aria-label={next} title={next} className={PAGE_STEP}>
+          <Icon name="chevron-right" />
+        </Link>
+      )}
     </nav>
   )
 }

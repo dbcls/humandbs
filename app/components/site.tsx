@@ -5,6 +5,7 @@ import { BigAction, Stack } from "~/components/base"
 import type { IconName } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import type { NewsSummary } from "~/public/site.server"
 import { href, newsItemPath } from "~/public/urls"
 
 /**
@@ -68,33 +69,66 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
 }
 
 /**
- * The announcements, newest first: when, and what.
+ * The announcements, newest first: when, what, and the first line or two of it.
  *
- * **The front page and the listing show the same list**, and used to draw it
- * twice — the same `<ul>`, the same small grey date — with the two copies
- * already a step apart in how tall a row was.
+ * **The front page and the listing show the same list** in the width each has.
+ * The listing puts the date in a column of its own, so the dates line up and a
+ * reader running down the page reads titles rather than alternating between the
+ * two; the front page's column is 408px, where that would leave the title a
+ * third of a line, so there the date stays above.
  *
- * **No rule between the entries.** The date above each title already opens it,
- * so a line as well draws the same boundary twice; the space is the separation,
- * as it is everywhere else on the site.
+ * **A rule between the entries.** An entry is three lines now that it carries
+ * the opening of the article, and the date alone no longer says where one ends
+ * and the next begins.
+ *
+ * **The opening is clamped rather than cut short by the server.** How many
+ * characters fit is a question about the width and the language, so the server
+ * sends a generous plain-text lead (`leadingText`) and the screen decides how
+ * much of it there is room for.
  */
-export function NewsList({ locale, items }: {
+export function NewsList({ locale, items, dateBeside = false }: {
   locale: Locale
-  items: { id: string, title: string, publishedAt: string | null }[]
+  items: NewsSummary[]
+  /** Whether the date sits in its own column, which needs the room for one. */
+  dateBeside?: boolean
 }) {
   const messages = messagesFor(locale)
+  const date = (item: NewsSummary) => item.publishedAt ?? messages.news.undated
+
   return (
-    <Stack gap="normal" as="ul">
+    // **The listing is closed on both ends, the front page's column is not.**
+    // A listing is the whole of what the page is for, so a rule above the first
+    // entry and below the last says where it starts and stops; the column on
+    // the front page is one block among several in a card, and closing it would
+    // draw a box inside a box.
+    <ul className={dateBeside ? "border-line border-t" : ""}>
       {items.map((item) => (
-        <li key={item.id}>
-          <Stack gap="tight">
-            <span className="text-ink-muted text-xs">
-              {item.publishedAt ?? messages.news.undated}
-            </span>
-            <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
-          </Stack>
+        // The padding is what sets the entries apart from each other. Where the
+        // list is not closed, the first and the last give up the half of it
+        // that faces outwards — otherwise it lands on top of the gap the list
+        // already sits in, and the heading stands 32px clear of its own first
+        // line. Where it is closed, that padding is what keeps the words off
+        // the rules.
+        <li
+          key={item.id}
+          className={`border-line border-b py-4 ${dateBeside ? "" : "first:pt-0 last:border-b-0 last:pb-0"}`}
+        >
+          <div className={dateBeside ? "flex items-start gap-4" : ""}>
+            {dateBeside && (
+              <span className="w-24 shrink-0 text-ink-muted text-sm">{date(item)}</span>
+            )}
+            <div className="min-w-0 flex-1">
+              <Stack gap="tight">
+                {!dateBeside && <span className="text-ink-muted text-xs">{date(item)}</span>}
+                <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
+                {item.excerpt !== "" && (
+                  <p className="line-clamp-2 text-ink-muted text-sm">{item.excerpt}</p>
+                )}
+              </Stack>
+            </div>
+          </div>
         </li>
       ))}
-    </Stack>
+    </ul>
   )
 }

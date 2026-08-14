@@ -37,7 +37,7 @@ import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
 import { unified } from "unified"
-import { visit } from "unist-util-visit"
+import { CONTINUE, EXIT, visit } from "unist-util-visit"
 
 import { MARKED, NOTE_KIND } from "~/components/base"
 import { Icon } from "~/components/icons"
@@ -157,4 +157,37 @@ const processor = unified()
 export function renderMarkdown(source: string): string {
   if (source.trim() === "") return ""
   return String(processor.processSync(source))
+}
+
+/** Where a block ends, so the last word of one does not run into the next. */
+const BLOCK = new Set([
+  "paragraph", "heading", "listItem", "tableCell", "blockquote", "code", "break", "thematicBreak",
+])
+
+const text = unified().use(remarkParse).use(remarkGfm)
+
+/**
+ * The opening of an article as plain words, for a listing that shows a line or
+ * two of what each entry is about.
+ *
+ * **Parsed rather than trimmed with a regular expression.** The bodies came
+ * from Joomla through a conversion, so they carry links, tables and headings;
+ * cutting the string would show `[…](…)` and `|---|` to the reader. Walking the
+ * tree takes the words and nothing else.
+ *
+ * **Cut generously.** The reader sees one or two lines of it, but how many
+ * characters that is depends on the width and the language, so the screen
+ * clamps the lines and this only stops a whole guideline travelling in a
+ * listing's payload.
+ */
+export function leadingText(source: string, most = 200): string {
+  if (source.trim() === "") return ""
+  let out = ""
+  visit(text.parse(source), (node) => {
+    if (node.type === "text" || node.type === "inlineCode") out += node.value
+    else if (BLOCK.has(node.type)) out += " "
+    return out.length > most * 2 ? EXIT : CONTINUE
+  })
+  const said = out.replace(/\s+/g, " ").trim()
+  return said.length > most ? `${said.slice(0, most)}…` : said
 }

@@ -40,7 +40,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      {/*
+        Each box is as tall as what is in it. A grid stretches its cells to the
+        tallest by default, which puts whichever column is shorter inside a
+        panel of empty white — it was the announcements when they were five
+        titles, and the introduction once they carried the opening of each
+        article as well.
+      */}
+      <div className="grid items-start gap-6 lg:grid-cols-[2fr_1fr]">
         <Card under={false}>
           <Stack gap="block">
             {intro !== null && (

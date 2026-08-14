@@ -24,7 +24,7 @@ import { alert, document, documentContent, documentSeries, news, newsContent } f
 import { resolveBilingual } from "~/i18n/locale"
 import type { Locale } from "~/i18n/locale"
 
-import { renderMarkdown } from "./markdown.server"
+import { leadingText, renderMarkdown } from "./markdown.server"
 
 /** The public side never distinguishes "not published" from "no such thing". */
 function notFound(): never {
@@ -70,12 +70,16 @@ export interface NewsSummary {
   id: string
   title: string
   publishedAt: string | null
+  /** The opening of the body as plain words, for the listing to show a line of. */
+  excerpt: string
 }
 
 export interface NewsListView {
   items: NewsSummary[]
   page: number
-  hasNext: boolean
+  pageCount: number
+  /** Every announcement the search matched, not the page being looked at. */
+  total: number
 }
 
 export const NEWS_PER_PAGE = 20
@@ -101,32 +105,46 @@ export async function newsList(
 ): Promise<NewsListView> {
   const db = getDb()
   const wanted = find.trim()
+  const matching = and(
+    eq(newsContent.locale, locale),
+    eq(newsContent.published, true),
+    ...(wanted === ""
+      ? []
+      : [sql`(${newsContent.content} ->> 'title' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\'
+           OR ${newsContent.content} ->> 'body' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\')`]),
+  )
+
+  // Counted rather than answered with "is there one more page": the reader is
+  // told how many announcements there are, and the page links need to know how
+  // far the listing goes to offer the far end of it.
+  const [counted] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(newsContent)
+    .innerJoin(news, eq(news.id, newsContent.newsId))
+    .where(matching)
+  const total = counted?.total ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / perPage))
+  const at = Math.min(Math.max(page, 1), pageCount)
+
   const rows = await db
     .select({ id: news.id, publishedAt: news.publishedAt, content: newsContent.content })
     .from(newsContent)
     .innerJoin(news, eq(news.id, newsContent.newsId))
-    .where(and(
-      eq(newsContent.locale, locale),
-      eq(newsContent.published, true),
-      ...(wanted === ""
-        ? []
-        : [sql`(${newsContent.content} ->> 'title' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\'
-             OR ${newsContent.content} ->> 'body' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\')`]),
-    ))
+    .where(matching)
     .orderBy(desc(news.publishedAt), desc(news.id))
-    // One more than asked for, so "is there another page" needs no count.
-    .limit(perPage + 1)
-    .offset((page - 1) * perPage)
+    .limit(perPage)
+    .offset((at - 1) * perPage)
 
-  const hasNext = rows.length > perPage
   return {
-    items: rows.slice(0, perPage).map((row) => ({
+    items: rows.map((row) => ({
       id: row.id,
       title: row.content.title,
       publishedAt: row.publishedAt,
+      excerpt: leadingText(row.content.body),
     })),
-    page,
-    hasNext,
+    page: at,
+    pageCount,
+    total,
   }
 }
 

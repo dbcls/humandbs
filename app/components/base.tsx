@@ -170,6 +170,11 @@ export function Band({ tone = "brand", className = "", children }: {
  * (`page.tsx`), and the rule is pulled out through that card's padding so that
  * the title starts on the same line as everything under it. Left inside, the
  * rule indents the title away from its own text and marks nothing.
+ *
+ * **What sits beside the title is centred on it, not sat on its baseline.** The
+ * count and the controls are much smaller than the title, so a shared baseline
+ * puts their middles below its middle — measured at 5.7px for the count and
+ * 2.8px for the controls, which reads as the title floating above its own row.
  */
 export function Heading({ level = "h1", title, count, children }: {
   level?: "h1" | "h2"
@@ -179,8 +184,8 @@ export function Heading({ level = "h1", title, count, children }: {
 }) {
   const Tag = level
   return (
-    <div className="-ml-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-      <div className="flex items-baseline gap-3 border-brand border-l-4 pl-5">
+    <div className="-ml-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+      <div className="flex items-center gap-3 border-brand border-l-4 pl-5">
         <Tag className={`font-bold text-brand ${level === "h1" ? "text-3xl" : "text-xl"}`}>
           {title}
         </Tag>

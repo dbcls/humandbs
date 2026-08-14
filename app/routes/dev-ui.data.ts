@@ -13,27 +13,31 @@
  */
 
 import type { FacetPanelView } from "~/public/facets.server"
+import type { NewsSummary } from "~/public/site.server"
 import type { ResearchListRowView } from "~/public/view.server"
 
 /** How many rows the search these came from actually matched. */
 export const TOTAL = 397
 
 /** The three most recent announcements, as the front page lists them. */
-export const NEWS = [
+export const NEWS: NewsSummary[] = [
   {
     id: "019ff4fb-317a-7729-9750-80fbd28eb1d1",
     publishedAt: "2026-06-23",
     title: "北里大学医学部 呼吸器内科学 からの制限公開データ（Type I）を公開しました（hum0556）",
+    excerpt: "北里大学医学部 呼吸器内科学 から提供された制限公開データ（Type I）を公開しました。詳細は研究のページをご覧ください。",
   },
   {
     id: "019ff4fb-317a-7fa1-bab8-8d05aa631723",
     publishedAt: "2026-06-16",
     title: "制限公開データ（Type I）1件が追加されました（hum0427.v2）",
+    excerpt: "hum0427 に制限公開データ（Type I）が 1 件追加されました。",
   },
   {
     id: "019ff4fb-317b-701f-86f1-e751251e4e4c",
     publishedAt: "2026-06-10",
     title: "大阪大学大学院医学系研究科 がんゲノム情報学 からの制限公開データ（Type I）を公開しました（hum0543）",
+    excerpt: "",
   },
 ]
 
