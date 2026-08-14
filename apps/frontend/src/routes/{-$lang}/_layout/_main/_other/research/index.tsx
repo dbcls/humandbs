@@ -369,7 +369,9 @@ function PaginationWrapper() {
 
   if (!researchesData || (isFetching && !isPlaceholderData)) return <PaginationLoadingSkeleton />;
 
-  return <Pagination className="pr-5" pagination={researchesData.meta.pagination} />;
+  if (researchesData.meta.pagination.totalPages === 0) return null;
+
+  return <Pagination pagination={researchesData.meta.pagination} />;
 }
 
 const columnHelper = createColumnHelper<ResearchSummary>();

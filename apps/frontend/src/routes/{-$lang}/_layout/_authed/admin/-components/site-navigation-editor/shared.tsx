@@ -1,24 +1,37 @@
-import { FileText, Link2 } from "lucide-react";
+import { Check, FileText, Link2, Plus, Search, X } from "lucide-react";
 
 import type { KeyboardEventHandler, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/i18n";
 import type { NavigationItem } from "@/config/siteNavigation";
 import { cn } from "@/lib/utils";
 import type { DocumentsListItemResponse } from "@/repositories/document";
+import { getEffectiveDocumentNavigationLabel } from "@/utils/documentNavigationLabel";
 
 export function getDocumentLabel(doc: DocumentsListItemResponse, lang?: Locale): string {
+  const labelFor = (translation: DocumentsListItemResponse["translations"][number]) =>
+    getEffectiveDocumentNavigationLabel({
+      title:
+        translation.status === "published" && "editableTitle" in translation
+          ? translation.editableTitle
+          : translation.title,
+      shortTitle:
+        translation.status === "published" && "editableShortTitle" in translation
+          ? translation.editableShortTitle
+          : translation.shortTitle,
+    });
+
   if (lang) {
-    const currentTranslation = doc.translations.find((t) => t.lang === lang);
-    if (currentTranslation?.title) return currentTranslation.title;
+    const label = doc.translations.find((t) => t.lang === lang);
+    const resolved = label && labelFor(label);
+    if (resolved) return resolved;
   }
 
-  for (const t of doc.translations) {
-    if (t.status === "published" && t.title) return t.title;
-  }
-  for (const t of doc.translations) {
-    if (t.status === "draft" && t.title) return t.title;
+  for (const translation of doc.translations) {
+    const resolved = labelFor(translation);
+    if (resolved) return resolved;
   }
 
   return doc.contentId;
@@ -53,6 +66,123 @@ export function getEditorItemPath(
   }
 
   return item.url;
+}
+
+export function matchesUnassignedPoolFilter(
+  filter: string,
+  values: Array<string | null | undefined>,
+): boolean {
+  const query = filter.trim().toLowerCase();
+  return !query || values.some((value) => value?.toLowerCase().includes(query));
+}
+
+export function UnassignedPoolFilter({
+  value,
+  onChange,
+  placeholder,
+  clearLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  clearLabel: string;
+}) {
+  return (
+    <div className="relative mb-2 shrink-0">
+      <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-gray-400" />
+      <EditorTextInput
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="pr-7 pl-7"
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          aria-label={clearLabel}
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function AddNavigationGroup({
+  onAdd,
+  autoFocus = false,
+}: {
+  onAdd: (label: { en: string; ja: string }) => void;
+  autoFocus?: boolean;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [labelEn, setLabelEn] = useState("");
+  const [labelJa, setLabelJa] = useState("");
+
+  function reset() {
+    setLabelEn("");
+    setLabelJa("");
+    setShowForm(false);
+  }
+
+  function submit() {
+    const en = labelEn.trim();
+    const ja = labelJa.trim();
+    if (!en) return;
+    onAdd({ en, ja: ja || en });
+    reset();
+  }
+
+  return showForm ? (
+    <div className="w-80 rounded-md border border-black border-dashed p-3 shadow-sm">
+      <p className="mb-2 font-medium text-gray-600 text-xs">New group</p>
+      <div className="flex flex-col gap-2">
+        <LabeledInputRow
+          label="EN"
+          value={labelEn}
+          onChange={setLabelEn}
+          placeholder="English name"
+          autoFocus={autoFocus}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submit();
+            if (event.key === "Escape") reset();
+          }}
+        />
+        <LabeledInputRow
+          label="JA"
+          value={labelJa}
+          onChange={setLabelJa}
+          placeholder="Japanese name"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submit();
+            if (event.key === "Escape") reset();
+          }}
+        />
+        <div className="flex items-center justify-end gap-1 pt-1">
+          <Button type="button" onClick={submit} disabled={!labelEn.trim()}>
+            <Check className="mr-1 size-3" />
+            Add
+          </Button>
+          <Button type="button" variant="outline" onClick={reset}>
+            <X className="mr-1 size-3" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <Button
+      type="button"
+      variant="dashed"
+      className="w-80 justify-center"
+      onClick={() => setShowForm(true)}
+    >
+      <Plus className="mr-1 size-3" />
+      Add group
+    </Button>
+  );
 }
 
 export function NavigationItemLeadingIcon({ item }: { item: NavigationItem }) {

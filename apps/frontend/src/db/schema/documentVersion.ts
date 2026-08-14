@@ -29,6 +29,7 @@ export const documentVersion = pgTable(
     status: documentVersionStatus("status").notNull().default("draft"),
     locale: text("locale").notNull().$type<Locale>(),
     title: text("name"),
+    shortTitle: text("short_title"),
     content: text("content"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     authorId: text("author_id").references(() => user.id),

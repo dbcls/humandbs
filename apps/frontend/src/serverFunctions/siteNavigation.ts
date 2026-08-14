@@ -16,6 +16,7 @@ import {
   SiteNavigationConfigConflictError,
   siteNavigationRepository,
 } from "@/repositories/siteNavigation";
+import { getEffectiveDocumentNavigationLabel } from "@/utils/documentNavigationLabel";
 
 async function buildResolvers(lang: Locale): Promise<{
   labelResolver: DocumentLabelResolver;
@@ -27,6 +28,7 @@ async function buildResolvers(lang: Locale): Promise<{
       .selectDistinctOn([documentVersion.documentId], {
         documentId: documentVersion.documentId,
         title: documentVersion.title,
+        shortTitle: documentVersion.shortTitle,
       })
       .from(documentVersion)
       .where(
@@ -41,13 +43,13 @@ async function buildResolvers(lang: Locale): Promise<{
   // documentId → contentId (path)
   const pathMap = new Map(docRows.map((d) => [d.id, d.contentId]));
 
-  // contentId → published title
+  // contentId → active published navigation label
   const titleMap = new Map(
     versionRows
-      .filter((r) => r.title !== null)
       .map((r) => {
         const contentId = pathMap.get(r.documentId);
-        return contentId ? ([contentId, r.title as string] as const) : null;
+        const label = getEffectiveDocumentNavigationLabel(r);
+        return contentId && label ? ([contentId, label] as const) : null;
       })
       .filter((r): r is [string, string] => r !== null),
   );

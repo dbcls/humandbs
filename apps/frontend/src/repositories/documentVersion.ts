@@ -6,7 +6,7 @@ import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import type { DB } from "@/db/database";
 import type { DocVersionStatus } from "@/db/schema";
-import { DOCUMENT_VERSION_STATUS, documentVersion } from "@/db/schema";
+import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import type { DocVersionResponse } from "@/serverFunctions/documentVersion";
 
@@ -17,6 +17,7 @@ interface BaseDoc {
   contentId: string;
   versionNumber: number;
   title: string | null;
+  shortTitle?: string | null;
   locale: Locale;
 }
 
@@ -73,7 +74,7 @@ interface DocumentVersionRepo {
     contentId: string,
     versionNumber: number,
     lang: Locale,
-    data: { title?: string; content?: string },
+    data: { title?: string; shortTitle?: string; content?: string },
     userId?: string,
   ) => Promise<{
     createdAt: Date;
@@ -101,6 +102,20 @@ interface DocumentVersionRepo {
   ) => Promise<{ versionNumber: number }>;
 }
 
+export class DocumentVersionDeletionError extends Error {
+  constructor() {
+    super("Only the current latest version can be deleted when an earlier version exists.");
+    this.name = "DocumentVersionDeletionError";
+  }
+}
+
+export class DocumentVersionNotFoundError extends Error {
+  constructor() {
+    super("Document version no longer exists.");
+    this.name = "DocumentVersionNotFoundError";
+  }
+}
+
 async function resolveDocumentId(database: DB, contentId: string): Promise<string> {
   const doc = await database.query.document.findFirst({
     where: (table, { eq }) => eq(table.contentId, contentId),
@@ -124,6 +139,17 @@ async function resolveExistingUserId(
   return existingUser?.id;
 }
 
+/**
+ * Serialize version-changing operations for one document. This prevents a delayed
+ * autosave from recreating a version after a delete has committed, and prevents a
+ * newly-created version from racing the latest-version eligibility check.
+ */
+async function lockDocumentVersionOperations(database: DB, documentId: string): Promise<void> {
+  await database.execute(
+    sql`SELECT ${document.id} FROM ${document} WHERE ${document.id} = ${documentId} FOR UPDATE`,
+  );
+}
+
 export function createDocumentVersionRepository(database: DB): DocumentVersionRepo {
   return {
     getPublishedListForLocale: async (contentId, lang) => {
@@ -137,6 +163,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           ),
         columns: {
           title: true,
+          shortTitle: true,
           versionNumber: true,
           documentId: true,
           locale: true,
@@ -159,6 +186,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           versionNumber: true,
@@ -189,6 +217,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           versionNumber: true,
@@ -217,6 +246,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           lang: documentVersion.locale,
           status: documentVersion.status,
           title: documentVersion.title,
+          shortTitle: documentVersion.shortTitle,
           hasUnpublishedChanges: sql<boolean>`${and(
             eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             exists(
@@ -231,6 +261,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
                     eq(draft.status, DOCUMENT_VERSION_STATUS.DRAFT),
                     or(
                       sql`${draft.title} IS DISTINCT FROM ${documentVersion.title}`,
+                      sql`${draft.shortTitle} IS DISTINCT FROM ${documentVersion.shortTitle}`,
                       sql`${draft.content} IS DISTINCT FROM ${documentVersion.content}`,
                     ),
                   ),
@@ -251,6 +282,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         lang: row.lang,
         status: row.status,
         title: row.title,
+        shortTitle: row.shortTitle,
         hasUnpublishedChanges: row.hasUnpublishedChanges,
       }));
 
@@ -278,6 +310,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
         },
         columns: {
           title: true,
+          shortTitle: true,
           content: true,
           documentId: true,
           status: true,
@@ -304,54 +337,71 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
       return grouped;
     },
 
-    saveDraft: async (contentId, versionNumber, lang, data, userId) => {
-      const documentId = await resolveDocumentId(database, contentId);
-      const existingUserId = await resolveExistingUserId(database, userId);
-      const conflictUpdateColumns = existingUserId
-        ? (["content", "title", "updatedAt", "updatedBy"] as const)
-        : (["content", "title", "updatedAt"] as const);
-      const [result] = await database
-        .insert(documentVersion)
-        .values({
-          documentId,
-          versionNumber,
-          status: DOCUMENT_VERSION_STATUS.DRAFT,
-          locale: lang,
-          ...(existingUserId ? { authorId: existingUserId, updatedBy: existingUserId } : {}),
-          ...data,
-        })
-        .onConflictDoUpdate({
-          target: [
-            documentVersion.documentId,
-            documentVersion.versionNumber,
-            documentVersion.locale,
-            documentVersion.status,
-          ],
-          set: buildConflictUpdateColumns(documentVersion, [...conflictUpdateColumns]),
-        })
-        .returning({
-          createdAt: documentVersion.createdAt,
-          updatedAt: documentVersion.updatedAt,
-          authorId: documentVersion.authorId,
-        });
+    saveDraft: (contentId, versionNumber, lang, data, userId) =>
+      database.transaction(async (tx) => {
+        const transactionDb = tx as unknown as DB;
+        const documentId = await resolveDocumentId(transactionDb, contentId);
+        await lockDocumentVersionOperations(transactionDb, documentId);
 
-      let author: { name: string | null; email: string } | null = null;
-      if (result.authorId) {
-        const authorRow = await database.query.user.findFirst({
-          where: (table, { eq }) => eq(table.id, result.authorId!),
-          columns: { name: true, email: true },
+        const versionExists = await tx.query.documentVersion.findFirst({
+          where: (table, { and, eq }) =>
+            and(eq(table.documentId, documentId), eq(table.versionNumber, versionNumber)),
+          columns: { documentId: true },
         });
-        if (authorRow?.email) {
-          author = { name: authorRow.name ?? null, email: authorRow.email };
+        if (!versionExists) throw new DocumentVersionNotFoundError();
+
+        const existingUserId = await resolveExistingUserId(transactionDb, userId);
+        const conflictUpdateColumns: Array<
+          "content" | "title" | "shortTitle" | "updatedAt" | "updatedBy"
+        > = ["updatedAt"];
+        if (data.title !== undefined) conflictUpdateColumns.push("title");
+        if (data.shortTitle !== undefined) conflictUpdateColumns.push("shortTitle");
+        if (data.content !== undefined) conflictUpdateColumns.push("content");
+        if (existingUserId) conflictUpdateColumns.push("updatedBy");
+        const [result] = await tx
+          .insert(documentVersion)
+          .values({
+            documentId,
+            versionNumber,
+            status: DOCUMENT_VERSION_STATUS.DRAFT,
+            locale: lang,
+            ...(existingUserId ? { authorId: existingUserId, updatedBy: existingUserId } : {}),
+            ...data,
+          })
+          .onConflictDoUpdate({
+            target: [
+              documentVersion.documentId,
+              documentVersion.versionNumber,
+              documentVersion.locale,
+              documentVersion.status,
+            ],
+            set: buildConflictUpdateColumns(documentVersion, conflictUpdateColumns),
+          })
+          .returning({
+            createdAt: documentVersion.createdAt,
+            updatedAt: documentVersion.updatedAt,
+            authorId: documentVersion.authorId,
+          });
+
+        let author: { name: string | null; email: string } | null = null;
+        const authorId = result.authorId;
+        if (authorId) {
+          const authorRow = await tx.query.user.findFirst({
+            where: (table, { eq }) => eq(table.id, authorId),
+            columns: { name: true, email: true },
+          });
+          if (authorRow?.email) {
+            author = { name: authorRow.name ?? null, email: authorRow.email };
+          }
         }
-      }
 
-      return { createdAt: result.createdAt, updatedAt: result.updatedAt, author };
-    },
+        return { createdAt: result.createdAt, updatedAt: result.updatedAt, author };
+      }),
 
     publish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
         const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
+        await lockDocumentVersionOperations(tx as unknown as DB, documentId);
         const draft = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -381,6 +431,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             ],
             set: {
               title: draft.title,
+              shortTitle: draft.shortTitle,
               content: draft.content,
               updatedAt: now,
               publishedAt: now,
@@ -391,6 +442,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
     resetDraft: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
         const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
+        await lockDocumentVersionOperations(tx as unknown as DB, documentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -406,6 +458,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           .update(documentVersion)
           .set({
             title: published.title,
+            shortTitle: published.shortTitle,
             content: published.content,
             updatedAt: new Date(),
           })
@@ -422,6 +475,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
     unpublish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
         const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
+        await lockDocumentVersionOperations(tx as unknown as DB, documentId);
         const published = await tx.query.documentVersion.findFirst({
           where: (table, { and, eq }) =>
             and(
@@ -455,22 +509,43 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           );
       }),
 
-    delete: async (contentId, versionNumber) => {
-      const documentId = await resolveDocumentId(database, contentId);
+    delete: (contentId, versionNumber) =>
+      database.transaction(async (tx) => {
+        const transactionDb = tx as unknown as DB;
+        const documentId = await resolveDocumentId(transactionDb, contentId);
+        await lockDocumentVersionOperations(transactionDb, documentId);
 
-      return database
-        .delete(documentVersion)
-        .where(
-          and(
-            eq(documentVersion.documentId, documentId),
-            eq(documentVersion.versionNumber, versionNumber),
-          ),
-        );
-    },
+        const latestVersion = await tx.query.documentVersion.findFirst({
+          where: (table, { eq }) => eq(table.documentId, documentId),
+          orderBy: (table, { desc }) => [desc(table.versionNumber)],
+          columns: { versionNumber: true },
+        });
+
+        if (!latestVersion || latestVersion.versionNumber !== versionNumber) {
+          throw new DocumentVersionDeletionError();
+        }
+
+        const earlierVersion = await tx.query.documentVersion.findFirst({
+          where: (table, { and, eq, lt }) =>
+            and(eq(table.documentId, documentId), lt(table.versionNumber, versionNumber)),
+          columns: { versionNumber: true },
+        });
+        if (!earlierVersion) throw new DocumentVersionDeletionError();
+
+        return tx
+          .delete(documentVersion)
+          .where(
+            and(
+              eq(documentVersion.documentId, documentId),
+              eq(documentVersion.versionNumber, versionNumber),
+            ),
+          );
+      }),
 
     createVersionFromPublished: (contentId, authorId) =>
       database.transaction(async (tx) => {
         const documentId = await resolveDocumentId(tx as unknown as DB, contentId);
+        await lockDocumentVersionOperations(tx as unknown as DB, documentId);
 
         const latestVersion = await tx.query.documentVersion.findFirst({
           where: (table) => eq(table.documentId, documentId),
@@ -489,6 +564,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
           columns: {
             locale: true,
             title: true,
+            shortTitle: true,
             content: true,
             versionNumber: true,
           },
@@ -497,13 +573,19 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
 
         const latestPublishedByLocale = new Map<
           string,
-          { locale: Locale; title: string | null; content: string | null }
+          {
+            locale: Locale;
+            title: string | null;
+            shortTitle: string | null;
+            content: string | null;
+          }
         >();
         for (const pv of allPublishedVersions) {
           if (!latestPublishedByLocale.has(pv.locale)) {
             latestPublishedByLocale.set(pv.locale, {
               locale: pv.locale,
               title: pv.title,
+              shortTitle: pv.shortTitle,
               content: pv.content,
             });
           }
@@ -518,6 +600,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
               status: DOCUMENT_VERSION_STATUS.DRAFT,
               locale: pv.locale,
               title: pv.title,
+              shortTitle: pv.shortTitle,
               content: pv.content,
               authorId,
             })),
@@ -529,6 +612,7 @@ export function createDocumentVersionRepository(database: DB): DocumentVersionRe
             status: DOCUMENT_VERSION_STATUS.DRAFT,
             locale: i18n.defaultLocale as Locale,
             title: null,
+            shortTitle: null,
             content: null,
             authorId,
           });
@@ -578,12 +662,14 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
         author: verStatusLang.author,
         [verStatusLang.status]: {
           title: verStatusLang.title ?? "",
+          shortTitle: verStatusLang.shortTitle ?? "",
           content: verStatusLang.content ?? "",
         },
       };
     } else {
       translation[verStatusLang.status] = {
         title: verStatusLang.title ?? "",
+        shortTitle: verStatusLang.shortTitle ?? "",
         content: verStatusLang.content ?? "",
       };
       // keep the earliest createdAt across statuses for this locale
@@ -603,6 +689,7 @@ export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVers
       translation.draft = {
         content: translation.published?.content ?? "",
         title: translation.published?.title ?? "",
+        shortTitle: translation.published?.shortTitle ?? "",
       };
     }
 

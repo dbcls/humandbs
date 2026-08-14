@@ -25,7 +25,7 @@ export const buttonVariants = cva(
         action:
           "bg-linear-to-r from-secondary to-secondary-light text-white transition-[filter] hover:saturate-150 active:saturate-100",
         outline: "border border-tetriary bg-transparent enabled:hover:bg-white/50",
-        tableAction: "bg-secondary-light rounded-full text-white hover:bg-secondary-light/90",
+        tableAction: "rounded-full bg-secondary-light text-white hover:bg-secondary-light/90",
         captionAction:
           "rounded-full border border-secondary-light bg-white text-secondary-light transition-colors hover:bg-hover hover:text-secondary",
         plain: "bg-none",
@@ -34,6 +34,7 @@ export const buttonVariants = cva(
         dashed: "w-full rounded border border-dashed text-gray-500 text-sm hover:bg-gray-50",
         toggle: "w-full whitespace-normal rounded-md bg-none text-left enabled:hover:bg-hover",
         ghost: "bg-none",
+        danger: "border border-danger text-danger transition-colors enabled:hover:bg-red-50",
       },
     },
     defaultVariants: {

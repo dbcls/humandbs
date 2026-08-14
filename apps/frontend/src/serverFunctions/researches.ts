@@ -21,7 +21,6 @@ import {
 } from "@humandbs/backend/types";
 
 import { localeSchema } from "@/config/i18n";
-import { messages } from "@/config/messages";
 import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { auditMutation } from "@/observability/server";
@@ -415,11 +414,9 @@ export const $getResearch = createServerFn()
         accessToken: accessToken ?? undefined,
       });
 
-      // Add inline titles for `Aims`, `Methods` and `Targets`
-      res.data.summary = { ...res.data.summary, ...addTitlesToSummary(res.data.summary) };
-
       // Render aims/methods/targets + releaseNote `text` into a frontend-only
-      // `renderedHtml` projection. Legacy `rawHtml` is left untouched.
+      // `renderedHtml` projection. This also adds localized inline overview
+      // titles, shared with the admin preview. Legacy `rawHtml` is left untouched.
       return addResearchRenderedHtml(res);
     } catch (error) {
       // A missing research should render the NotFound component rather than
@@ -429,41 +426,6 @@ export const $getResearch = createServerFn()
       throwSerializableApiError(error);
     }
   });
-
-function addTitlesToSummary(summary: ResearchDetailResponse["data"]["summary"]) {
-  const { aims, methods, targets } = summary;
-
-  return {
-    aims: {
-      ...aims,
-      en: aims.en
-        ? { ...aims.en, text: `**${messages.en.Research.aims}:** ${aims.en.text}` }
-        : null,
-      ja: aims.ja
-        ? { ...aims.ja, text: `**${messages.ja.Research.aims}:** ${aims.ja.text}` }
-        : null,
-    },
-
-    methods: {
-      ...methods,
-      en: methods.en
-        ? { ...methods.en, text: `**${messages.en.Research.methods}:** ${methods.en.text}` }
-        : null,
-      ja: methods.ja
-        ? { ...methods.ja, text: `**${messages.ja.Research.methods}:** ${methods.ja.text}` }
-        : null,
-    },
-    targets: {
-      ...targets,
-      en: targets.en
-        ? { ...targets.en, text: `**${messages.en.Research.targets}:** ${targets.en.text}` }
-        : null,
-      ja: targets.ja
-        ? { ...targets.ja, text: `**${messages.ja.Research.targets}:** ${targets.ja.text}` }
-        : null,
-    },
-  };
-}
 
 export function getResearchQueryOptions(query: z.infer<typeof ResearchQuerySchema>) {
   return queryOptions({

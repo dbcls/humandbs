@@ -119,6 +119,8 @@ const documentVersionArchiveRowSchema = z.object({
   status: z.enum(["draft", "published"]),
   locale: localeSchema,
   title: z.string().nullable(),
+  // Optional for backward compatibility with archives created before short titles.
+  shortTitle: z.string().nullable().optional(),
   content: z.string().nullable(),
   authorId: z.string().nullable(),
   createdAt: timestampStringSchema,
@@ -986,6 +988,7 @@ export function createCmsDataTransferArchiveRestorer({
                 status: version.status,
                 locale: version.locale,
                 title: version.title,
+                shortTitle: version.shortTitle ?? null,
                 content: version.content,
                 authorId: mapRestoredUserId(effectiveUserId, version.authorId),
                 createdAt: new Date(version.createdAt),

@@ -15,6 +15,7 @@ import {
 import type { Locale } from "@/config/i18n";
 import { cn } from "@/lib/utils";
 import type { DocumentListItemTranslation } from "@/repositories/document";
+import { formatDocumentListLabel } from "@/utils/documentNavigationLabel";
 
 import { UnpublishedDot } from "./UnpublishedDot";
 
@@ -67,7 +68,9 @@ export function AdminListItem({
                       translation.status === "draft",
                   })}
                 >
-                  {translation.title}
+                  {"shortTitle" in translation
+                    ? formatDocumentListLabel(translation)
+                    : translation.title}
                 </span>
                 {translation.status === "published" &&
                 "hasUnpublishedChanges" in translation &&
