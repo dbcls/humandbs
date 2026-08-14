@@ -55,10 +55,6 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
     });
   };
 
-  const handleSliderCommit = () => {
-    handlePageNavigate(sliderValue);
-  };
-
   const percentage =
     pagination.totalPages > 1 ? ((sliderValue - 1) / (pagination.totalPages - 1)) * 100 : 0;
 
@@ -116,8 +112,10 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
             max={Math.max(1, pagination.totalPages)}
             value={sliderValue}
             onChange={(e) => setSliderValue(Number(e.target.value))}
-            onMouseUp={handleSliderCommit}
-            onTouchEnd={handleSliderCommit}
+            onMouseUp={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onPointerUp={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onPointerCancel={(e) => handlePageNavigate(Number(e.currentTarget.value))}
+            onBlur={(e) => handlePageNavigate(Number(e.currentTarget.value))}
             onKeyUp={(e) => {
               if (
                 [
@@ -133,7 +131,7 @@ export function Pagination({ pagination, onItemsPerPageChange, className }: Pagi
                   " ",
                 ].includes(e.key)
               ) {
-                handleSliderCommit();
+                handlePageNavigate(Number(e.currentTarget.value));
               }
             }}
             className="absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0 focus:outline-none"
