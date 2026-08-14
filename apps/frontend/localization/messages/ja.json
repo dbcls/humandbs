@@ -476,6 +476,8 @@
       "saved": "ナビゲーションを保存しました。",
       "reset": "ナビゲーションをデフォルトにリセットしました。",
       "no-documents": "ドキュメントなし",
+      "filter-items": "アイテムを絞り込む",
+      "clear-filter": "フィルターをクリア",
       "no-items": "アイテムなし",
       "no-linked-item": "リンクされたアイテムなし",
       "no-submenu-items": "サブメニュー項目なし",

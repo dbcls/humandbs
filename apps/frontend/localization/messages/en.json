@@ -476,6 +476,8 @@
       "saved": "Navigation saved.",
       "reset": "Navigation reset to default.",
       "no-documents": "No documents",
+      "filter-items": "Filter items",
+      "clear-filter": "Clear filter",
       "no-items": "No items",
       "no-linked-item": "No linked item",
       "no-submenu-items": "No submenu items",

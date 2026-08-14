@@ -13,9 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/config/i18n";
 import type { NavigationItem } from "@/config/siteNavigation";
+import { cn } from "@/lib/utils";
 import type { DocumentsListItemResponse } from "@/repositories/document";
 
 import {
+  AddNavigationGroup,
   CardWithPath,
   EditableLinkLabel,
   EditorTextInput,
@@ -24,7 +26,9 @@ import {
   getEditorItemLabel,
   getEditorItemPath,
   LabeledInputRow,
+  matchesUnassignedPoolFilter,
   NavigationItemLeadingIcon,
+  UnassignedPoolFilter,
 } from "./shared";
 import type { FooterGroupWithItems, ItemsRecord } from "./types";
 
@@ -89,10 +93,6 @@ export function FooterEditor({
   const [groups, setGroups] = useState<FooterGroupWithItems[]>(groupsProp);
   const isDraggingRef = useRef(false);
   const snapshotRef = useRef<FooterGroupWithItems[]>(groupsProp);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newLabelEn, setNewLabelEn] = useState("");
-  const [newLabelJa, setNewLabelJa] = useState("");
-
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const [draggingDocContentId, setDraggingDocContentId] = useState<string | null>(null);
@@ -166,22 +166,6 @@ export function FooterEditor({
         };
       })
       .filter(Boolean) as FooterGroupWithItems[];
-  }
-
-  function handleAddGroup() {
-    const en = newLabelEn.trim();
-    const ja = newLabelJa.trim();
-    if (!en) return;
-    onAddGroup({ en, ja: ja || en });
-    setNewLabelEn("");
-    setNewLabelJa("");
-    setShowAddForm(false);
-  }
-
-  function cancelAddGroup() {
-    setNewLabelEn("");
-    setNewLabelJa("");
-    setShowAddForm(false);
   }
 
   return (
@@ -291,7 +275,7 @@ export function FooterEditor({
           setGroups(groups);
         }}
       >
-        <div className="flex gap-4">
+        <div className="grid flex-1 grid-cols-[30rem_1fr] grid-rows-[max-content] gap-4">
           <FooterUnassignedPool
             documents={documents}
             lang={lang}
@@ -324,6 +308,7 @@ export function FooterEditor({
                   lang={lang}
                 />
               ))}
+              <AddNavigationGroup onAdd={onAddGroup} />
             </div>
           </div>
         </div>
@@ -364,67 +349,6 @@ export function FooterEditor({
           ) : null}
         </DragOverlay>
       </DragDropProvider>
-
-      {showAddForm ? (
-        <div className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="mb-2 font-medium text-gray-600 text-xs">New group</p>
-          <div className="flex flex-col gap-2">
-            <LabeledInputRow
-              label="EN"
-              value={newLabelEn}
-              onChange={setNewLabelEn}
-              placeholder="English name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddGroup();
-                if (e.key === "Escape") cancelAddGroup();
-              }}
-            />
-            <LabeledInputRow
-              label="JA"
-              value={newLabelJa}
-              onChange={setNewLabelJa}
-              placeholder="Japanese name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddGroup();
-                if (e.key === "Escape") cancelAddGroup();
-              }}
-            />
-            <div className="flex items-center gap-1 pt-1">
-              <Button
-                type="button"
-                size="slim"
-                onClick={handleAddGroup}
-                disabled={!newLabelEn.trim()}
-                className="h-7 text-xs"
-              >
-                <Check className="mr-1 size-3" />
-                Add
-              </Button>
-              <Button
-                type="button"
-                size="slim"
-                variant="outline"
-                onClick={cancelAddGroup}
-                className="h-7 text-xs"
-              >
-                <X className="mr-1 size-3" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="slim"
-          className="w-fit text-xs"
-          onClick={() => setShowAddForm(true)}
-        >
-          <Plus className="mr-1 size-3" />
-          Add group
-        </Button>
-      )}
     </div>
   );
 }
@@ -455,6 +379,7 @@ function FooterUnassignedPool({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkEn, setLinkEn] = useState("");
   const [linkJa, setLinkJa] = useState("");
+  const [filter, setFilter] = useState("");
   const { ref: poolDropRef, isDropTarget: isPoolDropTarget } = useDroppable({
     id: FOOTER_UNASSIGNED_POOL_ID + "-droppable",
     collisionPriority: CollisionPriority.Low,
@@ -489,57 +414,65 @@ function FooterUnassignedPool({
     setShowAddLink(false);
   }
 
+  const navDocuments = documents.filter(
+    (doc) =>
+      !doc.hideFromNav &&
+      matchesUnassignedPoolFilter(filter, [getDocumentLabel(doc, lang), doc.contentId]),
+  );
+  const filteredLinkItems = unassignedLinkItems.filter((item) =>
+    matchesUnassignedPoolFilter(filter, [item.label.en, item.label.ja, item.url, item.id]),
+  );
+
   return (
     <div
       ref={poolDropRef}
-      className={[
-        "flex h-fit min-h-[300px] w-72 shrink-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors lg:w-80",
-        isPoolDropTarget ? "border-blue-300 bg-blue-50" : "",
-      ].join(" ")}
+      className={cn(
+        "col-1 flex h-0 min-h-full flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors",
+        { "border-blue-300 bg-blue-50": isPoolDropTarget },
+      )}
     >
       <p className="mb-2 shrink-0 font-semibold text-gray-500 text-xs uppercase">
         Available documents
       </p>
+      <UnassignedPoolFilter
+        value={filter}
+        onChange={setFilter}
+        placeholder={tNav("filter-items")}
+        clearLabel={tNav("clear-filter")}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
-          {(() => {
-            const navDocuments = documents.filter((doc) => !doc.hideFromNav);
+          {navDocuments.map((doc) => {
+            const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
+            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
             return (
-              <>
-                {navDocuments.map((doc) => {
-                  const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
-                  const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
-                  const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
-                  return (
-                    <FooterPoolDocCard
-                      key={doc.contentId}
-                      doc={doc}
-                      lang={lang}
-                      isAssigned={isAssigned}
-                      groupName={groupName}
-                      documentId={doc.id}
-                    />
-                  );
-                })}
-                {navDocuments.length === 0 && (
-                  <li className="py-2 text-foreground-light text-xs">{tNav("no-documents")}</li>
-                )}
-              </>
+              <FooterPoolDocCard
+                key={doc.contentId}
+                doc={doc}
+                lang={lang}
+                isAssigned={isAssigned}
+                groupName={groupName}
+                documentId={doc.id}
+              />
             );
-          })()}
+          })}
+          {navDocuments.length === 0 && (
+            <li className="py-2 text-foreground-light text-xs">{tNav("no-documents")}</li>
+          )}
         </ul>
 
-        {unassignedLinkItems.length > 0 && (
+        {filteredLinkItems.length > 0 && (
           <>
             <p className="mt-3 mb-2 font-semibold text-gray-500 text-xs uppercase">
               Unassigned links
             </p>
             <ul className="flex flex-col gap-1">
-              {unassignedLinkItems.map((item, idx) => (
+              {filteredLinkItems.map((item) => (
                 <FooterPoolItemCard
                   key={item.id}
                   item={item}
-                  index={idx}
+                  index={unassignedLinkItems.indexOf(item)}
                   lang={lang}
                   documentTitleByContentId={documentTitleByContentId}
                   onDelete={() => onDeleteLinkItem(item.id)}
