@@ -1,0 +1,12 @@
+<task_instruction>
+You are given a sentence list from an English research abstract.
+Translate each sentence into natural Japanese while preserving the meaning precisely.
+Return only a plain list of translated sentences in the same order as the input.
+Do not output any IDs or metadata.
+Do not merge, split, omit, or reorder sentences.
+Return only JSON that matches the provided schema.
+</task_instruction>
+
+<source_sentences>
+{source_sentences}
+</source_sentences>

@@ -28,6 +28,7 @@ import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from
 import { Route as Char123LangChar125LayoutAuthedAdminDataTransferRouteImport } from './routes/{-$lang}/_layout/_authed/admin/data-transfer'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
 import { Route as Char123LangChar125LayoutAuthedAdminAlertsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/alerts'
+import { Route as Char123LangChar125LayoutAuthedAdminAiAssistantRouteImport } from './routes/{-$lang}/_layout/_authed/admin/ai-assistant'
 import { Route as Char123LangChar125LayoutMainOtherResearchRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/route'
 import { Route as Char123LangChar125LayoutMainOtherNewsRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/route'
 import { Route as Char123LangChar125LayoutMainOtherDatasetRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/route'
@@ -151,6 +152,12 @@ const Char123LangChar125LayoutAuthedAdminAlertsRoute =
     path: '/alerts',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
+const Char123LangChar125LayoutAuthedAdminAiAssistantRoute =
+  Char123LangChar125LayoutAuthedAdminAiAssistantRouteImport.update({
+    id: '/ai-assistant',
+    path: '/ai-assistant',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
 const Char123LangChar125LayoutMainOtherResearchRouteRoute =
   Char123LangChar125LayoutMainOtherResearchRouteRouteImport.update({
     id: '/research',
@@ -264,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/dataset': typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren
   '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   '/{-$lang}/research': typeof Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren
+  '/{-$lang}/admin/ai-assistant': typeof Char123LangChar125LayoutAuthedAdminAiAssistantRoute
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
@@ -294,6 +302,7 @@ export interface FileRoutesByTo {
   '/auth/refresh': typeof AuthRefreshRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainHomeIndexRoute
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
+  '/{-$lang}/admin/ai-assistant': typeof Char123LangChar125LayoutAuthedAdminAiAssistantRoute
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
@@ -329,6 +338,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/dataset': typeof Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/research': typeof Char123LangChar125LayoutMainOtherResearchRouteRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin/ai-assistant': typeof Char123LangChar125LayoutAuthedAdminAiAssistantRoute
   '/{-$lang}/_layout/_authed/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/dataset'
     | '/{-$lang}/news'
     | '/{-$lang}/research'
+    | '/{-$lang}/admin/ai-assistant'
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/data-transfer'
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/auth/refresh'
     | '/{-$lang}'
     | '/{-$lang}/admin'
+    | '/{-$lang}/admin/ai-assistant'
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/data-transfer'
@@ -428,6 +440,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/dataset'
     | '/{-$lang}/_layout/_main/_other/news'
     | '/{-$lang}/_layout/_main/_other/research'
+    | '/{-$lang}/_layout/_authed/admin/ai-assistant'
     | '/{-$lang}/_layout/_authed/admin/alerts'
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/data-transfer'
@@ -595,6 +608,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminAlertsRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
+    '/{-$lang}/_layout/_authed/admin/ai-assistant': {
+      id: '/{-$lang}/_layout/_authed/admin/ai-assistant'
+      path: '/ai-assistant'
+      fullPath: '/{-$lang}/admin/ai-assistant'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminAiAssistantRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
     '/{-$lang}/_layout/_main/_other/research': {
       id: '/{-$lang}/_layout/_main/_other/research'
       path: '/research'
@@ -711,6 +731,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
+  Char123LangChar125LayoutAuthedAdminAiAssistantRoute: typeof Char123LangChar125LayoutAuthedAdminAiAssistantRoute
   Char123LangChar125LayoutAuthedAdminAlertsRoute: typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminDataTransferRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
@@ -724,6 +745,8 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
 
 const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125LayoutAuthedAdminRouteRouteChildren =
   {
+    Char123LangChar125LayoutAuthedAdminAiAssistantRoute:
+      Char123LangChar125LayoutAuthedAdminAiAssistantRoute,
     Char123LangChar125LayoutAuthedAdminAlertsRoute:
       Char123LangChar125LayoutAuthedAdminAlertsRoute,
     Char123LangChar125LayoutAuthedAdminAssetsRoute:

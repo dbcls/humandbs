@@ -1,0 +1,2 @@
+<task_instruction>Extract the information described in ApplicationData from the given application form.</task_instruction>
+<application_form>{pdf_content}</application_form>

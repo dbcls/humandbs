@@ -140,6 +140,55 @@ services:
     restart: always
     init: true
 
+  assistant-api:
+    build:
+      context: ./apps/assistant-api
+      dockerfile: Dockerfile
+    container_name: humandbs-${HUMANDBS_ENV}-assistant-api
+    ports:
+      - 3001:8000
+    environment:
+      - TZ=${HUMANDBS_TZ}
+      - AZURE_OPENAI_API_KEY=${ASSISTANT_AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${ASSISTANT_AZURE_OPENAI_ENDPOINT:-}
+      - OPENAI_API_VERSION=${ASSISTANT_OPENAI_API_VERSION:-}
+      - AZURE_OPENAI_MODEL=${ASSISTANT_AZURE_OPENAI_MODEL:-}
+      - DEPLOY_MODE=${ASSISTANT_DEPLOY_MODE:-}
+      - LOG_LEVEL=${ASSISTANT_LOG_LEVEL:-}
+      - GOOGLE_CLOUD_API_KEY=${ASSISTANT_GOOGLE_CLOUD_API_KEY:-}
+      - GOOGLE_CLOUD_PROJECT_ID=${ASSISTANT_GOOGLE_CLOUD_PROJECT_ID:-}
+      - GOOGLE_CSE_ID=${ASSISTANT_GOOGLE_CSE_ID:-}
+      - GOOGLE_GENAI_CACHE_ENABLED=${ASSISTANT_GOOGLE_GENAI_CACHE_ENABLED:-}
+      - GOOGLE_GENAI_CACHE_DIR=${ASSISTANT_GOOGLE_GENAI_CACHE_DIR:-}
+      - PLAYWRIGHT_CACHE_TTL_SECONDS=${ASSISTANT_PLAYWRIGHT_CACHE_TTL_SECONDS:-}
+      - PLAYWRIGHT_CACHE_DIR=${ASSISTANT_PLAYWRIGHT_CACHE_DIR:-}
+      - DOCUMENT_AI_LOCATION=${ASSISTANT_DOCUMENT_AI_LOCATION:-}
+      - DOCUMENT_AI_PROCESSOR_ID=${ASSISTANT_DOCUMENT_AI_PROCESSOR_ID:-}
+      - LLM_TEMPERATURE=${ASSISTANT_LLM_TEMPERATURE:-}
+      - INVESTIGATE_RESEARCHER_HISTORY=${ASSISTANT_INVESTIGATE_RESEARCHER_HISTORY:-}
+      - HUMANDBS_API_BASE_URL=${HUMANDBS_BACKEND_ORIGIN:-}
+      - HUMANDBS_WEB_BASE_URL=${ASSISTANT_HUMANDBS_WEB_BASE_URL:-}
+      - DDBJ_SEARCH_API_BASE_URL=${ASSISTANT_DDBJ_SEARCH_API_BASE_URL:-}
+      - HUMANDBS_AUTH_ISSUER_URL=${HUMANDBS_AUTH_ISSUER_URL:-}
+      - HUMANDBS_AUTH_CLIENT_ID=${HUMANDBS_AUTH_CLIENT_ID:-}
+      - HUMANDBS_BACKEND_ADMIN_UID_FILE=/workspace/humandbs-assistant/admin_uids.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcp/service-account.json
+    volumes:
+      - ./apps/assistant-api:/workspace/humandbs-assistant
+      - ./apps/assistant-api/gcp-service-account.json:/root/.config/gcp/service-account.json:ro
+      - ${HUMANDBS_ADMIN_UID_FILE:-./admin_uids.json}:/workspace/humandbs-assistant/admin_uids.json:ro
+    working_dir: /workspace/humandbs-assistant
+    command: python -m src.app
+    networks:
+      - humandbs-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+    restart: always
+    init: true
+
   elasticsearch:
     build:
       context: docker/elasticsearch
