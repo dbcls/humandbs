@@ -192,7 +192,7 @@
       "country": "Country/Region",
       "researchTitle": "Research title",
       "periodOfDataUse": "Period of data use",
-      "datasets": "Data in use (Dataset ID)"
+      "datasets": "Dataset ID"
     },
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
