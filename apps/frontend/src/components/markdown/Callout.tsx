@@ -1,13 +1,15 @@
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 
+export type CalloutType = "info" | "tip" | "error" | "warning" | "plain";
+
 export function Callout({
   children,
   type,
   title,
 }: {
   children?: React.ReactNode;
-  type: "info" | "tip" | "error" | "warning";
+  type: CalloutType;
   title?: string;
 }) {
   return (
@@ -19,9 +21,7 @@ export function Callout({
         "border-red-600": type === "error",
       })}
     >
-      {type === "info" && FA_ICONS.info}
-      {type === "tip" && FA_ICONS.tip}
-      {(type === "error" || type === "warning") && FA_ICONS.warning}
+      <CalloutIcon type={type} />
 
       <div className="[&>p]:my-0">
         {title ? <p className="mb-1 font-semibold">{title}</p> : null}
@@ -29,4 +29,20 @@ export function Callout({
       </div>
     </div>
   );
+}
+
+function CalloutIcon({ type }: { type: CalloutType }) {
+  switch (type) {
+    case "plain":
+      return null;
+    case "info":
+      return FA_ICONS.info;
+    case "tip":
+      return FA_ICONS.tip;
+    case "error":
+    case "warning":
+      return FA_ICONS.warning;
+    default:
+      return FA_ICONS.tip;
+  }
 }
