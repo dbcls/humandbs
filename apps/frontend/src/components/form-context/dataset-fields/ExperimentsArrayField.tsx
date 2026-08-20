@@ -586,7 +586,7 @@ function ExperimentItemForm({
   );
 
   return (
-    <div className="flex flex-col items-start gap-3">
+    <div className="flex flex-col gap-3">
       {/* Header — bilingual, binding to .text subfields */}
       <Label className="flex w-full flex-col items-start gap-2">
         <span className="font-medium text-form-label text-xs">Header</span>
