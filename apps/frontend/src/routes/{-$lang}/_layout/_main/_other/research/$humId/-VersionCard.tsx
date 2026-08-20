@@ -74,7 +74,7 @@ export function VersionCard({
           right={
             isLatestVersion ? (
               <Badge className="text-sm">{t("Research.latest-version")}</Badge>
-            ) : (
+            ) : versionData.status === "published" ? (
               <Badge>
                 <Link
                   target="_blank"
@@ -83,6 +83,17 @@ export function VersionCard({
                 >
                   <LucideExternalLink className="mr-2 inline size-5" />
                   {`${t("Research.to-latest-version")} (${versionData.latestVersion})`}
+                </Link>
+              </Badge>
+            ) : (
+              <Badge className="capitalize">
+                <Link
+                  target="_blank"
+                  className="text-white no-underline visited:text-white"
+                  to="/{-$lang}/admin/researches"
+                  search={{ selectedHumId: versionData.humId }}
+                >
+                  {versionData.status}
                 </Link>
               </Badge>
             )

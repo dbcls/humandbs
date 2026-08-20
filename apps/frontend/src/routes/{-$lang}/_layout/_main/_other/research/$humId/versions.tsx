@@ -1,14 +1,20 @@
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
+import type { ResearchDetail } from "@humandbs/backend/types";
+
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { DatasetLink } from "@/components/DatasetLink";
 import { Markdown } from "@/components/markdown";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Badge } from "@/components/ui/badge";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
-import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
+import {
+  getResearchQueryOptions,
+  getResearchVersionsQueryOptions,
+} from "@/serverFunctions/researches";
 import type { RenderedResearchVersionItem } from "@/utils/renderedHtml/types";
 
 import { getAddedDatasets } from "./-releaseDatasets";
@@ -23,7 +29,24 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$h
         includeRawHtml: false,
       }),
     );
-    return { data: versions.data, crumb: "Versions" };
+    const latestVisibleResearch = await context.queryClient.ensureQueryData(
+      getResearchQueryOptions({ humId: params.humId, lang: context.lang }),
+    );
+
+    return {
+      data: versions.data.map((d) => {
+        return {
+          ...d,
+          status:
+            d.version === latestVisibleResearch.data.version
+              ? latestVisibleResearch.data.status
+              : "published",
+        };
+      }),
+      latestStatus: latestVisibleResearch.data.status,
+
+      crumb: "Versions",
+    };
   },
   head: ({ match }) => {
     const seoTitle = `HumanDBs - ${match.params.humId}: ${match.context.messages?.Research?.["release-info"]})`;
@@ -70,7 +93,7 @@ function VersionInfo({
   version,
   addedDatasets,
 }: {
-  version: RenderedResearchVersionItem;
+  version: RenderedResearchVersionItem & { status: ResearchDetail["status"] };
   addedDatasets: RenderedResearchVersionItem["datasets"];
 }) {
   const { lang } = useRouteContext({ strict: false });
@@ -84,6 +107,9 @@ function VersionInfo({
             {version.humVersionId}
           </TextWithIcon>
         </Route.Link>
+        {version.status !== "published" ? (
+          <Badge className="capitalize">{version.status}</Badge>
+        ) : null}
       </h3>
       <section className="flex items-start gap-5 px-3 py-4 text-sm">
         <div className="w-80 shrink-0">

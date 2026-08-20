@@ -212,7 +212,6 @@ function NewsItemForm({
       values: FormDataType;
       formApi: { reset: (values?: FormDataType) => void };
     }) => {
-      console.log("updating news item", values);
       return $updateNewsItem({
         data: {
           id: newsItem.id,
