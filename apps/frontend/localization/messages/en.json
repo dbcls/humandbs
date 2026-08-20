@@ -624,7 +624,91 @@
       "overwrite-action": "Overwrite",
       "invalid-json": "Invalid JSON file. Please upload a valid .json file.",
       "create-version-failed": "Failed to create version.",
-      "create-research-failed": "Failed to create research."
+      "create-research-failed": "Failed to create research.",
+      "fields": {
+        "title": {
+          "self": "Research title"
+        },
+        "summary": {
+          "self": "Summary",
+          "aims": {
+            "self": "Aims"
+          },
+          "methods": {
+            "self": "Methods"
+          },
+          "targets": {
+            "self": "Targets"
+          },
+          "url": {
+            "self": "URLs"
+          }
+        },
+        "summaryShort": {
+          "self": "Summary short",
+          "typeOfData": {
+            "self": "Category"
+          },
+          "methods": {
+            "self": "Methods"
+          },
+          "targets": {
+            "self": "Targets"
+          }
+        },
+        "dataProvider": {
+          "self": "Data provider",
+          "name": {
+            "self": "Principal investigator"
+          },
+          "email": {
+            "self": "Email"
+          },
+
+          "orcid": { "self": "ORCID" },
+          "organization": {
+            "self": "Affiliation",
+            "name": { "self": "Name" },
+            "address": {
+              "self": "Address",
+              "country": { "self": "Country/State" }
+            }
+          }
+        },
+
+        "grant": {
+          "self": "Grants",
+          "title": { "self": "Title" },
+          "agency": {
+            "self": "Agency",
+            "name": { "self": "Name" }
+          },
+          "id": {
+            "self": "Project number"
+          }
+        },
+        "researchProject": {
+          "self": "Research projects",
+          "name": { "self": "Name" },
+          "url": { "self": "URL" }
+        },
+
+        "controlledAccessUser": {
+          "self": "Controlled access users",
+          "name": "Principal Investigator",
+          "organization": "Affiliation",
+          "country": "Country/Region",
+          "researchTitle": "Research title",
+          "periodOfDataUse": "Period of data use",
+          "datasets": "Dataset ID"
+        },
+        "relatedPublication": {
+          "self": "Related publications",
+          "title": { "self": "Title" },
+          "doi": { "self": "DOI" },
+          "datasetIds": { "self": "Dataset ID" }
+        }
+      }
     },
     "moldata-keys": {
       "delete-title": "Delete moldata key?",

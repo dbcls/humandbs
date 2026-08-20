@@ -1,4 +1,5 @@
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
+import { LangFormLabel } from "@/components/LangFormLabel";
 import { Label } from "@/components/ui/label";
 import { i18n } from "@/config/i18n";
 import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
@@ -34,7 +35,7 @@ export const BilingualMarkdownEditorField = withForm({
         <div className="flex gap-3">
           {i18n.locales.map((locale) => (
             <div key={locale} className="relative flex flex-1 flex-col gap-1">
-              <span className="font-medium text-form-label text-xs uppercase">{locale}</span>
+              <LangFormLabel className="inline">{locale}</LangFormLabel>
               <form.AppField name={`${baseName}.${locale}.text` as AnyName}>
                 {(f: AnyName) => {
                   const modified = isFieldModified(f);

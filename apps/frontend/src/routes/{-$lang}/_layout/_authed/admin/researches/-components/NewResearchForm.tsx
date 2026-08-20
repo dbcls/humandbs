@@ -10,22 +10,19 @@ import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import type { CreateResearchResult } from "@/serverFunctions/researches";
 import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../../-components/AdminStatusMessage";
 import { MergeResearchDialog } from "./MergeResearch/index";
-import {
-  DataProviderArrayField,
-  GrantArrayField,
-  RelatedPublicationArrayField,
-  ResearchProjectArrayField,
-} from "./researchFieldsConfig";
+import { SummaryMarkdownFields, SummaryShortMarkdownFields } from "./ResearchDetails";
+import { RESEARCH_METADATA_ORDER, ResearchMetadataTabs } from "./ResearchMetadataTabs";
 import { DUMMY_HUM_ID } from "./utils/dummyResearch";
 import type { NewResearchMergeValues } from "./utils/researchValues";
 import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./utils/researchValues";
+
+const CREATE_EXCLUDED_FIELDS = new Set(["humId"]);
 
 const defaultValues: CreateResearchRequest = {
   humId: "",
@@ -159,84 +156,21 @@ export function NewResearchForm({
             </form.AppField>
           </div>
 
-          <Tabs defaultValue="title" className="mt-4 flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 overflow-x-auto px-5">
-              <TabsList variant="line">
-                <TabsTrigger variant="line" value="title">
-                  Title
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="summary">
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="dataProvider">
-                  Data providers
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="researchProject">
-                  Research project
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="grants">
-                  Grant
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="publications">
-                  Related publication
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
-              <TabsContent value="title">
-                <form.AppField name="title">
-                  {(field) => <field.BilingualTextField label="Title" />}
+          <ResearchMetadataTabs
+            form={form}
+            shape={CreateResearchRequestSchema.shape}
+            excludedFields={CREATE_EXCLUDED_FIELDS}
+            fieldOrder={RESEARCH_METADATA_ORDER}
+            renderOverride={{
+              title: ({ form, name, label }) => (
+                <form.AppField name={name as never}>
+                  {(field: any) => <field.BilingualTextField label={label} variant="textarea" />}
                 </form.AppField>
-              </TabsContent>
-
-              <TabsContent value="summary" className="flex flex-col gap-4">
-                <form.AppField name="summary.aims">
-                  {(field) => (
-                    <field.BilingualTextValueField
-                      label="Aims"
-                      inputsClassName="flex w-full gap-2"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="summary.methods">
-                  {(field) => (
-                    <field.BilingualTextValueField
-                      label="Methods"
-                      inputsClassName="flex w-full gap-2"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="summary.targets">
-                  {(field) => (
-                    <field.BilingualTextValueField
-                      label="Targets"
-                      inputsClassName="flex w-full gap-2"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="summary.url">
-                  {(field) => <field.BilingualURLArrayField label="URLs" />}
-                </form.AppField>
-              </TabsContent>
-
-              <TabsContent value="dataProvider">
-                <DataProviderArrayField form={form} />
-              </TabsContent>
-
-              <TabsContent value="researchProject">
-                <ResearchProjectArrayField form={form} />
-              </TabsContent>
-
-              <TabsContent value="grants">
-                <GrantArrayField form={form} />
-              </TabsContent>
-
-              <TabsContent value="publications">
-                <RelatedPublicationArrayField form={form} />
-              </TabsContent>
-            </div>
-          </Tabs>
+              ),
+              summary: ({ form }) => <SummaryMarkdownFields form={form} legacyRawHtml={{}} />,
+              summaryShort: ({ form }) => <SummaryShortMarkdownFields form={form} />,
+            }}
+          />
         </form>
       </form.AppForm>
     </Card>

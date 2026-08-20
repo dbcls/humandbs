@@ -2,6 +2,7 @@ import { useStore } from "@tanstack/react-form";
 
 import { cn } from "@/lib/utils";
 
+import { LangFormLabel } from "../LangFormLabel";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useFieldContext } from "./FormContext";
@@ -46,7 +47,7 @@ export default function TextField({
           "flex-col items-stretch": type === "col",
         })}
       >
-        {label ? <span className="whitespace-nowrap">{label}</span> : null}
+        {label ? <LangFormLabel className="whitespace-nowrap">{label}</LangFormLabel> : null}
         <div className="relative flex w-full items-center gap-1">
           <Input
             value={field.state.value ?? ""}

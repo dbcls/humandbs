@@ -1,3 +1,6 @@
+import { useTranslations } from "use-intl";
+
+import { LangFormLabel } from "@/components/LangFormLabel";
 import { Label } from "@/components/ui/label";
 
 import { BilingualTextField } from "../fields/BilingualTextField";
@@ -48,12 +51,15 @@ export function SchemaObjectFields({
 }) {
   const shape: Record<string, any> = unwrapObject(schema)?._def?.shape ?? {};
 
+  const t = useTranslations("admin.researches.fields");
+
   return (
     <div className="flex flex-col gap-3">
       {Object.entries(shape).map(([key, fieldSchema]) => {
         const name = `${baseName}.${key}`;
         const rel = relPath ? `${relPath}.${key}` : key;
-        const label = humanize(key);
+        const i18nName = name.replace(/\[(\d+)\]/g, "");
+        const label = t(`${i18nName}.self`);
 
         const override = overrides[rel];
         if (override) {
@@ -171,8 +177,8 @@ function BilingualUrlValuePair({
     <fieldset className="flex flex-col gap-1">
       <Label className="text-sm">{label}</Label>
       <div className="flex gap-2">
-        <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
-        <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
+        <LangFormLabel className="flex-1">En</LangFormLabel>
+        <LangFormLabel className="flex-1">Ja</LangFormLabel>
       </div>
       <div className="flex gap-2">
         <div className="flex-1">

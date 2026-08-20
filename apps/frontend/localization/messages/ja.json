@@ -624,7 +624,88 @@
       "overwrite-action": "上書き",
       "invalid-json": "無効なJSONファイルです。有効な.jsonファイルをアップロードしてください。",
       "create-version-failed": "バージョンの作成に失敗しました。",
-      "create-research-failed": "研究の作成に失敗しました。"
+      "create-research-failed": "研究の作成に失敗しました。",
+      "fields": {
+        "title": {
+          "self": "研究題目"
+        },
+        "summary": {
+          "self": "研究概要",
+          "aims": {
+            "self": "目的"
+          },
+          "methods": {
+            "self": "研究方法"
+          },
+          "targets": {
+            "self": "対象"
+          },
+          "url": {
+            "self": "URLs"
+          }
+        },
+        "summaryShort": {
+          "self": "研究概要(ショート版)",
+          "typeOfData": {
+            "self": "種別"
+          },
+          "methods": {
+            "self": "研究方法"
+          },
+          "targets": {
+            "self": "対象"
+          }
+        },
+        "dataProvider": {
+          "self": "提供者情報",
+          "name": {
+            "self": "研究代表者"
+          },
+          "email": {
+            "self": "Email"
+          },
+
+          "orcid": { "self": "ORCID" },
+
+          "organization": {
+            "self": "所属機関",
+            "name": { "self": "所属機関名" },
+            "address": {
+              "self": "所属機関住所",
+              "country": { "self": "国・州名" }
+            }
+          }
+        },
+        "grant": {
+          "self": "助成金情報",
+          "title": { "self": "タイトル" },
+          "agency": {
+            "self": "科研費・助成金",
+            "name": { "self": "科研費・助成金名" }
+          },
+          "id": { "self": "研究課題番号" }
+        },
+        "researchProject": {
+          "self": "研究プロジェクト情報",
+          "name": { "self": "研究プロジェクト名" },
+          "url": { "self": "URL" }
+        },
+        "controlledAccessUser": {
+          "self": "制限公開データの利用者一覧",
+          "name": { "self": "研究代表者" },
+          "organization": { "self": "所属機関" },
+          "country": { "self": "国・州名" },
+          "researchTitle": { "self": "研究題目" },
+          "periodOfDataUse": { "self": "データ利用期間" },
+          "datasets": { "self": "利用データID" }
+        },
+        "relatedPublication": {
+          "self": "関連論文",
+          "title": { "self": "タイトル" },
+          "doi": { "self": "DOI" },
+          "datasetIds": { "self": "利用データID" }
+        }
+      }
     },
     "moldata-keys": {
       "delete-title": "Moldataキーを削除しますか？",
