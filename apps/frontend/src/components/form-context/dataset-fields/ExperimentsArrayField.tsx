@@ -117,17 +117,12 @@ function DataEntriesTable({
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const entryRowRefs = useRef(new Map<string, HTMLTableRowElement>());
   const jaTextareaRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 
   useEffect(() => {
     if (!addedKeyToScrollTo) return;
 
-    const addedRow = entryRowRefs.current.get(addedKeyToScrollTo);
-    if (!addedRow) return;
-
-    addedRow.scrollIntoView({ behavior: "smooth", block: "center" });
     jaTextareaRefs.current.get(addedKeyToScrollTo)?.focus({ preventScroll: true });
     setAddedKeyToScrollTo(null);
   }, [addedKeyToScrollTo]);
@@ -293,10 +288,6 @@ function DataEntriesTable({
               return (
                 <tr
                   key={`${experimentIndex}-${entry.key}`}
-                  ref={(row) => {
-                    if (row) entryRowRefs.current.set(entry.key, row);
-                    else entryRowRefs.current.delete(entry.key);
-                  }}
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
