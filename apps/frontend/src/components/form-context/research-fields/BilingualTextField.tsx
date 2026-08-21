@@ -6,11 +6,11 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   isFieldModified,
   resetFieldKeyToDefault,
 } from "@/components/form-context/fields/useFieldModified";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { Input } from "@/components/Input";
 import { Label } from "@/components/ui/label";
 import { TextareaAutosize } from "@/components/ui/textarea";

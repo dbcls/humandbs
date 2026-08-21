@@ -2,12 +2,10 @@ import { capitalize } from "@/components/FrontStatsVisualization/utils";
 import { LangFormLabel } from "@/components/LangFormLabel";
 import { Label } from "@/components/ui/label";
 import { i18n } from "@/config/i18n";
-import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
-import { getLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 
 import { withForm } from "../FormContext";
-import { MarkdownTextEditor } from "./MarkdownTextEditor";
-import { ResetFieldButton } from "./ResetFieldButton";
+import { MarkdownTextEditor } from "../MarkdownTextEditor";
+import { ResetFieldButton } from "../ResetFieldButton";
 import { getFieldDefaultValue, isFieldModified } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,11 +22,8 @@ export const BilingualMarkdownEditorField = withForm({
   props: {} as {
     baseName: string;
     label: string;
-    /** Key into the legacy lookup (e.g. "aims", "releaseNote"). */
-    legacyFieldKey?: string;
-    legacyRawHtml?: LegacyRawHtmlLookup;
   },
-  render({ form, baseName, label, legacyFieldKey, legacyRawHtml }) {
+  render({ form, baseName, label }) {
     return (
       <fieldset className="flex flex-col gap-1.5">
         <Label className="text-sm">{label}</Label>
@@ -46,13 +41,7 @@ export const BilingualMarkdownEditorField = withForm({
                         onChange={(next) => f.handleChange(next)}
                         onBlur={() => f.handleBlur()}
                         placeholder={capitalize(locale)}
-                        fieldLabel={`${label} (${locale})`}
                         modified={modified}
-                        legacyRawHtml={
-                          legacyFieldKey
-                            ? getLegacyRawHtml(legacyRawHtml, legacyFieldKey, locale)
-                            : undefined
-                        }
                       />
                       {modified && (
                         <ResetFieldButton

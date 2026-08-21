@@ -6,8 +6,8 @@ import { LangFormLabel } from "../LangFormLabel";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useFieldContext } from "./FormContext";
-import { ResetFieldButton } from "./fields/ResetFieldButton";
 import { getFieldDefaultValue, isFieldModified } from "./fields/useFieldModified";
+import { ResetFieldButton } from "./ResetFieldButton";
 
 export default function TextField({
   label,

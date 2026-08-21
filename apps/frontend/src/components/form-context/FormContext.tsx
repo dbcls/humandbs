@@ -3,15 +3,11 @@ import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 import { lazy } from "react";
 
 import CheckboxField from "./CheckboxField";
-import LocaleSwitchField from "./LocaleSwitchField";
 import BilingualTextField from "./research-fields/BilingualTextField";
 import BilingualTextValueField from "./research-fields/BilingualTextValueField";
 import BilingualURLArrayField from "./research-fields/BilingualURLArrayField";
 import SelectField from "./SelectField";
-import SwitchField from "./SwitchField";
-import TextAreaField from "./TextAreaField";
 import TextField from "./TextField";
-import UpdateButton from "./UpdateButton";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -27,20 +23,15 @@ export const { useAppForm, withForm, withFieldGroup } = createFormHook({
 
   fieldComponents: {
     TextField,
-    TextAreaField,
     ContentAreaField,
     CheckboxField,
     DateField,
     DateRangeField,
     DateTimeField,
-    SwitchField,
-    LocaleSwitchField,
     SelectField,
     BilingualTextField,
     BilingualTextValueField,
     BilingualURLArrayField,
   },
-  formComponents: {
-    UpdateButton,
-  },
+  formComponents: {},
 });

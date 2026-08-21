@@ -22,7 +22,7 @@ import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { ModifiedTag } from "./ModifiedTag";
+import { ModifiedTag } from "../ModifiedTag";
 import { useStableSortableIds } from "./useStableSortableIds";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

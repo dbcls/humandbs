@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
-import { MarkdownTextEditor } from "@/components/form-context/fields/MarkdownTextEditor";
+import { MarkdownTextEditor } from "@/components/form-context/MarkdownTextEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -97,7 +97,6 @@ export function NewVersionDialog({
                 value={enText}
                 onChange={setEnText}
                 placeholder="Release note (English)"
-                fieldLabel="Release note (en)"
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -106,7 +105,6 @@ export function NewVersionDialog({
                 value={jaText}
                 onChange={setJaText}
                 placeholder="リリースノート（日本語）"
-                fieldLabel="Release note (ja)"
               />
             </div>
           </div>

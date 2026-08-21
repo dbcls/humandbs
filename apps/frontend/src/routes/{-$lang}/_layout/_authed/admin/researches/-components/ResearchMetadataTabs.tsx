@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 
 import { BilingualTextField } from "@/components/form-context/fields/BilingualTextField";
 import { BilingualTextValueField } from "@/components/form-context/fields/BilingualTextValueField";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { detectLeaf } from "@/components/form-context/schema-form/detectLeaf";
 import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
 import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { SortableObjectArrayField } from "@/components/form-context/schema-form/SortableObjectArrayField";
 import { humanize } from "@/components/form-context/schema-form/utils";
+import { TabLabel } from "@/components/form-context/TabLabel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

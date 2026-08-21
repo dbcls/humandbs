@@ -22,9 +22,7 @@ export function MarkdownTextEditor({
   value,
   onChange,
   onBlur,
-  legacyRawHtml,
   placeholder,
-  fieldLabel,
   modified = false,
   className,
   ref,
@@ -32,9 +30,7 @@ export function MarkdownTextEditor({
   value: string;
   onChange: (next: string) => void;
   onBlur?: () => void;
-  legacyRawHtml?: string;
   placeholder?: string;
-  fieldLabel?: string;
   modified?: boolean;
   className?: string;
   ref?: Ref<HTMLTextAreaElement>;

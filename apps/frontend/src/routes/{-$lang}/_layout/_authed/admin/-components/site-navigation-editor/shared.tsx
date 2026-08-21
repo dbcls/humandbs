@@ -176,7 +176,7 @@ export function AddNavigationGroup({
     <Button
       type="button"
       variant="dashed"
-      className="w-80 justify-center"
+      className="min-h-80 w-80 justify-center"
       onClick={() => setShowForm(true)}
     >
       <Plus className="mr-1 size-3" />

@@ -9,7 +9,6 @@ import URLField from "../research-fields/URLInputPair";
 import { detectLeaf } from "./detectLeaf";
 import { FieldControl } from "./FieldControl";
 import { getFieldKind } from "./getFieldKind";
-import { humanize } from "./utils";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

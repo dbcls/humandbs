@@ -8,9 +8,9 @@ import { Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
+import { ModifiedTag } from "@/components/form-context/ModifiedTag";
+import { TabLabel } from "@/components/form-context/TabLabel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import {

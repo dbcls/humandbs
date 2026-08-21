@@ -27,7 +27,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { InfoBadge } from "@/components/InfoBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

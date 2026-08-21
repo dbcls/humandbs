@@ -13,8 +13,8 @@ import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import { ModifiedTag } from "@/components/form-context/ModifiedTag";
+import { TabLabel } from "@/components/form-context/TabLabel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
