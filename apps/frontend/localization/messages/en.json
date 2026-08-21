@@ -52,32 +52,6 @@
     "confirm": "Delete",
     "cancel": "Cancel"
   },
-  "Navbar": {
-    "data-submission": "Data submission",
-    "navigation": "Navigation",
-    "before-application": "Before application system",
-    "application": "Application",
-    "data-usage": "Data Usage",
-    "guidelines": "Guidelines",
-    "data-sharing-guidelines": "NBDC Guidelines for Human Data Sharing",
-    "security-guidelines-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
-    "security-guidelines-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
-    "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and Off-Premise-Server Operation Managers)",
-    "home": "Home",
-    "all-news": "All News",
-    "publications": "Publications",
-    "privacy-policy": "Privacy Policy",
-    "data-use": "Data Use",
-    "data-processing": "Data Processing",
-    "dac": "Human Data Review Committee",
-    "off-premise-server": "Off-premise Server",
-    "violation": "Guideline Violation",
-    "supported-browsers": "Supported Browsers",
-    "committee-1": "Committee",
-    "faq": "FAQ",
-    "research-list": "Research List",
-    "dataset-list": "Dataset List"
-  },
   "Front": {
     "data-submission-button": "Submit data",
     "data-usage-button": "Use data",
@@ -583,6 +557,7 @@
     "EXISTING_DOCUMENT": "This id is conflicting with one of existing Document IDs"
   },
   "News": {
+    "all-news": "All news",
     "no-items": "No news items found",
     "no-date": "No date",
     "search-placeholder": "Search by title or content…"
@@ -631,22 +606,6 @@
       "drag-footer-hint": "Drag group columns to reorder. Drag items between columns to reassign. Click a group header to rename it.",
       "drop-document-or-link": "Drop a document or link here",
       "drop-submenu-items": "Drop submenu items here"
-    },
-    "flowcharts": {
-      "failed-to-load": "Failed to load flowchart.",
-      "failed-to-create": "Failed to create flowchart.",
-      "empty": "No flowcharts yet.",
-      "no-entry-point": "No entry point flowchart found. Set one using the entry point toggle.",
-      "steps-errors": "Some steps have errors. Please fix them before saving.",
-      "conflict-reload": "This flowchart was modified by someone else. Please reload.",
-      "change-entry-point-title": "Change entry point?",
-      "change-entry-point-description": "The current entry point is \"{name}\". Do you want to replace it?",
-      "entry-point-label": "Entry point",
-      "entry-point-description": "The entry point flowchart is shown to users at the start of the navigation flow.",
-      "delete-title": "Delete flowchart?",
-      "delete-description": "This will permanently delete \"{name}\". This action cannot be undone.",
-      "delete-step": "Delete step",
-      "delete-step-disabled": "Cannot delete: other steps link to this one"
     },
     "data-transfer": {
       "type-content": "Static CMS page records and translations.",

@@ -34,7 +34,7 @@ function News() {
   const lang = useLocale();
   const { data: newsTitles } = useSuspenseQuery(getNewsTitlesQueryOptions({ locale: lang }));
 
-  const t = useTranslations("Navbar");
+  const t = useTranslations("News");
 
   return (
     <div className="flex flex-col gap-2">

@@ -15,7 +15,6 @@ export const CMS_DATA_TRANSFER_CATEGORIES = [
   "alerts",
   "assets",
   "header-footer",
-  "flowcharts",
   "moldata-keys",
 ] as const;
 
@@ -29,7 +28,6 @@ export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<CmsDataTransferCategory, 
   alerts: "Alerts",
   assets: "Assets",
   "header-footer": "Header & Footer",
-  flowcharts: "Flowcharts",
   "moldata-keys": "Moldata keys",
 };
 

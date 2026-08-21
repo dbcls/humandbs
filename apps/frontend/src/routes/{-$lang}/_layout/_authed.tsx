@@ -24,7 +24,6 @@ export const tabParamSchema = z.enum([
   "researches/moldata-keys",
   "assets",
   "header-footer",
-  "flowcharts",
 ]);
 
 export type TabType = z.infer<typeof tabParamSchema>;
