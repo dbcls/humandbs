@@ -3,7 +3,7 @@ import path from "node:path";
 import { write } from "bun";
 
 import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { getAssetDir, getAssetFilesSubdir } from "@/lib/assetDir";
@@ -12,7 +12,7 @@ import { auditMutation } from "@/observability/server";
 
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
-function normalizeRelativeAssetPath(input: string) {
+const normalizeRelativeAssetPath = createServerOnlyFn((input: string) => {
   const normalized = path.posix
     .normalize(input.trim().replace(/^\/+|\/+$/g, ""))
     .replace(/^\/+/, "");
@@ -27,17 +27,17 @@ function normalizeRelativeAssetPath(input: string) {
   }
 
   return normalized;
-}
+});
 
-export function normalizeAssetFolderPath(input: string) {
+export const normalizeAssetFolderPath = createServerOnlyFn((input: string) => {
   const folderPath = input.trim();
   return folderPath ? normalizeRelativeAssetPath(folderPath) : "";
-}
+});
 
-function getAbsoluteAssetPath(relativePath: string) {
+const getAbsoluteAssetPath = createServerOnlyFn((relativePath: string) => {
   const ASSET_DIR = getAssetDir();
   return path.join(ASSET_DIR, relativePath);
-}
+});
 
 export interface AssetHierarchyFile {
   type: "file";
@@ -188,7 +188,13 @@ export const $uploadAsset = createServerFn({ method: "POST" })
 
     const FILES_SUBDIR = getAssetFilesSubdir();
 
-    return { url: `/${FILES_SUBDIR}/${relativePath}` };
+    return {
+      url: `/${FILES_SUBDIR}/${relativePath}`,
+      path: relativePath,
+      name: path.posix.basename(relativePath),
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+    };
   });
 
 export const $createAssetFolder = createServerFn({ method: "POST" })

@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import type { ImgHTMLAttributes } from "react";
 import { useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
@@ -47,6 +48,31 @@ function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
   if (item.mimeType.startsWith("image/")) return true;
 
   return /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(item.name);
+}
+
+const IMAGE_RETRY_DELAYS_MS = [300, 800, 1500, 3000];
+
+// Right after upload the file may not be servable yet (dev static-file watcher lag,
+// or the prod route racing the write). A plain <img> never retries a failed load on
+// its own, so the broken image sticks around even once the file is actually ready.
+// Force fresh requests with a cache-busting query param until one succeeds.
+function RetryingImage({ src, ...props }: ImgHTMLAttributes<HTMLImageElement>) {
+  const [attempt, setAttempt] = useState(0);
+
+  const resolvedSrc =
+    attempt === 0 ? src : `${src}${src?.includes("?") ? "&" : "?"}retry=${attempt}`;
+
+  return (
+    // biome-ignore lint/a11y/useAltText: "alt already provided through props"
+    <img
+      {...props}
+      src={resolvedSrc}
+      onError={() => {
+        if (attempt >= IMAGE_RETRY_DELAYS_MS.length) return;
+        setTimeout(() => setAttempt((n) => n + 1), IMAGE_RETRY_DELAYS_MS[attempt]);
+      }}
+    />
+  );
 }
 
 function getFolderSegments(path: string) {
@@ -111,6 +137,9 @@ export function AssetsBrowser({
     existingNames: string[];
   } | null>(null);
   const [uploadingToFolder, setUploadingToFolder] = useState<string | null>(null);
+  const [optimisticUploadedFile, setOptimisticUploadedFile] = useState<AssetHierarchyFile | null>(
+    null,
+  );
   const [renamingItem, setRenamingItem] = useState<{
     item: AssetHierarchyItem;
     siblings: AssetHierarchyItem[];
@@ -134,25 +163,23 @@ export function AssetsBrowser({
 
   const { mutate: uploadAsset, isPending: isUploadingAsset } = useMutation({
     mutationFn: $uploadAsset,
-    onSuccess: async (_result, variables) => {
-      const file = variables.data.get("file");
+    onSuccess: async (result, variables) => {
       const folderPath = String(variables.data.get("folderPath") ?? "");
 
-      if (file instanceof File) {
-        const nextPath = folderPath ? `${folderPath}/${file.name}` : file.name;
+      const uploadedFile: AssetHierarchyFile = {
+        type: "file",
+        name: result.name,
+        path: result.path,
+        url: result.url,
+        mimeType: result.mimeType,
+        size: result.size,
+      };
 
-        setSelectedFolderPath(folderPath);
-        setSelectedItemPath(nextPath);
+      setSelectedFolderPath(folderPath);
+      setSelectedItemPath(result.path);
+      setOptimisticUploadedFile(uploadedFile);
 
-        onSelectedFileChange?.({
-          type: "file",
-          name: file.name,
-          path: nextPath,
-          url: `/files/${nextPath}`,
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-        });
-      }
+      onSelectedFileChange?.(uploadedFile);
 
       await invalidateHierarchy();
     },
@@ -205,10 +232,12 @@ export function AssetsBrowser({
     selectedFolderPath === "" || currentFolder.path === selectedFolderPath;
 
   const selectedItem =
-    currentFolder.children.find((item) => item.path === selectedItemPath) ?? null;
+    currentFolder.children.find((item) => item.path === selectedItemPath) ??
+    (optimisticUploadedFile?.path === selectedItemPath ? optimisticUploadedFile : null);
 
   function handleSelectItem(item: AssetHierarchyItem) {
     setSelectedItemPath(item.path);
+    setOptimisticUploadedFile(null);
 
     if (item.type === "folder") {
       setSelectedFolderPath(item.path);
@@ -393,7 +422,8 @@ export function AssetsBrowser({
                                   <>
                                     {isImageFile(item) ? (
                                       <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border bg-primary">
-                                        <img
+                                        <RetryingImage
+                                          key={item.url}
                                           src={item.url}
                                           alt={item.name}
                                           className="size-full object-cover"
@@ -505,7 +535,8 @@ export function AssetsBrowser({
               <div className="space-y-4 text-sm">
                 <div className="overflow-hidden rounded-sm border bg-gray-50">
                   {isImageFile(selectedItem) ? (
-                    <img
+                    <RetryingImage
+                      key={selectedItem.url}
                       src={selectedItem.url}
                       alt={selectedItem.name}
                       className="h-48 w-full object-contain"
