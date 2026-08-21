@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
@@ -8,6 +8,28 @@ import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 import tsConfigPaths from "vite-tsconfig-paths";
+
+// Temporary diagnostic: dumps per-module sizes for each output chunk >100kB to
+// dist/bundle-report.<dir>.json so we can see what's bloating the client bundle.
+function bundleModuleSizeReport(): Plugin {
+  return {
+    name: "bundle-module-size-report",
+    generateBundle(options, bundle) {
+      const report: Record<string, { size: number; modules: { id: string; size: number }[] }> =
+        {};
+      for (const [fileName, chunk] of Object.entries(bundle)) {
+        if (chunk.type !== "chunk" || chunk.code.length < 100_000) continue;
+        const modules = Object.entries(chunk.modules)
+          .map(([id, info]) => ({ id, size: info.renderedLength }))
+          .sort((a, b) => b.size - a.size);
+        report[fileName] = { size: chunk.code.length, modules };
+      }
+      if (Object.keys(report).length === 0) return;
+      const dirTag = (options.dir ?? "unknown").replace(/[/\\]/g, "_");
+      writeFileSync(`dist/bundle-report${dirTag}.json`, JSON.stringify(report, null, 2));
+    },
+  };
+}
 
 import packageJson from "./package.json";
 
@@ -90,6 +112,7 @@ export default defineConfig(async () => {
       }),
       svgr(),
       viteReact({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
+      bundleModuleSizeReport(),
     ],
     define: {
       APP_VERSION: JSON.stringify(`v${packageJson.version}`),
