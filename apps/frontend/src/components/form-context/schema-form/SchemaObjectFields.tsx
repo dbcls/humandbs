@@ -51,15 +51,18 @@ export function SchemaObjectFields({
 }) {
   const shape: Record<string, any> = unwrapObject(schema)?._def?.shape ?? {};
 
-  const t = useTranslations("admin.researches.fields");
+  const t = useTranslations("Research.fields");
 
   return (
     <div className="flex flex-col gap-3">
       {Object.entries(shape).map(([key, fieldSchema]) => {
         const name = `${baseName}.${key}`;
         const rel = relPath ? `${relPath}.${key}` : key;
-        const i18nName = name.replace(/\[(\d+)\]/g, "");
-        const label = t(`${i18nName}.self`);
+        const i18nName = name
+          .replace(/\[(\d+)\]/g, "")
+          .split(".")
+          .join(".fields.");
+        const label = t(`${i18nName}.label` as any);
 
         const override = overrides[rel];
         if (override) {

@@ -308,9 +308,8 @@ export function SearchableFields({
       const config = searchableFieldsConfig[key];
       if (config?.hidden) return null;
       const kind = getFieldKind(schema);
-      const label = t.has(`${key}.title` as any)
-        ? t(`${key}.title` as any)
-        : humanize(key as string);
+      const labelKey = `facets.${key}.label` as any;
+      const label = t.has(labelKey) ? t(labelKey) : humanize(key as string);
       return {
         key,
         kind,

@@ -70,7 +70,7 @@ function InlineScalarEditor({
   onSave: (value: string) => void;
   onCancel: () => void;
 }) {
-  const tMerge = useTranslations("admin.merge");
+  const tMerge = useTranslations("MergeWizard");
   function toText(v: unknown): string {
     if (v == null) return "";
     if (typeof v === "object" && "text" in v) return (v as { text: string }).text ?? "";
@@ -272,7 +272,6 @@ export function CompareArea({
   onCancelEdit: () => void;
 }) {
   const t = useTranslations("MergeWizard");
-  const tMerge = useTranslations("admin.merge");
   const isScalar = field.dataType === "scalar";
   const isNa = field.status === "na";
   const isSame = field.status === "same";
@@ -455,7 +454,7 @@ export function CompareArea({
               <ArrayCards items={(resultValue as ArrayItem[]) ?? []} dataType={field.dataType} />
             )}
             <div className="text-[10px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
-              {tMerge("click-to-edit-custom")}
+              {t("click-to-edit-custom")}
             </div>
           </button>
         ) : (

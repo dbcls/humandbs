@@ -311,9 +311,9 @@ function ResearchSortSelect() {
   const currentOrder = filters.order ?? "desc";
 
   const sortOptions = [
-    { label: tR("dateModified"), value: "dateModified" },
-    { label: tR("datePublished"), value: "datePublished" },
-    { label: tR("humId"), value: "humId" },
+    { label: tR("fields.dateModified.label"), value: "dateModified" },
+    { label: tR("fields.datePublished.label"), value: "datePublished" },
+    { label: tR("fields.humId.label"), value: "humId" },
   ];
 
   return (
@@ -397,13 +397,13 @@ const columns = [
   }),
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.researchId"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.researchId.label"),
     cell: (ctx) => <ResearchLink humId={ctx.getValue()} />,
     size: 15,
   }),
   columnHelper.accessor("datasetIds", {
     id: "datasets",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.datasets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.datasets.label"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -424,7 +424,7 @@ const columns = [
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.title"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.title.label"),
     cell: function Cell(ctx) {
       return (
         <ModalCell maxHeight={96}>
@@ -436,7 +436,7 @@ const columns = [
 
   columnHelper.accessor("methodsSummary", {
     id: "methods",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.methods"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.methods.label"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
         {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
@@ -445,14 +445,14 @@ const columns = [
   }),
   columnHelper.accessor("typeOfDataSummary", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.typeOfData"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.typeOfData.label"),
     cell: (ctx) => (
       <ModalCell>{ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}</ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.platforms"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.platforms.label"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -467,7 +467,7 @@ const columns = [
   }),
   columnHelper.accessor("targetsSummary", {
     id: "targets",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.targets"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.targets.label"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
         <p className="whitespace-pre-wrap text-sm">
@@ -478,7 +478,7 @@ const columns = [
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.criteria"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.criteria.label"),
     cell: (ctx) => (
       <>
         {ctx.row.original.criteria.map((c) => (
@@ -489,7 +489,7 @@ const columns = [
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("Research-list.dataProvider"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.dataProvider.label"),
     cell: (ctx) => (
       <ModalCell>
         <ul className="space-y-4">
@@ -504,7 +504,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.datePublished"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.datePublished.label"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -527,7 +527,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => ctx.table.options.meta?.t?.("Research-list.dateModified"),
+    header: (ctx) => ctx.table.options.meta?.t("Research-list.fields.dateModified.label"),
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (

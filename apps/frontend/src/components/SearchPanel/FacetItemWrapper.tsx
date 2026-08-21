@@ -17,7 +17,7 @@ export function FacetItemWrapper({
   headerAction?: React.ReactNode;
 }) {
   const tFilters = useTranslations("Filters");
-  const t = useTranslations(`Filters.${id}` as any) as any;
+  const labelKey = `facets.${id}.label` as any;
 
   return (
     <AccordionItem
@@ -25,7 +25,7 @@ export function FacetItemWrapper({
       className="relative border-b-primary-translucent data-[state=open]:pb-[4px]"
     >
       <AccordionTrigger className="py-2.5 font-bold text-secondary hover:no-underline">
-        <span className="truncate pr-[80px]">{t("title" as any)}</span>
+        <span className="truncate pr-[80px]">{tFilters(labelKey)}</span>
       </AccordionTrigger>
 
       <div className="pointer-events-none absolute top-0 right-7 z-10 flex h-[40px] items-center gap-1">

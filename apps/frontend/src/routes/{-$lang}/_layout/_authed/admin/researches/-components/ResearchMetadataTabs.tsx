@@ -68,7 +68,7 @@ export function ResearchMetadataTabs({
   className?: string;
   contentClassName?: string;
 }) {
-  const tFields = useTranslations("admin.researches.fields");
+  const tFields = useTranslations("Research.fields");
 
   const fieldOrderIndex = new Map(fieldOrder.map((key, index) => [key, index]));
 
@@ -155,7 +155,7 @@ function MetadataFieldEditor({ form, field }: { form: any; field: MetadataField 
 }
 
 function translateFieldLabel(t: ReturnType<typeof useTranslations>, key: string) {
-  const messageKey = `${key}.self` as never;
+  const messageKey = `${key}.label` as never;
   return t.has(messageKey) ? t(messageKey) : humanize(key);
 }
 

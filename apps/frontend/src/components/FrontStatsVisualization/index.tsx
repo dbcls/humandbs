@@ -201,8 +201,8 @@ export default function FrontStatsVisualization() {
           {stats?.systems.map((sys) => (
             <li key={sys.facet}>
               <h3>
-                {tFilters.has(`${sys.facet}.title` as any)
-                  ? tFilters(`${sys.facet}.title` as any)
+                {tFilters.has(`facets.${sys.facet}.label` as any)
+                  ? tFilters(`facets.${sys.facet}.label` as any)
                   : capitalize(sys.facet)}
               </h3>
               <ul>

@@ -104,9 +104,9 @@ export function VersionCard({
       }
     >
       <article>
-        <ContentHeader>{t("Research.title")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.title.label")}</ContentHeader>
         <h2 className="text">{versionData.title[lang]}</h2>
-        <ContentHeader>{t("Research.researchOverview")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.researchOverview.label")}</ContentHeader>
         <div className="sm:columns-2 sm:break-inside-avoid-column">
           <Markdown
             className="text-base"
@@ -124,7 +124,7 @@ export function VersionCard({
       </article>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.datasets")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.datasets.label")}</ContentHeader>
 
         <Table
           columns={datasetColumns}
@@ -136,22 +136,22 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.dataProvider.self")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.dataProvider.label")}</ContentHeader>
         <ul>
           {versionData?.dataProvider.map((p) => {
             return (
               <dl key={`${p.name.ja?.text}-${p.name.en?.text}`} className="columns-2">
                 <KeyValueCard
-                  title={t("Research.dataProvider.representative")}
+                  title={t("Research.fields.dataProvider.fields.name.label")}
                   value={p.name[lang]?.text}
                 />
                 <KeyValueCard
-                  title={t("Research.dataProvider.organization")}
+                  title={t("Research.fields.dataProvider.fields.organization.fields.name.label")}
                   value={p.organization?.name[lang]?.text}
                 />
 
                 <KeyValueCard
-                  title={t("Research.dataProvider.researchTitle")}
+                  title={t("Research.fields.dataProvider.fields.researchTitle.label")}
                   value={p.researchTitle?.[lang]}
                 />
                 <KeyValueCard title="ORCID" value={p.orcid} />
@@ -166,7 +166,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.researchProject.self")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.researchProject.label")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={researchProjectsColumns}
@@ -175,7 +175,7 @@ export function VersionCard({
         />
       </section>
       <section>
-        <ContentHeader>{t("Research.grant.self")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.grant.label")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={grantsColumns}
@@ -185,7 +185,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.relatedPublication")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.relatedPublication.label")}</ContentHeader>
         <Table
           columns={relatedPublicationsColumns}
           data={versionData?.relatedPublication || []}
@@ -195,7 +195,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{t("Research.controlledAccessUser.self")}</ContentHeader>
+        <ContentHeader>{t("Research.fields.controlledAccessUser.label")}</ContentHeader>
         <Table
           className="mt-4 text-sm"
           columns={dataUsedByColumns}
@@ -230,7 +230,7 @@ const datasetColumns = [
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.datasetId")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.fields.datasetId.label")} />
     ),
     cell: (ctx) => <DatasetLink datasetId={ctx.getValue()} />,
     maxSize: 12,
@@ -238,7 +238,7 @@ const datasetColumns = [
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.criteria")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.fields.criteria.label")} />
     ),
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />, //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
@@ -246,7 +246,7 @@ const datasetColumns = [
   datasetColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.typeOfData")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.fields.typeOfData.label")} />
     ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
 
@@ -292,7 +292,10 @@ function createRelatedPublicationsColumns(parentHumIds: Record<string, string | 
     publicationsColumnHelper.accessor("title", {
       id: "title",
       header: (ctx) => (
-        <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.publicationTitle")} />
+        <SortHeader
+          ctx={ctx}
+          label={ctx.table.options.meta?.t("Research.fields.relatedPublication.fields.title.label")}
+        />
       ),
       cell: (ctx) => (
         <span className="text-sm">
@@ -314,7 +317,8 @@ function createRelatedPublicationsColumns(parentHumIds: Record<string, string | 
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",
-      header: (ctx) => ctx.table.options.meta?.t("Research.publicationDatasets"),
+      header: (ctx) =>
+        ctx.table.options.meta?.t("Research.fields.relatedPublication.fields.datasetIds.label"),
       cell: (ctx) => (
         <ModalCell
           triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
@@ -365,7 +369,9 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
       header: (ctx) => (
         <SortHeader
           ctx={ctx}
-          label={ctx.table.options.meta?.t("Research.controlledAccessUser.name")}
+          label={ctx.table.options.meta?.t(
+            "Research.fields.controlledAccessUser.fields.name.label",
+          )}
         />
       ),
       cell: (ctx) => ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
@@ -375,7 +381,9 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
       header: (ctx) => (
         <SortHeader
           ctx={ctx}
-          label={ctx.table.options.meta?.t("Research.controlledAccessUser.organization")}
+          label={ctx.table.options.meta?.t(
+            "Research.fields.controlledAccessUser.fields.organization.fields.name.label",
+          )}
         />
       ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
@@ -385,7 +393,9 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
       header: (ctx) => (
         <SortHeader
           ctx={ctx}
-          label={ctx.table.options.meta?.t("Research.controlledAccessUser.country")}
+          label={ctx.table.options.meta?.t(
+            "Research.fields.controlledAccessUser.fields.organization.fields.address.fields.country.label",
+          )}
         />
       ),
       cell: (ctx) => ctx.getValue(),
@@ -395,7 +405,9 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
       header: (ctx) => (
         <SortHeader
           ctx={ctx}
-          label={ctx.table.options.meta?.t("Research.controlledAccessUser.researchTitle")}
+          label={ctx.table.options.meta?.t(
+            "Research.fields.controlledAccessUser.fields.researchTitle.label",
+          )}
         />
       ),
       cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
@@ -405,7 +417,9 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
       header: (ctx) => (
         <SortHeader
           ctx={ctx}
-          label={ctx.table.options.meta?.t("Research.controlledAccessUser.periodOfDataUse")}
+          label={ctx.table.options.meta?.t(
+            "Research.fields.controlledAccessUser.fields.periodOfDataUse.label",
+          )}
         />
       ),
       cell: (ctx) => (
@@ -422,7 +436,8 @@ function createDataUsedByColumns(parentHumIds: Record<string, string | null>) {
     }),
     dataUsedByColumnsHelper.accessor("datasetIds", {
       id: "cau.datasetIds",
-      header: (ctx) => ctx.table.options.meta?.t("Research.controlledAccessUser.datasets"),
+      header: (ctx) =>
+        ctx.table.options.meta?.t("Research.fields.controlledAccessUser.fields.datasetIds.label"),
       cell: (ctx) => (
         <ModalCell
           triggerLabel={ctx.table.options.meta?.t("common.see-all-x-items", {
@@ -448,21 +463,30 @@ const grantsColumns = [
   grantsColumnsHelper.accessor("agency.name", {
     id: "grantAgency",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.agency")} />
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t("Research.fields.grant.fields.agency.fields.name.label")}
+      />
     ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("title", {
     id: "grantTitle",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.title")} />
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t("Research.fields.grant.fields.title.label")}
+      />
     ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   grantsColumnsHelper.accessor("id", {
     id: "grantId",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.grant.id")} />
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t("Research.fields.grant.fields.id.label")}
+      />
     ),
     cell: (ctx) => (
       <ul className="flex flex-wrap items-center gap-2">
@@ -483,14 +507,20 @@ const researchProjectsColumns = [
   researchProjectsColumnsHelper.accessor("name", {
     id: "researchProjectTitle",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchProject.name")} />
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t("Research.fields.researchProject.fields.name.label")}
+      />
     ),
     cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text ?? "",
   }),
   researchProjectsColumnsHelper.accessor("url", {
     id: "researchProjectId",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("Research.researchProject.URL")} />
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t("Research.fields.researchProject.fields.url.label")}
+      />
     ),
     cell: (ctx) => {
       const url = ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.url;

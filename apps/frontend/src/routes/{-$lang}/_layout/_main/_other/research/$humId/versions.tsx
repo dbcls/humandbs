@@ -132,7 +132,9 @@ function VersionInfo({
           )}
         </div>
         <div>
-          <h4 className="mb-4 font-semibold text-secondary text-xs">{tResearch("releaseNote")}</h4>
+          <h4 className="mb-4 font-semibold text-secondary text-xs">
+            {tResearch("fields.releaseNote.label")}
+          </h4>
           <Markdown
             className="inline-prose"
             contentHtml={{
@@ -141,7 +143,7 @@ function VersionInfo({
           />
 
           <h4 className="my-4 font-semibold text-secondary text-xs">
-            {tResearch("versionReleaseDate")}
+            {tResearch("fields.versionReleaseDate.label")}
           </h4>
           {version.versionReleaseDate}
         </div>

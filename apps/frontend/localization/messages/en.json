@@ -1,7 +1,6 @@
 {
   "common": {
     "humandb": "NBDC HumanDB",
-    "to-": "To {place}",
     "previous-versions": "Versions of {documentName}:",
     "show-diff": "Show diff",
     "diff-title": "Changes",
@@ -35,7 +34,7 @@
     "sort-desc": "Descending",
     "sort-by": "by {field}",
     "created-at": "Created at",
-    "updated-at": "Updated-at",
+    "updated-at": "Updated at",
     "published-at": "Published at",
     "author": "Author",
     "page-not-found": "Page not found"
@@ -79,10 +78,6 @@
     "research-list": "Research List",
     "dataset-list": "Dataset List"
   },
-  "Markdoc": {
-    "version": "Version",
-    "updatedAt": "Updated at"
-  },
   "Front": {
     "data-submission-button": "Submit data",
     "data-usage-button": "Use data",
@@ -90,26 +85,45 @@
     "search-placeholder": "Search research",
     "search-keywords": "Keywords"
   },
-  "Data-usage": {
-    "header": "List of Available Research Data",
-    "research-summary": "Research Summary",
-    "dataset": "Dataset"
-  },
   "Research-list": {
     "cart-note": "Click the cart icon next to the research ID or the JGAD dataset ID you want to apply for to add its datasets to your cart.",
     "research-list": "Research list",
-    "datePublished": "Date published",
-    "dateModified": "Date modified",
-    "researchId": "Research ID",
-    "datasets": "Datasets",
-    "title": "Title",
-    "methods": "Category",
-    "typeOfData": "Analysis method",
-    "platforms": "Platforms",
-    "targets": "Participants",
-    "dataProvider": "Data provider",
-    "criteria": "Access type",
-    "status": "Status"
+    "status": "Status",
+    "fields": {
+      "datePublished": {
+        "label": "Date published"
+      },
+      "dateModified": {
+        "label": "Date modified"
+      },
+      "researchId": {
+        "label": "Research ID"
+      },
+      "datasets": {
+        "label": "Datasets"
+      },
+      "title": {
+        "label": "Title"
+      },
+      "methods": {
+        "label": "Category"
+      },
+      "typeOfData": {
+        "label": "Analysis method"
+      },
+      "platforms": {
+        "label": "Platforms"
+      },
+      "targets": {
+        "label": "Participants"
+      },
+      "dataProvider": {
+        "label": "Data provider"
+      },
+      "criteria": {
+        "label": "Access type"
+      }
+    }
   },
   "Dataset-list": {
     "cart-note": "Click the cart icon next to the JGAD dataset ID you want to apply for to add it to your cart.",
@@ -147,245 +161,204 @@
     "distribution-filter-placeholder": "Filter by name",
     "distribution-no-matches": "No matching links"
   },
-
   "Research": {
     "research-id": "Research ID",
     "research-list": "Research list",
-    "humId": "Research ID",
-    "datasets": "Datasets",
     "datasetsAddedInRelease": "Datasets added in this release",
     "noDatasetsAddedInRelease": "No datasets added in this release.",
     "release-info": "Release info",
     "to-latest-version": "To the latest version",
     "latest-version": "Latest",
-    "researchOverview": "Research overview",
-    "aims": "Aims",
-    "title": "Title",
-    "methods": "Methods",
-    "targets": "Targets",
-    "dataProvider": {
-      "self": "Data provider",
-      "representative": "Principal Investigator",
-      "organization": "Affiliation",
-      "researchTitle": "Research title"
-    },
     "Unrestricted-access": "Unrestricted-access",
     "Controlled-access (Type I)": "Controlled-access (Type I)",
     "Controlled-access (Type II)": "Controlled-access (Type II)",
-    "relatedPublication": "Related publications",
-
-    "grant": {
-      "self": "Grants",
-      "title": "Title",
-      "agency": "Name",
-      "id": "Project number"
-    },
-    "researchProject": {
-      "self": "Research projects",
-      "name": "Name",
-      "URL": "URL"
-    },
-    "controlledAccessUser": {
-      "self": "Controlled access users",
-      "name": "Principal Investigator",
-      "organization": "Affiliation",
-      "country": "Country/Region",
-      "researchTitle": "Research title",
-      "periodOfDataUse": "Period of data use",
-      "datasets": "Dataset ID"
-    },
-    "publicationTitle": "Title",
-    "publicationDatasets": "Datasets",
-    "platforms": "Platforms",
-
-    "organization-country": "Country/Region",
-    "datasetId": "Dataset ID",
-    "criteria": "Access type",
-    "typeOfData": "Type of data",
-    "details": "Details",
-    "datePublished": "Date published",
-    "dateModified": "Date modified",
-    "versionReleaseDate": "Vdersion release date",
-    "releaseNote": "Release note"
-  },
-  "DatasetVersionCard": {
-    "release-info": "Release info",
-    "alreadyInCart": "Already in cart",
-    "addToCart": "Add to cart",
-    "info": "Info",
-    "releaseDate": "Release date",
-    "typeOfData": "Type of data",
-    "criteria": "Access type",
-    "experiments": "Analysis method"
-  },
-  "Data-submission": {
-    "to-data-submission": "To application system",
-    "to-navigation": "To applicaton submission",
-    "data-submission": "Data submission",
-    "before-application": "Before application system"
+    "fields": {
+      "humId": {
+        "label": "Research ID"
+      },
+      "datasets": {
+        "label": "Datasets"
+      },
+      "researchOverview": {
+        "label": "Research overview"
+      },
+      "title": {
+        "label": "Research title"
+      },
+      "dataProvider": {
+        "label": "Data provider",
+        "fields": {
+          "organization": {
+            "label": "Affiliation",
+            "fields": {
+              "name": {
+                "label": "Name"
+              },
+              "address": {
+                "label": "Address",
+                "fields": {
+                  "country": {
+                    "label": "Country/State"
+                  }
+                }
+              }
+            }
+          },
+          "researchTitle": {
+            "label": "Research title"
+          },
+          "name": {
+            "label": "Principal investigator"
+          },
+          "email": {
+            "label": "Email"
+          },
+          "orcid": {
+            "label": "ORCID"
+          }
+        }
+      },
+      "relatedPublication": {
+        "label": "Related publications",
+        "fields": {
+          "title": {
+            "label": "Title"
+          },
+          "doi": {
+            "label": "DOI"
+          },
+          "datasetIds": {
+            "label": "Dataset ID"
+          }
+        }
+      },
+      "grant": {
+        "label": "Grants",
+        "fields": {
+          "title": {
+            "label": "Title"
+          },
+          "agency": {
+            "label": "Agency",
+            "fields": {
+              "name": {
+                "label": "Name"
+              }
+            }
+          },
+          "id": {
+            "label": "Project number"
+          }
+        }
+      },
+      "researchProject": {
+        "label": "Research projects",
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "url": {
+            "label": "URL"
+          }
+        }
+      },
+      "controlledAccessUser": {
+        "label": "Controlled access users",
+        "fields": {
+          "name": {
+            "label": "Principal Investigator"
+          },
+          "organization": {
+            "label": "Affiliation",
+            "fields": {
+              "name": {
+                "label": "Affiliation"
+              },
+              "address": {
+                "label": "Address",
+                "fields": {
+                  "country": {
+                    "label": "Country/Region"
+                  }
+                }
+              }
+            }
+          },
+          "researchTitle": {
+            "label": "Research title"
+          },
+          "periodOfDataUse": {
+            "label": "Period of data use"
+          },
+          "datasetIds": {
+            "label": "Dataset ID"
+          }
+        }
+      },
+      "platforms": {
+        "label": "Platforms"
+      },
+      "organization-country": {
+        "label": "Country/Region"
+      },
+      "datasetId": {
+        "label": "Dataset ID"
+      },
+      "criteria": {
+        "label": "Access type"
+      },
+      "typeOfData": {
+        "label": "Type of data"
+      },
+      "details": {
+        "label": "Details"
+      },
+      "datePublished": {
+        "label": "Date published"
+      },
+      "dateModified": {
+        "label": "Date modified"
+      },
+      "versionReleaseDate": {
+        "label": "Vdersion release date"
+      },
+      "releaseNote": {
+        "label": "Release note"
+      },
+      "summary": {
+        "label": "Summary",
+        "fields": {
+          "aims": {
+            "label": "Aims"
+          },
+          "methods": {
+            "label": "Methods"
+          },
+          "targets": {
+            "label": "Targets"
+          },
+          "url": {
+            "label": "URLs"
+          }
+        }
+      },
+      "summaryShort": {
+        "label": "Summary short",
+        "fields": {
+          "typeOfData": {
+            "label": "Category"
+          },
+          "methods": {
+            "label": "Methods"
+          },
+          "targets": {
+            "label": "Targets"
+          }
+        }
+      }
+    }
   },
   "Filters": {
-    "datePublished": {
-      "title": "Date Published"
-    },
-    "dateModified": {
-      "title": "Date Modified"
-    },
-    "criteria": {
-      "title": "Access type",
-      "options": {
-        "Unrestricted-access": "Unrestricted-access",
-        "Controlled-access (Type I)": "Controlled-access (Type I)",
-        "Controlled-access (Type II)": "Controlled-access (Type II)"
-      }
-    },
-    "subjectCountType": {
-      "title": "Subject Count Type",
-      "options": {
-        "individual": "Individual",
-        "sample": "Sample",
-        "mixed": "Individual/Sample Mixed"
-      }
-    },
-    "healthStatus": {
-      "title": "Health Status",
-      "options": {
-        "healthy": "Healthy",
-        "affected": "Affected",
-        "mixed": "Healthy/Affected Mixed"
-      }
-    },
-    "diseaseIcd10": {
-      "title": "Disease (ICD-10)"
-    },
-    "tissues": {
-      "title": "Tissues"
-    },
-    "cellLine": {
-      "title": "Cell Line"
-    },
-    "population": {
-      "title": "Population"
-    },
-    "sex": {
-      "title": "Sex",
-      "options": {
-        "male": "Male",
-        "female": "Female",
-        "mixed": "Male/Female Mixed"
-      }
-    },
-    "ageGroup": {
-      "title": "Age Group",
-      "options": {
-        "adult": "Adult",
-        "child": "Child",
-        "infant": "Infant",
-        "elderly": "Elderly",
-        "mixed": "Adult/Child/Infant/Elderly Mixed"
-      }
-    },
-    "assayType": {
-      "title": "Assay Type"
-    },
-    "libraryKits": {
-      "title": "Library Kits"
-    },
-    "platform": {
-      "title": "Platform"
-    },
-    "readType": {
-      "title": "Read Type",
-      "options": {
-        "single-end": "Single-end",
-        "paired-end": "Paired-end",
-        "mixed": "Single-end/Paired-end Mixed"
-      }
-    },
-    "referenceGenome": {
-      "title": "Reference Genome"
-    },
-    "fileTypes": {
-      "title": "File Types"
-    },
-    "processedDataTypes": {
-      "title": "Processed Data Types"
-    },
-    "policyId": {
-      "title": "Policy ID",
-      "options": {
-        "nbdc-policy": "NBDC Policy",
-        "cancer-research-policy": "Cancer Research Policy",
-        "familial-policy": "Familial Policy",
-        "company-limitation-policy": "Company Limitation Policy",
-        "custom-policy": "Custom Policy"
-      }
-    },
-    "disease": {
-      "title": "Disease"
-    },
-    "isTumor": {
-      "title": "Tumor Sample",
-      "options": {
-        "any": "Any",
-        "tumor": "Tumor",
-        "normal": "Normal",
-        "mixed": "Tumor/Normal Mixed"
-      }
-    },
-    "hasPhenotypeData": {
-      "title": "Has Phenotype Data",
-      "options": {
-        "any": "Any",
-        "true": "Yes",
-        "false": "No"
-      }
-    },
-    "releaseDate": {
-      "title": "Release Date"
-    },
-    "subjectCount": {
-      "title": "Subject Count"
-    },
-    "readLength": {
-      "title": "Read Length (bp)"
-    },
-    "sequencingDepth": {
-      "title": "Sequencing Depth (x)"
-    },
-    "targetCoverage": {
-      "title": "Target Coverage (%)"
-    },
-    "dataVolumeGb": {
-      "title": "Data Volume (GB)"
-    },
-    "variantSnv": {
-      "title": "SNV Count"
-    },
-    "variantIndel": {
-      "title": "Indel Count"
-    },
-    "variantCnv": {
-      "title": "CNV Count"
-    },
-    "variantSv": {
-      "title": "SV Count"
-    },
-    "variantTotal": {
-      "title": "Total Variant Count"
-    },
-    "variantAutosomes": {
-      "title": "Autosomal Variant Count"
-    },
-    "variantChrX": {
-      "title": "Chr X Variant Count"
-    },
-    "cohorts": {
-      "title": "Cohort"
-    },
-    "humId": {
-      "title": "Research ID"
-    },
     "panel-title": "Filter details",
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",
@@ -400,7 +373,170 @@
     "sort-by-name": "Filter name",
     "sort-by-count": "Results count",
     "dates": "Period",
-    "basic-info": "Basic Information"
+    "basic-info": "Basic Information",
+    "facets": {
+      "datePublished": {
+        "label": "Date Published"
+      },
+      "dateModified": {
+        "label": "Date Modified"
+      },
+      "criteria": {
+        "label": "Access type",
+        "options": {
+          "Unrestricted-access": "Unrestricted-access",
+          "Controlled-access (Type I)": "Controlled-access (Type I)",
+          "Controlled-access (Type II)": "Controlled-access (Type II)"
+        }
+      },
+      "subjectCountType": {
+        "label": "Subject Count Type",
+        "options": {
+          "individual": "Individual",
+          "sample": "Sample",
+          "mixed": "Individual/Sample Mixed"
+        }
+      },
+      "healthStatus": {
+        "label": "Health Status",
+        "options": {
+          "healthy": "Healthy",
+          "affected": "Affected",
+          "mixed": "Healthy/Affected Mixed"
+        }
+      },
+      "diseaseIcd10": {
+        "label": "Disease (ICD-10)"
+      },
+      "tissues": {
+        "label": "Tissues"
+      },
+      "cellLine": {
+        "label": "Cell Line"
+      },
+      "population": {
+        "label": "Population"
+      },
+      "sex": {
+        "label": "Sex",
+        "options": {
+          "male": "Male",
+          "female": "Female",
+          "mixed": "Male/Female Mixed"
+        }
+      },
+      "ageGroup": {
+        "label": "Age Group",
+        "options": {
+          "adult": "Adult",
+          "child": "Child",
+          "infant": "Infant",
+          "elderly": "Elderly",
+          "mixed": "Adult/Child/Infant/Elderly Mixed"
+        }
+      },
+      "assayType": {
+        "label": "Assay Type"
+      },
+      "libraryKits": {
+        "label": "Library Kits"
+      },
+      "platform": {
+        "label": "Platform"
+      },
+      "readType": {
+        "label": "Read Type",
+        "options": {
+          "single-end": "Single-end",
+          "paired-end": "Paired-end",
+          "mixed": "Single-end/Paired-end Mixed"
+        }
+      },
+      "referenceGenome": {
+        "label": "Reference Genome"
+      },
+      "fileTypes": {
+        "label": "File Types"
+      },
+      "processedDataTypes": {
+        "label": "Processed Data Types"
+      },
+      "policyId": {
+        "label": "Policy ID",
+        "options": {
+          "nbdc-policy": "NBDC Policy",
+          "cancer-research-policy": "Cancer Research Policy",
+          "familial-policy": "Familial Policy",
+          "company-limitation-policy": "Company Limitation Policy",
+          "custom-policy": "Custom Policy"
+        }
+      },
+      "disease": {
+        "label": "Disease"
+      },
+      "isTumor": {
+        "label": "Tumor Sample",
+        "options": {
+          "any": "Any",
+          "tumor": "Tumor",
+          "normal": "Normal",
+          "mixed": "Tumor/Normal Mixed"
+        }
+      },
+      "hasPhenotypeData": {
+        "label": "Has Phenotype Data",
+        "options": {
+          "any": "Any",
+          "true": "Yes",
+          "false": "No"
+        }
+      },
+      "releaseDate": {
+        "label": "Release Date"
+      },
+      "subjectCount": {
+        "label": "Subject Count"
+      },
+      "readLength": {
+        "label": "Read Length (bp)"
+      },
+      "sequencingDepth": {
+        "label": "Sequencing Depth (x)"
+      },
+      "targetCoverage": {
+        "label": "Target Coverage (%)"
+      },
+      "dataVolumeGb": {
+        "label": "Data Volume (GB)"
+      },
+      "variantSnv": {
+        "label": "SNV Count"
+      },
+      "variantIndel": {
+        "label": "Indel Count"
+      },
+      "variantCnv": {
+        "label": "CNV Count"
+      },
+      "variantSv": {
+        "label": "SV Count"
+      },
+      "variantTotal": {
+        "label": "Total Variant Count"
+      },
+      "variantAutosomes": {
+        "label": "Autosomal Variant Count"
+      },
+      "variantChrX": {
+        "label": "Chr X Variant Count"
+      },
+      "cohorts": {
+        "label": "Cohort"
+      },
+      "humId": {
+        "label": "Research ID"
+      }
+    }
   },
   "Pagination": {
     "itemsPerPage": "Per page",
@@ -436,7 +572,9 @@
     "get": "Get",
     "cancel": "Cancel",
     "apply": "Apply",
-    "select-field": "Select a field from the left panel"
+    "select-field": "Select a field from the left panel",
+    "cmd-enter-hint": "Cmd+Enter to save · Esc to cancel",
+    "click-to-edit-custom": "Click to edit custom value"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",
@@ -552,12 +690,6 @@
       "edit-this-document": "Edit this document",
       "new-doc-message": "Enter content ID in `snake-case`. It can have slashes (`hello/world`). Content ID would become the path to this document"
     },
-    "content": {
-      "delete-title": "Delete content item?",
-      "delete-description": "This will permanently delete \"{name}\" and all its versions. This action cannot be undone.",
-      "search-placeholder": "Search content items…",
-      "no-items": "No content items found"
-    },
     "news": {
       "empty": "No news items found",
       "add-tag": "Add tag…"
@@ -624,91 +756,7 @@
       "overwrite-action": "Overwrite",
       "invalid-json": "Invalid JSON file. Please upload a valid .json file.",
       "create-version-failed": "Failed to create version.",
-      "create-research-failed": "Failed to create research.",
-      "fields": {
-        "title": {
-          "self": "Research title"
-        },
-        "summary": {
-          "self": "Summary",
-          "aims": {
-            "self": "Aims"
-          },
-          "methods": {
-            "self": "Methods"
-          },
-          "targets": {
-            "self": "Targets"
-          },
-          "url": {
-            "self": "URLs"
-          }
-        },
-        "summaryShort": {
-          "self": "Summary short",
-          "typeOfData": {
-            "self": "Category"
-          },
-          "methods": {
-            "self": "Methods"
-          },
-          "targets": {
-            "self": "Targets"
-          }
-        },
-        "dataProvider": {
-          "self": "Data provider",
-          "name": {
-            "self": "Principal investigator"
-          },
-          "email": {
-            "self": "Email"
-          },
-
-          "orcid": { "self": "ORCID" },
-          "organization": {
-            "self": "Affiliation",
-            "name": { "self": "Name" },
-            "address": {
-              "self": "Address",
-              "country": { "self": "Country/State" }
-            }
-          }
-        },
-
-        "grant": {
-          "self": "Grants",
-          "title": { "self": "Title" },
-          "agency": {
-            "self": "Agency",
-            "name": { "self": "Name" }
-          },
-          "id": {
-            "self": "Project number"
-          }
-        },
-        "researchProject": {
-          "self": "Research projects",
-          "name": { "self": "Name" },
-          "url": { "self": "URL" }
-        },
-
-        "controlledAccessUser": {
-          "self": "Controlled access users",
-          "name": "Principal Investigator",
-          "organization": "Affiliation",
-          "country": "Country/Region",
-          "researchTitle": "Research title",
-          "periodOfDataUse": "Period of data use",
-          "datasets": "Dataset ID"
-        },
-        "relatedPublication": {
-          "self": "Related publications",
-          "title": { "self": "Title" },
-          "doi": { "self": "DOI" },
-          "datasetIds": { "self": "Dataset ID" }
-        }
-      }
+      "create-research-failed": "Failed to create research."
     },
     "moldata-keys": {
       "delete-title": "Delete moldata key?",
@@ -735,10 +783,6 @@
       "hide-preview": "Hide preview",
       "preview": "Preview",
       "reset-field": "Reset to initial value"
-    },
-    "merge": {
-      "cmd-enter-hint": "Cmd+Enter to save · Esc to cancel",
-      "click-to-edit-custom": "Click to edit custom value"
     }
   }
 }
