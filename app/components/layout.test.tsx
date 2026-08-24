@@ -25,6 +25,12 @@ function announcements(locale: Locale, alerts: string[]): string {
   return render(<Announcements locale={locale} alerts={alerts} />, "/")
 }
 
+/** The addresses drawn as where the reader is, in the order they appear. */
+function marked(html: string): string[] {
+  return [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>/g)]
+    .map((match) => /href="([^"]*)"/.exec(match[0])?.[1] ?? "")
+}
+
 describe("サイトのヘッダ", () => {
   it("グローバルナビの項目をすべて出す", () => {
     const html = header("ja", "/faq")
@@ -50,6 +56,30 @@ describe("サイトのヘッダ", () => {
 
   it("alert はバーの中に出さない", () => {
     expect(header("ja", "/")).not.toContain("<div class=\"markdown")
+  })
+
+  it("いま見ているページの項目に現在地の印が付く", () => {
+    // バーと、幅が足りないときの行き先が入るメニューの両方に出る。
+    expect(marked(header("ja", "/guidelines"))).toEqual(["/guidelines", "/guidelines"])
+  })
+
+  it("その項目の下のページを見ているときも、親の項目が現在地になる", () => {
+    // 索引から辿った先はまだ「ガイドライン」の中にいる。
+    expect(marked(header("ja", "/guidelines/data-sharing-guidelines")))
+      .toEqual(["/guidelines", "/guidelines"])
+    expect(marked(header("ja", "/research/hum0103/v4"))).toEqual(["/research", "/research"])
+  })
+
+  it("名前が前方一致するだけの別のページは現在地にならない", () => {
+    expect(marked(header("ja", "/data-use-something-else"))).toEqual([])
+  })
+
+  it("英語のページでも現在地は同じ項目を指す", () => {
+    expect(marked(header("en", "/en/faq"))).toEqual(["/en/faq", "/en/faq"])
+  })
+
+  it("フッタのサイトマップは現在地を持たない", () => {
+    expect(marked(render(<SiteFooter locale="ja" />, "/guidelines"))).toEqual([])
   })
 })
 

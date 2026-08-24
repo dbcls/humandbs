@@ -157,8 +157,8 @@ const FENCE = /^([ \t]*):::[ \t]*(.*)$/
 const ATTRIBUTE = /\s*[a-zA-Z-]+="[^"]*"/g
 
 /**
- * v1 extended markdown with `:::callout` and `:::button` fences. v2 has no
- * extension, so a callout becomes the blockquote it always was. `:::button` is
+ * v1 extended markdown with `:::callout` and `:::button` fences. v2 writes the
+ * aside GitHub's way instead, so a callout becomes `> [!NOTE]`. `:::button` is
  * not handled — it only ever appears on the three pages that are screens now,
  * so meeting one means something else changed and should stop the run rather
  * than end up in a body as literal text.
@@ -184,6 +184,12 @@ function foldCallouts(source: string): string {
       const name = rest.trim().split(/[\s]/)[0] ?? ""
       if (name !== "callout") throw new Error(`unhandled markdown directive: ${line.trim()}`)
       indent = fenceIndent
+      // The mark that makes this an alert rather than a quotation. v1 had
+      // already told the two apart — what it fenced is an aside, and what it
+      // left as a blockquote is a quotation (the FAQ quotes the
+      // personal-information act at length) — so the distinction survives the
+      // conversion instead of being re-decided by hand afterwards.
+      out.push(`${indent}> [!NOTE]`, `${indent}>`)
       // A fence may carry the first line of its own content after the name, and
       // one of them carries the whole callout and its closing fence as well.
       let inline = rest.trim().slice(name.length).replaceAll(ATTRIBUTE, "").trim()
@@ -218,9 +224,25 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkStringify, { bullet: "-", emphasis: "*", strong: "*", fence: "`", rule: "-" })
 
+/**
+ * Two things the serialiser does to an alert's mark, undone.
+ *
+ * It escapes the `[`, because a `[…]` could be a reference link; and the mark
+ * and the line under it are one paragraph with a soft break in it, which it
+ * writes back as a single line. The mark is therefore opened as a paragraph of
+ * its own (`foldCallouts` puts a blank quoted line after it) and closed up
+ * again here, which leaves the form GitHub writes.
+ *
+ * Safe as a text substitution because `[!` appears nowhere in the input.
+ */
+const ESCAPED_MARK = /\\\[!NOTE]\n[ \t]*>\n/g
+
 export function htmlToMarkdown(source: string): string {
   if (source.trim() === "") return ""
-  return String(processor.processSync(foldCallouts(source))).trim()
+  return String(processor.processSync(foldCallouts(source)))
+    .trim()
+    .replaceAll(ESCAPED_MARK, "[!NOTE]\n")
+    .replaceAll("\\[!NOTE]", "[!NOTE]")
 }
 
 /**

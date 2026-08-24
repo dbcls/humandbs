@@ -19,7 +19,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const messages = messagesFor(locale).use
   return {
     locale,
-    notes: [renderMarkdown(messages.account), renderMarkdown(messages.procedure)],
+    notes: [renderMarkdown(messages.account, locale), renderMarkdown(messages.procedure, locale)],
   }
 }
 

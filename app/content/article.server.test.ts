@@ -44,7 +44,7 @@ describe("本文の検査", () => {
 
   it("**描画が落とすものを弾く。** ブロックは中身ごと消えるので、通してはいけない", () => {
     const body = "<div>この文は描画で丸ごと消える</div>"
-    expect(renderMarkdown(body)).not.toContain("消える")
+    expect(renderMarkdown(body, "ja")).not.toContain("消える")
     expect(checkArticleBody(body)).not.toEqual([])
   })
 

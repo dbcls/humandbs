@@ -111,7 +111,12 @@ const PROSE = [
   "### 見出し (h3)",
   "- 箇条書き\n- 2 つ目",
   "1. 順序つき\n2. 2 つ目",
-  "> 引用は注記として出る。ガイドラインの但し書きを引くときに使う。",
+  "> 名前を持たない引用は引用のまま。FAQ が個人情報保護法の条文を引くのがこの形。",
+  "> [!NOTE]\n> 名前を持つ引用は注記になる。NOTE は印を持たない一番簡素な器。",
+  "> [!TIP]\n> TIP。",
+  "> [!IMPORTANT]\n> IMPORTANT。",
+  "> [!WARNING]\n> WARNING。",
+  "> [!CAUTION]\n> CAUTION。",
   "| データセット ID | アクセス制限 |\n| --- | --- |"
   + "\n| JGAD000117 | 制限公開（Type I） |\n| JGAD000403 | 制限公開（Type I） |",
   "```\nhum0197.v3.gwas.v1\n```",
@@ -120,7 +125,7 @@ const PROSE = [
 ].join("\n\n")
 
 export function loader() {
-  return { prose: renderMarkdown(PROSE) }
+  return { prose: renderMarkdown(PROSE, "ja") }
 }
 
 const SECTIONS = [
@@ -702,6 +707,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="prose">
               <p className="mb-2 text-ink-muted text-sm">
                 サイトコンテンツの markdown が出せる要素の全部。意匠は app.css が持つ。
+                見出しは語から作った id を持ち、指すと脇にその場所へのリンクが出る。
               </p>
               <Markdown html={loaderData.prose} />
             </div>

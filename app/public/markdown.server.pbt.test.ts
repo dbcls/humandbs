@@ -39,7 +39,7 @@ const body = fc.array(fc.constantFrom(...DANGEROUS), { minLength: 1, maxLength: 
 
 /** Everything the renderer is allowed to emit — the markdown vocabulary. */
 const ALLOWED = new Set([
-  "a", "br", "code", "del", "em", "h1", "h2", "h3", "h4", "h5", "h6",
+  "a", "blockquote", "br", "code", "del", "em", "h1", "h2", "h3", "h4", "h5", "h6",
   "hr", "img", "input", "li", "ol", "p", "pre", "strong", "sup", "section", "table",
   "tbody", "td", "th", "thead", "tr", "ul",
 ])
@@ -47,9 +47,10 @@ const ALLOWED = new Set([
 /**
  * What a blockquote turns into — the note's box and the glyph in it. These are
  * the only elements the renderer emits that markdown has no syntax for, so they
- * are allowed **only when the source has a blockquote in it**: `<div>` and
- * `<svg>` are two of the things an author might write, and a set that always
- * contained them would stop noticing if one got through.
+ * are allowed **only when the source names an alert**: `<div>` and `<svg>` are
+ * two of the things an author might write, and a set that always contained them
+ * would stop noticing if one got through. A blockquote that names nothing stays
+ * a blockquote, which markdown does have syntax for.
  */
 const NOTE_TAGS = ["div", "span", "svg", "circle", "path"]
 
@@ -59,15 +60,15 @@ describe("サイトコンテンツの markdown の不変量", () => {
   it("markdown で書けない要素は出力に現れない", () => {
     fc.assert(fc.property(body, (source) => {
       const allowed = new Set(ALLOWED)
-      if (/^>/m.test(source)) for (const tag of NOTE_TAGS) allowed.add(tag)
-      for (const match of renderMarkdown(source).matchAll(TAG)) {
+      if (/^>\s*\[!/m.test(source)) for (const tag of NOTE_TAGS) allowed.add(tag)
+      for (const match of renderMarkdown(source, "ja").matchAll(TAG)) {
         expect(allowed).toContain(match[1])
       }
     }))
   })
 
-  it("引用は注記として出る", () => {
-    const html = renderMarkdown("> 但し書き。")
+  it("名前を持つ引用は注記として出る", () => {
+    const html = renderMarkdown("> [!TIP]\n> 但し書き。", "ja")
     expect(html).toContain("但し書き。")
     expect(html).toContain("<svg")
     expect(html).not.toContain("blockquote")
@@ -76,13 +77,22 @@ describe("サイトコンテンツの markdown の不変量", () => {
     expect(html).not.toContain("<p>")
   })
 
+  it("名前を持たない引用は引用のまま出る", () => {
+    const html = renderMarkdown("> 条文の引用。", "ja")
+    expect(html).toContain("<blockquote>")
+    expect(html).not.toContain("<svg")
+  })
+
   it("リンクと画像の行き先は許した scheme かサイト内の絶対パスしか残らない", () => {
-    const destination = /(?:href|src)="([^"]*)"/g
+    const destination = /(href|src)="([^"]*)"/g
     fc.assert(fc.property(body, (source) => {
-      for (const match of renderMarkdown(source).matchAll(destination)) {
-        const value = match[1] ?? ""
+      for (const match of renderMarkdown(source, "ja").matchAll(destination)) {
+        const value = match[2] ?? ""
+        // ページの中の場所はリンクだけが取れる。画像の行き先は外を指すものなので、
+        // 見出しのアンカーが持つ形をそちらに広げない。
         const allowed = /^(?:https?:\/\/|mailto:)/i.test(value)
           || (value.startsWith("/") && !value.startsWith("//"))
+          || (match[1] === "href" && value.startsWith("#"))
         expect(allowed).toBe(true)
       }
     }))
@@ -90,7 +100,7 @@ describe("サイトコンテンツの markdown の不変量", () => {
 
   it("出力にイベントハンドラ属性が現れない", () => {
     fc.assert(fc.property(body, (source) => {
-      expect(/<[a-z]+[^>]*\son[a-z]+=/i.test(renderMarkdown(source))).toBe(false)
+      expect(/<[a-z]+[^>]*\son[a-z]+=/i.test(renderMarkdown(source, "ja"))).toBe(false)
     }))
   })
 })

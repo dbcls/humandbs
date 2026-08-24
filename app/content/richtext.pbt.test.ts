@@ -5,7 +5,7 @@ import { richTextArb } from "./arbitraries/content"
 import { linkHref, toMarkdown, toPlainText } from "./richtext"
 
 /** The forms `linkHref` is allowed to hand back, and nothing else. */
-const ALLOWED = /^(https?:\/\/|mailto:|\/(?!\/))/i
+const ALLOWED = /^(https?:\/\/|mailto:|#|\/(?!\/))/i
 
 /** Empty prose serialises to one empty line rather than to no line at all. */
 function lineCount(text: string): number {

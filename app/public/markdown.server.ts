@@ -14,7 +14,7 @@
  * accumulated into markdown, so nothing is lost by refusing it here.
  *
  * The serialiser *is* allowed to write raw nodes, because this file puts one
- * in: the glyph a note is drawn with (`notesFromQuotes`). **The two settings
+ * in: the glyph a note is drawn with (`alertsFromQuotes`). **The two settings
  * are on different ends** — nothing an author writes can become a raw node, so
  * the only markup that reaches the page is markdown's or this file's.
  *
@@ -39,9 +39,11 @@ import remarkRehype from "remark-rehype"
 import { unified } from "unified"
 import { CONTINUE, EXIT, visit } from "unist-util-visit"
 
-import { MARKED, NOTE_KIND } from "~/components/base"
+import { MARKED, NOTE_KIND, type NoteKind } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
+import type { Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
 
 const HEADING = /^h([1-6])$/
 
@@ -93,10 +95,83 @@ function safeDestinations() {
 }
 
 /**
- * A blockquote in site content is an aside, not a quotation — "this document
- * has been superseded", "violators are listed here" — so it is drawn as the
- * design system's note (`components/base.tsx`) rather than as an indented
- * paragraph with a rule.
+ * The address a heading answers at, built from its words.
+ *
+ * **Words rather than a counter**: an address that survives an edit elsewhere
+ * in the article is one a reader can quote. Everything that is not a letter, a
+ * digit or a separator goes, which takes the numbering the guidelines carry
+ * (`５．` becomes `５`) — punctuation in an address is noise, and a heading that
+ * is punctuation alone has no words to name it by.
+ */
+function slugFor(text: string): string {
+  const said = text.trim().toLowerCase().replaceAll(/\s+/g, "-").replaceAll(/[^\p{L}\p{N}_-]/gu, "")
+  // A heading of punctuation alone leaves separators and nothing to read, and
+  // `#---` names a place no better than `#section` does.
+  return /[\p{L}\p{N}]/u.test(said) ? said : "section"
+}
+
+function textOf(node: Element): string {
+  let out = ""
+  visit(node, "text", (child) => {
+    out += child.value
+  })
+  return out
+}
+
+/**
+ * Every heading answers at an address of its own, and offers it when pointed at.
+ *
+ * **The articles already ask for this.** The FAQ opens with a contents list of
+ * its own headings and the guidelines cross-reference their clauses, so without
+ * the ids those links point at nothing. It is also how a reader sends somebody
+ * one clause of a guideline rather than a document of 16,000px.
+ *
+ * The mark is out in the margin and shows on hover, so an article of nothing but
+ * headings does not gain a column of `#`. It stays reachable from the keyboard —
+ * it is transparent rather than absent, so focus can land on it and bring it
+ * into view.
+ */
+const ANCHOR = [
+  "absolute", "inset-y-0", "-left-6", "flex", "items-center",
+  "font-normal", "text-base", "text-ink-muted", "no-underline",
+  "opacity-0", "hover:text-brand", "focus-visible:opacity-100", "group-hover:opacity-100",
+]
+
+function headingAnchors(options: { label: string }) {
+  return (tree: Root) => {
+    const used = new Map<string, number>()
+    visit(tree, "element", (node: Element) => {
+      if (headingLevel(node.tagName) === null) return
+      const base = slugFor(textOf(node))
+      const seen = used.get(base)
+      used.set(base, (seen ?? 0) + 1)
+      const id = seen === undefined ? base : `${base}-${seen + 1}`
+      node.properties = { ...node.properties, id, className: ["group", "relative"] }
+      node.children = [
+        {
+          type: "element",
+          tagName: "a",
+          properties: { href: `#${id}`, className: ANCHOR, ariaLabel: options.label },
+          children: [{ type: "text", value: "#" }],
+        },
+        ...node.children,
+      ]
+    })
+  }
+}
+
+/**
+ * An aside that names itself becomes the design system's note; a quotation
+ * stays a quotation.
+ *
+ * **The naming is GitHub's**: a blockquote whose first line is `[!NOTE]` (or
+ * TIP / IMPORTANT / WARNING / CAUTION) is an alert. Writing the mark rather than
+ * inferring it from the `>` is what lets an article hold both — the FAQ quotes
+ * 43 lines of the personal-information act, headings and all, and a statute
+ * inside a "ⓘ" box says the wrong thing about what it is.
+ *
+ * **The word is not drawn.** A screen's note carries no label either; the glyph
+ * and the colour are what say which kind it is.
  *
  * **The box and the glyph come from the parts, not from a copy of them.** The
  * classes are `MARKED` and the drawing is `Icon`, both rendered once here, so a
@@ -107,56 +182,118 @@ function safeDestinations() {
  * through**: `remark-rehype` still refuses to parse any, so a raw node can only
  * be one this file constructed.
  */
-const NOTE = NOTE_KIND.info
-const GLYPH = renderToStaticMarkup(createElement(Icon, { name: NOTE.icon, className: "text-base" }))
+const ALERT: Record<string, NoteKind> = {
+  NOTE: "plain",
+  TIP: "info",
+  IMPORTANT: "tip",
+  WARNING: "warning",
+  CAUTION: "danger",
+}
 
-function notesFromQuotes() {
+/** The whole of the first line, which is how GitHub tells a mark from a sentence. */
+const ALERT_LINE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]$/i
+
+const GLYPH: Partial<Record<NoteKind, string>> = {}
+for (const kind of Object.values(ALERT)) {
+  const { icon } = NOTE_KIND[kind]
+  if (icon !== null) {
+    GLYPH[kind] = renderToStaticMarkup(createElement(Icon, { name: icon, className: "text-base" }))
+  }
+}
+
+/** What a blockquote holds once its mark is taken off, or null if it has none. */
+function alertBody(node: Element): { kind: NoteKind, inside: ElementContent[] } | null {
+  const said = node.children.filter((child) => child.type !== "text" || child.value.trim() !== "")
+  const head = said[0]
+  if (head?.type !== "element" || head.tagName !== "p") return null
+  const mark = head.children[0]
+  if (mark?.type !== "text") return null
+  // **The mark is the first line of the paragraph, not the whole of it.** A soft
+  // break inside a paragraph is a newline in the text rather than an element, so
+  // `> [!NOTE]` followed by a line of prose arrives as one text node.
+  const eol = mark.value.indexOf("\n")
+  const named = ALERT_LINE.exec((eol === -1 ? mark.value : mark.value.slice(0, eol)).trim())
+  if (named?.[1] === undefined) return null
+  const kind = ALERT[named[1].toUpperCase()]
+  if (kind === undefined) return null
+
+  // What follows the mark is the first paragraph of the note; a mark on its own
+  // leaves that paragraph empty.
+  const said_ = eol === -1 ? "" : mark.value.slice(eol + 1)
+  const rest: ElementContent[] = said_ === ""
+    ? head.children.slice(1)
+    : [{ type: "text", value: said_ }, ...head.children.slice(1)]
+  while (rest[0]?.type === "element" && rest[0].tagName === "br") rest.shift()
+  const blocks = rest.length === 0
+    ? said.slice(1)
+    : [{ ...head, children: rest }, ...said.slice(1)]
+
+  // A one-paragraph aside loses the paragraph, so that the note's own padding
+  // is the only space around the words. Longer ones keep theirs, with the
+  // outermost margins taken off.
+  const only = blocks[0]
+  const inside = blocks.length === 1 && only?.type === "element" && only.tagName === "p"
+    ? only.children
+    : blocks
+  return { kind, inside }
+}
+
+function alertsFromQuotes() {
   return (tree: Root) => {
     visit(tree, "element", (node: Element) => {
       if (node.tagName !== "blockquote") return
-      const only = node.children.filter((child) => child.type !== "text" || child.value.trim() !== "")
-      // A one-paragraph aside loses the paragraph, so that the note's own
-      // padding is the only space around the words. Longer ones keep theirs,
-      // with the outermost margins taken off.
-      const inside: ElementContent[] = only.length === 1 && only[0]?.type === "element"
-        && only[0].tagName === "p"
-        ? only[0].children
-        : node.children
+      const alert = alertBody(node)
+      if (alert === null) return
+      const glyph = GLYPH[alert.kind]
       node.tagName = "div"
       // The note carries its own distance to the paragraphs around it. Left to a
       // `.markdown div` rule it would land on the body inside the box as well,
       // and one line of text would sit in a box three times its height.
-      node.properties = { className: [MARKED.box, "my-4 bg-white", NOTE.className] }
+      node.properties = { className: [MARKED.box, "my-4 bg-white", NOTE_KIND[alert.kind].className] }
       node.children = [
-        {
-          type: "element",
-          tagName: "span",
-          properties: { className: [MARKED.icon] },
-          children: [{ type: "raw", value: GLYPH } as unknown as ElementContent],
-        },
+        ...(glyph === undefined
+          ? []
+          : [{
+              type: "element" as const,
+              tagName: "span",
+              properties: { className: [MARKED.icon] },
+              children: [{ type: "raw", value: glyph } as unknown as ElementContent],
+            }]),
         {
           type: "element",
           tagName: "div",
           properties: { className: [MARKED.body, "[&>:first-child]:mt-0", "[&>:last-child]:mb-0"] },
-          children: inside,
+          children: alert.inside,
         },
       ]
     })
   }
 }
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkRehype)
-  .use(shiftHeadings)
-  .use(safeDestinations)
-  .use(notesFromQuotes)
-  .use(rehypeStringify, { allowDangerousHtml: true })
+/**
+ * One per language, because the anchor a heading carries has a name and names
+ * are words. The pipeline is otherwise the same, and both are built once.
+ */
+const PROCESSOR: Record<Locale, ReturnType<typeof buildProcessor>> = {
+  ja: buildProcessor("ja"),
+  en: buildProcessor("en"),
+}
 
-export function renderMarkdown(source: string): string {
+function buildProcessor(locale: Locale) {
+  return unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(shiftHeadings)
+    .use(safeDestinations)
+    .use(headingAnchors, { label: messagesFor(locale).headingLink })
+    .use(alertsFromQuotes)
+    .use(rehypeStringify, { allowDangerousHtml: true })
+}
+
+export function renderMarkdown(source: string, locale: Locale): string {
   if (source.trim() === "") return ""
-  return String(processor.processSync(source))
+  return String(PROCESSOR[locale].processSync(source))
 }
 
 /** Where a block ends, so the last word of one does not run into the next. */

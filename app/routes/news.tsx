@@ -5,7 +5,7 @@ import { Card, Crumbs, Empty, Page, PageLinks } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
-import { NEWS_PER_PAGE, newsList } from "~/public/site.server"
+import { newsList } from "~/public/site.server"
 import { href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/news"
@@ -51,7 +51,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function News({ loaderData }: Route.ComponentProps) {
-  const { locale, items, page, pageCount, total, find } = loaderData
+  const { locale, items, page, pageCount, total, rangeFrom, rangeTo, find } = loaderData
   const messages = messagesFor(locale)
   const pageHref = (to: number) => {
     const at = new URLSearchParams()
@@ -64,14 +64,11 @@ export default function News({ loaderData }: Route.ComponentProps) {
 
   // How many there are and where in them this page is, in the words the two
   // listings use. Twenty rows and a way forward say nothing about how much is
-  // behind them.
+  // behind them. The bounds come from the loader, the way the search results
+  // take theirs: how many rows fill a page is not something this module knows.
   const counted = (
     <p className="text-ink-muted text-sm">
-      {messages.search.range(
-        (page - 1) * NEWS_PER_PAGE + 1,
-        Math.min(page * NEWS_PER_PAGE, total),
-        total,
-      )}
+      {messages.search.range(rangeFrom, rangeTo, total)}
     </p>
   )
 
@@ -90,6 +87,11 @@ export default function News({ loaderData }: Route.ComponentProps) {
   )
 
   return (
+    // A listing's width, the same as the two the search answers with. The row
+    // above the list holds the box, the count and the way through the pages
+    // side by side, and the reading measure is not wide enough for all three:
+    // the page links are 596px at their longest, which is where they were
+    // dropping to a second line.
     <Page>
       <Crumbs locale={locale} current={messages.news.all} />
       <Card under={false}>

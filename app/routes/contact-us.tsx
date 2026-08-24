@@ -15,7 +15,7 @@ import type { Route } from "./+types/contact-us"
  */
 export function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  return { locale, html: renderMarkdown(messagesFor(locale).contact.form) }
+  return { locale, html: renderMarkdown(messagesFor(locale).contact.form, locale) }
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

@@ -22,6 +22,17 @@
   /* The right end of a band. */
   --color-brand-light: #157bac;
 
+  /*
+   * The ring around whatever has keyboard focus, and nothing else.
+   *
+   * Lighter than the brand colour because the ring lands on the edge of the
+   * control it marks (`:focus-visible` below) rather than beside it: at the
+   * brand's own weight it reads as a border that changed colour. **This is as
+   * light as it goes** — 3.28:1 on the page's tint, against the 3:1 that a
+   * thing saying "you are here" has to meet.
+   */
+  --color-focus: #4285d6;
+
   /* Reserved for the few things that must be noticed over the brand colour. */
   --color-accent: #d6006b;
   --color-accent-light: #eb0075;
@@ -76,11 +87,17 @@
    *
    * The wide one leaves the gutter and nothing else on the display the portal
    * is read on, which is what v1 gives a listing: the columns a research row
-   * carries are what the width is for, and a laptop is where they run out. The
-   * reading measure is db-portal's, and the two sites sit under the same roof.
+   * carries are what the width is for, and a laptop is where they run out.
+   *
+   * **The narrower one is not prose alone.** An article here carries tables —
+   * 147 of them across 22 documents, half again as wide as the paragraphs
+   * around them — and one held to the width of a line of text leaves two thirds
+   * of them scrolling sideways inside it. The measure is the outer edge of the
+   * `<main>`, so a paragraph inside it is 96px narrower again: 1120 leaves 1024
+   * for the words, which is 64 Japanese characters to a line.
    */
   --spacing-content-max: 1440px;
-  --spacing-content-narrow: 880px;
+  --spacing-content-narrow: 1120px;
   /*
    * What the window keeps at its edges, and the one value everything that
    * reaches the edge uses: the bar, the notices, the page, the sitemap. They
@@ -153,9 +170,15 @@
    * Keyboard focus is visible everywhere, and a control may not turn it off.
    * The ring is drawn outside the element so that it does not move anything,
    * and it is the same on every control so that "where am I" is one shape.
+   *
+   * **What you can type into moves it onto its own edge** (`components/form.tsx`
+   * の `CONTROL`, `components/search.tsx`). Those have a border or a fill, and a
+   * ring standing 2px off one draws a second line beside the first; the rows are
+   * fractions of a pixel tall, so the two land on different physical pixels and
+   * read as misaligned. Nothing else has an edge to collide with.
    */
   :focus-visible {
-    @apply outline-2 outline-brand outline-offset-2;
+    @apply outline-2 outline-focus outline-offset-2;
   }
 }
 
@@ -176,21 +199,34 @@
   .markdown > :last-child { @apply mb-0; }
 
   .markdown :is(h1, h2, h3, h4, h5, h6) {
-    @apply mt-8 mb-3 font-semibold first:mt-0;
+    @apply mt-8 mb-3 font-semibold text-ink first:mt-0;
   }
 
   /*
+   * **Only the article's own title takes the brand colour.** Everything below
+   * it is the text's own, so that a coloured run of words in an article means a
+   * link and nothing else — a guideline is mostly headings, and colouring them
+   * makes the reader test each one by pointing at it.
+   *
    * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
-   * so the levels have to stay apart past the third. The first three are the
-   * brand colour and step down in size; below that the colour goes back to the
-   * text's own, which is a difference the eye reads even where the sizes meet.
+   * so the levels have to stay apart past the third. Size carries most of it and
+   * the top two are heavier as well, which keeps a difference where the sizes
+   * come together.
    */
-  .markdown :is(h1, h2, h3) { @apply text-brand; }
-  .markdown :is(h4, h5, h6) { @apply text-ink; }
-
-  .markdown h1 { @apply text-2xl; }
-  .markdown h2 { @apply border-line border-b pb-1 text-xl; }
+  .markdown h1 { @apply text-2xl font-bold text-brand; }
+  .markdown h2 { @apply text-xl font-bold; }
   .markdown h3 { @apply text-lg; }
+
+  /*
+   * A quotation, which is what a `>` is when it does not name itself as an
+   * alert (`public/markdown.server.ts`). The FAQ quotes the personal-information
+   * act at length, headings and all, so this holds whole passages rather than a
+   * line — a rule down the side and the words set in from it, with the colour
+   * left alone so the quoted text reads as text.
+   */
+  .markdown blockquote { @apply my-4 border-line border-l-4 pl-4; }
+  .markdown blockquote > :first-child { @apply mt-0; }
+  .markdown blockquote > :last-child { @apply mb-0; }
 
   .markdown a { @apply underline; }
   .markdown p { @apply my-3; }

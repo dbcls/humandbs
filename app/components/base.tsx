@@ -97,7 +97,8 @@ export function LineIcon({ name, className = "" }: { name: IconName, className?:
  */
 function Marked({ box, icon, iconClass = "", live = false, action, children }: {
   box: string
-  icon: IconName
+  /** `null` for the plainest one, which is set apart by its edge alone. */
+  icon: IconName | null
   iconClass?: string
   /** Whether the box appears in answer to something and should be announced. */
   live?: boolean
@@ -110,7 +111,7 @@ function Marked({ box, icon, iconClass = "", live = false, action, children }: {
       role={live ? "status" : undefined}
       className={`${MARKED.box} ${box}`}
     >
-      <LineIcon name={icon} className={iconClass} />
+      {icon !== null && <LineIcon name={icon} className={iconClass} />}
       <div className={MARKED.body}>{children}</div>
       {action}
     </div>
@@ -851,9 +852,15 @@ export function Clamped({ items, shown = 3, more, children }: {
  * public pages. The four kinds are the ones the old articles were written with,
  * and the markdown that came from them still names them.
  */
-export type NoteKind = "info" | "tip" | "warning" | "danger" | "done"
+export type NoteKind = "plain" | "info" | "tip" | "warning" | "danger" | "done"
 
-export const NOTE_KIND: Record<NoteKind, { icon: IconName, className: string }> = {
+export const NOTE_KIND: Record<NoteKind, { icon: IconName | null, className: string }> = {
+  /**
+   * The quietest one, and the only one without a glyph: an aside that needs
+   * setting apart from the paragraphs and says nothing about urgency. It is
+   * what `> [!NOTE]` draws in an article (`public/markdown.server.ts`).
+   */
+  plain: { icon: null, className: "border-line-strong" },
   info: { icon: "info", className: "border-brand text-brand" },
   tip: { icon: "tip", className: "border-ink-muted text-ink-muted" },
   warning: { icon: "warning", className: "border-warning text-warning" },
@@ -928,6 +935,14 @@ const MENU_PANEL
  */
 export const MENU_ITEM
   = "block whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+
+/**
+ * The same line when it names where the reader already is. Written out whole
+ * rather than added to the one above, because two classes for one property are
+ * settled by the order the styles happen to be in.
+ */
+export const MENU_ITEM_HERE
+  = "block whitespace-nowrap px-4 py-2 font-bold text-brand text-sm no-underline hover:bg-surface-hover"
 
 /**
  * A set of actions that would crowd the row they belong to.

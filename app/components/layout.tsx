@@ -7,6 +7,7 @@ import {
   LanguagePills,
   Menu,
   MENU_ITEM,
+  MENU_ITEM_HERE,
   RoundLink,
   Stack,
 } from "~/components/base"
@@ -23,13 +24,38 @@ import {
 } from "~/public/navigation"
 import { cartPath, href, normalizeQuery, readLocale } from "~/public/urls"
 
-function NavItemLink({ item, locale, className }: {
+/**
+ * Whether an entry names the page being looked at.
+ *
+ * **A destination covers what is under it.** The guidelines index is the entry
+ * in the bar and a guideline answers at a path below it, so both have to light
+ * the same word — a reader who followed a link from the index has not left it.
+ * The listings are the same shape (`/research/hum0103/v4`). The trailing slash
+ * is what keeps `/data-use` from claiming `/data-users`.
+ */
+function isHere(here: string, path: string): boolean {
+  return here === path || here.startsWith(`${path}/`)
+}
+
+function NavItemLink({ item, locale, here, className, whenHere }: {
   item: NavLinkItem
   locale: Locale
+  /**
+   * The address being looked at, with the language prefix taken off. **The
+   * sitemap in the footer does not pass one**: it is a map of the whole site,
+   * and where the reader is now is said by the bar and by the breadcrumb.
+   */
+  here?: string
   className?: string
+  whenHere?: string
 }) {
+  const current = here !== undefined && whenHere !== undefined && isHere(here, item.path)
   return (
-    <Link to={href(locale, item.path)} className={className}>
+    <Link
+      to={href(locale, item.path)}
+      className={current ? whenHere : className}
+      aria-current={current ? "page" : undefined}
+    >
       {navLabel(item.label, locale)}
     </Link>
   )
@@ -38,6 +64,15 @@ function NavItemLink({ item, locale, className }: {
 /** How an entry in the top bar is drawn. */
 const NAV_ITEM
   = "block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
+
+/**
+ * The same entry when the reader is on it. Heavier and in the brand colour, so
+ * that where they are is legible without reading the address — and written out
+ * whole rather than added to the one above, because two classes setting one
+ * property are settled by the order the styles happen to be in.
+ */
+const NAV_ITEM_HERE
+  = "block whitespace-nowrap px-2 py-2 font-bold text-brand text-sm no-underline"
 
 /** What the header knows about the person asking. Never their capabilities. */
 export interface Account {
@@ -237,7 +272,13 @@ export function SiteHeader({ locale, account }: {
           <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
             {NAVBAR.map((item, index) => (
               <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
-                <NavItemLink item={item} locale={locale} className={NAV_ITEM} />
+                <NavItemLink
+                  item={item}
+                  locale={locale}
+                  here={path}
+                  className={NAV_ITEM}
+                  whenHere={NAV_ITEM_HERE}
+                />
               </li>
             ))}
           </ul>
@@ -255,11 +296,24 @@ export function SiteHeader({ locale, account }: {
               where the bar holds everything, it has nothing under it at all.
             */}
             {NAVBAR_MORE.map((item) => (
-              <NavItemLink key={item.path} item={item} locale={locale} className={MENU_ITEM} />
+              <NavItemLink
+                key={item.path}
+                item={item}
+                locale={locale}
+                here={path}
+                className={MENU_ITEM}
+                whenHere={MENU_ITEM_HERE}
+              />
             ))}
             {NAVBAR.map((item, index) => (
               <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
-                <NavItemLink item={item} locale={locale} className={MENU_ITEM} />
+                <NavItemLink
+                  item={item}
+                  locale={locale}
+                  here={path}
+                  className={MENU_ITEM}
+                  whenHere={MENU_ITEM_HERE}
+                />
               </span>
             ))}
           </Menu>

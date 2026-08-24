@@ -189,6 +189,17 @@ describe("news の一覧", () => {
     expect(last.total).toBe(5)
   })
 
+  it("そのページが一覧全体のどこからどこまでかを返す", async () => {
+    for (let i = 0; i < 5; i += 1) await createNews(`2026-01-0${i + 1}`, [{ locale: "ja" }])
+
+    const first = await newsList("ja", 1, 2)
+    expect([first.rangeFrom, first.rangeTo]).toEqual([1, 2])
+
+    // 端数のページは、そこに実際にある行までしか言わない。
+    const last = await newsList("ja", 3, 2)
+    expect([last.rangeFrom, last.rangeTo]).toEqual([5, 5])
+  })
+
   it("一覧の外のページを求められたら、いちばん近い実在のページを返す", async () => {
     for (let i = 0; i < 5; i += 1) await createNews(`2026-01-0${i + 1}`, [{ locale: "ja" }])
 
@@ -197,12 +208,16 @@ describe("news の一覧", () => {
     expect(far.page).toBe(3)
     expect(far.items).toHaveLength(1)
     expect(far.total).toBe(5)
+    // 範囲も丸めた先のページのもので、求められたページのものではない。
+    expect([far.rangeFrom, far.rangeTo]).toEqual([5, 5])
   })
 
   it("1 件も無いときもページは 1 つある", async () => {
     const empty = await newsList("ja", 1)
     expect(empty.total).toBe(0)
     expect(empty.pageCount).toBe(1)
+    // 1 件も無いところに 1 件目は無いので、範囲は 0 から始まる。
+    expect([empty.rangeFrom, empty.rangeTo]).toEqual([0, 0])
   })
 
   it("id の形が uuid でなくても落ちずに 404 になる", async () => {

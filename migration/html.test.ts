@@ -69,16 +69,17 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     }
   })
 
-  it("callout は引用になる", () => {
-    expect(htmlToMarkdown(":::callout\nhello\n:::")).toBe("> hello")
-    expect(htmlToMarkdown("::: callout type=\"info\"\n\nhello\n\n:::")).toBe("> hello")
+  it("callout は名前を持つ引用 (注記) になる", () => {
+    // v1 が callout と書いたものだけが注記になり、素の引用は引用のまま残る。
+    expect(htmlToMarkdown(":::callout\nhello\n:::")).toBe("> [!NOTE]\n> hello")
+    expect(htmlToMarkdown("::: callout type=\"info\"\n\nhello\n\n:::")).toBe("> [!NOTE]\n> hello")
   })
 
-  it("開いた行の中に本文と閉じが並んだ callout も引用になる", () => {
-    expect(htmlToMarkdown("::: callout type=\"info\" hello :::")).toBe("> hello")
+  it("開いた行の中に本文と閉じが並んだ callout も注記になる", () => {
+    expect(htmlToMarkdown("::: callout type=\"info\" hello :::")).toBe("> [!NOTE]\n> hello")
   })
 
-  it("箇条書きの中の callout は、その項目の中の引用になる", () => {
+  it("箇条書きの中の callout は、その項目の中の注記になる", () => {
     const markdown = htmlToMarkdown("1. item\n\n   ::: callout\n   note\n   :::\n")
     expect(markdown).toContain("1. item")
     expect(markdown).toContain("> note")

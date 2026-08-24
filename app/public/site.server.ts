@@ -59,7 +59,7 @@ export async function findDocument(slug: string, locale: Locale): Promise<Articl
 
   const row = rows[0]
   if (row === undefined) return null
-  return { title: row.content.title, html: renderMarkdown(row.content.body) }
+  return { title: row.content.title, html: renderMarkdown(row.content.body, locale) }
 }
 
 export async function documentPage(slug: string, locale: Locale): Promise<ArticleView> {
@@ -80,9 +80,18 @@ export interface NewsListView {
   pageCount: number
   /** Every announcement the search matched, not the page being looked at. */
   total: number
+  /**
+   * Where this page sits in that total, counted from one, or zero when nothing
+   * matched. Counted here rather than in the listing because how many rows a
+   * page holds is this module's business — and a route module that reads that
+   * number out of a `.server` module cannot be split from its loader, so the
+   * page stops loading on the way in from another one.
+   */
+  rangeFrom: number
+  rangeTo: number
 }
 
-export const NEWS_PER_PAGE = 20
+const NEWS_PER_PAGE = 20
 
 /**
  * Newest first, by the date the item carries rather than the row's age: the
@@ -145,6 +154,8 @@ export async function newsList(
     page: at,
     pageCount,
     total,
+    rangeFrom: total === 0 ? 0 : (at - 1) * perPage + 1,
+    rangeTo: Math.min(at * perPage, total),
   }
 }
 
@@ -177,7 +188,7 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
   return {
     title: row.content.title,
     publishedAt: row.publishedAt,
-    html: renderMarkdown(row.content.body),
+    html: renderMarkdown(row.content.body, locale),
   }
 }
 
@@ -195,6 +206,6 @@ export async function activeAlerts(locale: Locale): Promise<string[]> {
     .orderBy(alert.createdAt)
 
   return rows
-    .map((row) => renderMarkdown(resolveBilingual(row.content.body, locale)))
+    .map((row) => renderMarkdown(resolveBilingual(row.content.body, locale), locale))
     .filter((html) => html !== "")
 }

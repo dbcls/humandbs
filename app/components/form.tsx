@@ -43,7 +43,15 @@ import { Icon } from "~/components/icons"
  */
 const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
 
-export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1`
+/**
+ * **The focus ring is drawn over the edge rather than outside it.** Everywhere
+ * else the ring stands off the element by 2px, which reads as a ring; on
+ * something that already has a border it draws a second line 2px away from the
+ * first. The row of an input is 32.4px tall (`text-sm` carries a line of 22.4),
+ * so the two lines land on different fractions of a physical pixel and the pair
+ * reads as misaligned rather than as one control. Over the edge it is one line.
+ */
+export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1 focus-visible:-outline-offset-1`
 
 /**
  * The frame every input sits in: what it is called, what it has to look like,

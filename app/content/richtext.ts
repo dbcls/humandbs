@@ -44,6 +44,10 @@ export function linkHref(href: string): string | null {
   // A site-absolute path, which is how the articles link to policies and files.
   // `//` is not one: it is a URL on another host with the scheme left out.
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed
+  // A place on the page itself. The long articles open with a contents list
+  // that points at their own headings, and the headings answer at those
+  // addresses (`public/markdown.server.ts`).
+  if (trimmed.startsWith("#")) return trimmed
   return null
 }
 

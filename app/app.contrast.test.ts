@@ -55,6 +55,7 @@ describe("the palette", () => {
       "brand-lighter",
       "danger",
       "deep",
+      "focus",
       "ink",
       "ink-muted",
       "line",
@@ -105,6 +106,18 @@ describe("the palette", () => {
   it("keeps an input's edge visible against the field's own fill", () => {
     expect(contrast(colours["line-strong"] ?? "", colours["surface-input"] ?? ""))
       .toBeGreaterThanOrEqual(NON_TEXT)
+  })
+
+  /**
+   * The focus ring sits on the edge of the control it marks, so it has both the
+   * ground the control is on and the control's own fill on either side of it.
+   * A refinement panel puts its boxes on the page's tint, which is the darkest
+   * of the three and therefore the one that decides how light the ring can be.
+   */
+  it("keeps the focus ring visible wherever a control sits", () => {
+    for (const ground of [WHITE, colours["surface-input"] ?? "", colours.surface ?? ""]) {
+      expect(contrast(colours.focus ?? "", ground)).toBeGreaterThanOrEqual(NON_TEXT)
+    }
   })
 
   it("reads body text on the tint the page sits on", () => {

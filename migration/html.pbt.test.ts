@@ -47,7 +47,7 @@ describe("サイトコンテンツの変換の保存則", () => {
   it("非空の本文が空にならない", () => {
     const nonEmpty = source.filter((html) => htmlToMarkdown(html) !== "")
     fc.assert(fc.property(nonEmpty, (html) => {
-      expect(renderMarkdown(htmlToMarkdown(html))).not.toBe("")
+      expect(renderMarkdown(htmlToMarkdown(html), "ja")).not.toBe("")
     }))
   })
 

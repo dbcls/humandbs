@@ -122,7 +122,11 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
           composing.current = false
           searchSoon()
         }}
-        className={`min-w-0 flex-1 rounded-full bg-surface text-ink ${SEARCH_FIELD[size]}`}
+        // The ring goes on the edge of the fill, as it does on a bordered input
+        // (`form.tsx` の `CONTROL`): the depth of this field is 38.4px, and a
+        // ring standing 2px off a fractional edge is drawn on a different
+        // physical pixel than the fill it is meant to follow.
+        className={`min-w-0 flex-1 rounded-full bg-surface text-ink focus-visible:-outline-offset-1 ${SEARCH_FIELD[size]}`}
       />
       {/*
         The button is the standard tap size at every depth, and the field is
