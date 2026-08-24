@@ -1,4 +1,4 @@
-import { type RouteConfig, index, prefix, route } from "@react-router/dev/routes"
+import { type RouteConfig, index, layout, prefix, route } from "@react-router/dev/routes"
 
 import { API_ENDPOINTS, OPENAPI_FILE, OPENAPI_PATH } from "./api/endpoints"
 
@@ -45,78 +45,91 @@ function pages(scope: string) {
       "routes/preview-dataset.tsx",
       { id: `${scope}-preview-dataset` },
     ),
-    route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
-    route("admin/catalog", "routes/admin-catalog.tsx", { id: `${scope}-admin-catalog` }),
-    route(
-      "admin/catalog/vocabulary/:code",
-      "routes/admin-catalog-vocabulary.tsx",
-      { id: `${scope}-admin-catalog-vocabulary` },
-    ),
-    route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
-    route(
-      "admin/contents/document/:documentId",
-      "routes/admin-contents-document.tsx",
-      { id: `${scope}-admin-contents-document` },
-    ),
-    route(
-      "admin/contents/news",
-      "routes/admin-contents-news.tsx",
-      { id: `${scope}-admin-contents-news` },
-    ),
-    route(
-      "admin/contents/news/:newsId",
-      "routes/admin-contents-news-item.tsx",
-      { id: `${scope}-admin-contents-news-item` },
-    ),
-    route(
-      "admin/contents/files",
-      "routes/admin-contents-files.tsx",
-      { id: `${scope}-admin-contents-files` },
-    ),
-    route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
-    // Before the identity, so that `upstream` is a screen rather than a research
-    // that could never be found.
-    route(
-      "admin/research/upstream",
-      "routes/admin-research-upstream.tsx",
-      { id: `${scope}-admin-research-upstream` },
-    ),
-    route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
-    route(
-      "admin/research/:researchId/files",
-      "routes/admin-research-files.tsx",
-      { id: `${scope}-admin-research-files` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId",
-      "routes/admin-draft.tsx",
-      { id: `${scope}-admin-draft` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId/publish",
-      "routes/admin-draft-publish.tsx",
-      { id: `${scope}-admin-draft-publish` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId/review",
-      "routes/admin-draft-review.tsx",
-      { id: `${scope}-admin-draft-review` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId/dataset",
-      "routes/admin-draft-datasets.tsx",
-      { id: `${scope}-admin-draft-datasets` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId/dataset/upstream",
-      "routes/admin-draft-dataset-upstream.tsx",
-      { id: `${scope}-admin-draft-dataset-upstream` },
-    ),
-    route(
-      "admin/research/:researchId/draft/:draftId/dataset/:datasetId",
-      "routes/admin-draft-dataset.tsx",
-      { id: `${scope}-admin-draft-dataset` },
-    ),
+    /**
+     * Everything under `/admin` is inside one layout, so that the area's
+     * frame — the width, the destinations, the demand for a session — is set
+     * once rather than by each screen (`routes/admin-layout.tsx`).
+     */
+    layout("routes/admin-layout.tsx", { id: `${scope}-admin-layout` }, [
+      route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
+      route("admin/catalog", "routes/admin-catalog.tsx", { id: `${scope}-admin-catalog` }),
+      route(
+        "admin/catalog/vocabulary/:code",
+        "routes/admin-catalog-vocabulary.tsx",
+        { id: `${scope}-admin-catalog-vocabulary` },
+      ),
+      route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
+      route(
+        "admin/contents/document/:documentId",
+        "routes/admin-contents-document.tsx",
+        { id: `${scope}-admin-contents-document` },
+      ),
+      route(
+        "admin/contents/news",
+        "routes/admin-contents-news.tsx",
+        { id: `${scope}-admin-contents-news` },
+      ),
+      route(
+        "admin/contents/news/:newsId",
+        "routes/admin-contents-news-item.tsx",
+        { id: `${scope}-admin-contents-news-item` },
+      ),
+      route(
+        "admin/contents/files",
+        "routes/admin-contents-files.tsx",
+        { id: `${scope}-admin-contents-files` },
+      ),
+      route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
+      // Before the identity, so that `upstream` is a screen rather than a research
+      // that could never be found.
+      route(
+        "admin/research/upstream",
+        "routes/admin-research-upstream.tsx",
+        { id: `${scope}-admin-research-upstream` },
+      ),
+      route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
+      route(
+        "admin/research/:researchId/files",
+        "routes/admin-research-files.tsx",
+        { id: `${scope}-admin-research-files` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId",
+        "routes/admin-draft.tsx",
+        { id: `${scope}-admin-draft` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/publish",
+        "routes/admin-draft-publish.tsx",
+        { id: `${scope}-admin-draft-publish` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/review",
+        "routes/admin-draft-review.tsx",
+        { id: `${scope}-admin-draft-review` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/dataset",
+        "routes/admin-draft-datasets.tsx",
+        { id: `${scope}-admin-draft-datasets` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/dataset/upstream",
+        "routes/admin-draft-dataset-upstream.tsx",
+        { id: `${scope}-admin-draft-dataset-upstream` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/dataset/:datasetId",
+        "routes/admin-draft-dataset.tsx",
+        { id: `${scope}-admin-draft-dataset` },
+      ),
+      /**
+       * The assistant. **The screen is registered here and the service it talks
+       * to is not registered at all** — it answers under the proxy below, which
+       * is the only address that reaches it (`docs/assistant.md`).
+       */
+      route("admin/assistant", "routes/admin-assistant.tsx", { id: `${scope}-admin-assistant` }),
+    ]),
   ]
 }
 
@@ -132,6 +145,13 @@ const editing = [
   route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
   route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),
+  /**
+   * The assistant's API, handed on unchanged to a service that holds no
+   * authorisation of its own (`docs/assistant.md`). **Registered once**, beside
+   * the others here: what it answers with is the service's, not interface text,
+   * so a language prefix has nothing to change about it.
+   */
+  route("admin/assistant/api/*", "routes/admin-assistant-api.ts"),
 ]
 
 /**

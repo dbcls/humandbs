@@ -5,3 +5,4 @@
 /.react-router/
 /migration/input/
 /.claude/
+/.playwright-cli/

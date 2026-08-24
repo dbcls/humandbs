@@ -23,6 +23,10 @@ Docker と Docker Compose だけ。Node もホストには要らない。
 - **作業経緯を成果物に持ち込まない。** コードのコメント・test 名・docs・commit message に
   「以前は X だった」「phase 1 より」の類を書かない。コードベースは現在の意図だけを語り、経緯は
   git log と PR に残る
+- **route を触ったら `npm run build` も通す。** route module の `loader` / `action` / `middleware` /
+  `headers` **以外**が `.server` の module に依存すると、その route は client 遷移でだけ 500 になる —
+  SSR は同じプロセスの中で描くので通り、lint も typecheck も test も通る。**この形を見ているのは
+  build だけ**で、そこでは exit 1 になる
 
 ## 初回セットアップ
 
@@ -54,6 +58,11 @@ docker compose exec app npm run icd10:import
 | `app` | React Router の dev サーバー | proxy 経由のみ |
 | `db` | Postgres + PGroonga | `127.0.0.1:5432` |
 | `s3` | SeaweedFS (master / volume / filer / S3 API) | 公開しない |
+| `assistant-api` | 申請支援アシスタント。profile の後ろにいる | 公開しない |
+
+**アシスタントは既定で起動しない。** ポータルを動かすのに要らず、外部サービスの資格情報を求めるので、
+`docker compose --profile assistant up -d` で明示的に立てる。立てなければ `.env` の
+`HUMANDBS_ASSISTANT_ORIGIN` は空のままで、管理画面はその旨を出す ([assistant.md](assistant.md))。
 
 **proxy を通すのは本番の経路をそのまま再現するため。** ファイル配信の `X-Content-Type-Options` と
 `Content-Disposition` は proxy が付けるので、S3 API を直接叩ける口があるとその header を迂回した

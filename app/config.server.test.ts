@@ -35,6 +35,7 @@ describe("loadConfig", () => {
         secretAccessKey: VALID.HUMANDBS_S3_SECRET_KEY,
       },
       applicationDb: null,
+      assistantOrigin: null,
     })
   })
 })
@@ -136,5 +137,53 @@ describe("cookiesAreSecure", () => {
   it("is true when the redirect URI is https, without a setting of its own to forget", () => {
     const https = withValue("HUMANDBS_AUTH_REDIRECT_URI", "https://humandbs.dbcls.jp/auth/callback")
     expect(cookiesAreSecure(loadConfig(https).auth)).toBe(true)
+  })
+})
+
+/**
+ * The assistant, which is optional for the same reason and refused rather than
+ * trimmed when it carries a path — the addresses under it are the service's,
+ * and a prefix here would silently move every one of them.
+ */
+describe("loadConfig とアシスタント", () => {
+  const withAssistant = (value: string | undefined) => ({
+    ...VALID,
+    HUMANDBS_ASSISTANT_ORIGIN: value,
+  })
+
+  it("is absent when nothing is configured, rather than a failure to start", () => {
+    expect(loadConfig(VALID).assistantOrigin).toBeNull()
+  })
+
+  it("is absent when the variable is present but empty, which is how .env.example ships", () => {
+    expect(loadConfig(withAssistant("  ")).assistantOrigin).toBeNull()
+  })
+
+  it("keeps an origin as it stands", () => {
+    expect(loadConfig(withAssistant("http://assistant-api:8000")).assistantOrigin)
+      .toBe("http://assistant-api:8000")
+  })
+
+  it("keeps an origin whose only path is the root slash", () => {
+    expect(loadConfig(withAssistant("http://assistant-api:8000/")).assistantOrigin)
+      .toBe("http://assistant-api:8000")
+  })
+
+  it("refuses a path rather than dropping it", () => {
+    expect(() => loadConfig(withAssistant("http://assistant-api:8000/api")))
+      .toThrow(ConfigError)
+  })
+
+  it("refuses a query or a fragment for the same reason", () => {
+    expect(() => loadConfig(withAssistant("http://assistant-api:8000/?x=1"))).toThrow(ConfigError)
+    expect(() => loadConfig(withAssistant("http://assistant-api:8000/#x"))).toThrow(ConfigError)
+  })
+
+  it("refuses something that is not a URL", () => {
+    expect(() => loadConfig(withAssistant("assistant-api:8000"))).toThrow(ConfigError)
+  })
+
+  it("refuses a scheme that is not http or https", () => {
+    expect(() => loadConfig(withAssistant("ftp://assistant-api:8000"))).toThrow(ConfigError)
   })
 })

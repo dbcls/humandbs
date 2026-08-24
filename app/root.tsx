@@ -5,10 +5,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteLoaderData,
 } from "react-router"
 
+import { isAdminPath } from "~/admin/urls"
 import { readActor } from "~/auth/actor.server"
+import { AdminDrawer } from "~/components/admin"
 import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
 import { startFileRunner } from "~/files/runner.server"
@@ -70,6 +73,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // above did not run.
   const data = useRouteLoaderData<typeof loader>("root")
   const locale = data?.locale ?? DEFAULT_LOCALE
+  /**
+   * **The management area wears a different frame**, and which one is read from
+   * the address rather than from the route that matched: this sits above the
+   * route tree and is drawn for the error boundary too, where no loader has
+   * run. What it drops is what the portal says to its readers — the global
+   * navigation, the notices and the sitemap — none of which is addressed to
+   * somebody who came here to edit, and which together take 550px of every
+   * screen's height before any of its own content begins.
+   */
+  const { path } = readLocale(useLocation().pathname)
+  const managing = isAdminPath(path)
 
   return (
     <html lang={locale}>
@@ -91,13 +105,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
         place v1 has it, and v1 sets it on the body for the same reason. Hung
         below them instead it moves with however many notices are up that day.
       */}
-      <body className="flex min-h-screen flex-col bg-surface bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply">
-        <SiteHeader locale={locale} account={data?.account ?? null} />
-        <Announcements alerts={data?.alerts ?? []} locale={locale} />
+      {/*
+        **The photograph is the portal's, and a management screen does not wear
+        it.** It is the subject a reader meets on the way in; under a table of
+        397 rows it is texture behind text and nothing else.
+      */}
+      <body
+        className={`flex min-h-screen flex-col bg-surface ${
+          managing ? "" : "bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply"
+        }`}
+      >
+        <SiteHeader locale={locale} account={data?.account ?? null} managing={managing} />
+        {!managing && <Announcements alerts={data?.alerts ?? []} locale={locale} />}
+        {managing && <AdminDrawer locale={locale} path={path} />}
         <div className="flex-1">
           {children}
         </div>
-        <SiteFooter locale={locale} />
+        {!managing && <SiteFooter locale={locale} />}
         <ScrollRestoration />
         <Scripts />
       </body>

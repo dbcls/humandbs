@@ -44,17 +44,42 @@ export function Annotation({ at }: { at: string }) {
  * pages the code holds — is held to the reading width, which is what v1 does
  * with the same two numbers (`app.css`).
  */
-export function Page({ width = "wide", children }: {
-  width?: "wide" | "reading"
+export type PageWidth = "wide" | "reading" | "full"
+
+const PAGE_WIDTH: Record<PageWidth, string> = {
+  wide: "max-w-content-max",
+  reading: "max-w-content-narrow",
+  full: "max-w-none",
+}
+
+const PageWidthContext = createContext<PageWidth | null>(null)
+
+/**
+ * The measure the screens under it take unless they ask for another.
+ *
+ * **It exists for the management area**, where the answer is the same on every
+ * screen and is a property of the area rather than of any one of them: the
+ * shell sets it once, and a screen added later is held to the window without
+ * having to know that. A screen that names a width still wins, which is how a
+ * reading measure stays available anywhere.
+ */
+export function PageWidthDefault({ width, children }: {
+  width: PageWidth
   children: ReactNode
 }) {
+  return <PageWidthContext.Provider value={width}>{children}</PageWidthContext.Provider>
+}
+
+export function Page({ width, children }: {
+  width?: PageWidth
+  children: ReactNode
+}) {
+  const fallback = useContext(PageWidthContext) ?? "wide"
   // The target of the skip link in the header, on every page that has one.
   return (
     <main
       id="content"
-      className={`mx-auto w-full px-4 py-4 sm:px-page-gutter ${
-        width === "reading" ? "max-w-content-narrow" : "max-w-content-max"
-      }`}
+      className={`mx-auto w-full px-4 py-4 sm:px-page-gutter ${PAGE_WIDTH[width ?? fallback]}`}
     >
       {children}
     </main>

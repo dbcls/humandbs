@@ -271,6 +271,8 @@ const ja = {
   },
   admin: {
     heading: "管理",
+    overview: "管理トップ",
+    navigation: "管理メニュー",
     signedInAs: "ログイン中",
     subject: "Keycloak の sub",
     capabilities: "権限",
@@ -290,6 +292,11 @@ const ja = {
         "jgad-date": "JGAD の日付",
         "archive-date": "外部アーカイブの日付",
       },
+    },
+    assistant: {
+      heading: "申請支援アシスタント",
+      empty: "この画面はまだ作られていません。",
+      absent: "申請支援アシスタントはこの環境では動いていません。",
     },
     research: {
       heading: "研究の管理",
@@ -1065,6 +1072,8 @@ const en: Messages = {
   },
   admin: {
     heading: "Administration",
+    overview: "Overview",
+    navigation: "Administration menu",
     signedInAs: "Signed in as",
     subject: "Keycloak subject",
     capabilities: "Capabilities",
@@ -1084,6 +1093,11 @@ const en: Messages = {
         "jgad-date": "JGAD dates",
         "archive-date": "External archive dates",
       },
+    },
+    assistant: {
+      heading: "Application assistant",
+      empty: "This screen has not been built yet.",
+      absent: "The assistant is not running in this environment.",
     },
     research: {
       heading: "Research",

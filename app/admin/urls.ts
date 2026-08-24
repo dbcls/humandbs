@@ -13,6 +13,19 @@ export function adminPath(): string {
   return "/admin"
 }
 
+/**
+ * Whether an address belongs to the management area. **Read from the path
+ * rather than from what the screen knows about itself**, because the shell is
+ * chosen in the document's layout, which sits above the route tree and is drawn
+ * for the error boundary too — where no loader has run.
+ *
+ * The path handed in has already had its language prefix taken off
+ * (`public/urls.ts` の `readLocale`).
+ */
+export function isAdminPath(path: string): boolean {
+  return path === adminPath() || path.startsWith(`${adminPath()}/`)
+}
+
 export function adminResearchListPath(): string {
   return "/admin/research"
 }
@@ -192,4 +205,24 @@ export function contentFileUploadPath(): string {
  */
 export function termsPath(): string {
   return "/admin/terms"
+}
+
+/**
+ * The assistant that helps read an application. **The screens are here and the
+ * service is not** — it runs beside the portal, holds no authorisation of its
+ * own, and is only reachable through the address below (docs/assistant.md).
+ */
+export function adminAssistantPath(): string {
+  return `${adminPath()}/assistant`
+}
+
+/**
+ * Where the assistant's own API answers, and **the only way in**. Everything
+ * under it is handed on unchanged, so the portal does not have to be edited
+ * when the service grows an endpoint.
+ *
+ * **No language prefix**: nothing it answers with is interface text.
+ */
+export function assistantApiPath(rest = ""): string {
+  return `${adminAssistantPath()}/api/${rest}`
 }

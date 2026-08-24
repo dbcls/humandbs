@@ -1,11 +1,8 @@
-import { Link } from "react-router"
-
-import { adminCatalogPath, adminContentsPath, adminResearchListPath } from "~/admin/urls"
 import { requireActor } from "~/auth/actor.server"
 import { Card, Empty, KeyValue, Page, PageHead, Section, Table, Td } from "~/components/page"
 import { getDb } from "~/db/client.server"
 import { messagesFor } from "~/i18n/messages"
-import { href, readLocale } from "~/public/urls"
+import { readLocale } from "~/public/urls"
 import { upstreamStatus } from "~/upstream/status.server"
 
 import type { Route } from "./+types/admin"
@@ -53,23 +50,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <PageHead label={messages.admin.heading}>
-        {capabilities.includes("view-unpublished") && (
-          <Link to={href(locale, adminResearchListPath())} className="text-white">
-            {messages.admin.research.heading}
-          </Link>
-        )}
-        {capabilities.includes("manage-catalog") && (
-          <Link to={href(locale, adminCatalogPath())} className="text-white">
-            {messages.admin.catalog.heading}
-          </Link>
-        )}
-        {capabilities.includes("manage-site-content") && (
-          <Link to={href(locale, adminContentsPath())} className="text-white">
-            {messages.admin.contents.heading}
-          </Link>
-        )}
-      </PageHead>
+      <PageHead label={messages.admin.heading} />
       <Card>
         <dl>
           <KeyValue title={messages.admin.signedInAs}>{name}</KeyValue>

@@ -48,6 +48,15 @@ export interface ApplicationDbConfig {
   schema: string
 }
 
+/**
+ * Where the application assistant answers.
+ *
+ * **Optional, and an origin rather than a URL with a path.** The service runs
+ * beside the portal inside the compose network and is not published, so an
+ * environment without it is a normal environment and the screen says so rather
+ * than failing. The path is the service's own; the portal only knows the
+ * address it lives at (docs/assistant.md).
+ */
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
   databaseUrl: string
@@ -59,6 +68,7 @@ export interface AppConfig {
   auth: AuthConfig
   store: StoreConfig
   applicationDb: ApplicationDbConfig | null
+  assistantOrigin: string | null
 }
 
 export class ConfigError extends Error {
@@ -87,7 +97,30 @@ export function loadConfig(env: Env): AppConfig {
       secretAccessKey: readRequired(env, "HUMANDBS_S3_SECRET_KEY"),
     },
     applicationDb: readApplicationDb(env),
+    assistantOrigin: readAssistantOrigin(env),
   }
+}
+
+function readAssistantOrigin(env: Env): string | null {
+  const value = env.HUMANDBS_ASSISTANT_ORIGIN?.trim()
+  if (value === undefined || value === "") return null
+
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new ConfigError("HUMANDBS_ASSISTANT_ORIGIN must be a URL")
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ConfigError("HUMANDBS_ASSISTANT_ORIGIN must use one of: http:, https:")
+  }
+  // Only the origin is kept: a path here would be silently prefixed onto every
+  // address the service defines, so the two would disagree about where an
+  // endpoint is without either of them being wrong on its own.
+  if (parsed.pathname !== "/" || parsed.search !== "" || parsed.hash !== "") {
+    throw new ConfigError("HUMANDBS_ASSISTANT_ORIGIN must be an origin, with no path")
+  }
+  return parsed.origin
 }
 
 const DEFAULT_APPLICATION_DB_SCHEMA = "jgasys"

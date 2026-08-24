@@ -193,9 +193,19 @@ export function Announcements({ alerts, locale }: { alerts: string[], locale: Lo
  * page or from a listing, and both of those have the box itself; a circle in
  * the bar that only took you to the listing was a third thing to learn.
  */
-export function SiteHeader({ locale, account }: {
+export function SiteHeader({ locale, account, managing = false }: {
   locale: Locale
   account: Account | null
+  /**
+   * Whether this is a management screen.
+   *
+   * **The bar keeps the wordmark, the languages and the account, and drops
+   * everything else** — the row of destinations and the cart are addressed to
+   * readers. Where the management area is gone from is not here at all: it is
+   * against the left edge of the window (`components/admin.tsx`), so that the
+   * screens keep the whole of it. `root.tsx` decides this from the address.
+   */
+  managing?: boolean
 }) {
   const messages = messagesFor(locale)
   const location = useLocation()
@@ -260,64 +270,66 @@ export function SiteHeader({ locale, account }: {
           </span>
         </Link>
 
-        <nav aria-label={messages.globalNavigation} className="flex min-w-0 flex-1 items-center gap-1">
-          {/*
-            **One row that never wraps.** A gap between the entries rather than
-            none: two links whose rectangles touch send a press near the
-            boundary to the wrong one. Each entry appears at the width its step
-            allows and is in the menu below that width — the two are written as
-            complements in `public/navigation.ts`, so nothing can fall out of
-            both.
-          */}
-          <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
-            {NAVBAR.map((item, index) => (
-              <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
-                <NavItemLink
-                  item={item}
-                  locale={locale}
-                  here={path}
-                  className={NAV_ITEM}
-                  whenHere={NAV_ITEM_HERE}
-                />
-              </li>
-            ))}
-          </ul>
-          {/*
-            The menu sits at the end of the navigation because that is where the
-            row runs out, and it holds destinations rather than actions — so it
-            carries its name rather than a glyph on its own.
-          */}
-          <Menu label={messages.moreNavigation} icon="menu" word>
+        {!managing && (
+          <nav aria-label={messages.globalNavigation} className="flex min-w-0 flex-1 items-center gap-1">
             {/*
-              What is here always, then what did not fit today. **No rule
-              between the two**: which side a destination falls on is an
-              accident of the window's width, so a line there tells the reader
-              about the bar rather than about where they can go — and at a width
-              where the bar holds everything, it has nothing under it at all.
-            */}
-            {NAVBAR_MORE.map((item) => (
-              <NavItemLink
-                key={item.path}
-                item={item}
-                locale={locale}
-                here={path}
-                className={MENU_ITEM}
-                whenHere={MENU_ITEM_HERE}
-              />
-            ))}
-            {NAVBAR.map((item, index) => (
-              <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
+          **One row that never wraps.** A gap between the entries rather than
+          none: two links whose rectangles touch send a press near the
+          boundary to the wrong one. Each entry appears at the width its step
+          allows and is in the menu below that width — the two are written as
+          complements in `public/navigation.ts`, so nothing can fall out of
+          both.
+        */}
+            <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
+              {NAVBAR.map((item, index) => (
+                <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
+                  <NavItemLink
+                    item={item}
+                    locale={locale}
+                    here={path}
+                    className={NAV_ITEM}
+                    whenHere={NAV_ITEM_HERE}
+                  />
+                </li>
+              ))}
+            </ul>
+            {/*
+          The menu sits at the end of the navigation because that is where the
+          row runs out, and it holds destinations rather than actions — so it
+          carries its name rather than a glyph on its own.
+        */}
+            <Menu label={messages.moreNavigation} icon="menu" word>
+              {/*
+            What is here always, then what did not fit today. **No rule
+            between the two**: which side a destination falls on is an
+            accident of the window's width, so a line there tells the reader
+            about the bar rather than about where they can go — and at a width
+            where the bar holds everything, it has nothing under it at all.
+          */}
+              {NAVBAR_MORE.map((item) => (
                 <NavItemLink
+                  key={item.path}
                   item={item}
                   locale={locale}
                   here={path}
                   className={MENU_ITEM}
                   whenHere={MENU_ITEM_HERE}
                 />
-              </span>
-            ))}
-          </Menu>
-        </nav>
+              ))}
+              {NAVBAR.map((item, index) => (
+                <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
+                  <NavItemLink
+                    item={item}
+                    locale={locale}
+                    here={path}
+                    className={MENU_ITEM}
+                    whenHere={MENU_ITEM_HERE}
+                  />
+                </span>
+              ))}
+            </Menu>
+          </nav>
+        )}
 
         <div className="flex shrink-0 items-center gap-2">
           {/*
@@ -346,16 +358,23 @@ export function SiteHeader({ locale, account }: {
             replaces what is inside a link, so a number left in the markup alone
             would be read by nobody who cannot see it.
           */}
-          <RoundLink
-            to={cart.ids.length === 0
-              ? href(locale, cartPath())
-              : `${href(locale, cartPath())}?${new URLSearchParams({ ids: cart.ids.join(",") }).toString()}`}
-            name="cart"
-            label={cart.ids.length === 0
-              ? messages.cart.open
-              : messages.cart.openWithCount(cart.ids.length)}
-            count={cart.ids.length}
-          />
+          {/*
+            **Not on a management screen.** The cart is a reader collecting
+            datasets to ask for, which is not what somebody editing them is
+            doing; it would sit there holding nothing on all eighteen of them.
+          */}
+          {!managing && (
+            <RoundLink
+              to={cart.ids.length === 0
+                ? href(locale, cartPath())
+                : `${href(locale, cartPath())}?${new URLSearchParams({ ids: cart.ids.join(",") }).toString()}`}
+              name="cart"
+              label={cart.ids.length === 0
+                ? messages.cart.open
+                : messages.cart.openWithCount(cart.ids.length)}
+              count={cart.ids.length}
+            />
+          )}
           <AccountControl account={account} locale={locale} />
         </div>
       </div>

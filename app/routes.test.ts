@@ -34,3 +34,61 @@ describe("the route list", () => {
     }
   })
 })
+
+interface Entry {
+  id?: string
+  file: string
+  path?: string
+  children?: Entry[]
+}
+
+async function treeUnder(nodeEnv: string): Promise<Entry[]> {
+  return JSON.parse(await routesUnder(nodeEnv)) as Entry[]
+}
+
+function flatten(entries: Entry[]): Entry[] {
+  return entries.flatMap((entry) => [entry, ...flatten(entry.children ?? [])])
+}
+
+/**
+ * The management area's frame is set in one place (`routes/admin-layout.tsx`),
+ * which only holds if every screen under `/admin` is actually inside it. A
+ * screen registered beside the layout would look right until it was opened.
+ */
+describe("管理画面の登録", () => {
+  it("画面はすべて 1 つの layout の中にある", async () => {
+    const tree = await treeUnder("development")
+    const layouts = flatten(tree).filter((entry) => entry.file === "routes/admin-layout.tsx")
+    // One per language, the way the pages themselves are registered twice.
+    expect(layouts).toHaveLength(2)
+
+    const inside = new Set(layouts.flatMap((layout) =>
+      (layout.children ?? []).map((child) => child.path)))
+    const outside = flatten(tree)
+      .filter((entry) => entry.path?.startsWith("admin") === true)
+      .filter((entry) => !inside.has(entry.path))
+      .map((entry) => entry.path)
+
+    // What is left outside answers with data rather than with a page, so it has
+    // no frame to be inside of.
+    expect(outside.every((path) => path?.startsWith("admin/assistant/api") === true
+      || path?.includes("/upload") === true
+      || path?.includes("/presence") === true
+      || path?.includes("/undo/") === true
+      || path?.includes("/comments") === true
+      || path === "admin/terms")).toBe(true)
+  })
+
+  it("アシスタントへの proxy は言語ごとに複製されていない", async () => {
+    const registered = flatten(await treeUnder("development"))
+      .filter((entry) => entry.file === "routes/admin-assistant-api.ts")
+    expect(registered).toHaveLength(1)
+    expect(registered[0]?.path).toBe("admin/assistant/api/*")
+  })
+
+  it("アシスタントの画面は両方の言語で開ける", async () => {
+    const screens = flatten(await treeUnder("development"))
+      .filter((entry) => entry.file === "routes/admin-assistant.tsx")
+    expect(screens).toHaveLength(2)
+  })
+})
