@@ -33,13 +33,14 @@ export default function AdminLayout() {
   // the window rather than the reading measure the portal's pages hold to
   // (`docs/ui.md` の「幅」).
   //
-  // **The area keeps the width of its own tab down the left.** The tab is fixed
-  // to the edge of the window and stands 36px into it, which is wider than the
-  // gutter a page keeps — without this the screens run underneath it
-  // (`components/admin.tsx`).
+  // **The area makes up the difference between its tab and a page's gutter.**
+  // The tab is fixed to the edge of the window and stands 36px into it; the
+  // narrowest gutter a page keeps is 16px, so 20px here is what stops a screen
+  // running underneath it at any width (`components/admin.tsx`). Anything more
+  // is a second margin down one side of every management screen.
   return (
     <PageWidthDefault width="full">
-      <div className="pl-tap">
+      <div className="pl-5">
         <Outlet />
       </div>
     </PageWidthDefault>
