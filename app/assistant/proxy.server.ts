@@ -52,10 +52,16 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
       // An answer is passed on as it stands, so a redirect is the assistant's
       // to give rather than something to resolve on its behalf.
       redirect: "manual",
+      // A reader who closes the tab stops the work: without this the service
+      // reads an application nobody is waiting for, and the portal holds a
+      // connection to it until it finishes.
+      signal: request.signal,
     })
   } catch {
-    // The service is configured but not answering. Said apart from 503 above:
-    // that one means nobody deployed it, this one means it is down.
+    // The service is configured but not answering, or took longer than the
+    // runtime waits for a first byte (five minutes — `docs/assistant.md` の
+    // 「上限」). Said apart from 503 above: that one means nobody deployed it,
+    // this one means it did not answer.
     throw new Response(null, { status: 502, statusText: "Assistant did not answer" })
   }
 

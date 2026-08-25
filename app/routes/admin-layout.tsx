@@ -19,9 +19,9 @@ import type { Route } from "./+types/admin-layout"
  * (`docs/auth.md`). Each screen under here asks for the capability it needs, so
  * this guard being the weaker one loses nothing.
  *
- * **The navigation is not here.** It is in the bar with the wordmark, which is
- * drawn above the route tree (`root.tsx`), because the error boundary needs it
- * too.
+ * **The navigation is not here.** It is against the left edge of the window
+ * (`components/admin.tsx`), drawn above the route tree (`root.tsx`) because the
+ * error boundary needs it too.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   await requireActor(request)
@@ -32,9 +32,16 @@ export default function AdminLayout() {
   // The management screens are tables and side-by-side editors, so they take
   // the window rather than the reading measure the portal's pages hold to
   // (`docs/ui.md` の「幅」).
+  //
+  // **The area keeps the width of its own tab down the left.** The tab is fixed
+  // to the edge of the window and stands 36px into it, which is wider than the
+  // gutter a page keeps — without this the screens run underneath it
+  // (`components/admin.tsx`).
   return (
     <PageWidthDefault width="full">
-      <Outlet />
+      <div className="pl-tap">
+        <Outlet />
+      </div>
     </PageWidthDefault>
   )
 }

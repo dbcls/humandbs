@@ -81,9 +81,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
    * navigation, the notices and the sitemap — none of which is addressed to
    * somebody who came here to edit, and which together take 550px of every
    * screen's height before any of its own content begins.
+   *
+   * **The address alone is not enough.** Every screen under `/admin` demands a
+   * session, but an address under it that matches no screen falls through to
+   * the catch-all and answers 404 without one — so the frame and its
+   * destinations would be drawn for anybody who typed a wrong address. Reading
+   * the account as well means a stranger gets the portal's own 404, with the
+   * navigation that lets them leave it.
    */
   const { path } = readLocale(useLocation().pathname)
-  const managing = isAdminPath(path)
+  const managing = isAdminPath(path) && data?.account?.isAdmin === true
 
   return (
     <html lang={locale}>

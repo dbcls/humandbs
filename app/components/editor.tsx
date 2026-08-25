@@ -44,6 +44,7 @@ import {
 import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { Page } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import { threadsByPath, unresolvedCount } from "~/review/comments"
@@ -211,7 +212,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const content = input.content
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16">
+    <Page>
       <TopBar
         view={view}
         dirty={dirty}
@@ -352,7 +353,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
           onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
         />
       </Section>
-    </div>
+    </Page>
   )
 }
 

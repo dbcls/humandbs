@@ -8,6 +8,7 @@ import {
 import { Link, useLocation } from "react-router"
 
 import { adminNavigation, isHere } from "~/admin/navigation"
+import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -21,17 +22,24 @@ const LINGER = 200
  * **It is not in the bar.** The management screens want the whole window — a
  * research listing is eight columns, an editor is the same fields in two
  * languages side by side — so the destinations live against the left edge and
- * are drawn only when they are wanted. What is permanently on screen is a grip
- * six pixels wide.
+ * are drawn only when they are wanted.
  *
- * **A mouse opens it by resting on the grip**, which is what makes a panel that
+ * **What stands there is a tab, not a rule.** It is the only thing saying the
+ * destinations exist, so it has to be found without being looked for: the
+ * brand colour against the page's tint, the size of every other control, and
+ * the same glyph the bar uses for a menu. Drawn narrower than it can be pressed
+ * it read as a divider — nothing about a line one shade off the rules elsewhere
+ * on the page says it is a way somewhere.
+ *
+ * **A mouse opens it by resting on the tab**, which is what makes a panel that
  * is usually shut worth having: reaching the destinations is a movement rather
  * than a press and a press back. It obeys the three things a thing shown on
  * hover has to (WCAG 1.4.13) — Escape dismisses it, the pointer can travel onto
  * it, and nothing takes it away on its own.
  *
- * **The grip is a button.** The zone alone would be reachable by neither the
- * keyboard nor a finger, and both open it the way they open anything.
+ * **The tab stays where it is when the card comes out**, which is why the card
+ * stands clear of the edge rather than against it. A control that disappeared
+ * as it was used would take the keyboard's place on the page with it.
  *
  * **The card is in the markup whether it is open or not**, moved out of sight by
  * a transform, so that it can slide. Shut, it is `inert` — otherwise the tab
@@ -50,17 +58,21 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
   const open = openAt === key
 
   const box = useRef<HTMLDivElement>(null)
-  const grip = useRef<HTMLButtonElement>(null)
+  const tab = useRef<HTMLButtonElement>(null)
   const linger = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // The press that should shut it is by definition not on the card, and the
-    // key is pressed wherever focus happens to be, so both listen at the
-    // document. They do nothing while it is shut.
+    // **Only while it is open.** The press that should shut it is by definition
+    // not on the card, and the key is pressed wherever focus happens to be, so
+    // both listen at the document — which is also why they may not be listening
+    // when there is nothing to shut. Escape belongs to whatever the reader is
+    // in the middle of, and an editing screen is a page of text fields.
+    if (!open) return
+
     const onPress = (event: PointerEvent) => {
       if (!(event.target instanceof Node)) return
       if (box.current?.contains(event.target) === true) return
-      if (grip.current?.contains(event.target) === true) return
+      if (tab.current?.contains(event.target) === true) return
       setOpenAt(null)
     }
     const onKey = (event: KeyboardEvent) => {
@@ -68,7 +80,7 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
       setOpenAt(null)
       // Focus goes back to what opened it: shutting a panel the reader is
       // inside would otherwise leave focus on nothing.
-      grip.current?.focus()
+      tab.current?.focus()
     }
     document.addEventListener("pointerdown", onPress)
     document.addEventListener("keydown", onKey)
@@ -76,7 +88,7 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
       document.removeEventListener("pointerdown", onPress)
       document.removeEventListener("keydown", onKey)
     }
-  }, [])
+  }, [open])
 
   useEffect(() => () => {
     if (linger.current !== null) clearTimeout(linger.current)
@@ -88,8 +100,8 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
   }, [key])
 
   /**
-   * **Not at once.** The grip is at the edge and the card stands away from it,
-   * so a pointer travelling between them crosses a gap that belongs to neither;
+   * **Not at once.** The tab is at the edge and the card stands clear of it, so
+   * a pointer travelling between them crosses a gap that belongs to neither;
    * shutting on the first leave would make the card unreachable with a mouse.
    */
   const hideSoon = useCallback(() => {
@@ -111,12 +123,13 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
   return (
     <>
       {/*
-        **What is drawn is narrower than what can be pressed.** The mark is six
-        pixels of the edge; the button around it keeps the 36px every other
-        target has (`docs/ui.md` の「押せるものの大きさ」).
+        **What is drawn is what can be pressed.** The tab is the 36px every
+        other target has (`docs/ui.md` の「押せるものの大きさ」), filled rather
+        than outlined so that the one thing naming the area is not a shade of
+        the rules around it.
       */}
       <button
-        ref={grip}
+        ref={tab}
         type="button"
         aria-expanded={open}
         aria-controls="admin-drawer"
@@ -124,22 +137,21 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
         onClick={() => { setOpenAt(open ? null : key) }}
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
-        className={`group -translate-y-1/2 fixed top-1/2 left-0 z-30 flex h-24 w-tap cursor-pointer items-center justify-start transition-opacity ${
-          open ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
+        className="-translate-y-1/2 fixed top-1/2 left-0 z-30 flex h-24 w-tap cursor-pointer items-center justify-center rounded-r-full bg-brand text-lg text-white shadow-md transition-colors hover:bg-brand-light"
       >
-        <span className="h-16 w-1.5 rounded-r bg-line transition-colors group-hover:bg-brand group-focus-visible:bg-brand" />
+        <Icon name="menu" />
       </button>
 
       {/*
         **A card standing off the edge, not a wall against it.** It keeps the
         room at its sides that everything else on the page keeps, so the screen
-        underneath is still a screen rather than something being covered up.
+        underneath is still a screen rather than something being covered up —
+        and it begins past the tab, which stays pressable while it is out.
 
-        **It has no way to shut it of its own.** Pressing anywhere else does
-        that, and so does Escape and going somewhere — a panel that is opened by
-        resting a pointer on an edge is not one anybody goes looking for a
-        button inside of.
+        **It has no way to shut it of its own.** The tab does that, and so does
+        pressing anywhere else, and Escape, and going somewhere — a panel that
+        is opened by resting a pointer on an edge is not one anybody goes
+        looking for a button inside of.
       */}
       <div
         id="admin-drawer"
@@ -147,8 +159,8 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
         inert={!open}
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
-        className={`fixed inset-y-4 left-4 z-30 flex w-64 flex-col rounded-lg border border-line bg-white shadow-xl transition-transform duration-200 ease-out ${
-          open ? "translate-x-0" : "-translate-x-[calc(100%+1.5rem)]"
+        className={`fixed inset-y-4 left-12 z-30 flex w-64 flex-col rounded-lg border border-line bg-white shadow-xl transition-transform duration-200 ease-out ${
+          open ? "translate-x-0" : "-translate-x-[calc(100%+3.5rem)]"
         }`}
       >
         <div className="border-line border-b px-4 py-3">

@@ -20,6 +20,7 @@
 import { useState } from "react"
 import { Link } from "react-router"
 
+import { AdminDrawer } from "~/components/admin"
 import { AddToCartButton, CartToggle } from "~/components/cart"
 import { Markdown } from "~/components/markdown"
 import {
@@ -140,6 +141,7 @@ const SECTIONS = [
   ["note", "注記"],
   ["announcement", "告知"],
   ["header-controls", "ヘッダの操作"],
+  ["admin-shell", "管理の区画"],
   ["trail", "パンくず"],
   ["tabs", "タブ"],
   ["table", "表"],
@@ -429,6 +431,24 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   管理
                 </Link>
               </Menu>
+            </div>
+          </Section>
+
+          <Section title="管理の区画">
+            {/*
+              **The real one, drawn where it really is.** The tab is fixed to
+              the left of the window, so it appears at the edge of this page
+              rather than inside this box — which is the only way to look at
+              whether it is found without being looked for. The destinations are
+              the live list (`app/admin/navigation.ts`); following one leaves
+              the catalogue.
+            */}
+            <div id="admin-shell" className="flex flex-col gap-2 text-sm">
+              <p className="text-ink-muted">
+                管理画面から行ける先。窓の左端に出ていて、この箱の中には何も描かれない。
+                指すか、Tab で辿り着いて Enter を押すと開く。Escape と、外を押すことで閉じる。
+              </p>
+              <AdminDrawer locale={LOCALE} path="/admin/research" />
             </div>
           </Section>
 

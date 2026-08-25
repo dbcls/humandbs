@@ -6,6 +6,7 @@ import {
   carriesBody,
   forwardedRequestHeaders,
   forwardedResponseHeaders,
+  fromSameSite,
 } from "./target"
 
 const ORIGIN = "http://assistant-api:8000"
@@ -129,5 +130,45 @@ describe("body を持つ method", () => {
     for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
       expect(carriesBody(method)).toBe(true)
     }
+  })
+})
+
+describe("よそのサイトから来た要求", () => {
+  function asking(origin: string | null): Request {
+    const headers = new Headers()
+    if (origin !== null) headers.set("origin", origin)
+    return new Request("http://localhost:8080/admin/assistant/api/applications", {
+      method: "POST",
+      headers,
+    })
+  }
+
+  it("ポータル自身から来たものは通す", () => {
+    expect(fromSameSite(asking("http://localhost:8080"))).toBe(true)
+  })
+
+  /** A browser leaves the header off a plain read; there is nothing to compare. */
+  it("名乗っていないものは通す", () => {
+    expect(fromSameSite(asking(null))).toBe(true)
+  })
+
+  /** What a sandboxed document sends. It names no site either. */
+  it("`null` と名乗るものは通す", () => {
+    expect(fromSameSite(asking("null"))).toBe(true)
+  })
+
+  it("別のサイトから来たものは通さない", () => {
+    expect(fromSameSite(asking("https://evil.example"))).toBe(false)
+    expect(fromSameSite(asking("http://localhost:8081"))).toBe(false)
+    expect(fromSameSite(asking("http://localhost.evil.example:8080"))).toBe(false)
+  })
+
+  /** The scheme in front of the application is the proxy's, not the browser's. */
+  it("scheme の違いだけでは拒まない", () => {
+    expect(fromSameSite(asking("https://localhost:8080"))).toBe(true)
+  })
+
+  it("URL として読めない名乗りは通さない", () => {
+    expect(fromSameSite(asking("not a url"))).toBe(false)
   })
 })

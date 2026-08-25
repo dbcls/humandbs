@@ -331,7 +331,13 @@ export function SiteHeader({ locale, account, managing = false }: {
           </nav>
         )}
 
-        <div className="flex shrink-0 items-center gap-2">
+        {/*
+          **Hard against the right edge.** On a public page the navigation
+          before it fills the row and puts them there; a management screen has
+          no navigation, and without this the three controls would sit against
+          the wordmark with the rest of the bar empty behind them.
+        */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {/*
             The pills keep one order whichever language is being read (v1 puts
             EN before JA), so that the pair does not swap places as the reader

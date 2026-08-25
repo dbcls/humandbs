@@ -644,7 +644,7 @@ const ja = {
     catalog: {
       heading: "カタログ",
       open: "カタログを管理する",
-      note: "型のあるキーが facet になる。**型を変えるのは開発の作業**なので、この画面では自由文のキーの追加・編集・削除・並び替えと、facet の見せ方、ポータル由来の語彙値だけを扱う。",
+      note: "型のあるキーが facet になる。型を変えるのは開発の作業なので、この画面では自由文のキーの追加・編集・削除・並び替えと、facet の見せ方、ポータル由来の語彙値だけを扱う。",
       datasetKeys: "データセットに付くキー",
       experimentKeys: "解析手法に付くキー",
       code: "コード",
@@ -704,7 +704,7 @@ const ja = {
     },
     contents: {
       heading: "サイトコンテンツ",
-      note: "ガイドライン・ポリシー・お知らせ・バナー。版なしの slug は本文を持たず、いまの版を指す。**指し先の張り替えは手で行う** — 公開に連動して自動では動かない。",
+      note: "ガイドライン・ポリシー・お知らせ・バナー。版なしの slug は本文を持たず、いまの版を指す。指し先の張り替えは手で行う — 公開に連動して自動では動かない。",
       languages: { ja: "日本語", en: "English" },
       documents: "ページ",
       addDocument: "ページを足す",
@@ -764,7 +764,7 @@ const ja = {
       },
       files: {
         heading: "共通ファイル",
-        note: "記事から参照する画像と PDF の置き場。**置いた時点で公開されます。**",
+        note: "記事から参照する画像と PDF の置き場。置いた時点で公開されます。",
         name: "名前",
         size: "サイズ",
         updatedAt: "更新",
@@ -1445,7 +1445,7 @@ const en: Messages = {
     catalog: {
       heading: "Catalog",
       open: "Manage the catalog",
-      note: "A key with a type is a facet. **Changing a type is a development change**, so this screen holds the free-text keys, how the facets are shown, and the terms of the portal's own vocabularies.",
+      note: "A key with a type is a facet. Changing a type is a development change, so this screen holds the free-text keys, how the facets are shown, and the terms of the portal's own vocabularies.",
       datasetKeys: "Keys on a dataset",
       experimentKeys: "Keys on an analysis method",
       code: "Code",
@@ -1505,7 +1505,7 @@ const en: Messages = {
     },
     contents: {
       heading: "Site content",
-      note: "Guidelines, policies, announcements and the banner. A version-less slug holds no body of its own; it names the current revision. **Moving that pointer is a deliberate act** — nothing does it on publish.",
+      note: "Guidelines, policies, announcements and the banner. A version-less slug holds no body of its own; it names the current revision. Moving that pointer is a deliberate act — nothing does it on publish.",
       languages: { ja: "Japanese", en: "English" },
       documents: "Pages",
       addDocument: "Add a page",
@@ -1565,7 +1565,7 @@ const en: Messages = {
       },
       files: {
         heading: "Shared files",
-        note: "Where the images and PDFs the bodies link to live. **They are public the moment they are put there.**",
+        note: "Where the images and PDFs the bodies link to live. They are public the moment they are put there.",
         name: "Name",
         size: "Size",
         updatedAt: "Updated",

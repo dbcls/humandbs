@@ -73,6 +73,10 @@ URL が同じ object に生まれる。filer の HTTP は完全に無認証で�
 `HUMANDBS_AUTH_REDIRECT_URI` から導いたこのサイトの origin で作られ、`/private/` を proxy が store へ
 渡す。署名の無い要求は store が 403 で落とすので、この経路から非公開 bucket が読めるようにはならない。
 
+**proxy の設定を変えたら `docker compose restart proxy` を打つ。** nginx.conf は bind mount なので
+`docker compose up -d` は何も起きたと見なさず、container は前の設定のまま動き続ける。body の上限や
+timeout を触ったのに変わらないときは、たいていこれ。
+
 proxy が 8080 で受けるのは、認証に使う DDBJ Keycloak (staging) に
 `http://localhost:8080/auth/callback` が redirect URI として登録済みだから。8080 を他プロセスが
 使っているときは `HUMANDBS_PUBLIC_PORT` を変えられるが、その場合サインインは通らない。

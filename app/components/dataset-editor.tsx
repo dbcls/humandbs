@@ -47,6 +47,7 @@ import { termsPath } from "~/admin/urls"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { Page } from "~/components/page"
 import { href } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
 
@@ -199,7 +200,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16">
+    <Page>
       <div className="sticky top-0 z-10 mb-4 border-line border-b bg-white py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-baseline gap-3">
@@ -369,7 +370,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           }}
         />
       </section>
-    </div>
+    </Page>
   )
 }
 
