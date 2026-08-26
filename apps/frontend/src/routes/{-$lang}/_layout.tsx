@@ -44,7 +44,7 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
   },
   loader: ({ context }) => {
     return {
-      crumb: context.messages?.Navbar?.home,
+      crumb: context.messages?.common?.home,
       alerts: [],
     };
   },
