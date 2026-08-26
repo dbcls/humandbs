@@ -1,5 +1,6 @@
 {
   "common": {
+    "home": "Home",
     "humandb": "NBDC HumanDB",
     "previous-versions": "Versions of {documentName}:",
     "show-diff": "Show diff",

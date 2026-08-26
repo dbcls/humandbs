@@ -1,5 +1,6 @@
 {
   "common": {
+    "home": "ホーム",
     "humandb": "NBDC ヒトデータベース",
     "previous-versions": "{documentName}のバージョン",
     "show-diff": "差分を表示",
