@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Download, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
-import { lazy, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { CustomSearchIcon } from "@/components/CustomSearchIcon";

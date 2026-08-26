@@ -7,11 +7,11 @@ import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
 
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   getFieldDefaultValue,
   isFieldModified,
 } from "@/components/form-context/fields/useFieldModified";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { SortableArrayShell } from "@/components/form-context/schema-form/SortableArrayShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,11 +34,10 @@ import {
 } from "@/serverFunctions/moldataKeyCatalog";
 import useConfirmationStore from "@/stores/confirmationStore";
 import type { LegacyRawHtmlLookup } from "@/utils/renderedHtml/legacyRawHtml";
-import { experimentDataFieldKey, getLegacyRawHtml } from "@/utils/renderedHtml/legacyRawHtml";
 import type { DeepOmit } from "@/utils/type-utils";
 
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
-import { MarkdownTextEditor } from "../fields/MarkdownTextEditor";
+import { MarkdownTextEditor } from "../MarkdownTextEditor";
 import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
@@ -117,17 +116,12 @@ function DataEntriesTable({
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const entryRowRefs = useRef(new Map<string, HTMLTableRowElement>());
   const jaTextareaRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 
   useEffect(() => {
     if (!addedKeyToScrollTo) return;
 
-    const addedRow = entryRowRefs.current.get(addedKeyToScrollTo);
-    if (!addedRow) return;
-
-    addedRow.scrollIntoView({ behavior: "smooth", block: "center" });
     jaTextareaRefs.current.get(addedKeyToScrollTo)?.focus({ preventScroll: true });
     setAddedKeyToScrollTo(null);
   }, [addedKeyToScrollTo]);
@@ -293,10 +287,6 @@ function DataEntriesTable({
               return (
                 <tr
                   key={`${experimentIndex}-${entry.key}`}
-                  ref={(row) => {
-                    if (row) entryRowRefs.current.set(entry.key, row);
-                    else entryRowRefs.current.delete(entry.key);
-                  }}
                   className="border-form-divider border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
@@ -330,13 +320,7 @@ function DataEntriesTable({
                             onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="En"
-                            fieldLabel={`${entry.key} (en)`}
                             modified={isFieldModified(f)}
-                            legacyRawHtml={getLegacyRawHtml(
-                              legacyRawHtml,
-                              experimentDataFieldKey(experimentIndex, entry.key),
-                              "en",
-                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -362,13 +346,7 @@ function DataEntriesTable({
                             onChange={(next) => f.handleChange(next)}
                             onBlur={() => f.handleBlur()}
                             placeholder="Ja"
-                            fieldLabel={`${entry.key} (ja)`}
                             modified={isFieldModified(f)}
-                            legacyRawHtml={getLegacyRawHtml(
-                              legacyRawHtml,
-                              experimentDataFieldKey(experimentIndex, entry.key),
-                              "ja",
-                            )}
                           />
                           {isFieldModified(f) && (
                             <ResetFieldButton
@@ -586,7 +564,7 @@ function ExperimentItemForm({
   );
 
   return (
-    <div className="flex flex-col items-start gap-3">
+    <div className="flex flex-col gap-3">
       {/* Header — bilingual, binding to .text subfields */}
       <Label className="flex w-full flex-col items-start gap-2">
         <span className="font-medium text-form-label text-xs">Header</span>

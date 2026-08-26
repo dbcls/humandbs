@@ -1,5 +1,4 @@
-import { Label } from "@/components/ui/label";
-
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { withForm } from "../FormContext";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,8 +13,7 @@ export const BilingualTextField = withForm({
   props: {} as { baseName: string; label: string },
   render({ form, baseName, label }) {
     return (
-      <fieldset className="flex flex-col gap-1">
-        <Label className="text-sm">{label}</Label>
+      <FieldsetWithLabel label={label}>
         <div className="flex gap-2">
           <div className="flex-1">
             <form.AppField name={`${baseName}.en` as AnyName}>
@@ -28,7 +26,7 @@ export const BilingualTextField = withForm({
             </form.AppField>
           </div>
         </div>
-      </fieldset>
+      </FieldsetWithLabel>
     );
   },
 });

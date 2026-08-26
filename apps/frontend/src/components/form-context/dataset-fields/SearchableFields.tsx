@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { useState } from "react";
 
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
 import type { FieldKind } from "@/components/form-context/schema-form/getFieldKind";
 import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
@@ -27,7 +27,7 @@ import type { NormalizedPolicy } from "../../../../../backend/src/crawler/types/
 import { PolicyCanonicalSchema } from "../../../../../backend/src/crawler/types/common";
 import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 import { SearchableExperimentFieldsSchema } from "../../../../../backend/src/crawler/types/structured";
-import { ModifiedTag } from "../fields";
+import { ModifiedTag } from "../ModifiedTag";
 import type { RendererProps } from "./searchableFieldsConfig";
 import { searchableFieldsConfig } from "./searchableFieldsConfig";
 
@@ -308,9 +308,8 @@ export function SearchableFields({
       const config = searchableFieldsConfig[key];
       if (config?.hidden) return null;
       const kind = getFieldKind(schema);
-      const label = t.has(`${key}.title` as any)
-        ? t(`${key}.title` as any)
-        : humanize(key as string);
+      const labelKey = `facets.${key}.label` as any;
+      const label = t.has(labelKey) ? t(labelKey) : humanize(key as string);
       return {
         key,
         kind,

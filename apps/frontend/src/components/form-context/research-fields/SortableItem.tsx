@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Copy, GripVertical, Trash2 } from "lucide-re
 
 import { useState } from "react";
 
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { ModifiedTag } from "@/components/form-context/ModifiedTag";
 import { Button } from "@/components/ui/button";
 
 export function SortableItem({

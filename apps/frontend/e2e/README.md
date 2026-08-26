@@ -2,6 +2,8 @@
 
 Completely separate from the monorepo, and added to root dockerignore to keep images smaller.
 
+Run from the local machine, not the frontend container.
+
 To install dependencies:
 
 ```bash

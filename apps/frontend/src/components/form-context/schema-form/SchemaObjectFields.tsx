@@ -1,12 +1,15 @@
+import { useTranslations } from "use-intl";
+
+import { LangFormLabel } from "@/components/LangFormLabel";
 import { Label } from "@/components/ui/label";
 
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { BilingualTextField } from "../fields/BilingualTextField";
 import { BilingualTextValueField } from "../fields/BilingualTextValueField";
 import URLField from "../research-fields/URLInputPair";
 import { detectLeaf } from "./detectLeaf";
 import { FieldControl } from "./FieldControl";
 import { getFieldKind } from "./getFieldKind";
-import { humanize } from "./utils";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -48,12 +51,18 @@ export function SchemaObjectFields({
 }) {
   const shape: Record<string, any> = unwrapObject(schema)?._def?.shape ?? {};
 
+  const t = useTranslations("Research.fields");
+
   return (
     <div className="flex flex-col gap-3">
       {Object.entries(shape).map(([key, fieldSchema]) => {
         const name = `${baseName}.${key}`;
         const rel = relPath ? `${relPath}.${key}` : key;
-        const label = humanize(key);
+        const i18nName = name
+          .replace(/\[(\d+)\]/g, "")
+          .split(".")
+          .join(".fields.");
+        const label = t(`${i18nName}.label` as any);
 
         const override = overrides[rel];
         if (override) {
@@ -123,18 +132,15 @@ function SchemaField({
   // Nested plain object → recurse, producing nested field paths.
   if (kind.kind === "object") {
     return (
-      <fieldset className="flex flex-col gap-2">
-        <Label className="font-medium text-sm">{label}</Label>
-        <div className="rounded border border-form-border p-3">
-          <SchemaObjectFields
-            form={form}
-            baseName={name}
-            schema={unwrapObject(fieldSchema)}
-            overrides={overrides}
-            relPath={rel}
-          />
-        </div>
-      </fieldset>
+      <FieldsetWithLabel label={label}>
+        <SchemaObjectFields
+          form={form}
+          baseName={name}
+          schema={unwrapObject(fieldSchema)}
+          overrides={overrides}
+          relPath={rel}
+        />
+      </FieldsetWithLabel>
     );
   }
 
@@ -157,7 +163,7 @@ function SchemaField({
   );
 }
 
-/** Render a `{ ja, en }` pair of single URL items (BilingualUrlValue). */
+/** Render a `{ ja, en }` pair of single URL items (BilingualUrlValue). (researchproject[].url) */
 function BilingualUrlValuePair({
   form,
   baseName,
@@ -168,11 +174,10 @@ function BilingualUrlValuePair({
   label: string;
 }) {
   return (
-    <fieldset className="flex flex-col gap-1">
-      <Label className="text-sm">{label}</Label>
+    <FieldsetWithLabel label={label}>
       <div className="flex gap-2">
-        <div className="flex-1 font-medium text-form-label text-xs uppercase">En</div>
-        <div className="flex-1 font-medium text-form-label text-xs uppercase">Ja</div>
+        <LangFormLabel className="flex-1">En</LangFormLabel>
+        <LangFormLabel className="flex-1">Ja</LangFormLabel>
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
@@ -182,7 +187,7 @@ function BilingualUrlValuePair({
           <form.AppField name={`${baseName}.ja` as any}>{() => <URLField />}</form.AppField>
         </div>
       </div>
-    </fieldset>
+    </FieldsetWithLabel>
   );
 }
 

@@ -16,7 +16,7 @@ export function EnumFacetItem({
   draftValue: string | undefined;
   onUpdate: (id: string, value: unknown) => void;
 }) {
-  const t = useTranslations(`Filters.${id}.options` as any) as any;
+  const t = useTranslations("Filters");
 
   const realOptions = ["any", ...options];
   const isEnabled = draftValue != null && draftValue !== "any";
@@ -43,7 +43,7 @@ export function EnumFacetItem({
           {realOptions.map((option) => (
             <Label key={option} className="flex items-center gap-2">
               <RadioGroupItem value={option} />
-              <span>{t(option)}</span>
+              <span>{t(`facets.${id}.options.${option}` as any)}</span>
             </Label>
           ))}
         </RadioGroup>

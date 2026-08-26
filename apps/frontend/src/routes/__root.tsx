@@ -86,12 +86,6 @@ export const Route = createRootRouteWithContext<Context>()({
         { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
         { rel: "icon", href: "/favicon.ico" },
       ],
-      // scripts: [
-      //   {
-      //     src: "/customScript.js",
-      //     type: "text/javascript",
-      //   },
-      // ],
     };
   },
   errorComponent: DefaultCatchBoundary,

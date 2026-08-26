@@ -64,29 +64,29 @@ function researchTableData(
   researches: ResearchSearchResponseWithTypedCriteria["data"],
   search: ResearchExportSearch,
 ): TableExportData {
-  const labels = messages[search.lang].Research;
+  const labels = messages[search.lang]["Research-list"].fields;
   const columns: {
     header: string;
     value: (row: ResearchSearchResponseWithTypedCriteria["data"][number]) => string;
   }[] = [
-    { header: labels["research-id"], value: (row) => row.humId },
-    { header: labels.datasets, value: (row) => row.datasetIds.join(", ") },
-    { header: labels.title, value: (row) => row.title[search.lang] ?? "" },
+    { header: messages[search.lang].Research["research-id"], value: (row) => row.humId },
+    { header: labels.datasets.label, value: (row) => row.datasetIds.join(", ") },
+    { header: labels.title.label, value: (row) => row.title[search.lang] ?? "" },
     {
-      header: labels.datePublished,
+      header: labels.datePublished.label,
       value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
     },
     {
-      header: labels.dateModified,
+      header: labels.dateModified.label,
       value: (row) =>
         `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
     },
-    { header: labels.methods, value: (row) => row.methods ?? "" },
-    { header: labels.typeOfData, value: (row) => row.typeOfData.join(", ") },
-    { header: labels.platforms, value: (row) => row.platforms.join(", ") },
-    { header: labels.targets, value: (row) => row.targets },
-    { header: labels.criteria, value: (row) => row.criteria.join(", ") },
-    { header: labels.dataProvider.self, value: (row) => row.dataProvider.join(", ") },
+    { header: labels.methods.label, value: (row) => row.methods ?? "" },
+    { header: labels.typeOfData.label, value: (row) => row.typeOfData.join(", ") },
+    { header: labels.platforms.label, value: (row) => row.platforms.join(", ") },
+    { header: labels.targets.label, value: (row) => row.targets },
+    { header: labels.criteria.label, value: (row) => row.criteria.join(", ") },
+    { header: labels.dataProvider.label, value: (row) => row.dataProvider.join(", ") },
   ];
 
   return {

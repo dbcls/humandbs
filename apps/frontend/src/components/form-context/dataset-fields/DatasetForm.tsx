@@ -5,7 +5,7 @@ import type { z } from "zod";
 import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { ModifiedTag } from "@/components/form-context/ModifiedTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { DatasetDoc } from "@/lib/types";

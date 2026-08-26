@@ -82,17 +82,14 @@ export function CheckboxFacetItem({
   const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
   const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
 
-  const tFilters = useTranslations("Filters") as any;
+  const tFilters = useTranslations("Filters");
   const tCommon = useTranslations("common");
 
   if (options.length === 0) return null;
 
   const getLabel = (optionValue: string): string => {
-    const key = `${id}.options.${optionValue}` as any;
-    if (tFilters.has(key)) {
-      return tFilters(key);
-    }
-    return optionValue;
+    const key = `facets.${id}.options.${optionValue}` as any;
+    return tFilters.has(key) ? tFilters(key) : optionValue;
   };
 
   const handleSortClick = (mode: CheckboxSortMode) => {

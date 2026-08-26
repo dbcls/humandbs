@@ -1,6 +1,6 @@
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { withForm } from "../FormContext";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,10 +19,9 @@ export const BilingualTextValueField = withForm({
     className?: string;
     fieldsContainerClassName?: string;
   },
-  render({ form, baseName, label, className, fieldsContainerClassName }) {
+  render({ form, baseName, label, fieldsContainerClassName }) {
     return (
-      <fieldset className={cn("flex flex-col gap-1", className)}>
-        <Label className="text-sm">{label}</Label>
+      <FieldsetWithLabel label={label}>
         <div className={cn("flex gap-2", fieldsContainerClassName)}>
           <div className="flex-1">
             <form.AppField name={`${baseName}.en.text` as AnyName}>
@@ -35,7 +34,7 @@ export const BilingualTextValueField = withForm({
             </form.AppField>
           </div>
         </div>
-      </fieldset>
+      </FieldsetWithLabel>
     );
   },
 });

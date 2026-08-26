@@ -23,12 +23,9 @@ import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { BilingualMarkdownEditorField } from "@/components/form-context/fields/BilingualMarkdownEditorField";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { FieldControl } from "@/components/form-context/schema-form/FieldControl";
-import { getFieldKind } from "@/components/form-context/schema-form/getFieldKind";
 import type { FieldOverride } from "@/components/form-context/schema-form/SchemaObjectFields";
 import { SchemaObjectFields } from "@/components/form-context/schema-form/SchemaObjectFields";
-import { humanize } from "@/components/form-context/schema-form/utils";
+import { TabLabel } from "@/components/form-context/TabLabel";
 import { InfoBadge } from "@/components/InfoBadge";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
@@ -66,8 +63,8 @@ import { DatasetCreateView } from "./DatasetCreateView";
 import { DatasetEditView } from "./DatasetEditView";
 import { MergeResearchDialog } from "./MergeResearch/index";
 import { ResearchDatasetsTab } from "./ResearchDatasetsTab";
+import { RESEARCH_METADATA_ORDER, ResearchMetadataTabs } from "./ResearchMetadataTabs";
 import { ResearchVersionSelector } from "./ResearchVersionSelector";
-import { researchFieldsConfig } from "./researchFieldsConfig";
 import type { ResearchForm, ResearchValues } from "./researchForm";
 import { TabContentLayout } from "./TabContentLayout";
 import {
@@ -77,16 +74,7 @@ import {
 } from "./utils/researchEditTarget";
 import type { MergeResearchResult } from "./utils/researchValues";
 
-/**
- * Top-level research metadata fields rendered as tabs, derived from the schema
- * shape (single source of truth) and ordered/labelled via `researchFieldsConfig`.
- * Fields whose key carries no config entry and resolve to a primitive kind fall
- * through to the generic schema-driven `FieldControl` — so a new scalar backend
- * field surfaces automatically with no code change here.
- *
- * `releaseNote`, `status`, versions and datasets are handled separately
- * outside this tabbed loop, so they're excluded.
- */
+/** Fields rendered outside the schema-driven metadata tabs. */
 const EXCLUDED_FIELDS = new Set<string>([
   "humId",
   "url",
@@ -105,33 +93,6 @@ const EXCLUDED_FIELDS = new Set<string>([
   "_primary_term",
 ]);
 
-type MetadataField = {
-  key: string;
-  label: string;
-  order: number;
-  kind: ReturnType<typeof getFieldKind>;
-  renderer?: (form: ResearchForm) => React.ReactNode;
-};
-
-const metadataFields: MetadataField[] = Object.entries(UpdateResearchRequestSchema.shape)
-  .filter(([key]) => !EXCLUDED_FIELDS.has(key))
-  .flatMap(([key, schema], schemaIndex): MetadataField[] => {
-    const config = researchFieldsConfig[key as keyof typeof researchFieldsConfig];
-    if (config?.hidden) return [];
-    return [
-      {
-        key,
-        label: config?.label ?? humanize(key),
-        order: config?.order ?? schemaIndex + 1000,
-        kind: getFieldKind(schema as { _def: any }),
-        renderer: config?.renderer,
-      },
-    ];
-  })
-  .sort((a, b) => a.order - b.order);
-
-const topLevelFields = metadataFields.map((f) => f.key);
-
 export function ResearchDetails({
   humId,
   lang,
@@ -148,6 +109,9 @@ export function ResearchDetails({
   const queryClient = useQueryClient();
 
   const t = useTranslations();
+  const topLevelFields = Object.keys(UpdateResearchRequestSchema.shape).filter(
+    (key) => !EXCLUDED_FIELDS.has(key),
+  );
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
   // Uses the "for edit" fn (includeRawHtml: true, no render transform) so legacy
@@ -845,47 +809,30 @@ export function ResearchDetails({
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   form={form as any}
                   baseName="releaseNote"
-                  label="Release note"
-                  legacyFieldKey="releaseNote"
-                  legacyRawHtml={legacyRawHtml}
+                  label={t("Research.fields.releaseNote.label")}
                 />
               </fieldset>
-              <Tabs defaultValue={metadataFields[0]?.key} className="mt-5 flex flex-col">
-                <div className="shrink-0 overflow-x-auto px-5">
-                  <TabsList variant="line">
-                    {metadataFields.map((field) => (
-                      <TabsTrigger key={field.key} variant="line" value={field.key}>
-                        <TabLabel dirty={dirtyFields[field.key]}>{field.label}</TabLabel>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
-                <fieldset disabled={!isEditable || !canUpdate} className="group/fieldset p-5">
-                  {metadataFields.map((field) => (
-                    <TabsContent key={field.key} value={field.key}>
-                      {field.key === "summary" ? (
-                        <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
-                      ) : field.key === "summaryShort" ? (
-                        <SummaryShortMarkdownFields form={form} />
-                      ) : field.renderer ? (
-                        field.renderer(form)
-                      ) : (
-                        <form.AppField name={field.key as never}>
-                          {(f) => (
-                            <FieldControl
-                              fieldKey={field.key}
-                              kind={field.kind}
-                              value={f.state.value}
-                              defaultValue={(defaultValues as Record<string, unknown>)[field.key]}
-                              onChange={(v) => f.handleChange(v as never)}
-                            />
-                          )}
-                        </form.AppField>
+              <ResearchMetadataTabs
+                form={form}
+                shape={UpdateResearchRequestSchema.shape}
+                excludedFields={EXCLUDED_FIELDS}
+                fieldOrder={RESEARCH_METADATA_ORDER}
+                dirtyFields={dirtyFields}
+                disabled={!isEditable || !canUpdate}
+                className="mt-5 flex flex-col"
+                contentClassName="p-5"
+                renderOverride={{
+                  title: ({ form, name, label }) => (
+                    <form.AppField name={name as never}>
+                      {(field: any) => (
+                        <field.BilingualTextField label={label} variant="textarea" />
                       )}
-                    </TabsContent>
-                  ))}
-                </fieldset>
-              </Tabs>
+                    </form.AppField>
+                  ),
+                  summary: ({ form }) => <SummaryMarkdownFields form={form} />,
+                  summaryShort: ({ form }) => <SummaryShortMarkdownFields form={form} />,
+                }}
+              />
             </div>
           </TabsContent>
 
@@ -958,74 +905,50 @@ export function ResearchDetails({
   );
 }
 
-/**
- * Summary editor: aims/methods/targets become Markdown editors (with live preview
- * + legacy popup) via per-key overrides; `url` falls through to the generic
- * schema-driven rendering. Each Markdown editor edits only `text`.
- */
-function SummaryMarkdownFields({
-  form,
-  legacyRawHtml,
-}: {
-  form: ResearchForm;
-  legacyRawHtml: ReturnType<typeof researchLegacyRawHtml>;
-}) {
-  const overrides = useMemo<Record<string, FieldOverride>>(() => {
-    const markdownOverride =
-      (legacyFieldKey: string): FieldOverride =>
-      ({ form: fieldForm, name, label }) => (
-        <BilingualMarkdownEditorField
-          form={fieldForm}
-          baseName={name}
-          label={label}
-          legacyFieldKey={legacyFieldKey}
-          legacyRawHtml={legacyRawHtml}
-        />
-      );
-    return {
-      aims: markdownOverride("aims"),
-      methods: markdownOverride("methods"),
-      targets: markdownOverride("targets"),
-    };
-    // Each override reads `ctx.form` (the field-level form), so the outer `form`
-    // is not a dependency — only the legacy lookup is.
-  }, [legacyRawHtml]);
+const markdownOverride: FieldOverride = ({ form: fieldForm, name, label }) => (
+  <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
+);
 
+const unwrappedSummarySchema = unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary);
+
+const summaryFieldOverrides = {
+  aims: markdownOverride,
+  methods: markdownOverride,
+  targets: markdownOverride,
+  // url is rendered via the generic schema-driven field renderer, not a Markdown editor
+};
+/**
+ * Summary editor: aims/methods/targets become Markdown editors via per-key overrides;
+ * `url` falls through to the generic schema-driven rendering. Each Markdown editor edits only `text`.
+ */
+export function SummaryMarkdownFields({ form }: { form: ResearchForm }) {
   return (
     <SchemaObjectFields
       form={form}
       baseName="summary"
-      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
-      overrides={overrides}
+      schema={unwrappedSummarySchema}
+      overrides={summaryFieldOverrides}
     />
   );
 }
 
-/**
- * Short-summary editor: the listing-specific methods, data-type, and target
- * fields share Summary's bilingual Markdown editing layout. summaryShort has
- * no legacy HTML side-channel, so its editors deliberately omit that popup.
- */
-function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
-  const overrides = useMemo<Record<string, FieldOverride>>(() => {
-    const markdownOverride =
-      (): FieldOverride =>
-      ({ form: fieldForm, name, label }) => (
-        <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
-      );
-    return {
-      methods: markdownOverride(),
-      typeOfData: markdownOverride(),
-      targets: markdownOverride(),
-    };
-  }, []);
+const unwrappedShortSummarySchema = unwrapSummarySchema(
+  UpdateResearchRequestSchema.shape.summaryShort,
+);
 
+const summaryShortFielsOverrides = {
+  methods: markdownOverride,
+  typeOfData: markdownOverride,
+  targets: markdownOverride,
+};
+
+export function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
   return (
     <SchemaObjectFields
       form={form}
       baseName="summaryShort"
-      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summaryShort)}
-      overrides={overrides}
+      schema={unwrappedShortSummarySchema}
+      overrides={summaryShortFielsOverrides}
     />
   );
 }

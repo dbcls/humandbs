@@ -43,15 +43,14 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
   errorComponent: (props) =>
     isCancelledError(props.error) ? null : <DefaultCatchBoundary {...props} />,
   loader: ({ context, location }) => {
-    return Promise.all([
-      context.queryClient.ensureQueryData(
-        getDatasetsPaginatedQueryOptions({
-          ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
-          lang: context.lang,
-        }),
-      ),
-      context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
-    ]);
+    context.queryClient.ensureQueryData(
+      getDatasetsPaginatedQueryOptions({
+        ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
+        lang: context.lang,
+      }),
+    );
+
+    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
   },
   wrapInSuspense: true,
   head: ({ match }) => {

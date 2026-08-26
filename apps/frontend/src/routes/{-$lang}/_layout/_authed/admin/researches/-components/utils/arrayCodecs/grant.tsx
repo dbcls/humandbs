@@ -1,4 +1,4 @@
-import { TagInput } from "@/components/form-context/fields/TagInput";
+import { TagInput } from "@/components/form-context/TagInput";
 import { Input } from "@/components/ui/input";
 
 import type { ArrayCodec } from "./types";

@@ -608,8 +608,8 @@ export default function BlobCluster({
             anchorX="center"
             anchorY="middle"
           >
-            {tFilters.has(`${system.facet}.title` as any)
-              ? tFilters(`${system.facet}.title` as any)
+            {tFilters.has(`facets.${system.facet}.label` as any)
+              ? tFilters(`facets.${system.facet}.label` as any)
               : capitalize(system.facet)}
           </Text>
         </Billboard>

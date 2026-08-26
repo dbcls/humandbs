@@ -20,7 +20,7 @@ export function BooleanFacetItem({
 
   const realOptions = ["true", "false"];
 
-  const t = useTranslations(`Filters.${id}.options` as any) as any;
+  const t = useTranslations("Filters");
 
   return (
     <FacetItemWrapper
@@ -44,7 +44,7 @@ export function BooleanFacetItem({
             >
               <span>
                 <RadioGroupItem value={option} />
-                <span className="ml-2">{t(option)}</span>
+                <span className="ml-2">{t(`facets.${id}.options.${option}` as any)}</span>
               </span>
               <span className="text-gray-500">
                 {facetCounts?.find((f) => f.value === (option === "true" ? "1" : "0"))?.count || 0}

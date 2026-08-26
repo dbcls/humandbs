@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-import { ResetFieldButton } from "./ResetFieldButton";
+import { ResetFieldButton } from "../ResetFieldButton";
 import { getFieldDefaultValue, isFieldModified } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

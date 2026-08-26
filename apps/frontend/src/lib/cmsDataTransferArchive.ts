@@ -24,8 +24,6 @@ import {
   moldataKeyCatalog,
   moldataKeyCatalogEntry,
   NAVIGATION_FLOWCHART_STATUS,
-  navigationFlowchart,
-  navigationFlowchartRevision,
   newsItem,
   newsItemTag,
   newsTag,
@@ -415,8 +413,6 @@ function getCategoryPayloadPath(category: CmsDataTransferCategory) {
       return "categories/alerts.json";
     case "header-footer":
       return "categories/header-footer.json";
-    case "flowcharts":
-      return "categories/flowcharts.json";
     case "moldata-keys":
       return "categories/moldata-keys.json";
     case "assets":
@@ -502,20 +498,6 @@ function validateCategoryPayload(
         );
         return {
           count: payload.activeConfig ? 1 : 0,
-        };
-      }
-    case "flowcharts":
-      if (!entryBytes) {
-        throw new Error('Archive is missing required file "categories/flowcharts.json".');
-      }
-      {
-        const payload = parseJsonFile(
-          entryBytes,
-          flowchartsPayloadSchema,
-          "categories/flowcharts.json",
-        );
-        return {
-          count: payload.flowcharts.length,
         };
       }
     case "moldata-keys":
@@ -786,21 +768,7 @@ async function parseCmsDataTransferArchive(
         availableCategories.push(category);
         break;
       }
-      case "flowcharts": {
-        if (!payloadPath || !entries[payloadPath]) {
-          throw new Error('Archive is missing required file "categories/flowcharts.json".');
-        }
-        const payload = parseJsonFile(entries[payloadPath], flowchartsPayloadSchema, payloadPath);
-        const actualCount = payload.flowcharts.length;
-        if (expectedCount !== actualCount) {
-          throw new Error(
-            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
-          );
-        }
-        payloads.flowcharts = payload;
-        availableCategories.push(category);
-        break;
-      }
+
       case "moldata-keys": {
         if (!payloadPath || !entries[payloadPath]) {
           throw new Error('Archive is missing required file "categories/moldata-keys.json".');
@@ -1103,41 +1071,6 @@ export function createCmsDataTransferArchiveRestorer({
           }
         }
 
-        if (restoredCategories.includes("flowcharts")) {
-          const payload = parsedArchive.payloads.flowcharts;
-          if (!payload) {
-            throw new Error("Flowcharts payload is missing from the archive.");
-          }
-
-          await tx.delete(navigationFlowchartRevision);
-          await tx.delete(navigationFlowchart);
-
-          if (payload.flowcharts.length > 0) {
-            await tx.insert(navigationFlowchart).values(
-              payload.flowcharts.map((item) => ({
-                id: item.id,
-                isEntryPoint: item.isEntryPoint,
-                nameEn: item.nameEn,
-                nameJa: item.nameJa,
-                config: item.config,
-                status: item.status,
-                revision: 1,
-                updatedAt: new Date(),
-                updatedBy: effectiveUserId,
-              })),
-            );
-
-            await tx.insert(navigationFlowchartRevision).values(
-              payload.flowcharts.map((item) => ({
-                flowchartId: item.id,
-                config: item.config,
-                revision: 1,
-                createdBy: effectiveUserId,
-              })),
-            );
-          }
-        }
-
         if (restoredCategories.includes("moldata-keys")) {
           const payload = parsedArchive.payloads["moldata-keys"];
           if (!payload) {
@@ -1266,17 +1199,6 @@ async function buildCategoryPayload(
           "categories/header-footer.json": JSON.stringify({ activeConfig }, null, 2),
         },
         count: activeConfig ? 1 : 0,
-      };
-    }
-
-    case "flowcharts": {
-      const flowcharts = await database.select().from(navigationFlowchart);
-
-      return {
-        files: {
-          "categories/flowcharts.json": JSON.stringify({ flowcharts }, null, 2),
-        },
-        count: flowcharts.length,
       };
     }
 

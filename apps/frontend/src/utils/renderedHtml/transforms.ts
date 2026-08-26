@@ -56,10 +56,16 @@ export function addTitlesToSummary(summary: ResearchRenderInput["data"]["summary
     title: "aims" | "methods" | "targets",
   ) => ({
     en: field?.en
-      ? { ...field.en, text: `**${messages.en.Research[title]}:** ${field.en.text}` }
+      ? {
+          ...field.en,
+          text: `**${messages.en.Research.fields.summary.fields[title].label}:** ${field.en.text}`,
+        }
       : null,
     ja: field?.ja
-      ? { ...field.ja, text: `**${messages.ja.Research[title]}:** ${field.ja.text}` }
+      ? {
+          ...field.ja,
+          text: `**${messages.ja.Research.fields.summary.fields[title].label}:** ${field.ja.text}`,
+        }
       : null,
   });
 

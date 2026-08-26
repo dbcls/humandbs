@@ -6,17 +6,18 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   isFieldModified,
   resetFieldKeyToDefault,
 } from "@/components/form-context/fields/useFieldModified";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { Input } from "@/components/Input";
-import { Label } from "@/components/ui/label";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { cn } from "@/lib/utils";
+
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 
 const BilingualTextSchema = ResearchDetailSchema.pick({ title: true });
 
@@ -42,9 +43,9 @@ export default function BilingualTextField({
   function handleChaneValue(value: string, locale: Locale) {
     field.setValue((prev) => ({ ...prev, [locale]: value }));
   }
+
   return (
-    <Label className="flex w-full flex-col items-stretch gap-2">
-      <span>{label}</span>
+    <FieldsetWithLabel label={label}>
       <div className="flex w-full gap-2">
         {i18n.locales.map((locale) => {
           const isModified = isFieldModified(field, locale);
@@ -86,6 +87,7 @@ export default function BilingualTextField({
           );
         })}
       </div>
-    </Label>
+      {/*</Label>*/}
+    </FieldsetWithLabel>
   );
 }

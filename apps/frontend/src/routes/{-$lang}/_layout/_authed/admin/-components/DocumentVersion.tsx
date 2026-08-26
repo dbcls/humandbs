@@ -13,8 +13,8 @@ import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import { ModifiedTag } from "@/components/form-context/ModifiedTag";
+import { TabLabel } from "@/components/form-context/TabLabel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
@@ -796,7 +796,7 @@ function useDocumentVersionForm({
                 shortTitle: locShortTitle,
                 content: locContent,
               });
-              console.log("calling publishDraft with loc", loc);
+
               await publishDraft({ locale: loc });
               return { loc, locTitle, locShortTitle, locContent };
             }),
@@ -987,8 +987,6 @@ function useSaveDraft(contentId: string, versionNumber: number) {
       }),
 
     onMutate: async (data) => {
-      console.log("useSaveDraft onMutate data", data);
-
       await queryClient.cancelQueries(docListQO);
       await queryClient.cancelQueries(docVersionQO);
       await queryClient.cancelQueries(docVersionsListQO);
@@ -1041,35 +1039,22 @@ function useSaveDraft(contentId: string, versionNumber: number) {
           data.shortTitle !== prevVersion.translations[data.locale]?.published?.shortTitle ||
           data.content !== prevVersion.translations[data.locale]?.published?.content);
 
-      console.log("hasUnpublishedChanges", hasUnpublishedChanges);
-      console.log("prevVersion", prevVersion);
-      console.log(
-        "data.title !== prevVersion.translations[data.locale]?.published?.title",
-        data.title !== prevVersion?.translations[data.locale]?.published?.title,
-      );
-      console.log(
-        "data.content !== prevVersion.translations[data.locale]?.published?.content",
-        data.content !== prevVersion?.translations[data.locale]?.published?.content,
-      );
-
       if (isLatestVersion) {
         queryClient.setQueryData(docListQO.queryKey, (old) => {
           if (!old) return old;
 
           return old.map((doc) => {
             if (doc.contentId !== contentId) return doc;
-            console.log("previous translations", doc.translations);
 
             return {
               ...doc,
               translations: doc.translations.map((tr) => {
                 if (tr.lang !== data.locale) return tr;
 
-                console.log("mapping translation prev", tr);
                 // if there is published, update its hasUnpublishedChanges
                 if (tr.status === "published") {
                   const res = { ...tr, hasUnpublishedChanges };
-                  console.log("mapping translations, change", { from: tr, to: res });
+
                   return res;
                 } else {
                   // if only draft present, update the draft title

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { HTMLReactParserOptions } from "html-react-parser";
 import parse, { domToReact, Element } from "html-react-parser";
 
+import type { CalloutType } from "@/components/markdown/Callout";
 import { Callout } from "@/components/markdown/Callout";
 import { DocButton } from "@/components/markdown/DocButton";
 import { cn } from "@/lib/utils";
@@ -14,11 +15,15 @@ interface MarkdownProps {
   className?: string;
 }
 
-type CalloutType = "info" | "tip" | "error" | "warning";
-
 function getCalloutType(rawType?: string): CalloutType {
   const type = (rawType ?? "info").toLowerCase();
-  if (type === "info" || type === "tip" || type === "error" || type === "warning") {
+  if (
+    type === "info" ||
+    type === "tip" ||
+    type === "error" ||
+    type === "warning" ||
+    type === "plain"
+  ) {
     return type;
   }
   return "info";

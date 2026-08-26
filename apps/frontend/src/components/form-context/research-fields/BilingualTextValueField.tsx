@@ -7,8 +7,8 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import { getFieldDefaultValue } from "@/components/form-context/fields/useFieldModified";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import type { Locale } from "@/config/i18n";

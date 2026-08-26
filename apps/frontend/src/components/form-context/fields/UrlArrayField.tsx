@@ -1,10 +1,11 @@
 import { Trash2 } from "lucide-react";
 
+import { LangFormLabel } from "@/components/LangFormLabel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-import { ResetFieldButton } from "./ResetFieldButton";
+import { ResetFieldButton } from "../ResetFieldButton";
 import { getFieldDefaultValue, isFieldModified } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,12 +40,8 @@ export const UrlArrayField = withForm({
                     {/* Column headers */}
                     {enItems.length > 0 && (
                       <div className="flex gap-2">
-                        <div className="flex-1 font-medium text-form-label text-xs uppercase">
-                          En
-                        </div>
-                        <div className="flex-1 font-medium text-form-label text-xs uppercase">
-                          Ja
-                        </div>
+                        <LangFormLabel className="flex-1">En</LangFormLabel>
+                        <LangFormLabel className="flex-1">Ja</LangFormLabel>
                         <div className="w-8" />
                       </div>
                     )}

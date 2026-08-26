@@ -19,12 +19,10 @@ export const tabParamSchema = z.enum([
   "news",
   "alerts",
   "documents",
-  "content",
   "researches",
   "researches/moldata-keys",
   "assets",
   "header-footer",
-  "flowcharts",
 ]);
 
 export type TabType = z.infer<typeof tabParamSchema>;
@@ -216,7 +214,7 @@ function PanelItem({
     <Link
       variant={"nav"}
       className="w-auto rounded-sm px-4 py-2 hover:bg-hover/50 hover:text-accent-foreground data-[status=active]:bg-hover"
-      to={`/{-$lang}/admin/${tab}` as never}
+      to={`/{-$lang}/admin/${tab}`}
       activeOptions={{ exact }}
     >
       {title}

@@ -84,7 +84,6 @@ function RouteComponent() {
 
       {selectedHumId && isDummyResearch(selectedHumId) ? (
         <NewResearchForm
-          lang={lang}
           onCreated={(humId, relatedAccessions) => {
             setPendingAccessions(relatedAccessions);
             setSelectedHumId(humId);

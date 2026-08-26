@@ -36,7 +36,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
 
 function RouteComponent() {
   const { lang } = Route.useRouteContext();
-  const t = useTranslations("Navbar");
+
   const tNews = useTranslations("News");
   const search = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
@@ -88,7 +88,7 @@ function RouteComponent() {
 
   return (
     <Card
-      caption={t("all-news")}
+      caption={tNews("all-news")}
       className="flex w-full flex-1 flex-col"
       containerClassName="gap-2 flex flex-col"
     >

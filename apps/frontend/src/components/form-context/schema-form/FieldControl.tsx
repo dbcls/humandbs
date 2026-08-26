@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
-import { TagInput } from "@/components/form-context/fields/TagInput";
+import { ResetFieldButton } from "@/components/form-context/ResetFieldButton";
+import { TagInput } from "@/components/form-context/TagInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
