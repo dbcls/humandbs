@@ -111,9 +111,6 @@ async def create_assessment_report(application_data: dict) -> str:
     """Create report to assess if the application meets the requirements"""
     global report_template
     parameters = template_parameters(application_data)
-    if os.environ.get("DEPLOY_MODE") == "development":
-        # Reload the template for development
-        report_template = jinja_env.get_template("report.jinja2")
 
     # Render the template
     report = report_template.render(parameters)
@@ -125,9 +122,6 @@ async def create_handout(application_data: dict) -> str:
     """Create handout for the applicant"""
     global handout_template
     params = template_parameters(application_data)
-    if os.environ.get("DEPLOY_MODE") == "development":
-        # Reload the template for development
-        handout_template = jinja_env.get_template("handout.jinja2")
 
     # Render the template
     handout = handout_template.render(params)

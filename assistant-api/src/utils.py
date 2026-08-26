@@ -35,13 +35,13 @@ def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
     return path
 
 
-WORK_DIR = _resolve_runtime_path(os.environ.get("HUMANDBS_ASSISTANT_WORK_DIR", "work"), "work")
+WORK_DIR = _resolve_runtime_path(os.environ.get("WORK_DIR", "work"), "work")
 UPLOADS_DIR = WORK_DIR / "uploads"
 RESULTS_DIR = WORK_DIR / "results"
 LOGS_DIR = WORK_DIR / "logs"
 
-TEMPLATE_DIR = _resolve_runtime_path(os.environ.get("HUMANDBS_ASSISTANT_TEMPLATE_DIR", "templates"), "templates")
-DATA_DIR = _resolve_runtime_path(os.environ.get("HUMANDBS_ASSISTANT_DATA_DIR", "data"), "data")
+TEMPLATE_DIR = _resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
+DATA_DIR = _resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
 HUM_DATASETS_DIR = DATA_DIR / "hum_datasets"
 ICD10_MAPPING_PATH = DATA_DIR / "icd10_jp_mapping.json"
 
@@ -134,7 +134,7 @@ def find_latest_research_versions(directory_path: str) -> dict[str, str]:
 research_mapping = find_latest_research_versions(str(HUM_DATASETS_DIR))
 
 
-humandbs_web_base_url = os.environ.get("HUMANDBS_WEB_BASE_URL", "https://humandbs.dbcls.jp/").rstrip("/")
+humandbs_web_base_url = "https://humandbs.dbcls.jp/"
 
 
 async def extract_text_from_pdf(file_path: str, task_id: str = None) -> str:

@@ -18,7 +18,7 @@ os.environ["OPIK_PROJECT_NAME"] = "humandb-demo"
 # Configure logger
 logger = logging.getLogger("llm_service")
 
-cache_path = Path(os.environ.get("HUMANDBS_ASSISTANT_LLM_CACHE_PATH", "work/langchain_cache.db"))
+cache_path = Path("work/langchain_cache.db")
 cache_path.parent.mkdir(parents=True, exist_ok=True)
 set_llm_cache(SQLiteCache(database_path=str(cache_path)))
 
@@ -27,18 +27,11 @@ _llm_init_error: Exception | None = None
 
 
 def _build_llm() -> AzureChatOpenAI:
-    model_name = os.environ.get("AZURE_OPENAI_MODEL", "gpt-4")
-    if "gpt-5" in model_name:
-        return AzureChatOpenAI(
-            azure_deployment=model_name,
-            model="gpt-5",
-            reasoning_effort="minimal",
-        )
-
+    model_name = os.environ.get("AZURE_OPENAI_MODEL", "gpt-5")
     return AzureChatOpenAI(
         azure_deployment=model_name,
-        temperature=float(os.environ.get("LLM_TEMPERATURE", 0.2)),
-        max_tokens=2000,
+        model=model_name,
+        reasoning_effort="minimal",
     )
 
 
