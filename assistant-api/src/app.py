@@ -8,6 +8,7 @@ import yaml  # Added PyYAML for YAML serialization
 from docx import Document
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
@@ -50,10 +51,20 @@ app = FastAPI(
     title="Human Database Submission Assistant",
     description="FastAPI implementation of the Human Database Submission Assistant workflow",
     version="0.1.0",
-    openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
 )
+
+
+@app.get("/api/docs", include_in_schema=False)
+async def assistant_docs():
+    # Use a relative spec URL so docs work both directly and via portal proxy.
+    return get_swagger_ui_html(openapi_url="./openapi.json", title=f"{app.title} - Swagger UI")
+
+
+@app.get("/api/redoc", include_in_schema=False)
+async def assistant_redoc():
+    # Same reason as /api/docs above.
+    return get_redoc_html(openapi_url="./openapi.json", title=f"{app.title} - ReDoc")
 
 
 @app.get("/api/health")
