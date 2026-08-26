@@ -1,7 +1,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs');
 
-const code = fs.readFileSync('apps/frontend/src/components/FrontStatsVisualizationNew.tsx', 'utf8');
+const code = fs.readFileSync('src/components/FrontStatsVisualizationNew.tsx', 'utf8');
 
 try {
   esbuild.transformSync(code, { loader: 'tsx' });
