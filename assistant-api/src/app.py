@@ -51,7 +51,8 @@ app = FastAPI(
     title="Human Database Submission Assistant",
     description="FastAPI implementation of the Human Database Submission Assistant workflow",
     version="0.1.0",
-    openapi_url="/api/openapi.json"
+    openapi_url="/api/openapi.json",
+    servers=[{"url": ".."}],
 )
 
 

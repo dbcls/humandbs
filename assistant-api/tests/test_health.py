@@ -28,3 +28,12 @@ def test_redoc_uses_relative_openapi_url() -> None:
 
     assert response.status_code == 200
     assert "./openapi.json" in response.text
+
+
+def test_openapi_uses_a_relative_server_url() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/openapi.json")
+
+    assert response.status_code == 200
+    assert response.json()["servers"] == [{"url": ".."}]
