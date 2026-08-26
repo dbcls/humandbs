@@ -30,7 +30,8 @@ erDiagram
         int version_number PK
         text locale PK
         enum status PK
-        text name "title"
+        text title "title"
+        text shortTitle "short title"
         text content
         text author_id FK
         timestamp created_at
