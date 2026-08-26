@@ -23,7 +23,7 @@ class AddressValidator:
             task_id: タスクID（ログ記録用）
         """
         self.logger = logger
-        self.api_key = os.environ.get("GOOGLE_MAPS_API_KEY") or os.environ.get("GOOGLE_CLOUD_API_KEY")
+        self.api_key = os.environ.get("GOOGLE_CLOUD_API_KEY")
 
         if not self.api_key:
             self.logger.warning("Google Maps API key not found in environment variables")

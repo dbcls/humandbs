@@ -77,7 +77,31 @@ volume なので repo には何も溜まらない。
 
 ## 動かす
 
-サービスは profile の後ろにいる。
+サービスは profile の後ろにいる。先にリポジトリ直下の `.env` で、ポータルがアシスタントへ届くよう
+`HUMANDBS_ASSISTANT_ORIGIN` を設定する。compose network 内では次の値になる。
+
+```dotenv
+HUMANDBS_ASSISTANT_ORIGIN=http://assistant-api:8000
+```
+
+`.env.example` にある以下の変数にも、それぞれ使う外部サービスの値を設定する。Azure OpenAI は
+`HUMANDBS_ASSISTANT_AZURE_OPENAI_MODEL`、`HUMANDBS_ASSISTANT_AZURE_OPENAI_API_KEY`、
+`HUMANDBS_ASSISTANT_AZURE_OPENAI_ENDPOINT`、`HUMANDBS_ASSISTANT_AZURE_OPENAI_API_VERSION`、Google Cloud は
+`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID` と
+`HUMANDBS_ASSISTANT_GOOGLE_GENAI_LOCATION`、Google Custom Search は
+`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_API_KEY` と `HUMANDBS_ASSISTANT_GOOGLE_CSE_ID`、Document AI は
+`HUMANDBS_ASSISTANT_DOCUMENT_AI_LOCATION` と
+`HUMANDBS_ASSISTANT_DOCUMENT_AI_PROCESSOR_ID` を使う。
+
+Google Cloud のサービスアカウント鍵は、次の場所に `gcp-credentials.json` という名前で置く。
+サービスアカウントには、「Vertex AI Service Agent, Document AI Reader, Maps API Reader」 の役割を付与する必要がある。
+
+```bash
+cp <service-account-key.json> assistant-api/gcp-credentials.json
+```
+
+このファイルは compose により container 内の `/app/gcp-credentials.json` として読まれ、
+`assistant-api/.gitignore` により Git 管理から除外される。鍵の内容を `.env` や Git に置かない。
 
 ```bash
 docker compose --profile assistant up -d

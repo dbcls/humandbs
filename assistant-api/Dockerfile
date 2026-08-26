@@ -1,18 +1,28 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-COPY pyproject.toml /app/pyproject.toml
-COPY src /app/src
-COPY templates /app/templates
+RUN apt-get update && apt-get install -y \
+    git \
+    tesseract-ocr \
+    tesseract-ocr-jpn \
+    tesseract-ocr-eng \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip \
-    && pip install -e ".[dev]"
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-EXPOSE 8000
+# Copy dependency files
+COPY pyproject.toml .
+
+# Install dependencies with uv
+RUN uv pip install --system --no-cache .
+
+# Install playwright browsers
+RUN playwright install --with-deps chromium
+
+ENV PYTHONUNBUFFERED=1
 
 CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
