@@ -4,6 +4,7 @@ export const FA_ICONS = {
   info: <span className="font-black font-fontawesome text-secondary before:content-(--info)" />,
   tip: <span className="font-black font-fontawesome text-amber-400 before:content-(--tip)" />,
   warning: (
-    <span className="font-black font-fontawesome text-accent-light before:content-(--warning)" />
+    <span className="font-black font-fontawesome text-amber-400 before:content-(--warning)" />
   ),
+  error: <span className="font-black font-fontawesome text-danger before:content-(--error)" />,
 } as const;

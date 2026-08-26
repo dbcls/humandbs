@@ -17,7 +17,7 @@ const DateField = lazy(() => import("./DateField"));
 const DateRangeField = lazy(() => import("./DateRangeField"));
 const DateTimeField = lazy(() => import("./DateTimeField"));
 
-export const { useAppForm, withForm, withFieldGroup } = createFormHook({
+export const { useAppForm, withForm, withFieldGroup, extendForm } = createFormHook({
   fieldContext,
   formContext,
 
@@ -35,3 +35,5 @@ export const { useAppForm, withForm, withFieldGroup } = createFormHook({
   },
   formComponents: {},
 });
+
+export type ExtendedForm = typeof extendForm;

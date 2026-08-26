@@ -5,8 +5,8 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { LangFormLabel } from "@/components/LangFormLabel";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { useFieldContext } from "../FormContext";
 import { getFieldDefaultValue } from "../fields/useFieldModified";
 import { getBilingualUrlRowCount } from "./bilingualUrlRows";
@@ -40,9 +40,7 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
   }
 
   return (
-    <fieldset className="flex flex-col gap-2">
-      <Label>{label}</Label>
-
+    <FieldsetWithLabel label={label}>
       {rowCount > 0 && (
         <div className="flex gap-2">
           <LangFormLabel className="flex-1">En</LangFormLabel>
@@ -97,6 +95,6 @@ export default function BilingualURLArrayField({ label }: { label?: React.ReactN
       >
         + Add
       </Button>
-    </fieldset>
+    </FieldsetWithLabel>
   );
 }

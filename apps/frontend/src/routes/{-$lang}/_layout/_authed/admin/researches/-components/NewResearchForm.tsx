@@ -10,7 +10,6 @@ import { CreateResearchRequestSchema } from "@humandbs/backend/types";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import type { Locale } from "@/config/i18n";
 import type { CreateResearchResult } from "@/serverFunctions/researches";
 import { $createResearch } from "@/serverFunctions/researches";
 
@@ -40,11 +39,9 @@ const defaultValues: CreateResearchRequest = {
 };
 
 export function NewResearchForm({
-  lang,
   onCreated,
   onDiscard,
 }: {
-  lang: Locale;
   onCreated: (humId: string, relatedAccessions: string[]) => void;
   onDiscard: () => void;
 }) {
@@ -167,7 +164,7 @@ export function NewResearchForm({
                   {(field: any) => <field.BilingualTextField label={label} variant="textarea" />}
                 </form.AppField>
               ),
-              summary: ({ form }) => <SummaryMarkdownFields form={form} legacyRawHtml={{}} />,
+              summary: ({ form }) => <SummaryMarkdownFields form={form} />,
               summaryShort: ({ form }) => <SummaryShortMarkdownFields form={form} />,
             }}
           />

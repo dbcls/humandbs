@@ -80,10 +80,10 @@
         "label": "Title"
       },
       "methods": {
-        "label": "Category"
+        "label": "Analysis method"
       },
       "typeOfData": {
-        "label": "Analysis method"
+        "label": "Category"
       },
       "platforms": {
         "label": "Platforms"

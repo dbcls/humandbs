@@ -80,10 +80,10 @@
         "label": "研究題目"
       },
       "methods": {
-        "label": "種別"
+        "label": "解析手法"
       },
       "typeOfData": {
-        "label": "解析手法"
+        "label": "種別"
       },
       "platforms": {
         "label": "プラットフォーム"
@@ -323,7 +323,7 @@
             "label": "種別"
           },
           "methods": {
-            "label": "研究方法"
+            "label": "研究手法"
           },
           "targets": {
             "label": "対象"

@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: "form is any"
+
 import { useTranslations } from "use-intl";
 
 import type { ReactNode } from "react";

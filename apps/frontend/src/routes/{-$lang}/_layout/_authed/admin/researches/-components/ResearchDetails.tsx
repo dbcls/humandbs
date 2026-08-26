@@ -809,9 +809,7 @@ export function ResearchDetails({
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   form={form as any}
                   baseName="releaseNote"
-                  label="Release note"
-                  legacyFieldKey="releaseNote"
-                  legacyRawHtml={legacyRawHtml}
+                  label={t("Research.fields.releaseNote.label")}
                 />
               </fieldset>
               <ResearchMetadataTabs
@@ -831,9 +829,7 @@ export function ResearchDetails({
                       )}
                     </form.AppField>
                   ),
-                  summary: ({ form }) => (
-                    <SummaryMarkdownFields form={form} legacyRawHtml={legacyRawHtml} />
-                  ),
+                  summary: ({ form }) => <SummaryMarkdownFields form={form} />,
                   summaryShort: ({ form }) => <SummaryShortMarkdownFields form={form} />,
                 }}
               />
@@ -909,74 +905,50 @@ export function ResearchDetails({
   );
 }
 
-/**
- * Summary editor: aims/methods/targets become Markdown editors (with live preview
- * + legacy popup) via per-key overrides; `url` falls through to the generic
- * schema-driven rendering. Each Markdown editor edits only `text`.
- */
-export function SummaryMarkdownFields({
-  form,
-  legacyRawHtml,
-}: {
-  form: ResearchForm;
-  legacyRawHtml: ReturnType<typeof researchLegacyRawHtml>;
-}) {
-  const overrides = useMemo<Record<string, FieldOverride>>(() => {
-    const markdownOverride =
-      (legacyFieldKey: string): FieldOverride =>
-      ({ form: fieldForm, name, label }) => (
-        <BilingualMarkdownEditorField
-          form={fieldForm}
-          baseName={name}
-          label={label}
-          legacyFieldKey={legacyFieldKey}
-          legacyRawHtml={legacyRawHtml}
-        />
-      );
-    return {
-      aims: markdownOverride("aims"),
-      methods: markdownOverride("methods"),
-      targets: markdownOverride("targets"),
-    };
-    // Each override reads `ctx.form` (the field-level form), so the outer `form`
-    // is not a dependency — only the legacy lookup is.
-  }, [legacyRawHtml]);
+const markdownOverride: FieldOverride = ({ form: fieldForm, name, label }) => (
+  <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
+);
 
+const unwrappedSummarySchema = unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary);
+
+const summaryFieldOverrides = {
+  aims: markdownOverride,
+  methods: markdownOverride,
+  targets: markdownOverride,
+  // url is rendered via the generic schema-driven field renderer, not a Markdown editor
+};
+/**
+ * Summary editor: aims/methods/targets become Markdown editors via per-key overrides;
+ * `url` falls through to the generic schema-driven rendering. Each Markdown editor edits only `text`.
+ */
+export function SummaryMarkdownFields({ form }: { form: ResearchForm }) {
   return (
     <SchemaObjectFields
       form={form}
       baseName="summary"
-      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summary)}
-      overrides={overrides}
+      schema={unwrappedSummarySchema}
+      overrides={summaryFieldOverrides}
     />
   );
 }
 
-/**
- * Short-summary editor: the listing-specific methods, data-type, and target
- * fields share Summary's bilingual Markdown editing layout. summaryShort has
- * no legacy HTML side-channel, so its editors deliberately omit that popup.
- */
-export function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
-  const overrides = useMemo<Record<string, FieldOverride>>(() => {
-    const markdownOverride =
-      (): FieldOverride =>
-      ({ form: fieldForm, name, label }) => (
-        <BilingualMarkdownEditorField form={fieldForm} baseName={name} label={label} />
-      );
-    return {
-      methods: markdownOverride(),
-      typeOfData: markdownOverride(),
-      targets: markdownOverride(),
-    };
-  }, []);
+const unwrappedShortSummarySchema = unwrapSummarySchema(
+  UpdateResearchRequestSchema.shape.summaryShort,
+);
 
+const summaryShortFielsOverrides = {
+  methods: markdownOverride,
+  typeOfData: markdownOverride,
+  targets: markdownOverride,
+};
+
+export function SummaryShortMarkdownFields({ form }: { form: ResearchForm }) {
   return (
     <SchemaObjectFields
       form={form}
       baseName="summaryShort"
-      schema={unwrapSummarySchema(UpdateResearchRequestSchema.shape.summaryShort)}
-      overrides={overrides}
+      schema={unwrappedShortSummarySchema}
+      overrides={summaryShortFielsOverrides}
     />
   );
 }

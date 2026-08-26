@@ -1,8 +1,8 @@
 import { capitalize } from "@/components/FrontStatsVisualization/utils";
 import { LangFormLabel } from "@/components/LangFormLabel";
-import { Label } from "@/components/ui/label";
 import { i18n } from "@/config/i18n";
 
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { withForm } from "../FormContext";
 import { MarkdownTextEditor } from "../MarkdownTextEditor";
 import { ResetFieldButton } from "../ResetFieldButton";
@@ -21,12 +21,12 @@ export const BilingualMarkdownEditorField = withForm({
   defaultValues: {} as Record<string, unknown>,
   props: {} as {
     baseName: string;
-    label: string;
+    label?: string;
   },
-  render({ form, baseName, label }) {
+
+  render: ({ form, baseName, label }) => {
     return (
-      <fieldset className="flex flex-col gap-1.5">
-        <Label className="text-sm">{label}</Label>
+      <FieldsetWithLabel label={label}>
         <div className="flex gap-3">
           {i18n.locales.map((locale) => (
             <div key={locale} className="relative flex flex-1 flex-col gap-1">
@@ -57,7 +57,7 @@ export const BilingualMarkdownEditorField = withForm({
             </div>
           ))}
         </div>
-      </fieldset>
+      </FieldsetWithLabel>
     );
   },
 });

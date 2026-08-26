@@ -40,6 +40,7 @@ function CalloutIcon({ type }: { type: CalloutType }) {
     case "tip":
       return FA_ICONS.tip;
     case "error":
+      return FA_ICONS.error;
     case "warning":
       return FA_ICONS.warning;
     default:

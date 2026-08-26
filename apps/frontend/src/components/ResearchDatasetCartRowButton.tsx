@@ -26,7 +26,7 @@ export function ResearchDatasetCartRowButton({ datasetId }: { datasetId: string 
   }, [isInCart, add, remove, datasetId]);
 
   if (!isCartableDatasetId(datasetId)) {
-    return <span className="inline-block w-8 shrink-0" aria-hidden="true" />;
+    return <span className="inline-block w-9 shrink-0" aria-hidden="true" />;
   }
 
   return (

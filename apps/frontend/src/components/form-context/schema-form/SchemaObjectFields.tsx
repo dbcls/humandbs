@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import { LangFormLabel } from "@/components/LangFormLabel";
 import { Label } from "@/components/ui/label";
 
+import { FieldsetWithLabel } from "../FieldsetWithLabel";
 import { BilingualTextField } from "../fields/BilingualTextField";
 import { BilingualTextValueField } from "../fields/BilingualTextValueField";
 import URLField from "../research-fields/URLInputPair";
@@ -131,18 +132,15 @@ function SchemaField({
   // Nested plain object → recurse, producing nested field paths.
   if (kind.kind === "object") {
     return (
-      <fieldset className="flex flex-col gap-2">
-        <Label className="font-medium text-sm">{label}</Label>
-        <div className="rounded border border-form-border p-3">
-          <SchemaObjectFields
-            form={form}
-            baseName={name}
-            schema={unwrapObject(fieldSchema)}
-            overrides={overrides}
-            relPath={rel}
-          />
-        </div>
-      </fieldset>
+      <FieldsetWithLabel label={label}>
+        <SchemaObjectFields
+          form={form}
+          baseName={name}
+          schema={unwrapObject(fieldSchema)}
+          overrides={overrides}
+          relPath={rel}
+        />
+      </FieldsetWithLabel>
     );
   }
 
@@ -165,7 +163,7 @@ function SchemaField({
   );
 }
 
-/** Render a `{ ja, en }` pair of single URL items (BilingualUrlValue). */
+/** Render a `{ ja, en }` pair of single URL items (BilingualUrlValue). (researchproject[].url) */
 function BilingualUrlValuePair({
   form,
   baseName,
@@ -176,8 +174,7 @@ function BilingualUrlValuePair({
   label: string;
 }) {
   return (
-    <fieldset className="flex flex-col gap-1">
-      <Label className="text-sm">{label}</Label>
+    <FieldsetWithLabel label={label}>
       <div className="flex gap-2">
         <LangFormLabel className="flex-1">En</LangFormLabel>
         <LangFormLabel className="flex-1">Ja</LangFormLabel>
@@ -190,7 +187,7 @@ function BilingualUrlValuePair({
           <form.AppField name={`${baseName}.ja` as any}>{() => <URLField />}</form.AppField>
         </div>
       </div>
-    </fieldset>
+    </FieldsetWithLabel>
   );
 }
 
