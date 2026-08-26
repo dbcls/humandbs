@@ -21,6 +21,7 @@ import { ResearchLink } from "@/components/ResearchLink";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
+import { SkeletonLoading } from "@/components/Skeleton";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
@@ -46,21 +47,21 @@ const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   order: ResearchSearchBodySchema.shape.order.default("desc"),
 });
 
-researchesSearchParamsSchema.shape.sort.def.defaultValue;
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
   errorComponent: DefaultCatchBoundary,
+  wrapInSuspense: true,
+  pendingComponent: () => <SkeletonLoading />,
   loader: ({ context, location }) => {
-    return Promise.all([
-      context.queryClient.ensureQueryData(
-        getResearchesQueryOptions({
-          ...(location.search as Omit<ResearchSearchBody, "includeFacets">),
-          lang: context.lang,
-        }),
-      ),
-      context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
-    ]);
+    context.queryClient.ensureQueryData(
+      getResearchesQueryOptions({
+        ...(location.search as Omit<ResearchSearchBody, "includeFacets">),
+        lang: context.lang,
+      }),
+    );
+
+    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
   },
   head: ({ match }) => {
     return {
