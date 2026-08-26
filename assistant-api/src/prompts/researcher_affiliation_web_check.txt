@@ -1,0 +1,19 @@
+<task_instruction>
+研究者の氏名・所属機関・役職を与えます。
+Web検索を使って、研究者本人の所属情報が公開Webページに掲載されているかを確認し、ResearcherAffiliationWebCheckResultの形式で返してください。
+
+判定ルール:
+- 所属機関・役職が日本語と英語の両方で与えられている場合は、両方の表記を同時に考慮して同一人物かを判定する。
+- 氏名と所属機関（必要に応じて役職）が同一人物として妥当と判断できる場合のみ is_listed_on_web=true とする。
+- 氏名のみ一致、または所属のみ一致など、同一人物と断定できない場合は false とする。
+- 日本語と英語が両方記載されている場合、その両方についてチェックを行ってください。
+- reason には、判定に使った根拠を日本語で簡潔に記載する。
+</task_instruction>
+<researcher_info>
+氏名（日本語）: {researcher_name_jp}
+氏名（英語）: {researcher_name_en}
+所属機関（日本語）: {organization_jp}
+所属機関（英語）: {organization_en}
+役職（日本語）: {title_jp}
+役職（英語）: {title_en}
+</researcher_info>

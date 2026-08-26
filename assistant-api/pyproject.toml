@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humandbs-assistant-api"
+version = "0.1.0"
+description = "HumanDBs assistant sidecar API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "aiohttp>=3.12.0",
+  "aiohttp-retry>=2.9.1",
+  "beautifulsoup4>=4.13.0",
+  "dnspython>=2.8.0",
+  "fastapi>=0.116.0",
+  "google-api-python-client>=2.181.0",
+  "google-auth>=2.40.0",
+  "google-cloud-documentai>=3.6.0",
+  "google-genai>=1.37.0",
+  "jinja2>=3.1.6",
+  "langchain>=0.3.27",
+  "langchain-community>=0.3.29",
+  "langchain-openai>=0.3.33",
+  "phonenumbers>=9.0.16",
+  "pillow>=11.3.0",
+  "pydantic>=2.11.0",
+  "pymupdf>=1.26.4",
+  "pymupdf4llm>=0.0.26",
+  "python-docx>=1.2.0",
+  "python-dotenv>=1.1.1",
+  "python-multipart>=0.0.20",
+  "pyyaml>=6.0.2",
+  "requests>=2.32.5",
+  "playwright>=1.55.0",
+  "pytesseract>=0.3.13",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.0",
+  "pytest-asyncio>=1.2.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

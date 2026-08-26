@@ -94,6 +94,12 @@ services:
       # Where it reads the portal's own data from. The public API needs no
       # credentials, so this is the one address it is given.
       HUMANDBS_API_ORIGIN: http://app:5173
+      HUMANDBS_ASSISTANT_WORK_DIR: /app/work
+      HUMANDBS_ASSISTANT_TEMPLATE_DIR: /app/templates
+      HUMANDBS_ASSISTANT_DATA_DIR: /app/data
+      HUMANDBS_ASSISTANT_LLM_CACHE_PATH: /app/work/langchain_cache.db
+      GOOGLE_GENAI_CACHE_DIR: /app/work/.cache/genai
+      PLAYWRIGHT_CACHE_DIR: /app/work/.cache/playwright
     volumes:
       - ./assistant-api:/app
       # What it has processed. Kept out of the bind mount above so that working

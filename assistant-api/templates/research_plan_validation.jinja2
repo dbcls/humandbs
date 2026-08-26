@@ -1,0 +1,72 @@
+{# 研究計画書の検証結果 #}
+{% if application_data.research_plan_validation_result %}
+{% set research_plan_items = [] %}
+{% set _ = research_plan_items.append({
+    'description': '申請書記載の研究代表者の名前が研究計画に含まれている',
+    'status': 'ok' if application_data.research_plan_validation_result.researcher_name_is_included else 'error',
+    'message': application_data.research_plan_validation_result.researcher_name_message or ''
+}) %}
+{% set _ = research_plan_items.append({
+    'description': '研究計画の代表者の所属機関・部署名・役職が申請書と一致する',
+    'status': 'ok' if application_data.research_plan_validation_result.researcher_affiliation_matches == 'full_match' else 'error',
+    'message': application_data.research_plan_validation_result.researcher_affiliation_message or ''
+}) %}
+{% set _ = research_plan_items.append({
+    'description': '申請書記載の研究題目が研究計画に含まれている',
+    'status': 'ok' if application_data.research_plan_validation_result.research_title_matches else 'error',
+    'message': application_data.research_plan_validation_result.research_title_message or ''
+}) %}
+<h2>研究計画書</h2>
+<h3>整合性確認</h3>
+{{ checklist_display({'items': research_plan_items}) }}
+
+{% set public_db_use_description = application_data.research_plan_validation_result.public_db_use_description or [] %}
+{% set data_retention_description = application_data.research_plan_validation_result.data_retention_description or [] %}
+{% set outsourcing_description = application_data.research_plan_validation_result.outsourcing_description or [] %}
+{% set cloud_use_description = application_data.research_plan_validation_result.cloud_use_description or [] %}
+
+{% set description_items = [] %}
+{% set _ = description_items.append({
+    'description': '公共DBの利用',
+    'exists': public_db_use_description|length > 0,
+    'content_lines': public_db_use_description
+}) %}
+{% set _ = description_items.append({
+    'description': 'データの保存期間・保存場所・廃棄',
+    'exists': data_retention_description|length > 0,
+    'content_lines': data_retention_description
+}) %}
+{% set _ = description_items.append({
+    'description': '解析の外部実施・委託',
+    'exists': outsourcing_description|length > 0,
+    'content_lines': outsourcing_description
+}) %}
+{% set _ = description_items.append({
+    'description': 'データ保管のクラウドサービス利用',
+    'exists': cloud_use_description|length > 0,
+    'content_lines': cloud_use_description
+}) %}
+
+{% if description_items|length > 0 %}
+<h3>特記事項</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="min-width: 200px;">項目</th>
+            <th style="min-width: 120px;">記載有無</th>
+            <th>内容</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in description_items %}
+        <tr>
+            <td style="min-width: 200px;">{{ item.description }}</td>
+            <td style="min-width: 120px;">{{ 'あり' if item.exists else 'なし' }}</td>
+            <td style="white-space: pre-line;">{% for line in item.content_lines %}・{{ line }}<br>{% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endif %}
