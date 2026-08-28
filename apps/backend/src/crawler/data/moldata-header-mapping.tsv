@@ -158,6 +158,8 @@ Platform	Platforms	Platform	Platform
 免疫染色二次抗体（抗体のメーカー・型番、使用濃度、反応温度・時間）	Secondary antibodies for IHC（manufacturer, Cat. #, conc., temp., time）	免疫染色二次抗体	Secondary antibodies for IHC
 DDBJ Sequence Read Archive ID	DDBJ Sequence Read Archive ID	Sequence Read Archive Accession	Sequence Read Archive Accession
 DDBJ Sequence Read Archive ID	JDDBJ Sequence Read Archive ID	Sequence Read Archive Accession	Sequence Read Archive Accession
+DDBJ Sequence Read Archive ID	Japanese Genotype-phenotype Archive Dataset ID	Sequence Read Archive Accession	Sequence Read Archive Accession
+DDBJ Sequence Read Archive ID	Japanese Genotype-phenotype Archive Data set ID	Sequence Read Archive Accession	Sequence Read Archive Accession
 一塩基変異数	Single Nucleotide Variants Number	SNV数	SNV Number
 SNP数（QC後）	SNP Numbers (after QC)	SNV数	SNV Number
 SNV数（QC後）	SNV Numbers (after QC)	SNV数	SNV Number
