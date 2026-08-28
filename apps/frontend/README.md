@@ -1,25 +1,51 @@
-# ステージング環境へのデプロイ
+# HumanDBsのFrontend
 
-podman コンテナはすでに起動中であることが多いため、停止・再ビルド・再起動が必要です。
+SSR フレームワークとして、[Tanstack Start](https://tanstack.com/start/latest) を使用しています。
 
-- サーバー上で `git pull` を実行
-- コンテナを再起動（内部の `bun run serve` を停止するため）: `podman restart humandbs-staging-frontend`
-- 必要に応じて DB のマイグレーションとシードを実施
-  - コンテナの bash に入る: `podman exec -it humandbs-staging-frontend bash`
-  - 内部で DB スキーマの変更を適用: `bun run db:push`
-  - ドキュメントのシード: `bun run db:seed-documents`
-  - ナビゲーション設定のシード: `bun run db:seed-navigation`
-- ビルドと起動: `podman exec -d humandbs-staging-frontend bash -lc 'bun run build && bun run start'`
+フロントエンドの管轄は
 
-nginx の設定を更新する場合（バックエンドエンジニアに相談してください）:
+- 静的なページのコンテンツ管理（CMS） (タオえば /guidelines, /faq など)
+- Backend API を使用し、Research, Dataset の管理とファセット検索機能
 
-- nginx の設定を更新
-- `podman rm -f humandbs-staging-nginx`
-- `podman-compose --env-file .env up -d nginx`
+```
+      nginx
+        │
+        v
+    +----------+
+    | Frontend |
+    +----------+
+         │
+         ├<──> CMS PostgreSQL
+         │
+         └<──> Backend api at /api/**
 
-# 開発時のトラブルシューティング
+```
 
-## 1. サーバーサイドのモジュールを誤ってインポートしてしまう場合
+CMS機能は PostgreSQL　DBを使います。コンテンツのフォーマットとしては、　Markdownを使っています。
+
+# Develop
+
+## Format & Lint
+
+Formatting と Linting は、両方ともが [Biome](https://biomejs.dev/) を使っています。
+
+## バックエンドの Zod スキーマをフロントエンドで使用する際の注意点
+
+1. フロントエンドはバックエンドの Zod スキーマをインポートしているため、フロントエンドで使用しているバックエンドのスキーマが変更された場合は、更新後のスキーマを反映するためにフロントエンドを再ビルドする必要があります。
+
+2. `bun.lock` を正しく維持するため、新しいパッケージのインストールや不要なパッケージの削除は、必ず Docker コンテナ内で行ってください。
+
+## Testing
+
+**Unit testing** は、ファイルの隣に、 `<filename>.test.ts`を置きます。
+例：
+`src/lib/cmsDataTransferArchive.ts` のユニットテストが `src/lib/cmsDataTransferArchive.test.ts`　におく。
+
+**E2e testing** (Playwright) は、`e2e`　フォルダに入っています。　Docker に ignoreされるようにしているので、e2e は、ローカルで実行。詳しくは、[e2e　README](./e2e/README.md) を参照ください。
+
+## 開発時のトラブルシューティング
+
+### サーバーサイドのモジュールを誤ってインポートしてしまう場合
 
 以下のようなエラーが発生する場合:
 
@@ -37,3 +63,7 @@ import { type NewsTitleResponse } from "@/serverFunctions/news"; // エラー！
 
 import type { NewsTitleResponse } from "@/serverFunctions/news"; // OK！
 ```
+
+# More info
+
+さらに詳しいDBの構成、Env var などの設定について、`./docs`　に説明されています。

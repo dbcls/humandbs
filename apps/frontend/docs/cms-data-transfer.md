@@ -14,7 +14,6 @@ The page supports these categories:
 - `Alerts`
 - `Assets`
 - `Header & Footer`
-- `Flowcharts`
 - `Moldata keys`
 
 ## Export
@@ -31,7 +30,6 @@ The archive contains:
 - `categories/news.json`
 - `categories/alerts.json`
 - `categories/header-footer.json`
-- `categories/flowcharts.json`
 - `categories/moldata-keys.json`
 - `assets/**` when `Assets` is selected
 
@@ -90,7 +88,6 @@ Behavior by category:
 - `News`: replaces `news_item`, `news_translation`, `news_tag`, and `news_item_tag`
 - `Alerts`: replaces `alert` and `alert_translation`
 - `Header & Footer`: replaces the active site navigation config and creates one fresh revision row
-- `Flowcharts`: replaces flowcharts and creates one fresh revision row per restored flowchart
 - `Moldata keys`: replaces only the ordered English/Japanese catalog labels and creates fresh internal IDs with an advanced catalog revision
 - `Assets`: replaces the managed asset directory with the archive contents
 
