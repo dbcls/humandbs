@@ -4,7 +4,7 @@ Completely separate from the monorepo, and added to root dockerignore to keep im
 
 Run from the local machine, not the frontend container.
 
-To install dependencies:
+To install dependencies, run from this folder:
 
 ```bash
 bun install

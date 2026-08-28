@@ -1,16 +1,10 @@
 # Assets (public-files)
 
+Describes `/admin/assets` page.
+
 The assets manager lets admins upload files that are then publicly served at
 `/<dir>/<file>`, where `<dir>` is `public-files` by default (configurable, see below).
 Examples below use the default `public-files`.
-
-## The problem
-
-Uploads happen at runtime, after the container starts. Originally they were stored
-inside `dist/` (the build output). `bun run build` wipes `dist/` on every deploy, so
-all uploaded files disappeared.
-
-## The solution
 
 Store uploads **outside** `dist/`, in a folder backed by a Docker volume.
 
@@ -47,7 +41,7 @@ environment:
   - HUMANDBS_FRONTEND_PUBLIC_FILES_DIR=${HUMANDBS_FRONTEND_PUBLIC_FILES_DIR:-public-files}
   - HUMANDBS_FRONTEND_PUBLIC_FILES_BASE=${HUMANDBS_FRONTEND_PUBLIC_FILES_BASE:-./data}
 volumes:
-  - public-files-data:/app/apps/frontend/data   # mount path must match BASE
+  - public-files-data:/app/apps/frontend/data # mount path must match BASE
 ```
 
 `_BASE` is not set in `.env`; the `:-./data` fallback supplies the default.
