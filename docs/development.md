@@ -54,7 +54,7 @@ docker compose exec app npm run icd10:import
 
 | service | 中身 | ホストからの見え方 |
 |---|---|---|
-| `proxy` | nginx。`/files/` と `/private/` を `s3` に、それ以外を `app` に渡す | `8080` |
+| `proxy` | nginx。`/files/` と `/private/` を `s3` に、それ以外を `app` に渡す | `127.0.0.1:8080` |
 | `app` | React Router の dev サーバー | proxy 経由のみ |
 | `db` | Postgres + PGroonga | `127.0.0.1:5432` |
 | `s3` | SeaweedFS (master / volume / filer / S3 API) | 公開しない |

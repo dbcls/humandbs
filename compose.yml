@@ -108,7 +108,7 @@ services:
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "${HUMANDBS_PUBLIC_PORT:-8080}:8080"
+      - "${HUMANDBS_PUBLIC_BIND_HOST:-127.0.0.1}:${HUMANDBS_PUBLIC_PORT:-8080}:8080"
     depends_on:
       app:
         condition: service_started
