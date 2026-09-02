@@ -22,7 +22,6 @@ from playwright.async_api import async_playwright
 
 from src.models import ApplicationData, EthicsDocumentInfo
 from src.prompts import load_prompt
-from src.services.llm_service import extract_output_from_openai
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -215,6 +214,8 @@ async def extract_text_with_ocr(file_path: str, task_id: str = None) -> str:
 
 async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     """Extract application data from PDF file"""
+    from src.services.llm_service import extract_output_from_openai
+
     # Get application ID for logging
     task_id = None
 
@@ -290,6 +291,8 @@ def extract_task_id_from_filename(filename: str) -> str:
 
 async def extract_ethics_document_info(file_path: str) -> EthicsDocumentInfo:
     """Extract ethics document information from PDF file"""
+    from src.services.llm_service import extract_output_from_openai
+
     # Extract text using the unified function
     pdf_content = await extract_text_from_pdf(file_path)
 

@@ -6,7 +6,6 @@ import os
 import uvicorn
 import yaml  # Added PyYAML for YAML serialization
 from docx import Document
-from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, Response
@@ -25,9 +24,6 @@ from src.utils import (
     get_task_result_path,
     get_upload_path,
 )
-
-# Load environment variables
-load_dotenv()
 
 
 # Request models
@@ -113,6 +109,16 @@ async def submit_application(
 
 
 async def process_application(application_file_path: str, background_tasks: BackgroundTasks):
+    task_arguments = prepare_application_processing(application_file_path)
+    background_tasks.add_task(process_application_task, *task_arguments)
+
+    return {
+        "task_id": task_arguments[0],
+        "message": "Application submitted for processing",
+    }
+
+
+def prepare_application_processing(application_file_path: str) -> tuple[str, str, str, str | None, str | None, str]:
     ensure_runtime_directories()
 
     # create str yyyy-mm-dd-hh-mm-ss with JST timezone
@@ -158,18 +164,7 @@ async def process_application(application_file_path: str, background_tasks: Back
         with open(get_task_result_path(task_id), "w", encoding="utf-8") as f:
             yaml.dump(result, f, allow_unicode=True, sort_keys=False)
 
-        # Extract and process the application after the response has been sent.
-        background_tasks.add_task(
-            process_application_task,
-            task_id,
-            filename,
-            output_path,
-            ethics_file_path,
-            research_plan_file_path,
-            application_type,
-        )
-
-        return {"task_id": task_id, "message": "Application submitted for processing"}
+        return task_id, filename, output_path, ethics_file_path, research_plan_file_path, application_type
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing application: {str(e)}") from e
@@ -263,12 +258,21 @@ async def reanalyze_application(task_id: str, background_tasks: BackgroundTasks)
 @app.post("/api/applications/batch-reanalyze", status_code=202)
 async def batch_reanalyze_applications(background_tasks: BackgroundTasks):
     """Re-analyze all existing applications in batch"""
-    # Get list of all task files in the results directory
     result_files = get_all_task_result_paths()
 
     if not result_files:
         raise HTTPException(status_code=404, detail="No applications found to reanalyze")
 
+    background_tasks.add_task(batch_reanalyze_task, result_files)
+
+    return {
+        "message": "Batch reanalysis queued",
+        "queued_count": len(result_files),
+    }
+
+
+async def batch_reanalyze_task(result_files):
+    """Queue and process each existing application after the batch response is sent."""
     reanalyzed_tasks = []
     failed_tasks = []
 
@@ -294,22 +298,22 @@ async def batch_reanalyze_applications(background_tasks: BackgroundTasks):
                 failed_tasks.append({"task_id": task_id, "error": "PDF file not found"})
                 continue
 
-            # Process the PDF file again with ethics files
-            await process_application(str(pdf_file_path), background_tasks)
+            task_arguments = prepare_application_processing(str(pdf_file_path))
+            await process_application_task(*task_arguments)
             reanalyzed_tasks.append(task_id)
-            logger.info(f"Successfully queued task {task_id} for reanalysis")
+            logger.info(f"Successfully processed task {task_id} for reanalysis")
 
         except Exception as e:
             logger.exception(f"Error processing task {task_id}")
             failed_tasks.append({"task_id": task_id, "error": str(e)})
 
-    return {
-        "message": f"Batch reanalysis initiated for {len(reanalyzed_tasks)} applications",
-        "reanalyzed_count": len(reanalyzed_tasks),
-        "failed_count": len(failed_tasks),
-        "reanalyzed_tasks": reanalyzed_tasks,
-        "failed_tasks": failed_tasks,
-    }
+    logger.info(
+        "Batch reanalysis completed: processed=%d failed=%d task_ids=%s failures=%s",
+        len(reanalyzed_tasks),
+        len(failed_tasks),
+        reanalyzed_tasks,
+        failed_tasks,
+    )
 
 
 @app.post("/api/applications/{task_id}/add-datasets", status_code=200)

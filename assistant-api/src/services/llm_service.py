@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
@@ -9,11 +8,12 @@ from langchain_openai import AzureChatOpenAI
 from pydantic import BaseModel
 
 from src.prompts import load_prompt
+from src.utils import _resolve_runtime_path
 
 # Configure logger
 logger = logging.getLogger("llm_service")
 
-cache_path = Path(os.environ.get("LLM_CACHE_PATH", "work/langchain_cache.db"))
+cache_path = _resolve_runtime_path(os.environ.get("LLM_CACHE_PATH", "work/langchain_cache.db"), "work/langchain_cache.db")
 cache_path.parent.mkdir(parents=True, exist_ok=True)
 set_llm_cache(SQLiteCache(database_path=str(cache_path)))
 

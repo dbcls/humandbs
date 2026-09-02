@@ -72,18 +72,36 @@ async def test_get_dataset_info_normalizes_v2_response(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_dataset_info_keeps_unknown_values_without_research_or_experiments(monkeypatch) -> None:
+async def test_get_dataset_info_keeps_unexpected_value_type(monkeypatch) -> None:
     monkeypatch.setenv("HUMANDBS_API_ORIGIN", "http://app:5173")
-    payload = {"values": [{"key": "unknown", "type": "unknown", "payload": "value"}], "experiments": []}
+    payload = {
+        "research": "hum0004",
+        "values": [{"key": "unknown", "type": "unexpected", "payload": "value"}],
+        "experiments": [],
+    }
     monkeypatch.setattr(dataset_service.aiohttp, "ClientSession", lambda: _FakeSession(payload))
     _patch_ddbj(monkeypatch)
 
     result = await dataset_service.get_dataset_info("DRA000909")
 
     assert result is not None
+    assert result.hum_id == "hum0004"
+    assert result.info_dict["unknown"] == {"key": "unknown", "type": "unexpected", "payload": "value"}
+
+
+@pytest.mark.asyncio
+async def test_get_dataset_info_allows_missing_research_and_empty_experiments(monkeypatch) -> None:
+    monkeypatch.setenv("HUMANDBS_API_ORIGIN", "http://app:5173")
+    payload = {"values": [{"key": "description", "type": "text", "text": {"en": "Dataset"}}], "experiments": []}
+    monkeypatch.setattr(dataset_service.aiohttp, "ClientSession", lambda: _FakeSession(payload))
+    _patch_ddbj(monkeypatch)
+
+    result = await dataset_service.get_dataset_info("DRA000910")
+
+    assert result is not None
     assert result.hum_id == ""
     assert result.study_id_list == []
-    assert result.info_dict["unknown"] == {"key": "unknown", "type": "unknown", "payload": "value"}
+    assert result.info_dict["description"] == "Dataset"
 
 
 @pytest.mark.asyncio
@@ -91,4 +109,11 @@ async def test_get_dataset_info_returns_none_for_unsuccessful_response(monkeypat
     monkeypatch.setenv("HUMANDBS_API_ORIGIN", "http://app:5173")
     monkeypatch.setattr(dataset_service.aiohttp, "ClientSession", lambda: _FakeSession({}, status=503))
 
-    assert await dataset_service.get_dataset_info("DRA000910") is None
+    assert await dataset_service.get_dataset_info("DRA000911") is None
+
+
+@pytest.mark.asyncio
+async def test_get_jga_study_ids_from_ddbj_returns_empty_lists_for_unsuccessful_response(monkeypatch) -> None:
+    monkeypatch.setattr(dataset_service.aiohttp, "ClientSession", lambda: _FakeSession({}, status=503))
+
+    assert await dataset_service.get_jga_study_ids_from_ddbj("DRA000912") == ([], [])
