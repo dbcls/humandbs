@@ -121,6 +121,12 @@ services:
       # What it has processed. Kept out of the bind mount above so that working
       # files do not accumulate in the repository.
       - assistant-work:/app/work
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
     init: true
 
   proxy:
