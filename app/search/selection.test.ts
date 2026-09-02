@@ -112,3 +112,44 @@ describe("setting a range", () => {
     expect(written(next)).toBe("cancer")
   })
 })
+
+/**
+ * The dates are the one thing the panel reaches past the catalog for
+ * ([fields.ts](fields.ts)), so everything the panel does to a facet it has to
+ * do to them: read one back, replace it, and take it off again.
+ */
+describe("the two dates, which are not catalog keys", () => {
+  it("reads a range on a date the same way as one on a number", () => {
+    const selection = readSelection(ast("date_published:[2020-01-01 TO *]"), fields)
+
+    expect(selection.ranges.get("date_published")).toEqual({ from: "2020-01-01", to: "*" })
+  })
+
+  it("sets and lifts a date range", () => {
+    const set = withRange(ast("cancer"), fields, "date_modified", {
+      from: "*",
+      to: "2024-12-31",
+    })
+    expect(written(set)).toBe("cancer AND date_modified:[* TO 2024-12-31]")
+    expect(written(withoutFacet(set, fields, "date_modified"))).toBe("cancer")
+  })
+
+  it("leaves the fields it has no control for where they were", () => {
+    // `title` and `id` are built in as well, and the panel draws neither: a
+    // condition on one stays among the chips instead of becoming a facet.
+    const selection = readSelection(ast("title:cancer id:hum0001"), fields)
+
+    expect(selection.terms.size).toBe(0)
+    expect(withRange(ast("title:cancer"), fields, "title", { from: "a", to: "b" }))
+      .toEqual(ast("title:cancer"))
+  })
+
+  it("keeps a day written as one value readable, since the panel has to undo it", () => {
+    // `date_published:2020-01-01` is not a range, so it arrives among the terms.
+    // What matters is that lifting the facet still takes it off.
+    const held = ast("cancer date_published:2020-01-01")
+
+    expect(readSelection(held, fields).terms.get("date_published")).toEqual(["2020-01-01"])
+    expect(written(withoutFacet(held, fields, "date_published"))).toBe("cancer")
+  })
+})

@@ -24,35 +24,41 @@ import {
   searchFacetTerm,
 } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
-import { messagesFor } from "~/i18n/messages"
+import { messagesFor, type Messages } from "~/i18n/messages"
 import { ICD10_SET_CODE } from "~/icd10/codes"
 import { resolveTypedCode } from "~/icd10/entry.server"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import {
-  hasFreeText,
+  group,
+  isRealDate,
   OPEN_BOUND,
   parseQuery,
   serializeQuery,
   type QueryError,
   type QueryNode,
 } from "~/search/dsl"
-import { queryFields, type QueryFields } from "~/search/fields"
+import { isDateFacet, queryFields, type QueryFields } from "~/search/fields"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import type { ExportTable } from "~/search/export"
 import {
   countMatches,
+  defaultOrder,
+  DEFAULT_SORT,
   isSortKey,
+  isSortOrder,
+  isPageSize,
   PAGE_SIZE,
+  type PageSize,
   searchAllDocs,
   searchDocs,
-  sortOffer,
   type SearchHit,
   type SearchRequest,
   type SearchResult,
   type SearchTarget,
   type SortKey,
+  type SortOrder,
 } from "~/search/query.server"
-import { withRange, withTerm } from "~/search/selection"
+import { onPanel, withRange, withTerm } from "~/search/selection"
 
 import { facetPanel, type FacetPanelView } from "./facets.server"
 import { loadCatalog } from "./queries.server"
@@ -61,6 +67,7 @@ import {
   ACCESS_TYPE_KEY,
   datasetListRowView,
   fieldText,
+  PLATFORM_KEY,
   researchListRowView,
   type CatalogView,
   type DatasetListRowView,
@@ -68,7 +75,13 @@ import {
 } from "./view.server"
 
 export interface ConditionChip {
-  label: string
+  /**
+   * The dimension the condition is about, or null when it names none. It is
+   * kept apart from the value because the panel draws the two apart
+   * (`components/base.tsx` の `Chip`).
+   */
+  field: string | null
+  value: string
   /** The address of the same search without this condition. */
   href: string
 }
@@ -79,6 +92,13 @@ export interface ListShell {
   /** What the box shows. */
   keyword: string
   conditions: ConditionChip[]
+  /**
+   * The search with everything in force lifted, or null when nothing is.
+   * **The typed words go too** — they are one of the conditions listed, so a
+   * control that says it lifts all of them and leaves one behind would be
+   * saying something untrue about the list right above it.
+   */
+  clearHref: string | null
   /** The normalised query, for building links off this search. */
   query: string
   parseError: QueryError | null
@@ -88,7 +108,16 @@ export interface ListShell {
    * ordering nobody asked for is not written into the links the page builds.
    */
   requestedSort: string | null
-  sortOptions: readonly SortKey[]
+  order: SortOrder
+  /** What `?order=` held, carried for the same reason as `requestedSort`. */
+  requestedOrder: string | null
+  size: PageSize
+  /**
+   * The size to write into the links this page builds, or `null` for the
+   * default — carried for the same reason as `requestedSort`, and the reason
+   * `app/public/urls.ts` does not know what the default is.
+   */
+  requestedSize: number | null
   total: number
   page: number
   pageCount: number
@@ -164,9 +193,10 @@ export async function canonicalRedirect(
   if (typed !== null) {
     ast = joinKeyword(typed, splitKeyword(held).conditions)
   } else if (rangeKey !== null) {
+    const kind = isDateFacet(rangeKey) ? "date" : "number"
     ast = withRange(held, fields, rangeKey, {
-      from: bound(url.searchParams.get("rangeFrom")),
-      to: bound(url.searchParams.get("rangeTo")),
+      from: bound(url.searchParams.get("rangeFrom"), kind),
+      to: bound(url.searchParams.get("rangeTo"), kind),
     })
   } else {
     const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
@@ -178,37 +208,88 @@ export async function canonicalRedirect(
   }
 
   const sort = url.searchParams.get("sort")
+  const order = url.searchParams.get("order")
+  const size = Number(url.searchParams.get("size") ?? "")
   return redirect(href(locale, listPath(target) + searchQuery({
     q: serializeQuery(ast),
     sort: isSortKey(sort) ? sort : null,
+    order: isSortOrder(order) ? order : null,
     page: 1,
+    size: isPageSize(size) && size !== PAGE_SIZE ? size : null,
     facet: url.searchParams.get("facet"),
     find: url.searchParams.get("find"),
   })))
 }
 
-/** An input left blank is an end that is not being asked about. */
-function bound(value: string | null): string {
+/**
+ * An input left blank is an end that is not being asked about, and so is one
+ * holding something the field could not take. **Both ends open means the facet
+ * is not being asked at all**, which `withRange` answers by dropping the
+ * condition rather than by making one that matches everything.
+ */
+function bound(value: string | null, kind: "number" | "date"): string {
   const written = value?.trim() ?? ""
-  return written === "" || !Number.isFinite(Number(written)) ? OPEN_BOUND : written
+  if (written === "") return OPEN_BOUND
+  const real = kind === "date" ? isRealDate(written) : Number.isFinite(Number(written))
+  return real ? written : OPEN_BOUND
 }
 
-function describeCondition(node: QueryNode, locale: Locale): string {
+/**
+ * A range as a condition reads: both ends, or the one that is there with the
+ * mark still showing which side is open. **`*` is how the address writes an
+ * open end, and it is not how anything reads it** — a chip saying
+ * `2024-01-01 – *` is the query language leaking onto the screen.
+ */
+function writtenRange(
+  range: { from: string, to: string },
+  words: Messages["search"]["refine"],
+): string {
+  const from = range.from === OPEN_BOUND ? "" : range.from
+  const to = range.to === OPEN_BOUND ? "" : range.to
+  if (from !== "" && to !== "") return words.span(from, to)
+  return from !== "" ? words.spanFrom(from) : words.spanTo(to)
+}
+
+function describeCondition(node: QueryNode, locale: Locale): { field: string | null, value: string } {
   const words = messagesFor(locale).search
   if (node.op === "NOT") {
     const [only] = node.rules
-    return only === undefined ? "" : `${words.exclude}: ${describeCondition(only, locale)}`
+    if (only === undefined) return { field: null, value: "" }
+    // The negation belongs to the value rather than to the field: what is
+    // excluded is this value of that dimension, and moving the word to the
+    // field would say the dimension itself is being left out.
+    const inner = describeCondition(only, locale)
+    return { field: inner.field, value: `${words.exclude}: ${inner.value}` }
   }
   if (node.op === "field") {
     const labels: Record<string, string> = words.fields
-    const label = labels[node.field] ?? node.field
-    const value = typeof node.value === "string"
-      ? node.value
-      : `${node.value.from} – ${node.value.to}`
-    return `${label}: ${value}`
+    return {
+      field: labels[node.field] ?? node.field,
+      value: typeof node.value === "string"
+        ? node.value
+        : writtenRange(node.value, words.refine),
+    }
   }
-  if (node.op === "free_text") return node.value
-  return serializeQuery(node)
+  // **The typed words are named too.** They narrow the listing the way a chosen
+  // value does, and the column of conditions reads down the names — one row
+  // without one is read as a value belonging to whatever is above it.
+  if (node.op === "free_text") return { field: words.keyword, value: node.value }
+  return { field: null, value: serializeQuery(node) }
+}
+
+/**
+ * The conditions a query is the conjunction of, in the order they were written.
+ *
+ * **This is the only place the list of what is in force comes from.** The
+ * refinement panel writes a tree, the box writes a tree, the address holds what
+ * the two make together — so reading the tree back is what makes the answer to
+ * "what is narrowing this" complete by construction. **The typed words are
+ * among them**: they are free text rather than a field, but a reader who typed
+ * a word has narrowed the listing with it exactly as a chosen value does.
+ */
+function inForce(ast: QueryNode | null): QueryNode[] {
+  if (ast === null) return []
+  return ast.op === "AND" ? [...ast.rules] : [ast]
 }
 
 /**
@@ -217,24 +298,23 @@ function describeCondition(node: QueryNode, locale: Locale): string {
  * each one off, and saying the same thing twice invites the two to disagree.
  */
 function shownByPanel(node: QueryNode, fields: QueryFields): boolean {
-  if (node.op === "field") return fields.facet(node.field) !== undefined
+  if (node.op === "field") return onPanel(fields, node.field)
   if (node.op !== "OR") return false
-  return node.rules.every((rule) => rule.op === "field" && fields.facet(rule.field) !== undefined)
+  return node.rules.every((rule) => rule.op === "field" && onPanel(fields, rule.field))
 }
 
 /** The chosen values of the panel, each with the link that takes it off. */
-function facetChips(panel: FacetPanelView | null): ConditionChip[] {
+function facetChips(panel: FacetPanelView | null, locale: Locale): ConditionChip[] {
   if (panel === null) return []
+  const words = messagesFor(locale).search.refine
   return panel.categories.flatMap((category) => category.facets.flatMap((facet) => {
     const range = facet.range
     if (range !== null && range.clearHref !== null) {
-      const from = range.from === "" ? "" : range.from
-      const to = range.to === "" ? "" : range.to
-      return [{ label: `${facet.label}: ${from} – ${to}`, href: range.clearHref }]
+      return [{ field: facet.label, value: writtenRange(range, words), href: range.clearHref }]
     }
     return facet.values
       .filter((value) => value.selected)
-      .map((value) => ({ label: `${facet.label}: ${value.label}`, href: value.href }))
+      .map((value) => ({ field: facet.label, value: value.label, href: value.href }))
   }))
 }
 
@@ -254,23 +334,31 @@ async function listShell(
   const locale = request.locale
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
   const requestedSort = request.url.searchParams.get("sort")
+  const requestedOrder = request.url.searchParams.get("order")
   const expanded = request.url.searchParams.get("facet")
   const find = request.url.searchParams.get("find") ?? ""
   const ast = parsed.ok ? parsed.ast : null
-  const { offered: sortOptions, fallback } = sortOffer(hasFreeText(ast), target)
-  const sort = isSortKey(requestedSort) && sortOptions.includes(requestedSort)
-    ? requestedSort
-    : fallback
+  const sort = isSortKey(requestedSort) ? requestedSort : DEFAULT_SORT
+  const order = isSortOrder(requestedOrder) ? requestedOrder : defaultOrder(sort)
+  // A size that is not one of the offered ones is ignored rather than refused,
+  // for the same reason an unusable ordering is: it can only have come from a
+  // hand-written address, and the listing it names still exists.
+  const askedSize = Number(request.url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
 
   const empty: ListShell = {
     locale,
     keyword: "",
     conditions: [],
+    clearHref: null,
     query: serializeQuery(ast),
     parseError: parsed.ok ? null : parsed.error,
     sort,
     requestedSort: isSortKey(requestedSort) ? requestedSort : null,
-    sortOptions,
+    order,
+    requestedOrder: isSortOrder(requestedOrder) ? requestedOrder : null,
+    size,
+    requestedSize: size === PAGE_SIZE ? null : size,
     total: 0,
     page: 1,
     pageCount: 1,
@@ -291,7 +379,9 @@ async function listShell(
       ast,
       fields,
       sort,
+      order,
       page: readPage(request.url.searchParams.get("page")),
+      size,
     }),
     ast === null ? Promise.resolve(null) : countMatches(db, { target: other, ast, fields }),
     facetPanel(db, {
@@ -301,38 +391,47 @@ async function listShell(
       definitions,
       locale,
       sort: isSortKey(requestedSort) ? requestedSort : null,
+      order: isSortOrder(requestedOrder) ? requestedOrder : null,
+      size: size === PAGE_SIZE ? null : size,
       expanded,
       find,
       code: request.url.searchParams.get("code") ?? "",
     }),
   ])
 
-  const conditions = split.conditions.flatMap((condition, at): ConditionChip[] => {
+  const at = (rest: readonly QueryNode[]) =>
+    href(locale, listPath(target) + searchQuery({
+      q: serializeQuery(group("AND", rest)),
+      sort: isSortKey(requestedSort) ? requestedSort : null,
+      order: isSortOrder(requestedOrder) ? requestedOrder : null,
+      page: 1,
+      size: size === PAGE_SIZE ? null : size,
+      facet: expanded,
+      find,
+    }))
+
+  const held = inForce(ast)
+  const conditions = held.flatMap((condition, index): ConditionChip[] => {
     if (shownByPanel(condition, fields)) return []
-    const rest = split.conditions.filter((_, index) => index !== at)
     return [{
-      label: describeCondition(condition, locale),
-      href: href(locale, listPath(target) + searchQuery({
-        q: serializeQuery(joinKeyword(split.keyword, rest)),
-        sort: isSortKey(requestedSort) ? requestedSort : null,
-        page: 1,
-        facet: expanded,
-        find,
-      })),
+      ...describeCondition(condition, locale),
+      href: at(held.filter((_, other) => other !== index)),
     }]
   })
+  const listed = [...conditions, ...facetChips(panel, locale)]
 
   return {
     shell: {
       ...empty,
       keyword: split.keyword,
-      conditions: [...conditions, ...facetChips(panel)],
+      conditions: listed,
+      clearHref: listed.length === 0 ? null : at([]),
       facets: panel,
       total: result.total,
       page: result.page,
       pageCount: result.pageCount,
-      rangeFrom: result.total === 0 ? 0 : (result.page - 1) * PAGE_SIZE + 1,
-      rangeTo: Math.min(result.page * PAGE_SIZE, result.total),
+      rangeFrom: result.total === 0 ? 0 : (result.page - 1) * size + 1,
+      rangeTo: Math.min(result.page * size, result.total),
       otherCount,
     },
     hits: result.hits,
@@ -359,7 +458,7 @@ async function researchRowsOf(
 ): Promise<ResearchListRowView[]> {
   const db = getDb()
   const ids = hits.map((hit) => hit.targetId)
-  const [snapshots, datasetRows, accessRows] = await Promise.all([
+  const [snapshots, datasetRows, facetRows] = await Promise.all([
     db
       .selectDistinctOn([researchVersion.researchId], {
         researchId: researchVersion.researchId,
@@ -377,7 +476,7 @@ async function researchRowsOf(
       })
       .from(searchDoc)
       .where(and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.researchId, ids))),
-    accessTermsByResearch(ids, catalog),
+    facetTermsByResearch(ids, catalog, [ACCESS_TYPE_KEY, PLATFORM_KEY]),
   ])
 
   const contentOf = new Map(snapshots.map((row) => [row.researchId, row.content]))
@@ -395,37 +494,55 @@ async function researchRowsOf(
         const label = labelOf.get(id)
         return label === undefined ? [] : [label]
       }),
-      accessTermIds: accessRows.get(hit.targetId) ?? [],
+      accessTermIds: facetRows.get(hit.targetId)?.get(ACCESS_TYPE_KEY) ?? [],
+      platformTermIds: facetRows.get(hit.targetId)?.get(PLATFORM_KEY) ?? [],
       datePublished: hit.datePublished,
       dateModified: hit.dateModified,
     }, locale, catalog)]
   })
 }
 
-/** Access types across a research's published datasets, from the facet rows. */
-async function accessTermsByResearch(
+/**
+ * The facet values a research holds under each of the given keys, kept by the
+ * key's code.
+ *
+ * **The research rows only.** A research row already holds the union of what
+ * its datasets carry (`app/search/rebuild.server.ts`), so leaving the dataset
+ * rows in would read the same values twice over and then throw the second copy
+ * away. **The keys are asked for together** for the same reason: a column of
+ * the listing each would be a query each, over the same twenty rows.
+ */
+async function facetTermsByResearch(
   researchIds: readonly string[],
   catalog: CatalogView,
-): Promise<Map<string, string[]>> {
-  const key = catalog.keyByCode.get(ACCESS_TYPE_KEY)
-  if (key === undefined) return new Map()
-  // **The research rows only.** A research row already holds the union of what
-  // its datasets carry (`app/search/rebuild.server.ts`), so leaving the dataset
-  // rows in would read the same values twice over and then throw the second
-  // copy away.
+  codes: readonly string[],
+): Promise<Map<string, Map<string, string[]>>> {
+  const codeOf = new Map(codes.flatMap((code) => {
+    const key = catalog.keyByCode.get(code)
+    return key === undefined ? [] : [[key.id, code] as const]
+  }))
+  if (codeOf.size === 0) return new Map()
   const rows = await getDb()
-    .select({ researchId: searchDoc.researchId, termId: searchFacetTerm.termId })
+    .select({
+      researchId: searchDoc.researchId,
+      keyId: searchFacetTerm.keyId,
+      termId: searchFacetTerm.termId,
+    })
     .from(searchFacetTerm)
     .innerJoin(searchDoc, eq(searchDoc.id, searchFacetTerm.docId))
     .where(and(
-      eq(searchFacetTerm.keyId, key.id),
+      inArray(searchFacetTerm.keyId, [...codeOf.keys()]),
       eq(searchDoc.targetType, "research"),
       inArray(searchDoc.researchId, [...researchIds]),
     ))
-  const byResearch = new Map<string, string[]>()
+  const byResearch = new Map<string, Map<string, string[]>>()
   for (const row of rows) {
-    const held = byResearch.get(row.researchId) ?? []
-    held.push(row.termId)
+    const code = codeOf.get(row.keyId)
+    if (code === undefined) continue
+    const held = byResearch.get(row.researchId) ?? new Map<string, string[]>()
+    const under = held.get(code)
+    if (under === undefined) held.set(code, [row.termId])
+    else under.push(row.termId)
     byResearch.set(row.researchId, held)
   }
   return byResearch
@@ -519,12 +636,11 @@ async function everyHit(
   // matched nothing.
   if (!parsed.ok) return null
   const requestedSort = request.url.searchParams.get("sort")
-  const { offered, fallback } = sortOffer(hasFreeText(parsed.ast), target)
-  const sort = isSortKey(requestedSort) && offered.includes(requestedSort)
-    ? requestedSort
-    : fallback
+  const requestedOrder = request.url.searchParams.get("order")
+  const sort = isSortKey(requestedSort) ? requestedSort : DEFAULT_SORT
+  const order = isSortOrder(requestedOrder) ? requestedOrder : defaultOrder(sort)
   return {
-    hits: await searchAllDocs(db, { target, ast: parsed.ast, fields, sort }),
+    hits: await searchAllDocs(db, { target, ast: parsed.ast, fields, sort, order }),
     catalog,
   }
 }
@@ -532,9 +648,9 @@ async function everyHit(
 /**
  * The research listing as a table.
  *
- * **Wider than the screen's table.** A page has to fit beside the refinement
- * panel and a file does not, so the columns the screen leaves to the research's
- * own page are here — which is also what v1 exports.
+ * **The screen's columns without the mark.** A file has nowhere to put a study
+ * into a cart, and everything else a row holds is drawn on screen as well — so
+ * what a reader takes away is what they were looking at.
  */
 export async function researchExportTable(
   request: { locale: Locale, url: URL },
@@ -544,15 +660,18 @@ export async function researchExportTable(
   const rows = await researchRowsOf(found.hits, found.catalog, request.locale)
   const messages = messagesFor(request.locale)
   const t = messages.research
+  const short = t.listingSummary
   return {
     headers: [
       t.researchId,
       t.datasets,
       t.title,
-      messages.dataset.typeOfData,
-      t.methods,
-      t.targets,
+      short.methods,
+      short.typeOfData,
+      t.platforms,
+      short.targets,
       messages.dataset.accessType,
+      t.dataProvider,
       messages.dataset.datePublished,
       messages.dataset.dateModified,
     ],
@@ -560,10 +679,12 @@ export async function researchExportTable(
       row.humLabel,
       row.datasetLabels.join(", "),
       fieldText(row.title),
-      fieldText(row.typeOfData),
       fieldText(row.methods),
+      fieldText(row.typeOfData),
+      row.platforms.map((term) => term.label).join(", "),
       fieldText(row.targets),
       row.accessTypes.map((term) => term.label).join(", "),
+      row.dataProviders.map(fieldText).join(", "),
       row.datePublished ?? "",
       row.dateModified ?? "",
     ]),
@@ -583,6 +704,7 @@ export async function datasetExportTable(
       d.datasetId,
       messages.research.researchId,
       d.typeOfData,
+      d.experiments,
       d.accessType,
       d.datePublished,
       d.dateModified,
@@ -591,6 +713,7 @@ export async function datasetExportTable(
       row.label,
       row.humLabel,
       row.typeOfData === null ? "" : fieldText(row.typeOfData),
+      row.experimentLabels.join(", "),
       row.accessType?.label ?? "",
       row.datePublished ?? "",
       row.dateModified ?? "",

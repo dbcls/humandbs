@@ -16,6 +16,9 @@
  * data in place.
  */
 
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+
 import { sql } from "drizzle-orm"
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
@@ -49,6 +52,7 @@ import {
   buildCauRows,
   buildDatasetContent,
   buildResearchContent,
+  ownLines,
 } from "./build"
 import { buildAlerts, buildDocuments, buildNews, loadCms } from "./cms"
 import {
@@ -61,7 +65,18 @@ import {
 } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber, type PublishedDataset } from "./es"
 import { collectTerms, DISEASE_SET, vocabularySetSeeds } from "./facets"
+import { byHand, type ReadByHand } from "./numbers"
 import { loadHumAccessions } from "./upstream"
+
+/**
+ * The lines somebody read by hand, if any have been. **Optional on purpose** —
+ * a fresh checkout has none, and the rules alone still load the data.
+ */
+function readByHand(): ReadByHand[] {
+  const path = join(import.meta.dirname, "input", "read-by-hand.json")
+  if (!existsSync(path)) return []
+  return JSON.parse(readFileSync(path, "utf8")) as ReadByHand[]
+}
 
 const CHUNK = 500
 
@@ -139,7 +154,12 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
   const searchables = datasets.flatMap((d) =>
     (d.doc.experiments ?? []).flatMap((e) => (e.searchable ? [e.searchable] : [])))
   const terms = [
-    ...ACCESS_CRITERIA_TERMS.map((t) => ({ setCode: ACCESS_CRITERIA_SET, ...t, parentCode: null })),
+    ...ACCESS_CRITERIA_TERMS.map((t) => ({
+      setCode: ACCESS_CRITERIA_SET,
+      ...t,
+      parentCode: null,
+      maker: null,
+    })),
     ...[...collectTerms(searchables)].flatMap(([setCode, held]) =>
       held.map((term) => ({ setCode, ...term }))),
   ]
@@ -163,6 +183,7 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       code: term.code,
       labelJa: title?.titleJa ?? term.labelJa,
       labelEn: title?.titleEn ?? title?.titleJa ?? term.labelEn,
+      maker: term.maker,
       position: index,
       parentId,
     }
@@ -345,6 +366,16 @@ async function load() {
       isPrimary: true,
     }))))
 
+    // A v1 cell may be a table about several datasets at once, copied into each
+    // of them; these two say which lines of a cell are about somebody else and
+    // are already recorded there (`build.ts` の `ownLines`).
+    const datasetLabels = new Set(datasets.map((d) => d.label))
+    const linesOwned = ownLines(datasets)
+    // What no rule could read out of a numeric cell, written out for somebody
+    // to work through (`build.ts` の `unread`).
+    const unread: { dataset: string, sourceKey: string, line: string }[] = []
+    const hand = byHand(readByHand())
+
     await insertChunked(datasets, (chunk) => tx.insert(datasetContent).values(chunk.map((d) => ({
       datasetId: identityOf(datasetIdByLabel, d.label, "dataset"),
       content: buildDatasetContent({
@@ -354,6 +385,10 @@ async function load() {
         termIdBySetAndCode,
         accessCriteriaKeyCode: ACCESS_CRITERIA_KEY,
         typeOfDataKeyCode: TYPE_OF_DATA_KEY,
+        datasetLabels,
+        ownLines: linesOwned,
+        unread,
+        byHand: hand,
       }) satisfies DatasetContent,
     }))))
 
@@ -363,7 +398,7 @@ async function load() {
         researchId: identityOf(researchIdByHum, rv.humId, "research"),
         content: buildResearchContent({
           version: rv,
-          summaryShort: dump.latestVersion.get(rv.humId) === rv
+          listingSummary: dump.latestVersion.get(rv.humId) === rv
             ? dump.research.get(rv.humId)?.summaryShort ?? null
             : null,
           datasetIdByLabel,
@@ -419,6 +454,7 @@ async function load() {
       cau: cauRows.length,
       upstream: upstream.length,
       accessionDates: dates.length,
+      unread,
       ...site,
       search,
     }
@@ -439,6 +475,16 @@ console.log("document series    ", counts.series)
 console.log("news               ", counts.news)
 console.log("alerts             ", counts.alerts)
 console.log("search docs        ", counts.search)
+// The lines no rule could read out of a numeric cell. Written out rather than
+// counted, because what is done with them is reading them one at a time.
+if (counts.unread.length > 0) {
+  const path = join(import.meta.dirname, "input", "unread-numbers.json")
+  writeFileSync(path, `${JSON.stringify(counts.unread, null, 2)}\n`)
+  const keys = new Map<string, number>()
+  for (const one of counts.unread) keys.set(one.sourceKey, (keys.get(one.sourceKey) ?? 0) + 1)
+  console.log("unread number lines", counts.unread.length, Object.fromEntries(keys))
+  console.log("                   ", path)
+}
 if (selection.sharedAcrossResearch.length > 0) {
   console.log("dataset ids listed by more than one research:", selection.sharedAcrossResearch)
 }

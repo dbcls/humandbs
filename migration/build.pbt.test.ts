@@ -13,7 +13,7 @@ function build(overrides: Partial<EsResearchVersion>) {
       versionReleaseDate: "2020-01-01",
       ...overrides,
     },
-    summaryShort: null,
+    listingSummary: null,
     datasetIdByLabel: new Map<string, string>(),
   })
 }

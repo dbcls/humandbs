@@ -154,11 +154,30 @@ function dropBlankParagraphs() {
 }
 
 const FENCE = /^([ \t]*):::[ \t]*(.*)$/
-const ATTRIBUTE = /\s*[a-zA-Z-]+="[^"]*"/g
+const ATTRIBUTE = /\s*([a-zA-Z-]+)="([^"]*)"/g
+
+/**
+ * What a callout's kind is called in each notation. v1 named it in an attribute
+ * and v2 spells it GitHub's way, so the conversion is a rename rather than a
+ * decision — the kind the author chose survives, and the box it draws is v2's.
+ *
+ * **A fence with no attribute is `info`**, because that is what v1 drew for one
+ * (`getCalloutType` reads `rawType ?? "info"`), and so is a kind v1 did not
+ * know, which fell through to the same default.
+ */
+const CALLOUT_KIND: Record<string, string> = {
+  info: "TIP",
+  tip: "IMPORTANT",
+  warning: "WARNING",
+  error: "CAUTION",
+  plain: "NOTE",
+}
+
+const CALLOUT_DEFAULT = "TIP"
 
 /**
  * v1 extended markdown with `:::callout` and `:::button` fences. v2 writes the
- * aside GitHub's way instead, so a callout becomes `> [!NOTE]`. `:::button` is
+ * aside GitHub's way instead, so a callout becomes a named alert. `:::button` is
  * not handled — it only ever appears on the three pages that are screens now,
  * so meeting one means something else changed and should stop the run rather
  * than end up in a body as literal text.
@@ -167,6 +186,10 @@ const ATTRIBUTE = /\s*[a-zA-Z-]+="[^"]*"/g
  * and `::: callout`, with and without attributes, at the left margin and
  * indented three or four spaces inside a numbered clause. The indent has to
  * survive, or a blockquote inside a list item becomes one after it.
+ *
+ * **An attribute other than `type` stops the run.** v1's callout took a title as
+ * well, and none of the fences in the dump carries one; stripping quietly is how
+ * a body would arrive in v2 with a line of it missing.
  */
 function foldCallouts(source: string): string {
   const out: string[] = []
@@ -184,15 +207,21 @@ function foldCallouts(source: string): string {
       const name = rest.trim().split(/[\s]/)[0] ?? ""
       if (name !== "callout") throw new Error(`unhandled markdown directive: ${line.trim()}`)
       indent = fenceIndent
+      const after = rest.trim().slice(name.length)
+      let kind = CALLOUT_DEFAULT
+      for (const [, key = "", value = ""] of after.matchAll(ATTRIBUTE)) {
+        if (key !== "type") throw new Error(`unhandled callout attribute: ${key}`)
+        kind = CALLOUT_KIND[value.toLowerCase()] ?? CALLOUT_DEFAULT
+      }
       // The mark that makes this an alert rather than a quotation. v1 had
       // already told the two apart — what it fenced is an aside, and what it
       // left as a blockquote is a quotation (the FAQ quotes the
       // personal-information act at length) — so the distinction survives the
       // conversion instead of being re-decided by hand afterwards.
-      out.push(`${indent}> [!NOTE]`, `${indent}>`)
+      out.push(`${indent}> [!${kind}]`, `${indent}>`)
       // A fence may carry the first line of its own content after the name, and
       // one of them carries the whole callout and its closing fence as well.
-      let inline = rest.trim().slice(name.length).replaceAll(ATTRIBUTE, "").trim()
+      let inline = after.replaceAll(ATTRIBUTE, "").trim()
       const closesItself = inline.endsWith(":::")
       if (closesItself) inline = inline.slice(0, -3).trimEnd()
       if (inline !== "") out.push(`${indent}> ${inline}`)
@@ -235,14 +264,15 @@ const processor = unified()
  *
  * Safe as a text substitution because `[!` appears nowhere in the input.
  */
-const ESCAPED_MARK = /\\\[!NOTE]\n[ \t]*>\n/g
+const ESCAPED_MARK = /\\(\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)])\n[ \t]*>\n/g
+const ESCAPED_BRACKET = /\\(\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)])/g
 
 export function htmlToMarkdown(source: string): string {
   if (source.trim() === "") return ""
   return String(processor.processSync(foldCallouts(source)))
     .trim()
-    .replaceAll(ESCAPED_MARK, "[!NOTE]\n")
-    .replaceAll("\\[!NOTE]", "[!NOTE]")
+    .replaceAll(ESCAPED_MARK, "$1\n")
+    .replaceAll(ESCAPED_BRACKET, "$1")
 }
 
 /**

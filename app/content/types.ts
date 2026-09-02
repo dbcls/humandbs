@@ -114,14 +114,41 @@ export interface Link {
   text: string
 }
 
-/** A number as stored: what search reads, and what was typed to get there. */
+/**
+ * A number as stored: what search reads, and what was typed to get there.
+ *
+ * **A key holds a list of these, not one.** v1 wrote several numbers into one
+ * free-text cell — `常染色体: 5,961,600 SNVs` beside `X染色体: 147,353 SNVs`,
+ * `GWAS: 123 MB` beside `Phenotype データ: 2.4 MB` — and a model with room for
+ * one number could only keep such a cell as prose. Prose cannot be filtered by,
+ * so a second key was minted beside it holding the number alone, and the same
+ * fact ended up in two places for an editor to keep in step. Measured over the
+ * dump, more than half of what these keys carry is several numbers: 77% of the
+ * variant counts and 56% of the data volumes run to more than one line.
+ *
+ * The index needed nothing for this — `search_facet_number` has always been one
+ * row per value (`app/db/schema/search.ts`). It was the holding that had room
+ * for one.
+ */
 export interface NumberValue {
+  /**
+   * What this number is about, where the key holds more than one — the part of
+   * the genome counted, the data product measured. Null when the key holds a
+   * single number, which is most of them and wants no label at all.
+   */
+  label: string | null
   /** Converted to the key's canonical unit. Search and facets read only this. */
   value: number
   unit: string | null
   /** What the editor actually typed, kept so a bad conversion can be redone. */
   inputValue: number
   inputUnit: string | null
+  /**
+   * What qualifies the number without being part of it — `平均`, the assembly a
+   * count was made against, the format a volume is in. Kept apart from the
+   * label because it says nothing about which number this is.
+   */
+  note: string | null
 }
 
 /**
@@ -138,7 +165,12 @@ export type ContentValue
     | { kind: "single", value: Slot<string> }
     | { kind: "accession", value: Slot<string> }
     | { kind: "vocabulary", termIds: Slot<string[]> }
-    | { kind: "number", value: Slot<NumberValue> }
+    /**
+     * **In the value state the list is never empty.** A key holding no number
+     * at all is a key with no slot, and the write path drops it rather than
+     * storing a value that says nothing (`app/admin/dataset-form.server.ts`).
+     */
+    | { kind: "number", values: Slot<NumberValue[]> }
 
 export interface ValueSlot {
   /** References `content_key.id`. */
@@ -155,7 +187,7 @@ export interface ResearchContent {
     targets: TranslatedRichText
     url: LocalizedLinks
   }
-  summaryShort: {
+  listingSummary: {
     methods: TranslatedRichText
     targets: TranslatedRichText
     typeOfData: TranslatedRichText

@@ -24,11 +24,13 @@ import { AdminDrawer } from "~/components/admin"
 import { AddToCartButton, CartToggle } from "~/components/cart"
 import { Markdown } from "~/components/markdown"
 import {
-  ConditionChips,
+  AppliedConditions,
   NoResults,
+  PageSizeChooser,
+  Pagination,
   SearchExamples,
   SearchForm,
-  SortLinks,
+  SortChooser,
 } from "~/components/search"
 import { ActionButton, ActionRow, NewsList } from "~/components/site"
 
@@ -44,6 +46,8 @@ import {
   type ButtonVariant,
   Chip,
   Clamped,
+  CLEAR,
+  Excerpt,
   Confirm,
   Heading,
   IconButton,
@@ -51,6 +55,7 @@ import {
   Menu,
   MoreLink,
   Note,
+  PaneHeading,
   RoundLink,
   type NoteKind,
   Progress,
@@ -84,6 +89,7 @@ import {
   Section,
   Table,
   Td,
+  TermLabel,
   Value,
 } from "~/components/page"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
@@ -304,7 +310,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  切り詰めた箱から全部へ出る道は MoreLink。見出しの右端か、短くした一覧の足元に置く。
+                  切り詰めた箱から全部へ出る道は 3 つで、同じ姿をしている。別の画面へ渡すのが
+                  MoreLink (見出しの右端)、一覧の残りをその場で開くのが Clamped、文を刈って
+                  その場で開くのが Excerpt (どちらも表のセル、下の表)。
                 </p>
                 <Heading level="h2" title="News">
                   <MoreLink to="/news">ニュース一覧</MoreLink>
@@ -312,8 +320,22 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <ul className="mt-2 text-sm">
                   <li>JGAD000290</li>
                   <li>JGAD000363</li>
-                  <li className="text-ink-muted"><MoreLink to="/research/hum0197">他 44 件</MoreLink></li>
                 </ul>
+              </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  一段下の見出し (PaneHeading)。青い棒の立つ場所が 2 通り —
+                  edge はカードの余白へ張り出して h1 の棒と同じ縦線に乗り、
+                  start は名指すものの開始地点に立つ。線はどちらも pane を張る。
+                </p>
+                <div className="flex flex-col gap-6">
+                  <PaneHeading title="絞り込み (edge)">
+                    <span className={CLEAR}>すべて解除</span>
+                  </PaneHeading>
+                  <PaneHeading title="絞り込み (start)" rule="start">
+                    <span className={CLEAR}>すべて解除</span>
+                  </PaneHeading>
+                </div>
               </div>
             </div>
           </Section>
@@ -380,9 +402,20 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <AccessTypeBadge key={term.code} term={term} />
                 ))}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Chip label="制限公開（Type I）" to="/research" remove="この条件を外す" />
-                <Chip label="肺癌" to="/research" remove="この条件を外す" />
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <span className="text-ink-muted">製品を指す語彙値は会社名を分けて描く —</span>
+                {(first?.platforms ?? []).slice(0, 3).map((term) => (
+                  <TermLabel key={term.code} term={term} />
+                ))}
+              </div>
+              <div className="flex max-w-64 flex-col gap-2">
+                <Chip
+                  field="アクセス制限"
+                  value="制限公開（Type I）"
+                  to="/research"
+                  remove="アクセス制限: 制限公開（Type I） を解除"
+                />
+                <Chip value="肺癌" to="/research" remove="肺癌 を解除" />
               </div>
             </div>
           </Section>
@@ -466,7 +499,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="tabs" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一覧の切り替え (公開側)。リンクなので共有できる。箱の右上に付く。
+                  一覧の切り替え (公開側)。リンクなので共有できる。箱の右上に付き、右端は箱の右端と
+                  揃う。枠を持たず、面の色だけで前後を言う — 選ばれていない側は surface-light で、
+                  ページの地より明るい。
                 </p>
                 <SwitchTabs
                   label="研究 / データセット"
@@ -475,7 +510,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     { label: "データセット", to: "?listTab=dataset", current: listTab === "dataset" },
                   ]}
                 />
-                <div className="border-line border-t bg-white px-5 py-4 text-sm">
+                {/* The real listing's `Card`, which has no border of its own. */}
+                <div className="rounded bg-white px-5 py-4 text-sm">
                   <button
                     type="button"
                     onClick={() => { setListTab(listTab === "research" ? "dataset" : "research") }}
@@ -528,7 +564,11 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                         {row.humLabel}
                       </Link>
                     </Td>
-                    <Td><Value field={row.title} locale={LOCALE} /></Td>
+                    <Td floor="min-w-72">
+                      <Excerpt more="もっと見る" less="閉じる">
+                        <Value field={row.title} locale={LOCALE} />
+                      </Excerpt>
+                    </Td>
                     <Td nowrap>
                       <Clamped
                         items={row.datasetLabels.map((label) => (
@@ -538,11 +578,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                           </span>
                         ))}
                         more={(rest) => `他 ${String(rest)} 件`}
-                      >
-                        <MoreLink to={`/research/${row.humLabel}`}>
-                          {`他 ${String(row.datasetLabels.length - 3)} 件`}
-                        </MoreLink>
-                      </Clamped>
+                        less="閉じる"
+                      />
                     </Td>
                     <Td nowrap>
                       <div className="flex flex-col items-start gap-1">
@@ -625,27 +662,47 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 </div>
                 <SearchExamples locale="ja" />
               </div>
-              <div>
+              <div className="max-w-64">
                 <p className="mb-2 text-ink-muted text-sm">
-                  窓に出せない条件。チップ全体が「その条件を外す」リンク。
+                  絞り込みの pane に立つ「適用中」。チップ全体が「その条件を外す」リンク。
                 </p>
-                <ConditionChips
+                <AppliedConditions
                   locale="ja"
+                  clearHref="/research"
                   conditions={[
-                    { label: "アクセス制限: 制限公開（Type I）", href: "/research" },
-                    { label: "除外: メチル化", href: "/research" },
+                    { field: "アクセス制限", value: "制限公開（Type I）", href: "/research" },
+                    { field: "実験方法", value: "除外: メチル化", href: "/research" },
+                    { field: null, value: "title:ゲノム AND (a OR b)", href: "/research" },
                   ]}
                 />
               </div>
               <div>
-                <p className="mb-2 text-ink-muted text-sm">並び替え。選ばれているものは押せない。</p>
-                <SortLinks
-                  locale="ja"
-                  target="research"
-                  query=""
-                  sort="dateModified"
-                  options={["relevance", "dateModified", "datePublished", "id"]}
-                />
+                <p className="mb-2 text-ink-muted text-sm">
+                  一覧の操作列。並び替え・表示件数・件数・ページ送りが 1 行で、表の上と下に同じものが立つ。
+                  並び替えは向きが welded で、どのキーにも両端があるので常に出る。
+                </p>
+                <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+                  <SortChooser
+                    locale="ja"
+                    target="research"
+                    query=""
+                    sort="dateModified"
+                    order="desc"
+                    rows={null}
+                  />
+                  <PageSizeChooser locale="ja" target="research" query="" sort="dateModified" order={null} size={50} />
+                  <p className="text-ink-muted text-sm">1–50 / 397 件</p>
+                  <Pagination
+                    locale="ja"
+                    target="research"
+                    query=""
+                    sort="dateModified"
+                    order={null}
+                    page={3}
+                    pageCount={8}
+                    rows={50}
+                  />
+                </div>
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">0 件のとき。緩めた検索は投げない。</p>

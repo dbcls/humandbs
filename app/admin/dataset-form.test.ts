@@ -116,7 +116,7 @@ describe("reading a dataset back off the form", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "value", value: "1.5", unit: "TB" },
+        value: { kind: "number", state: "value", rows: [{ label: "", value: "1.5", unit: "TB", note: "" }] },
       }]
     }), UNITS)
 
@@ -124,9 +124,9 @@ describe("reading a dataset back off the form", () => {
     if (!result.ok) return
     expect(result.content.values[0]?.value).toEqual({
       kind: "number",
-      value: {
+      values: {
         state: "value",
-        value: { value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB" },
+        value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
       },
     })
   })
@@ -135,7 +135,7 @@ describe("reading a dataset back off the form", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "value", value: "  ", unit: "GB" },
+        value: { kind: "number", state: "value", rows: [{ label: "", value: "  ", unit: "GB", note: "" }] },
       }]
     }), UNITS)
 
@@ -148,13 +148,13 @@ describe("reading a dataset back off the form", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "unknown", value: "1.5", unit: "TB" },
+        value: { kind: "number", state: "unknown", rows: [{ label: "", value: "1.5", unit: "TB", note: "" }] },
       }]
     }), UNITS)
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({ kind: "number", value: { state: "unknown" } })
+    expect(result.content.values[0]?.value).toEqual({ kind: "number", values: { state: "unknown" } })
   })
 
   it("reads an unwritten date as no date rather than as an empty one", () => {
@@ -186,17 +186,20 @@ describe("putting a dataset on the form", () => {
         keyId: "data-volume-gb",
         value: {
           kind: "number",
-          value: {
+          values: {
             state: "value",
-            value: { value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB" },
+            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
           },
         },
       }],
       experiments: [],
     }
 
-    expect(datasetContentInput(content).values[0]?.value)
-      .toEqual({ kind: "number", state: "value", value: "1.5", unit: "TB" })
+    expect(datasetContentInput(content).values[0]?.value).toEqual({
+      kind: "number",
+      state: "value",
+      rows: [{ label: "", value: "1.5", unit: "TB", note: "" }],
+    })
   })
 
   it("starts a new slot empty in both languages, which is not the same as unsettled", () => {

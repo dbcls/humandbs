@@ -54,7 +54,7 @@ const searchQuery = z.object({
     description: "The query language, the same one the site's own addresses carry.",
   }),
   sort: z.enum(SORT_KEYS).optional().meta({
-    description: "`relevance` needs a full-text term; without one it is not offered.",
+    description: "Defaults to `dateModified`, newest first. Turn any of them around with `order`.",
   }),
   page: z.coerce.number().int().min(1).optional().meta({
     description: "1-based. Twenty rows to a page; the whole corpus is the bulk stream.",

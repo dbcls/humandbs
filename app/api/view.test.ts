@@ -20,7 +20,9 @@ function catalogOf(): CatalogView {
   return {
     keyById: new Map([[key.id, key], [later.id, later]]),
     keyByCode: new Map([[key.code, key], [later.code, later]]),
-    termById: new Map([["term-1", { code: "hiseq-2500", labelJa: "HiSeq 2500", labelEn: "HiSeq 2500" }]]),
+    termById: new Map([["term-1", {
+      code: "hiseq-2500", labelJa: "HiSeq 2500", labelEn: "HiSeq 2500", maker: null, position: 0,
+    }]]),
   }
 }
 
@@ -116,7 +118,10 @@ describe("a value under a catalog key", () => {
         keyId: "key-2",
         value: {
           kind: "number",
-          value: { state: "value", value: { value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp" } },
+          values: {
+            state: "value",
+            value: [{ label: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", note: null }],
+          },
         },
       }],
     })
@@ -124,7 +129,7 @@ describe("a value under a catalog key", () => {
       key: "read-length",
       label: { en: "Read length" },
       type: "number",
-      number: { value: 100, unit: "bp" },
+      numbers: [{ value: 100, unit: "bp" }],
     }])
   })
 

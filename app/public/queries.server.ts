@@ -245,6 +245,8 @@ export async function loadCatalog(db: Executor): Promise<CatalogView> {
       code: vocabularyTerm.code,
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
+      maker: vocabularyTerm.maker,
+      position: vocabularyTerm.position,
     })
     .from(vocabularyTerm)
 

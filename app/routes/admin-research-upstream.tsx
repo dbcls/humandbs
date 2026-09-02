@@ -95,7 +95,7 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
                                       )}
                               </Td>
                               <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                              <Td className="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
+                              <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
                               <Td className="whitespace-nowrap">{row.piName}</Td>
                               <Td className="text-xs">{row.accessions.join(", ")}</Td>
                             </tr>

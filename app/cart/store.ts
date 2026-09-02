@@ -74,6 +74,23 @@ export function removeFromCart(current: string[], ids: string[]): string[] {
 }
 
 /**
+ * Whether pressing a cart mark gathers what it stands for, or lets it go.
+ *
+ * **Pressing again always undoes.** A mark stands for every dataset under it —
+ * a whole row, or a whole page of them — and the cart has a ceiling, so a mark
+ * standing for more than fits can never reach "all of them in". Deciding by
+ * that state alone leaves it resting half-lit while every further press adds
+ * nothing and takes nothing out, and the reader has no way back through the
+ * control they came in by. So a press gathers while there is room to gather,
+ * and lets go the moment there is not.
+ */
+export function cartPressGathers(current: string[], ids: string[]): boolean {
+  const cartable = new Set(ids.filter(isCartable))
+  const held = [...cartable].filter((id) => current.includes(id))
+  return held.length < cartable.size && current.length < CART_LIMIT
+}
+
+/**
  * Where an application is actually made. The portal collects the accessions and
  * hands the reader on; nothing about the application itself lives here.
  */

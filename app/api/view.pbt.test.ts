@@ -107,7 +107,7 @@ describe("the API projection", () => {
       expect(answer.title).toBeUndefined()
       expect(answer.releaseNote).toBeUndefined()
       expect(answer.summary).toEqual({})
-      expect(answer.summaryShort).toEqual({})
+      expect(answer.listingSummary).toEqual({})
       for (const provider of answer.dataProviders as Record<string, unknown>[]) {
         expect(provider).toEqual({ organization: {} })
       }

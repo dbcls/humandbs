@@ -105,10 +105,12 @@ export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
 })
 
 const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
+  label: fc.option(fc.string(), { nil: null }),
   value: fc.double({ noNaN: true, noDefaultInfinity: true }),
   unit: fc.option(fc.string(), { nil: null }),
   inputValue: fc.double({ noNaN: true, noDefaultInfinity: true }),
   inputUnit: fc.option(fc.string(), { nil: null }),
+  note: fc.option(fc.string(), { nil: null }),
 })
 
 export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
@@ -119,7 +121,10 @@ export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
     kind: fc.constant("vocabulary" as const),
     termIds: slotArb(fc.array(idArb, { maxLength: 3 })),
   }),
-  fc.record({ kind: fc.constant("number" as const), value: slotArb(numberValueArb) }),
+  fc.record({
+    kind: fc.constant("number" as const),
+    values: slotArb(fc.array(numberValueArb, { minLength: 1, maxLength: 3 })),
+  }),
 )
 
 export const valueSlotArb: fc.Arbitrary<ValueSlot> = fc.record({
@@ -141,7 +146,7 @@ export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
     targets: translatedRichTextArb,
     url: localizedLinksArb,
   }),
-  summaryShort: fc.record({
+  listingSummary: fc.record({
     methods: translatedRichTextArb,
     targets: translatedRichTextArb,
     typeOfData: translatedRichTextArb,

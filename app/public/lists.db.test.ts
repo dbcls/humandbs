@@ -146,9 +146,59 @@ describe("the research listing", () => {
     const view = await researchListPage(request("/research?q=%E8%A7%A3%E6%9E%90+title%3A%E3%82%B2%E3%83%8E%E3%83%A0"))
 
     expect(view.keyword).toBe("解析")
+    // The words the box holds are listed too, so the condition it cannot hold
+    // is the second of them rather than the only one.
+    expect(view.conditions[1]?.field).toBe("研究題目")
+    expect(view.conditions[1]?.value).toBe("ゲノム")
+    expect(view.conditions[1]?.href).toBe("/research?q=%E8%A7%A3%E6%9E%90")
+  })
+
+  /*
+    **What is narrowing the listing is one list, read off one tree.** The box is
+    where the typed words are edited, but they narrow the result exactly as a
+    chosen value does — a reader looking for why 198 of 397 rows are showing
+    has to find the word among the reasons, not in a box above them.
+  */
+  it("counts the typed words among the conditions in force", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [], "ゲノム解析")
+    await rebuildSearchDocs(db)
+
+    const view = await researchListPage(request("/research?q=%E8%A7%A3%E6%9E%90"))
+
+    expect(view.keyword).toBe("解析")
     expect(view.conditions).toHaveLength(1)
-    expect(view.conditions[0]?.label).toBe("研究題目: ゲノム")
-    expect(view.conditions[0]?.href).toBe("/research?q=%E8%A7%A3%E6%9E%90")
+    expect(view.conditions[0]?.field).toBe("キーワード")
+    expect(view.conditions[0]?.value).toBe("解析")
+    expect(view.conditions[0]?.href).toBe("/research")
+  })
+
+  it("gives each typed word its own way off, keeping the others", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [], "ゲノム解析")
+    await rebuildSearchDocs(db)
+
+    const view = await researchListPage(request("/research?q=%E8%A7%A3%E6%9E%90+AND+%E3%82%B2%E3%83%8E%E3%83%A0"))
+
+    expect(view.conditions.map((chip) => chip.value)).toEqual(["解析", "ゲノム"])
+    expect(view.conditions.map((chip) => decodeURIComponent(chip.href)))
+      .toEqual(["/research?q=ゲノム", "/research?q=解析"])
+  })
+
+  /*
+    **Lifting everything lifts the words too.** They are one of the conditions
+    listed, and a control saying it takes all of them off while one stays is
+    saying something untrue about the list directly above it.
+  */
+  it("empties the box as well when everything in force is lifted", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [], "ゲノム解析")
+    await rebuildSearchDocs(db)
+
+    const view = await researchListPage(request("/research?q=%E8%A7%A3%E6%9E%90+title%3A%E3%82%B2%E3%83%8E%E3%83%A0"))
+
+    expect(view.conditions).toHaveLength(2)
+    expect(view.clearHref).toBe("/research")
   })
 
   it("answers a query it cannot read with the failure rather than with everything", async () => {
@@ -163,15 +213,20 @@ describe("the research listing", () => {
     expect(view.total).toBe(0)
   })
 
-  it("sorts by relevance when words were searched for and by date when they were not", async () => {
+  /**
+   * The ordering a reader is reading in may not change under them for having
+   * refined: an ordering that only some queries can carry would come and go
+   * with the shape of the query.
+   */
+  it("opens on the newest change, whether or not words were searched for", async () => {
     const researchId = await createResearch("hum0001")
-    await publish(researchId, 1, [], "研究題目")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await publish(researchId, 1, [datasetId], "研究題目")
     await rebuildSearchDocs(db)
 
     expect((await researchListPage(request("/research"))).sort).toBe("dateModified")
-    expect((await researchListPage(request("/research?q=%E7%A0%94%E7%A9%B6"))).sort).toBe("relevance")
-    // Relevance has nothing to rank by without a query, so it is not offered.
-    expect((await researchListPage(request("/research"))).sortOptions).not.toContain("relevance")
+    expect((await researchListPage(request("/research?q=%E7%A0%94%E7%A9%B6"))).sort).toBe("dateModified")
+    expect((await datasetListPage(request("/dataset"))).sort).toBe("dateModified")
   })
 })
 
@@ -401,7 +456,7 @@ describe("refining a listing", () => {
 
     const view = await datasetListPage(request("/dataset?q=disease-icd10%3AC34"))
 
-    expect(view.conditions.map((chip) => chip.label)).toEqual(["疾患: C34"])
+    expect(view.conditions.map((chip) => `${chip.field ?? ""}/${chip.value}`)).toEqual(["疾患/C34"])
     expect(view.conditions.map((chip) => chip.href)).toEqual(["/dataset"])
   })
 

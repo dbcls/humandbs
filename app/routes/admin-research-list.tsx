@@ -94,7 +94,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           {row.humLabel ?? t.unpinned}
                         </Link>
                       </Td>
-                      <Td className="min-w-64">
+                      <Td floor="min-w-64">
                         {row.title === ""
                           ? <span className="text-ink-muted">{t.untitled}</span>
                           : row.title}

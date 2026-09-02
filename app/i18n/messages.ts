@@ -57,10 +57,19 @@ const ja = {
   },
   use: {
     heading: "データの利用",
+    /*
+      The two ways in are `ActionButton`s, whose block is 320px wide, which
+      leaves 244px for the words beside the arrow. **What the data is comes from
+      the line under the button, not from the label**: at this size English
+      cannot hold "controlled-access" as well as the verb, and a label that ran
+      to two lines left the pair of blocks half empty.
+    */
     find: "利用可能なデータセットを探す",
     findFor: "データセット ID が未特定の場合",
-    apply: "制限公開データの利用申請を行う",
-    applyFor: "「JGAD」で始まるデータセット ID をお持ちの場合",
+    apply: "データの利用を申請する",
+    // 「データセット」は隣の一言が言っているので、こちらは ID だけを言う。
+    // 320px の枠に対して、書き切ると 330px 要って最後の 1 文字が行から落ちる。
+    applyFor: "「JGAD」で始まる ID をお持ちの場合",
     account: "制限公開データの利用には [DDBJ アカウント](https://accounts.ddbj.nig.ac.jp/) が必要です。お持ちでない方はアカウントを作成してください（詳細は[こちら](https://www.ddbj.nig.ac.jp/ddbj-account.html)）。",
     procedure: "データ利用手順は[こちら](https://bsi.nig.ac.jp/humandbs?lang=ja#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E5%88%A9%E7%94%A8)。",
   },
@@ -82,6 +91,7 @@ const ja = {
       dataset: "キーワードでデータセットを検索",
     },
     submit: "検索",
+    pageSize: "表示件数",
     examples: "よく検索されるキーワード",
     // Hand-written guidance, the same three v1 offers. Nothing in the data
     // says what a first-time reader should try typing.
@@ -107,6 +117,13 @@ const ja = {
     syntaxQuote: "引用符で囲むと、その並びのまま探します。",
     invalid: "検索条件を読み取れませんでした。",
     exclude: "除外",
+    /**
+     * What the words typed into the box are called where they are listed as one
+     * of the conditions in force. The box itself is where they are edited; this
+     * is the name of the dimension they narrow by, so that the column of
+     * conditions has a name against every value in it.
+     */
+    keyword: "キーワード",
     fields: {
       id: "ID",
       title: "研究題目",
@@ -115,18 +132,23 @@ const ja = {
     },
     sort: {
       label: "並び替え",
-      relevance: "関連度",
       dateModified: "更新日",
       datePublished: "公開日",
       id: "ID",
+      toAscending: "昇順にする",
+      toDescending: "降順にする",
     },
     previousPage: "前へ",
     nextPage: "次へ",
     pagination: "ページ送り",
     andMore: (count: number) => `他 ${count} 件`,
+    readMore: "もっと見る",
+    showLess: "閉じる",
     refine: {
       heading: "絞り込み",
-      clear: "すべて外す",
+      applied: "適用中",
+      clear: "すべて解除",
+      removeCondition: (label: string) => `${label} を解除`,
       seeAll: "すべて見る",
       close: "閉じる",
       find: "値をさがす",
@@ -136,7 +158,11 @@ const ja = {
       // The span the matching rows cover, shown so that a bound is typed in the
       // order of magnitude the data is actually in.
       span: (min: string, max: string) => `${min}〜${max}`,
-      count: (count: number) => `${count} 件`,
+      // One end of a range left open. The same mark as a span, so that a
+      // condition on one end reads as the same kind of thing as one on both.
+      spanFrom: (min: string) => `${min}〜`,
+      spanTo: (max: string) => `〜${max}`,
+      clearFacet: "解除",
       selected: "選択中",
       none: "絞り込める項目はありません。",
       code: "ICD10 コード",
@@ -153,8 +179,20 @@ const ja = {
     methods: "研究方法",
     targets: "対象",
     url: "URL",
-    datasets: "データセット一覧",
-    dataProvider: "提供者情報",
+    /**
+     * The three short fields are not the research's own account of how it was
+     * done and who took part: they hold what the datasets beneath it carry,
+     * each made into one line. The listing and the editing form say so, which
+     * is why they do not borrow the names above.
+     */
+    listingSummary: {
+      methods: "解析手法",
+      targets: "参加者（対象集団）",
+      typeOfData: "種別",
+    },
+    platforms: "プラットフォーム",
+    datasets: "データセット",
+    dataProvider: "提供者",
     representative: "代表者",
     organization: "所属機関",
     researchProjects: "研究プロジェクト情報",
@@ -208,7 +246,6 @@ const ja = {
     toggleRow: "この研究のデータセットをカートに入れる／外す",
     togglePage: "この表のデータセットをカートに入れる／外す",
     openWithCount: (count: number) => `カート（${count} 件）`,
-    hint: "利用申請したい研究またはデータセットのカートの印を押すと、カートに追加されます。",
     empty: "カートは空です。",
     emptyHint: "研究一覧やデータセット一覧のカートの印から追加してください。",
     full: (limit: number) => `カートに入れられるのは ${limit} 件までです。`,
@@ -430,6 +467,10 @@ const ja = {
       removeTerm: "外す",
       unit: "単位",
       emptyNumber: "空のままだと、この項目は保存されません。",
+      numberLabel: "何の数か",
+      numberNote: "但し書き",
+      addNumber: "数を足す",
+      removeNumber: "この数を外す",
       experiments: "解析手法",
       experimentLabel: "表示ラベル",
       addExperiment: "解析手法を追加",
@@ -473,7 +514,7 @@ const ja = {
         note: "メモ",
         title: "研究題目",
         summary: "研究概要",
-        summaryShort: "短い要約",
+        listingSummary: "短い要約",
         releaseNote: "リリースノート",
         dataProviders: "提供者情報",
         researchProjects: "研究プロジェクト情報",
@@ -873,7 +914,7 @@ const en: Messages = {
     heading: "Data Use",
     find: "Find available datasets",
     findFor: "If you have not yet identified the dataset ID",
-    apply: "Apply to use controlled-access data",
+    apply: "Apply to use the data",
     applyFor: "If you have a “JGAD” dataset ID",
     account: "[A DDBJ account](https://accounts.ddbj.nig.ac.jp/) is required to use controlled-access data. Create one if you do not have one yet, or sign in if you already do. Please see [here](https://www.ddbj.nig.ac.jp/ddbj-account-e.html) for details.",
     procedure: "Please see [here](https://bsi.nig.ac.jp/humandbs?lang=en#data-use) for the data use procedure.",
@@ -889,6 +930,7 @@ const en: Messages = {
       dataset: "Search datasets by keyword",
     },
     submit: "Search",
+    pageSize: "Per page",
     examples: "Frequent searches",
     exampleQueries: ["Amyotrophic lateral sclerosis", "Liver disease", "NGS(Exome)"],
     researchList: "Research list",
@@ -912,6 +954,7 @@ const en: Messages = {
     syntaxQuote: "Quotes match the words in that order.",
     invalid: "This search could not be read.",
     exclude: "Excluding",
+    keyword: "Keyword",
     fields: {
       id: "ID",
       title: "Title",
@@ -920,18 +963,23 @@ const en: Messages = {
     },
     sort: {
       label: "Sort by",
-      relevance: "Relevance",
       dateModified: "Date modified",
       datePublished: "Date published",
       id: "ID",
+      toAscending: "Sort ascending",
+      toDescending: "Sort descending",
     },
     previousPage: "Previous",
     nextPage: "Next",
     pagination: "Pagination",
     andMore: (count: number) => `${count} more`,
+    readMore: "Read more",
+    showLess: "Show less",
     refine: {
       heading: "Refine",
+      applied: "Applied",
       clear: "Clear all",
+      removeCondition: (label: string) => `Remove ${label}`,
       seeAll: "See all",
       close: "Close",
       find: "Find a value",
@@ -939,7 +987,9 @@ const en: Messages = {
       from: "From",
       to: "To",
       span: (min: string, max: string) => `${min}–${max}`,
-      count: (count: number) => String(count),
+      spanFrom: (min: string) => `${min}–`,
+      spanTo: (max: string) => `–${max}`,
+      clearFacet: "Clear",
       selected: "Selected",
       none: "There is nothing to refine by.",
       code: "ICD10 code",
@@ -956,6 +1006,12 @@ const en: Messages = {
     methods: "Methods",
     targets: "Targets",
     url: "URL",
+    listingSummary: {
+      methods: "Analysis method",
+      targets: "Participants",
+      typeOfData: "Category",
+    },
+    platforms: "Platforms",
     datasets: "Datasets",
     dataProvider: "Data provider",
     representative: "Representative",
@@ -1009,7 +1065,6 @@ const en: Messages = {
     toggleRow: "Add or remove this research's datasets",
     togglePage: "Add or remove the datasets in this table",
     openWithCount: (count: number) => `Cart (${count})`,
-    hint: "Press the cart mark on a research or a dataset to collect it for an application.",
     empty: "The cart is empty.",
     emptyHint: "Add datasets from the cart marks in the research or dataset listing.",
     full: (limit: number) => `A cart holds at most ${limit} datasets.`,
@@ -1231,6 +1286,10 @@ const en: Messages = {
       removeTerm: "Remove",
       unit: "Unit",
       emptyNumber: "Left empty, this item is not saved.",
+      numberLabel: "What it counts",
+      numberNote: "Qualifier",
+      addNumber: "Add a number",
+      removeNumber: "Remove",
       experiments: "Analysis method",
       experimentLabel: "Display label",
       addExperiment: "Add an analysis method",
@@ -1274,7 +1333,7 @@ const en: Messages = {
         note: "Memo",
         title: "Title",
         summary: "Research overview",
-        summaryShort: "Short summary",
+        listingSummary: "Short summary",
         releaseNote: "Release note",
         dataProviders: "Data providers",
         researchProjects: "Research projects",

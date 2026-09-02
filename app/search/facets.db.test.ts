@@ -4,7 +4,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { countTermChildren, countTerms, numberBounds } from "./counts.server"
+import { countTermChildren, countTerms, dateBounds, numberBounds } from "./counts.server"
 import { parseQuery, type QueryNode } from "./dsl"
 import { queryFields, type FacetField } from "./fields"
 import { searchDocs, type SearchTarget } from "./query.server"
@@ -33,7 +33,9 @@ function ast(input: string): QueryNode | null {
 }
 
 async function labels(input: string, target: SearchTarget = "dataset"): Promise<string[]> {
-  const result = await searchDocs(db, { target, ast: ast(input), fields, sort: "id", page: 1 })
+  const result = await searchDocs(db, {
+    target, ast: ast(input), fields, sort: "id", order: "asc", page: 1,
+  })
   return result.hits.map((hit) => hit.datasetLabel ?? hit.humLabel)
 }
 
@@ -75,6 +77,9 @@ async function doc(input: {
   label: string
   terms: { keyId: string, termId: string, ancestorIds?: string[] }[]
   numbers?: { keyId: string, value: number }[]
+  /** Columns of the row rather than facet values, which is the whole point. */
+  published?: string
+  modified?: string
 }): Promise<void> {
   const { id: researchId } = only(await db.insert(s.research).values({})
     .returning({ id: s.research.id }))
@@ -87,6 +92,8 @@ async function doc(input: {
     title: "",
     textJa: input.label,
     textEn: "",
+    datePublished: input.published,
+    dateModified: input.modified,
   }).returning({ id: s.searchDoc.id }))
   for (const one of input.terms) {
     await db.insert(s.searchFacetTerm).values({
@@ -131,6 +138,8 @@ beforeAll(async () => {
       { keyId: method, termId: wgs },
     ],
     numbers: [{ keyId: readLength, value: 150 }],
+    published: "2015-06-01",
+    modified: "2020-01-31",
   })
   await doc({
     label: "JGAD000002",
@@ -139,11 +148,15 @@ beforeAll(async () => {
       { keyId: method, termId: rna },
     ],
     numbers: [{ keyId: readLength, value: 100 }],
+    published: "2021-01-05",
+    // No modification date, which is the state the dataset dates are in until
+    // the application system is reachable.
   })
   await doc({
     label: "JGAD000003",
     terms: [{ keyId: disease, termId: prostate }, { keyId: method, termId: wgs }],
     numbers: [{ keyId: readLength, value: 250 }],
+    published: "2018-03-20",
   })
 })
 
@@ -233,5 +246,46 @@ describe("counting the facets of a result", () => {
       .toEqual([{ keyId: identities.readLength, min: 100, max: 250 }])
     expect(await numberBounds(db, query("assay:rna-seq"), [identities.readLength ?? ""]))
       .toEqual([{ keyId: identities.readLength, min: 100, max: 100 }])
+  })
+
+  it("gives the span of days the result covers, narrowing with the result", async () => {
+    expect(await dateBounds(db, query(""))).toEqual({
+      date_published: { min: "2015-06-01", max: "2021-01-05" },
+      date_modified: { min: "2020-01-31", max: "2020-01-31" },
+    })
+    expect(await dateBounds(db, query("assay:wgs"))).toEqual({
+      date_published: { min: "2015-06-01", max: "2018-03-20" },
+      date_modified: { min: "2020-01-31", max: "2020-01-31" },
+    })
+  })
+
+  it("says nothing about a date the result never carries", async () => {
+    // The panel draws no control at all for this, rather than two empty boxes
+    // over a span that does not exist.
+    expect(await dateBounds(db, query("assay:rna-seq"))).toEqual({
+      date_published: { min: "2021-01-05", max: "2021-01-05" },
+      date_modified: null,
+    })
+  })
+})
+
+describe("filtering by a date, which is a column rather than a facet row", () => {
+  it("holds a date range at one end or at both", async () => {
+    expect(await labels("date_published:[2015-01-01 TO 2019-12-31]"))
+      .toEqual(["JGAD000001", "JGAD000003"])
+    expect(await labels("date_published:[2019-01-01 TO *]")).toEqual(["JGAD000002"])
+    expect(await labels("date_published:[* TO 2016-12-31]")).toEqual(["JGAD000001"])
+    expect(await labels("date_published:2018-03-20")).toEqual(["JGAD000003"])
+  })
+
+  it("leaves out a row with no date, whichever way the range is open", async () => {
+    expect(await labels("date_modified:[* TO 2030-01-01]")).toEqual(["JGAD000001"])
+    expect(await labels("date_modified:[2000-01-01 TO *]")).toEqual(["JGAD000001"])
+  })
+
+  it("takes a date and a facet as two conditions on the same row", async () => {
+    expect(await labels("date_published:[2015-01-01 TO 2019-12-31] assay:wgs"))
+      .toEqual(["JGAD000001", "JGAD000003"])
+    expect(await labels("date_published:[2019-01-01 TO *] assay:wgs")).toEqual([])
   })
 })

@@ -199,6 +199,63 @@ export function Heading({ level = "h1", title, count, children }: {
   )
 }
 
+/**
+ * What names a column standing beside the page rather than the page itself —
+ * the refinement panel is the one there is.
+ *
+ * **It is the page heading's mark one step down, not a new idiom.** A pane is
+ * read at its own scale (its text is a step smaller than the page's), so a
+ * heading set only in bold weighs the same as the words under it and stops
+ * reading as a heading at all — which is what the panel's was doing. The brand
+ * rule and the brand colour are what the site already uses to say "this names
+ * what follows", and reusing them costs the reader nothing to learn.
+ *
+ * **The line under it always spans the pane. Where the rule stands is a
+ * choice**, and there are two of them (`PANE_RULE`). The line is the pane's;
+ * the rule belongs either to the card or to the thing it names.
+ */
+/**
+ * Where the mark stands, and how far the word sits from it.
+ *
+ * **The gap is forced in one and chosen in the other.** Hung out through the
+ * card's padding, the mark has to leave exactly enough for the words to land
+ * back on the content edge — 24px out, 4px of rule, 20px of gap. Standing at
+ * the start there is nothing to land on, so the gap is only what binds the mark
+ * to the word: 10px, which is what db-portal gives its own.
+ */
+const PANE_RULE = {
+  edge: "-ml-6 pl-5",
+  start: "pl-2.5",
+}
+
+export function PaneHeading({ title, level = "h2", rule = "edge", children }: {
+  title: string
+  level?: "h2" | "h3"
+  /** Where the mark stands. */
+  rule?: keyof typeof PANE_RULE
+  /** What belongs on the right of the same line, if anything. */
+  children?: ReactNode
+}) {
+  const Tag = level
+  return (
+    <div className="flex items-center justify-between gap-x-3 border-line border-b pb-1">
+      {/*
+        **It is read at the pane's own scale, not a step above it.** A pane is
+        250-odd pixels wide and its text is `text-sm`; a heading a size larger
+        carries the body's leading with it (1.75, a 28px line box for a 16px
+        word) and the block ends up half again as tall as it has anything to
+        say. What tells it apart from the words under it is the mark and the
+        colour, which is what they are there for — db-portal sets its sidebar
+        heading at the body size for the same reason.
+      */}
+      <Tag className={`border-brand border-l-4 font-bold text-brand text-sm ${PANE_RULE[rule]}`}>
+        {title}
+      </Tag>
+      {children}
+    </div>
+  )
+}
+
 /* ----------------------------------------------------------------- badges */
 
 /**
@@ -256,6 +313,26 @@ export function Badge({
 }
 
 /* ---------------------------------------------------------------- buttons */
+
+/**
+ * The one shape every control standing over a listing takes.
+ *
+ * **A white face, a thin coloured edge and a fully rounded end** — copy, the
+ * CSV, the ordering, how many rows a page holds, and the page numbers. v1 draws
+ * all of them from a single class for the same reason: they sit in one band
+ * across the top of a table, and a reader scanning it should be able to tell
+ * what can be pressed without reading any of them.
+ *
+ * **Measured, the alternative was three faces and two edges.** The choosers
+ * were carrying the grey of an input (`surface-input`), the page numbers a
+ * `line` border that comes to 2.09:1 — under the 3:1 the site requires of
+ * something you can operate — and the export buttons the brand edge. One class
+ * ends all three disagreements at once, and `brand` on white is 8.6:1.
+ *
+ * **Hover is left to the halves**, since a welded pair lights the half under
+ * the pointer rather than the whole of itself.
+ */
+export const LISTING_CONTROL = "border border-brand bg-white text-brand"
 
 /**
  * What a control looks like, by what pressing it does.
@@ -456,26 +533,54 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
 }
 
 /**
- * The way from a few of something to all of it — the five newest announcements
- * to the whole listing, a table's first page to the search behind it.
+ * How a way out of a shortened box is drawn — whether it leads somewhere
+ * (`MoreLink`) or opens the rest where it stands (`Clamped`).
  *
  * **An arrow rather than a rule under the words.** It is not a link in a
  * sentence but a way out of the box it closes, and it sits where a reader
  * looks for one: at the end of the line that names what they are looking at.
  * The words are small and set in the brand's weight, so that it reads as a
  * control on the heading rather than as another entry in the list — which is
- * also what it is at the foot of a cut-short cell (`Clamped`), where it is a
- * step smaller than the entries above it.
+ * also what it is at the foot of a cut-short cell, where it is a step smaller
+ * than the entries above it.
  *
  * It never wraps: the arrow says the words belong to it, and a line break
  * between them leaves a chevron on a line of its own.
+ *
+ * **The two share the drawing because they answer the same question.** Written
+ * apart, one cell of a listing said it in the brand's twelve with an arrow and
+ * the cell four columns along said it in grey fourteen with nothing, and the
+ * reader had no way to know that only one of them could be pressed.
+ */
+const MORE = "inline-flex items-center gap-0.5 whitespace-nowrap font-semibold text-brand text-xs"
+
+/**
+ * The way to lift conditions, at either of the two ranges it comes in — all of
+ * them, or the ones one facet holds.
+ *
+ * **One string, because the two are one operation over two scopes.** Written
+ * apart they drifted into different sizes and weights, and the wider of the
+ * two ended up the lighter — which reads as the narrower being the stronger
+ * thing to press. The size is spelled out rather than inherited so that where
+ * each sits cannot change what it looks like.
+ *
+ * **It is not `MORE` with the arrow taken off.** The two spell the same three
+ * utilities today, but they answer to different things: `MORE` is a way onward
+ * and its other half is what holds the chevron beside the word, while this is a
+ * way to undo and carries nothing. Folding one into the other would say the two
+ * must always be set alike, which nobody has decided — and there is no third
+ * place in the public screens spelling either of them out by hand, so the pair
+ * is not a duplication anybody has to keep in step.
+ */
+export const CLEAR = "font-semibold text-brand text-xs"
+
+/**
+ * The way from a few of something to all of it — the five newest announcements
+ * to the whole listing, a table's first page to the search behind it.
  */
 export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
   return (
-    <Link
-      to={to}
-      className="inline-flex items-center gap-0.5 whitespace-nowrap font-semibold text-brand text-xs"
-    >
+    <Link to={to} className={MORE}>
       {children}
       <Icon name="chevron-right" aria-hidden="true" />
     </Link>
@@ -487,15 +592,38 @@ export function MoreLink({ to, children }: { to: string, children: ReactNode }) 
  *
  * The whole chip is the link that removes it, so what is on the screen and what
  * can be undone are the same object.
+ *
+ * **What the condition is about and what it says are two segments.** Run
+ * together as one string they read as a single long name, and a column of them
+ * gives the eye nothing to line up on; split, the field names form a column and
+ * the reader can see at a glance which dimensions are in force. The field is
+ * the part that repeats, so it takes the tinted half.
+ *
+ * **It wraps rather than truncates.** These stand in a pane a quarter the width
+ * of the page, and a condition cut off mid-value is a filter the reader cannot
+ * read — which is the one thing a chip exists to prevent.
  */
-export function Chip({ label, to, remove }: { label: ReactNode, to: string, remove: string }) {
+export function Chip({ field, value, to, remove }: {
+  /** The dimension the condition is about. Absent when it names none. */
+  field?: string
+  value: ReactNode
+  to: string
+  remove: string
+}) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1 rounded-full border border-brand bg-white px-3 py-1 text-brand text-sm no-underline hover:bg-surface-hover"
+      className="flex items-stretch overflow-hidden rounded border border-line-strong bg-white text-ink text-xs no-underline hover:bg-surface-hover"
     >
-      {label}
-      <Icon name="close" aria-hidden="true" />
+      {field !== undefined && (
+        <span className="shrink-0 border-line-strong border-r bg-surface px-2 py-1 font-semibold text-ink-muted">
+          {field}
+        </span>
+      )}
+      <span className="flex min-w-0 flex-1 items-start gap-2 px-2 py-1">
+        <span className="min-w-0 break-words">{value}</span>
+        <Icon name="close" aria-hidden="true" className="ml-auto shrink-0 text-ink-muted" />
+      </span>
       <span className="sr-only">{remove}</span>
     </Link>
   )
@@ -655,27 +783,86 @@ export function Breadcrumb({ label, trail, current }: {
  * the same search, so the choice is shareable and the browser's own history
  * holds it. The trapezoid is v1's, drawn with a skewed leading edge rather than
  * a background image, and sits at the top right of the box it belongs to.
+ *
+ * **The strip ends where the box ends.** A tab is the top edge of the box it
+ * opens, so a gap on the right leaves it floating over the page instead — the
+ * one thing that stops the pair reading as a folder.
+ *
+ * **A tab that is not the current one sits lower and is lit from inside**, and
+ * the one that is stands a step above it and casts a shade upwards. Depth is
+ * what the shape is for: two flat trapezoids side by side say which is filled
+ * white but not which is in front, and the sloped edge then reads as a stray
+ * corner. The tabs overlap for the same reason — the slope has to run *behind*
+ * its neighbour to be an edge rather than a gap.
+ *
+ * **Nothing is outlined.** A face is told from the one behind it by what it is
+ * filled with, which means the tab that is not being read must not be filled
+ * with the page's own tint: with an edge drawn round it that looks like a tab,
+ * and without one it is a hole. `surface-light` is that face — above the page,
+ * below the white box.
+ *
+ * **The corners are the large ones because of that.** Three faces within a few
+ * per cent of each other in lightness (1.05:1 between the tabs, 1.03:1 between
+ * the back tab and the page) draw a 4px arc across one or two pixels, and what
+ * is left reads as a square corner — a line an outline would have drawn
+ * crisply at any radius. Taking the edge away is what makes the radius have to
+ * be big enough to be a shape rather than a hint.
+ *
+ * The one in front is the height of every other thing that can be pressed, and
+ * the other is a pixel under it — enough to step down by, and no more.
  */
 export function SwitchTabs({ label, tabs }: {
   label: string
   tabs: { label: string, to: string, current: boolean }[]
 }) {
   return (
-    <nav aria-label={label} className="-mb-px flex items-end justify-end pr-4">
-      {tabs.map((tab) => (
+    <nav aria-label={label} className="flex items-end justify-end">
+      {tabs.map((tab, at) => (
         <Link
           key={tab.to}
           to={tab.to}
           aria-current={tab.current ? "page" : undefined}
           className={[
-            "relative ml-3.5 flex items-end rounded-tr border-line border-t border-r px-6 pb-1.5 font-bold text-sm no-underline",
+            "relative flex items-center rounded-tr-lg px-6 font-bold text-sm no-underline",
+            // Room for the leading edge of the first one; after that the boxes
+            // meet and the strip is what laps over the tab before it.
+            at === 0 ? "ml-6" : "ml-0",
             // The leading edge: a skewed strip standing to the left of the tab,
             // which makes the left side a slope and the right side upright.
-            "before:absolute before:top-[-1px] before:bottom-0 before:-left-3.5 before:w-3.5",
-            "before:origin-bottom-right before:-skew-x-[25deg] before:rounded-tl before:border-line before:border-t before:border-l before:content-['']",
+            //
+            // **Its width is what the shear costs, and then some.** Sheared
+            // about its own bottom-right corner, the strip's top edge moves
+            // right by tan(25°) × the tab's height — 16.8px at 36px tall. A
+            // strip narrower than that never reaches the tab's own left edge up
+            // there, and what draws the top of the slope is then the box's
+            // square corner standing proud of it.
+            //
+            // **And the overhang has to clear the corner as well.** A rounded
+            // corner starts its arc a radius away from the corner itself, so an
+            // overhang shorter than the radius puts the top of the arc to the
+            // right of the box's own left edge, and the box's square corner is
+            // what draws the first pixels. 24px leaves 7.2px of overhang for a
+            // 4px corner. The overhang is also what closes the seam against the
+            // tab behind: the two boxes meet, and the strip laps over the join
+            // at every height.
+            //
+            // The corner here is the small one while the upright side takes the
+            // large one: this corner is where the slope meets the top at 65°,
+            // and an arc run into an acute corner reaches further along both
+            // edges than the same arc in a square one.
+            "before:absolute before:inset-y-0 before:-left-6 before:w-6",
+            "before:origin-bottom-right before:-skew-x-[25deg] before:rounded-tl before:content-['']",
+            // **Only the one in front reaches into the box below it.** The two
+            // meet at a fractional position, where a shared edge can rasterise
+            // as a hairline of the page between them; a pixel of overlap seals
+            // it, and white over white cannot be seen. The other must not do
+            // the same — a tab is drawn over the box whatever the document
+            // order says (it is the only one of the two that is positioned), so
+            // the pixel it lends is its own fill and the darkest part of its
+            // inner shade, laid across the top of the card.
             tab.current
-              ? "z-10 border-b border-b-white bg-white pt-2 text-brand before:border-b before:border-b-white before:bg-white"
-              : "z-0 border-b bg-surface pt-1.5 text-ink-muted hover:bg-surface-hover before:border-b before:border-line before:bg-surface hover:before:bg-surface-hover",
+              ? "-mb-px z-10 h-tap bg-white text-brand shadow-[0_-2px_3px_rgba(0,0,0,0.02)] before:bg-white"
+              : "z-0 h-[calc(var(--spacing-tap)-1px)] bg-surface-light text-ink-muted shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)] hover:bg-surface-hover before:bg-surface-light before:shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)] hover:before:bg-surface-hover",
           ].join(" ")}
         >
           {tab.label}
@@ -816,32 +1003,135 @@ export function Fold({ summary, note, open = false, children }: {
 }
 
 /**
- * A list cut to a few entries, with the rest a click away.
+ * A list cut to a few entries, with the rest behind the count of them.
  *
- * **The cut is in the markup, not in a scroll box**: a cell in a listing may
- * hold sixty accessions, and a row that grew to sixty lines would push every
- * other row off the screen.
+ * **The rest open where they were cut.** A cell in a listing sits on a row the
+ * reader is holding against the rows above and below it, and a link that took
+ * them to another page to read three more accessions would cost them the
+ * comparison they opened the listing for. So the count is a control rather than
+ * a link, and what it reveals arrives in the same cell.
+ *
+ * **What opens has a ceiling.** The largest research has over two hundred
+ * datasets, and a row grown to hold them would push everything under it off the
+ * screen; past the ceiling the list scrolls where it stands, so the page below
+ * moves by at most one screenful however long the list is.
  */
-export function Clamped({ items, shown = 3, more, children }: {
+export function Clamped({ items, shown = 3, more, less }: {
   items: ReactNode[]
   shown?: number
   /** What the rest are called, given how many there are. */
   more: (rest: number) => ReactNode
-  /** Where the rest can be read. Without one, the count is plain text. */
-  children?: ReactNode
+  /** What the control says once the rest are showing. */
+  less: ReactNode
 }) {
+  const [open, setOpen] = useState(false)
+  // **One left over is never worth a control.** The control takes 18px against
+  // the 22.4px the entry itself would, and this column is not the one that
+  // decides how tall its row is — measured over a hundred research rows, the
+  // twelve cells with exactly one hidden would every one of them have shown it
+  // without the row growing by a pixel. So the last entry is kept rather than
+  // traded for a press that reveals one accession.
+  const cut = items.length - shown > 1
   const rest = items.length - shown
   return (
-    <ul>
-      {items.slice(0, shown).map((item, index) => <li key={index}>{item}</li>)}
-      {rest > 0 && (
-        <li className="text-ink-muted text-sm">
-          {children ?? more(rest)}
-        </li>
+    <>
+      <ul className={open ? "max-h-72 overflow-y-auto" : undefined}>
+        {(open || !cut ? items : items.slice(0, shown)).map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+      {cut && (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => { setOpen(!open) }}
+          className={`${MORE} cursor-pointer`}
+        >
+          {open ? less : more(rest)}
+          {/* Turned to point back the way it came, so that the one drawing says
+              both "there is more this way" and "put it back". */}
+          <Icon name="chevron-right" aria-hidden="true" className={open ? "-rotate-90" : ""} />
+        </button>
       )}
-    </ul>
+    </>
   )
 }
+
+/**
+ * A cell's worth of prose, cut to a few lines with the rest a press away.
+ *
+ * **Cut, not scrolled.** A box that scrolls inside a table row asks the reader
+ * to find a second bar inside the one they are already using, and on a page of
+ * twenty research rows fourteen of them appear at once. What is shown fades
+ * into the row instead, which says there is more without asking for anything;
+ * the previous portal drew the same fade and put the rest behind a dialog.
+ *
+ * **The rest open in place**, the way a shortened list does (`Clamped`), and
+ * under the same ceiling — one of these runs to ninety-four lines, and a row
+ * grown to hold it would put everything below it off the screen.
+ *
+ * The control appears only where there is something behind it, which is
+ * measured rather than guessed: how many lines a paragraph takes depends on the
+ * width its column ended up with, and that is not known until it is drawn.
+ */
+export function Excerpt({ more, less, children }: {
+  /** What the control says while the rest are hidden. */
+  more: ReactNode
+  /** What it says once they are showing. */
+  less: ReactNode
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const [cut, setCut] = useState(false)
+  const body = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = body.current
+    if (el === null) return
+    // Against the shut height rather than the current one: open, the box is as
+    // tall as its contents, and asking whether it overflows would answer no and
+    // take away the control that closes it.
+    const measure = () => {
+      setCut(el.scrollHeight > SHUT + 1)
+    }
+    measure()
+    const watch = new ResizeObserver(() => {
+      measure()
+    })
+    watch.observe(el)
+    return () => {
+      watch.disconnect()
+    }
+  }, [])
+
+  return (
+    <>
+      <div
+        ref={body}
+        className={open ? "max-h-72 overflow-y-auto" : "relative max-h-24 overflow-hidden"}
+      >
+        {children}
+        {!open && cut && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-t from-white to-transparent" />
+        )}
+      </div>
+      {cut && (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => { setOpen(!open) }}
+          className={`${MORE} cursor-pointer`}
+        >
+          {open ? less : more}
+          <Icon name="chevron-right" aria-hidden="true" className={open ? "-rotate-90" : ""} />
+        </button>
+      )}
+    </>
+  )
+}
+
+/** How tall a shut `Excerpt` is, in the units its own class is written in. */
+const SHUT = 96
 
 /* ------------------------------------------------------------------ notes */
 
@@ -945,6 +1235,13 @@ export const MENU_ITEM_HERE
   = "block whitespace-nowrap px-4 py-2 font-bold text-brand text-sm no-underline hover:bg-surface-hover"
 
 /**
+ * Which corners a menu's own control rounds. `left` is for the one `Chooser`
+ * welds something to: the hover fill runs to the edge of the box, so a square
+ * corner under a rounded border shows as a notch.
+ */
+const MENU_CORNER = { all: "rounded-full", left: "rounded-l-full" }
+
+/**
  * A set of actions that would crowd the row they belong to.
  *
  * A `<details>`, so what it holds is in the markup and its own control opens it.
@@ -958,7 +1255,7 @@ export const MENU_ITEM_HERE
  * an entry does not reload the page**, so arriving somewhere has to close it
  * too, which is what the address is watched for.
  */
-export function Menu({ label, icon = "more", round = false, word = false, children }: {
+export function Menu({ label, icon = "more", round = false, word = false, value, corner = "all", children }: {
   label: string
   icon?: IconName
   /** In the top bar, where the controls on either side of it are circles. */
@@ -971,6 +1268,16 @@ export function Menu({ label, icon = "more", round = false, word = false, childr
    * the site — and the one in the bar holds destinations rather than actions.
    */
   word?: boolean
+  /**
+   * What is chosen now, when the menu is a choice rather than a set of actions.
+   *
+   * The control then draws that value and a caret instead of a glyph, and
+   * **the edge around it belongs to `Chooser`** — a choice is read against the
+   * word saying what it chooses, and the two have to sit in one box.
+   */
+  value?: string
+  /** Which corners the control rounds, since `Chooser` may weld one to it. */
+  corner?: keyof typeof MENU_CORNER
   children: ReactNode
 }) {
   const box = useRef<HTMLDetailsElement>(null)
@@ -1010,12 +1317,19 @@ export function Menu({ label, icon = "more", round = false, word = false, childr
       <summary
         aria-label={word ? undefined : label}
         title={word ? undefined : label}
-        className={`inline-flex min-h-tap cursor-pointer list-none items-center justify-center gap-1.5 text-ink-muted marker:content-none hover:bg-surface-hover hover:text-ink ${
-          word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"
+        className={`inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
+          value !== undefined
+            // A control with a word in it is the height of its word and its
+            // padding, the way `Button` is (`docs/ui.md`) — held to the tap
+            // size it stands 2px over everything else in the row it shares.
+            ? `whitespace-nowrap px-4 py-1.5 text-sm ${MENU_CORNER[corner]}`
+            : `min-h-tap text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`
         }`}
       >
-        <Icon name={icon} className="text-base" />
+        {value === undefined && <Icon name={icon} className="text-base" />}
+        {value}
         {word && label}
+        {value !== undefined && <Icon name="chevron-down" aria-hidden="true" />}
       </summary>
       <div className={`absolute right-0 z-20 mt-2 flex ${MENU_PANEL}`}>
         {children}
@@ -1023,6 +1337,62 @@ export function Menu({ label, icon = "more", round = false, word = false, childr
     </details>
   )
 }
+
+/**
+ * A control that names what is chosen now and opens the alternatives.
+ *
+ * **The word saying what is being chosen stays outside the control.** "並び替え"
+ * and "表示件数" are what the value is an answer to, so putting them inside
+ * would make the control read as a value with a caption; beside it, the pair
+ * reads as one sentence and the box holds only the answer.
+ *
+ * **Every alternative is an address**, so the choice is shareable, survives a
+ * reload and needs no script to make — the panel holds links, not a listener.
+ * This is why it is not a `<select>`: a select's options cannot be links, so
+ * the same choice would have to exist twice, once as a form and once as the
+ * address it writes.
+ *
+ * `beside` is welded to the right of it and shares the edge, for a second
+ * control that has no meaning without the first — the direction an ordering
+ * runs in is the only one. **The edge belongs to this box rather than to its
+ * halves**: two boxes 1px apart draw a 2px line between them.
+ */
+export function Chooser({ label, value, beside, children }: {
+  label: string
+  value: string
+  beside?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <span className="inline-flex items-center gap-2 text-sm">
+      <span className="text-ink-muted">{label}</span>
+      <span className={`inline-flex items-stretch rounded-full ${LISTING_CONTROL}`}>
+        <Menu
+          label={`${label}: ${value}`}
+          value={value}
+          corner={beside === undefined ? "all" : "left"}
+        >
+          {children}
+        </Menu>
+        {beside}
+      </span>
+    </span>
+  )
+}
+
+/**
+ * The control welded to the right of a `Chooser`, drawn by the caller because
+ * only the caller knows where it goes.
+ *
+ * **It is the height of what it is welded to, not the tap size.** A glyph on
+ * its own is 36px square everywhere else (`docs/ui.md`), but this one shares an
+ * edge with a control sized by its word — held to 36 it would stand the pair
+ * 2px over the rest of the row. **The press still reaches 36px**: the
+ * pseudo-element takes it out to the pill's own outer edge, which is exactly
+ * the 1px of border on either side.
+ */
+export const CHOOSER_SIDE
+  = "relative inline-flex w-tap items-center justify-center rounded-r-full border-brand border-l text-brand no-underline after:absolute after:-inset-y-px after:content-[''] hover:bg-surface-hover"
 
 /** How far something has got, for the one operation that takes long enough: an upload. */
 export function Progress({ label, done, total }: { label: string, done: number, total: number }) {

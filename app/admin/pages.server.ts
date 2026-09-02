@@ -660,9 +660,9 @@ async function catalogAccepts(
       if (slot.value.kind === "number") {
         // A unit the key does not offer is a form that was gone around; a value
         // the catalog cannot convert would be stored in nobody's unit.
-        if (slot.value.state !== "value" || slot.value.unit === null) return true
-        return (key.inputUnits ?? []).includes(slot.value.unit)
-          && convertible(slot.value.unit, key.canonicalUnit)
+        if (slot.value.state !== "value") return true
+        return slot.value.rows.every((row) => row.unit === null
+          || ((key.inputUnits ?? []).includes(row.unit) && convertible(row.unit, key.canonicalUnit)))
       }
       if (slot.value.kind !== "vocabulary") return true
       if (!key.multiple && slot.value.termIds.length > 1) return false

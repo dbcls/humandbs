@@ -71,12 +71,29 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
 
   it("callout は名前を持つ引用 (注記) になる", () => {
     // v1 が callout と書いたものだけが注記になり、素の引用は引用のまま残る。
-    expect(htmlToMarkdown(":::callout\nhello\n:::")).toBe("> [!NOTE]\n> hello")
-    expect(htmlToMarkdown("::: callout type=\"info\"\n\nhello\n\n:::")).toBe("> [!NOTE]\n> hello")
+    expect(htmlToMarkdown(":::callout\nhello\n:::")).toBe("> [!TIP]\n> hello")
+    expect(htmlToMarkdown("::: callout type=\"info\"\n\nhello\n\n:::")).toBe("> [!TIP]\n> hello")
+  })
+
+  it("callout の種類は綴りを変えて残り、名前の無いものは info になる", () => {
+    const kind = (fence: string) => htmlToMarkdown(`${fence}\nx\n:::`).split("\n")[0]
+    expect(kind(":::callout")).toBe("> [!TIP]")
+    expect(kind("::: callout type=\"info\"")).toBe("> [!TIP]")
+    expect(kind("::: callout type=\"tip\"")).toBe("> [!IMPORTANT]")
+    expect(kind("::: callout type=\"warning\"")).toBe("> [!WARNING]")
+    expect(kind("::: callout type=\"error\"")).toBe("> [!CAUTION]")
+    expect(kind("::: callout type=\"plain\"")).toBe("> [!NOTE]")
+    // v1 の getCalloutType が知らない綴りに落とす先と同じ。
+    expect(kind("::: callout type=\"whatever\"")).toBe("> [!TIP]")
+  })
+
+  it("type 以外の属性を持つ callout は、黙って落とさず変換を止める", () => {
+    expect(() => htmlToMarkdown("::: callout title=\"見出し\"\nx\n:::"))
+      .toThrow(/unhandled callout attribute/)
   })
 
   it("開いた行の中に本文と閉じが並んだ callout も注記になる", () => {
-    expect(htmlToMarkdown("::: callout type=\"info\" hello :::")).toBe("> [!NOTE]\n> hello")
+    expect(htmlToMarkdown("::: callout type=\"info\" hello :::")).toBe("> [!TIP]\n> hello")
   })
 
   it("箇条書きの中の callout は、その項目の中の注記になる", () => {

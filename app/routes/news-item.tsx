@@ -29,7 +29,13 @@ export default function NewsItem({ loaderData }: Route.ComponentProps) {
         current={item.title}
       />
       <Card under={false}>
-        <Stack gap="normal">
+        {/*
+          The date belongs to the title, so it sits close under it; the article
+          is the next thing rather than the rest of the same one, and stands off
+          at the distance between blocks. Read at one step each way the three
+          run together and the date reads as the article's first line.
+        */}
+        <Stack gap="block">
           <Stack gap="tight">
             <Heading title={item.title} />
             <p className="text-ink-muted text-sm">

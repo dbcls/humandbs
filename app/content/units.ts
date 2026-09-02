@@ -17,9 +17,16 @@
  * closed list the catalog carries.
  */
 
+/**
+ * **A data volume steps by 1024 and a sequence length by 1000.** They look like
+ * the same prefixes and they are not: `GB` is written by people reading what a
+ * filesystem reports, which counts in powers of two, while `kbp` is a thousand
+ * bases because a base is a thing you count. Using one rule for both is how a
+ * volume ends up out by 7% and a read length by 2.4%.
+ */
 const GROUPS: readonly Readonly<Record<string, number>>[] = [
   /** Data volume, in gigabytes. */
-  { MB: 1e-3, GB: 1, TB: 1e3, PB: 1e6 },
+  { KB: 1 / 1024 ** 2, MB: 1 / 1024, GB: 1, TB: 1024, PB: 1024 ** 2 },
   /** Sequence length, in bases. */
   { bp: 1, kbp: 1e3, Mbp: 1e6 },
 ]

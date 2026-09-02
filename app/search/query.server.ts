@@ -22,14 +22,29 @@ import type { Executor } from "~/db/client.server"
 import { OPEN_BOUND, type FieldNode, type QueryNode } from "./dsl"
 import type { FacetField, QueryFields } from "./fields"
 
-export const PAGE_SIZE = 20
-
+import { PAGE_SIZE, type PageSize } from "./page-size"
 import type { SearchTarget } from "./target"
-import type { SortKey } from "./sort"
+import type { SortKey, SortOrder } from "./sort"
 
 export type { SearchTarget } from "./target"
 
-export { isSortKey, SORT_KEYS, sortOffer, type SortKey } from "./sort"
+export {
+  isPageSize,
+  PAGE_SIZE,
+  PAGE_SIZES,
+  type PageSize,
+} from "./page-size"
+
+export {
+  defaultOrder,
+  DEFAULT_SORT,
+  isSortKey,
+  isSortOrder,
+  SORT_KEYS,
+  SORT_ORDERS,
+  type SortKey,
+  type SortOrder,
+} from "./sort"
 
 export interface SearchHit {
   targetId: string
@@ -48,8 +63,15 @@ export interface SearchQuery {
 
 export interface SearchRequest extends SearchQuery {
   sort: SortKey
+  order: SortOrder
   /** 1-based. Out of range gives an empty page rather than an error. */
   page: number
+  /**
+   * How many rows to answer with. **Left out means the default**, which is what
+   * the JSON API leaves it as — a caller that never asks for a size cannot be
+   * given a different one by a change here.
+   */
+  size?: PageSize
 }
 
 export interface SearchResult {
@@ -130,7 +152,14 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
   const value = node.value
   if (typeof value !== "string") {
     const column = node.field === "date_modified" ? sql`s.date_modified` : sql`s.date_published`
-    return sql`${column} BETWEEN ${value.from}::date AND ${value.to}::date`
+    // An open end is left out of the test rather than filled with an extreme,
+    // the same as a number's: `[2020-01-01 TO *]` means "since", whatever the
+    // last day in the data happens to be today.
+    const ends: SQL[] = []
+    if (value.from !== OPEN_BOUND) ends.push(sql`${column} >= ${value.from}::date`)
+    if (value.to !== OPEN_BOUND) ends.push(sql`${column} <= ${value.to}::date`)
+    const [first, ...rest] = ends
+    return first === undefined ? sql`TRUE` : sql.join([first, ...rest], sql` AND `)
   }
   switch (node.field) {
     case "id":
@@ -182,18 +211,22 @@ export function hitsCte(query: SearchQuery): SQL {
  * The order rows come back in. Every option ends in the label so that equal
  * keys do not reorder between pages — a row that moves while paging is a row
  * seen twice and a row never seen.
+ *
+ * **A row without a date sits at the end whichever way the dates run.** It is
+ * not earlier or later than the rest, it is the one that cannot be placed, and
+ * putting it first when the order is reversed would hand the reader a page of
+ * blanks for having asked to start at the other end.
  */
-function orderBy(sort: SortKey, target: SearchTarget): SQL {
-  const label = target === "research" ? sql`h.hum_label ASC` : sql`h.dataset_label ASC`
+function orderBy(sort: SortKey, order: SortOrder, target: SearchTarget): SQL {
+  const label = target === "research" ? sql`h.hum_label` : sql`h.dataset_label`
+  const direction = order === "asc" ? sql`ASC` : sql`DESC`
   switch (sort) {
-    case "relevance":
-      return sql`h.score DESC, h.date_modified DESC NULLS LAST, ${label}`
     case "dateModified":
-      return sql`h.date_modified DESC NULLS LAST, ${label}`
+      return sql`h.date_modified ${direction} NULLS LAST, ${label} ASC`
     case "datePublished":
-      return sql`h.date_published DESC NULLS LAST, ${label}`
+      return sql`h.date_published ${direction} NULLS LAST, ${label} ASC`
     case "id":
-      return label
+      return sql`${label} ${direction}`
   }
 }
 
@@ -221,15 +254,16 @@ export async function countMatches(db: Executor, query: SearchQuery): Promise<nu
  */
 export async function searchDocs(db: Executor, request: SearchRequest): Promise<SearchResult> {
   const total = await countMatches(db, request)
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const size = request.size ?? PAGE_SIZE
+  const pageCount = Math.max(1, Math.ceil(total / size))
   const page = Math.max(1, request.page)
   if (page > pageCount) return { total, page, pageCount, hits: [] }
   const result = await db.execute<HitRow>(sql`
     WITH ${hitsCte(request)}
     SELECT h.target_id, h.hum_label, h.dataset_label, h.date_published, h.date_modified
     FROM hits h
-    ORDER BY ${orderBy(request.sort, request.target)}
-    LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}
+    ORDER BY ${orderBy(request.sort, request.order, request.target)}
+    LIMIT ${size} OFFSET ${(page - 1) * size}
   `)
   return { total, page, pageCount, hits: result.rows.map(hitOf) }
 }
@@ -250,7 +284,7 @@ export async function searchAllDocs(
     WITH ${hitsCte(request)}
     SELECT h.target_id, h.hum_label, h.dataset_label, h.date_published, h.date_modified
     FROM hits h
-    ORDER BY ${orderBy(request.sort, request.target)}
+    ORDER BY ${orderBy(request.sort, request.order, request.target)}
   `)
   return result.rows.map(hitOf)
 }

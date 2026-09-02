@@ -66,6 +66,10 @@
   --color-surface: #edeff2;
   --color-surface-hover: #e8eff8;
   --color-surface-input: #f7f7f7;
+  /* A face that is above the page but behind the white box: the tab that is not
+     the one being read. It has to be lighter than the page's own tint, or it is
+     the page and has no shape of its own. */
+  --color-surface-light: #f4f6f9;
 
   --color-danger: #d51616;
   /* Something that needs looking at but is not an error: an untranslated

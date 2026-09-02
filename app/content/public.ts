@@ -114,11 +114,21 @@ export interface PublicResearch {
 export interface PublicDataset {
   content: DatasetContent
   /**
-   * The dates to show. An NHA ID carries its own release date in the content
-   * because no archive has one; everything else takes the archive's values
-   * unchanged. Resolving which of the two applies happens here so that nothing
-   * downstream has to decide it again — `content.releaseDate` is the admin's
-   * input, not the answer.
+   * The dates to show, from whichever of the three masters owns this dataset.
+   *
+   * **A JGAD accession is the application system's, and everything else with an
+   * accession is DDBJ Search's** — both arrive through the cache and are taken
+   * unchanged. **An NHA ID is the portal's own**, and there the content carries
+   * the release date.
+   *
+   * **An NHA dataset has one date, written twice.** The portal does not version
+   * a dataset, so there is no event that could be a later modification: the day
+   * it was published is the day it last changed. Leaving the modification date
+   * empty instead would put a hole in a column that every other dataset fills,
+   * and inventing a second date would be claiming an update nobody made.
+   *
+   * Resolving all of this here means nothing downstream decides it again —
+   * `content.releaseDate` is the admin's input, not the answer.
    */
   dates: ArchiveDates
 }
@@ -171,10 +181,10 @@ export function publicResearchContent(
       targets: rich(content.summary.targets, options),
       url: links(content.summary.url, options),
     },
-    summaryShort: {
-      methods: rich(content.summaryShort.methods, options),
-      targets: rich(content.summaryShort.targets, options),
-      typeOfData: rich(content.summaryShort.typeOfData, options),
+    listingSummary: {
+      methods: rich(content.listingSummary.methods, options),
+      targets: rich(content.listingSummary.targets, options),
+      typeOfData: rich(content.listingSummary.typeOfData, options),
     },
     releaseNote: rich(content.releaseNote, options),
     dataProviders: content.dataProviders.map((provider) => ({
@@ -216,7 +226,9 @@ export function publicResearchContent(
 function publicValue(value: ContentValue, options: PublicOptions): ContentValue | null {
   if (value.kind === "text") return { kind: "text", text: rich(value.text, options) }
   if (options.keepUnsettled) return value
-  const state = value.kind === "vocabulary" ? value.termIds.state : value.value.state
+  const state = value.kind === "vocabulary"
+    ? value.termIds.state
+    : value.kind === "number" ? value.values.state : value.value.state
   return state === "unknown" ? null : value
 }
 
@@ -278,9 +290,11 @@ export function publicDataset(
 ): PublicDataset {
   return {
     content: publicDatasetContent(content, input, options),
-    dates: {
-      datePublished: content.releaseDate ?? input.archive?.datePublished ?? null,
-      dateModified: input.archive?.dateModified ?? null,
-    },
+    dates: content.releaseDate === null
+      ? {
+          datePublished: input.archive?.datePublished ?? null,
+          dateModified: input.archive?.dateModified ?? null,
+        }
+      : { datePublished: content.releaseDate, dateModified: content.releaseDate },
   }
 }

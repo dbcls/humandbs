@@ -78,7 +78,7 @@ const researchContentInputSchema = z.object({
     targets: textPairSchema,
     url: linksPairSchema,
   }),
-  summaryShort: z.object({
+  listingSummary: z.object({
     methods: textPairSchema,
     targets: textPairSchema,
     typeOfData: textPairSchema,
@@ -181,10 +181,10 @@ export function researchContentOf(input: ResearchContentInput): ContentResult {
       targets: prose(input.summary.targets, "summary.targets"),
       url: linksPair(input.summary.url),
     },
-    summaryShort: {
-      methods: prose(input.summaryShort.methods, "summaryShort.methods"),
-      targets: prose(input.summaryShort.targets, "summaryShort.targets"),
-      typeOfData: prose(input.summaryShort.typeOfData, "summaryShort.typeOfData"),
+    listingSummary: {
+      methods: prose(input.listingSummary.methods, "listingSummary.methods"),
+      targets: prose(input.listingSummary.targets, "listingSummary.targets"),
+      typeOfData: prose(input.listingSummary.typeOfData, "listingSummary.typeOfData"),
     },
     releaseNote: prose(input.releaseNote, "releaseNote"),
     dataProviders: input.dataProviders.map((provider) => ({

@@ -54,10 +54,19 @@ export const termSchema = z.object({
   label: textSchema,
 }).meta({ id: "Term" })
 
-/** A number in the key's canonical unit. What was typed to get there is editing. */
+/**
+ * A number in the key's canonical unit. What was typed to get there is editing.
+ *
+ * `label` says which number this is where a key holds several — the part of the
+ * genome counted, the data product measured — and `note` carries what qualifies
+ * it without being part of it. Both are absent when the value does not have one,
+ * so the common case is the same two fields it has always been.
+ */
 export const numberValueSchema = z.object({
   value: z.number(),
   unit: z.string().nullable(),
+  label: z.string().optional(),
+  note: z.string().optional(),
 }).meta({ id: "NumberValue" })
 
 const valueHead = { key: z.string(), label: textSchema }
@@ -68,7 +77,7 @@ export const valueSchema = z.discriminatedUnion("type", [
   z.object({ ...valueHead, type: z.literal("single"), value: z.string().nullable() }),
   z.object({ ...valueHead, type: z.literal("accession"), value: z.string().nullable() }),
   z.object({ ...valueHead, type: z.literal("vocabulary"), terms: z.array(termSchema).nullable() }),
-  z.object({ ...valueHead, type: z.literal("number"), number: numberValueSchema.nullable() }),
+  z.object({ ...valueHead, type: z.literal("number"), numbers: z.array(numberValueSchema).nullable() }),
 ]).meta({ id: "Value" })
 
 export const fileSchema = z.object({
@@ -93,7 +102,7 @@ export const researchSchema = z.object({
     targets: textSchema.optional(),
     url: linksSchema.optional(),
   }),
-  summaryShort: z.object({
+  listingSummary: z.object({
     methods: textSchema.optional(),
     targets: textSchema.optional(),
     typeOfData: textSchema.optional(),

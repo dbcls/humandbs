@@ -143,12 +143,21 @@ describe("管理画面の幅", () => {
 
 /**
  * The corners a box may have (`docs/ui.md`). `rounded` and `rounded-full` are
- * the two anything may take; `rounded-lg` belongs to the one block large enough
- * for a 4px corner to disappear on it — the ways in on the front page — so it
- * is allowed where the parts are written and refused where the screens are.
+ * the two anything may take; `rounded-lg` belongs to what a 4px corner
+ * disappears on — the ways in on the front page, and the listing tabs, which
+ * carry no edge and sit against a face barely lighter than their own — so it is
+ * allowed where the parts are written and refused where the screens are.
+ *
+ * **Naming a corner does not get a utility out of either rule.** `rounded-tr-lg`
+ * is `rounded-lg` on one corner, and a screen that wrote it would otherwise
+ * have slipped past a pattern that only matched the whole box.
  */
-const CHOSEN_CORNER = /^(sm:|md:|lg:|hover:|group-open:)*rounded-(sm|md|xl|2xl|3xl|none)$/
-const LARGE_CORNER = /^(sm:|md:|lg:|hover:|group-open:)*rounded-lg$/
+const CORNER = String.raw`(t|r|b|l|tl|tr|br|bl|s|e|ss|se|es|ee)-`
+const VARIANT = String.raw`(sm:|md:|lg:|hover:|group-open:)*`
+const CHOSEN_CORNER = new RegExp(
+  String.raw`^${VARIANT}rounded-(${CORNER})?(sm|md|xl|2xl|3xl|none)$`,
+)
+const LARGE_CORNER = new RegExp(String.raw`^${VARIANT}rounded-(${CORNER})?lg$`)
 
 describe("角丸", () => {
   it("大きさを選べる角丸を使わない", async () => {
@@ -188,3 +197,92 @@ describe("文字の大きさ", () => {
     expect(offenders).toEqual([])
   })
 })
+
+/**
+ * The tab strip's own arithmetic.
+ *
+ * A tab's slope is the left edge of a strip sheared about its bottom-right
+ * corner, so the strip's top edge sits `tan(angle) x height` to the right of
+ * where it started. **A strip narrower than that never reaches the tab's own
+ * left edge at the top**, and the silhouette up there becomes the box's square
+ * corner standing beside the rounded one — with a wedge of the page showing
+ * between this tab and the one behind it, since the strip is also what laps
+ * over that join.
+ *
+ * Nothing about this is visible in the class list: it is three values in two
+ * files that have to agree, and it has broken twice — once when the tabs grew
+ * from the 30px they were copied at to the height of everything that can be
+ * pressed, and once when the corner grew and made the first break legible.
+ */
+/**
+ * The frozen column of a listing draws its edge with a shadow, and a table
+ * whose borders are collapsed paints its cells as part of its own background —
+ * where a shadow asked for on a cell never reaches the screen. **Nothing about
+ * that shows up anywhere it can be seen from**: the computed style still
+ * carries the shadow, so the only way to notice is to measure the colour of the
+ * pixels that should have been shaded (`docs/ui.md`).
+ */
+/**
+ * A column's floor belongs to `Td`'s own prop, not to the class list beside it.
+ * Two `min-w-*` rules of equal weight are settled by whichever Tailwind emitted
+ * last, so writing one in `className` beside the default made widening a column
+ * appear to work and narrowing one do nothing at all (`docs/ui.md`).
+ */
+describe("列の下限", () => {
+  it("セルが className で min-width を書かない", async () => {
+    const files = [
+      ...await sourcesUnder("routes"),
+      ...await sourcesUnder("components"),
+    ]
+    for (const file of files) {
+      const hits = file.text.match(/<Td\b[^>]*className=(?:"|\{`)[^">]*min-w-/g) ?? []
+      expect({ file: file.name, hits }).toEqual({ file: file.name, hits: [] })
+    }
+  })
+})
+
+describe("表の縁", () => {
+  it("表が、セルの影を描けない引き方をしない", async () => {
+    const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
+    expect(parts).not.toMatch(/\bborder-collapse\b/)
+    expect(parts).toMatch(/\bborder-separate\b/)
+  })
+})
+
+describe("タブの斜辺", () => {
+  it("帯が、せん断が動かす分より広い", async () => {
+    const { width, shear } = await slope()
+    expect(width).toBeGreaterThan(shear)
+  })
+
+  /**
+   * An arc begins a radius away from the corner it rounds, so the strip has to
+   * stand at least that far clear of the box before the corner can be the thing
+   * that draws the silhouette. Short of it, the first pixels down from the top
+   * are the box's own square edge — a nub beside the curve.
+   */
+  it("帯の張り出しが、その角丸より大きい", async () => {
+    const { width, shear, radius } = await slope()
+    expect(width - shear).toBeGreaterThan(radius)
+  })
+})
+
+/** The three numbers the slope is made of, read from where each one lives. */
+async function slope(): Promise<{ width: number, shear: number, radius: number }> {
+  const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
+  const angle = /-skew-x-\[(\d+(?:\.\d+)?)deg\]/.exec(parts)?.[1]
+  const strip = /before:w-(\d+(?:\.\d+)?)\b/.exec(parts)?.[1]
+  const corner = /before:rounded-tl(-(xs|sm|md|lg|xl))?\b/.exec(parts)
+  const theme = await readFile(path.join(ROOT, "app.css"), "utf8")
+  const tap = /--spacing-tap:\s*(\d+(?:\.\d+)?)(rem|px)/.exec(theme)
+  expect([angle, strip, corner, tap]).not.toContain(undefined)
+
+  const RADIUS: Record<string, number> = { xs: 2, sm: 2, md: 6, lg: 8, xl: 12 }
+  const height = Number(tap?.[1]) * (tap?.[2] === "rem" ? 16 : 1)
+  return {
+    // Tailwind's spacing step is 4px, which is what `before:w-6` counts in.
+    width: Number(strip) * 4,
+    shear: Math.tan((Number(angle) * Math.PI) / 180) * height,
+    radius: RADIUS[corner?.[2] ?? ""] ?? 4,
+  }
+}

@@ -29,6 +29,7 @@ import type {
   TranslatedRichText,
   TranslatedText,
   ValueSlot,
+  NumberValue,
 } from "~/content/types"
 import { catalogLabel } from "~/i18n/catalog-label"
 import {
@@ -46,6 +47,29 @@ import {
  * before it gets here, and a preview keeps it precisely so the frame stays
  * visible with the question attached to it.
  */
+/**
+ * One number as a reader sees it: what it is about, the number itself with its
+ * unit, and whatever qualifies it. Each part is dropped when it is absent, so a
+ * key holding a single bare number still reads as that number and nothing else.
+ */
+export function writtenNumber(number: NumberValue): string {
+  // **What was typed, not what was stored.** The canonical unit exists so that
+  // a range can be asked of the key at all; nobody wrote `1351.68 GB`, they
+  // wrote `1.32 TB`, and showing the conversion back to them is the page
+  // answering a question about its own storage.
+  const value = number.inputValue
+  const unit = number.inputUnit
+  // Figures are compared by eye down a column, and six digits without a break
+  // in them cannot be. **A fold and a percentage close up against the number**
+  // — `30x`, `98%` — where a unit that is a word takes a space.
+  const shown = Math.abs(value) >= 10_000 ? value.toLocaleString("en-US") : String(value)
+  const said = unit === null
+    ? shown
+    : `${shown}${/^[x×%倍]$/i.test(unit) ? "" : " "}${unit}`
+  const named = number.label === null ? said : `${number.label}: ${said}`
+  return number.note === null ? named : `${named} (${number.note})`
+}
+
 export type FieldView
   = | { state: "not-applicable" }
     | { state: "unsettled" }
@@ -118,6 +142,15 @@ export interface VocabularyTermView {
   code: string
   labelJa: string | null
   labelEn: string
+  /** Who makes the thing this names, where the value is a product. */
+  maker: string | null
+  /**
+   * Where the value sits among the others under its key. It is what the
+   * catalog orders a key's values by, and the only order a cell holding
+   * several of them has: the rows come back from the search tables in no
+   * order at all.
+   */
+  position: number
 }
 
 export interface CatalogView {
@@ -134,6 +167,14 @@ export interface CatalogView {
  */
 export const ACCESS_TYPE_KEY = "access-criteria"
 export const TYPE_OF_DATA_KEY = "type-of-data"
+
+/**
+ * The key the research listing gives a column of its own. It is scoped to the
+ * experiment rather than to the research, so what a study "runs on" is the
+ * union of what the experiments beneath it carry — which is why the listing
+ * reads it from the facet rows and not from the research's own content.
+ */
+export const PLATFORM_KEY = "platform"
 
 /** A value as one line of text, for saying what a list used to hold. */
 export function fieldText(field: FieldView): string {
@@ -224,19 +265,25 @@ function valueField(
       const slot = value.termIds
       if (slot.state === "not-applicable") return { state: "not-applicable" }
       if (slot.state === "unknown") return { state: "unsettled" }
+      // Catalog order, for the reason `termViews` gives: the ids themselves
+      // carry none, and a key holding several values is read down a column
+      // beside the same key on other pages.
       const labels = slot.value
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
+        .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
         .map((term) => catalogLabel(term, locale))
       return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
     }
     case "number": {
-      if (value.value.state === "not-applicable") return { state: "not-applicable" }
-      if (value.value.state === "unknown") return { state: "unsettled" }
-      const number = value.value.value
+      if (value.values.state === "not-applicable") return { state: "not-applicable" }
+      if (value.values.state === "unknown") return { state: "unsettled" }
+      // A line each, because that is what they are: a key holding several
+      // numbers holds several facts, and running them together makes one
+      // sentence out of readings taken separately.
       return {
-        state: "plain",
-        text: number.unit === null ? String(number.value) : `${number.value} ${number.unit}`,
+        state: "rich",
+        text: value.values.value.map((number) => [{ text: writtenNumber(number) }]),
         untranslated: false,
       }
     }
@@ -289,6 +336,12 @@ function valueUnderCode(
 export interface TermView {
   code: string
   label: string
+  /**
+   * The part of the label naming who made the thing, drawn apart from the rest
+   * (`TermLabel`). Null on everything that is not a product, and on a label
+   * that has been renamed to no longer begin with it.
+   */
+  maker: string | null
 }
 
 export interface DatasetRowView {
@@ -319,7 +372,7 @@ function firstTerm(
   if (value?.kind !== "vocabulary" || value.termIds.state !== "value") return null
   const [termId] = value.termIds.value
   const term = termId === undefined ? undefined : catalog.termById.get(termId)
-  return term === undefined ? null : { code: term.code, label: catalogLabel(term, locale) }
+  return term === undefined ? null : termView(term, locale)
 }
 
 function datasetRowView(
@@ -673,12 +726,19 @@ function selectedFiles(
  */
 export interface ResearchListRowView {
   humLabel: string
-  title: FieldView
   datasetLabels: string[]
-  typeOfData: FieldView
+  title: FieldView
   methods: FieldView
+  typeOfData: FieldView
+  platforms: TermView[]
   targets: FieldView
   accessTypes: TermView[]
+  /**
+   * The representative of each provider, and not the organisation beside it.
+   * The research page carries both under one heading; a cell in a listing holds
+   * a line, and the name is the half a reader scans for.
+   */
+  dataProviders: FieldView[]
   datePublished: string | null
   dateModified: string | null
 }
@@ -690,9 +750,19 @@ export interface ResearchListRowInput {
   datasetLabels: string[]
   /** Distinct access types across the research's published datasets. */
   accessTermIds: string[]
+  /** Distinct platforms across the same datasets. */
+  platformTermIds: string[]
   datePublished: string | null
   dateModified: string | null
 }
+
+/**
+ * The order a list of accession labels reads in. **Numbers in them count as
+ * numbers**, so that `JGAD000290` comes before `JGAD000363` and `hum0014.v2`
+ * before `hum0014.v10`. The order a study's datasets reach us in is the order
+ * someone entered them in a form, which is not an order anyone chose.
+ */
+const BY_LABEL = new Intl.Collator("en", { numeric: true })
 
 export function researchListRowView(
   input: ResearchListRowInput,
@@ -700,26 +770,78 @@ export function researchListRowView(
   catalog: CatalogView,
 ): ResearchListRowView {
   const fallbacks = fallbackTracker()
-  const short = input.content.summaryShort
+  const short = input.content.listingSummary
   return {
     humLabel: input.humLabel,
+    datasetLabels: [...input.datasetLabels].sort((a, b) => BY_LABEL.compare(a, b)),
     title: translated(input.content.title, locale, fallbacks),
-    datasetLabels: input.datasetLabels,
-    typeOfData: prose(short.typeOfData, locale, fallbacks),
     methods: prose(short.methods, locale, fallbacks),
+    typeOfData: prose(short.typeOfData, locale, fallbacks),
+    platforms: termViews(input.platformTermIds, locale, catalog),
     targets: prose(short.targets, locale, fallbacks),
-    accessTypes: input.accessTermIds.flatMap((id) => {
-      const term = catalog.termById.get(id)
-      return term === undefined ? [] : [{ code: term.code, label: catalogLabel(term, locale) }]
-    }),
+    accessTypes: termViews(input.accessTermIds, locale, catalog),
+    dataProviders: input.content.dataProviders.map((provider) =>
+      translated(provider.name, locale, fallbacks)),
     datePublished: input.datePublished,
     dateModified: input.dateModified,
   }
 }
 
+/**
+ * A term as a page draws it. **The maker is only carried where the label still
+ * starts with it** — a curator who renames `Illumina NovaSeq 6000` to something
+ * else has said the two are no longer a prefix and a rest, and drawing them
+ * apart would then cut the label in the wrong place.
+ */
+function termView(term: VocabularyTermView, locale: Locale): TermView {
+  const label = catalogLabel(term, locale)
+  return { code: term.code, label, maker: makerOf(term.maker, label) }
+}
+
+/**
+ * The maker a label is drawn apart from, or null where there is nothing to
+ * take apart. **A renamed label keeps its maker whole** — the two are a prefix
+ * and a rest only while the label still opens with it.
+ */
+export function makerOf(maker: string | null, label: string): string | null {
+  return maker !== null && maker !== "" && label.startsWith(maker) ? maker : null
+}
+
+/**
+ * The terms the catalog still knows, in the order the catalog keeps them.
+ *
+ * **Not the order they arrived in.** The ids come out of the search tables with
+ * no ordering at all, and a cell shows only its first few values before
+ * counting the rest — left alone, which values a reader sees would be an
+ * accident of how the rows came back, and need not survive the next request.
+ */
+function termViews(termIds: readonly string[], locale: Locale, catalog: CatalogView): TermView[] {
+  return termIds
+    .flatMap((id) => {
+      const term = catalog.termById.get(id)
+      return term === undefined ? [] : [term]
+    })
+    .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
+    .map((term) => termView(term, locale))
+}
+
 export interface DatasetListRowView extends DatasetRowView {
   humLabel: string
   dateModified: string | null
+  /**
+   * What the dataset's experiments are called.
+   *
+   * **Free text rather than terms.** The label is the line above the table in
+   * the source article (`Experiment`), and the listing carries it because that
+   * line is how a reader tells one dataset's work from another's. The
+   * controlled values describing the same work sit under catalog keys and are
+   * what the refinement panel counts.
+   *
+   * **Distinct, and in the order the dataset lists them** — a dataset that ran
+   * the same assay twice names it once, and the order is the one a curator put
+   * the experiments in.
+   */
+  experimentLabels: string[]
 }
 
 export interface DatasetListRowInput extends DatasetRowInput {
@@ -733,5 +855,13 @@ export function datasetListRowView(
   catalog: CatalogView,
 ): DatasetListRowView {
   const row = datasetRowView(input, locale, catalog, fallbackTracker())
-  return { ...row, humLabel: input.humLabel, dateModified: input.dateModified }
+  return {
+    ...row,
+    humLabel: input.humLabel,
+    dateModified: input.dateModified,
+    experimentLabels: [...new Set(input.content.experiments.flatMap((experiment) =>
+      experiment.label.state === "value" && experiment.label.value !== ""
+        ? [experiment.label.value]
+        : []))],
+  }
 }

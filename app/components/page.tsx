@@ -1,8 +1,8 @@
-import { createContext, Fragment, useContext, type ReactNode } from "react"
+import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, Note, Stack } from "~/components/base"
-import { Icon } from "~/components/icons"
+import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, LISTING_CONTROL, Note, Stack } from "~/components/base"
+import { Icon, type IconName } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
@@ -39,10 +39,17 @@ export function Annotation({ at }: { at: string }) {
 /**
  * The area a screen draws in.
  *
- * **An article asks for the narrower measure.** A listing wants every column it
- * can get, but a page that is mostly prose — a guideline, a news item, the four
- * pages the code holds — is held to the reading width, which is what v1 does
- * with the same two numbers (`app.css`).
+ * **An article asks for the narrower measure.** A page that is mostly prose — a
+ * guideline, a news item, the four pages the code holds — is held to the reading
+ * width, which is what v1 does with the same two numbers (`app.css`).
+ *
+ * **A listing takes the window.** Its twelve columns ask 1,919px between them
+ * and the panel beside them takes 376 more, so no measure the site could name
+ * holds them on the screens people read this on — one would only be the width
+ * at which the sideways scroll stops, which is past every window in use. Given
+ * the window, the columns have as much as there is and the reader scrolls for
+ * the rest. The management area takes it for a different reason: it has no
+ * measure that would be right on every one of its screens.
  */
 export type PageWidth = "wide" | "reading" | "full"
 
@@ -223,6 +230,69 @@ export function KeyValue({ title, at, children }: {
 }
 
 /**
+ * Where a column that stays put comes to rest when the table is scrolled
+ * sideways, and how wide it is.
+ *
+ * **The width is fixed here rather than left to the contents**, because the
+ * second column can only know where to begin if the first one is a known size.
+ * **Two is as many as this is worth**: what a reader loses first when a dozen
+ * columns run off the side is which row they are reading, and the mark and the
+ * label are the two that say it.
+ *
+ * **A frozen cell carries the band's own start rather than the band's
+ * gradient.** The fill runs the width of the row, so a cell that asked for it
+ * again would run the whole of it inside sixty pixels and start over at its
+ * edge. At the left end of the row, where these two stand, a flat fill and the
+ * gradient's first tenth are the same colour.
+ */
+/**
+ * The width of a column holding a mark and nothing else.
+ *
+ * **The mark is `size-tap` and the cell's padding sits either side of it, so
+ * the column has one width** — but a table narrower than its box shares what it
+ * has over among the columns that name none, and this column would take a share
+ * of it. The two listings would then draw the same mark in columns of different
+ * widths, which is what happened: 60px beside 74px.
+ */
+const MARK_COLUMN = "w-15"
+
+const STUCK = [
+  `sticky left-0 z-10 ${MARK_COLUMN}`,
+  "sticky left-15 z-10 w-26",
+]
+
+/**
+ * The shading on an edge the table can still travel towards.
+ *
+ * **A table wider than its box is the only thing on a public page that scrolls
+ * inside itself, and nothing on the screen says so.** The bar claims no width,
+ * and the box is twice as tall as the window, so even a bar that claimed some
+ * would sit below everything the reader can see. So the box says it, and says
+ * it before being touched: the far edge is shaded from the moment the page
+ * opens, and the shading goes when there is nothing left that way.
+ *
+ * **A shadow rather than a fade to the page behind.** The same strip crosses
+ * the coloured band and the white rows under it, and a shadow is the one
+ * drawing that means the same thing on both.
+ */
+const EDGE_SHADE = "pointer-events-none absolute inset-y-0 w-4"
+
+/**
+ * What the near edge looks like when a frozen column is standing at it.
+ *
+ * What stays and what slides are the same colour, so without this the sentence
+ * passing behind reads as the continuation of the cell that stayed — a row that
+ * says `hum0358` and then half a word of something else. **It is drawn only
+ * while the table is away from its start**: with nothing sliding past there is
+ * nothing to tell apart, and a rule that is there either way is one the reader
+ * has to explain to themselves.
+ */
+const FROZEN_EDGE = "shadow-[6px_0_6px_-6px_rgba(0,34,69,0.45)]"
+
+/** Which frozen column is carrying that edge, or -1 while none is. */
+const FrozenEdgeAt = createContext(-1)
+
+/**
  * A table.
  *
  * **A header is anything, not a string.** A column whose header is a control —
@@ -236,41 +306,99 @@ export function KeyValue({ title, at, children }: {
  * letting the table overflow, and without the ceiling one long summary makes
  * every other column unreadably narrow.
  */
-export function Table({ headers, children }: { headers: ReactNode[], children: ReactNode }) {
+export function Table({ headers, children, stuck = 0 }: {
+  headers: ReactNode[]
+  children: ReactNode
+  /** How many of the leading columns stay put when the table scrolls sideways. */
+  stuck?: number
+}) {
+  const box = useRef<HTMLDivElement>(null)
+  const [reach, setReach] = useState({ back: false, on: false })
+
+  // Both ends are read from the same event, and the state only changes when one
+  // of them crosses: a table this wide holds a hundred cells, and re-drawing
+  // them on every pixel of a drag is what makes a scroll feel heavy.
+  const measure = useCallback(() => {
+    const el = box.current
+    if (el === null) return
+    const room = el.scrollWidth - el.clientWidth
+    setReach((was) => {
+      const back = el.scrollLeft > 1
+      const on = el.scrollLeft < room - 1
+      return was.back === back && was.on === on ? was : { back, on }
+    })
+  }, [])
+
+  // A window that grows can leave a table with nothing to travel towards, so
+  // the far edge is watched as well as the scroll.
+  useEffect(() => {
+    const el = box.current
+    if (el === null) return
+    measure()
+    const watch = new ResizeObserver(() => {
+      measure()
+    })
+    watch.observe(el)
+    return () => {
+      watch.disconnect()
+    }
+  }, [measure])
+
+  const edgeAt = reach.back ? stuck - 1 : -1
+
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full table-auto border-collapse text-sm">
-        <thead>
-          <tr className={`text-left text-white ${BAND_FILL.brand}`}>
-            {/*
-              A header asks for no width of its own: what a column needs is
-              decided by the cells under it, and a header that claimed a floor
-              would widen a column of marks to the width of the word above it.
-            */}
-            {/*
-              **A header that is a control keeps no room of its own.** A mark is
-              36px against a line of 22.4px, so the padding a word needs would
-              make the band half as tall again — which is what made the two
-              listings, drawn from the same frame, open with bands of two
-              different heights.
-            */}
-            {headers.map((header, index) => (
-              <th
-                key={index}
-                className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-2" : "py-0"}`}
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
+    <div className="relative">
+      <div ref={box} className="overflow-x-auto" onScroll={measure}>
+        {/*
+          **Separate borders rather than collapsed ones.** A collapsed table
+          paints its cell boxes as part of the table's own background, and a
+          shadow asked for on a cell never appears — which is what the frozen
+          column needs to draw its edge with. With no spacing between them the
+          two draw the same rules.
+        */}
+        <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr className={`text-left text-white ${BAND_FILL.brand}`}>
+              {/*
+                A header asks for no width of its own: what a column needs is
+                decided by the cells under it, and a header that claimed a floor
+                would widen a column of marks to the width of the word above it.
+              */}
+              {/*
+                **A header that is a control keeps no room of its own.** A mark
+                is 36px against a line of 22.4px, so the padding a word needs
+                would make the band half as tall again — which is what made the
+                two listings, drawn from the same frame, open with bands of two
+                different heights.
+              */}
+              {headers.map((header, index) => (
+                <th
+                  key={index}
+                  className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-2" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} bg-brand ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <FrozenEdgeAt.Provider value={edgeAt}>{children}</FrozenEdgeAt.Provider>
+          </tbody>
+        </table>
+      </div>
+      {/* With a frozen column the near edge is that column's own shadow, so the
+          strip is only drawn where there is nothing standing at it. */}
+      {reach.back && stuck === 0 && (
+        <div className={`${EDGE_SHADE} left-0 bg-linear-to-r from-deep/20 to-transparent`} />
+      )}
+      {reach.on && (
+        <div className={`${EDGE_SHADE} right-0 bg-linear-to-l from-deep/20 to-transparent`} />
+      )}
     </div>
   )
 }
 
-export function Td({ children, nowrap = false, narrow = false, colSpan, className = "" }: {
+export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, floor, className = "" }: {
   children?: ReactNode
   /** For a cell holding an identifier, which must not be broken to fit. */
   nowrap?: boolean
@@ -284,14 +412,34 @@ export function Td({ children, nowrap = false, narrow = false, colSpan, classNam
    * text and the mark rides inside it, at the size a finger still finds.
    */
   narrow?: boolean
+  /**
+   * Which of the table's stuck columns this cell is, when the table has any.
+   * A cell that stays put carries the card's own colour: the ones it slides
+   * over would otherwise read through it.
+   */
+  stuck?: number
   /** For a row that says one thing across several columns. */
   colSpan?: number
+  /**
+   * How narrow this column may become, as a whole `min-w-*` class, where the
+   * default floor is the wrong one for it.
+   *
+   * **A column's floor is written in one place.** A cell that put a second
+   * `min-w-*` beside the default would leave two rules of equal weight to be
+   * settled by whichever Tailwind happened to emit last — which is why widening
+   * a column that way appeared to work and narrowing one silently did not.
+   *
+   * **A frozen column has none**: its width is fixed in `STUCK`, and a floor
+   * beside it would raise the column above the width the next one starts at.
+   */
+  floor?: string
   className?: string
 }) {
+  const edgeAt = useContext(FrozenEdgeAt)
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? "py-0" : "min-w-28 py-2"} ${nowrap ? "whitespace-nowrap" : ""} ${className}`}
+      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-2`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>
@@ -314,10 +462,24 @@ export function Empty({ children }: { children: ReactNode }) {
  * press is the glyph itself, which is a tenth of the area of anything else on
  * the page that can be pressed — so each number sits in one, and the page being
  * read is the one that is filled in.
+ *
+ * **It takes the face and the edge every control over a listing takes**
+ * (`base.tsx` の `LISTING_CONTROL`) **but not its corner.** The numbers stand in
+ * the same row as the ordering, how many rows a page holds and the export, and
+ * a row of controls in three faces reads as three unrelated facilities — the
+ * edge also settles one that was under the requirement, `line` on white coming
+ * to 2.09:1 against the 3:1 the site asks of anything you can operate.
+ *
+ * **The corner is 4px because the box is not full of anything.** A digit is
+ * 7.8px inside 36px — the box is 4.6 times the width of what it holds, and
+ * there are nine of them in a row. Rounded off, the vertical edges go and with
+ * them the sense of a strip of cells: what is left is a chain of rings with a
+ * mark in each, and the eye has nothing to count along. The other controls are
+ * filled by their own words, so a round end there reads as the end of a word.
  */
 const PAGE_BOX = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2"
-const PAGE_STEP = `${PAGE_BOX} border border-line bg-white hover:bg-surface-hover`
-const PAGE_HERE = `${PAGE_BOX} border-transparent bg-brand font-semibold text-white`
+const PAGE_STEP = `${PAGE_BOX} ${LISTING_CONTROL} hover:bg-surface-hover`
+const PAGE_HERE = `${PAGE_BOX} border border-transparent bg-brand font-semibold text-white`
 
 /** How many pages either side are offered one by one, before the steps double. */
 const NEAREST = 3
@@ -504,22 +666,68 @@ export function UntranslatedNotice({ show, locale }: { show: boolean, locale: Lo
 }
 
 /**
+ * A vocabulary value, with the maker set apart from the rest where the value
+ * names a product.
+ *
+ * **The maker takes the link colour and a step of space.** A column of machines
+ * is read as "whose" and then "which", and written as one string the reader has
+ * to find that boundary again on every row; the previous portal drew the same
+ * two parts the same way. **The colour is borrowed, not the meaning** — the
+ * value is not a link, and nothing here is pressable.
+ *
+ * **In the refinement panel only the space does the work.** The whole value is
+ * a link there, so a maker in the link's own colour is the same colour as the
+ * rest — and no colour is better: against the brand the quietest ink the
+ * palette has still only reaches 1.2:1, where against body text the brand
+ * reaches 2.4. One drawing is kept rather than two, and where the colour
+ * cannot separate the words the gap does.
+ *
+ * A value with no maker, or one whose label no longer begins with it, is drawn
+ * whole (`app/public/view.server.ts`).
+ */
+export function TermLabel({ term }: { term: { label: string, maker: string | null } }) {
+  if (term.maker === null) return <>{term.label}</>
+  return (
+    <>
+      {/*
+        **The space is a character, not a margin.** What is copied out of the
+        cell and what a screen reader says are both the text, and drawing the
+        gap alone leaves them holding `IlluminaMiSeq`. The margin is a step on
+        top of it, so the eye sees two things where the text says two words.
+      */}
+      <span className="mr-1 text-brand">{term.maker}</span>
+      {" "}
+      {term.label.slice(term.maker.length).trim()}
+    </>
+  )
+}
+
+/**
  * How a dataset may be used, which is the one thing a reader scanning a listing
  * is looking for.
  *
  * **A lock and the words, not a badge.** The restriction is a property of the
  * dataset rather than a state it is passing through, and forty outlined boxes
- * down a listing read as decoration; v1 draws it the same way. The lock is on
- * the restricted kinds only — an icon on every row would say nothing, and the
- * difference is the whole point.
+ * down a listing read as decoration.
+ *
+ * **Both kinds carry a lock, and the two locks differ.** A shut one in the
+ * colour reserved for what must be noticed says an application stands between
+ * the reader and the data; an open one in the link colour says it does not.
+ * Marking only the restricted kind leaves the other saying nothing at all,
+ * which in a column read at a glance is indistinguishable from a row whose
+ * value is missing.
  */
-const RESTRICTED = new Set(["controlled-access-type-1", "controlled-access-type-2"])
+const LOCK: Record<string, { name: IconName, className: string }> = {
+  "controlled-access-type-1": { name: "lock", className: "text-accent" },
+  "controlled-access-type-2": { name: "lock", className: "text-accent" },
+  "unrestricted-access": { name: "lock-open", className: "text-brand" },
+}
 
 export function AccessTypeBadge({ term }: { term: TermView }) {
-  const restricted = RESTRICTED.has(term.code)
+  const lock = LOCK[term.code]
   return (
     <span className="inline-flex items-center gap-1.5 text-nowrap">
-      {restricted && <Icon name="lock" className="text-accent" />}
+      {lock !== undefined && <Icon name={lock.name} className={lock.className} />}
       {term.label}
     </span>
   )

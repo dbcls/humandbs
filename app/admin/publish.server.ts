@@ -44,6 +44,7 @@ import {
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { diffDatasetInput } from "./dataset-diff"
+import { isPortalIssuedId } from "./labels"
 import { datasetContentInput } from "./dataset-form"
 import { diffDraftInput } from "./diff"
 import { consumeDraft, type DraftAt } from "./drafts.server"
@@ -105,6 +106,8 @@ interface VersionRow {
   id: string
   number: number
   published: boolean
+  /** The day it went out. A fix keeps it, which is why it is read here. */
+  releaseDate: string
   snapshotId: string
   content: ResearchContent
   datasetIds: string[]
@@ -195,6 +198,7 @@ async function readGround(
       id: researchVersion.id,
       number: researchVersion.number,
       published: researchVersion.published,
+      releaseDate: researchVersion.releaseDate,
       snapshotId: researchVersion.snapshotId,
       content: contentSnapshot.content,
     })
@@ -223,6 +227,7 @@ async function readGround(
       id: row.id,
       number: row.number,
       published: row.published,
+      releaseDate: row.releaseDate,
       snapshotId: row.snapshotId,
       content: row.content,
       datasetIds: row.content.datasetIds,
@@ -498,6 +503,7 @@ export async function publishDraft(
     const version = plan.kind === "cut"
       ? await cutVersion(tx, ground, snapshot.id, plan.releaseDate)
       : await replaceSnapshot(tx, plan.version, snapshot.id)
+    const releaseDate = plan.kind === "cut" ? plan.releaseDate : plan.version.releaseDate
 
     const eventId = await recordEvent(tx, {
       actor,
@@ -512,7 +518,7 @@ export async function publishDraft(
       },
     })
 
-    await writeDatasets(tx, ground, datasets, {
+    await writeDatasets(tx, ground, datasets, releaseDate, {
       actor,
       eventId,
       versionNumber: version.number,
@@ -598,10 +604,33 @@ function unchanged(published: DatasetContent, next: DatasetContent): boolean {
  * change are written and recorded — a publish that touched nothing about a
  * dataset says nothing about it.
  */
+/**
+ * The day an NHA dataset carries, for one that has not been given one.
+ *
+ * **Only the portal can answer for an NHA ID** — no archive holds it — and the
+ * only day this publish knows is the one the version is going out on. Writing
+ * it here rather than leaving the field empty is what makes the date a value
+ * somebody can then correct: an admin who disagrees edits it, and every later
+ * publish leaves it alone because it is no longer missing.
+ *
+ * **The date is written once, by the version that first releases the dataset.**
+ * A dataset carried forward into v4 was not published on v4's day.
+ */
+function withReleaseDate(
+  label: string | null,
+  content: DatasetContent,
+  releaseDate: string,
+): DatasetContent {
+  if (content.releaseDate !== null || !isPortalIssuedId(label)) return content
+  return { ...content, releaseDate }
+}
+
 async function writeDatasets(
   tx: Transaction,
   ground: Ground,
   datasets: readonly GateDataset[],
+  /** The day the version being published carries. */
+  releaseDate: string,
   into: {
     actor: EventActor
     eventId: string
@@ -611,7 +640,7 @@ async function writeDatasets(
 ): Promise<void> {
   for (const row of datasets) {
     const published = ground.datasets.get(row.datasetId)?.published ?? null
-    const next = row.content ?? emptyDatasetContent()
+    const next = withReleaseDate(row.label, row.content ?? emptyDatasetContent(), releaseDate)
     if (published !== null && unchanged(published, next)) continue
 
     if (published !== null) {

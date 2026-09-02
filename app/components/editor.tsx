@@ -76,7 +76,7 @@ const SECTIONS = [
   "note",
   "title",
   "summary",
-  "summaryShort",
+  "listingSummary",
   "releaseNote",
   "dataProviders",
   "researchProjects",
@@ -285,19 +285,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         />
       </Section>
 
-      <Section id="summaryShort" title={t.sections.summaryShort}>
+      <Section id="listingSummary" title={t.sections.listingSummary}>
         {(["methods", "targets", "typeOfData"] as const).map((field) => (
           <PairField
             key={field}
-            label={field === "typeOfData"
-              ? messagesFor(locale).dataset.typeOfData
-              : messagesFor(locale).research[field]}
-            value={content.summaryShort[field]}
+            label={messagesFor(locale).research.listingSummary[field]}
+            value={content.listingSummary[field]}
             multiline
-            marks={marksFor(`summaryShort.${field}`)}
+            marks={marksFor(`listingSummary.${field}`)}
             locale={locale}
             onChange={(next) => {
-              editContent((c) => ({ ...c, summaryShort: { ...c.summaryShort, [field]: next } }))
+              editContent((c) => ({ ...c, listingSummary: { ...c.listingSummary, [field]: next } }))
             }}
           />
         ))}

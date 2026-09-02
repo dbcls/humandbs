@@ -400,7 +400,7 @@ describe("rebuildSearchDocs", () => {
     const research1 = await createResearch("hum0001")
     const datasetA = await withExperiments(research1, "JGAD000001", [
       { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
-      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", value: filled({ value: 5, unit: "GB", inputValue: 5, inputUnit: "GB" }) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ label: null, value: 5, unit: "GB", inputValue: 5, inputUnit: "GB", note: null }]) } },
     ])
     const datasetB = await withExperiments(research1, "JGAD000002", [
       { id: "experiment-1", keyId: assayKeyId, value: { kind: "vocabulary", termIds: filled([rnaSeqTermId]) } },
@@ -423,7 +423,7 @@ describe("rebuildSearchDocs", () => {
     const research2 = await createResearch("hum0002")
     const datasetC = await withExperiments(research2, "JGAD000003", [
       { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
-      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", value: filled({ value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB" }) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ label: null, value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB", note: null }]) } },
     ])
     const { id: snapshot2Id } = only(await db.insert(s.contentSnapshot)
       .values({

@@ -63,6 +63,7 @@ describe("the palette", () => {
       "surface",
       "surface-hover",
       "surface-input",
+      "surface-light",
       "visited",
       "warning",
       "warning-surface",

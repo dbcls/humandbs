@@ -129,7 +129,7 @@ class Walk {
     } else if (value.kind === "vocabulary") {
       this.slot(path, presence(value.termIds, (ids) => ids.length === 0))
     } else if (value.kind === "number") {
-      this.slot(path, presence(value.value, () => false))
+      this.slot(path, presence(value.values, (numbers) => numbers.length === 0))
     } else {
       this.slot(path, ofText(value.value))
     }
@@ -148,9 +148,9 @@ export function researchProblems(content: ResearchContent): ContentProblems {
   walk.rich("summary.methods", content.summary.methods)
   walk.rich("summary.targets", content.summary.targets)
   walk.links("summary.url", content.summary.url)
-  walk.rich("summaryShort.methods", content.summaryShort.methods)
-  walk.rich("summaryShort.targets", content.summaryShort.targets)
-  walk.rich("summaryShort.typeOfData", content.summaryShort.typeOfData)
+  walk.rich("listingSummary.methods", content.listingSummary.methods)
+  walk.rich("listingSummary.targets", content.listingSummary.targets)
+  walk.rich("listingSummary.typeOfData", content.listingSummary.typeOfData)
   walk.rich("releaseNote", content.releaseNote)
 
   for (const provider of content.dataProviders) {

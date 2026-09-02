@@ -112,7 +112,7 @@ export default function AdminDraftDatasetUpstream({
                                 </Td>
                                 <Td className="whitespace-nowrap">{row.humLabel ?? ""}</Td>
                                 <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                                <Td className="min-w-64">
+                                <Td floor="min-w-64">
                                   {row.titleJa === "" ? row.titleEn : row.titleJa}
                                 </Td>
                                 <Td className="text-xs">{row.accessions.join(", ")}</Td>

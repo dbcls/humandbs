@@ -28,17 +28,16 @@ import { Icon } from "~/components/icons"
 /**
  * What anything typed into looks like.
  *
- * **Exported because the edge is a requirement rather than a preference**: the
- * border of something you can type into has to reach 3:1 against the page,
- * which is why it is `line-strong` and not `line` ([ui.md](../../docs/ui.md)).
- * A screen that writes its own input class gets that wrong by one word and
- * nothing catches it — so the screens that cannot use `Field` (a refinement
- * panel names its boxes with `aria-label` rather than a visible label) take
- * this string instead of writing one.
+ * **The edge is a requirement rather than a preference**: the border of
+ * something you can type into has to reach 3:1 against the page, which is why
+ * it is `line-strong` and not `line` ([ui.md](../../docs/ui.md)). A screen that
+ * writes its own input class gets that wrong by one word and nothing catches it
+ * — so the screens that cannot use `Field` (a refinement panel names its boxes
+ * with `aria-label` rather than a visible label) take this string instead.
  *
- * The edge is separate from the shape so that a box which is not a small
- * rectangle can take the requirement without the padding that comes with it.
- * **The search box is not one of them** — it is drawn without an edge at all
+ * **This is the edge of what you type into, not of what you operate.** A
+ * control you press or choose from takes `base.tsx` の `LISTING_CONTROL`, and
+ * the search box takes neither — it is drawn without an edge at all
  * (`search.tsx`), being a filled pill with a coloured button in it.
  */
 const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"

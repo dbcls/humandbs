@@ -26,6 +26,7 @@ export interface FacetDefinition {
   labelEn: string
   /** Null when the key has been given no category; those come last, unheaded. */
   categoryCode: string | null
+  /** Null on a category drawn without a heading, and then both are null. */
   categoryLabelJa: string | null
   categoryLabelEn: string | null
   /** Set for a number key: the unit its stored values are in. */
@@ -53,8 +54,13 @@ interface FacetRow extends Record<string, unknown> {
 
 /**
  * The facets, in the order they are shown: by category, then by the position
- * the catalog gives the key inside it. A key with no category sorts after the
- * ones that have one, because a heading cannot come after what it heads.
+ * the catalog gives the key. A key with no category sorts after the ones that
+ * have one, because a heading cannot come after what it heads.
+ *
+ * **The catalog's order, not the code's.** Sorting by code would put the panel
+ * in the alphabetical order of the English slugs, which is no order at all to a
+ * reader of the Japanese side — and the position is the one place the order is
+ * a decision somebody made rather than a side effect of how a key is spelled.
  */
 export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinition[]> {
   const rows = await db
@@ -79,6 +85,7 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
     .orderBy(
       sql`${facetCategory.position} NULLS LAST`,
       asc(facetCategory.code),
+      asc(contentKey.position),
       asc(contentKey.code),
     )
 
@@ -105,6 +112,7 @@ export interface ResolvedTerm {
   code: string
   labelJa: string | null
   labelEn: string
+  maker: string | null
 }
 
 /**
@@ -125,6 +133,7 @@ export async function resolveTerms(
       code: vocabularyTerm.code,
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
+      maker: vocabularyTerm.maker,
     })
     .from(vocabularyTerm)
     .where(and(inArray(vocabularyTerm.setId, setIds), inArray(vocabularyTerm.code, codes)))

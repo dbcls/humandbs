@@ -9,9 +9,14 @@ import {
   ACCESS_TYPE_KEY,
   TYPE_OF_DATA_KEY,
   datasetView,
+  makerOf,
+  researchListRowView,
   researchView,
   type CatalogKeyView,
   type CatalogView,
+  type ResearchListRowInput,
+  type ResearchListRowView,
+  type VocabularyTermView,
 } from "./view.server"
 
 const UNKNOWN: Slot<never> = { state: "unknown" }
@@ -33,8 +38,8 @@ const catalog: CatalogView = {
   keyById: new Map(KEYS.map((k) => [k.id, k])),
   keyByCode: new Map(KEYS.map((k) => [k.code, k])),
   termById: new Map([
-    ["t-open", { code: "unrestricted-access", labelJa: "非制限公開", labelEn: "Unrestricted-access" }],
-    ["t-en-only", { code: "en-only", labelJa: null, labelEn: "English only" }],
+    ["t-open", { code: "unrestricted-access", labelJa: "非制限公開", labelEn: "Unrestricted-access", maker: null, position: 0 }],
+    ["t-en-only", { code: "en-only", labelJa: null, labelEn: "English only", maker: null, position: 1 }],
   ]),
 }
 
@@ -246,7 +251,7 @@ describe("what a dataset page carries", () => {
         },
       ],
     })
-    expect(view.accessType).toEqual({ code: "unrestricted-access", label: "非制限公開" })
+    expect(view.accessType).toEqual({ code: "unrestricted-access", label: "非制限公開", maker: null })
     expect(view.typeOfData).toEqual({ state: "rich", text: [[{ text: "SNP" }]], untranslated: false })
   })
 
@@ -300,14 +305,16 @@ describe("what a dataset page carries", () => {
           keyId: "k-early",
           value: {
             kind: "number",
-            value: filled({ value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB" }),
+            values: filled([
+              { label: null, value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB", note: null },
+            ]),
           },
         }],
       }],
     })
     expect(view.experiments[0]?.values[0]?.field).toEqual({
-      state: "plain",
-      text: "375.31 GB",
+      state: "rich",
+      text: [[{ text: "375.31 GB" }]],
       untranslated: false,
     })
   })
@@ -318,5 +325,111 @@ describe("what a dataset page carries", () => {
       values: [{ keyId: "k-access", value: { kind: "vocabulary", termIds: filled(["t-en-only"]) } }],
     })
     expect(view.accessType?.label).toBe("English only")
+  })
+})
+
+describe("the maker a label is drawn apart from", () => {
+  it("is carried while the label still opens with it", () => {
+    expect(makerOf("Illumina", "Illumina NovaSeq 6000")).toBe("Illumina")
+  })
+
+  it("is nothing where the value names no product", () => {
+    expect(makerOf(null, "Unrestricted-access")).toBeNull()
+  })
+
+  /**
+   * A curator who renames the value has said the two are no longer a prefix and
+   * a rest. Cutting the label at the maker's length anyway would take the wrong
+   * characters off the front of it.
+   */
+  it("is dropped once the label has been renamed away from it", () => {
+    expect(makerOf("Illumina", "NovaSeq 6000 (Illumina)")).toBeNull()
+  })
+
+  it("is dropped when it is empty, so a missing vendor draws nothing apart", () => {
+    expect(makerOf("", "DigiTag2 assay")).toBeNull()
+  })
+})
+
+describe("the several values one listing cell holds", () => {
+  const PLATFORMS: [string, VocabularyTermView][] = [
+    ["t-minion", {
+      code: "oxford-nanopore-technologies-minion",
+      labelJa: null,
+      labelEn: "Oxford Nanopore Technologies MinION",
+      maker: "Oxford Nanopore Technologies",
+      position: 20,
+    }],
+    ["t-novaseq", {
+      code: "illumina-novaseq-6000",
+      labelJa: null,
+      labelEn: "Illumina NovaSeq 6000",
+      maker: "Illumina",
+      position: 8,
+    }],
+    ["t-hiseq", {
+      code: "illumina-hiseq-2500",
+      labelJa: null,
+      labelEn: "Illumina HiSeq 2500",
+      maker: "Illumina",
+      position: 4,
+    }],
+  ]
+  const withPlatforms: CatalogView = {
+    ...catalog,
+    termById: new Map([...catalog.termById, ...PLATFORMS]),
+  }
+
+  function row(input: Partial<ResearchListRowInput>): ResearchListRowView {
+    return researchListRowView({
+      humLabel: "hum0001",
+      content: emptyResearchContent(),
+      datasetLabels: [],
+      accessTermIds: [],
+      platformTermIds: [],
+      datePublished: null,
+      dateModified: null,
+      ...input,
+    }, "en", withPlatforms)
+  }
+
+  it("draws the values in catalog order rather than the order they arrived in", () => {
+    expect(row({ platformTermIds: ["t-minion", "t-novaseq", "t-hiseq"] }).platforms.map((one) => one.label))
+      .toEqual([
+        "Illumina HiSeq 2500",
+        "Illumina NovaSeq 6000",
+        "Oxford Nanopore Technologies MinION",
+      ])
+  })
+
+  /**
+   * The ids come out of the search tables under no ordering, and the cell shows
+   * only its first few values. Two requests that reach the same study have to
+   * show the same three.
+   */
+  it("draws the same order whichever order the ids arrive in", () => {
+    expect(row({ platformTermIds: ["t-hiseq", "t-minion", "t-novaseq"] }).platforms)
+      .toEqual(row({ platformTermIds: ["t-novaseq", "t-hiseq", "t-minion"] }).platforms)
+  })
+
+  it("drops an id the catalog no longer knows instead of leaving a hole", () => {
+    expect(row({ platformTermIds: ["t-novaseq", "t-forgotten"] }).platforms.map((one) => one.label))
+      .toEqual(["Illumina NovaSeq 6000"])
+  })
+
+  it("puts a study's datasets in accession order", () => {
+    expect(row({ datasetLabels: ["JGAD000363", "E-GEAD-420", "JGAD000290"] }).datasetLabels)
+      .toEqual(["E-GEAD-420", "JGAD000290", "JGAD000363"])
+  })
+
+  it("counts the numbers in an accession as numbers, so v2 comes before v10", () => {
+    expect(row({ datasetLabels: ["hum0014.v10.freq.v1", "hum0014.v2.freq.v1"] }).datasetLabels)
+      .toEqual(["hum0014.v2.freq.v1", "hum0014.v10.freq.v1"])
+  })
+
+  it("leaves the array it was handed alone", () => {
+    const labels = ["JGAD000363", "JGAD000290"]
+    row({ datasetLabels: labels })
+    expect(labels).toEqual(["JGAD000363", "JGAD000290"])
   })
 })

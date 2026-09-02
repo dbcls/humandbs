@@ -196,7 +196,9 @@ describe("publishing a draft", () => {
 
     const content = only(await db.select().from(s.datasetContent))
     expect(content.datasetId).toBe(ground.datasetId)
-    expect(content.content).toEqual(described("記述"))
+    // The dataset carries an NHA ID, so this publish also gives it the day the
+    // version is going out on (below).
+    expect(content.content).toEqual({ ...described("記述"), releaseDate: "2026-08-10" })
   })
 
   it("publishes a listed dataset nobody described as an empty one rather than as nothing", async () => {
@@ -209,7 +211,61 @@ describe("publishing a draft", () => {
     )
 
     expect(outcome.status).toBe("published")
-    expect(only(await db.select().from(s.datasetContent)).content).toEqual(emptyDatasetContent())
+    expect(only(await db.select().from(s.datasetContent)).content)
+      .toEqual({ ...emptyDatasetContent(), releaseDate: "2026-08-10" })
+  })
+})
+
+/**
+ * The one date the portal is master of. An NHA ID has no archive to ask, and
+ * the day the version goes out is the only day this publish knows
+ * ([data-model.md](../../docs/data-model.md) の「日付」).
+ */
+describe("the release date an NHA dataset is given", () => {
+  it("is the day the version goes out, when the dataset has none of its own", async () => {
+    const ground = await ready()
+
+    await publishDraft(
+      db,
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+      CURATOR,
+    )
+
+    expect(only(await db.select().from(s.datasetContent)).content.releaseDate).toBe("2026-08-10")
+  })
+
+  it("is left alone when the administrator set one", async () => {
+    const ground = await ready({ describe: false })
+    const saved = await saveDatasetEntry(
+      db,
+      { draftId: ground.draftId, datasetId: ground.datasetId, revision: null },
+      { ...emptyDatasetContent(), releaseDate: "2019-05-05" },
+    )
+    if (saved.status !== "saved") throw new Error(saved.status)
+
+    await publishDraft(
+      db,
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+      CURATOR,
+    )
+
+    expect(only(await db.select().from(s.datasetContent)).content.releaseDate).toBe("2019-05-05")
+  })
+
+  it("is not given to a dataset an archive answers for", async () => {
+    // A JGAD accession takes both of its dates from the application system, so
+    // a date written here would be a second source for the same fact.
+    const ground = await ready()
+    await db.delete(s.labelPin).where(eq(s.labelPin.datasetId, ground.datasetId))
+    await pinDataset(ground.datasetId, "JGAD000001")
+
+    await publishDraft(
+      db,
+      { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+      CURATOR,
+    )
+
+    expect(only(await db.select().from(s.datasetContent)).content.releaseDate).toBeNull()
   })
 })
 
@@ -328,9 +384,12 @@ describe("publishing a fix", () => {
       CURATOR,
     )
 
+    // Both carry the day the version went out: a fix keeps the version's release
+    // date, so the dataset's does not move under it either.
     const kept = only(await db.select().from(s.replacedDatasetContent))
-    expect(kept.content).toEqual(described("記述"))
-    expect(only(await db.select().from(s.datasetContent)).content).toEqual(described("直した記述"))
+    expect(kept.content).toEqual({ ...described("記述"), releaseDate: "2026-08-10" })
+    expect(only(await db.select().from(s.datasetContent)).content)
+      .toEqual({ ...described("直した記述"), releaseDate: "2026-08-10" })
   })
 
   it("says nothing about a dataset it did not change", async () => {

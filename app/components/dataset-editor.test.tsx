@@ -187,9 +187,9 @@ describe("the dataset editing form", () => {
         keyId: NUMBER_KEY,
         value: {
           kind: "number",
-          value: {
+          values: {
             state: "value",
-            value: { value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB" },
+            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
           },
         },
       }],

@@ -152,9 +152,13 @@ function facetValuesOf(
       }
     }
     // The canonical unit is what the facet compares; the entered one is not.
-    if (value.kind === "number" && value.value.state === "value") {
-      const held = value.value.value.value
-      numbers.set(`${slot.keyId}/${held}`, { keyId: slot.keyId, value: held })
+    // Every number the key holds, each its own row: a range asked of the key
+    // is answered by any one of them, which is what makes "a dataset with
+    // several" findable by the one that matches.
+    if (value.kind === "number" && value.values.state === "value") {
+      for (const number of value.values.value) {
+        numbers.set(`${slot.keyId}/${number.value}`, { keyId: slot.keyId, value: number.value })
+      }
     }
   }
   return { terms: [...terms.values()], numbers: [...numbers.values()] }

@@ -42,9 +42,11 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.catalog
+  // A category drawn without a heading still has to be pickable here, and its
+  // code is the only name it has.
   const categories = view.categories.map((category) => ({
     id: category.id,
-    label: catalogLabel(category, locale),
+    label: catalogLabel({ ...category, labelEn: category.labelEn ?? category.code }, locale),
   }))
 
   return (
@@ -116,8 +118,8 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
                       <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
                         <input type="hidden" name="categoryId" value={category.id} />
                         <code className="w-40 shrink-0 self-center">{category.code}</code>
-                        <Field label={t.labelJa} name="labelJa" value={category.labelJa} />
-                        <Field label={t.labelEn} name="labelEn" value={category.labelEn} />
+                        <Field label={t.labelJa} name="labelJa" value={category.labelJa ?? ""} />
+                        <Field label={t.labelEn} name="labelEn" value={category.labelEn ?? ""} />
                         <Submit intent="update-category">{t.save}</Submit>
                         <Submit intent="move-category-up">{t.up}</Submit>
                         <Submit intent="move-category-down">{t.down}</Submit>

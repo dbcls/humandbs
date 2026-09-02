@@ -31,7 +31,12 @@ const fieldClause = fc.oneof(
     })),
   fc.record({ field: fc.constantFrom("date_published", "date_modified"), value: date })
     .map(({ field, value: v }): QueryNode => ({ op: "field", field, valueKind: "date", value: v })),
-  fc.record({ field: fc.constantFrom("date_published", "date_modified"), from: date, to: date })
+  // Either end of a date range may be open, the same as a number's.
+  fc.record({
+    field: fc.constantFrom("date_published", "date_modified"),
+    from: fc.oneof(date, fc.constant("*")),
+    to: fc.oneof(date, fc.constant("*")),
+  })
     .map(({ field, from, to }): QueryNode => ({
       op: "field", field, valueKind: "range", value: { from, to },
     })),

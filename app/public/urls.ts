@@ -76,7 +76,20 @@ export interface SearchParams {
   /** The query language, not what was typed into the box. Omitted when empty. */
   q: string
   sort: string | null
+  /**
+   * Which way `sort` runs, when it is not the way that key runs on its own.
+   * Omitted otherwise, so that the address of a listing opened from a link and
+   * the address of the same listing sorted back again are the one address.
+   */
+  order?: string | null
   page: number
+  /**
+   * How many rows a page holds, when it is not the default. **`null` is the
+   * default size**, decided where the address is read rather than here — this
+   * file writes addresses and does not import the search, which runs on the
+   * server. Omitting it is what keeps one listing to one address.
+   */
+  size?: number | null
   /**
    * The facet whose values are shown in full, and what its own box holds. They
    * say what the panel looks like rather than what the search is, which is why
@@ -95,7 +108,9 @@ export function searchQuery(params: SearchParams): string {
   const search = new URLSearchParams()
   if (params.q !== "") search.set("q", params.q)
   if (params.sort !== null) search.set("sort", params.sort)
+  if (params.order != null && params.order !== "") search.set("order", params.order)
   if (params.page > 1) search.set("page", String(params.page))
+  if (params.size != null) search.set("size", String(params.size))
   if (params.facet != null && params.facet !== "") search.set("facet", params.facet)
   if (params.find != null && params.find !== "") search.set("find", params.find)
   return writtenQuery(search)

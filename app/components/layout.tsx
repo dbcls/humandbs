@@ -17,7 +17,7 @@ import { messagesFor } from "~/i18n/messages"
 import {
   FOOTER,
   NAVBAR,
-  NAVBAR_MORE,
+  NAVBAR_MENU_STEP,
   NAVBAR_STEP,
   navLabel,
   type NavLink as NavLinkItem,
@@ -298,36 +298,26 @@ export function SiteHeader({ locale, account, managing = false }: {
           row runs out, and it holds destinations rather than actions — so it
           carries its name rather than a glyph on its own.
         */}
-            <Menu label={messages.moreNavigation} icon="menu" word>
-              {/*
-            What is here always, then what did not fit today. **No rule
-            between the two**: which side a destination falls on is an
-            accident of the window's width, so a line there tells the reader
-            about the bar rather than about where they can go — and at a width
-            where the bar holds everything, it has nothing under it at all.
+            <div className={NAVBAR_MENU_STEP}>
+              <Menu label={messages.moreNavigation} icon="menu" word>
+                {/*
+            **What did not fit today, and nothing else.** Which side a
+            destination falls on is an accident of the window's width, so at a
+            width where the bar holds everything the menu has nothing under it.
           */}
-              {NAVBAR_MORE.map((item) => (
-                <NavItemLink
-                  key={item.path}
-                  item={item}
-                  locale={locale}
-                  here={path}
-                  className={MENU_ITEM}
-                  whenHere={MENU_ITEM_HERE}
-                />
-              ))}
-              {NAVBAR.map((item, index) => (
-                <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
-                  <NavItemLink
-                    item={item}
-                    locale={locale}
-                    here={path}
-                    className={MENU_ITEM}
-                    whenHere={MENU_ITEM_HERE}
-                  />
-                </span>
-              ))}
-            </Menu>
+                {NAVBAR.map((item, index) => (
+                  <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
+                    <NavItemLink
+                      item={item}
+                      locale={locale}
+                      here={path}
+                      className={MENU_ITEM}
+                      whenHere={MENU_ITEM_HERE}
+                    />
+                  </span>
+                ))}
+              </Menu>
+            </div>
           </nav>
         )}
 

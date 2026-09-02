@@ -23,10 +23,12 @@ import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import { takeAll } from "~/admin/merge"
 import {
   datasetContentInput,
+  emptyNumberRow,
   emptyValueInput,
   UneditableValueKind,
   type DatasetContentInput,
   type ExperimentInput,
+  type NumberRow,
   type ValueInput,
   type ValueKind,
 } from "~/admin/dataset-form"
@@ -486,8 +488,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 marks={marksFor(at)}
                 units={key.inputUnits ?? []}
                 state={body.state}
-                value={body.value}
-                unit={body.unit}
+                rows={body.rows}
                 onChange={(next) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
                 }}
@@ -591,53 +592,115 @@ function AddValue({ locale, keys, onAdd }: {
  * no "empty number" the way there is an empty piece of prose, so leaving it
  * blank is the same as not having added the value at all.
  */
-function NumberField({ label, locale, marks, units, state, value, unit, onChange }: {
+/**
+ * The numbers under one key.
+ *
+ * **A row each, because a key holds a list** (`app/content/types.ts`). What a
+ * v1 curator wrote as one cell — `常染色体: 5,961,600 SNVs` above
+ * `X染色体: 147,353 SNVs` — is two facts, and typing them as two rows is what
+ * makes them countable and filterable instead of prose.
+ *
+ * **The label and the note only appear once they are in use.** Most keys carry
+ * a single bare number, and four boxes where one is wanted is a form that asks
+ * more than the value does. They come out when there is a second row (which is
+ * when "which number is this" starts to have an answer) or when the row already
+ * carries one.
+ */
+function NumberField({ label, locale, marks, units, state, rows, onChange }: {
   label: string
   locale: Locale
   marks: Marks
   units: string[]
   state: SlotState
-  value: string
-  unit: string | null
-  onChange: (next: { state: SlotState, value: string, unit: string | null }) => void
+  rows: NumberRow[]
+  onChange: (next: { state: SlotState, rows: NumberRow[] }) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const disabled = state !== "value"
+  const named = rows.length > 1 || rows.some((row) => row.label !== "" || row.note !== "")
+  const edit = (at: number, next: Partial<NumberRow>) => {
+    onChange({ state, rows: rows.map((row, i) => (i === at ? { ...row, ...next } : row)) })
+  }
 
   return (
     <div className="mt-4 first:mt-0">
       <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="mt-1 flex flex-col gap-2 md:max-w-md">
+      <div className="mt-1 flex flex-col gap-2 md:max-w-xl">
         <StateSwitch
           state={state}
-          onChange={(next) => { onChange({ state: next, value, unit }) }}
+          onChange={(next) => { onChange({ state: next, rows }) }}
           locale={locale}
         />
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            step="any"
-            value={value}
-            disabled={disabled}
-            aria-label={label}
-            onChange={(event) => { onChange({ state, value: event.target.value, unit }) }}
-            className="w-40 rounded border border-line bg-surface-input px-2 py-1"
-          />
-          {units.length > 1
-            ? (
-                <select
-                  value={unit ?? ""}
-                  disabled={disabled}
-                  aria-label={t.unit}
-                  onChange={(event) => { onChange({ state, value, unit: event.target.value }) }}
-                  className="rounded border border-line bg-surface-input px-2 py-1"
-                >
-                  {units.map((one) => <option key={one} value={one}>{one}</option>)}
-                </select>
-              )
-            : unit !== null && <span className="text-ink-muted text-sm">{unit}</span>}
-        </div>
-        {!disabled && value.trim() === "" && (
+        {rows.map((row, at) => (
+          <div key={at} className="flex flex-wrap items-center gap-2">
+            {named && (
+              <input
+                type="text"
+                value={row.label}
+                disabled={disabled}
+                aria-label={t.numberLabel}
+                placeholder={t.numberLabel}
+                onChange={(event) => { edit(at, { label: event.target.value }) }}
+                className="w-36 rounded border border-line bg-surface-input px-2 py-1"
+              />
+            )}
+            <input
+              type="number"
+              step="any"
+              value={row.value}
+              disabled={disabled}
+              aria-label={label}
+              onChange={(event) => { edit(at, { value: event.target.value }) }}
+              className="w-40 rounded border border-line bg-surface-input px-2 py-1"
+            />
+            {units.length > 1
+              ? (
+                  <select
+                    value={row.unit ?? ""}
+                    disabled={disabled}
+                    aria-label={t.unit}
+                    onChange={(event) => { edit(at, { unit: event.target.value }) }}
+                    className="rounded border border-line bg-surface-input px-2 py-1"
+                  >
+                    {units.map((one) => <option key={one} value={one}>{one}</option>)}
+                  </select>
+                )
+              : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
+            {named && (
+              <input
+                type="text"
+                value={row.note}
+                disabled={disabled}
+                aria-label={t.numberNote}
+                placeholder={t.numberNote}
+                onChange={(event) => { edit(at, { note: event.target.value }) }}
+                className="w-36 rounded border border-line bg-surface-input px-2 py-1"
+              />
+            )}
+            {rows.length > 1 && (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => { onChange({ state, rows: rows.filter((_, i) => i !== at) }) }}
+                className="cursor-pointer text-ink-muted text-xs underline"
+              >
+                {t.removeNumber}
+              </button>
+            )}
+          </div>
+        ))}
+        {!disabled && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange({ state, rows: [...rows, emptyNumberRow(units[0] ?? null)] })
+            }}
+            className="cursor-pointer self-start text-brand text-xs underline"
+          >
+            {t.addNumber}
+          </button>
+        )}
+        {!disabled && rows.every((row) => row.value.trim() === "") && (
           <p className="text-ink-muted text-xs">{t.emptyNumber}</p>
         )}
       </div>

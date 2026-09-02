@@ -65,7 +65,7 @@ const editableValueArb = (keyId: string): fc.Arbitrary<ContentValue> => fc.oneof
   }),
   fc.record({
     kind: fc.constant("number" as const),
-    value: slotArb(numberValueArb(CANONICAL_UNITS(keyId))),
+    values: slotArb(fc.array(numberValueArb(CANONICAL_UNITS(keyId)), { minLength: 1, maxLength: 3 })),
   }),
 )
 
@@ -84,7 +84,9 @@ export function CANONICAL_UNITS(keyId: string): string | null {
 /** A stored number under a key with the given unit: already in that unit. */
 function numberValueArb(unit: string | null): fc.Arbitrary<NumberValue> {
   const held = fc.integer({ min: -1_000_000, max: 1_000_000 })
-  return held.map((value) => ({ value, unit, inputValue: value, inputUnit: unit }))
+  return held.map((value) => ({
+    label: null, value, unit, inputValue: value, inputUnit: unit, note: null,
+  }))
 }
 
 const valuesArb: fc.Arbitrary<ValueSlot[]> = fc
