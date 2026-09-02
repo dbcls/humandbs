@@ -31,7 +31,7 @@ def strip_html_tags(text: str) -> str:
 async def get_jga_study_ids_from_ddbj(dataset_id: str) -> tuple[list[str], list[str]]:
     """Fetch JGA study IDs and humIDs from DDBJ search API"""
     ddbj_api_base_url = os.getenv("DDBJ_SEARCH_API_BASE_URL", "https://ddbj.nig.ac.jp/search/api/entries/jga-dataset/")
-    api_url = f"{ddbj_api_base_url}/{dataset_id}"
+    api_url = f"{ddbj_api_base_url.rstrip('/')}/{dataset_id}"
 
     study_id_list: list[str] = []
     hum_id_list: list[str] = []

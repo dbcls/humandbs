@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -11,14 +10,10 @@ from pydantic import BaseModel
 
 from src.prompts import load_prompt
 
-# Load environment variables
-load_dotenv(override=True)
-os.environ["OPIK_PROJECT_NAME"] = "humandb-demo"
-
 # Configure logger
 logger = logging.getLogger("llm_service")
 
-cache_path = Path("work/langchain_cache.db")
+cache_path = Path(os.environ.get("LLM_CACHE_PATH", "work/langchain_cache.db"))
 cache_path.parent.mkdir(parents=True, exist_ok=True)
 set_llm_cache(SQLiteCache(database_path=str(cache_path)))
 
@@ -64,7 +59,7 @@ async def query_openai(prompt: str, system_message: str = None, task_id: str = N
     messages.append({"role": "user", "content": prompt})
 
     llm = _get_llm()
-    return llm.invoke(messages).content
+    return (await llm.ainvoke(messages)).content
 
 
 async def extract_output_from_openai(
@@ -96,7 +91,7 @@ async def extract_output_from_openai(
     # Query LangChain with structured output
     try:
         llm = _get_llm()
-        return llm.with_structured_output(output_model).invoke(messages)
+        return await llm.with_structured_output(output_model).ainvoke(messages)
     except Exception:
         logger.exception("Error querying OpenAI")
         return None
@@ -108,6 +103,8 @@ async def suggest_icd10_code_list(prompt: str, task_id: str = None) -> list[str]
     from src.utils import icd10_canonicalized_text
 
     result = await extract_output_from_openai(prompt, ICD10Suggestion, task_id=task_id)
+    if not result:
+        return []
     return [icd10_canonicalized_text(code) for code in result.icd10_code_list]
 
 

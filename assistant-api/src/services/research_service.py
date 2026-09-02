@@ -22,7 +22,7 @@ retry_options = ExponentialRetry(
 
 async def search_paper_by_title(title: str, task_id: str = None) -> list[dict[str, Any]]:
     task_logger = get_task_logger(task_id)
-    search_result = get_search_response(title)
+    search_result = await get_search_response(title)
     if not search_result:
         task_logger.error(f"Search result is None for title: {title}")
         return None
@@ -61,12 +61,13 @@ async def get_paper_info(
 ) -> ResearchInfo | None:
     """Get research paper information"""
     task_logger = get_task_logger(task_id)
+    paper_info = None
     if id_type == "doi":
         paper_info = await fetch_from_doi(paper_id)
     elif id_type == "pubmed":
         paper_info = await fetch_from_pubmed(paper_id)
         paper_id = "PMID:" + paper_id
-    if id_type == "title" or not paper_info or not paper_info["abstract"] and title:
+    if id_type == "title" or not paper_info or (not paper_info.get("abstract") and title):
         paper_info = await search_paper_by_title(title, task_id)
     if not paper_info:
         task_logger.error(f"Failed to fetch paper info for {paper_id} with id_type {id_type}")
@@ -84,10 +85,14 @@ async def get_paper_info(
         task_id,
     )
 
-    handles_human_data = suggestion_result.handles_human_data if suggestion_result else None
-    human_data_reason = (suggestion_result.human_data_reason or "").strip() if suggestion_result else ""
+    if not suggestion_result:
+        task_logger.error("Failed to generate research suggestions for %s", paper_id)
+        return None
+
+    handles_human_data = suggestion_result.handles_human_data
+    human_data_reason = (suggestion_result.human_data_reason or "").strip()
     human_data_evidence = ""
-    if suggestion_result and suggestion_result.handles_human_data:
+    if suggestion_result.handles_human_data:
         human_data_evidence = (suggestion_result.evidence_excerpt or "").strip()
 
     icd10_code_list = [icd10_canonicalized_text(code) for code in suggestion_result.icd10_code_list]

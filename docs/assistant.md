@@ -84,17 +84,12 @@ volume なので repo には何も溜まらない。
 HUMANDBS_ASSISTANT_ORIGIN=http://assistant-api:8000
 ```
 
-`.env.example` にある以下の変数にも、それぞれ使う外部サービスの値を設定する。Azure OpenAI は
-`HUMANDBS_ASSISTANT_AZURE_OPENAI_MODEL`、`HUMANDBS_ASSISTANT_AZURE_OPENAI_API_KEY`、
-`HUMANDBS_ASSISTANT_AZURE_OPENAI_ENDPOINT`、`HUMANDBS_ASSISTANT_AZURE_OPENAI_API_VERSION`、Google Cloud は
-`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID` と
-`HUMANDBS_ASSISTANT_GOOGLE_GENAI_LOCATION`、Google Custom Search は
-`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_API_KEY` と `HUMANDBS_ASSISTANT_GOOGLE_CSE_ID`、Document AI は
-`HUMANDBS_ASSISTANT_DOCUMENT_AI_LOCATION` と
-`HUMANDBS_ASSISTANT_DOCUMENT_AI_PROCESSOR_ID` を使う。
+使う外部サービスの値は、`.env.example` の `HUMANDBS_ASSISTANT_` で始まる変数に設定する。どの変数が
+何に対応するかは `.env.example` のコメントにある。
 
 Google Cloud のサービスアカウント鍵は、次の場所に `gcp-credentials.json` という名前で置く。
-サービスアカウントには、「Vertex AI Service Agent, Document AI Reader, Maps API Reader」 の役割を付与する必要がある。
+サービスアカウントには Vertex AI User (`roles/aiplatform.user`) と
+Document AI API User (`roles/documentai.apiUser`) を付与する。
 
 ```bash
 cp <service-account-key.json> assistant-api/gcp-credentials.json

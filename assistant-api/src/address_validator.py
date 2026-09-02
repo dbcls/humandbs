@@ -111,6 +111,21 @@ class AddressValidator:
             prompt, AddressSearchResult, grounding_type="map", logger=self.logger
         )
 
+        if not result:
+            self.logger.warning("Failed to determine the relationship between address and organization")
+            return AddressValidationResult(
+                address_exists=True,
+                in_english=is_english_text(address),
+                country_code=country_code,
+                formatted_address=best_result.formatted_address,
+                organization_match=None,
+                organization_distance_km=None,
+                address_geocode=best_result,
+                organization_geocode=None,
+                google_map_urls=[],
+                message="住所の実在が確認されました",
+            )
+
         return AddressValidationResult(
             address_exists=True,
             in_english=is_english_text(address),
@@ -121,8 +136,7 @@ class AddressValidator:
             address_geocode=best_result,
             organization_geocode=None,
             google_map_urls=[(result.location_url, organization_name, "")] if result.location_url else [],
-            message=result.reason
-            or ("住所の実在が確認されました" if result.is_valid else "住所の実在が確認できませんでした"),
+            message=result.reason or "住所の実在が確認されました",
         )
 
     async def _geocode_address(self, address: str) -> list[GeocodeResult]:
@@ -143,7 +157,7 @@ class AddressValidator:
         params = {"address": address, "key": self.api_key, "language": "ja"}
 
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = await asyncio.to_thread(requests.get, url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 

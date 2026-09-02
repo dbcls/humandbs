@@ -134,7 +134,7 @@ def find_latest_research_versions(directory_path: str) -> dict[str, str]:
 research_mapping = find_latest_research_versions(str(HUM_DATASETS_DIR))
 
 
-humandbs_web_base_url = "https://humandbs.dbcls.jp/"
+humandbs_web_base_url = os.environ.get("HUMANDBS_API_ORIGIN", "https://humandbs.dbcls.jp/").rstrip("/")
 
 
 async def extract_text_from_pdf(file_path: str, task_id: str = None) -> str:
@@ -443,12 +443,12 @@ async def _fetch_with_playwright_impl(
                     session.mount("https://", adapter)
 
                     task_logger.info("Using custom SSL context for HTTPS connection")
-                    response = session.get(url, headers=headers, timeout=20, stream=True)
+                    response = await asyncio.to_thread(session.get, url, headers=headers, timeout=20, stream=True)
 
                 except Exception as ssl_error:
                     task_logger.warning(f"Custom SSL context failed: {ssl_error}, trying default requests")
                     # Fallback to default requests if custom SSL fails
-                    response = requests.get(url, headers=headers, timeout=20, stream=True)
+                    response = await asyncio.to_thread(requests.get, url, headers=headers, timeout=20, stream=True)
 
                 response.raise_for_status()
 
@@ -549,7 +549,7 @@ async def _fetch_with_playwright_impl(
             await browser.close()
 
 
-def get_search_response(query, num_results=1, preferred_domain=None):
+async def get_search_response(query, num_results=1, preferred_domain=None):
     """
     Execute search using Google Custom Search API with domain preference
 
@@ -569,20 +569,17 @@ def get_search_response(query, num_results=1, preferred_domain=None):
 
     service = build("customsearch", "v1", developerKey=os.environ.get("GOOGLE_CLOUD_API_KEY"))
 
-    def search_with_date_filter(query_str, date_filter=""):
+    async def search_with_date_filter(query_str, date_filter=""):
         """Helper function to perform search with optional date filter"""
         search_query = query_str + " " + date_filter if date_filter else query_str
         try:
-            response = (
-                service.cse()
-                .list(
-                    q=search_query,
-                    cx=os.environ.get("GOOGLE_CSE_ID"),
-                    num=min(num_results * 2, 10),  # Get more results to have options for filtering
-                    start=1,
-                )
-                .execute()
+            request = service.cse().list(
+                q=search_query,
+                cx=os.environ.get("GOOGLE_CSE_ID"),
+                num=min(num_results * 2, 10),  # Get more results to have options for filtering
+                start=1,
             )
+            response = await asyncio.to_thread(request.execute)
             return response.get("items", [])
         except Exception:  # noqa: E722
             logging.exception("Error in search with query: %s", search_query)
@@ -618,7 +615,7 @@ def get_search_response(query, num_results=1, preferred_domain=None):
     current_year = datetime.now().year
 
     recent_query = query + f" after:{current_year - 1}"
-    results = search_with_date_filter(recent_query)
+    results = await search_with_date_filter(recent_query)
 
     # Count preferred domain results
     preferred_count = 0
@@ -632,7 +629,7 @@ def get_search_response(query, num_results=1, preferred_domain=None):
             preferred_count,
             preferred_domain,
         )
-        all_time_results = search_with_date_filter(query)
+        all_time_results = await search_with_date_filter(query)
 
         # Combine and deduplicate results
         seen_urls = set()
@@ -661,9 +658,7 @@ def get_task_logger(task_id: str | None) -> logging.Logger:
 
     task_logger = logging.getLogger("app.task.default") if not task_id else logging.getLogger(f"app.task.{task_id}")
 
-    # Get log level from environment variable, default to INFO
-    log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
-    log_level = getattr(logging, log_level_str, logging.INFO)
+    log_level = logging.INFO
 
     task_logger.setLevel(log_level)
 
@@ -684,7 +679,7 @@ def get_task_logger(task_id: str | None) -> logging.Logger:
     return task_logger
 
 
-def normalize_icd10_code(icd10_code: str) -> str:
+def normalize_icd10_code(icd10_code: str) -> str | None:
     """
     ICD10コードを正規化する。表記揺れに対応するため、以下の処理を行う:
     - 大文字に統一

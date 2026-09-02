@@ -7,7 +7,6 @@ import traceback
 from typing import Any
 
 import yaml  # Added PyYAML for YAML serialization
-from fastapi import BackgroundTasks
 
 from src.models import (
     ApplicationData,
@@ -34,6 +33,7 @@ from src.utils import (
     get_task_result_path,
     get_upload_path,
     is_english_text,
+    process_multiple_files,
 )
 
 
@@ -219,9 +219,6 @@ async def analyze_datasets_for_application(
 
 
 async def process_application_task(
-    application_data: ApplicationData,
-    ethics_document: EthicsDocumentInfo,
-    background_tasks: BackgroundTasks,
     task_id: str,
     filename: str,
     output_path: str,
@@ -242,6 +239,9 @@ async def process_application_task(
 
         # Start logging
         task_logger.info("Starting application processing...")
+
+        application_file_path = str(get_upload_path(filename))
+        application_data, ethics_document = await process_multiple_files(application_file_path, ethics_file_path)
 
         # Get ICD-10 code for abstract
         abstract_icd10_list = await suggest_icd10_code_list(
@@ -494,16 +494,12 @@ async def process_application_task(
             logging.getLogger("app").error(error_stacktrace)
 
 
-async def add_datasets_to_application_task(
-    task_id: str, new_dataset_ids: list[str], background_tasks: BackgroundTasks = None
-):
+async def add_datasets_to_application_task(task_id: str, new_dataset_ids: list[str]):
     """Add new datasets to an existing application and analyze them
 
     Args:
         task_id: Task ID of the existing application
         new_dataset_ids: List of new dataset IDs to add
-        background_tasks: FastAPI BackgroundTasks (optional)
-
     Returns:
         Dict with status and message
     """

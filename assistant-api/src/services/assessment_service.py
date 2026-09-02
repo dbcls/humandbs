@@ -82,7 +82,7 @@ def template_parameters(
         if research_abstract_translation
         else [],
         "abstract_icd10_list": abstract_icd10_list,
-        "application_analysis_method": application_data.get("application_analysis_method", ""),
+        "application_analysis_method": application_data.get("analysis_method", ""),
         "paper_analysis_method_list": [method for info in research_info_list for method in info.analysis_method_list],
         "paper_icd10_list": [
             icd10_display_text(code) for research_info in research_info_list for code in research_info.icd10_code_list

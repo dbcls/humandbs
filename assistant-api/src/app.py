@@ -24,11 +24,10 @@ from src.utils import (
     get_task_error_path,
     get_task_result_path,
     get_upload_path,
-    process_multiple_files,
 )
 
 # Load environment variables
-load_dotenv(override=True)
+load_dotenv()
 
 
 # Request models
@@ -41,7 +40,7 @@ class RemoveDatasetRequest(BaseModel):
 
 
 # Configure the root logger
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Create a logger instance
 logger = logging.getLogger("app")
@@ -134,9 +133,6 @@ async def process_application(application_file_path: str, background_tasks: Back
         research_plan_file_path = None
 
     try:
-        # Extract data from PDF and ethics documents
-        application_data, ethics_document = await process_multiple_files(application_file_path, ethics_file_path)
-
         task_id = extract_task_id_from_filename(filename)
         output_path = str(get_task_result_path(task_id))
 
@@ -162,12 +158,9 @@ async def process_application(application_file_path: str, background_tasks: Back
         with open(get_task_result_path(task_id), "w", encoding="utf-8") as f:
             yaml.dump(result, f, allow_unicode=True, sort_keys=False)
 
-        # Process application in background
+        # Extract and process the application after the response has been sent.
         background_tasks.add_task(
             process_application_task,
-            application_data,
-            ethics_document,
-            background_tasks,
             task_id,
             filename,
             output_path,
@@ -331,7 +324,7 @@ async def add_datasets_to_application(task_id: str, request: AddDatasetsRequest,
         Result of the dataset addition operation
     """
     try:
-        result = await add_datasets_to_application_task(task_id, request.dataset_ids, background_tasks)
+        result = await add_datasets_to_application_task(task_id, request.dataset_ids)
         return result
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

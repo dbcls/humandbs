@@ -187,7 +187,7 @@ class ChecklistItemResult(BaseModel):
 
 
 class SubmissionApplicationFormData(BaseModel):
-    contact_email_consent: bool = Field(None, description="メールアドレスの連絡先としての使用への同意が明記されている")
+    contact_email_consent: bool | None = Field(None, description="メールアドレスの連絡先としての使用への同意が明記されている")
     email_consent_message: str | None = Field(
         None,
         description="メールアドレスの連絡先としての使用に同意がある場合は同意に関する記載の文面、同意がない場合は判断根拠を記載したメッセージ",
