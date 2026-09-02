@@ -185,7 +185,7 @@ async def get_application_status(task_id: str):
         with open(result_path, encoding="utf-8") as f:
             result = yaml.safe_load(f)
 
-        status = "completed" if result.get("assessment") else "processing"
+        status = result.get("status", "processing")
         assessment = await create_assessment_report(result)
         return {**result, "status": status, "assessment": assessment}
 
