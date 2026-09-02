@@ -41,7 +41,6 @@ LOGS_DIR = WORK_DIR / "logs"
 
 TEMPLATE_DIR = _resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
 DATA_DIR = _resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
-HUM_DATASETS_DIR = DATA_DIR / "hum_datasets"
 ICD10_MAPPING_PATH = DATA_DIR / "icd10_jp_mapping.json"
 
 _PLAYWRIGHT_CACHE_DIR = _resolve_runtime_path(

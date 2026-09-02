@@ -84,19 +84,11 @@ volume なので repo には何も溜まらない。
 HUMANDBS_ASSISTANT_ORIGIN=http://assistant-api:8000
 ```
 
-使う外部サービスの値は、`.env.example` の `HUMANDBS_ASSISTANT_` で始まる変数に設定する。どの変数が
-何に対応するかは `.env.example` のコメントにある。
+使う外部サービスの値は、`.env.example` の `HUMANDBS_ASSISTANT_` で始まる変数に設定する。対応関係は `.env.example` のコメントにある。
 
-Google Cloud のサービスアカウント鍵は、次の場所に `gcp-credentials.json` という名前で置く。
-サービスアカウントには Vertex AI User (`roles/aiplatform.user`) と
-Document AI API User (`roles/documentai.apiUser`) を付与する。
+Google Cloud のサービスアカウント鍵の設定は [assistant-api/README.md](../assistant-api/README.md#google-cloud) を参の照する。
 
-```bash
-cp <service-account-key.json> assistant-api/gcp-credentials.json
-```
-
-このファイルは compose により container 内の `/app/gcp-credentials.json` として読まれ、
-`assistant-api/.gitignore` により Git 管理から除外される。鍵の内容を `.env` や Git に置かない。
+上記設定の完了後、以下のコマンドでアシスタントを起動する。
 
 ```bash
 docker compose --profile assistant up -d
