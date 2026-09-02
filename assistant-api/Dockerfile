@@ -24,6 +24,7 @@ COPY src ./src
 COPY templates ./templates
 
 # Install playwright browsers
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
 
 ENV PYTHONUNBUFFERED=1

@@ -369,12 +369,12 @@ async def verify_with_researcher_page(
     minimum_result_count = 5
 
     logger.info(f"Search researcher_query: {researcher_query}")
-    researcher_search_result = get_search_response(researcher_query, num_results=minimum_result_count)
+    researcher_search_result = await get_search_response(researcher_query, num_results=minimum_result_count)
 
     logger.info(f"Search email_query: {email_query}")
     # メールアドレスを含むクエリの場合、メールドメインを優先ドメインとして使用
     email_domain = email.split("@")[1] if "@" in email else None
-    email_search_result = get_search_response(
+    email_search_result = await get_search_response(
         email_query, num_results=minimum_result_count, preferred_domain=email_domain
     )
 
@@ -401,7 +401,7 @@ async def verify_with_researcher_page(
     if len(search_result) < minimum_result_count:
         researcher_only_query = researcher_name_jp if researcher_name_jp else researcher_name_en
         logger.info(f"Not enough results found, searching with researcher name only: {researcher_only_query}")
-        additional_search_result = get_search_response(researcher_only_query, num_results=minimum_result_count)
+        additional_search_result = await get_search_response(researcher_only_query, num_results=minimum_result_count)
         if additional_search_result is not None:
             search_result += additional_search_result
 
