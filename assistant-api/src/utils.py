@@ -91,48 +91,6 @@ def _load_icd10_descriptions() -> dict[str, str]:
         return {}
 
 
-def find_latest_research_versions(directory_path: str) -> dict[str, str]:
-    """
-    Finds the files matching the pattern hum<research_number>-v<version_number>-ja.json
-    and returns a dictionary mapping research numbers to the filenames with the highest version.
-
-    Args:
-        directory_path: Path to the directory containing the research files
-
-    Returns:
-        A dictionary where keys are research numbers and values are the filenames
-        with the highest version for each research
-    """
-    # Check if directory exists
-    if not os.path.isdir(directory_path):
-        return {}
-
-    # Pattern to match: hum<research_number>-v<version_number>-ja.json
-    pattern = re.compile(r"hum(\d+)-v(\d+)-ja\.json")
-
-    # Dictionary to track the latest version for each research
-    latest_versions: dict[str, dict] = {}
-
-    # List all files in the directory
-    for filename in os.listdir(directory_path):
-        match = pattern.match(filename)
-        if match:
-            research_num = match.group(1)  # Extract research number
-            version_num = int(match.group(2))  # Extract version number as integer
-
-            # Initialize entry or update if this version is higher
-            if research_num not in latest_versions or version_num > latest_versions[research_num]["version"]:
-                latest_versions[research_num] = {"filename": filename, "version": version_num}
-
-    # Create final dictionary with just the filenames
-    result = {research_num: info["filename"] for research_num, info in latest_versions.items()}
-
-    return result
-
-
-research_mapping = find_latest_research_versions(str(HUM_DATASETS_DIR))
-
-
 humandbs_web_base_url = os.environ.get("HUMANDBS_API_ORIGIN", "https://humandbs.dbcls.jp/").rstrip("/")
 
 
