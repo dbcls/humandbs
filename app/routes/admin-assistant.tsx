@@ -4,7 +4,7 @@ import { loadConfig } from "~/config.server"
 import { messagesFor } from "~/i18n/messages"
 import { readLocale } from "~/public/urls"
 
-import { AssistantWorkspace } from "./admin-assistant-client"
+import { AssistantContents } from "./admin-assistant-client"
 
 import type { Route } from "./+types/admin-assistant"
 
@@ -46,7 +46,7 @@ export default function AdminAssistant({ loaderData }: Route.ComponentProps) {
   return (
     <Page>
       <PageHead label={words.heading} />
-      {deployed ? <AssistantWorkspace locale={locale} /> : <Card><Empty>{words.absent}</Empty></Card>}
+      {deployed ? <AssistantContents locale={locale} /> : <Card><Empty>{words.absent}</Empty></Card>}
     </Page>
   )
 }

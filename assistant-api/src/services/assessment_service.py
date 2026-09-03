@@ -94,6 +94,7 @@ def template_parameters(
         "submitter_verification_result": application_data.get("submitter_verification_result", {}),
         "head_of_institution_verification_result": application_data.get("head_of_institution_verification_result", {}),
         "ethics_document_info": application_data.get("ethics_document", {}),
+        "ethics_document_validation_result": application_data.get("ethics_document_validation_result", {}),
         "papers": research_info_list,
         "dataset_analysis_list": dataset_analysis_list,
         "dataset_info_list": application_data.get("dataset_info_list", []),
@@ -102,8 +103,19 @@ def template_parameters(
         "email_domain_consistency_result": application_data.get("email_domain_consistency_result", {}),
         "period_of_data_use_end": application_data.get("period_of_data_use_end", ""),
         "submission_application_check_result": application_data.get("submission_application_check_result", {}),
+        "research_plan_validation_result": application_data.get("research_plan_validation_result", {}),
         "humandbs_web_base_url": humandbs_web_base_url,
         "application_data": application_data,
+    }
+
+
+def assessment_data(application_data: dict) -> dict:
+    """Build the structured view consumed by the portal's assistant screen."""
+    parameters = template_parameters(application_data)
+    return {
+        key: value
+        for key, value in parameters.items()
+        if key not in {"application_data", "humandbs_web_base_url"}
     }
 
 

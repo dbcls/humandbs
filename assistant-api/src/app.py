@@ -7,11 +7,12 @@ import uvicorn
 import yaml  # Added PyYAML for YAML serialization
 from docx import Document
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from src.services.assessment_service import create_assessment_report, create_handout
+from src.services.assessment_service import assessment_data, create_handout
 from src.tasks import add_datasets_to_application_task, process_application_task, remove_dataset_from_application_task
 from src.utils import (
     determine_application_type_from_filename,
@@ -186,8 +187,8 @@ async def get_application_status(task_id: str):
             result = yaml.safe_load(f)
 
         status = result.get("status", "processing")
-        assessment = await create_assessment_report(result)
-        return {**result, "status": status, "assessment": assessment}
+        report = jsonable_encoder(assessment_data(result)) if status == "completed" else None
+        return {**result, "status": status, "assessment_data": report}
 
     # Still processing
     return {"status": "processing", "task_id": task_id}
