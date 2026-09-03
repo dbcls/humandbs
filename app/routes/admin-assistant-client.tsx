@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react"
 
 import { assistantApiPath } from "~/admin/urls"
-import { Button, ButtonLink, Fold, Note, Stack } from "~/components/base"
-import { Icon } from "~/components/icons"
+import { Fold, Note, Stack } from "~/components/base"
 import {
-  Card,
   Empty,
   KeyValue,
   Pairs,
@@ -15,9 +13,13 @@ import {
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-type Status = "processing" | "completed" | "error" | "pending"
+import { AdminAssistantTaskDetail } from "./admin-assistant-task-detail"
+import { AdminAssistantTaskList } from "./admin-assistant-task-list"
+import { AdminAssistantUploadForm } from "./admin-assistant-upload-form"
 
-interface Task {
+export type Status = "processing" | "completed" | "error" | "pending"
+
+export interface Task {
   task_id: string
   status: Status
   created_at?: string
@@ -25,7 +27,7 @@ interface Task {
   application_type?: string
 }
 
-interface TaskDetail extends Task {
+export interface TaskDetail extends Task {
   filename?: string
   assessment_data?: AssessmentData | null
   error?: string
@@ -669,21 +671,6 @@ function errorMessage(response: Response, fallback: string): Promise<string> {
     .catch(() => fallback)
 }
 
-function formatTime(value: string | undefined, locale: Locale): string {
-  if (value === undefined) return "-"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString(locale === "ja" ? "ja-JP" : "en-GB")
-}
-
-function statusClass(status: Status): string {
-  if (status === "completed") return "text-ink-muted"
-  if (status === "error") return "text-danger"
-  if (status === "pending") return "text-warning"
-  return "text-brand"
-}
-
 export function AssistantContents({ locale }: { locale: Locale }) {
   const words = messagesFor(locale).admin.assistant
   const [application, setApplication] = useState<File | null>(null)
@@ -837,261 +824,53 @@ export function AssistantContents({ locale }: { locale: Locale }) {
           {notice.text}
         </Note>
       )}
-      <Card under={false}>
-        <form onSubmit={(event) => { void submit(event) }}>
-          <Stack>
-            <Section title={words.uploadHeading}>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <FileInput
-                  label={words.applicationFile}
-                  required
-                  file={application}
-                  disabled={busy}
-                  onChange={setApplication}
-                />
-                <FileInput
-                  label={words.ethicsFile}
-                  file={ethics}
-                  disabled={busy}
-                  onChange={setEthics}
-                />
-                <FileInput
-                  label={words.planFile}
-                  file={plan}
-                  disabled={busy}
-                  onChange={setPlan}
-                />
-              </div>
-            </Section>
-            <div>
-              <Button
-                variant="primary"
-                disabled={busy}
-                icon={(
-                  <Icon
-                    name={busy ? "spinner" : "upload"}
-                    className={busy ? "animate-spin" : ""}
-                  />
-                )}
-              >
-                {busy ? words.uploading : words.upload}
-              </Button>
-            </div>
-          </Stack>
-        </form>
-      </Card>
-      <Card under={false}>
-        <Stack>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold text-brand text-lg">
-              {words.listHeading}
-            </h2>
-            <Button
-              type="button"
-              icon={<Icon name="undo" />}
-              disabled={loading}
-              onClick={() => {
-                void loadTasks()
-              }}
-            >
-              {words.refresh}
-            </Button>
-          </div>
-          {loading && tasks.length === 0
-            ? (
-                <Empty>{words.loading}</Empty>
-              )
-            : tasks.length === 0
-              ? (
-                  <Empty>{words.none}</Empty>
-                )
-              : (
-                  <Table
-                    headers={[
-                      words.taskId,
-                      words.applicationType,
-                      words.status,
-                      words.updated,
-                    ]}
-                  >
-                    {tasks.map((task) => (
-                      <tr
-                        key={task.task_id}
-                        className={
-                          selected?.task_id === task.task_id ? "bg-surface-hover" : ""
-                        }
-                      >
-                        <Td nowrap>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void loadDetail(task.task_id).catch((error: unknown) => {
-                                setNotice({
-                                  ok: false,
-                                  text:
-                              error instanceof Error
-                                ? error.message
-                                : words.loadFailed,
-                                })
-                              },
-                              )
-                            }}
-                            className="cursor-pointer text-left font-mono text-brand underline"
-                          >
-                            {task.task_id}
-                          </button>
-                        </Td>
-                        <Td>{task.application_type ?? "-"}</Td>
-                        <Td>
-                          <span className={statusClass(task.status)}>
-                            {words.statuses[task.status]}
-                          </span>
-                        </Td>
-                        <Td>
-                          {formatTime(task.updated_at ?? task.created_at, locale)}
-                        </Td>
-                      </tr>
-                    ))}
-                  </Table>
-                )}
-        </Stack>
-      </Card>
+      <AdminAssistantUploadForm
+        application={application}
+        ethics={ethics}
+        plan={plan}
+        busy={busy}
+        words={words}
+        onSubmit={(event) => { void submit(event) }}
+        onApplicationChange={setApplication}
+        onEthicsChange={setEthics}
+        onPlanChange={setPlan}
+      />
+      <AdminAssistantTaskList
+        tasks={tasks}
+        selectedTaskId={selected?.task_id}
+        loading={loading}
+        locale={locale}
+        words={words}
+        onRefresh={() => { void loadTasks() }}
+        onSelect={(taskId) => {
+          void loadDetail(taskId).catch((error: unknown) => {
+            setNotice({
+              ok: false,
+              text: error instanceof Error ? error.message : words.loadFailed,
+            })
+          })
+        }}
+      />
       {selected !== null && (
-        <TaskDetailView
+        <AdminAssistantTaskDetail
           detail={selected}
           locale={locale}
           busy={busy}
           onReanalyze={() => {
             void reanalyze()
           }}
-        />
+        >
+          {selected.assessment_data !== null
+            && selected.assessment_data !== undefined && (
+            <AssistantReport
+              report={selected.assessment_data}
+              words={words}
+              applicationType={selected.application_type}
+            />
+          )}
+        </AdminAssistantTaskDetail>
       )}
     </Stack>
-  )
-}
-
-function FileInput({
-  label,
-  required = false,
-  file,
-  disabled,
-  onChange,
-}: {
-  label: string
-  required?: boolean
-  file: File | null
-  disabled: boolean
-  onChange: (file: File | null) => void
-}) {
-  return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="font-semibold text-ink-muted text-xs">{label}</span>
-      <input
-        type="file"
-        accept="application/pdf"
-        required={required}
-        disabled={disabled}
-        onChange={(event) => { onChange(event.target.files?.[0] ?? null) }}
-        className="text-sm file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand"
-      />
-      {file !== null && (
-        <span className="truncate text-ink-muted text-xs">{file.name}</span>
-      )}
-    </label>
-  )
-}
-
-function TaskDetailView({
-  detail,
-  locale,
-  busy,
-  onReanalyze,
-}: {
-  detail: TaskDetail
-  locale: Locale
-  busy: boolean
-  onReanalyze: () => void
-}) {
-  const words = messagesFor(locale).admin.assistant
-  const pdf
-    = detail.filename === undefined
-      ? null
-      : assistantApiPath(`uploads/${encodeURIComponent(detail.filename)}`)
-  const handout = assistantApiPath(
-    `applications/${encodeURIComponent(detail.task_id)}/handout`,
-  )
-  const word = assistantApiPath(
-    `applications/${encodeURIComponent(detail.task_id)}/handout/word`,
-  )
-  return (
-    <Card under={false}>
-      <Stack>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-brand text-lg">
-            {words.detailHeading(detail.task_id)}
-          </h2>
-          <span className={`${statusClass(detail.status)} text-sm`}>
-            {words.statuses[detail.status]}
-          </span>
-        </div>
-        <Pairs>
-          <KeyValue title={words.created}>
-            {formatTime(detail.created_at, locale)}
-          </KeyValue>
-          <KeyValue title={words.updated}>
-            {formatTime(detail.updated_at, locale)}
-          </KeyValue>
-        </Pairs>
-        {detail.message !== undefined && <Note>{detail.message}</Note>}
-        {detail.error !== undefined && (
-          <Note kind="danger">{detail.error}</Note>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            disabled={
-              busy
-              || detail.status === "processing"
-              || detail.status === "pending"
-            }
-            onClick={() => {
-              onReanalyze()
-            }}
-            icon={<Icon name="undo" />}
-          >
-            {words.reanalyze}
-          </Button>
-          {pdf !== null && (
-            <ButtonLink to={pdf} external newTab icon={<Icon name="eye" />}>
-              {words.openPdf}
-            </ButtonLink>
-          )}
-          {detail.status === "completed" && (
-            <>
-              <ButtonLink
-                to={handout}
-                external
-                newTab
-                icon={<Icon name="eye" />}
-              >
-                {words.handout}
-              </ButtonLink>
-              <ButtonLink to={word} external icon={<Icon name="download" />}>
-                {words.downloadWord}
-              </ButtonLink>
-            </>
-          )}
-        </div>
-        {detail.assessment_data !== null
-          && detail.assessment_data !== undefined && (
-          <AssistantReport
-            report={detail.assessment_data}
-            words={words}
-            applicationType={detail.application_type}
-          />
-        )}
-      </Stack>
-    </Card>
   )
 }
 
