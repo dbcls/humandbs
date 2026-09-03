@@ -83,23 +83,26 @@ install を先に済ませるのは、`app` の command が build から始ま�
 
 ```bash
 git pull
-podman-compose restart app
+podman-compose restart app proxy
 ```
 
-service を並べるのは `up -d` のときだけで、`restart` は動いているものだけを見る。
+restart が build し直して serve し直すので、アプリだけの変更ならこれで終わり。
 
-**定義を変えたときは `down` を挟む。** `up -d` は既にある container を作り直さず、名前が使われていると
-start に落ちるだけなので、変えたはずの設定が入らないまま動き続ける。
+**proxy も一緒に restart する。** restart した container には新しいアドレスが振られるのに、nginx は
+upstream の名前を読み込みのときに 1 度しか引かないので、`app` だけ入れ替えると proxy は消えたアドレスへ
+繋ぎ続け、サイト全体が 502 になる。
 
-restart で build し直して serve し直すので、frontend だけの変更ならこれで終わり。それ以外が絡むときは
-下記を足す。
+それ以外が絡むときは下記を足す。
 
 | 変わったもの | 追加ですること |
 |---|---|
 | `package-lock.json` | 先に `podman-compose run --rm -T app npm ci --include=dev` |
 | schema | `podman-compose exec app npm run db:push` |
-| `compose*.yml` / `.env` | `podman-compose down` してから `up -d` |
+| `compose*.yml` / `.env` | `podman-compose down` してから `up -d` (service を並べて) |
 | `docker/nginx/default.conf` | `podman-compose restart proxy` (bind mount なので `up -d` では変わらない) |
+
+**定義を変えたときに `down` を挟むのは、`up -d` が既にある container を作り直さないから。** 名前が
+使われていると start に落ちるだけなので、変えたはずの設定が入らないまま動き続ける。
 
 ## データを入れる
 

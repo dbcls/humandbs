@@ -146,7 +146,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-
+      start_period: 20s
     init: true
 
   proxy:
