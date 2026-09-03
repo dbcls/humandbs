@@ -36,6 +36,7 @@ import type { CauUsage, StoredFile } from "~/content/public"
 import { toPlainText } from "~/content/richtext"
 import type {
   DatasetContent,
+  DiseaseValue,
   LocalizedLinks,
   NumberValue,
   ResearchContent,
@@ -49,6 +50,7 @@ import type { CatalogView } from "~/public/view.server"
 
 import type {
   ApiDataset,
+  ApiDisease,
   ApiLink,
   ApiLinks,
   ApiNumber,
@@ -185,7 +187,34 @@ function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
       const numbers = numberOf(value.values)
       return numbers === undefined ? undefined : { ...head, type: "number", numbers }
     }
+    case "disease": {
+      const diseases = diseasesOf(value.diseases, catalog)
+      return diseases === undefined ? undefined : { ...head, type: "disease", diseases }
+    }
   }
+}
+
+/**
+ * **A disease answers with both names.** The terms carry what a classification
+ * calls it, `name` what the article called it, and neither replaces the other:
+ * a reader looking for `NASH` will not find `その他の明示された炎症性肝疾患`,
+ * and a client counting diseases needs the code. **The terms may be empty**, so
+ * a code cannot be assumed (`docs/public-api.md`).
+ */
+function diseasesOf(
+  slot: Slot<DiseaseValue[]>,
+  catalog: CatalogView,
+): ApiDisease[] | null | undefined {
+  if (slot.state === "not-applicable") return null
+  if (slot.state === "unknown") return undefined
+  const diseases = slot.value.map((one) => ({
+    terms: one.termIds.flatMap((id) => {
+      const term = catalog.termById.get(id)
+      return term === undefined ? [] : [{ code: term.code, label: labelOf(term) }]
+    }),
+    name: plainPair(one.nameJa ?? "", one.nameEn ?? ""),
+  }))
+  return diseases.length === 0 ? undefined : diseases
 }
 
 function valuesOf(slots: readonly ValueSlot[], catalog: CatalogView): ApiValue[] {

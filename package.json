@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:db": "vitest run --project db",
-    "db:push": "drizzle-kit push && npm run db:grants",
+    "db:push": "drizzle-kit push && npm run db:grants && tsx scripts/push-test-db.ts",
     "db:grants": "tsx scripts/grants.ts",
     "db:load-dev-data": "tsx migration/run.ts",
     "s3:buckets": "tsx scripts/buckets.ts",

@@ -160,6 +160,33 @@ export interface NumberValue {
  * everything else holds one. Putting a state on the slot as well would be a
  * second place to say the same thing.
  */
+/**
+ * One disease an experiment studied: **what a classification calls it, and what
+ * the article called it.**
+ *
+ * The two names answer different questions and neither replaces the other. The
+ * terms carry the classification's own heading, which is what makes a disease
+ * countable — every value under `C34` is the same disease to a facet. The name
+ * is what the article wrote, and that is what a reader reads: `NASH`, not
+ * `その他の明示された炎症性肝疾患`.
+ *
+ * **The name belongs to the value, not to the term.** The same code is written
+ * differently by different studies, and the difference is not a spelling
+ * variant — `Colorectal cancer with liver metastasis` states which patients a
+ * study took. Hanging the name on the term would collapse them
+ * (`docs/data-model.md` の「ICD10」).
+ *
+ * **The terms may be none, and may span sets.** A disease no classification
+ * names is an ordinary value with a name only, and a rare disease can carry
+ * both an ICD10 term and a term of another classification. Nothing here knows
+ * which classification a term belongs to: the set is the classification.
+ */
+export interface DiseaseValue {
+  termIds: string[]
+  nameJa: string | null
+  nameEn: string | null
+}
+
 export type ContentValue
   = | { kind: "text", text: TranslatedRichText }
     | { kind: "single", value: Slot<string> }
@@ -171,6 +198,8 @@ export type ContentValue
      * storing a value that says nothing (`app/admin/dataset-form.server.ts`).
      */
     | { kind: "number", values: Slot<NumberValue[]> }
+    /** Same rule as the numbers: an empty list is a slot that should not exist. */
+    | { kind: "disease", diseases: Slot<DiseaseValue[]> }
 
 export interface ValueSlot {
   /** References `content_key.id`. */

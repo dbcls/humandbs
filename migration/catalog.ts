@@ -31,7 +31,7 @@ export { FACET_CATEGORIES, slugify } from "./facets"
 export interface ContentKeySeed {
   code: string
   scope: "dataset" | "experiment"
-  valueType: "text" | "single" | "accession" | "vocabulary" | "number"
+  valueType: "text" | "single" | "accession" | "vocabulary" | "number" | "disease"
   labelJa: string
   labelEn: string
   position: number
@@ -215,7 +215,7 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
         position: 0,
         showOnPublicPage: SHOWN_NEW_KEYS.has(facet.code),
       }),
-      valueType: "vocabulary" as const,
+      valueType: facet.valueType,
       vocabularySetCode: facet.setCode,
       facetCategoryCode: facet.categoryCode,
       multiple: takesMany(facet),

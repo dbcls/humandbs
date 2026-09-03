@@ -1,7 +1,15 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { icd10Code, icd10Parent, mergeEntries, parseWhoMeta, type Icd10Entry } from "./codes"
+import {
+  icd10Code,
+  icd10CodesIn,
+  icd10Parent,
+  icd10Resolve,
+  mergeEntries,
+  parseWhoMeta,
+  type Icd10Entry,
+} from "./codes"
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
 
@@ -86,6 +94,64 @@ describe("reading WHO's distribution", () => {
         expect(icd10Code(entry.code)).toBe(entry.code)
         expect(entry.titleEn).not.toBe("")
       }
+    }))
+  })
+})
+
+describe("the codes an annotation names", () => {
+  it("gives codes of the classification, each one once", () => {
+    fc.assert(fc.property(fc.string(), (raw) => {
+      const held = icd10CodesIn(raw)
+      for (const one of held) expect(icd10Code(one)).toBe(one)
+      expect(new Set(held).size).toBe(held.length)
+    }))
+  })
+
+  it("expands a range into consecutive roots, or into nothing", () => {
+    const range = fc.tuple(
+      fc.constantFrom(...LETTERS),
+      fc.integer({ min: 0, max: 99 }),
+      fc.integer({ min: 0, max: 99 }),
+    )
+    fc.assert(fc.property(range, ([letter, from, to]) => {
+      const pad = (n: number) => String(n).padStart(2, "0")
+      const held = icd10CodesIn(`${letter}${pad(from)}-${pad(to)}`)
+      if (held.length === 0) return
+      // Narrow enough to be a disease, and every step is there.
+      expect(held.length).toBeLessThan(10)
+      expect(held).toEqual(
+        Array.from({ length: to - from + 1 }, (_, i) => `${letter}${pad(from + i)}`),
+      )
+    }))
+  })
+})
+
+describe("resolving against a dictionary", () => {
+  it("answers with something the dictionary holds and the code begins with", () => {
+    fc.assert(fc.property(code, fc.array(code), (written, dictionary) => {
+      const known = (one: string) => dictionary.includes(one)
+      const held = icd10Resolve(written, known)
+      if (held === null) return
+      expect(known(held)).toBe(true)
+      expect(written.startsWith(held)).toBe(true)
+      expect(held.length).toBeGreaterThanOrEqual(3)
+    }))
+  })
+
+  it("answers with the longest held prefix, never a shorter one", () => {
+    fc.assert(fc.property(code, fc.array(code), (written, dictionary) => {
+      const known = (one: string) => dictionary.includes(one)
+      const held = icd10Resolve(written, known)
+      const longest = [...Array(written.length - 2).keys()]
+        .map((i) => written.slice(0, written.length - i))
+        .find(known) ?? null
+      expect(held).toBe(longest)
+    }))
+  })
+
+  it("gives nothing when the dictionary is empty", () => {
+    fc.assert(fc.property(code, (written) => {
+      expect(icd10Resolve(written, () => false)).toBeNull()
     }))
   })
 })

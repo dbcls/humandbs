@@ -4,6 +4,7 @@ import {
   icd10Code,
   icd10CodesIn,
   icd10Parent,
+  icd10Resolve,
   mergeEntries,
   parseEstatCsv,
   parseWhoMeta,
@@ -32,13 +33,77 @@ describe("an ICD10 code", () => {
   })
 })
 
-describe("the codes a free-text field names", () => {
+describe("the codes an annotation names", () => {
   it("takes them however they are separated and leaves what is not a code", () => {
     expect(icd10CodesIn("C34.9, C50；E11 / dummy -")).toEqual(["C349", "C50", "E11"])
   })
 
   it("names each one once, in the order written", () => {
     expect(icd10CodesIn("C50 C34.9 c50")).toEqual(["C50", "C349"])
+  })
+
+  it("separates on the full-width comma the articles write", () => {
+    expect(icd10CodesIn("C18.9、C20")).toEqual(["C189", "C20"])
+    expect(icd10CodesIn("C480, C490, C492, C493")).toEqual(["C480", "C490", "C492", "C493"])
+  })
+
+  it("drops what a bracket holds", () => {
+    // `C20 [NG80]` cites a guideline beside the code.
+    expect(icd10CodesIn("C20 [NG80]")).toEqual(["C20"])
+  })
+
+  it("expands a range that names a disease", () => {
+    expect(icd10CodesIn("C18-20")).toEqual(["C18", "C19", "C20"])
+    expect(icd10CodesIn("C40-41")).toEqual(["C40", "C41"])
+    expect(icd10CodesIn("F00-03")).toEqual(["F00", "F01", "F02", "F03"])
+    expect(icd10CodesIn("F70-F79")).toEqual([])
+  })
+
+  it("drops a range wide enough to be a block heading", () => {
+    // Expanding one would put a hundred codes on a single disease, and the
+    // three-character codes are not consecutive, so it would also invent codes
+    // the classification does not have.
+    expect(icd10CodesIn("Q00-Q99")).toEqual([])
+    expect(icd10CodesIn("P00-P96")).toEqual([])
+  })
+
+  it("drops a range that crosses letters or runs backwards", () => {
+    expect(icd10CodesIn("C00-D48")).toEqual([])
+    expect(icd10CodesIn("C20-18")).toEqual([])
+  })
+})
+
+describe("resolving a code against the dictionary", () => {
+  const known = (code: string) => ["C34", "C349", "C56", "K758", "M069", "G471"].includes(code)
+
+  it("keeps a code the dictionary holds", () => {
+    expect(icd10Resolve("C349", known)).toBe("C349")
+    expect(icd10Resolve("c34.9", known)).toBe("C349")
+  })
+
+  it("drops the tail until the dictionary answers", () => {
+    // The five-character codes in the data are ICD-10-CM: `K75.81` is NASH,
+    // which WHO's ICD-10 cannot write.
+    expect(icd10Resolve("K75.81", known)).toBe("K758")
+    expect(icd10Resolve("M0690", known)).toBe("M069")
+    expect(icd10Resolve("G47.11", known)).toBe("G471")
+  })
+
+  it("falls all the way to the root when nothing between it and the code is held", () => {
+    // C56 carries no subdivision, so the ovarian histologies written as
+    // `C56.12` and `C56.14` land on it.
+    expect(icd10Resolve("C56.12", known)).toBe("C56")
+  })
+
+  it("gives nothing when even the root is unknown", () => {
+    // Z15 is ICD-10-CM only, and F74 does not exist between F73 and F78.
+    expect(icd10Resolve("Z15.09", known)).toBeNull()
+    expect(icd10Resolve("F74", known)).toBeNull()
+  })
+
+  it("gives nothing for what is not shaped like a code", () => {
+    expect(icd10Resolve("肺がん", known)).toBeNull()
+    expect(icd10Resolve("", known)).toBeNull()
   })
 })
 

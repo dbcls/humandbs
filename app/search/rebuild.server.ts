@@ -110,6 +110,11 @@ function chosenTerms(content: DatasetContent): string[] {
     if (value.kind === "vocabulary" && value.termIds.state === "value") {
       for (const id of value.termIds.value) ids.add(id)
     }
+    // A disease holds its own name as text, which the projection already
+    // flattens; what is missing without this is the classification's heading.
+    if (value.kind === "disease" && value.diseases.state === "value") {
+      for (const one of value.diseases.value) for (const id of one.termIds) ids.add(id)
+    }
   }
   return [...ids]
 }
@@ -149,6 +154,20 @@ function facetValuesOf(
           termId,
           ancestorIds: ancestorsOf(termId),
         })
+      }
+    }
+    // A disease is counted by the terms it points at, so one naming none is in
+    // no facet at all. It stays findable through the full text, which holds the
+    // name the article wrote (`docs/data-model.md` の「ICD10」).
+    if (value.kind === "disease" && value.diseases.state === "value") {
+      for (const one of value.diseases.value) {
+        for (const termId of one.termIds) {
+          terms.set(`${slot.keyId}/${termId}`, {
+            keyId: slot.keyId,
+            termId,
+            ancestorIds: ancestorsOf(termId),
+          })
+        }
       }
     }
     // The canonical unit is what the facet compares; the entered one is not.

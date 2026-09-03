@@ -21,6 +21,7 @@ import type { CauUsage } from "~/content/public"
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   Link,
   LocalizedLinks,
   ResearchContent,
@@ -246,6 +247,28 @@ function plainOf(slot: Slot<string>): FieldView {
 }
 
 /**
+ * A disease as the page shows it: **the name the article wrote, and the code
+ * after it in brackets.**
+ *
+ * The name falls back to the other language before it falls back to the
+ * classification, because a name written in one language only is what the
+ * article had — dropping to the heading would put a word on the page that
+ * nobody wrote. **No code means no brackets**: a disease no classification
+ * names is an ordinary value (`docs/public-pages.md` の「dataset」).
+ */
+function writtenDisease(disease: DiseaseValue, locale: Locale, catalog: CatalogView): string {
+  const terms = disease.termIds
+    .map((id) => catalog.termById.get(id))
+    .filter((term) => term !== undefined)
+  const written = (locale === "ja" ? disease.nameJa : disease.nameEn)
+    ?? (locale === "ja" ? disease.nameEn : disease.nameJa)
+    ?? (terms[0] === undefined ? null : catalogLabel(terms[0], locale))
+  const codes = terms.map((term) => term.code).join(", ")
+  if (written === null) return codes
+  return codes === "" ? written : `${written} (${codes})`
+}
+
+/**
  * The state of a value lives inside it: prose holds one per language and
  * resolves like any other translated pair, everything else holds a single one.
  */
@@ -274,6 +297,17 @@ function valueField(
         .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
         .map((term) => catalogLabel(term, locale))
       return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
+    }
+    case "disease": {
+      if (value.diseases.state === "not-applicable") return { state: "not-applicable" }
+      if (value.diseases.state === "unknown") return { state: "unsettled" }
+      // A line each, like the numbers: a name with a code after it is a phrase,
+      // and running several together makes the brackets unreadable.
+      return {
+        state: "rich",
+        text: value.diseases.value.map((one) => [{ text: writtenDisease(one, locale, catalog) }]),
+        untranslated: false,
+      }
     }
     case "number": {
       if (value.values.state === "not-applicable") return { state: "not-applicable" }

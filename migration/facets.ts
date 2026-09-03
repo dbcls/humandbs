@@ -22,12 +22,13 @@
  * three-character one it belongs to and the rollup has something to roll up.
  */
 
-import type { NumberValue, ValueSlot } from "~/content/types"
+import type { DiseaseValue, NumberValue, ValueSlot } from "~/content/types"
 
 import { counts, numbersWithUnit, type ReadNumber } from "./numbers"
-import { icd10Code, icd10Parent } from "~/icd10/codes"
+import { icd10Parent, icd10Resolve } from "~/icd10/codes"
 
-import type { EsSearchable } from "./es"
+import { diseasesIn } from "./diseases"
+import type { EsExperiment, EsSearchable } from "./es"
 
 export function slugify(value: string): string {
   return value.replace(/[^0-9A-Za-z]+/g, "-").replace(/^-|-$/g, "").toLowerCase()
@@ -53,7 +54,13 @@ export interface VocabularyFacet {
   hierarchical: boolean
   /** Whether the key is already in the catalog as free text and stays visible. */
   retyped: boolean
-  read: (searchable: EsSearchable) => TermSeed[]
+  /**
+   * **A disease is not a plain vocabulary value**: it carries the name the
+   * article wrote beside the terms (`docs/data-model.md` の「ICD10」), so its
+   * values are built on their own path and `read` is null.
+   */
+  valueType: "vocabulary" | "disease"
+  read: ((searchable: EsSearchable) => TermSeed[]) | null
 }
 
 export interface NumberFacet {
@@ -233,18 +240,45 @@ function labelled(value: string | null | undefined, labels: Record<string, strin
 /** The disease vocabulary, whose term codes are ICD10 codes. */
 export const DISEASE_SET = "icd10"
 
-/** The catalog key the disease terms sit under. */
-export const DISEASE_KEY = "disease-icd10"
+/**
+ * The catalog key the diseases sit under. **The coding system is not part of
+ * the code**: a value may carry a term of another classification, or none at
+ * all (`docs/data-model.md` の「ICD10」).
+ */
+export const DISEASE_KEY = "disease"
 
-function diseases(searchable: EsSearchable): TermSeed[] {
-  return (searchable.diseases ?? []).flatMap((disease): TermSeed[] => {
-    const code = icd10Code(disease.icd10 ?? "")
-    if (code === null) return []
-    // The labels v1 wrote are not taken: the dictionary names these terms
-    // (`migration/run.ts`), because v1 filed some codes under the wrong disease
-    // and left others named by the code itself.
-    return [{ code, labelEn: code, labelJa: null, parentCode: icd10Parent(code), maker: null }]
-  })
+/** The v1 field whose free text names the diseases, in both languages. */
+const DISEASE_SOURCE = "Materials and Participants"
+
+/**
+ * The diseases one experiment's article names.
+ *
+ * **v1's extracted layer is not read.** It holds a code and a title taken from
+ * WHO, and the name the article wrote was dropped twice on the way there —
+ * once by translating the Japanese away, once by replacing the English with the
+ * classification's own heading. The article still has both
+ * (`migration/diseases.ts`).
+ */
+function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
+  const node = experiment.data?.[DISEASE_SOURCE]
+  if (node === undefined || node === null) return []
+  return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
+}
+
+/**
+ * The terms an experiment's diseases point at. **A code the dictionary does not
+ * hold becomes no term at all**, and the disease keeps its name — which is what
+ * makes the classification optional rather than required.
+ */
+function diseaseTerms(experiment: EsExperiment, known: (code: string) => boolean): TermSeed[] {
+  return diseasesOf(experiment).flatMap((seed) =>
+    seed.codes.flatMap((written): TermSeed[] => {
+      const code = icd10Resolve(written, known)
+      if (code === null) return []
+      // The dictionary names these terms (`migration/run.ts`); nothing the
+      // article wrote becomes a heading of the classification.
+      return [{ code, labelEn: code, labelJa: null, parentCode: icd10Parent(code), maker: null }]
+    }))
 }
 
 export const VOCABULARY_FACETS: VocabularyFacet[] = [
@@ -259,6 +293,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "policies",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => (s.policies ?? []).flatMap((policy) => {
       const code = policy.id
       const labelEn = policy.name?.en ?? code
@@ -274,6 +309,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "experimental-method",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => plainList(s.assayType),
   },
   {
@@ -288,7 +324,8 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: DISEASE_SET,
     hierarchical: true,
     retyped: false,
-    read: diseases,
+    valueType: "disease",
+    read: null,
   },
   {
     code: "tissue",
@@ -298,6 +335,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "tissue",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.tissues),
   },
   {
@@ -308,6 +346,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "health-status",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => labelled(s.healthStatus, {
       affected: "罹患",
       healthy: "健常",
@@ -322,6 +361,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "is-tumor",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => labelled(s.isTumor, { tumor: "腫瘍", normal: "非腫瘍", mixed: "混在" }),
   },
   {
@@ -332,6 +372,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "has-phenotype-data",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => (s.hasPhenotypeData == null
       ? []
       : labelled(s.hasPhenotypeData ? "included" : "not included", {
@@ -347,6 +388,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "cohort",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.cohorts),
   },
   {
@@ -360,6 +402,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     // The label asks how the number was counted, so the values answer in the
     // same words: `個体` is a word the site itself hardly uses, and a value
     // reading `検体` under a heading that says `対象者数` denies the heading.
+    valueType: "vocabulary",
     read: (s) => labelled(s.subjectCountType, {
       individual: "人数",
       sample: "検体数",
@@ -374,6 +417,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "sex",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => labelled(s.sex, { male: "男性", female: "女性", mixed: "混在" }),
   },
   {
@@ -384,6 +428,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "age-group",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => labelled(s.ageGroup, {
       infant: "乳幼児",
       child: "小児",
@@ -400,6 +445,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "population",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.population),
   },
   {
@@ -410,6 +456,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "cell-line",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.cellLine),
   },
   {
@@ -420,6 +467,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "platform",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => (s.platforms ?? []).flatMap((platform) => {
       const maker = makerName(platform.vendor)
       const models = modelNames(maker, platform.model)
@@ -438,6 +486,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "reagents",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => plainList(s.libraryKits),
   },
   {
@@ -448,6 +497,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "read-type",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => labelled(s.readType, {
       "paired-end": "ペアエンド",
       "single-end": "シングルエンド",
@@ -462,6 +512,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "reference-sequence",
     hierarchical: false,
     retyped: true,
+    valueType: "vocabulary",
     read: (s) => plainList(s.referenceGenome),
   },
   {
@@ -472,6 +523,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "file-type",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.fileTypes),
   },
   {
@@ -482,6 +534,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "processed-data-type",
     hierarchical: false,
     retyped: false,
+    valueType: "vocabulary",
     read: (s) => plainList(s.processedDataTypes),
   },
 ]
@@ -733,22 +786,32 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
  * reader sees before "and 12 more" — an accident of how rows came back.
  */
 export function collectTerms(
-  searchables: Iterable<EsSearchable>,
+  experiments: Iterable<EsExperiment>,
+  knownCode: (code: string) => boolean,
 ): Map<string, TermSeed[]> {
   const bySet = new Map<string, Map<string, TermSeed>>()
-  for (const searchable of searchables) {
-    for (const facet of VOCABULARY_FACETS) {
-      const held = bySet.get(facet.setCode) ?? new Map<string, TermSeed>()
-      bySet.set(facet.setCode, held)
-      for (const term of facet.read(searchable)) {
-        const parent = term.parentCode
-        if (parent !== null && !held.has(parent)) {
-          held.set(parent, { code: parent, labelEn: parent, labelJa: null, parentCode: null, maker: null })
-        }
-        const known = held.get(term.code)
-        if (known === undefined || known.labelEn === known.code) held.set(term.code, term)
+  const take = (setCode: string, terms: TermSeed[]) => {
+    const held = bySet.get(setCode) ?? new Map<string, TermSeed>()
+    bySet.set(setCode, held)
+    for (const term of terms) {
+      const parent = term.parentCode
+      if (parent !== null && !held.has(parent)) {
+        held.set(parent, { code: parent, labelEn: parent, labelJa: null, parentCode: null, maker: null })
       }
+      const seen = held.get(term.code)
+      if (seen === undefined || seen.labelEn === seen.code) held.set(term.code, term)
     }
+  }
+  for (const experiment of experiments) {
+    const searchable = experiment.searchable ?? {}
+    for (const facet of VOCABULARY_FACETS) {
+      if (facet.read === null) {
+        bySet.set(facet.setCode, bySet.get(facet.setCode) ?? new Map())
+        continue
+      }
+      take(facet.setCode, facet.read(searchable))
+    }
+    take(DISEASE_SET, diseaseTerms(experiment, knownCode))
   }
   return new Map([...bySet].map(([setCode, terms]) => [
     setCode,
@@ -769,22 +832,25 @@ function numberValue(value: number, unit: string | null): NumberValue {
  * does not come up for this experiment, which is what v1's null meant.
  */
 export function facetValueSlots(
-  searchable: EsSearchable,
+  experiment: EsExperiment,
   identity: {
     keyIdByCode: Map<string, string>
     termIdBySetAndCode: Map<string, string>
+    knownCode: (code: string) => boolean
   },
 ): ValueSlot[] {
+  const searchable = experiment.searchable ?? {}
   const slots: ValueSlot[] = []
   for (const facet of VOCABULARY_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
-    if (keyId === undefined) continue
+    if (keyId === undefined || facet.read === null) continue
     const termIds = [...new Set(facet.read(searchable)
       .map((term) => identity.termIdBySetAndCode.get(`${facet.setCode}/${term.code}`))
       .filter((id) => id !== undefined))]
     if (termIds.length === 0) continue
     slots.push({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
   }
+  slots.push(...diseaseSlots(experiment, identity))
   for (const facet of NUMBER_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
     const held = facet.read(searchable)
@@ -798,4 +864,37 @@ export function facetValueSlots(
     })
   }
   return slots
+}
+
+/**
+ * The disease slot one experiment carries, or nothing when its article names no
+ * disease.
+ *
+ * **A disease with no term is kept.** It has a name, it goes on the page and
+ * into the full text, and it is simply in no facet — which is what the
+ * classification being optional means in practice (`docs/data-model.md` の
+ * 「ICD10」).
+ */
+export function diseaseSlots(
+  experiment: EsExperiment,
+  identity: {
+    keyIdByCode: Map<string, string>
+    termIdBySetAndCode: Map<string, string>
+    knownCode: (code: string) => boolean
+  },
+): ValueSlot[] {
+  const keyId = identity.keyIdByCode.get(DISEASE_KEY)
+  if (keyId === undefined) return []
+  const diseases: DiseaseValue[] = diseasesOf(experiment).map((seed) => ({
+    termIds: [...new Set(seed.codes.flatMap((written) => {
+      const code = icd10Resolve(written, identity.knownCode)
+      if (code === null) return []
+      const id = identity.termIdBySetAndCode.get(`${DISEASE_SET}/${code}`)
+      return id === undefined ? [] : [id]
+    }))],
+    nameJa: seed.nameJa,
+    nameEn: seed.nameEn,
+  }))
+  if (diseases.length === 0) return []
+  return [{ keyId, value: { kind: "disease", diseases: { state: "value", value: diseases } } }]
 }

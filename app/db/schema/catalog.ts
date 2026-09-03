@@ -116,6 +116,7 @@ export const contentValueType = pgEnum("content_value_type", [
   "accession",
   "vocabulary",
   "number",
+  "disease",
 ])
 
 /**

@@ -10,7 +10,7 @@ import { queryFields, type FacetField } from "./fields"
 import { searchDocs, type SearchTarget } from "./query.server"
 
 /**
- * These run against the development database, so they need `docker compose up`.
+ * These run against the test database, so they need `docker compose up`.
  *
  * The rows are written directly rather than derived: what is under test is the
  * query over them, and how they come to exist is `rebuild.db.test.ts`.

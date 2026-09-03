@@ -122,7 +122,7 @@ class Walk {
     this.slot(path, ofLinks(pair.en), "en")
   }
 
-  /** A value under a catalog key. Which of the five shapes it is decides how. */
+  /** A value under a catalog key. Which shape it is decides how. */
   value(path: string, value: ContentValue): void {
     if (value.kind === "text") {
       this.rich(path, value.text)
@@ -130,6 +130,11 @@ class Walk {
       this.slot(path, presence(value.termIds, (ids) => ids.length === 0))
     } else if (value.kind === "number") {
       this.slot(path, presence(value.values, (numbers) => numbers.length === 0))
+    } else if (value.kind === "disease") {
+      // A disease whose name is written in one language only is ordinary, the
+      // same way a vocabulary term with no Japanese label is
+      // (`docs/data-model.md` の「ICD10」). Only an empty list is a problem.
+      this.slot(path, presence(value.diseases, (list) => list.length === 0))
     } else {
       this.slot(path, ofText(value.value))
     }

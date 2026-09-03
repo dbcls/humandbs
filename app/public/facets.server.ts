@@ -105,9 +105,12 @@ export interface FacetView {
   label: string
   /**
    * A date takes the same pair of inputs as a number and a different keyboard,
-   * which is the whole of the difference to the screen.
+   * which is the whole of the difference to the screen. **A disease draws like
+   * a vocabulary**; it is named apart because it is counted at the root of the
+   * classification and never opens the level below (`docs/public-pages.md` の
+   * 「絞り込み」).
    */
-  kind: "vocabulary" | "number" | "date"
+  kind: "vocabulary" | "number" | "date" | "disease"
   values: FacetValueView[]
   /** The address that shows every value of this facet, or null when all are shown. */
   moreHref: string | null
@@ -199,7 +202,7 @@ export async function facetPanel(
       ? withoutFacet(ast, fields, code)
       : ast
 
-  const vocabularies = definitions.filter((one) => one.field.kind === "vocabulary")
+  const vocabularies = definitions.filter((one) => one.field.kind !== "number")
   const numbers = definitions.filter((one) => one.field.kind === "number")
   const untouched = (one: FacetDefinition) =>
     !selection.terms.has(one.field.code) && !selection.ranges.has(one.field.code)

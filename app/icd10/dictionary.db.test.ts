@@ -7,7 +7,7 @@ import * as s from "~/db/schema"
 import { replaceDictionary, searchDictionary } from "./dictionary.server"
 import { resolveTypedCode } from "./entry.server"
 
-/** These run against the development database, so they need `docker compose up`. */
+/** These run against the test database, so they need `docker compose up`. */
 const db = getDb()
 
 let setId = ""

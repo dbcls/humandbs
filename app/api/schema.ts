@@ -55,6 +55,16 @@ export const termSchema = z.object({
 }).meta({ id: "Term" })
 
 /**
+ * A disease: **what classifications call it, and what the article called it.**
+ * `terms` may be empty — a disease no classification names is an ordinary
+ * value, so a code cannot be assumed to be there.
+ */
+export const diseaseSchema = z.object({
+  terms: z.array(termSchema),
+  name: textSchema,
+}).meta({ id: "Disease" })
+
+/**
  * A number in the key's canonical unit. What was typed to get there is editing.
  *
  * `label` says which number this is where a key holds several — the part of the
@@ -78,6 +88,11 @@ export const valueSchema = z.discriminatedUnion("type", [
   z.object({ ...valueHead, type: z.literal("accession"), value: z.string().nullable() }),
   z.object({ ...valueHead, type: z.literal("vocabulary"), terms: z.array(termSchema).nullable() }),
   z.object({ ...valueHead, type: z.literal("number"), numbers: z.array(numberValueSchema).nullable() }),
+  z.object({
+    ...valueHead,
+    type: z.literal("disease"),
+    diseases: z.array(diseaseSchema).nullable(),
+  }),
 ]).meta({ id: "Value" })
 
 export const fileSchema = z.object({
@@ -217,6 +232,7 @@ export type ApiLink = z.infer<typeof linkSchema>
 export type ApiLinks = z.infer<typeof linksSchema>
 export type ApiTerm = z.infer<typeof termSchema>
 export type ApiNumber = z.infer<typeof numberValueSchema>
+export type ApiDisease = z.infer<typeof diseaseSchema>
 export type ApiValue = z.infer<typeof valueSchema>
 export type ApiResearch = z.infer<typeof researchSchema>
 export type ApiDataset = z.infer<typeof datasetSchema>

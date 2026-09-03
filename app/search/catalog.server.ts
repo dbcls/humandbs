@@ -40,7 +40,7 @@ export interface FacetDefinition {
 interface FacetRow extends Record<string, unknown> {
   id: string
   code: string
-  valueType: "vocabulary" | "number"
+  valueType: "vocabulary" | "number" | "disease"
   labelJa: string
   labelEn: string
   setId: string | null
@@ -81,7 +81,11 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
     .from(contentKey)
     .leftJoin(vocabularySet, eq(vocabularySet.id, contentKey.vocabularySetId))
     .leftJoin(facetCategory, eq(facetCategory.id, contentKey.facetCategoryId))
-    .where(or(eq(contentKey.valueType, "vocabulary"), eq(contentKey.valueType, "number")))
+    .where(or(
+      eq(contentKey.valueType, "vocabulary"),
+      eq(contentKey.valueType, "number"),
+      eq(contentKey.valueType, "disease"),
+    ))
     .orderBy(
       sql`${facetCategory.position} NULLS LAST`,
       asc(facetCategory.code),

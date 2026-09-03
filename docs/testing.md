@@ -160,14 +160,17 @@ route ごと組んだ状態で回して、その内側の HTTP だけを境界�
 
 状態を共有しない。実行順序に依存しない。
 
-- DB を使う 2 階層は 1 つの開発 DB を共有し、各 test が前に空にする。したがって**ファイル並列は切る**
-  (`fileParallelism: false`)。空にするのは owner の接続で、アプリが繋ぐ role には TRUNCATE が無い
-  ([publishing.md](publishing.md) の「証跡」)。**test 本体は必ずアプリの role で回す** — 権限まで含めて
-  本番と同じ条件にするため
+- **DB を使う 2 階層は専用の database に対して回す。** 名前は開発用のものの後ろに `_test` を付けた
+  もので、**設定では切り替えられない** — 向き先を 1 つ間違えると開発用データが消えるので、間違えようの
+  無い形にしてある (cookie の `Secure` を redirect URI から導くのと同じ理由)。`db:push` が両方に schema を
+  反映するので、2 つがずれることはない
+- **走り出す前に、繋いだ先が test 用の database かどうかを確かめる。** 違えば 1 件も実行せずに落ちる。
+  導出と合わせて二重になっているのは、**ここが破れたときに失われるのが test では取り戻せないものだから**
+- 各 test が前に空にする。したがって**ファイル並列は切る** (`fileParallelism: false`)。空にするのは
+  owner の接続で、アプリが繋ぐ role には TRUNCATE が無い ([publishing.md](publishing.md) の「証跡」)。
+  **test 本体は必ずアプリの role で回す** — 権限まで含めて本番と同じ条件にするため
 - 直列で 60 秒を超えたら、worker ごとに DB を複製する形に切り替える (`CREATE DATABASE ... TEMPLATE` は
   数十 ms で終わる)
-- **test は開発用 DB を空にする。** 開発用データは test の後に入れ直す
-  ([development.md](development.md))
 - helper と fixture は collection から外すため `_` prefix のファイル名にする
 
 ## 実行

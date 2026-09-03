@@ -44,15 +44,71 @@ export function icd10Parent(code: string): string | null {
   return code.length > 3 ? code.slice(0, 3) : null
 }
 
-/** The codes a free-text field names, in the order written, without repeats. */
+/**
+ * How many codes a range may name before it stops being a disease. `C18-20`
+ * (three) is a bowel cancer; `Q00-Q99` is the heading of a block, and expanding
+ * it would put a hundred codes on one disease.
+ */
+const WIDEST_RANGE = 10
+
+/** A range as the articles write it: `C40-41`, sometimes `F70-F79`. */
+const RANGE = /^([A-Z])([0-9]{2})[-–~〜]([A-Z]?)([0-9]{2})$/
+
+/**
+ * The codes a range names, or null when it names something else. **The letters
+ * have to agree** (`C00-D48` spans two chapters) and **the span has to be
+ * narrow** — a wide one is a block heading, and **the three-character codes are
+ * not consecutive**, so expanding it also invents codes the classification does
+ * not have (there is no F74 between F73 and F78).
+ */
+function rangeIn(token: string): string[] | null {
+  const found = RANGE.exec(token.toUpperCase())
+  if (found === null) return null
+  const [, letter, from, other, to] = found
+  if (other !== "" && other !== letter) return null
+  const span: string[] = []
+  for (let n = Number(from); n <= Number(to); n += 1) {
+    span.push(`${letter}${String(n).padStart(2, "0")}`)
+  }
+  return span.length > 0 && span.length < WIDEST_RANGE ? span : null
+}
+
+/**
+ * The codes an ICD10 annotation names, in the order written, without repeats.
+ * **What a bracket holds is dropped** — `C20 [NG80]` cites a guideline beside
+ * the code, and the guideline number is shaped like nothing here.
+ */
 export function icd10CodesIn(raw: string): string[] {
   const codes = raw
-    .split(/[,、;；/\s]+/)
+    .replace(/\[[^\]]*\]/g, " ")
+    .split(/[,、，;；/\s]+/)
     .flatMap((token) => {
+      const span = rangeIn(token)
+      if (span !== null) return span
       const code = icd10Code(token)
       return code === null ? [] : [code]
     })
   return [...new Set(codes)]
+}
+
+/**
+ * The code the dictionary holds for what was written, found by **dropping the
+ * tail until it answers**. Null when even the three-character root is unknown.
+ *
+ * **The five-character codes in the data are not typos.** They are ICD-10-CM,
+ * which names diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
+ * QT syndrome. Rounding them loses the distinction the code carried, but not
+ * the disease: the value keeps the name the article wrote (`docs/data-model.md`
+ * の「ICD10」).
+ */
+export function icd10Resolve(written: string, known: (code: string) => boolean): string | null {
+  const code = icd10Code(written)
+  if (code === null) return null
+  for (let length = code.length; length >= 3; length -= 1) {
+    const shorter = code.slice(0, length)
+    if (known(shorter)) return shorter
+  }
+  return null
 }
 
 /**

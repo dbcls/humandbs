@@ -228,7 +228,9 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
   if (options.keepUnsettled) return value
   const state = value.kind === "vocabulary"
     ? value.termIds.state
-    : value.kind === "number" ? value.values.state : value.value.state
+    : value.kind === "number"
+      ? value.values.state
+      : value.kind === "disease" ? value.diseases.state : value.value.state
   return state === "unknown" ? null : value
 }
 

@@ -549,7 +549,7 @@ export interface EditableKey {
   id: string
   code: string
   scope: "dataset" | "experiment"
-  valueType: "text" | "single" | "accession" | "vocabulary" | "number"
+  valueType: "text" | "single" | "accession" | "vocabulary" | "number" | "disease"
   labelJa: string
   labelEn: string
   position: number

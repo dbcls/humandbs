@@ -259,6 +259,8 @@ export interface DatasetContentInput {
   codeBySourceKey: Map<string, string>
   /** `{set code}/{term code}` to identity. */
   termIdBySetAndCode: Map<string, string>
+  /** Whether the ICD10 dictionary holds a code, which is what resolves one. */
+  knownCode: (code: string) => boolean
   accessCriteriaKeyCode: string
   typeOfDataKeyCode: string
   /** Every dataset label in the dump, so a line's label can be recognised. */
@@ -276,7 +278,7 @@ export interface DatasetContentInput {
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
-  const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode } = input
+  const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
 
   /** A cell with the lines about other datasets taken out (`ownLines`). */
@@ -376,7 +378,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
             ? []
             : [{ keyId, value: { kind: "number" as const, values: { state: "value" as const, value: held } } }]
         }),
-        ...facetValueSlots(e.searchable ?? {}, { keyIdByCode, termIdBySetAndCode }),
+        ...facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode }),
       ],
     }
   })
