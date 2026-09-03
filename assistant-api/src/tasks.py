@@ -9,10 +9,8 @@ from typing import Any
 import yaml  # Added PyYAML for YAML serialization
 
 from src.models import (
-    ApplicationData,
     ApplicationVerificationData,
     EmailDomainConsistencyResult,
-    EthicsDocumentInfo,
     ResearchAbstractSentencePair,
     ResearchAbstractTranslation,
 )
