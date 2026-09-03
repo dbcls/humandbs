@@ -56,7 +56,7 @@ docker compose exec app npm run icd10:import
 |---|---|---|
 | `proxy` | nginx。`/files/` と `/private/` を `s3` に、それ以外を `app` に渡す | `127.0.0.1:8080` |
 | `app` | React Router の dev サーバー | proxy 経由のみ |
-| `db` | Postgres + PGroonga | `127.0.0.1:5432` |
+| `db` | Postgres + PGroonga | 公開しない |
 | `s3` | SeaweedFS (master / volume / filer / S3 API) | 公開しない |
 | `assistant-api` | 申請支援アシスタント。profile の後ろにいる | 公開しない |
 
@@ -295,10 +295,9 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date
 
 `archive-date` は認証が要らないので手元でも回る。
 
-**申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、試すときは
-`ssh -L` で tunnel を 1 本掘る。**compose の container からホストの tunnel には届かない** (ホストが
-bridge からの入力を落とす) ので、掘り先は `127.0.0.1` にして **`--network host` の container** で回す。
-v2 の Postgres も `127.0.0.1:5432` に publish してあるので、その container から両方に届く。
+**申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、`.env` は空のまま
+にして 3 つの取得元を skip させる。**この 3 つを実際に取らせて確かめるのは配信している環境**で、そこからは
+DB が直接見える ([deployment.md](deployment.md))。
 
 **接続は read-only を強制する** (`default_transaction_read_only`)。他プロジェクトの所管なので、設定の
 間違いで書き込みが通る余地を残さない。**staging は使えない** — hum が 3 件しか無く、検証にならない。
@@ -315,9 +314,10 @@ docker compose exec s3 sh -c 'echo "s3.bucket.create -name files" | weed shell -
 docker compose exec s3 sh -c 'echo "s3.bucket.list"              | weed shell -master=127.0.0.1:9333'
 ```
 
-`files` が公開 bucket、非公開側は `private`。anonymous に読ませる grant は `docker/s3/s3.json` の
-identity で与えていて、**prefix 単位の grant は効かないので bucket を分ける以外に公開と非公開を
-表現する手段がない**。s3.json は hot-reload されないので、変えたら `docker compose restart s3`。
+`files` が公開 bucket、非公開側は `private`。anonymous に読ませる grant は
+`docker/s3/s3.json.template` の identity で与えていて、**prefix 単位の grant は効かないので bucket を
+分ける以外に公開と非公開を表現する手段がない**。**アプリが使う鍵は `.env` にある** — template に埋めた
+ものを起動時に読ませるので、鍵を変えたら `docker compose up -d s3`。
 
 配信の確認は proxy 経由で行う。
 
@@ -358,7 +358,7 @@ schema が固まるまで migration file を持たないので、schema を変�
 
 - **Keycloak を dev に立てない。** DDBJ が所管する staging の realm を使う
 - **Keycloak から `sub` を取る script を持たない。** サインインして `/admin` を開けば出る
-- **`db` 以外の port をホストに出さない。** S3 と filer を直接叩ける口を作らない
+- **proxy 以外の port をホストに出さない。** S3 と filer を直接叩ける口を作らず、DB も同じ扱いにする
 - **フォーマッタを別に入れない。** 整形は eslint (`@stylistic`) が持つので、`npm run lint:fix` で直す
 - **i18n ライブラリを入れない。** UI 文言の辞書は `app/i18n/messages.ts` に TS の値として持つ。言語は
   ja / en の 2 つに固定で、書くのは開発者だけ。しかも画面に出る文字列の大半は UI 文言ではなく content の

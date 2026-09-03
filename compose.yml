@@ -1,4 +1,8 @@
 services:
+  # Not published. Everything that needs a connection — psql, the schema push,
+  # the tests — runs in a container, and a published port is reached through nat
+  # PREROUTING without passing the host's INPUT rules, so one would be open
+  # whatever the firewall says.
   db:
     image: docker.io/groonga/pgroonga:4.0.8-debian-18
     environment:
@@ -11,8 +15,6 @@ services:
       # the mount goes one level above what earlier versions used.
       - pgdata:/var/lib/postgresql
       - ./docker/db/initdb:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "127.0.0.1:${HUMANDBS_POSTGRES_BIND_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -26,6 +28,22 @@ services:
   # a second way to fetch an object without the proxy's headers.
   s3:
     image: docker.io/chrislusf/seaweedfs:4.40
+    # The identities are rendered at start from the two keys in .env, so that
+    # what signs every presigned URL is kept where the rest of the credentials
+    # are and no deployment signs with a value out of the repository —
+    # `/private/` is answered by whatever can reach the site, and an object
+    # there is only as private as the key its URL is signed with. The image's
+    # own entrypoint is what then runs, because it owns the data directory and
+    # drops privileges. **Neither key may contain `|`, `&`, `\` or `"`**, being
+    # put into JSON by `sed`.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        sed -e "s|@HUMANDBS_S3_ACCESS_KEY@|$$HUMANDBS_S3_ACCESS_KEY|"
+        -e "s|@HUMANDBS_S3_SECRET_KEY@|$$HUMANDBS_S3_SECRET_KEY|"
+        /etc/seaweedfs/s3.json.template > /etc/seaweedfs/s3.json
+        && exec /entrypoint.sh "$$0" "$$@"
     command:
       - server
       - -dir=/data
@@ -34,9 +52,11 @@ services:
       - -s3.config=/etc/seaweedfs/s3.json
     environment:
       TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+      HUMANDBS_S3_ACCESS_KEY: ${HUMANDBS_S3_ACCESS_KEY:?HUMANDBS_S3_ACCESS_KEY is required}
+      HUMANDBS_S3_SECRET_KEY: ${HUMANDBS_S3_SECRET_KEY:?HUMANDBS_S3_SECRET_KEY is required}
     volumes:
       - s3data:/data
-      - ./docker/s3/s3.json:/etc/seaweedfs/s3.json:ro
+      - ./docker/s3/s3.json.template:/etc/seaweedfs/s3.json.template:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9333/cluster/status"]
       interval: 5s

@@ -1,0 +1,42 @@
+# What changes when the site is served rather than developed. Layered over
+# compose.yml, which stays the development definition — the values that differ
+# between one deployment and another are in .env, so no address and no
+# environment name appears here.
+#
+# `ln -s compose.deploy.yml compose.override.yml` is what loads it, so that
+# every command afterwards is the plain one.
+#
+# **This assumes rootless podman**, which is what the two `userns_mode` lines
+# are for; under docker they are neither needed nor accepted. Rootless podman
+# maps the invoking user onto container root and everything else onto a range of
+# its own, so a container process that is not root reaches a bind mount as
+# nobody would — which is what each line puts back.
+services:
+  # The image drops to `postgres` before it reads the initialisation scripts.
+  db:
+    userns_mode: "keep-id:uid=999,gid=999"
+    restart: always
+
+  s3:
+    restart: always
+
+  app:
+    environment:
+      # `react-router-serve` reads this and answers with stack traces when it is
+      # not production. compose.yml sets development for the dev server, so this
+      # has to replace it rather than be left out.
+      NODE_ENV: production
+      # The served application listens where the dev server does, so the proxy
+      # is one configuration rather than one per environment.
+      PORT: 5173
+    # An install is not part of this. node_modules is a named volume and
+    # survives a restart, so installing belongs to the deploy that changes
+    # package-lock.json (docs/deployment.md).
+    command: sh -c "npm run build && npm run start"
+    # The image runs as `node`, and the build writes its output back into the
+    # bind-mounted sources.
+    userns_mode: "keep-id:uid=1000,gid=1000"
+    restart: always
+
+  proxy:
+    restart: always
