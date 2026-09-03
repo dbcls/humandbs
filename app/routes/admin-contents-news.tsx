@@ -2,9 +2,10 @@ import { Form, Link } from "react-router"
 
 import { newsListAction, newsListPage } from "~/admin/contents.server"
 import { adminContentsPath, adminNewsListPath, adminNewsPath } from "~/admin/urls"
+import { Stack } from "~/components/base"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { Card, Empty, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -34,7 +35,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function AdminContentsNews({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, items, page, hasNext } = loaderData
+  const { locale, items, page, pageCount } = loaderData
   const t = messagesFor(locale).admin.contents
 
   return (
@@ -43,41 +44,44 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
         <Link to={href(locale, adminContentsPath())} className="text-white">{t.backToTree}</Link>
       </PageHead>
       <Card>
-        <ResultLine result={actionData} locale={locale} />
+        <Stack gap="block">
+          <ResultLine result={actionData} locale={locale} />
 
-        {items.length === 0
-          ? <Empty>{t.news.none}</Empty>
-          : (
-              <Table headers={[t.news.publishedAt, t.title, t.state]}>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <Td className="text-nowrap">
-                      <Link to={href(locale, adminNewsPath(item.id))}>
-                        {item.publishedAt ?? t.news.undated}
-                      </Link>
-                    </Td>
-                    <Td>{item.title}</Td>
-                    <Td><StateBadges states={item.states} locale={locale} /></Td>
-                  </tr>
-                ))}
-              </Table>
-            )}
+          {items.length === 0
+            ? <Empty>{t.news.none}</Empty>
+            : (
+                <Stack gap="normal">
+                  <Table headers={[t.news.publishedAt, t.title, t.state]}>
+                    {items.map((item) => (
+                      <tr key={item.id}>
+                        <Td className="text-nowrap">
+                          <Link to={href(locale, adminNewsPath(item.id))}>
+                            {item.publishedAt ?? t.news.undated}
+                          </Link>
+                        </Td>
+                        <Td>{item.title}</Td>
+                        <Td><StateBadges states={item.states} locale={locale} /></Td>
+                      </tr>
+                    ))}
+                  </Table>
+                  <PageLinks
+                    label={messagesFor(locale).search.pagination}
+                    page={page}
+                    pageCount={pageCount}
+                    at={(at) => href(locale, `${adminNewsListPath()}?page=${at}`)}
+                    previous={messagesFor(locale).search.previousPage}
+                    next={messagesFor(locale).search.nextPage}
+                  />
+                </Stack>
+              )}
 
-        <nav className="mt-4 flex gap-3 text-sm">
-          {page > 1 && (
-            <Link to={href(locale, `${adminNewsListPath()}?page=${page - 1}`)}>{t.news.newer}</Link>
-          )}
-          {hasNext && (
-            <Link to={href(locale, `${adminNewsListPath()}?page=${page + 1}`)}>{t.news.older}</Link>
-          )}
-        </nav>
-
-        <Section title={t.news.add}>
-          <Form method="post">
-            <input type="hidden" name="intent" value="create-news" />
-            <Submit>{t.news.add}</Submit>
-          </Form>
-        </Section>
+          <Section title={t.news.add}>
+            <Form method="post">
+              <input type="hidden" name="intent" value="create-news" />
+              <Submit>{t.news.add}</Submit>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )

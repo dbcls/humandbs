@@ -15,6 +15,7 @@ import { and, desc, eq, inArray } from "drizzle-orm"
 import { redirect } from "react-router"
 
 import { publicDatasetContent, publicResearchContent, PUBLISHED } from "~/content/public"
+import { today } from "~/dates"
 import { getDb, type Executor } from "~/db/client.server"
 import {
   contentSnapshot,
@@ -309,8 +310,10 @@ function facetChips(panel: FacetPanelView | null, locale: Locale): ConditionChip
   const words = messagesFor(locale).search.refine
   return panel.categories.flatMap((category) => category.facets.flatMap((facet) => {
     const range = facet.range
-    if (range !== null && range.clearHref !== null) {
-      return [{ field: facet.label, value: writtenRange(range, words), href: range.clearHref }]
+    // A range is in force when one of its ends is written; the link that lifts
+    // it is the facet's own, which is the same search either way.
+    if (range !== null && (range.from !== "" || range.to !== "") && facet.clearHref !== null) {
+      return [{ field: facet.label, value: writtenRange(range, words), href: facet.clearHref }]
     }
     return facet.values
       .filter((value) => value.selected)
@@ -396,6 +399,7 @@ async function listShell(
       expanded,
       find,
       code: request.url.searchParams.get("code") ?? "",
+      today: today(),
     }),
   ])
 

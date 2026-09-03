@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FacetCategoryView, FacetView } from "~/public/facets.server"
+import type { FacetCategoryView, FacetRangeView, FacetView } from "~/public/facets.server"
 
 import { FacetPanel } from "./facets"
 
@@ -36,18 +36,37 @@ function facet(over: Partial<FacetView> & Pick<FacetView, "code" | "label">): Fa
   }
 }
 
+/** The windows a date facet offers, with one of them in force or none. */
+function windows(lit: "all" | "5y" | null): FacetRangeView["presets"] {
+  return [
+    { label: "すべて", href: "/research", current: lit === "all" },
+    { label: "1 年", href: "/research?q=one", current: false },
+    { label: "5 年", href: "/research?q=five", current: lit === "5y" },
+    { label: "10 年", href: "/research?q=ten", current: false },
+  ]
+}
+
+/** Narrowed by hand, so the condition is nobody's window. */
 const DATES = facet({
   code: "date_published",
   label: "公開日",
   kind: "date",
-  range: { from: "2020-01-01", to: "", min: "2013-07-01", max: "2026-07-30", unit: null, clearHref: "/research" },
+  range: { from: "2020-01-01", to: "", unit: null, presets: windows(null) },
+})
+
+/** The same facet narrowed by pressing one. */
+const WINDOWED = facet({
+  code: "date_published",
+  label: "公開日",
+  kind: "date",
+  range: { from: "2021-09-03", to: "", unit: null, presets: windows("5y") },
 })
 
 const VOLUME = facet({
   code: "total-data-volume",
   label: "総データ量",
   kind: "number",
-  range: { from: "", to: "", min: "0.00000095", max: "266,240", unit: "GB", clearHref: null },
+  range: { from: "", to: "", unit: "GB", presets: [] },
 })
 
 describe("the refinement panel", () => {
@@ -77,11 +96,44 @@ describe("the refinement panel", () => {
     expect(html).toContain("value=\"2020-01-01\"")
   })
 
-  it("writes the span as it was given, rather than as a program would", () => {
-    // The bound is written on the server, where the unit it is held in is known
-    // (`facets.server.ts` の `writtenBound`).
-    expect(render([{ code: "data", label: "データ", facets: [VOLUME] }]))
-      .toContain("0.00000095〜266,240")
+  it("offers a date its windows, and lights the one in force", () => {
+    const html = render([{ code: null, label: null, facets: [WINDOWED] }])
+
+    for (const label of ["すべて", "1 年", "5 年", "10 年"]) expect(html).toContain(label)
+    // Exactly one, or a reader cannot tell which condition they are under.
+    expect(html.match(/aria-current/g)).toHaveLength(1)
+    expect(html).toContain("href=\"/research?q=five\"")
+  })
+
+  it("lights none of them when the condition is nobody's window", () => {
+    expect(render([{ code: null, label: null, facets: [DATES] }])).not.toContain("aria-current")
+  })
+
+  it("offers a number no windows, having none everybody means the same by", () => {
+    const html = render([{ code: "data", label: "データ", facets: [VOLUME] }])
+
+    expect(html).not.toContain("すべて")
+    expect(html).toContain("GB")
+  })
+
+  it("names each end of a date, and lets a number's dash say it instead", () => {
+    // `年/月/日` and a picker do not fit beside a second copy of themselves in
+    // the pane, so the dates stack and each one is named.
+    const dates = render([{ code: null, label: null, facets: [DATES] }])
+    expect(dates).toContain("開始日")
+    expect(dates).toContain("終了日")
+
+    const volume = render([{ code: "data", label: "データ", facets: [VOLUME] }])
+    expect(volume).not.toContain("開始日")
+    expect(volume).toContain("–")
+  })
+
+  it("says nothing about the span the result covers", () => {
+    // A second kind of number in the pane reads as one of the value counts.
+    expect(render([
+      { code: null, label: null, facets: [DATES] },
+      { code: "data", label: "データ", facets: [VOLUME] },
+    ])).not.toContain("〜")
   })
 
   it("names the facet the range writes into, so the form says which one it is", () => {

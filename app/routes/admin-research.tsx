@@ -1,4 +1,3 @@
-import { useState, type ReactNode } from "react"
 import { data, Form, Link } from "react-router"
 
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
@@ -10,6 +9,8 @@ import {
   adminResearchFilesPath,
   adminResearchListPath,
 } from "~/admin/urls"
+import { Badge, Confirm, Note, Stack } from "~/components/base"
+import { Checkbox, Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
@@ -69,197 +70,150 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
         </Link>
       </PageHead>
       <Card>
-        {actionData?.status === "conflict" && <Notice>{t.discardConflict}</Notice>}
-        {actionData?.status === "taken" && <Notice>{t.pinTaken}</Notice>}
+        <Stack gap="block">
+          {actionData?.status === "conflict" && <Note kind="danger" live>{t.discardConflict}</Note>}
+          {actionData?.status === "taken" && <Note kind="danger" live>{t.pinTaken}</Note>}
 
-        <Section title={t.labels}>
-          {view.labels.length === 0
-            ? <Empty>{t.unpinned}</Empty>
-            : (
-                <ul className="mb-3 flex flex-wrap gap-3 text-sm">
-                  {view.labels.map((label) => (
-                    <li key={label.id} className="flex items-center gap-2">
-                      <span>{label.label}</span>
-                      <span className="rounded border border-line px-1.5 py-0.5 text-ink-muted text-xs">
-                        {label.isPrimary ? t.primary : t.secondary}
-                      </span>
-                      <Unpin pinId={label.id} locale={locale} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-          <PinForm
-            kind="hum"
-            placeholder={t.pinPlaceholder}
-            suggestion={null}
-            locale={locale}
-          />
-        </Section>
+          <Section title={t.labels}>
+            <Stack gap="normal">
+              {view.labels.length === 0
+                ? <Empty>{t.unpinned}</Empty>
+                : (
+                    <ul className="flex flex-wrap gap-3 text-sm">
+                      {view.labels.map((label) => (
+                        <li key={label.id} className="flex items-center gap-2">
+                          <span>{label.label}</span>
+                          <Badge tone={label.isPrimary ? "brand" : "muted"}>
+                            {label.isPrimary ? t.primary : t.secondary}
+                          </Badge>
+                          <Unpin pinId={label.id} locale={locale} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+              <PinForm
+                kind="hum"
+                placeholder={t.pinPlaceholder}
+                suggestion={null}
+                locale={locale}
+              />
+            </Stack>
+          </Section>
 
-        <Section title={t.versions}>
-          {view.versions.length === 0
-            ? <Empty>{t.noVersions}</Empty>
-            : (
-                <Table headers={[t.version, t.releaseDate, t.visibility, ""]}>
-                  {view.versions.map((version) => (
-                    <tr key={version.id}>
-                      <Td className="whitespace-nowrap">
-                        {view.humLabel === null || !version.published
-                          ? `v${version.number}`
-                          : (
-                              <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
-                                {`v${version.number}`}
-                              </Link>
-                            )}
-                      </Td>
-                      <Td className="whitespace-nowrap">{version.releaseDate}</Td>
-                      <Td>{version.published ? t.published : t.withdrawn}</Td>
-                      <Td>
-                        <Visibility
-                          versionId={version.id}
-                          published={version.published}
+          <Section title={t.versions}>
+            {view.versions.length === 0
+              ? <Empty>{t.noVersions}</Empty>
+              : (
+                  <Table headers={[t.version, t.releaseDate, t.visibility, ""]}>
+                    {view.versions.map((version) => (
+                      <tr key={version.id}>
+                        <Td className="whitespace-nowrap">
+                          {view.humLabel === null || !version.published
+                            ? `v${version.number}`
+                            : (
+                                <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
+                                  {`v${version.number}`}
+                                </Link>
+                              )}
+                        </Td>
+                        <Td className="whitespace-nowrap">{version.releaseDate}</Td>
+                        <Td>{version.published ? t.published : t.withdrawn}</Td>
+                        <Td>
+                          <Visibility
+                            versionId={version.id}
+                            published={version.published}
+                            locale={locale}
+                          />
+                        </Td>
+                      </tr>
+                    ))}
+                  </Table>
+                )}
+          </Section>
+
+          <Section title={t.drafts}>
+            <Stack gap="normal">
+              <Form method="post">
+                <Submit intent="create-draft">{t.createDraft}</Submit>
+              </Form>
+              {view.drafts.length === 0
+                ? <Empty>{t.noDrafts}</Empty>
+                : (
+                    <ul className="flex flex-col gap-3">
+                      {view.drafts.map((draft) => (
+                        <DraftRow
+                          key={draft.id}
+                          draft={draft}
+                          review={view.reviews.find((row) => row.draftId === draft.id) ?? null}
+                          researchId={view.researchId}
                           locale={locale}
                         />
-                      </Td>
-                    </tr>
-                  ))}
-                </Table>
-              )}
-        </Section>
+                      ))}
+                    </ul>
+                  )}
+            </Stack>
+          </Section>
 
-        <Section title={t.drafts}>
-          <Form method="post" className="mb-3">
-            <input type="hidden" name="intent" value="create-draft" />
-            <button
-              type="submit"
-              className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
-            >
-              {t.createDraft}
-            </button>
-          </Form>
-          {view.drafts.length === 0
-            ? <Empty>{t.noDrafts}</Empty>
-            : (
-                <ul className="flex flex-col gap-3">
-                  {view.drafts.map((draft) => (
-                    <DraftRow
-                      key={draft.id}
-                      draft={draft}
-                      review={view.reviews.find((row) => row.draftId === draft.id) ?? null}
-                      researchId={view.researchId}
-                      locale={locale}
-                    />
-                  ))}
-                </ul>
-              )}
-        </Section>
+          <Section title={t.datasets}>
+            {view.datasets.length === 0
+              ? <Empty>{t.noDatasets}</Empty>
+              : (
+                  <ul className="flex flex-col gap-2 text-sm">
+                    {view.datasets.map((row) => (
+                      <li key={row.id} className="flex flex-wrap items-center gap-2">
+                        <span>{row.label ?? messages.admin.editor.unpinnedDataset}</span>
+                        {!row.published && (
+                          <span className="text-ink-muted text-xs">{t.unpublishedDataset}</span>
+                        )}
+                        {row.pinId === null
+                          ? (
+                              <PinForm
+                                kind="dataset"
+                                datasetId={row.id}
+                                placeholder={t.pinDatasetPlaceholder}
+                                suggestion={view.datasetIdSuggestion}
+                                locale={locale}
+                              />
+                            )
+                          : <Unpin pinId={row.pinId} locale={locale} />}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+          </Section>
 
-        <Section title={t.datasets}>
-          {view.datasets.length === 0
-            ? <Empty>{t.noDatasets}</Empty>
-            : (
-                <ul className="flex flex-col gap-2 text-sm">
-                  {view.datasets.map((row) => (
-                    <li key={row.id} className="flex flex-wrap items-center gap-2">
-                      <span>{row.label ?? messages.admin.editor.unpinnedDataset}</span>
-                      {!row.published && (
-                        <span className="text-ink-muted text-xs">{t.unpublishedDataset}</span>
-                      )}
-                      {row.pinId === null
-                        ? (
-                            <PinForm
-                              kind="dataset"
-                              datasetId={row.id}
-                              placeholder={t.pinDatasetPlaceholder}
-                              suggestion={view.datasetIdSuggestion}
-                              locale={locale}
-                            />
-                          )
-                        : <Unpin pinId={row.pinId} locale={locale} />}
-                    </li>
-                  ))}
-                </ul>
-              )}
-        </Section>
+          <Section title={messages.admin.files.heading}>
+            <p className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-ink-muted">
+                {view.box === null
+                  ? messages.admin.files.unavailable
+                  : messages.admin.files.summary(view.box.count, formatSize(view.box.bytes))}
+              </span>
+              <Link to={href(locale, adminResearchFilesPath(view.researchId))}>
+                {messages.admin.files.open}
+              </Link>
+            </p>
+          </Section>
 
-        <Section title={messages.admin.files.heading}>
-          <p className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-ink-muted">
-              {view.box === null
-                ? messages.admin.files.unavailable
-                : messages.admin.files.summary(view.box.count, formatSize(view.box.bytes))}
-            </span>
-            <Link to={href(locale, adminResearchFilesPath(view.researchId))}>
-              {messages.admin.files.open}
-            </Link>
-          </p>
-        </Section>
-
-        {/*
-          Last, because it takes the whole research with it. The labels come
-          free again afterwards, and what is left of it is the event.
-        */}
-        <Section title={t.deleteResearch}>
-          <Confirm
-            label={t.deleteResearch}
-            warning={t.deleteResearchWarning}
-            confirm={t.deleteResearchConfirm}
-            locale={locale}
-          >
-            <input type="hidden" name="intent" value="delete-research" />
-          </Confirm>
-        </Section>
+          {/*
+            Last, because it takes the whole research with it. The labels come
+            free again afterwards, and what is left of it is the event.
+          */}
+          <Section title={t.deleteResearch}>
+            <Form method="post">
+              <Confirm
+                label={t.deleteResearch}
+                warning={t.deleteResearchWarning}
+                confirm={t.deleteResearchConfirm}
+                cancel={t.cancel}
+              >
+                <input type="hidden" name="intent" value="delete-research" />
+              </Confirm>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
-  )
-}
-
-function Notice({ children }: { children: ReactNode }) {
-  return (
-    <p className="mb-4 rounded border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
-  )
-}
-
-/**
- * Something that cannot be taken back asks twice, and says what it does before
- * it is confirmed rather than after.
- */
-function Confirm({ label, warning, confirm, locale, children }: {
-  label: string
-  warning: string
-  confirm: string
-  locale: Locale
-  children: ReactNode
-}) {
-  const [asking, setAsking] = useState(false)
-  const cancel = messagesFor(locale).admin.detail.cancel
-
-  if (!asking) {
-    return (
-      <button
-        type="button"
-        onClick={() => { setAsking(true) }}
-        className="cursor-pointer text-ink-muted text-xs underline"
-      >
-        {label}
-      </button>
-    )
-  }
-  return (
-    <Form method="post" className="flex flex-wrap items-center gap-2">
-      {children}
-      <span className="text-danger text-xs">{warning}</span>
-      <button type="submit" className="cursor-pointer text-danger text-xs underline">
-        {confirm}
-      </button>
-      <button
-        type="button"
-        onClick={() => { setAsking(false) }}
-        className="cursor-pointer text-ink-muted text-xs underline"
-      >
-        {cancel}
-      </button>
-    </Form>
   )
 }
 
@@ -273,34 +227,35 @@ function Visibility({ versionId, published, locale }: {
   if (!published) {
     return (
       <Form method="post">
-        <input type="hidden" name="intent" value="republish-version" />
         <input type="hidden" name="versionId" value={versionId} />
-        <button type="submit" className="cursor-pointer text-brand text-xs underline">
-          {t.republish}
-        </button>
+        <Submit intent="republish-version" variant="ghost">{t.republish}</Submit>
       </Form>
     )
   }
   return (
-    <Confirm
-      label={t.withdraw}
-      warning={t.withdrawWarning}
-      confirm={t.withdrawConfirm}
-      locale={locale}
-    >
-      <input type="hidden" name="intent" value="withdraw-version" />
-      <input type="hidden" name="versionId" value={versionId} />
-    </Confirm>
+    <Form method="post">
+      <Confirm
+        label={t.withdraw}
+        warning={t.withdrawWarning}
+        confirm={t.withdrawConfirm}
+        cancel={t.cancel}
+      >
+        <input type="hidden" name="intent" value="withdraw-version" />
+        <input type="hidden" name="versionId" value={versionId} />
+      </Confirm>
+    </Form>
   )
 }
 
 function Unpin({ pinId, locale }: { pinId: string, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
   return (
-    <Confirm label={t.unpin} warning={t.unpinWarning} confirm={t.unpinConfirm} locale={locale}>
-      <input type="hidden" name="intent" value="unpin" />
-      <input type="hidden" name="pinId" value={pinId} />
-    </Confirm>
+    <Form method="post">
+      <Confirm label={t.unpin} warning={t.unpinWarning} confirm={t.unpinConfirm} cancel={t.cancel}>
+        <input type="hidden" name="intent" value="unpin" />
+        <input type="hidden" name="pinId" value={pinId} />
+      </Confirm>
+    </Form>
   )
 }
 
@@ -320,29 +275,17 @@ function PinForm({ kind, datasetId, placeholder, suggestion, locale }: {
   const t = messagesFor(locale).admin.detail
 
   return (
-    <Form method="post" className="flex flex-wrap items-center gap-2 text-sm">
-      <input type="hidden" name="intent" value="pin" />
+    <Form method="post" className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="kind" value={kind} />
       {datasetId !== undefined && <input type="hidden" name="datasetId" value={datasetId} />}
-      <input
-        type="text"
+      <Field
+        label={t.pinLabel}
         name="label"
-        required
-        aria-label={t.pinLabel}
-        placeholder={placeholder}
-        defaultValue={kind === "dataset" ? suggestion ?? "" : ""}
-        className="rounded border border-line px-2 py-1"
+        value={kind === "dataset" ? suggestion ?? undefined : undefined}
+        hint={placeholder}
       />
-      <label className="flex items-center gap-1 text-xs">
-        <input type="checkbox" name="isPrimary" defaultChecked />
-        <span>{t.pinPrimary}</span>
-      </label>
-      <button
-        type="submit"
-        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
-      >
-        {t.pinSubmit}
-      </button>
+      <Checkbox label={t.pinPrimary} name="isPrimary" checked />
+      <Submit intent="pin">{t.pinSubmit}</Submit>
     </Form>
   )
 }
@@ -364,54 +307,48 @@ function DraftRow({ draft, review, researchId, locale }: {
 
   return (
     <li className="rounded border border-line px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Link to={href(locale, adminDraftPath(researchId, draft.id))}>{t.edit}</Link>
-          <Link to={href(locale, adminDraftPublishPath(researchId, draft.id))}>
-            {messages.admin.publish.open}
-          </Link>
-          <Link to={href(locale, adminDraftReviewPath(researchId, draft.id))}>{t.review}</Link>
-          {review !== null && (
+      <Stack gap="tight">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Link to={href(locale, adminDraftPath(researchId, draft.id))}>{t.edit}</Link>
+            <Link to={href(locale, adminDraftPublishPath(researchId, draft.id))}>
+              {messages.admin.publish.open}
+            </Link>
+            <Link to={href(locale, adminDraftReviewPath(researchId, draft.id))}>{t.review}</Link>
+            {review !== null && (
+              <span className="text-ink-muted text-xs">
+                {review.shared ? t.shared : review.expired ? t.shareExpired : t.notShared}
+              </span>
+            )}
+            {review !== null && review.unresolved > 0 && (
+              <Badge tone="accent">{t.openComments(review.unresolved)}</Badge>
+            )}
             <span className="text-ink-muted text-xs">
-              {review.shared ? t.shared : review.expired ? t.shareExpired : t.notShared}
+              {`${t.updatedAt}: ${draft.updatedAt.slice(0, 10)}`}
             </span>
-          )}
-          {review !== null && review.unresolved > 0 && (
-            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
-              {t.openComments(review.unresolved)}
+            <span className="text-ink-muted text-xs">
+              {`${t.parent}: ${draft.parentVersionNumber === null ? t.parentNone : `v${draft.parentVersionNumber}`}`}
             </span>
-          )}
-          <span className="text-ink-muted text-xs">
-            {`${t.updatedAt}: ${draft.updatedAt.slice(0, 10)}`}
-          </span>
-          <span className="text-ink-muted text-xs">
-            {`${t.parent}: ${draft.parentVersionNumber === null ? t.parentNone : `v${draft.parentVersionNumber}`}`}
-          </span>
-          {draft.flags.unsettled && (
-            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
-              {flags.unsettled}
-            </span>
-          )}
-          {draft.flags.untranslated && (
-            <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
-              {flags.untranslated}
-            </span>
-          )}
+            {draft.flags.unsettled && <Badge tone="accent">{flags.unsettled}</Badge>}
+            {draft.flags.untranslated && <Badge tone="accent">{flags.untranslated}</Badge>}
+          </div>
+          <Form method="post">
+            <Confirm
+              label={t.discard}
+              warning={t.discardWarning}
+              confirm={t.discardConfirm}
+              cancel={t.cancel}
+            >
+              <input type="hidden" name="intent" value="discard-draft" />
+              <input type="hidden" name="draftId" value={draft.id} />
+              <input type="hidden" name="revision" value={draft.revision} />
+            </Confirm>
+          </Form>
         </div>
-        <Confirm
-          label={t.discard}
-          warning={t.discardWarning}
-          confirm={t.discardConfirm}
-          locale={locale}
-        >
-          <input type="hidden" name="intent" value="discard-draft" />
-          <input type="hidden" name="draftId" value={draft.id} />
-          <input type="hidden" name="revision" value={draft.revision} />
-        </Confirm>
-      </div>
-      <p className="mt-2 text-sm">
-        {draft.note === "" ? <span className="text-ink-muted">{t.noNote}</span> : draft.note}
-      </p>
+        <p className="text-sm">
+          {draft.note === "" ? <span className="text-ink-muted">{t.noNote}</span> : draft.note}
+        </p>
+      </Stack>
     </li>
   )
 }

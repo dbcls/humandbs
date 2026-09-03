@@ -40,6 +40,7 @@ export default function DataUse({ loaderData }: Route.ComponentProps) {
           <Heading title={messages.heading} />
           <ActionRow>
             <ActionButton
+              locale={locale}
               href={href(locale, "/research")}
               label={messages.find}
               note={messages.findFor}
@@ -48,6 +49,7 @@ export default function DataUse({ loaderData }: Route.ComponentProps) {
               external={false}
             />
             <ActionButton
+              locale={locale}
               href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
               label={messages.apply}
               note={messages.applyFor}

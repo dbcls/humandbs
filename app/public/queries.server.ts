@@ -26,6 +26,7 @@ import {
   contentKey,
   contentSnapshot,
   datasetContent,
+  humAccession,
   labelPin,
   researchVersion,
   searchDoc,
@@ -149,6 +150,8 @@ export async function publishedDatasets(
 export interface PublishedDatasetPage extends PublishedDatasetRow {
   humLabel: string
   dateModified: string | null
+  /** The study this sits under, from the upstream cache (`hum_accession`). */
+  studyAccession: string | null
 }
 
 /**
@@ -170,9 +173,13 @@ export async function publishedDataset(
       datePublished: searchDoc.datePublished,
       dateModified: searchDoc.dateModified,
       content: datasetContent.content,
+      studyAccession: humAccession.study,
     })
     .from(searchDoc)
     .innerJoin(datasetContent, eq(datasetContent.datasetId, searchDoc.targetId))
+    // The cache is keyed by the accession, which is what the label is for a
+    // dataset registered in JGA; for anything else the join simply finds nothing.
+    .leftJoin(humAccession, eq(humAccession.accession, searchDoc.datasetLabel))
     .where(and(eq(searchDoc.targetType, "dataset"), eq(searchDoc.targetId, datasetId)))
     .limit(1)
   const label = row?.label

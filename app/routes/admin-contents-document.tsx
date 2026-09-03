@@ -2,6 +2,7 @@ import { Form, Link } from "react-router"
 
 import { documentAction, documentPage } from "~/admin/contents.server"
 import { adminContentsPath } from "~/admin/urls"
+import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
@@ -50,39 +51,47 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
         <Link to={href(locale, adminContentsPath())} className="text-white">{t.backToTree}</Link>
       </PageHead>
       <Card>
-        <ResultLine result={actionData} locale={locale} />
+        <Stack gap="block">
+          <ResultLine result={actionData} locale={locale} />
 
-        <Section title={t.address}>
-          {seriesOf !== null && (
-            <Empty>
-              {t.revisionOf(seriesOf.slug, seriesOf.number)}
-              {seriesOf.isCurrent && ` — ${t.isCurrent}`}
-            </Empty>
-          )}
-          <Form method="post" className="mt-2 flex flex-wrap items-end gap-2">
-            <Field label={t.slug} name="slug" value={slug} width="w-96" />
-            <Submit intent="rename">{t.rename}</Submit>
-          </Form>
-          <Empty>{t.renameNote}</Empty>
-
-          {seriesOf === null && (
-            <Form method="post" className="mt-4 flex flex-wrap items-end gap-3">
-              <Field label={t.versionNumber} name="number" type="number" width="w-24" value="1" />
-              <Submit intent="cut-into-version">{t.cut}</Submit>
-              <Empty>{t.cutNote(slug)}</Empty>
+          <Section title={t.address}>
+            {seriesOf !== null && (
+              <Empty>
+                {t.revisionOf(seriesOf.slug, seriesOf.number)}
+                {seriesOf.isCurrent && ` — ${t.isCurrent}`}
+              </Empty>
+            )}
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <Field label={t.slug} name="slug" value={slug} width="w-96" />
+              <Submit intent="rename">{t.rename}</Submit>
             </Form>
-          )}
-        </Section>
+            <Empty>{t.renameNote}</Empty>
 
-        <LocaleEditors editors={editors} locale={locale} />
+            {seriesOf === null && (
+              <Form method="post" className="flex flex-wrap items-end gap-3">
+                <Field label={t.versionNumber} name="number" type="number" width="w-24" value="1" />
+                <Submit intent="cut-into-version">{t.cut}</Submit>
+                <Empty>{t.cutNote(slug)}</Empty>
+              </Form>
+            )}
+          </Section>
 
-        <Section title={t.removeHeading}>
-          <Form method="post" className="flex flex-wrap items-center gap-3">
-            <input type="hidden" name="documentId" value={id} />
-            <Submit intent="delete-document">{t.removeDocument}</Submit>
-            <Empty>{t.removeNote}</Empty>
-          </Form>
-        </Section>
+          <LocaleEditors editors={editors} locale={locale} />
+
+          <Section title={t.removeHeading}>
+            <Form method="post">
+              <Confirm
+                label={t.removeDocument}
+                warning={t.removeNote}
+                confirm={t.removeDocumentConfirm}
+                cancel={t.cancel}
+              >
+                <input type="hidden" name="intent" value="delete-document" />
+                <input type="hidden" name="documentId" value={id} />
+              </Confirm>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )

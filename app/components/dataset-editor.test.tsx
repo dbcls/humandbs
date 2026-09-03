@@ -151,9 +151,13 @@ describe("the dataset editing form", () => {
 
     expect(html).toContain("データの種類")
     expect(html).toContain("全ゲノムシークエンス")
-    // The two it does not carry are choices, not empty fields.
-    expect(html).toContain("<option value=\"00000000-0000-0000-0000-0000000000a3\">備考</option>")
+    // The one it already carries is not offered again as a candidate.
+    expect(html.split("データの種類").length - 1).toBe(1)
+    // The two it does not carry are candidates to add, not empty fields — and
+    // the picker that offers them is not a `<select>`.
+    expect(html).toContain("備考")
     expect(html).not.toContain("アクセス制限</span>")
+    expect(html).not.toContain("<option")
   })
 
   it("shows the terms a vocabulary item holds and searches for the rest", () => {

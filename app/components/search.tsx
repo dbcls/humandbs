@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Link, useSubmit } from "react-router"
+import { Form, Link, useSubmit } from "react-router"
 
 import {
   BAND_FILL,
@@ -150,7 +150,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
       // An empty field is no condition at all, and an address is easier to read
       // and to share without the parts of it that say nothing.
       for (const [key, given] of [...asked]) if (given === "") asked.delete(key)
-      void runSearch(asked, { method: "get", action, replace: true })
+      void runSearch(asked, { method: "get", action, replace: true, preventScrollReset: true })
     }, SEARCH_AFTER_TYPING)
   }
 
@@ -158,7 +158,18 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
     // The button sits inside the field rather than beside it, the way v1 draws
     // it: the two are one control, and set apart they read as a box and an
     // unrelated circle. The field keeps room for it on the right.
-    <form ref={form} method="get" action={action} role="search" className="relative flex items-center">
+    <Form
+      ref={form}
+      method="get"
+      action={action}
+      role="search"
+      // Where the box sits over what it searches, submitting it narrows a
+      // listing the reader is already looking at, so it holds them where they
+      // are. The front page's box is the other case — it goes somewhere else,
+      // and arriving there part-way down would be arriving in the middle.
+      preventScrollReset={searchAsTyped}
+      className="relative flex items-center"
+    >
       {children}
       <input
         ref={field}
@@ -196,7 +207,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
       >
         <Icon name="search" className={SEARCH_GLYPH[size]} />
       </button>
-    </form>
+    </Form>
   )
 }
 
@@ -369,7 +380,7 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
       <div className="flex items-center justify-between gap-x-3 text-xs">
         <span className="font-semibold text-ink-muted">{messages.applied}</span>
         {clearHref !== null && (
-          <Link to={clearHref} className={CLEAR}>{messages.clear}</Link>
+          <Link to={clearHref} preventScrollReset className={CLEAR}>{messages.clear}</Link>
         )}
       </div>
       <Stack gap="tight" as="ul">
@@ -427,6 +438,7 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
         page: 1,
         size: rows,
       }))}
+      preventScrollReset
       aria-label={turn}
       title={turn}
       className={CHOOSER_SIDE}
@@ -448,6 +460,7 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
             page: 1,
             size: rows,
           }))}
+          preventScrollReset
           aria-current={option === sort ? "true" : undefined}
           className={option === sort ? MENU_ITEM_HERE : MENU_ITEM}
         >
@@ -491,6 +504,7 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
             page: 1,
             size: option === PAGE_SIZE ? null : option,
           }))}
+          preventScrollReset
           aria-current={option === size ? "true" : undefined}
           className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
         >

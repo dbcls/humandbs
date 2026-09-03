@@ -54,7 +54,7 @@ import {
   buildResearchContent,
   ownLines,
 } from "./build"
-import { buildAlerts, buildDocuments, buildNews, loadCms } from "./cms"
+import { buildAlerts, buildDocuments, buildNews, loadCms, type SuppliedAlertText } from "./cms"
 import {
   ACCESS_CRITERIA_KEY,
   ACCESS_CRITERIA_SET,
@@ -76,6 +76,17 @@ function readByHand(): ReadByHand[] {
   const path = join(import.meta.dirname, "input", "read-by-hand.json")
   if (!existsSync(path)) return []
   return JSON.parse(readFileSync(path, "utf8")) as ReadByHand[]
+}
+
+/**
+ * The banner translations somebody wrote, for the announcements the old CMS
+ * holds in one language. Optional the same way, and `buildAlerts` says which
+ * one is missing when a banner that is up has no entry here.
+ */
+function suppliedAlertText(): SuppliedAlertText[] {
+  const path = join(import.meta.dirname, "input", "alert-translations.json")
+  if (!existsSync(path)) return []
+  return JSON.parse(readFileSync(path, "utf8")) as SuppliedAlertText[]
 }
 
 const CHUNK = 500
@@ -302,7 +313,7 @@ async function loadSiteContent(tx: Executor) {
     (chunk) => tx.insert(newsContent).values(chunk),
   )
 
-  const alerts = buildAlerts(cms.alerts)
+  const alerts = buildAlerts(cms.alerts, suppliedAlertText())
   await insertChunked(alerts, (chunk) => tx.insert(alert).values(chunk))
 
   return {

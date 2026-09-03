@@ -128,8 +128,11 @@ schema を DB に入れるのは `npm run db:push`。**migration file を持た�
 直して開発用データを作り直す。全文検索の生成列と PGroonga の index も schema 定義に含まれるので、
 別途 SQL を流す手順は無い。
 
-**列や制約を消す変更は `db:push` が対話で確認を求め、TTY が無いので落ちる。** そのときは schema ごと
-作り直す。
+**行が残っていると危うい変更は `db:push` が対話で確認を求め、TTY が無いので落ちる。** 列や制約を消す
+変更だけではない — **既にある行に unique 制約を足すのも同じで**、「その表を truncate してよいか」と
+聞いてくる。落ち方はどちらも同じで、`Interactive prompts require a TTY terminal` を出して止まる。
+**開発用データを作り直すつもりなら、先に空にしてから push すれば聞かれない** (行が無ければ失うものが
+無い)。schema ごと作り直しても同じところに着く。
 
 ```bash
 docker compose exec db psql -U humandbs -d humandbs \

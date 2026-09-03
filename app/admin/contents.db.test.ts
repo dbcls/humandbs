@@ -19,7 +19,7 @@ import {
   newsListPage,
   newsPage,
 } from "./contents.server"
-import { today } from "./dates"
+import { today } from "~/dates"
 import { adminContentsPath, adminDocumentPath, adminNewsListPath, adminNewsPath } from "./urls"
 
 /**
@@ -570,6 +570,30 @@ describe("バナー", () => {
     const events = await db.select().from(s.event).where(eq(s.event.subjectType, "alert"))
     expect(events.map((row) => row.action)).toEqual(["publish-site-content"])
     expect(only(await db.select().from(s.alert)).content.body.ja).toBe("直した")
+  })
+
+  it("片方の言語しか無いバナーは立てられない", async () => {
+    const token = await signIn(CURATOR, true)
+    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    const result = await contentsAction(post(token, adminContentsPath(), {
+      intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "", active: "on",
+    }))
+    expect(result.status).toBe("missing-translation")
+    expect(only(await db.select().from(s.alert)).active).toBe(false)
+  })
+
+  it("立てないうちは、片方ずつ書いていける", async () => {
+    const token = await signIn(CURATOR, true)
+    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    const result = await contentsAction(post(token, adminContentsPath(), {
+      intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "",
+    }))
+    expect(result.status).toBe("ok")
+    expect(only(await db.select().from(s.alert)).content.body.ja).toBe("お知らせ")
   })
 
   it("バナーの本文も生 HTML を弾く", async () => {

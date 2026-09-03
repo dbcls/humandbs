@@ -38,7 +38,7 @@ import { OPEN_BOUND, serializeQuery, type DslRange, type QueryNode } from "~/sea
 import { DATE_FACETS, type DateFacet, type QueryFields } from "~/search/fields"
 import { messagesFor } from "~/i18n/messages"
 import type { SearchTarget } from "~/search/query.server"
-import { readSelection, toggleTerm, withoutFacet } from "~/search/selection"
+import { readSelection, toggleTerm, withoutFacet, withRange } from "~/search/selection"
 
 import { href, listPath, searchQuery } from "./urls"
 
@@ -72,23 +72,32 @@ export interface FacetCodeEntryView {
   problem: "unknown-code" | "no-data" | null
 }
 
+/**
+ * A window offered as one press, rather than as two dates to type.
+ *
+ * **What the address carries is the absolute day**, so a link that is shared or
+ * bookmarked keeps meaning what it meant when it was made. Which window is in
+ * force is worked back out from that day against today, so a bookmark read on
+ * another day matches none of them — it still holds the same rows.
+ */
+export interface RangePresetView {
+  label: string
+  /** The search with this window in force, or with the range lifted for "all". */
+  href: string
+  current: boolean
+}
+
 export interface FacetRangeView {
   /** What the inputs hold; empty when that end is open. */
   from: string
   to: string
-  /**
-   * The span present in the result, written out, as a hint for the inputs.
-   *
-   * **Written here rather than at the screen** because what it takes to write a
-   * number so that somebody could type it back is not the screen's to know: a
-   * kilobyte held in gigabytes is 0.00000095, and the default way of writing
-   * that is exponent notation, which is not a number anybody types into a box.
-   */
-  min: string | null
-  max: string | null
   unit: string | null
-  /** The search with this range lifted, or null when none is set. */
-  clearHref: string | null
+  /**
+   * The windows offered above the inputs. Empty on a facet that offers none:
+   * a number has no window everybody means the same thing by, the way the last
+   * year is one.
+   */
+  presets: readonly RangePresetView[]
 }
 
 export interface FacetView {
@@ -150,6 +159,12 @@ export interface FacetPanelRequest {
   find: string
   /** `?code=`: an ICD10 code that did not become a condition. */
   code: string
+  /**
+   * The calendar day the relative windows are measured back from, `YYYY-MM-DD`.
+   * Passed in rather than read from the clock so that the panel a request gets
+   * is decided entirely by the request.
+   */
+  today: string
 }
 
 /** A value is looked for by its code and its label, in whichever language. */
@@ -287,7 +302,7 @@ export async function facetPanel(
       if (span === undefined && chosenRange === undefined) return empty
       return {
         ...empty,
-        range: rangeView({ definition: one, chosen: chosenRange, span, ast, fields, address }),
+        range: rangeView({ definition: one, chosen: chosenRange, ast, fields, address }),
       }
     }
 
@@ -350,7 +365,16 @@ export async function facetPanel(
     categories: withDates(
       categorise(views, definitions, locale),
       DATE_FACETS.flatMap((field) => {
-        const view = dateView({ field, locale, selection, span: dateSpan(field), ast, fields, address })
+        const view = dateView({
+          field,
+          locale,
+          selection,
+          span: dateSpan(field),
+          today: request.today,
+          ast,
+          fields,
+          address,
+        })
         return view === null ? [] : [view]
       }),
     ),
@@ -372,11 +396,12 @@ function dateView(input: {
   locale: Locale
   selection: { terms: ReadonlyMap<string, string[]>, ranges: ReadonlyMap<string, DslRange> }
   span: DateBounds | null
+  today: string
   ast: QueryNode | null
   fields: QueryFields
   address: (query: QueryNode | null) => string
 }): FacetView | null {
-  const { field, locale, selection, span, ast, fields, address } = input
+  const { field, locale, selection, span, today, ast, fields, address } = input
   // A single day written as a condition is a span of one day. The panel has no
   // other way to draw it, and drawing nothing would leave it with no way off.
   const [only] = selection.terms.get(field) ?? []
@@ -384,8 +409,23 @@ function dateView(input: {
     ?? (only === undefined ? undefined : { from: only, to: only })
   if (span === null && chosen === undefined) return null
 
-  const written = (bound: string | undefined) =>
-    bound === undefined || bound === OPEN_BOUND ? "" : bound
+  const messages = messagesFor(locale).search.refine
+  const lifted = address(withoutFacet(ast, fields, field))
+  const presets: RangePresetView[] = [
+    { label: messages.presetAll, href: lifted, current: chosen === undefined },
+    ...DATE_PRESET_YEARS.map((years) => {
+      const from = datePresetFrom(today, years)
+      return {
+        label: messages.presetYears(years),
+        href: address(withRange(ast, fields, field, { from, to: OPEN_BOUND })),
+        // A window is in force when it is the whole of the condition: the same
+        // opening day, and nothing closing it. A reader who typed those two
+        // dates by hand gets the window lit, which is the same search.
+        current: chosen?.from === from && chosen.to === OPEN_BOUND,
+      }
+    }),
+  ]
+
   return {
     code: field,
     label: messagesFor(locale).search.fields[field],
@@ -394,18 +434,37 @@ function dateView(input: {
     moreHref: null,
     expanded: false,
     closeHref: null,
-    clearHref: chosen === undefined ? null : address(withoutFacet(ast, fields, field)),
+    clearHref: chosen === undefined ? null : lifted,
     find: "",
     codeEntry: null,
     range: {
-      from: written(chosen?.from),
-      to: written(chosen?.to),
-      min: span?.min ?? null,
-      max: span?.max ?? null,
+      from: writtenBound(chosen?.from),
+      to: writtenBound(chosen?.to),
       unit: null,
-      clearHref: chosen === undefined ? null : address(withoutFacet(ast, fields, field)),
+      presets,
     },
   }
+}
+
+/** How far back the windows a date facet offers reach, in the order drawn. */
+export const DATE_PRESET_YEARS = [1, 5, 10] as const
+
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+/**
+ * The day a relative window opens on: the same calendar day, `years` earlier.
+ *
+ * **The 29th of February has no counterpart in a common year.** The day is
+ * pulled back to the end of the month rather than let roll into March, so the
+ * window a reader is offered never opens later than the one they asked for.
+ */
+export function datePresetFrom(today: string, years: number): string {
+  const [year = 0, month = 1, day = 1] = today.split("-").map(Number)
+  const opened = year - years
+  const leap = opened % 4 === 0 && (opened % 100 !== 0 || opened % 400 === 0)
+  const last = month === 2 && leap ? 29 : DAYS_IN_MONTH[month - 1] ?? 31
+  const pad = (value: number, width: number) => String(value).padStart(width, "0")
+  return `${pad(opened, 4)}-${pad(month, 2)}-${pad(Math.min(day, last), 2)}`
 }
 
 /**
@@ -489,52 +548,25 @@ function childrenOf(
     .sort((a, b) => a.code.localeCompare(b.code))
 }
 
-/**
- * One end of the span present, written so that a reader could type it back.
- *
- * **The two ends are rounded outwards** — the low one down, the high one up —
- * so the pair still holds everything it describes. A hint that excluded a value
- * the reader can see in the result would be worse than no hint.
- *
- * Values are stored in the key's canonical unit, and a unit chosen for the
- * largest values makes the smallest ones very small: a kilobyte held in
- * gigabytes is 0.00000095, which `String` writes as `9.5367431640625e-7`. Two
- * significant digits below one and whole numbers above it — the span is read to
- * know what to type, not to be reproduced.
- */
-export function writtenBound(value: number, towards: "down" | "up"): string {
-  if (!Number.isFinite(value) || value === 0) return "0"
-  const abs = Math.abs(value)
-  const places = abs >= 1 ? 0 : Math.min(20, Math.ceil(-Math.log10(abs)) + 1)
-  const factor = 10 ** places
-  const snapped = (towards === "down" ? Math.floor : Math.ceil)(value * factor) / factor
-  const [whole = "0", fraction] = Math.abs(snapped).toFixed(places).split(".")
-  const grouped = Number(whole).toLocaleString("en-US")
-  const sign = snapped < 0 ? "-" : ""
-  return fraction === undefined ? `${sign}${grouped}` : `${sign}${grouped}.${fraction}`
-}
-
 function rangeView(input: {
   definition: FacetDefinition
   chosen: DslRange | undefined
-  span: { min: number, max: number } | undefined
   ast: QueryNode | null
   fields: QueryFields
   address: (query: QueryNode | null) => string
 }): FacetRangeView {
-  const { definition, chosen, span } = input
-  const written = (bound: string | undefined) =>
-    bound === undefined || bound === OPEN_BOUND ? "" : bound
+  const { definition, chosen } = input
   return {
-    from: written(chosen?.from),
-    to: written(chosen?.to),
-    min: span === undefined ? null : writtenBound(span.min, "down"),
-    max: span === undefined ? null : writtenBound(span.max, "up"),
+    from: writtenBound(chosen?.from),
+    to: writtenBound(chosen?.to),
     unit: definition.canonicalUnit,
-    clearHref: chosen === undefined
-      ? null
-      : input.address(withoutFacet(input.ast, input.fields, definition.field.code)),
+    presets: [],
   }
+}
+
+/** What an input holds for one end of a range: empty when that end is open. */
+function writtenBound(bound: string | undefined): string {
+  return bound === undefined || bound === OPEN_BOUND ? "" : bound
 }
 
 /** Facets grouped under their category heading, in the catalog's order. */

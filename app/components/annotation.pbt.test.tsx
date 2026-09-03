@@ -99,6 +99,7 @@ function datasetAnchors(content: DatasetContent) {
   const anchored = anchoredDatasetView({
     label: "JGAD000001",
     humLabel: "hum0001",
+    studyAccession: null,
     content,
     datePublished: null,
     dateModified: null,

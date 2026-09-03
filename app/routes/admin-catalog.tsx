@@ -2,8 +2,8 @@ import { Form, Link } from "react-router"
 
 import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.server"
 import { adminVocabularyPath } from "~/admin/urls"
-import { Badge } from "~/components/base"
-import { Field, Result, Submit } from "~/components/form"
+import { Badge, Button, Fold, Stack } from "~/components/base"
+import { Checkbox, Field, Result, Select, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
@@ -53,90 +53,90 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
     <Page>
       <PageHead label={t.heading} />
       <Card>
-        {actionData !== undefined && (
-          <Result ok={actionData.status === "ok"}>
-            {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
-          </Result>
-        )}
-        <p className="mb-4 text-ink-muted text-sm">{t.note}</p>
+        <Stack gap="block">
+          {actionData !== undefined && (
+            <Result ok={actionData.status === "ok"}>
+              {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
+            </Result>
+          )}
+          <p className="text-ink-muted text-sm">{t.note}</p>
 
-        {(["dataset", "experiment"] as const).map((scope) => (
-          <Section
-            key={scope}
-            title={scope === "dataset" ? t.datasetKeys : t.experimentKeys}
-          >
+          {(["dataset", "experiment"] as const).map((scope) => (
+            <Section
+              key={scope}
+              title={scope === "dataset" ? t.datasetKeys : t.experimentKeys}
+            >
+              <ul className="flex flex-col divide-y divide-line border-line border-y">
+                {view.keys.filter((key) => key.scope === scope).map((key) => (
+                  <KeyRow key={key.id} entry={key} categories={categories} locale={locale} />
+                ))}
+              </ul>
+            </Section>
+          ))}
+
+          <Section title={t.addKey}>
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="intent" value="create-key" />
+              <Field label={t.code} name="code" />
+              <Select
+                label={t.scope}
+                name="scope"
+                options={[
+                  { value: "experiment", label: t.scopes.experiment },
+                  { value: "dataset", label: t.scopes.dataset },
+                ]}
+              />
+              <Field label={t.labelJa} name="labelJa" />
+              <Field label={t.labelEn} name="labelEn" />
+              <Checkbox label={t.showOnPublicPage} name="showOnPublicPage" checked />
+              <Submit>{t.addKey}</Submit>
+            </Form>
+          </Section>
+
+          <Section title={t.vocabularies}>
             <ul className="flex flex-col divide-y divide-line border-line border-y">
-              {view.keys.filter((key) => key.scope === scope).map((key) => (
-                <KeyRow key={key.id} entry={key} categories={categories} locale={locale} />
+              {view.vocabularies.map((set) => (
+                <li key={set.id} className="flex flex-wrap items-baseline gap-3 py-2 text-sm">
+                  <code className="w-56 shrink-0">{set.code}</code>
+                  <span className="flex-1">{catalogLabel(set, locale)}</span>
+                  {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
+                  <span className="text-ink-muted">{t.termCount(set.terms)}</span>
+                  <Link to={href(locale, adminVocabularyPath(set.code))}>{t.openSet}</Link>
+                </li>
               ))}
             </ul>
           </Section>
-        ))}
 
-        <Section title={t.addKey}>
-          <Form method="post" className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="intent" value="create-key" />
-            <Field label={t.code} name="code" />
-            <label className="flex flex-col text-sm">
-              {t.scope}
-              <select name="scope" className="rounded border border-line bg-surface-input px-2 py-1">
-                <option value="experiment">{t.scopes.experiment}</option>
-                <option value="dataset">{t.scopes.dataset}</option>
-              </select>
-            </label>
-            <Field label={t.labelJa} name="labelJa" />
-            <Field label={t.labelEn} name="labelEn" />
-            <label className="flex items-center gap-1 text-sm">
-              <input type="checkbox" name="showOnPublicPage" defaultChecked />
-              {t.showOnPublicPage}
-            </label>
-            <Submit>{t.addKey}</Submit>
-          </Form>
-        </Section>
-
-        <Section title={t.vocabularies}>
-          <ul className="flex flex-col divide-y divide-line border-line border-y">
-            {view.vocabularies.map((set) => (
-              <li key={set.id} className="flex flex-wrap items-baseline gap-3 py-2 text-sm">
-                <code className="w-56 shrink-0">{set.code}</code>
-                <span className="flex-1">{catalogLabel(set, locale)}</span>
-                {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
-                <span className="text-ink-muted">{t.termCount(set.terms)}</span>
-                <Link to={href(locale, adminVocabularyPath(set.code))}>{t.openSet}</Link>
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section title={t.categories}>
-          {view.categories.length === 0
-            ? <Empty>{t.noCategory}</Empty>
-            : (
-                <ul className="flex flex-col divide-y divide-line border-line border-y">
-                  {view.categories.map((category) => (
-                    <li key={category.id} className="py-2">
-                      <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
-                        <input type="hidden" name="categoryId" value={category.id} />
-                        <code className="w-40 shrink-0 self-center">{category.code}</code>
-                        <Field label={t.labelJa} name="labelJa" value={category.labelJa ?? ""} />
-                        <Field label={t.labelEn} name="labelEn" value={category.labelEn ?? ""} />
-                        <Submit intent="update-category">{t.save}</Submit>
-                        <Submit intent="move-category-up">{t.up}</Submit>
-                        <Submit intent="move-category-down">{t.down}</Submit>
-                        <Submit intent="delete-category">{t.remove}</Submit>
-                      </Form>
-                    </li>
-                  ))}
-                </ul>
-              )}
-          <Form method="post" className="mt-3 flex flex-wrap items-end gap-2">
-            <input type="hidden" name="intent" value="create-category" />
-            <Field label={t.code} name="code" />
-            <Field label={t.labelJa} name="labelJa" />
-            <Field label={t.labelEn} name="labelEn" />
-            <Submit>{t.addCategory}</Submit>
-          </Form>
-        </Section>
+          <Section title={t.categories}>
+            {view.categories.length === 0
+              ? <Empty>{t.noCategory}</Empty>
+              : (
+                  <ul className="flex flex-col divide-y divide-line border-line border-y">
+                    {view.categories.map((category) => (
+                      <li key={category.id} className="py-2">
+                        <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
+                          <input type="hidden" name="categoryId" value={category.id} />
+                          <code className="w-40 shrink-0 self-center">{category.code}</code>
+                          <Field label={t.labelJa} name="labelJa" value={category.labelJa ?? ""} />
+                          <Field label={t.labelEn} name="labelEn" value={category.labelEn ?? ""} />
+                          <Submit intent="update-category">{t.save}</Submit>
+                          <Submit intent="move-category-up">{t.up}</Submit>
+                          <Submit intent="move-category-down">{t.down}</Submit>
+                          <Submit intent="delete-category">{t.remove}</Submit>
+                        </Form>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="intent" value="create-category" />
+              <Field label={t.code} name="code" />
+              <Field label={t.labelJa} name="labelJa" />
+              <Field label={t.labelEn} name="labelEn" />
+              <Submit>{t.addCategory}</Submit>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )
@@ -149,43 +149,56 @@ function KeyRow({ entry, categories, locale }: {
 }) {
   const t = messagesFor(locale).admin.catalog
   const typed = entry.valueType !== "text"
+  const category = categories.find((one) => one.id === entry.categoryId)
+  const note = [
+    entry.canonicalUnit === null ? t.types[entry.valueType] : `${t.types[entry.valueType]} (${entry.canonicalUnit})`,
+    category?.label,
+  ].filter((part): part is string => part !== undefined).join(" · ")
+
   return (
-    <li className="py-2">
-      <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
+    // The row and its move buttons stand side by side rather than one inside
+    // the other: a `<details>` toggles on any click inside it, including one on
+    // the reorder buttons, so they need to sit outside the fold to be pressed
+    // without also closing it — and to stay reachable while the row is closed.
+    <li className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">
+        <Fold
+          summary={(
+            <>
+              <code className="text-ink-muted text-xs">{entry.code}</code>
+              {`${entry.labelJa} / ${entry.labelEn}`}
+            </>
+          )}
+          note={note}
+        >
+          <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
+            <input type="hidden" name="keyId" value={entry.id} />
+            <Field label={t.labelJa} name="labelJa" value={entry.labelJa} />
+            <Field label={t.labelEn} name="labelEn" value={entry.labelEn} />
+            <Select
+              label={t.category}
+              name="categoryId"
+              value={entry.categoryId ?? ""}
+              options={[
+                { value: "", label: t.noCategory },
+                ...categories.map((one) => ({ value: one.id, label: one.label })),
+              ]}
+            />
+            <Checkbox
+              label={t.showOnPublicPage}
+              name="showOnPublicPage"
+              checked={entry.showOnPublicPage}
+            />
+            <Button size="xs" name="intent" value="update-key">{t.save}</Button>
+            {/* A typed key is a facet; taking one away is a development change too. */}
+            {!typed && <Button size="xs" name="intent" value="delete-key">{t.remove}</Button>}
+          </Form>
+        </Fold>
+      </div>
+      <Form method="post" className="flex shrink-0 gap-1 pt-1.5">
         <input type="hidden" name="keyId" value={entry.id} />
-        <code className="w-56 shrink-0 self-center break-all">{entry.code}</code>
-        <span className="w-24 shrink-0 self-center text-ink-muted">
-          {t.types[entry.valueType]}
-          {entry.canonicalUnit !== null && ` (${entry.canonicalUnit})`}
-        </span>
-        <Field label={t.labelJa} name="labelJa" value={entry.labelJa} />
-        <Field label={t.labelEn} name="labelEn" value={entry.labelEn} />
-        <label className="flex flex-col">
-          {t.category}
-          <select
-            name="categoryId"
-            defaultValue={entry.categoryId ?? ""}
-            className="rounded border border-line bg-surface-input px-2 py-1"
-          >
-            <option value="">{t.noCategory}</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>{category.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-1 self-center">
-          <input
-            type="checkbox"
-            name="showOnPublicPage"
-            defaultChecked={entry.showOnPublicPage}
-          />
-          {t.showOnPublicPage}
-        </label>
-        <Submit intent="update-key">{t.save}</Submit>
-        <Submit intent="move-key-up">{t.up}</Submit>
-        <Submit intent="move-key-down">{t.down}</Submit>
-        {/* A typed key is a facet; taking one away is a development change too. */}
-        {!typed && <Submit intent="delete-key">{t.remove}</Submit>}
+        <Button size="xs" name="intent" value="move-key-up">{t.up}</Button>
+        <Button size="xs" name="intent" value="move-key-down">{t.down}</Button>
       </Form>
     </li>
   )

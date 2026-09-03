@@ -522,7 +522,7 @@ source なので (「catalog と語彙」)、公開表現を通してから集�
 | source | 上流 | 用途 |
 |---|---|---|
 | CAU (controlled-access user) | JGA 申請管理システム DB | 公開表現に載る |
-| hum ラベル ↔ dataset accession | 同上 | 公開ゲートの検算と DDBJ Search への供給 |
+| hum ラベル ↔ accession と、JGA の dataset → study の辺 | 同上 | 公開ゲートの検算、dataset のページ、DDBJ Search への供給 |
 | JGAD の日付 | 同上 | 公開表現に載る |
 | DRA / GEA / MetaboBank / BioProject の日付 | DDBJ Search | 同上 |
 
@@ -539,6 +539,10 @@ source なので (「catalog と語彙」)、公開表現を通してから集�
 - **hum と accession は 1 : n。** 上流がこの対応の master で、ポータルは検算と DDBJ Search への供給
   ([public-api.md](public-api.md)) に使う。**ポータルの pin は master ではない**ので、キャッシュに無い
   対応を供給に足すことはしない
+- **同じ source が JGA の dataset → study の辺も持つ。** 上流の `relation` を最新の entry に絞って
+  辿った結果で、**JGAD : JGAS は 1 : 1**。hum ごとに畳んだ対応からは戻せない (1 つの hum が複数の
+  study を持つほうが普通) ので、畳む前を持つ。辺を持つのは dataset の accession だけで、study の
+  accession は持たない
 - **JGAD の日付は公開状態が live になった日で、初回が公開日、最後が更新日。** live は内容が更新される
   たびに記録し直されるので、`datePublished > dateModified` が構造的に起きない。上流の履歴は 2020-09
   以降しか無く、それ以前に公開されたものは初回が一括記録の日になるが、**その値をそのまま出す** —
@@ -613,7 +617,11 @@ content にも置くと、同じ事実の出所が 2 つになる。
 - **news は document と別のエンティティ。** identity + locale ごとの content + 公開日 + draft。公開日は
   identity の側に 1 つで、一覧の並びそのものになる
 - **本文は markdown 文字列。** 生 HTML は持たない (「値と文」)
-- **alert は on / off だけを持ち、期間を持たない。** ja/en の対を 1 つ持ち、片方が空ならもう一方が出る
+- **alert は on / off だけを持ち、期間を持たない。** ja/en の対を 1 つ持つ。**立っている alert は必ず
+  両方を持つ** — 全ページに出るものなので、片方しか無いまま立てると、その言語の読者は読めない箱を
+  渡される。これは入口が 2 つとも見張る: admin は両方揃うまで on にできず
+  ([editing.md](editing.md))、移行は立っている alert の空いた側を手で書いた訳で埋め、埋められなければ
+  止まる。**off のあいだは片方だけでよい** — まだ誰にも何も言っていないため
 
 **画面は document ではない。** 提供・利用・問い合わせの入口はボタンと短い文だけで本文を持たないので、
 コードが持つ ([public-pages.md](public-pages.md))。トップだけは枠がコードで、本文が `home` document に

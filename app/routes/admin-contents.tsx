@@ -4,8 +4,8 @@ import { nextVersionNumber, type TreeEntry } from "~/admin/contents"
 import { contentsAction, contentsPage, type AlertRow } from "~/admin/contents.server"
 import { adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
 import { ResultLine, StateBadges } from "~/components/contents"
-import { Badge, Confirm } from "~/components/base"
-import { Field, Result, Submit, TextArea } from "~/components/form"
+import { Badge, Confirm, Fold, Stack } from "~/components/base"
+import { Checkbox, Field, Result, Select, Submit, TextArea } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -56,43 +56,49 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
         <Link to={href(locale, adminContentFilesPath())} className="text-white">{t.files.heading}</Link>
       </PageHead>
       <Card>
-        <ResultLine result={actionData} locale={locale} />
-        <p className="mb-4 text-ink-muted text-sm">{t.note}</p>
+        <Stack gap="block">
+          <ResultLine result={actionData} locale={locale} />
+          <Empty>{t.note}</Empty>
 
-        {unanswered.map((one) => (
-          <Result key={one.slug} ok={false}>
-            {t.unanswered(one.slug, one.locales.map((each) => t.languages[each]).join(" / "))}
-          </Result>
-        ))}
+          {unanswered.map((one) => (
+            <Result key={one.slug} ok={false}>
+              {t.unanswered(one.slug, one.locales.map((each) => t.languages[each]).join(" / "))}
+            </Result>
+          ))}
 
-        <Section title={t.documents}>
-          <ul className="flex flex-col divide-y divide-line border-line border-y">
-            {tree.map((entry) => (
-              <Entry
-                key={entry.kind === "series" ? entry.series.id : entry.document.id}
-                entry={entry}
-                locale={locale}
-              />
-            ))}
-          </ul>
-        </Section>
+          <Section title={t.documents}>
+            <ul className="flex flex-col divide-y divide-line border-line border-y">
+              {tree.map((entry) => (
+                <Entry
+                  key={entry.kind === "series" ? entry.series.id : entry.document.id}
+                  entry={entry}
+                  locale={locale}
+                />
+              ))}
+            </ul>
+          </Section>
 
-        <Section title={t.addDocument}>
-          <Form method="post" className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="intent" value="create-document" />
-            <Field label={t.slug} name="slug" width="w-96" />
-            <Submit>{t.addDocument}</Submit>
-          </Form>
-        </Section>
+          <Section title={t.addDocument}>
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="intent" value="create-document" />
+              <Field label={t.slug} name="slug" width="w-96" />
+              <Submit>{t.addDocument}</Submit>
+            </Form>
+          </Section>
 
-        <Section title={t.alerts}>
-          {alerts.length === 0
-            ? <Empty>{t.noAlert}</Empty>
-            : alerts.map((row) => <AlertForm key={row.id} row={row} locale={locale} />)}
-          <Form method="post" className="mt-3">
-            <Submit intent="create-alert">{t.addAlert}</Submit>
-          </Form>
-        </Section>
+          <Section title={t.alerts}>
+            {alerts.length === 0
+              ? <Empty>{t.noAlert}</Empty>
+              : (
+                  <Stack gap="normal">
+                    {alerts.map((row) => <AlertForm key={row.id} row={row} locale={locale} />)}
+                  </Stack>
+                )}
+            <Form method="post">
+              <Submit intent="create-alert">{t.addAlert}</Submit>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )
@@ -117,69 +123,64 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
   const { series, current } = entry
   return (
     <li className={`py-2 text-sm ${indent}`}>
-      <div className="flex flex-wrap items-baseline gap-3">
-        <code className="w-96 shrink-0">{series.slug}</code>
-        <Badge>{t.seriesBadge}</Badge>
-        <span className="flex-1">{current === null ? t.noCurrent : current.title}</span>
-        {current !== null && <StateBadges states={current.states} locale={locale} />}
-      </div>
+      <Stack gap="tight">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <code className="w-96 shrink-0">{series.slug}</code>
+          <Badge>{t.seriesBadge}</Badge>
+          <span className="flex-1">{current === null ? t.noCurrent : current.title}</span>
+          {current !== null && <StateBadges states={current.states} locale={locale} />}
+        </div>
 
-      <Form method="post" className="mt-2 flex flex-wrap items-center gap-2">
-        <input type="hidden" name="seriesId" value={series.id} />
-        <label className="flex items-center gap-1">
-          {t.current}
-          <select
-            name="documentId"
-            defaultValue={series.currentId}
-            className="rounded border border-line bg-surface-input px-2 py-1"
-          >
-            {series.revisions.map((revision) => (
-              <option key={revision.id} value={revision.id}>{revision.slug}</option>
-            ))}
-          </select>
-        </label>
-        <Submit intent="repoint-series">{t.repoint}</Submit>
-      </Form>
-
-      <Form method="post" className="mt-2 flex flex-wrap items-end gap-2">
-        <input type="hidden" name="seriesId" value={series.id} />
-        <Field
-          label={t.versionNumber}
-          name="number"
-          type="number"
-          width="w-24"
-          value={String(nextVersionNumber(series.slug, series.revisions.map((one) => one.slug)))}
-        />
-        <Submit intent="add-version">{t.addVersion}</Submit>
-      </Form>
-
-      <Form method="post" className="mt-2">
-        <Confirm
-          label={t.removeSeries}
-          warning={t.removeSeriesNote(series.revisions.length)}
-          confirm={t.removeSeriesConfirm}
-          cancel={t.cancel}
-        >
-          <input type="hidden" name="intent" value="delete-series" />
+        <Form method="post" className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="seriesId" value={series.id} />
-        </Confirm>
-      </Form>
+          <Select
+            label={t.current}
+            name="documentId"
+            value={series.currentId}
+            options={series.revisions.map((revision) => ({ value: revision.id, label: revision.slug }))}
+          />
+          <Submit intent="repoint-series">{t.repoint}</Submit>
+        </Form>
 
-      <details className="mt-2">
-        <summary className="cursor-pointer text-ink-muted">{t.revisions(series.revisions.length)}</summary>
-        <ul className="mt-1 flex flex-col divide-y divide-line border-line border-y">
-          {series.revisions.map((revision) => (
-            <li key={revision.id} className="flex flex-wrap items-baseline gap-3 py-2 pl-6">
-              <Link to={href(locale, adminDocumentPath(revision.id))} className="w-96 shrink-0">
-                <code>{revision.slug}</code>
-              </Link>
-              <span className="flex-1">{revision.title}</span>
-              {revision.id === series.currentId && <Badge>{t.isCurrent}</Badge>}
-              <StateBadges states={revision.states} locale={locale} />
-            </li>
-          ))}
-        </ul>
-      </details>
+        <Form method="post" className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="seriesId" value={series.id} />
+          <Field
+            label={t.versionNumber}
+            name="number"
+            type="number"
+            width="w-24"
+            value={String(nextVersionNumber(series.slug, series.revisions.map((one) => one.slug)))}
+          />
+          <Submit intent="add-version">{t.addVersion}</Submit>
+        </Form>
+
+        <Form method="post">
+          <Confirm
+            label={t.removeSeries}
+            warning={t.removeSeriesNote(series.revisions.length)}
+            confirm={t.removeSeriesConfirm}
+            cancel={t.cancel}
+          >
+            <input type="hidden" name="intent" value="delete-series" />
+            <input type="hidden" name="seriesId" value={series.id} />
+          </Confirm>
+        </Form>
+
+        <Fold summary={t.revisions(series.revisions.length)}>
+          <ul className="flex flex-col divide-y divide-line border-line border-y">
+            {series.revisions.map((revision) => (
+              <li key={revision.id} className="flex flex-wrap items-baseline gap-3 py-2 pl-6">
+                <Link to={href(locale, adminDocumentPath(revision.id))} className="w-96 shrink-0">
+                  <code>{revision.slug}</code>
+                </Link>
+                <span className="flex-1">{revision.title}</span>
+                {revision.id === series.currentId && <Badge>{t.isCurrent}</Badge>}
+                <StateBadges states={revision.states} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </Fold>
+      </Stack>
     </li>
   )
 }
@@ -187,15 +188,12 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
 function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
   const t = messagesFor(locale).admin.contents
   return (
-    <Form method="post" className="mb-4 flex flex-col gap-2 border-line border-b pb-4">
+    <Form method="post" className="flex flex-col gap-2 border-line border-b pb-4">
       <input type="hidden" name="alertId" value={row.id} />
       <TextArea label={t.languages.ja} name="ja" value={row.ja} rows={2} />
       <TextArea label={t.languages.en} name="en" value={row.en} rows={2} />
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1 text-sm">
-          <input type="checkbox" name="active" defaultChecked={row.active} />
-          {t.alertActive}
-        </label>
+        <Checkbox label={t.alertActive} name="active" checked={row.active} />
         <Submit intent="update-alert">{t.save}</Submit>
         <Submit intent="delete-alert">{t.remove}</Submit>
       </div>

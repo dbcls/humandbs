@@ -198,11 +198,35 @@ export interface BuiltAlert {
 }
 
 /**
- * The banner is one announcement in two languages rather than a row per
- * language, so the translations collapse into a pair. A missing side stays
- * empty and the reader sees the other one.
+ * A translation somebody wrote for a banner the old CMS only holds one language
+ * of. Both sides are the finished text, and the one the dump already has is
+ * what an entry is found by.
  */
-export function buildAlerts(alerts: CmsAlert[]): BuiltAlert[] {
+export interface SuppliedAlertText {
+  ja: string
+  en: string
+  /** Why a person had to write it, and where the wording came from. */
+  why: string
+}
+
+/**
+ * The banner is one announcement in two languages rather than a row per
+ * language, so the translations collapse into a pair.
+ *
+ * **A banner that is up has to be up in both languages.** It stands on every
+ * page, and a reader on the other one gets a box of an alphabet they may not
+ * read. The old CMS lets one side be empty, so what is missing is filled from
+ * translations written by hand (`input/alert-translations.json`) — matched on
+ * the side that is there, after it has been turned into markdown, so the key is
+ * the text as it will be stored.
+ *
+ * **A banner that is up and still has a side missing stops the migration.** The
+ * portal cannot write the announcement itself, and importing half of one puts
+ * it on every page in a language it was not written for. One that is switched
+ * off is carried as it is: it says nothing to anybody yet, and the editor asks
+ * for the other side before it can be switched on (`docs/editing.md`).
+ */
+export function buildAlerts(alerts: CmsAlert[], supplied: SuppliedAlertText[] = []): BuiltAlert[] {
   return alerts.map((alert) => {
     const text = { ja: "", en: "" }
     for (const translation of alert.translations) {
@@ -210,6 +234,20 @@ export function buildAlerts(alerts: CmsAlert[]): BuiltAlert[] {
         text[translation.locale] = rewriteLinks(htmlToMarkdown(translation.content))
       }
     }
-    return { content: { body: text }, active: alert.enabled === true }
+
+    const active = alert.enabled === true
+    for (const [locale, other] of [["ja", "en"], ["en", "ja"]] as const) {
+      if (text[locale] !== "" || text[other] === "") continue
+      text[locale] = supplied.find((entry) => entry[other] === text[other])?.[locale] ?? ""
+    }
+    if (active && (text.ja === "" || text.en === "")) {
+      const missing = text.ja === "" ? "ja" : "en"
+      throw new Error(
+        `alert ${alert.id} is enabled with no ${missing} text; `
+        + `add a translation to input/alert-translations.json`,
+      )
+    }
+
+    return { content: { body: text }, active }
   })
 }

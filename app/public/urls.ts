@@ -166,6 +166,17 @@ export function exportPath(target: "research" | "dataset"): string {
 }
 
 /**
+ * Where a JGA study is described, which is not here.
+ *
+ * The portal holds the accession and the edge to it, but nothing about the
+ * study itself — the archive is what describes it, so the name is shown as a
+ * way there rather than as a string to copy.
+ */
+export function jgaStudyUrl(accession: string): string {
+  return `https://ddbj.nig.ac.jp/search/entry/jga-study/${encodeURIComponent(accession)}/`
+}
+
+/**
  * Where a published file is fetched from.
  *
  * **No route answers this.** The front proxy passes `/files/…` to the store,

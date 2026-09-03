@@ -227,6 +227,7 @@ describe("what a research page carries", () => {
 
 function dataset(content: DatasetContent) {
   return datasetView({
+    studyAccession: null,
     label: "JGAD000001",
     humLabel: "hum0001",
     content,

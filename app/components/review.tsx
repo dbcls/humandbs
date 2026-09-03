@@ -18,8 +18,10 @@ import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import type { ReviewPageView } from "~/review/review.server"
 
-import { Thread, type CommentContext } from "./comments"
-import { Card, Page, PageHead } from "./page"
+import { Badge, Confirm, Stack } from "./base"
+import { DdbjMark, Thread, type CommentContext } from "./comments"
+import { Checkbox, Field, Submit } from "./form"
+import { Card, Empty, Page, PageHead, Section } from "./page"
 
 export function ReviewScreen({ view }: { view: ReviewPageView }) {
   const locale = view.locale
@@ -45,59 +47,58 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
       </PageHead>
 
       <Card>
-        <Share view={view} />
+        <Stack gap="block">
+          <Share view={view} />
 
-        <section className="mt-8">
-          <h2 className="mb-3 flex flex-wrap items-baseline gap-2 border-line border-b pb-1 font-semibold text-brand">
-            <span>
-              {`${messages.comment.heading} — ${messages.admin.detail.openComments(view.unresolved)}`}
-            </span>
-            {/* Answered ones are still listed; the count says how much of the
-                list is already dealt with. */}
-            {view.threads.length > view.unresolved && (
-              <span className="font-normal text-ink-muted text-xs">
-                {`${t.resolvedThreads} ${String(view.threads.length - view.unresolved)}`}
-              </span>
-            )}
-          </h2>
-          {view.threads.length === 0
-            ? <p className="text-ink-muted text-sm">{t.noThreads}</p>
-            : (
-                <ul className="flex flex-col gap-4">
-                  {view.threads.map((row) => (
-                    <li key={row.thread.id} className="rounded border border-line px-4 py-3">
-                      <p className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="font-semibold">{row.subject}</span>
-                        <code className="text-ink-muted">{row.thread.anchor.path}</code>
-                        <Link to={row.href}>{t.openEditor}</Link>
-                      </p>
-                      <Thread context={context} thread={row.thread} />
-                    </li>
-                  ))}
-                </ul>
+          <Section
+            title={`${messages.comment.heading} — ${messages.admin.detail.openComments(view.unresolved)}`}
+          >
+            <Stack gap="normal">
+              {/* Answered ones are still listed; the count says how much of the
+                  list is already dealt with. */}
+              {view.threads.length > view.unresolved && (
+                <p className="text-ink-muted text-xs">
+                  {`${t.resolvedThreads} ${String(view.threads.length - view.unresolved)}`}
+                </p>
               )}
-        </section>
+              {view.threads.length === 0
+                ? <Empty>{t.noThreads}</Empty>
+                : (
+                    <Stack as="ul" gap="normal">
+                      {view.threads.map((row) => (
+                        <li key={row.thread.id} className="rounded border border-line px-4 py-3">
+                          <Stack gap="tight">
+                            <p className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="font-semibold">{row.subject}</span>
+                              <code className="text-ink-muted">{row.thread.anchor.path}</code>
+                              <Link to={row.href}>{t.openEditor}</Link>
+                            </p>
+                            <Thread context={context} thread={row.thread} />
+                          </Stack>
+                        </li>
+                      ))}
+                    </Stack>
+                  )}
+            </Stack>
+          </Section>
 
-        <section className="mt-8">
-          <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">
-            {messages.preview.lgtmWho}
-          </h2>
-          {view.acknowledgements.length === 0
-            ? <p className="text-ink-muted text-sm">{messages.preview.lgtmHint}</p>
-            : (
-                <ul className="flex flex-wrap gap-2 text-sm">
-                  {view.acknowledgements.map((row) => (
-                    <li
-                      key={`${row.name}-${row.createdAt}`}
-                      className="rounded border border-line px-2 py-0.5"
-                    >
-                      {`${row.name} — ${row.createdAt.slice(0, 10)}`}
-                      {row.bySignedIn && <span aria-hidden="true"> 🅳</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-        </section>
+          <Section title={messages.preview.lgtmWho}>
+            {view.acknowledgements.length === 0
+              ? <Empty>{messages.preview.lgtmHint}</Empty>
+              : (
+                  <ul className="flex flex-wrap gap-2 text-sm">
+                    {view.acknowledgements.map((row) => (
+                      <li key={`${row.name}-${row.createdAt}`}>
+                        <Badge>
+                          {`${row.name} — ${row.createdAt.slice(0, 10)}`}
+                          {row.bySignedIn && <DdbjMark locale={locale} />}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )
@@ -111,64 +112,53 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
 function Share({ view }: { view: ReviewPageView }) {
   const locale = view.locale
   const t = messagesFor(locale).admin.review
+  const detail = messagesFor(locale).admin.detail
   const share = view.share
 
   return (
-    <section>
-      <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{t.share}</h2>
+    <Section title={t.share}>
+      <Stack gap="normal">
+        <Stack gap="tight">
+          <p className="text-sm">{share.open ? t.shareOn : t.shareOff}</p>
+          {share.expired && <p className="text-accent text-sm">{t.expired}</p>}
 
-      <p className="text-sm">{share.open ? t.shareOn : t.shareOff}</p>
-      {share.expired && <p className="mt-1 text-accent text-sm">{t.expired}</p>}
+          {/* A value on display rather than something to type into, so the edge
+              stays the plain `line` rather than the input-strength `line-strong`. */}
+          <p className="break-all rounded border border-line bg-surface px-3 py-2 text-sm">
+            {share.open
+              ? <Link to={share.url}>{share.url}</Link>
+              : <span className="text-ink-muted">{share.url}</span>}
+          </p>
+          {/* The same address, named as what it opens: an administrator checking
+              what a provider sees is following it, not copying it. */}
+          {share.open && (
+            <p className="text-xs">
+              <Link to={share.url} target="_blank" rel="noreferrer">{t.openPreview}</Link>
+            </p>
+          )}
+        </Stack>
 
-      <p className="mt-2 break-all rounded border border-line bg-surface px-3 py-2 text-sm">
-        {share.open
-          ? <Link to={share.url}>{share.url}</Link>
-          : <span className="text-ink-muted">{share.url}</span>}
-      </p>
-      {/* The same address, named as what it opens: an administrator checking
-          what a provider sees is following it, not copying it. */}
-      {share.open && (
-        <p className="mt-1 text-xs">
-          <Link to={share.url} target="_blank" rel="noreferrer">{t.openPreview}</Link>
-        </p>
-      )}
-
-      <Form method="post" className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-        <input type="hidden" name="intent" value="share" />
-        <label className="flex items-center gap-1">
-          <input type="checkbox" name="enabled" defaultChecked={share.enabled} />
-          <span>{t.enable}</span>
-        </label>
-        <label className="flex items-center gap-1">
-          <span className="text-ink-muted text-xs">{t.expiryDate}</span>
-          <input
-            type="date"
-            name="expiresOn"
-            defaultValue={share.expiresOn ?? ""}
-            className="rounded border border-line px-2 py-1"
-          />
-        </label>
-        <span className="text-ink-muted text-xs">
-          {share.expiresOn === null ? t.expiryNone : ""}
-        </span>
-        <button
-          type="submit"
-          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
-        >
-          {t.setExpiry}
-        </button>
-      </Form>
-
-      <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-ink-muted text-xs underline">{t.reissue}</summary>
-        <Form method="post" className="mt-2 flex flex-wrap items-center gap-2">
-          <input type="hidden" name="intent" value="reissue" />
-          <span className="text-danger text-xs">{t.reissueWarning}</span>
-          <button type="submit" className="cursor-pointer text-danger text-xs underline">
-            {t.reissueConfirm}
-          </button>
+        <Form method="post" className="flex flex-wrap items-center gap-3 text-sm">
+          <input type="hidden" name="intent" value="share" />
+          <Checkbox label={t.enable} name="enabled" checked={share.enabled} />
+          <Field label={t.expiryDate} name="expiresOn" type="date" value={share.expiresOn ?? ""} />
+          <span className="text-ink-muted text-xs">
+            {share.expiresOn === null ? t.expiryNone : ""}
+          </span>
+          <Submit>{t.setExpiry}</Submit>
         </Form>
-      </details>
-    </section>
+
+        <Form method="post">
+          <Confirm
+            label={t.reissue}
+            warning={t.reissueWarning}
+            confirm={t.reissueConfirm}
+            cancel={detail.cancel}
+          >
+            <input type="hidden" name="intent" value="reissue" />
+          </Confirm>
+        </Form>
+      </Stack>
+    </Section>
   )
 }

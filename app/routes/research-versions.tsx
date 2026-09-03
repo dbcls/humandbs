@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Badge, Band, Stack } from "~/components/base"
+import { Band, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import {
   Card,
@@ -31,7 +31,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData.view.humLabel} - NBDC Human Database` }]
+  const t = messagesFor(loaderData.locale).research
+  return [{ title: `${t.releaseInfoOf(loaderData.view.humLabel)} - NBDC Human Database` }]
 }
 
 /**
@@ -54,17 +55,21 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
         ]}
         current={t.releaseInfo}
       />
+      {/*
+        The band names the page rather than the research. A label of the bare
+        identifier is the one the version page carries as well, so the two open
+        the same way and only the trail says which is which — and the badge that
+        made up the difference said, on the right of the band, a word the trail
+        had already said on the left.
+      */}
       <PageHead
-        kicker={t.researchId}
         label={(
           <>
             <Icon name="book" aria-hidden="true" />
-            {view.humLabel}
+            {t.releaseInfoOf(view.humLabel)}
           </>
         )}
-      >
-        <Badge onBand>{t.releaseInfo}</Badge>
-      </PageHead>
+      />
       <Card>
         <Stack gap="block">
           <UntranslatedNotice show={view.untranslated} locale={locale} />

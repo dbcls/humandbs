@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Badge, Stack } from "~/components/base"
+import { Badge, Clamped, Stack } from "~/components/base"
 import { CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -21,6 +21,7 @@ import {
   Card,
   Crumbs,
   Empty,
+  ExternalLink,
   hasLinks,
   KeyValue,
   LinksValue,
@@ -79,9 +80,15 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
           <>
             <Icon name="book" aria-hidden="true" />
             {view.versionLabel}
+            {/*
+              **The link is a flex item, not a line of text.** Left inline it
+              draws a line box the height of the heading, and the badge inside
+              it lands on that line's baseline rather than on the centre the
+              heading is aligning everything else to.
+            */}
             <Link
               to={href(locale, researchVersionsPath(view.humLabel))}
-              className="no-underline"
+              className="flex no-underline"
             >
               <Badge onBand pill>{t.releaseInfo}</Badge>
             </Link>
@@ -150,7 +157,10 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
       <Section title={t.title} at="title">
-        <p className="font-semibold text-lg"><Value field={view.title} locale={locale} /></p>
+        {/* Neither larger nor heavier than the body. The heading above it says
+            what it is, and a title set apart twice — once by its own heading and
+            again by its size — is a sentence the page has decided to shout. */}
+        <p><Value field={view.title} locale={locale} /></p>
       </Section>
 
       {releaseNote && (
@@ -284,19 +294,28 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
 
       {view.grants.length > 0 && (
         <Section title={t.grants} at="grants">
-          <Table headers={[t.grantTitle, t.grantAgency, t.grantId]}>
+          {/* The funder names the programme, the programme names the project,
+              and the number identifies it — read the other way round a reader
+              meets an identifier before anything that says what it belongs to. */}
+          <Table headers={[t.grantAgency, t.grantTitle, t.grantId]}>
             {view.grants.map((grant) => (
               <tr key={grant.id}>
-                <Td>
-                  <Value field={grant.title} locale={locale} />
-                  <Annotation at={`grants.${grant.id}.title`} />
-                </Td>
                 <Td>
                   <Value field={grant.agency} locale={locale} />
                   <Annotation at={`grants.${grant.id}.agency.name`} />
                 </Td>
                 <Td>
-                  {grant.grantIds.join(", ")}
+                  <Value field={grant.title} locale={locale} />
+                  <Annotation at={`grants.${grant.id}.title`} />
+                </Td>
+                <Td>
+                  {/* A line each, because a grant carrying several numbers runs
+                      them into one long code on a single line. */}
+                  <ul>
+                    {grant.grantIds.map((grantId) => (
+                      <li key={grantId}>{grantId}</li>
+                    ))}
+                  </ul>
                   <Annotation at={`grants.${grant.id}.grantIds`} />
                 </Td>
               </tr>
@@ -317,24 +336,19 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 <Td className="break-all">
                   {publication.doi.state === "plain" && publication.doi.text !== ""
                     ? (
-                        <a href={publication.doi.text} target="_blank" rel="noreferrer">
+                        <ExternalLink to={publication.doi.text} locale={locale}>
                           {publication.doi.text}
-                        </a>
+                        </ExternalLink>
                       )
                     : <Value field={publication.doi} locale={locale} />}
                   <Annotation at={`relatedPublications.${publication.id}.doi`} />
                 </Td>
                 <Td>
-                  <ul>
-                    {publication.datasetLabels.map((label) => {
-                      const to = linkTo({ id: null, label })
-                      return (
-                        <li key={label} className="break-all">
-                          {to === null ? label : <Link to={to}>{label}</Link>}
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <DatasetList
+                    labels={publication.datasetLabels}
+                    linkTo={linkTo}
+                    messages={messages}
+                  />
                   <Annotation at={`relatedPublications.${publication.id}.datasetIds`} />
                 </Td>
               </tr>
@@ -343,42 +357,86 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         </Section>
       )}
 
-      {view.cau.length > 0 && (
-        <Section title={t.controlledAccessUsers}>
-          <Table headers={[
-            t.representative,
-            t.organization,
-            t.country,
-            t.title,
-            t.periodOfDataUse,
-            messages.dataset.datasets,
-          ]}
-          >
-            {view.cau.map((usage, index) => (
-              // No identifier a reader may see reaches this table, and the rows
-              // arrive in a fixed order that nothing here reorders.
-              <tr key={index}>
-                <Td>{usage.principalInvestigator}</Td>
-                <Td>{usage.affiliation}</Td>
-                <Td>{usage.country}</Td>
-                <Td>{usage.researchTitle}</Td>
-                <Td className="text-nowrap">
-                  {usage.periodStart !== null || usage.periodEnd !== null
-                    ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
-                    : null}
-                </Td>
-                <Td>
-                  <ul>
-                    {usage.datasetAccessions.map((accession) => (
-                      <li key={accession} className="break-all">{accession}</li>
-                    ))}
-                  </ul>
-                </Td>
-              </tr>
-            ))}
-          </Table>
-        </Section>
-      )}
+      {/*
+        Drawn even with nothing in it. What a research says about itself is
+        absent when it has none — a version with no grant simply has no grants
+        section — but this reports what has happened since it was published, and
+        an empty one is an answer: nobody has been granted this data yet. Left
+        out, a reader cannot tell that from a page that forgot to ask.
+      */}
+      <Section title={t.controlledAccessUsers}>
+        {view.cau.length === 0
+          ? <Empty>{t.noControlledAccessUsers}</Empty>
+          : (
+              <Table headers={[
+                t.representative,
+                t.organization,
+                t.country,
+                t.title,
+                t.periodOfDataUse,
+                messages.dataset.datasets,
+              ]}
+              >
+                {view.cau.map((usage, index) => (
+                  // No identifier a reader may see reaches this table, and the
+                  // rows arrive in a fixed order that nothing here reorders.
+                  <tr key={index}>
+                    <Td>{usage.principalInvestigator}</Td>
+                    <Td>{usage.affiliation}</Td>
+                    <Td>{usage.country}</Td>
+                    <Td>{usage.researchTitle}</Td>
+                    <Td className="text-nowrap">
+                      {usage.periodStart !== null || usage.periodEnd !== null
+                        ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
+                        : null}
+                    </Td>
+                    <Td>
+                      <DatasetList
+                        labels={usage.datasetAccessions}
+                        linkTo={linkTo}
+                        messages={messages}
+                      />
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+      </Section>
     </Stack>
+  )
+}
+
+/**
+ * The datasets one row of a table names.
+ *
+ * **Cut to a few with the rest a press away**, the way a listing cuts the same
+ * column: one usage record can name sixty-seven accessions, and a row that
+ * tall pushes every row under it off the screen — while the reader is reading
+ * down a column of who used what, not reading one entry.
+ *
+ * **Every accession is the address of the dataset page.** A reader who has
+ * found the row they wanted is one press from what was used; written as text
+ * they would have to carry the identifier to the listing by hand. Under a
+ * preview link `linkTo` answers null, which is right — an accession is a
+ * published dataset, and a draft has no page to send anyone to.
+ */
+function DatasetList({ labels, linkTo, messages }: {
+  labels: string[]
+  linkTo: (ref: { id: string | null, label: string }) => string | null
+  messages: ReturnType<typeof messagesFor>
+}) {
+  return (
+    <Clamped
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={labels.map((label) => {
+        const to = linkTo({ id: null, label })
+        return (
+          <span key={label} className="break-all">
+            {to === null ? label : <Link to={to}>{label}</Link>}
+          </span>
+        )
+      })}
+    />
   )
 }

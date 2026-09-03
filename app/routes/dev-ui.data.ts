@@ -12,12 +12,26 @@
  * listings are drawn from, so a change that matters stops the build.
  */
 
-import type { FacetPanelView } from "~/public/facets.server"
+import type { FacetPanelView, FacetRangeView } from "~/public/facets.server"
 import type { NewsSummary } from "~/public/site.server"
 import type { ResearchListRowView } from "~/public/view.server"
 
 /** How many rows the search these came from actually matched. */
 export const TOTAL = 397
+
+/**
+ * The windows a date facet offers, with the days frozen like everything else
+ * here — read from the clock they would be a different address every morning.
+ */
+function windows(lit: "all" | "1y" | "5y" | "10y" | null): FacetRangeView["presets"] {
+  const at = (from: string) => `/research?q=date_published%3A%5B${from}+TO+*%5D`
+  return [
+    { label: "すべて", href: "/research", current: lit === "all" },
+    { label: "1 年", href: at("2025-09-03"), current: lit === "1y" },
+    { label: "5 年", href: at("2021-09-03"), current: lit === "5y" },
+    { label: "10 年", href: at("2016-09-03"), current: lit === "10y" },
+  ]
+}
 
 /** The three most recent announcements, as the front page lists them. */
 export const NEWS: NewsSummary[] = [
@@ -799,10 +813,8 @@ export const FACETS: FacetPanelView = {
           range: {
             from: "",
             to: "",
-            min: "2015-04-01",
-            max: "2026-08-24",
             unit: null,
-            clearHref: null,
+            presets: windows("all"),
           },
           codeEntry: null,
         },
@@ -819,10 +831,8 @@ export const FACETS: FacetPanelView = {
           range: {
             from: "2024-01-01",
             to: "",
-            min: "2016-02-10",
-            max: "2026-08-24",
             unit: null,
-            clearHref: null,
+            presets: windows(null),
           },
           codeEntry: null,
         },
@@ -945,10 +955,8 @@ export const FACETS: FacetPanelView = {
           range: {
             from: "",
             to: "",
-            min: "1",
-            max: "1,872,937",
             unit: null,
-            clearHref: null,
+            presets: [],
           },
           codeEntry: null,
         },
@@ -1167,10 +1175,8 @@ export const REFINED_FACETS: FacetPanelView = {
           range: {
             from: "",
             to: "",
-            min: "2015-04-01",
-            max: "2026-08-24",
             unit: null,
-            clearHref: null,
+            presets: windows("all"),
           },
           codeEntry: null,
         },
@@ -1187,10 +1193,8 @@ export const REFINED_FACETS: FacetPanelView = {
           range: {
             from: "2024-01-01",
             to: "",
-            min: "2016-02-10",
-            max: "2026-08-24",
             unit: null,
-            clearHref: null,
+            presets: windows(null),
           },
           codeEntry: null,
         },
@@ -1313,10 +1317,8 @@ export const REFINED_FACETS: FacetPanelView = {
           range: {
             from: "",
             to: "",
-            min: "1",
-            max: "1,872,937",
             unit: null,
-            clearHref: null,
+            presets: [],
           },
           codeEntry: null,
         },

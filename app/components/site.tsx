@@ -46,9 +46,10 @@ export function ActionRow({ children }: { children: ReactNode }) {
  * screen it leads to, so the two never disagree about what colour "データの
  * 提供" is. Both leave for the application system, so both carry the arrow.
  */
-export function ActionButton({ href, label, note, tone, icon, external = true }: {
+export function ActionButton({ href, label, note, tone, icon, locale, external = true }: {
   href: string
   label: string
+  locale: Locale
   /** Who the way in is for. The front page has one button each and no note. */
   note?: string
   tone: "accent" | "brand"
@@ -62,7 +63,15 @@ export function ActionButton({ href, label, note, tone, icon, external = true }:
     // first and the note in the second, whatever either of them is doing in the
     // other column.
     <div className="grid w-full max-w-80 sm:row-span-2 sm:grid-rows-subgrid">
-      <BigAction to={href} tone={tone} icon={icon} external={external}>{label}</BigAction>
+      <BigAction
+        to={href}
+        tone={tone}
+        icon={icon}
+        external={external}
+        newTabLabel={messagesFor(locale).newTab}
+      >
+        {label}
+      </BigAction>
       {note !== undefined && <span className="pt-2 text-center text-ink-muted text-sm">{note}</span>}
     </div>
   )

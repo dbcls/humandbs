@@ -12,26 +12,26 @@
  * it was written in, and a save rejected because somebody else got there first
  * leaves the form exactly as it was and offers their version one field at a
  * time.
+ *
+ * **The document is cut into tabs and every field stays in it.** One save
+ * carries the whole draft, so moving between tabs can lose nothing; what the
+ * tabs change is how much of one document stands between a curator and the part
+ * of it they came to write.
  */
 
-import { useState } from "react"
-import { Link, useFetcher, type SubmitTarget } from "react-router"
+import { useState, type ReactNode } from "react"
+import { flushSync } from "react-dom"
+import { Link } from "react-router"
 
 import { diffDraftInput, takeField } from "~/admin/diff"
-import { takeAll } from "~/admin/merge"
 import type {
-  DataProviderInput,
   DraftInput,
-  GrantInput,
   LinkInput,
   LinksPairInput,
-  RelatedPublicationInput,
   ResearchContentInput,
-  ResearchProjectInput,
 } from "~/admin/form"
 import { researchContentInput } from "~/admin/form"
-import type { FieldProblem } from "~/admin/form.server"
-import type { AdminDraftPageView, SaveResult } from "~/admin/pages.server"
+import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
@@ -41,7 +41,6 @@ import {
   draftPresencePath,
   draftUndoPath,
 } from "~/admin/urls"
-import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { Page } from "~/components/page"
@@ -49,7 +48,8 @@ import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import { threadsByPath, unresolvedCount } from "~/review/comments"
 
-import { PresenceLine, UndoMenu } from "./draft-tools"
+import { Badge, Button, Note, SectionTabs, Stack, TabPanel, type Tone } from "./base"
+import { DraftBar, useDraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import {
   AddElement,
@@ -71,13 +71,19 @@ import {
   replacing,
   type Marks,
 } from "./fields"
+import { CONTROL } from "./form"
 
-const SECTIONS = [
-  "note",
-  "title",
-  "summary",
-  "listingSummary",
-  "releaseNote",
+/**
+ * The parts of the form, in the order they are offered.
+ *
+ * **Four of the six hold one repeated list each**, because a list grows with the
+ * research and carries its own adding, ordering and removing — put together they
+ * would be one tab as long as the whole screen was before there were any. The
+ * first holds everything written once about the research, none of which depends
+ * on how many of anything there are.
+ */
+const TABS = [
+  "overview",
   "dataProviders",
   "researchProjects",
   "grants",
@@ -85,61 +91,55 @@ const SECTIONS = [
   "datasets",
 ] as const
 
+type Tab = (typeof TABS)[number]
+
+/**
+ * Which tab a path is edited on, by the first name in it.
+ *
+ * The bands stand outside the tabs and name the places they are about by path,
+ * so going to one means opening the tab that holds it first: a field inside a
+ * panel that is not showing is `hidden`, and nothing can be moved to a place
+ * with no position. **A section's anchor is that same first name**, which is
+ * what makes one table enough to find both the tab and the element.
+ */
+const TAB_OF: Record<string, Tab> = {
+  title: "overview",
+  summary: "overview",
+  listingSummary: "overview",
+  releaseNote: "overview",
+  dataProviders: "dataProviders",
+  researchProjects: "researchProjects",
+  grants: "grants",
+  relatedPublications: "relatedPublications",
+  datasetIds: "datasets",
+}
+
+/**
+ * The four things a place can be waiting for, and how urgent each one is.
+ *
+ * Markup a save refused has to be dealt with before anything can be saved at
+ * all; a field somebody else moved is a choice to make; a comment is to be read;
+ * a difference from the published version is only where the work has been done.
+ * **The order they are written in is the order they win in.**
+ */
+const MARK_TONE = {
+  problem: "danger",
+  conflict: "accent",
+  comment: "brand",
+  differs: "muted",
+} as const satisfies Record<string, Tone>
+
+type MarkKind = keyof typeof MARK_TONE
+
+function tabOf(path: string): Tab | undefined {
+  return TAB_OF[path.split(".")[0] ?? path]
+}
+
 export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const locale = view.locale
   const t = messagesFor(locale).admin.editor
-  const fetcher = useFetcher<SaveResult>()
-  const undoFetcher = useFetcher<DraftSnapshot>()
-
-  const [input, setInput] = useState<DraftInput>(view.input)
-  const [base, setBase] = useState<DraftInput>(view.input)
-  const [revision, setRevision] = useState(view.revision)
-  const [conflict, setConflict] = useState<{ theirs: DraftInput, changed: string[] } | null>(null)
-  const [upstream, setUpstream] = useState(view.upstream)
-  const [problems, setProblems] = useState<FieldProblem[]>([])
-  const [saved, setSaved] = useState(false)
-
-  // What the pending save carried, so that a success can record it as the
-  // version the server now holds without depending on what has been typed since.
-  const [sent, setSent] = useState<DraftInput>(view.input)
-  const [answered, setAnswered] = useState<SaveResult | null>(null)
-  const [restored, setRestored] = useState<DraftSnapshot | null>(null)
-
-  // The answer is taken while rendering rather than in an effect: it is one
-  // state derived from another, not a message to an outside system, and the
-  // fields the other version moved have to be worked out against the version
-  // this screen still holds — after which that version is replaced.
-  const answer = fetcher.state === "idle" ? fetcher.data : undefined
-  if (answer !== undefined && answer !== answered) {
-    setAnswered(answer)
-    setSaved(answer.status === "saved")
-    if (answer.status === "saved") {
-      setRevision(answer.revision)
-      setBase(sent)
-      setConflict(null)
-      setProblems([])
-    } else if (answer.status === "invalid") {
-      setProblems(answer.problems)
-    } else {
-      setConflict({ theirs: answer.current, changed: diffDraftInput(base, answer.current) })
-      setRevision(answer.revision)
-      setBase(answer.current)
-      setProblems([])
-    }
-  }
-
-  // A snapshot taken off the stack is put into the form and left there. It is
-  // unsaved work like any other until somebody presses save, which is what
-  // keeps going back from being a way around the revision check.
-  const snapshot = undoFetcher.state === "idle" ? undoFetcher.data : undefined
-  if (snapshot !== undefined && snapshot !== restored) {
-    setRestored(snapshot)
-    setInput({ note: snapshot.note, content: researchContentInput(snapshot.content) })
-    setSaved(false)
-    setProblems([])
-  }
-
-  const dirty = diffDraftInput(base, input).length > 0
+  const words = messagesFor(locale).research
+  const [current, setCurrent] = useState<string>(TABS[0])
 
   const review: FieldReviewData = {
     context: {
@@ -157,200 +157,462 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       : messagesFor(locale).preview.previousIn(view.review.publishedNumber),
   }
 
-  function edit(next: DraftInput): void {
-    setInput(next)
-    setSaved(false)
-  }
+  const editing = useDraftEditing<DraftInput>({
+    initial: view.input,
+    revision: view.revision,
+    upstream: view.upstream,
+    diff: diffDraftInput,
+    take: takeField,
+    body: (value) => ({ note: value.note, content: value.content }),
+    fromSnapshot: (snapshot) => ({
+      note: snapshot.note,
+      content: researchContentInput(snapshot.content),
+    }),
+    undoPath: (undoId) => draftUndoPath(view.researchId, view.draftId, undoId),
+    extraFor: (path) => <FieldReview review={review} at={path} />,
+  })
 
-  function editContent(produce: (content: ResearchContentInput) => ResearchContentInput): void {
-    edit({ ...input, content: produce(input.content) })
-  }
+  const input = editing.value
+  const content = input.content
+  const marksFor = editing.marksFor
+  const upstream = editing.upstream
 
-  function save(): void {
-    setSent(input)
-    // The payload is a plain JSON document. `SubmitTarget` describes one as a
-    // type with an index signature, which a named interface never satisfies.
-    const payload = { revision, note: input.note, content: input.content } as unknown as SubmitTarget
-    void fetcher.submit(payload, { method: "post", encType: "application/json" })
-  }
-
-  /**
-   * Taking everything only the other publish touched. What both sides touched
-   * is left where it is: each of those is a choice, and the mark beside the
-   * field is where it is made.
-   */
-  function takeUpstream(): void {
-    if (upstream === null) return
-    edit(takeAll(takeField, input, upstream.theirs, upstream.only))
-    setUpstream({ ...upstream, only: [] })
+  function editContent(produce: (held: ResearchContentInput) => ResearchContentInput): void {
+    editing.edit({ ...input, content: produce(content) })
   }
 
   /**
-   * A field can be marked from two directions — a save somebody refused, and a
-   * publish that moved what this draft started from. The refusal wins when both
-   * apply: it is the more recent of the two.
+   * Going to the place a band names.
+   *
+   * The tab holding it is opened first and that change is flushed: the panel is
+   * `hidden` until React has drawn it again, and an element with no position
+   * cannot be scrolled to. What is focused afterwards is the first thing in the
+   * section that can be typed in, so the keyboard arrives where the eye does.
    */
-  function marksFor(path: string): Marks {
-    const refused = conflict?.changed.includes(path) ?? false
-    const moved = upstream?.both.includes(path) ?? false
-    const theirs = refused ? conflict?.theirs : moved ? upstream?.theirs : undefined
-    return {
-      changed: refused || moved,
-      onTake: theirs === undefined
-        ? null
-        : () => {
-            edit(takeField(input, theirs, path))
-            if (!refused && upstream !== null) {
-              setUpstream({ ...upstream, both: upstream.both.filter((held) => held !== path) })
-            }
-          },
-      problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),
-      extra: <FieldReview review={review} at={path} />,
+  function goTo(path: string): void {
+    const at = path.split(".")[0] ?? path
+    const tab = TAB_OF[at]
+    if (tab !== undefined) {
+      flushSync(() => {
+        setCurrent(tab)
+      })
+    }
+    const section = document.getElementById(at)
+    if (section === null) return
+    section.scrollIntoView()
+    // The first box that will take it, rather than the first one in the markup:
+    // the review layer hangs a comment form beside every field, and its own
+    // boxes come first while being hidden, folded away or otherwise unable to
+    // hold the caret. Asking each in turn is what tells the two apart.
+    for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
+      box.focus({ preventScroll: true })
+      if (document.activeElement === box) return
     }
   }
 
-  const content = input.content
+  /**
+   * The same move, for a band that draws its own anchors.
+   *
+   * The parts that draw the bands know nothing about tabs, so a link to a field
+   * on a tab that is not showing lands on a `hidden` element and does nothing at
+   * all. The click is caught on its way out and answered here instead.
+   */
+  function onBandJump(event: React.MouseEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const path = target.closest("a[href^='#']")?.getAttribute("href")?.slice(1)
+    if (path === undefined) return
+    event.preventDefault()
+    goTo(path)
+  }
+
+  // Every place waiting for something, most pressing first (`MARK_TONE`).
+  const waiting: { kind: MarkKind, paths: string[] }[] = [
+    { kind: "problem", paths: editing.problems.map((problem) => problem.path) },
+    {
+      kind: "conflict",
+      paths: [
+        ...editing.conflict?.changed ?? [],
+        ...upstream?.only ?? [],
+        ...upstream?.both ?? [],
+      ],
+    },
+    {
+      kind: "comment",
+      paths: Object.entries(review.threads)
+        .filter(([, threads]) => unresolvedCount(threads) > 0)
+        .map(([path]) => path),
+    },
+    { kind: "differs", paths: view.review.changed },
+  ]
+
+  /**
+   * What is waiting on a tab, since the marks beside its fields are hidden along
+   * with them.
+   *
+   * **One badge rather than one per kind.** The strip is read across in a
+   * glance, and numbers side by side get compared rather than counted; the
+   * colour says which kind is the most pressing one there, and the word beside
+   * it says the same to anybody not looking.
+   */
+  function markOf(tab: Tab): ReactNode {
+    const here = waiting.filter((group) => group.paths.some((path) => tabOf(path) === tab))
+    const first = here[0]
+    if (first === undefined) return undefined
+    const places = new Set(
+      here.flatMap((group) => group.paths).filter((path) => tabOf(path) === tab),
+    )
+    return (
+      <Badge tone={MARK_TONE[first.kind]}>
+        {places.size}
+        <span className="sr-only">{t.marks[first.kind]}</span>
+      </Badge>
+    )
+  }
 
   return (
     <Page>
-      <TopBar
-        view={view}
-        dirty={dirty}
-        saving={fetcher.state !== "idle"}
-        saved={saved}
-        onSave={save}
-        onUndo={(undoId) => {
-          void undoFetcher.load(draftUndoPath(view.researchId, view.draftId, undoId))
-        }}
-        undoLoading={undoFetcher.state !== "idle"}
-      />
-
-      <PublishedBand view={view} />
-
-      {conflict !== null && (
-        <ConflictBand locale={locale} changed={conflict.changed} />
-      )}
-      {upstream !== null && (upstream.only.length > 0 || upstream.both.length > 0) && (
-        <UpstreamBand
+      <Stack>
+        <DraftBar
           locale={locale}
-          only={upstream.only}
-          both={upstream.both}
-          onTakeAll={takeUpstream}
-        />
-      )}
-      {problems.length > 0 && <ProblemBand locale={locale} problems={problems} />}
-
-      <Section id="note" title={t.sections.note}>
-        <p className="mb-2 text-ink-muted text-sm">{t.noteHint}</p>
-        <textarea
-          className="w-full rounded border border-line px-2 py-1 text-sm"
-          rows={3}
-          value={input.note}
-          onChange={(event) => { edit({ ...input, note: event.target.value }) }}
-        />
-      </Section>
-
-      <Section id="title" title={t.sections.title}>
-        <PairField
-          label={messagesFor(locale).research.title}
-          value={content.title}
-          marks={marksFor("title")}
-          locale={locale}
-          onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
-        />
-      </Section>
-
-      <Section id="summary" title={t.sections.summary}>
-        {(["aims", "methods", "targets"] as const).map((field) => (
-          <PairField
-            key={field}
-            label={messagesFor(locale).research[field]}
-            value={content.summary[field]}
-            multiline
-            marks={marksFor(`summary.${field}`)}
-            locale={locale}
-            onChange={(next) => {
-              editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
-            }}
+          heading={view.humLabel ?? t.heading}
+          links={[
+            { to: href(locale, adminResearchPath(view.researchId)), label: t.backToResearch },
+            {
+              to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
+              label: messagesFor(locale).admin.draft.datasets,
+            },
+            {
+              to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
+              label: t.review,
+            },
+          ]}
+          dirty={editing.dirty}
+          saved={editing.saved}
+          saving={editing.saving}
+          onSave={editing.save}
+          undo={view.undo}
+          onUndo={editing.undo}
+          undoLoading={editing.undoLoading}
+          presencePath={draftPresencePath(view.researchId, view.draftId)}
+          presence={view.presence}
+        >
+          <SectionTabs
+            label={t.tabsLabel}
+            tabs={TABS.map((id) => ({
+              id,
+              label: id === "overview" ? t.tabOverview : t.sections[id],
+              mark: markOf(id),
+            }))}
+            current={current}
+            onSelect={setCurrent}
           />
-        ))}
-        <LinksField
-          label={messagesFor(locale).research.url}
-          value={content.summary.url}
-          marks={marksFor("summary.url")}
-          locale={locale}
-          onChange={(next) => {
-            editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
-          }}
-        />
-      </Section>
+        </DraftBar>
 
-      <Section id="listingSummary" title={t.sections.listingSummary}>
-        {(["methods", "targets", "typeOfData"] as const).map((field) => (
-          <PairField
-            key={field}
-            label={messagesFor(locale).research.listingSummary[field]}
-            value={content.listingSummary[field]}
-            multiline
-            marks={marksFor(`listingSummary.${field}`)}
+        <PublishedBand view={view} onGo={goTo} />
+
+        {editing.conflict !== null && (
+          <div onClick={onBandJump}>
+            <ConflictBand locale={locale} changed={editing.conflict.changed} />
+          </div>
+        )}
+        {upstream !== null && (upstream.only.length > 0 || upstream.both.length > 0) && (
+          <UpstreamBand
             locale={locale}
-            onChange={(next) => {
-              editContent((c) => ({ ...c, listingSummary: { ...c.listingSummary, [field]: next } }))
-            }}
+            only={upstream.only}
+            both={upstream.both}
+            onTakeAll={editing.takeUpstream}
           />
-        ))}
-      </Section>
+        )}
+        {editing.problems.length > 0 && <ProblemBand locale={locale} problems={editing.problems} />}
 
-      <Section id="releaseNote" title={t.sections.releaseNote}>
-        <PairField
-          label={t.sections.releaseNote}
-          value={content.releaseNote}
-          multiline
-          marks={marksFor("releaseNote")}
-          locale={locale}
-          onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
-        />
-      </Section>
+        {/* The memo is about the draft rather than about the research: it never
+            reaches a reader, and looking for it under a tab named after a part
+            of the description would be looking in the wrong place. */}
+        <Section id="note" title={t.sections.note}>
+          <p className="text-ink-muted text-sm">{t.noteHint}</p>
+          <textarea
+            className={`${CONTROL} w-full text-sm`}
+            rows={3}
+            value={input.note}
+            onChange={(event) => { editing.edit({ ...input, note: event.target.value }) }}
+          />
+        </Section>
 
-      <ProvidersSection
-        locale={locale}
-        items={content.dataProviders}
-        marksFor={marksFor}
-        onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
-      />
+        <Stack gap="block">
+          <TabPanel id="overview" current={current}>
+            <Stack gap="block">
+              <Section id="title" title={t.sections.title}>
+                <PairField
+                  label={words.title}
+                  value={content.title}
+                  marks={marksFor("title")}
+                  locale={locale}
+                  onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
+                />
+              </Section>
 
-      <ProjectsSection
-        locale={locale}
-        items={content.researchProjects}
-        marksFor={marksFor}
-        onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
-      />
+              <Section id="summary" title={t.sections.summary}>
+                {(["aims", "methods", "targets"] as const).map((field) => (
+                  <PairField
+                    key={field}
+                    label={words[field]}
+                    value={content.summary[field]}
+                    multiline
+                    marks={marksFor(`summary.${field}`)}
+                    locale={locale}
+                    onChange={(next) => {
+                      editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
+                    }}
+                  />
+                ))}
+                <LinksField
+                  label={words.url}
+                  value={content.summary.url}
+                  marks={marksFor("summary.url")}
+                  locale={locale}
+                  onChange={(next) => {
+                    editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
+                  }}
+                />
+              </Section>
 
-      <GrantsSection
-        locale={locale}
-        items={content.grants}
-        marksFor={marksFor}
-        onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
-      />
+              <Section id="listingSummary" title={t.sections.listingSummary}>
+                {(["methods", "targets", "typeOfData"] as const).map((field) => (
+                  <PairField
+                    key={field}
+                    label={words.listingSummary[field]}
+                    value={content.listingSummary[field]}
+                    multiline
+                    marks={marksFor(`listingSummary.${field}`)}
+                    locale={locale}
+                    onChange={(next) => {
+                      editContent((c) => ({
+                        ...c,
+                        listingSummary: { ...c.listingSummary, [field]: next },
+                      }))
+                    }}
+                  />
+                ))}
+              </Section>
 
-      <PublicationsSection
-        locale={locale}
-        items={content.relatedPublications}
-        datasets={view.datasets}
-        marksFor={marksFor}
-        onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
-      />
+              <Section id="releaseNote" title={t.sections.releaseNote}>
+                <PairField
+                  label={t.sections.releaseNote}
+                  value={content.releaseNote}
+                  multiline
+                  marks={marksFor("releaseNote")}
+                  locale={locale}
+                  onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
+                />
+              </Section>
+            </Stack>
+          </TabPanel>
 
-      <Section id="datasets" title={t.sections.datasets}>
-        <p className="mb-2 text-ink-muted text-sm">{t.selectDatasets}</p>
-        <FieldHead label={t.sections.datasets} marks={marksFor("datasetIds")} locale={locale} />
-        <DatasetOrder
-          locale={locale}
-          datasets={view.datasets}
-          selected={content.datasetIds}
-          onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
-        />
-      </Section>
+          <TabPanel id="dataProviders" current={current}>
+            <RepeatingSection
+              id="dataProviders"
+              title={t.sections.dataProviders}
+              locale={locale}
+              items={content.dataProviders}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                name: emptyPair(),
+                organization: { name: emptyPair(), address: emptyPair() },
+                orcid: emptySlot(),
+                email: emptySlot(),
+              })}
+            >
+              {(item, path, set) => (
+                <>
+                  <PairField
+                    label={words.representative}
+                    value={item.name}
+                    marks={marksFor(`${path}.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, name }) }}
+                  />
+                  <PairField
+                    label={words.organization}
+                    value={item.organization.name}
+                    marks={marksFor(`${path}.organization.name`)}
+                    locale={locale}
+                    onChange={(name) => {
+                      set({ ...item, organization: { ...item.organization, name } })
+                    }}
+                  />
+                  <PairField
+                    label={t.address}
+                    value={item.organization.address}
+                    marks={marksFor(`${path}.organization.address`)}
+                    locale={locale}
+                    onChange={(address) => {
+                      set({ ...item, organization: { ...item.organization, address } })
+                    }}
+                  />
+                  <SingleField
+                    label={t.orcid}
+                    value={item.orcid}
+                    marks={marksFor(`${path}.orcid`)}
+                    locale={locale}
+                    onChange={(orcid) => { set({ ...item, orcid }) }}
+                  />
+                  <SingleField
+                    label={t.email}
+                    value={item.email}
+                    marks={marksFor(`${path}.email`)}
+                    locale={locale}
+                    onChange={(email) => { set({ ...item, email }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
+          </TabPanel>
+
+          <TabPanel id="researchProjects" current={current}>
+            <RepeatingSection
+              id="researchProjects"
+              title={t.sections.researchProjects}
+              locale={locale}
+              items={content.researchProjects}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
+              makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
+            >
+              {(item, path, set) => (
+                <>
+                  <PairField
+                    label={words.researchProjectName}
+                    value={item.name}
+                    marks={marksFor(`${path}.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, name }) }}
+                  />
+                  <LinksField
+                    label={words.url}
+                    value={item.url}
+                    marks={marksFor(`${path}.url`)}
+                    locale={locale}
+                    onChange={(url) => { set({ ...item, url }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
+          </TabPanel>
+
+          <TabPanel id="grants" current={current}>
+            <RepeatingSection
+              id="grants"
+              title={t.sections.grants}
+              locale={locale}
+              items={content.grants}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                title: emptyPair(),
+                agency: { name: emptyPair() },
+                grantIds: [],
+              })}
+            >
+              {(item, path, set) => (
+                <>
+                  <PairField
+                    label={words.grantTitle}
+                    value={item.title}
+                    marks={marksFor(`${path}.title`)}
+                    locale={locale}
+                    onChange={(title) => { set({ ...item, title }) }}
+                  />
+                  <PairField
+                    label={words.grantAgency}
+                    value={item.agency.name}
+                    marks={marksFor(`${path}.agency.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, agency: { name } }) }}
+                  />
+                  <GrantIds
+                    locale={locale}
+                    value={item.grantIds}
+                    marks={marksFor(`${path}.grantIds`)}
+                    onChange={(grantIds) => { set({ ...item, grantIds }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
+          </TabPanel>
+
+          <TabPanel id="relatedPublications" current={current}>
+            <RepeatingSection
+              id="relatedPublications"
+              title={t.sections.relatedPublications}
+              locale={locale}
+              items={content.relatedPublications}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                title: emptySlot(),
+                doi: emptySlot(),
+                datasetIds: [],
+              })}
+            >
+              {(item, path, set) => (
+                <>
+                  <SingleField
+                    label={words.publicationTitle}
+                    value={item.title}
+                    marks={marksFor(`${path}.title`)}
+                    locale={locale}
+                    onChange={(title) => { set({ ...item, title }) }}
+                  />
+                  <SingleField
+                    label={t.doi}
+                    value={item.doi}
+                    marks={marksFor(`${path}.doi`)}
+                    locale={locale}
+                    onChange={(doi) => { set({ ...item, doi }) }}
+                  />
+                  <Stack gap="tight">
+                    <FieldHead
+                      label={t.citedDatasets}
+                      marks={marksFor(`${path}.datasetIds`)}
+                      locale={locale}
+                    />
+                    <DatasetChecklist
+                      locale={locale}
+                      datasets={view.datasets}
+                      selected={item.datasetIds}
+                      onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
+                    />
+                  </Stack>
+                </>
+              )}
+            </RepeatingSection>
+          </TabPanel>
+
+          <TabPanel id="datasets" current={current}>
+            <Section id="datasetIds" title={t.sections.datasets}>
+              <p className="text-ink-muted text-sm">{t.selectDatasets}</p>
+              <Stack gap="tight">
+                <FieldHead
+                  label={t.sections.datasets}
+                  marks={marksFor("datasetIds")}
+                  locale={locale}
+                />
+                <DatasetOrder
+                  locale={locale}
+                  datasets={view.datasets}
+                  selected={content.datasetIds}
+                  onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
+                />
+              </Stack>
+            </Section>
+          </TabPanel>
+        </Stack>
+      </Stack>
     </Page>
   )
 }
@@ -360,103 +622,105 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
  * review has to say. The places are listed rather than only counted: some of
  * them — a list whose membership changed — have no field of their own to mark.
  */
-function PublishedBand({ view }: { view: AdminDraftPageView }) {
+function PublishedBand({ view, onGo }: {
+  view: AdminDraftPageView
+  onGo: (path: string) => void
+}) {
   const t = messagesFor(view.locale).admin.editor
   const review = view.review
   const open = unresolvedCount(review.threads)
 
   if (review.publishedNumber === null) {
-    return <p className="mb-4 text-ink-muted text-sm">{t.noPublishedVersion}</p>
+    return <p className="text-ink-muted text-sm">{t.noPublishedVersion}</p>
   }
   if (review.changed.length === 0 && open === 0) return null
 
   return (
-    <div className="mb-4 rounded border border-line bg-surface px-4 py-3 text-sm">
-      {review.changed.length > 0 && (
-        <>
-          <p>{t.differsCount(review.changed.length)}</p>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {review.changed.map((path) => (
-              <li key={path} className="rounded border border-line bg-white px-2 py-0.5 text-xs">
-                <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {open > 0 && (
-        <p className="mt-2">
-          <Link to={href(view.locale, adminDraftReviewPath(view.researchId, view.draftId))}>
-            {messagesFor(view.locale).admin.detail.openComments(open)}
-          </Link>
-        </p>
-      )}
-    </div>
+    <Note kind="plain">
+      <Stack gap="tight">
+        {review.changed.length > 0 && (
+          <>
+            <p>{t.differsCount(review.changed.length)}</p>
+            <ul className="flex flex-wrap gap-2">
+              {review.changed.map((path) => (
+                <li key={path}>
+                  <Button type="button" variant="ghost" size="xs" onClick={() => { onGo(path) }}>
+                    {path}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {open > 0 && (
+          <p>
+            <Link to={href(view.locale, adminDraftReviewPath(view.researchId, view.draftId))}>
+              {messagesFor(view.locale).admin.detail.openComments(open)}
+            </Link>
+          </p>
+        )}
+      </Stack>
+    </Note>
   )
 }
 
-function TopBar({ view, dirty, saving, saved, onSave, onUndo, undoLoading }: {
-  view: AdminDraftPageView
-  dirty: boolean
-  saving: boolean
-  saved: boolean
-  onSave: () => void
-  onUndo: (undoId: string) => void
-  undoLoading: boolean
+/**
+ * A part of the form holding a list of one kind of thing: providers, projects,
+ * grants, papers.
+ *
+ * The four differ in what one element holds and in what an empty one looks
+ * like. **Everything around that is the same in all four** — the mark for the
+ * list itself, a card per element carrying its own way to move and remove it,
+ * and the way to add one more — and four copies of it would be four things able
+ * to drift apart.
+ *
+ * **The anchor is the path the list is addressed by** (`TAB_OF`), so a band
+ * naming a place inside one of these elements can find the section holding it.
+ */
+function RepeatingSection<T extends { id: string }>({
+  id,
+  title,
+  locale,
+  items,
+  marksFor,
+  onChange,
+  makeEmpty,
+  children,
+}: {
+  id: string
+  title: string
+  locale: Locale
+  items: T[]
+  marksFor: (path: string) => Marks
+  onChange: (next: T[]) => void
+  /** One more of whatever the list holds, with nothing written in it yet. */
+  makeEmpty: () => T
+  /** One element's own fields, given the path it is addressed by and its setter. */
+  children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
-  const locale = view.locale
   const t = messagesFor(locale).admin.editor
+
   return (
-    <div className="sticky top-0 z-10 mb-4 border-line border-b bg-white py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-baseline gap-3">
-          <h1 className="font-bold text-lg">{view.humLabel ?? t.heading}</h1>
-          <Link to={href(locale, adminResearchPath(view.researchId))} className="text-sm">
-            {t.backToResearch}
-          </Link>
-          <Link
-            to={href(locale, adminDraftDatasetsPath(view.researchId, view.draftId))}
-            className="text-sm"
-          >
-            {messagesFor(locale).admin.draft.datasets}
-          </Link>
-          <Link
-            to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))}
-            className="text-sm"
-          >
-            {t.review}
-          </Link>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
-          {dirty && <span className="text-accent">{t.unsaved}</span>}
-          {!dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
-          <UndoMenu
-            locale={locale}
-            entries={view.undo}
-            onPick={onUndo}
-            loading={undoLoading}
-          />
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="cursor-pointer rounded bg-brand px-4 py-1.5 font-semibold text-white disabled:opacity-60"
-          >
-            {saving ? t.saving : t.save}
-          </button>
-        </div>
-      </div>
-      <PresenceLine
-        locale={locale}
-        path={draftPresencePath(view.researchId, view.draftId)}
-        initial={view.presence}
-      />
-      <nav className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        {SECTIONS.map((section) => (
-          <a key={section} href={`#${section}`}>{t.sections[section]}</a>
-        ))}
-      </nav>
-    </div>
+    <Section id={id} title={title}>
+      <FieldHead label={title} marks={marksFor(id)} locale={locale} />
+      {items.map((item, at) => (
+        <ElementCard
+          key={item.id}
+          index={at}
+          count={items.length}
+          locale={locale}
+          onMove={(by) => { onChange(moved(items, at, by)) }}
+          onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
+        >
+          {children(
+            item,
+            `${id}.${item.id}`,
+            (next) => { onChange(replacing(items, item.id, next)) },
+          )}
+        </ElementCard>
+      ))}
+      <AddElement label={t.add} onClick={() => { onChange([...items, makeEmpty()]) }} />
+    </Section>
   )
 }
 
@@ -474,18 +738,18 @@ function LinksField({ label, value, marks, locale, onChange }: {
   const t = messagesFor(locale).admin.editor
 
   return (
-    <div className="mt-4">
+    <Stack gap="tight">
       <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="mt-1 grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {(["ja", "en"] as const).map((language) => {
           const side = value[language]
           const setLinks = (links: LinkInput[]) => {
             onChange({ ...value, [language]: { ...side, links } })
           }
           return (
-            <div key={language} className="flex flex-col gap-1">
+            <Stack key={language} gap="tight">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-ink-muted text-xs">{language}</span>
+                <span className="text-ink-muted text-xs" lang={language}>{language}</span>
                 <StateSwitch
                   state={side.state}
                   onChange={(state) => { onChange({ ...value, [language]: { ...side, state } }) }}
@@ -498,7 +762,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
                     type="text"
                     aria-label={t.url}
                     placeholder={t.url}
-                    className="min-w-40 flex-1 rounded border border-line px-2 py-1 text-sm"
+                    className={`${CONTROL} min-w-40 flex-1 text-sm`}
                     disabled={side.state !== "value"}
                     value={link.url}
                     onChange={(event) => {
@@ -510,7 +774,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
                     type="text"
                     aria-label={t.linkText}
                     placeholder={t.linkText}
-                    className="min-w-32 flex-1 rounded border border-line px-2 py-1 text-sm"
+                    className={`${CONTROL} min-w-32 flex-1 text-sm`}
                     disabled={side.state !== "value"}
                     value={link.text}
                     onChange={(event) => {
@@ -531,314 +795,57 @@ function LinksField({ label, value, marks, locale, onChange }: {
                   onClick={() => { setLinks([...side.links, { id: newId(), url: "", text: "" }]) }}
                 />
               </div>
-            </div>
+            </Stack>
           )
         })}
       </div>
-    </div>
+    </Stack>
   )
 }
 
-interface SectionProps<T> {
+/**
+ * The numbers a grant is known by.
+ *
+ * They are plain strings with no identity of their own, so a row is addressed by
+ * where it stands — which is also why the whole list is one path to the diff and
+ * carries one mark rather than one per number.
+ */
+function GrantIds({ locale, value, marks, onChange }: {
   locale: Locale
-  items: T[]
-  marksFor: (path: string) => Marks
-  onChange: (next: T[]) => void
-}
-
-function ProvidersSection({ locale, items, marksFor, onChange }: SectionProps<DataProviderInput>) {
+  value: string[]
+  marks: Marks
+  onChange: (next: string[]) => void
+}) {
   const t = messagesFor(locale).admin.editor
-  const words = messagesFor(locale).research
 
   return (
-    <Section id="dataProviders" title={t.sections.dataProviders}>
-      <FieldHead label={t.sections.dataProviders} marks={marksFor("dataProviders")} locale={locale} />
-      {items.map((item, at) => {
-        const path = `dataProviders.${item.id}`
-        const set = (next: DataProviderInput) => {
-          onChange(replacing(items, item.id, next))
-        }
-        return (
-          <ElementCard
-            key={item.id}
-            index={at}
-            count={items.length}
-            locale={locale}
-            onMove={(by) => { onChange(moved(items, at, by)) }}
-            onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
-          >
-            <PairField
-              label={words.representative}
-              value={item.name}
-              marks={marksFor(`${path}.name`)}
-              locale={locale}
-              onChange={(name) => { set({ ...item, name }) }}
-            />
-            <PairField
-              label={words.organization}
-              value={item.organization.name}
-              marks={marksFor(`${path}.organization.name`)}
-              locale={locale}
-              onChange={(name) => {
-                set({ ...item, organization: { ...item.organization, name } })
-              }}
-            />
-            <PairField
-              label={t.address}
-              value={item.organization.address}
-              marks={marksFor(`${path}.organization.address`)}
-              locale={locale}
-              onChange={(address) => {
-                set({ ...item, organization: { ...item.organization, address } })
-              }}
-            />
-            <SingleField
-              label={t.orcid}
-              value={item.orcid}
-              marks={marksFor(`${path}.orcid`)}
-              locale={locale}
-              onChange={(orcid) => { set({ ...item, orcid }) }}
-            />
-            <SingleField
-              label={t.email}
-              value={item.email}
-              marks={marksFor(`${path}.email`)}
-              locale={locale}
-              onChange={(email) => { set({ ...item, email }) }}
-            />
-          </ElementCard>
-        )
-      })}
-      <AddElement
-        label={t.add}
-        onClick={() => {
-          onChange([...items, {
-            id: newId(),
-            name: emptyPair(),
-            organization: { name: emptyPair(), address: emptyPair() },
-            orcid: emptySlot(),
-            email: emptySlot(),
-          }])
-        }}
-      />
-    </Section>
-  )
-}
-
-function ProjectsSection({ locale, items, marksFor, onChange }: SectionProps<ResearchProjectInput>) {
-  const t = messagesFor(locale).admin.editor
-  const words = messagesFor(locale).research
-
-  return (
-    <Section id="researchProjects" title={t.sections.researchProjects}>
-      <FieldHead
-        label={t.sections.researchProjects}
-        marks={marksFor("researchProjects")}
-        locale={locale}
-      />
-      {items.map((item, at) => {
-        const path = `researchProjects.${item.id}`
-        const set = (next: ResearchProjectInput) => {
-          onChange(replacing(items, item.id, next))
-        }
-        return (
-          <ElementCard
-            key={item.id}
-            index={at}
-            count={items.length}
-            locale={locale}
-            onMove={(by) => { onChange(moved(items, at, by)) }}
-            onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
-          >
-            <PairField
-              label={words.researchProjectName}
-              value={item.name}
-              marks={marksFor(`${path}.name`)}
-              locale={locale}
-              onChange={(name) => { set({ ...item, name }) }}
-            />
-            <LinksField
-              label={words.url}
-              value={item.url}
-              marks={marksFor(`${path}.url`)}
-              locale={locale}
-              onChange={(url) => { set({ ...item, url }) }}
-            />
-          </ElementCard>
-        )
-      })}
-      <AddElement
-        label={t.add}
-        onClick={() => {
-          onChange([...items, { id: newId(), name: emptyPair(), url: emptyLinksPair() }])
-        }}
-      />
-    </Section>
-  )
-}
-
-function GrantsSection({ locale, items, marksFor, onChange }: SectionProps<GrantInput>) {
-  const t = messagesFor(locale).admin.editor
-  const words = messagesFor(locale).research
-
-  return (
-    <Section id="grants" title={t.sections.grants}>
-      <FieldHead label={t.sections.grants} marks={marksFor("grants")} locale={locale} />
-      {items.map((item, at) => {
-        const path = `grants.${item.id}`
-        const set = (next: GrantInput) => {
-          onChange(replacing(items, item.id, next))
-        }
-        return (
-          <ElementCard
-            key={item.id}
-            index={at}
-            count={items.length}
-            locale={locale}
-            onMove={(by) => { onChange(moved(items, at, by)) }}
-            onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
-          >
-            <PairField
-              label={words.grantTitle}
-              value={item.title}
-              marks={marksFor(`${path}.title`)}
-              locale={locale}
-              onChange={(title) => { set({ ...item, title }) }}
-            />
-            <PairField
-              label={words.grantAgency}
-              value={item.agency.name}
-              marks={marksFor(`${path}.agency.name`)}
-              locale={locale}
-              onChange={(name) => { set({ ...item, agency: { name } }) }}
-            />
-            <div className="mt-4">
-              <FieldHead
-                label={t.grantIds}
-                marks={marksFor(`${path}.grantIds`)}
-                locale={locale}
+    <Stack gap="tight">
+      <FieldHead label={t.grantIds} marks={marks} locale={locale} />
+      <div className="md:max-w-md">
+        <Stack gap="tight">
+          {value.map((grantId, at) => (
+            <div key={at} className="flex items-center gap-1">
+              <input
+                type="text"
+                aria-label={t.grantIds}
+                className={`${CONTROL} flex-1 text-sm`}
+                value={grantId}
+                onChange={(event) => {
+                  onChange(value.map((row, index) => index === at ? event.target.value : row))
+                }}
               />
-              <div className="mt-1 flex flex-col gap-1 md:max-w-md">
-                {item.grantIds.map((grantId, index) => (
-                  <div key={index} className="flex items-center gap-1">
-                    <input
-                      type="text"
-                      aria-label={t.grantIds}
-                      className="flex-1 rounded border border-line px-2 py-1 text-sm"
-                      value={grantId}
-                      onChange={(event) => {
-                        set({
-                          ...item,
-                          grantIds: item.grantIds.map((row, position) =>
-                            position === index ? event.target.value : row),
-                        })
-                      }}
-                    />
-                    <RowButton
-                      label={t.remove}
-                      onClick={() => {
-                        set({
-                          ...item,
-                          grantIds: item.grantIds.filter((_, position) => position !== index),
-                        })
-                      }}
-                    />
-                  </div>
-                ))}
-                <div>
-                  <RowButton
-                    label={t.addGrantId}
-                    onClick={() => { set({ ...item, grantIds: [...item.grantIds, ""] }) }}
-                  />
-                </div>
-              </div>
-            </div>
-          </ElementCard>
-        )
-      })}
-      <AddElement
-        label={t.add}
-        onClick={() => {
-          onChange([...items, {
-            id: newId(),
-            title: emptyPair(),
-            agency: { name: emptyPair() },
-            grantIds: [],
-          }])
-        }}
-      />
-    </Section>
-  )
-}
-
-function PublicationsSection({ locale, items, datasets, marksFor, onChange }:
-  SectionProps<RelatedPublicationInput> & { datasets: ResearchDatasetRow[] }) {
-  const t = messagesFor(locale).admin.editor
-  const words = messagesFor(locale).research
-
-  return (
-    <Section id="relatedPublications" title={t.sections.relatedPublications}>
-      <FieldHead
-        label={t.sections.relatedPublications}
-        marks={marksFor("relatedPublications")}
-        locale={locale}
-      />
-      {items.map((item, at) => {
-        const path = `relatedPublications.${item.id}`
-        const set = (next: RelatedPublicationInput) => {
-          onChange(replacing(items, item.id, next))
-        }
-        return (
-          <ElementCard
-            key={item.id}
-            index={at}
-            count={items.length}
-            locale={locale}
-            onMove={(by) => { onChange(moved(items, at, by)) }}
-            onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
-          >
-            <SingleField
-              label={words.publicationTitle}
-              value={item.title}
-              marks={marksFor(`${path}.title`)}
-              locale={locale}
-              onChange={(title) => { set({ ...item, title }) }}
-            />
-            <SingleField
-              label={t.doi}
-              value={item.doi}
-              marks={marksFor(`${path}.doi`)}
-              locale={locale}
-              onChange={(doi) => { set({ ...item, doi }) }}
-            />
-            <div className="mt-4">
-              <FieldHead
-                label={t.citedDatasets}
-                marks={marksFor(`${path}.datasetIds`)}
-                locale={locale}
-              />
-              <DatasetChecklist
-                locale={locale}
-                datasets={datasets}
-                selected={item.datasetIds}
-                onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
+              <RowButton
+                label={t.remove}
+                onClick={() => { onChange(value.filter((_, index) => index !== at)) }}
               />
             </div>
-          </ElementCard>
-        )
-      })}
-      <AddElement
-        label={t.add}
-        onClick={() => {
-          onChange([...items, {
-            id: newId(),
-            title: emptySlot(),
-            doi: emptySlot(),
-            datasetIds: [],
-          }])
-        }}
-      />
-    </Section>
+          ))}
+          <div>
+            <RowButton label={t.addGrantId} onClick={() => { onChange([...value, ""]) }} />
+          </div>
+        </Stack>
+      </div>
+    </Stack>
   )
 }
 
@@ -869,7 +876,7 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <Stack gap="tight">
       <ol className="flex flex-col gap-1">
         {selected.map((id, at) => {
           const row = byId.get(id)
@@ -883,7 +890,11 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
                   {messagesFor(locale).admin.detail.unpublishedDataset}
                 </span>
               )}
-              <RowButton label={t.moveUp} disabled={at === 0} onClick={() => { onChange(moved(selected, at, -1)) }} />
+              <RowButton
+                label={t.moveUp}
+                disabled={at === 0}
+                onClick={() => { onChange(moved(selected, at, -1)) }}
+              />
               <RowButton
                 label={t.moveDown}
                 disabled={at === selected.length - 1}
@@ -891,7 +902,7 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
               />
               <RowButton
                 label={t.remove}
-                onClick={() => { onChange(selected.filter((row2) => row2 !== id)) }}
+                onClick={() => { onChange(selected.filter((held) => held !== id)) }}
               />
             </li>
           )
@@ -907,7 +918,7 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
           </li>
         ))}
       </ul>
-    </div>
+    </Stack>
   )
 }
 
@@ -922,7 +933,7 @@ function DatasetChecklist({ locale, datasets, selected, onChange }: {
   if (datasets.length === 0) return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
 
   return (
-    <ul className="mt-1 flex flex-wrap gap-3 text-sm">
+    <ul className="flex flex-wrap gap-3 text-sm">
       {datasets.map((row) => (
         <li key={row.id}>
           <label className="flex items-center gap-1">

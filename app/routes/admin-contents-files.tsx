@@ -1,8 +1,9 @@
 import { data, Form, Link } from "react-router"
 
 import { adminContentFilesPath, adminContentsPath, contentFileUploadPath } from "~/admin/urls"
+import { Confirm, Stack } from "~/components/base"
 import { UploadPanel } from "~/components/files"
-import { SelectAll, Submit } from "~/components/form"
+import { Result, SelectAll } from "~/components/form"
 import { Card, Empty, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { commonFilesAction, commonFilesPage } from "~/files/pages.server"
@@ -41,7 +42,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
-export default function AdminContentsFiles({ loaderData }: Route.ComponentProps) {
+export default function AdminContentsFiles({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const { locale } = view
   const t = messagesFor(locale).admin.contents.files
@@ -54,52 +55,67 @@ export default function AdminContentsFiles({ loaderData }: Route.ComponentProps)
         </Link>
       </PageHead>
       <Card>
-        <p className="mb-4 text-ink-muted text-sm">{t.note}</p>
+        <Stack gap="block">
+          {/*
+            The only reachable status here is "nothing-selected" — this box has
+            no hum label and no publish step for "no-box" to answer to, unlike
+            a research's box (`~/files/pages.server.ts`).
+          */}
+          {actionData !== undefined && <Result ok={false}>{t.nothingSelected}</Result>}
 
-        <Section title={t.upload}>
-          <UploadPanel
-            locale={locale}
-            endpoint={contentFileUploadPath()}
-            threshold={view.multipartThreshold}
-            partSize={view.partSize}
-          />
-        </Section>
+          <Empty>{t.note}</Empty>
 
-        <Section title={t.heading}>
-          {view.rows === null && <Empty>{t.failed}</Empty>}
-          {view.rows !== null && view.rows.length === 0 && <Empty>{t.none}</Empty>}
-          {view.rows !== null && view.rows.length > 0 && (
-            <Form method="post">
-              <Table headers={[<SelectAll key="all" name="name" label={messagesFor(locale).admin.files.selectAll} />, t.name, t.size, t.updatedAt, t.url]}>
-                {view.rows.map((row) => (
-                  <tr key={row.name}>
-                    <Td>
-                      <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
-                    </Td>
-                    <Td>{row.name}</Td>
-                    <Td className="text-nowrap">{formatSize(row.size)}</Td>
-                    <Td className="text-nowrap">{row.updatedAt.slice(0, 10)}</Td>
-                    <Td>
-                      <code className="text-xs">{filePath("common", row.name)}</code>
-                    </Td>
-                  </tr>
-                ))}
-              </Table>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Submit intent="delete">{t.removeFile}</Submit>
-                <Empty>{t.removeConfirm}</Empty>
-              </div>
-            </Form>
-          )}
-          <PageLinks
-            label={messagesFor(locale).search.pagination}
-            page={view.page}
-            pageCount={view.pageCount}
-            at={(page) => href(locale, `${adminContentFilesPath()}?page=${page}`)}
-            previous={messagesFor(locale).search.previousPage}
-            next={messagesFor(locale).search.nextPage}
-          />
-        </Section>
+          <Section title={t.upload}>
+            <UploadPanel
+              locale={locale}
+              endpoint={contentFileUploadPath()}
+              threshold={view.multipartThreshold}
+              partSize={view.partSize}
+            />
+          </Section>
+
+          <Section title={t.list}>
+            {view.rows === null && <Empty>{t.failed}</Empty>}
+            {view.rows !== null && view.rows.length === 0 && <Empty>{t.none}</Empty>}
+            {view.rows !== null && view.rows.length > 0 && (
+              <Form method="post">
+                <Stack gap="normal">
+                  <Table headers={[<SelectAll key="all" name="name" label={messagesFor(locale).admin.files.selectAll} />, t.name, t.size, t.updatedAt, t.url]}>
+                    {view.rows.map((row) => (
+                      <tr key={row.name}>
+                        <Td>
+                          <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
+                        </Td>
+                        <Td>{row.name}</Td>
+                        <Td className="text-nowrap">{formatSize(row.size)}</Td>
+                        <Td className="text-nowrap">{row.updatedAt.slice(0, 10)}</Td>
+                        <Td>
+                          <code className="text-xs">{filePath("common", row.name)}</code>
+                        </Td>
+                      </tr>
+                    ))}
+                  </Table>
+                  <Confirm
+                    label={t.removeFile}
+                    warning={t.removeConfirm}
+                    confirm={t.removeFileConfirm}
+                    cancel={messagesFor(locale).admin.contents.cancel}
+                  >
+                    <input type="hidden" name="intent" value="delete" />
+                  </Confirm>
+                </Stack>
+              </Form>
+            )}
+            <PageLinks
+              label={messagesFor(locale).search.pagination}
+              page={view.page}
+              pageCount={view.pageCount}
+              at={(page) => href(locale, `${adminContentFilesPath()}?page=${page}`)}
+              previous={messagesFor(locale).search.previousPage}
+              next={messagesFor(locale).search.nextPage}
+            />
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )

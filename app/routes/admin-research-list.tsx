@@ -13,7 +13,9 @@ import {
   adminUpstreamResearchPath,
   listingQuery,
 } from "~/admin/urls"
-import { Empty, Page, PageHead, Table, Td } from "~/components/page"
+import { Badge, Excerpt, Stack } from "~/components/base"
+import { Checkbox, Field, Select, Submit } from "~/components/form"
+import { Card, Empty, Page, PageHead, PageLinks, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -57,72 +59,83 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   return (
     <Page>
       <PageHead label={t.heading}>
-        <div className="flex items-center gap-4">
-          <Form method="post">
-            <button type="submit" className="cursor-pointer underline">{t.create}</button>
-          </Form>
-          <Link to={href(locale, adminUpstreamResearchPath())} className="text-white">
-            {messages.admin.templates.open}
-          </Link>
-        </div>
+        <Form method="post">
+          <Submit variant="secondary">{t.create}</Submit>
+        </Form>
+        <Link to={href(locale, adminUpstreamResearchPath())} className="text-white">
+          {messages.admin.templates.open}
+        </Link>
       </PageHead>
-      <div className="rounded-b border border-line border-t-0 px-5 py-5">
-        <Filters view={view} locale={locale} />
+      <Card>
+        <Stack gap="normal">
+          <Filters view={view} locale={locale} />
 
-        <p className="mt-4 text-ink-muted text-sm">{messages.search.results(view.total)}</p>
+          <p className="text-ink-muted text-sm">{messages.search.results(view.total)}</p>
 
-        {view.rows.length === 0
-          ? <Empty>{t.none}</Empty>
-          : (
-              <div className="mt-3">
-                <Table
-                  headers={[
-                    t.columns.humLabel,
-                    t.columns.title,
-                    t.columns.status,
-                    t.columns.versions,
-                    t.columns.drafts,
-                    t.columns.datasets,
-                    t.columns.incomplete,
-                    t.columns.updated,
-                  ]}
-                >
-                  {view.rows.map((row) => (
-                    <tr key={row.researchId}>
-                      <Td className="whitespace-nowrap">
-                        <Link to={href(locale, adminResearchPath(row.researchId))}>
-                          {row.humLabel ?? t.unpinned}
-                        </Link>
-                      </Td>
-                      <Td floor="min-w-64">
-                        {row.title === ""
-                          ? <span className="text-ink-muted">{t.untitled}</span>
-                          : row.title}
-                      </Td>
-                      <Td className="whitespace-nowrap">{t.statuses[row.status]}</Td>
-                      <Td>{row.publishedVersions}</Td>
-                      <Td>{row.draftCount}</Td>
-                      <Td>{row.datasetCount}</Td>
-                      <Td>
-                        <ul className="flex flex-col gap-1">
-                          {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
-                            <li
-                              key={flag}
-                              className="whitespace-nowrap rounded border border-accent px-1.5 py-0.5 text-accent text-xs"
-                            >
-                              {t.flags[flag]}
-                            </li>
-                          ))}
-                        </ul>
-                      </Td>
-                      <Td className="whitespace-nowrap">{row.updatedOn}</Td>
-                    </tr>
-                  ))}
-                </Table>
-                <Pagination view={view} locale={locale} />
-              </div>
-            )}
-      </div>
+          {view.rows.length === 0
+            ? <Empty>{t.none}</Empty>
+            : (
+                <Stack gap="normal">
+                  <Table
+                    headers={[
+                      t.columns.humLabel,
+                      t.columns.title,
+                      t.columns.status,
+                      t.columns.versions,
+                      t.columns.drafts,
+                      t.columns.datasets,
+                      t.columns.incomplete,
+                      t.columns.updated,
+                    ]}
+                  >
+                    {view.rows.map((row) => (
+                      <tr key={row.researchId}>
+                        <Td nowrap>
+                          <Link to={href(locale, adminResearchPath(row.researchId))}>
+                            {row.humLabel ?? t.unpinned}
+                          </Link>
+                        </Td>
+                        <Td floor="min-w-64">
+                          {row.title === ""
+                            ? <span className="text-ink-muted">{t.untitled}</span>
+                            : (
+                                <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
+                                  {row.title}
+                                </Excerpt>
+                              )}
+                        </Td>
+                        <Td nowrap>{t.statuses[row.status]}</Td>
+                        <Td>{row.publishedVersions}</Td>
+                        <Td>{row.draftCount}</Td>
+                        <Td>{row.datasetCount}</Td>
+                        <Td>
+                          <ul className="flex flex-col gap-1">
+                            {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
+                              <li key={flag}><Badge tone="accent">{t.flags[flag]}</Badge></li>
+                            ))}
+                          </ul>
+                        </Td>
+                        <Td nowrap>{row.updatedOn}</Td>
+                      </tr>
+                    ))}
+                  </Table>
+                  <PageLinks
+                    label={messages.search.pagination}
+                    page={view.page}
+                    pageCount={view.pageCount}
+                    at={(page) => href(locale, adminResearchListPath() + listingQuery({
+                      keyword: view.keyword,
+                      status: view.status,
+                      flags: view.flags,
+                      page,
+                    }))}
+                    previous={messages.search.previousPage}
+                    next={messages.search.nextPage}
+                  />
+                </Stack>
+              )}
+        </Stack>
+      </Card>
     </Page>
   )
 }
@@ -141,71 +154,32 @@ function Filters({ view, locale }: ViewProps) {
 
   return (
     <Form method="get" className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-ink-muted text-xs">{t.keyword}</span>
-        <input
-          type="search"
-          name="q"
-          defaultValue={view.keyword}
-          className="w-80 rounded border border-line px-2 py-1 text-sm"
-        />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-ink-muted text-xs">{t.status}</span>
-        <select
-          name="status"
-          defaultValue={view.status ?? ""}
-          className="rounded border border-line px-2 py-1 text-sm"
-        >
-          <option value="">{t.anyStatus}</option>
-          {ADMIN_STATUSES.map((status: AdminStatus) => (
-            <option key={status} value={status}>{t.statuses[status]}</option>
-          ))}
-        </select>
-      </label>
+      <Field label={t.keyword} name="q" type="search" value={view.keyword} width="w-80" />
+      <Select
+        label={t.status}
+        name="status"
+        value={view.status ?? ""}
+        options={[
+          { value: "", label: t.anyStatus },
+          ...ADMIN_STATUSES.map((status: AdminStatus) => ({ value: status, label: t.statuses[status] })),
+        ]}
+      />
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-ink-muted text-xs">{t.incomplete}</legend>
-        <div className="flex flex-wrap gap-3 text-sm">
+        <legend className="font-semibold text-ink-muted text-xs">{t.incomplete}</legend>
+        <div className="flex flex-wrap gap-3">
           {ADMIN_FLAG_KEYS.map((flag: AdminFlagKey) => (
-            <label key={flag} className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                name="flag"
-                value={flag}
-                defaultChecked={view.flags.includes(flag)}
-              />
-              {t.flags[flag]}
-            </label>
+            <Checkbox
+              key={flag}
+              label={t.flags[flag]}
+              name="flag"
+              value={flag}
+              checked={view.flags.includes(flag)}
+            />
           ))}
         </div>
       </fieldset>
-      <button
-        type="submit"
-        className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
-      >
-        {t.apply}
-      </button>
+      <Submit variant="primary">{t.apply}</Submit>
       <Link to={href(locale, adminResearchListPath())} className="text-sm">{t.reset}</Link>
     </Form>
-  )
-}
-
-function Pagination({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  if (view.pageCount <= 1) return null
-
-  const at = (page: number) => href(locale, adminResearchListPath() + listingQuery({
-    keyword: view.keyword,
-    status: view.status,
-    flags: view.flags,
-    page,
-  }))
-
-  return (
-    <nav aria-label={messages.search.pagination} className="mt-4 flex items-center gap-4 text-sm">
-      {view.page > 1 && <Link to={at(view.page - 1)}>{messages.search.previousPage}</Link>}
-      <span className="text-ink-muted">{`${view.page} / ${view.pageCount}`}</span>
-      {view.page < view.pageCount && <Link to={at(view.page + 1)}>{messages.search.nextPage}</Link>}
-    </nav>
   )
 }

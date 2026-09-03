@@ -1,19 +1,19 @@
 import { useRef, useState } from "react"
 import { Form } from "react-router"
 
+import { mapConcurrently } from "~/concurrency"
 import {
   formatSize,
   isUploadableName,
   MULTIPART_CONCURRENCY,
   type BoxEntry,
 } from "~/files/box"
-import { mapConcurrently } from "~/concurrency"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
-import { Badge, Stack } from "./base"
-import { SelectAll } from "./form"
+import { Badge, Button, Confirm, Fold, IconButton, Note, Progress, Stack } from "./base"
+import { CONTROL, SelectAll, Submit } from "./form"
 import { Empty, PageLinks, Table, Td } from "./page"
 
 /**
@@ -84,16 +84,18 @@ function NotPublicYet({ locale, humLabel, name }: {
 }) {
   const t = messagesFor(locale).preview
   return (
-    <>
-      <span>{name}</span>
-      {" "}
-      <Badge>{t.fileNotPublic}</Badge>
+    <Stack gap="tight">
+      <span>
+        {name}
+        {" "}
+        <Badge>{t.fileNotPublic}</Badge>
+      </span>
       {humLabel !== null && (
-        <span className="mt-1 block text-ink-muted text-xs">
+        <span className="text-ink-muted text-xs">
           {`${t.fileWillBeAt}: ${filePath(humLabel, name)}`}
         </span>
       )}
-    </>
+    </Stack>
   )
 }
 
@@ -111,80 +113,40 @@ export function BoxTable({ locale, rows, humLabel }: {
   humLabel: string | null
 }) {
   const t = messagesFor(locale).admin.files
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   if (rows.length === 0) return <Empty>{t.empty}</Empty>
 
   return (
     <Form method="post">
-      <Table headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}>
-        {rows.map((row) => (
-          <tr key={row.name}>
-            <Td>
-              <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
-            </Td>
-            <Td className="break-all">
-              {row.isPublic && humLabel !== null
-                ? <a href={filePath(humLabel, row.name)}>{row.name}</a>
-                : row.name}
-            </Td>
-            <Td className="whitespace-nowrap text-right">{formatSize(row.size)}</Td>
-            <Td className="whitespace-nowrap">{row.updatedAt.slice(0, 10)}</Td>
-            <Td className="whitespace-nowrap">
-              <State locale={locale} entry={row} />
-            </Td>
-          </tr>
-        ))}
-      </Table>
+      <Stack gap="normal">
+        <Table headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}>
+          {rows.map((row) => (
+            <tr key={row.name}>
+              <Td>
+                <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
+              </Td>
+              <Td className="break-all">
+                {row.isPublic && humLabel !== null
+                  ? <a href={filePath(humLabel, row.name)}>{row.name}</a>
+                  : row.name}
+              </Td>
+              <Td className="whitespace-nowrap text-right">{formatSize(row.size)}</Td>
+              <Td className="whitespace-nowrap">{row.updatedAt.slice(0, 10)}</Td>
+              <Td className="whitespace-nowrap">
+                <State locale={locale} entry={row} />
+              </Td>
+            </tr>
+          ))}
+        </Table>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-        <button
-          type="submit"
-          name="intent"
-          value="publish"
-          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand"
-        >
-          {t.publish}
-        </button>
-        <button
-          type="submit"
-          name="intent"
-          value="unpublish"
-          className="cursor-pointer rounded border border-brand px-3 py-1 text-brand"
-        >
-          {t.unpublish}
-        </button>
-        {confirmingDelete
-          ? (
-              <>
-                <span className="text-danger text-xs">{t.deleteWarning}</span>
-                <button
-                  type="submit"
-                  name="intent"
-                  value="delete"
-                  className="cursor-pointer rounded border border-danger px-3 py-1 text-danger"
-                >
-                  {t.deleteConfirm}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setConfirmingDelete(false) }}
-                  className="cursor-pointer text-ink-muted text-xs underline"
-                >
-                  {t.cancel}
-                </button>
-              </>
-            )
-          : (
-              <button
-                type="button"
-                onClick={() => { setConfirmingDelete(true) }}
-                className="cursor-pointer text-ink-muted text-xs underline"
-              >
-                {t.delete}
-              </button>
-            )}
-      </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <Submit intent="publish" variant="secondary">{t.publish}</Submit>
+          <Submit intent="unpublish" variant="secondary">{t.unpublish}</Submit>
+          <Confirm label={t.delete} warning={t.deleteWarning} confirm={t.deleteConfirm} cancel={t.cancel}>
+            <input type="hidden" name="intent" value="delete" />
+          </Confirm>
+        </div>
+      </Stack>
     </Form>
   )
 }
@@ -193,25 +155,21 @@ function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   const t = messagesFor(locale).admin.files
   if (entry.pending !== null) {
     const moving = entry.pending.action === "publish" ? t.movingToPublic : t.movingToPrivate
-    if (!entry.pending.failed) return <span className="text-accent text-xs">{moving}</span>
+    if (!entry.pending.failed) return <Badge tone="accent">{moving}</Badge>
     return (
-      <span className="text-danger text-xs">
+      <Badge tone="danger">
         {t.failed}
         {/* The store's own words, untranslated: a message nobody wrote cannot be. */}
         {entry.pending.lastError !== null && (
           <span className="ml-1 text-ink-muted">{entry.pending.lastError}</span>
         )}
-      </span>
+      </Badge>
     )
   }
-  return (
-    <span className={entry.isPublic ? "text-brand text-xs" : "text-ink-muted text-xs"}>
-      {entry.isPublic ? t.isPublic : t.isPrivate}
-    </span>
-  )
+  return <Badge tone={entry.isPublic ? "brand" : "muted"}>{entry.isPublic ? t.isPublic : t.isPrivate}</Badge>
 }
 
-interface Progress {
+interface UploadProgress {
   name: string
   /** Whole percent, so a re-render is not provoked by every chunk. */
   percent: number
@@ -229,6 +187,11 @@ interface Progress {
  *
  * There is no resume. Closing the page abandons whatever is in flight, and the
  * file is sent again from the beginning under the same name, which overwrites.
+ *
+ * **The chooser stays a plain input rather than `FileField`.** What sends the
+ * bytes is this component, not a form submission, so there is nothing for
+ * `FileField`'s uncontrolled shape to attach to — the change handler has to run
+ * on selection, and the sending state has to disable the input while it runs.
  */
 export function UploadPanel({ locale, endpoint, threshold, partSize }: {
   locale: Locale
@@ -238,7 +201,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
   partSize: number
 }) {
   const t = messagesFor(locale).admin.files
-  const [progress, setProgress] = useState<Progress[]>([])
+  const [progress, setProgress] = useState<UploadProgress[]>([])
   const [done, setDone] = useState(false)
   const [badName, setBadName] = useState(false)
   const aborter = useRef<AbortController | null>(null)
@@ -280,33 +243,32 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
 
   return (
     <div className="rounded border border-line px-4 py-3">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <input
-          ref={input}
-          type="file"
-          multiple
-          disabled={busy}
-          onChange={(event) => { void send([...event.target.files ?? []]) }}
-          aria-label={t.upload}
-        />
-        {busy && (
-          <button
-            type="button"
-            onClick={() => { aborter.current?.abort() }}
-            className="cursor-pointer text-ink-muted text-xs underline"
-          >
-            {t.uploadCancel}
-          </button>
-        )}
-      </div>
-      <p className="mt-2 text-ink-muted text-xs">{t.uploadHint}</p>
-      {badName && <p className="mt-2 text-danger text-xs">{t.uploadBadName}</p>}
-      {done && <p className="mt-2 text-brand text-xs">{t.uploadDone}</p>}
-      {progress.map((row) => (
-        <p key={row.name} className={row.failed ? "mt-2 text-danger text-xs" : "mt-2 text-xs"}>
-          {row.failed ? t.uploadFailed(row.name) : t.uploading(row.name, row.percent)}
-        </p>
-      ))}
+      <Stack gap="normal">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <input
+            ref={input}
+            type="file"
+            multiple
+            disabled={busy}
+            onChange={(event) => { void send([...event.target.files ?? []]) }}
+            aria-label={t.upload}
+            className="text-sm file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand file:text-sm"
+          />
+          {busy && (
+            <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>
+              {t.uploadCancel}
+            </Button>
+          )}
+        </div>
+        <p className="text-ink-muted text-xs">{t.uploadHint}</p>
+        {badName && <Note kind="danger">{t.uploadBadName}</Note>}
+        {done && <Note kind="done">{t.uploadDone}</Note>}
+        {progress.map((row) => (
+          row.failed
+            ? <Note key={row.name} kind="danger">{t.uploadFailed(row.name)}</Note>
+            : <Progress key={row.name} label={t.uploading(row.name, row.percent)} done={row.percent} total={100} />
+        ))}
+      </Stack>
     </div>
   )
 }
@@ -499,7 +461,6 @@ export function FileSelection({ locale, listing, selected, onChange }: {
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const files = messagesFor(locale).admin.files
-  const [picking, setPicking] = useState(false)
   const [filter, setFilter] = useState("")
 
   if (listing === null) return <p className="text-ink-muted text-sm">{t.filesUnavailable}</p>
@@ -521,10 +482,11 @@ export function FileSelection({ locale, listing, selected, onChange }: {
   }
 
   return (
-    <div className="mt-2">
+    <Stack gap="normal">
       <p className="text-ink-muted text-xs">{t.filesHint}</p>
+
       {selected.length > 0 && (
-        <ol className="mt-2 flex flex-col gap-1 text-sm">
+        <ol className="flex flex-col gap-1 text-sm">
           {selected.map((name, at) => {
             const entry = known.get(name)
             return (
@@ -533,32 +495,26 @@ export function FileSelection({ locale, listing, selected, onChange }: {
                 {entry !== undefined && (
                   <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
                 )}
-                <span className={entry?.isPublic === true ? "text-brand text-xs" : "text-ink-muted text-xs"}>
+                <Badge tone={entry?.isPublic === true ? "brand" : "muted"}>
                   {entry?.isPublic === true ? files.isPublic : files.isPrivate}
-                </span>
-                <button
-                  type="button"
+                </Badge>
+                <IconButton
+                  name="chevron-up"
+                  label={files.moveUp}
                   disabled={at === 0}
                   onClick={() => { move(at, -1) }}
-                  className="cursor-pointer text-ink-muted text-xs underline disabled:opacity-40"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
+                />
+                <IconButton
+                  name="chevron-down"
+                  label={files.moveDown}
                   disabled={at === selected.length - 1}
                   onClick={() => { move(at, 1) }}
-                  className="cursor-pointer text-ink-muted text-xs underline disabled:opacity-40"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
+                />
+                <IconButton
+                  name="close"
+                  label={t.removeFile}
                   onClick={() => { onChange(selected.filter((held) => held !== name)) }}
-                  className="cursor-pointer text-ink-muted text-xs underline"
-                >
-                  {t.removeFile}
-                </button>
+                />
               </li>
             )
           })}
@@ -566,54 +522,43 @@ export function FileSelection({ locale, listing, selected, onChange }: {
       )}
 
       {listing.length === 0
-        ? <p className="mt-2 text-ink-muted text-sm">{t.filesEmpty}</p>
-        : !picking
-            ? (
-                <button
-                  type="button"
-                  onClick={() => { setPicking(true) }}
-                  className="mt-2 cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
-                >
-                  {t.addFile}
-                </button>
-              )
-            : (
-                <div className="mt-2 rounded border border-line px-3 py-2">
+        ? <p className="text-ink-muted text-sm">{t.filesEmpty}</p>
+        : (
+            <Fold summary={t.addFile}>
+              <Stack gap="normal">
+                {/*
+                  A plain, controlled input rather than `Field`: `Field` only ever
+                  posts a `defaultValue`, and this one has to filter the picker on
+                  every keystroke. `CONTROL` is the edge `Field` itself draws with
+                  (form.tsx の CONTROL), taken directly for the same reason the
+                  search box in the refinement panel does.
+                */}
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold text-ink-muted text-xs">{t.filterFiles}</span>
                   <input
                     type="search"
                     value={filter}
-                    placeholder={t.filterFiles}
                     onChange={(event) => { setFilter(event.target.value) }}
-                    className="rounded border border-line px-2 py-1 text-sm"
-                    aria-label={t.filterFiles}
+                    className={`${CONTROL} w-64`}
                   />
-                  <span className="ml-2 text-ink-muted text-xs">
-                    {t.shownOf(offered.length, listing.length)}
-                  </span>
-                  <ul className="mt-2 flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
-                    {offered.map((entry) => (
-                      <li key={entry.name} className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { onChange([...selected, entry.name]) }}
-                          className="cursor-pointer text-brand text-xs underline"
-                        >
-                          +
-                        </button>
-                        <span className="break-all">{entry.name}</span>
-                        <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() => { setPicking(false) }}
-                    className="mt-2 cursor-pointer text-ink-muted text-xs underline"
-                  >
-                    {messagesFor(locale).admin.files.cancel}
-                  </button>
-                </div>
-              )}
-    </div>
+                </label>
+                <p className="text-ink-muted text-xs">{t.shownOf(offered.length, listing.length)}</p>
+                <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
+                  {offered.map((entry) => (
+                    <li key={entry.name} className="flex flex-wrap items-center gap-2">
+                      <IconButton
+                        name="plus"
+                        label={t.addFile}
+                        onClick={() => { onChange([...selected, entry.name]) }}
+                      />
+                      <span className="break-all">{entry.name}</span>
+                      <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Stack>
+            </Fold>
+          )}
+    </Stack>
   )
 }

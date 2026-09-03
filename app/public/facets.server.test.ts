@@ -1,56 +1,62 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { writtenBound } from "./facets.server"
+import { DATE_PRESET_YEARS, datePresetFrom } from "./facets.server"
 
-/** What a reader could type back into a range input, and nothing else. */
-const TYPEABLE = /^-?[0-9]{1,3}(,[0-9]{3})*(\.[0-9]+)?$/
+/** A calendar day, as every date in the data and in the query language is written. */
+const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 
-const finite = fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 })
+/** Every real day over three centuries, so the ones months disagree about turn up. */
+const day = fc
+  .integer({ min: 0, max: 100_000 })
+  .map((since) => new Date(Date.UTC(1900, 0, 1 + since)).toISOString().slice(0, 10))
 
-/** The written form read back as a number, with the grouping taken out. */
-function read(written: string): number {
-  return Number(written.replaceAll(",", ""))
-}
+const years = fc.constantFrom(...DATE_PRESET_YEARS)
 
-describe("the span a range facet suggests", () => {
-  it("never writes a number the way a program would", () => {
-    fc.assert(fc.property(finite, fc.constantFrom("down" as const, "up" as const), (value, towards) => {
-      expect(writtenBound(value, towards)).toMatch(TYPEABLE)
+describe("the day a date window opens on", () => {
+  it("is a calendar day the query language can carry", () => {
+    fc.assert(fc.property(day, years, (today, back) => {
+      expect(datePresetFrom(today, back)).toMatch(CALENDAR_DAY)
     }))
   })
 
-  it("rounds outwards, so the pair still holds what it describes", () => {
-    fc.assert(fc.property(finite, (value) => {
-      expect(read(writtenBound(value, "down"))).toBeLessThanOrEqual(value)
-      expect(read(writtenBound(value, "up"))).toBeGreaterThanOrEqual(value)
+  it("lands that many years earlier in the same month", () => {
+    fc.assert(fc.property(day, years, (today, back) => {
+      const opened = datePresetFrom(today, back)
+      expect(Number(opened.slice(0, 4))).toBe(Number(today.slice(0, 4)) - back)
+      expect(opened.slice(5, 7)).toBe(today.slice(5, 7))
     }))
   })
 
-  it("stays close enough to be a hint about the same order of magnitude", () => {
-    fc.assert(fc.property(finite.filter((value) => value !== 0), (value) => {
-      const off = Math.abs(read(writtenBound(value, "down")) - value)
-      expect(off).toBeLessThanOrEqual(Math.max(1, Math.abs(value) * 0.1))
+  it("never opens later in the month than the day asked for", () => {
+    // The 29th of February is the only day with no counterpart in a common
+    // year, and letting it roll into March would open the window a day after
+    // the reader asked for it.
+    fc.assert(fc.property(day, years, (today, back) => {
+      const opened = Number(datePresetFrom(today, back).slice(8))
+      expect(opened).toBeLessThanOrEqual(Number(today.slice(8)))
     }))
   })
 
-  it("writes the values the data actually holds", () => {
-    // A kilobyte held in gigabytes, which is where the exponent came from.
-    expect(writtenBound(9.5367431640625e-7, "down")).toBe("0.00000095")
-    expect(writtenBound(266240, "up")).toBe("266,240")
-    expect(writtenBound(150, "down")).toBe("150")
-    expect(writtenBound(1872937, "up")).toBe("1,872,937")
+  it("puts every window in the past, the longer one always the earlier", () => {
+    fc.assert(fc.property(day, (today) => {
+      const opened = DATE_PRESET_YEARS.map((back) => datePresetFrom(today, back))
+      expect(opened.every((at) => at < today)).toBe(true)
+      expect([...opened].sort().reverse()).toEqual(opened)
+    }))
   })
 
-  it("says nothing it cannot say about zero and the ends of the number line", () => {
-    expect(writtenBound(0, "down")).toBe("0")
-    expect(writtenBound(0, "up")).toBe("0")
-    expect(writtenBound(Number.NaN, "down")).toBe("0")
-    expect(writtenBound(Number.POSITIVE_INFINITY, "up")).toBe("0")
+  it("pulls a leap day back to the end of February", () => {
+    expect(datePresetFrom("2028-02-29", 1)).toBe("2027-02-28")
+    expect(datePresetFrom("2028-02-29", 5)).toBe("2023-02-28")
+    expect(datePresetFrom("2028-02-29", 10)).toBe("2018-02-28")
+    // A leap day whose counterpart is one keeps it; 2100 is not a leap year.
+    expect(datePresetFrom("2024-02-29", 4)).toBe("2020-02-29")
+    expect(datePresetFrom("2104-02-29", 4)).toBe("2100-02-28")
   })
 
-  it("keeps a negative number negative", () => {
-    expect(read(writtenBound(-0.25, "down"))).toBeLessThanOrEqual(-0.25)
-    expect(writtenBound(-1500, "down")).toBe("-1,500")
+  it("opens the windows the panel offers over the data it holds", () => {
+    expect(DATE_PRESET_YEARS.map((back) => datePresetFrom("2026-09-03", back)))
+      .toEqual(["2025-09-03", "2021-09-03", "2016-09-03"])
   })
 })

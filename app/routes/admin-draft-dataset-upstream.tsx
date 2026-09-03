@@ -2,6 +2,8 @@ import { data, Form, Link } from "react-router"
 
 import { upstreamDatasetAction, upstreamDatasetPage } from "~/admin/templates.server"
 import { adminDraftDatasetsPath, adminUpstreamDatasetPath, upstreamQuery } from "~/admin/urls"
+import { Stack } from "~/components/base"
+import { Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
@@ -64,42 +66,34 @@ export default function AdminDraftDatasetUpstream({
         </Link>
       </PageHead>
       <Card>
-        {actionData?.status === "taken" && <Notice>{t.takenLabel}</Notice>}
-        {actionData?.status === "conflict" && <Notice>{t.conflict}</Notice>}
-        {view.unknown !== null && <Notice>{t.unknown(view.unknown)}</Notice>}
+        <Stack gap="block">
+          {actionData?.status === "taken" && <Notice>{t.takenLabel}</Notice>}
+          {actionData?.status === "conflict" && <Notice>{t.conflict}</Notice>}
+          {view.unknown !== null && <Notice>{t.unknown(view.unknown)}</Notice>}
 
-        <Section title={t.byAccession}>
-          <Form method="get" action={href(locale, here)} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="q" value={view.keyword} />
-            <label className="flex flex-col gap-1">
-              <span className="text-ink-muted text-xs">{t.accessionHint}</span>
-              <input
-                type="text"
+          <Section title={t.byAccession}>
+            <Form method="get" action={href(locale, here)} className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="q" value={view.keyword} />
+              <Field
+                label={t.accessionHint}
                 name="accession"
-                defaultValue={view.accession}
-                placeholder="DRA000123"
-                className="w-64 rounded border border-line px-2 py-1 font-mono text-sm"
+                value={view.accession}
+                hint="DRA000123"
+                width="w-64"
               />
-            </label>
-            <button
-              type="submit"
-              className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
-            >
-              {t.look}
-            </button>
-          </Form>
-        </Section>
+              <Submit variant="primary">{t.look}</Submit>
+            </Form>
+          </Section>
 
-        <Section title={t.byApplication}>
-          {!view.connected
-            ? <Empty>{t.notConnectedDra}</Empty>
-            : (
-                <>
-                  <UpstreamSearch locale={locale} action={href(locale, here)} keyword={view.keyword} />
-                  {view.rows.length === 0
-                    ? <Empty>{t.none}</Empty>
-                    : (
-                        <div className="mt-3">
+          <Section title={t.byApplication}>
+            {!view.connected
+              ? <Empty>{t.notConnectedDra}</Empty>
+              : (
+                  <Stack gap="normal">
+                    <UpstreamSearch locale={locale} action={href(locale, here)} keyword={view.keyword} />
+                    {view.rows.length === 0
+                      ? <Empty>{t.none}</Empty>
+                      : (
                           <Table
                             headers={[t.application, t.humLabel, t.approvedOn, t.title, t.registered]}
                           >
@@ -119,23 +113,23 @@ export default function AdminDraftDatasetUpstream({
                               </tr>
                             ))}
                           </Table>
-                        </div>
-                      )}
-                </>
-              )}
-        </Section>
-
-        {view.chosen !== null && (
-          <Section title={view.chosen.applicationId ?? view.accession}>
-            <Form method="post">
-              <input type="hidden" name="revision" value={view.revision} />
-              {view.chosen.applicationId !== null && (
-                <input type="hidden" name="application" value={view.chosen.applicationId} />
-              )}
-              <UpstreamChoice locale={locale} choice={view.chosen} submit={t.add} />
-            </Form>
+                        )}
+                  </Stack>
+                )}
           </Section>
-        )}
+
+          {view.chosen !== null && (
+            <Section title={view.chosen.applicationId ?? view.accession}>
+              <Form method="post">
+                <input type="hidden" name="revision" value={view.revision} />
+                {view.chosen.applicationId !== null && (
+                  <input type="hidden" name="application" value={view.chosen.applicationId} />
+                )}
+                <UpstreamChoice locale={locale} choice={view.chosen} submit={t.add} />
+              </Form>
+            </Section>
+          )}
+        </Stack>
       </Card>
     </Page>
   )
@@ -143,6 +137,6 @@ export default function AdminDraftDatasetUpstream({
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-4 rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
+    <p className="rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
   )
 }

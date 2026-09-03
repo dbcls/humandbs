@@ -278,8 +278,12 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
   },
   {
     code: DISEASE_KEY,
-    labelJa: "疾患 (ICD-10)",
-    labelEn: "Disease (ICD-10)",
+    // **The coding system is not part of the name.** The box that takes a code
+    // says which system it is (`messages` の `search.refine.code`), and this
+    // label also stands over the value on the dataset page, where there is no
+    // box for the parenthesis to be about.
+    labelJa: "疾患",
+    labelEn: "Disease",
     categoryCode: "subjects",
     setCode: DISEASE_SET,
     hierarchical: true,
@@ -619,6 +623,11 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
  * key they name, and no key of their own is made.
  */
 export const MERGED_SOURCES = new Map<string, string>([
+  // v1 wrote the library kit under two names and never under both: 1,790 cells
+  // say `Reagents`, 2,181 say `Library Construction`, and no cell has a value
+  // in each. They are one slot, so they take one key — and because that key is
+  // retyped, the prose is not kept beside the terms read out of it.
+  ["Library Construction", "reagents"],
   ["SNV Number", "variant-number"],
   ["INDEL Number", "variant-number"],
   ["SV Number", "variant-number"],

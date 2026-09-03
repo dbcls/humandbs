@@ -2,6 +2,7 @@ import { data, Form, Link } from "react-router"
 
 import { upstreamResearchAction, upstreamResearchPage } from "~/admin/templates.server"
 import { adminResearchListPath, adminResearchPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
+import { Note, Stack } from "~/components/base"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
@@ -60,87 +61,83 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
         </Link>
       </PageHead>
       <Card>
-        {actionData?.status === "taken" && <Notice>{t.takenLabel}</Notice>}
+        <Stack gap="block">
+          {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
 
-        {!view.connected
-          ? <UpstreamNotConnected locale={locale} dra={false} />
-          : (
-              <>
-                <UpstreamSearch
-                  locale={locale}
-                  action={href(locale, adminUpstreamResearchPath())}
-                  keyword={view.keyword}
-                />
-                <Section title={t.applications}>
-                  {view.rows.length === 0
-                    ? <Empty>{t.none}</Empty>
-                    : (
-                        <Table
-                          headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
-                        >
-                          {view.rows.map((row) => (
-                            <tr key={row.applicationId}>
-                              <Td className="whitespace-nowrap">
-                                <Link to={at(row.applicationId)}>{row.applicationId}</Link>
-                              </Td>
-                              <Td className="whitespace-nowrap">
-                                {row.humLabel === null
-                                  ? <span className="text-ink-muted">{t.noHumLabel}</span>
-                                  : row.heldBy === null
-                                    ? row.humLabel
-                                    : (
-                                        <Link to={href(locale, adminResearchPath(row.heldBy))}>
-                                          {row.humLabel}
-                                        </Link>
-                                      )}
-                              </Td>
-                              <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                              <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
-                              <Td className="whitespace-nowrap">{row.piName}</Td>
-                              <Td className="text-xs">{row.accessions.join(", ")}</Td>
-                            </tr>
-                          ))}
-                        </Table>
-                      )}
-                </Section>
-
-                {view.branch !== null && view.chosen !== null && (
-                  <Section title={view.branch.applicationId}>
-                    {view.branch.heldBy === null
-                      ? (
-                          <Form method="post">
-                            <input
-                              type="hidden"
-                              name="application"
-                              value={view.branch.applicationId}
-                            />
-                            <UpstreamChoice
-                              locale={locale}
-                              choice={view.chosen}
-                              submit={t.create}
-                            />
-                          </Form>
-                        )
+          {!view.connected
+            ? <UpstreamNotConnected locale={locale} dra={false} />
+            : (
+                <>
+                  <UpstreamSearch
+                    locale={locale}
+                    action={href(locale, adminUpstreamResearchPath())}
+                    keyword={view.keyword}
+                  />
+                  <Section title={t.applications}>
+                    {view.rows.length === 0
+                      ? <Empty>{t.none}</Empty>
                       : (
-                          <Notice>
-                            {t.heldBy}
-                            {" "}
-                            <Link to={href(locale, adminResearchPath(view.branch.heldBy))}>
-                              {t.openHolder}
-                            </Link>
-                          </Notice>
+                          <Table
+                            headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
+                          >
+                            {view.rows.map((row) => (
+                              <tr key={row.applicationId}>
+                                <Td className="whitespace-nowrap">
+                                  <Link to={at(row.applicationId)}>{row.applicationId}</Link>
+                                </Td>
+                                <Td className="whitespace-nowrap">
+                                  {row.humLabel === null
+                                    ? <span className="text-ink-muted">{t.noHumLabel}</span>
+                                    : row.heldBy === null
+                                      ? row.humLabel
+                                      : (
+                                          <Link to={href(locale, adminResearchPath(row.heldBy))}>
+                                            {row.humLabel}
+                                          </Link>
+                                        )}
+                                </Td>
+                                <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
+                                <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
+                                <Td className="whitespace-nowrap">{row.piName}</Td>
+                                <Td className="text-xs">{row.accessions.join(", ")}</Td>
+                              </tr>
+                            ))}
+                          </Table>
                         )}
                   </Section>
-                )}
-              </>
-            )}
+
+                  {view.branch !== null && view.chosen !== null && (
+                    <Section title={view.branch.applicationId}>
+                      {view.branch.heldBy === null
+                        ? (
+                            <Form method="post">
+                              <input
+                                type="hidden"
+                                name="application"
+                                value={view.branch.applicationId}
+                              />
+                              <UpstreamChoice
+                                locale={locale}
+                                choice={view.chosen}
+                                submit={t.create}
+                              />
+                            </Form>
+                          )
+                        : (
+                            <Note kind="info">
+                              {t.heldBy}
+                              {" "}
+                              <Link to={href(locale, adminResearchPath(view.branch.heldBy))}>
+                                {t.openHolder}
+                              </Link>
+                            </Note>
+                          )}
+                    </Section>
+                  )}
+                </>
+              )}
+        </Stack>
       </Card>
     </Page>
-  )
-}
-
-function Notice({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-4 rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
   )
 }

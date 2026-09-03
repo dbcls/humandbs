@@ -409,10 +409,14 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         <a
           href="https://dbcls.rois.ac.jp/"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="absolute top-8 right-4 sm:right-page-gutter"
         >
           <img src="/logo-dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
+          {/* The mark this link carries is the logo itself, so the one that
+              says "outward" has nowhere to sit that is not on top of it. The
+              word is still owed. */}
+          <span className="sr-only">{messages.newTab}</span>
         </a>
         <Stack gap="normal">
           <h2 className="font-semibold text-brand text-sm">{messages.siteMap}</h2>

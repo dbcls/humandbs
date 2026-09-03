@@ -140,7 +140,7 @@ function Marked({ box, icon, iconClass = "", live = false, action, children }: {
 export type BandTone = "brand" | "deep" | "accent"
 
 export const BAND_FILL: Record<BandTone, string> = {
-  brand: "bg-linear-to-r from-brand to-brand-light",
+  brand: "bg-linear-to-r from-brand-dark to-brand-light",
   deep: "bg-linear-to-r from-deep to-ink-muted",
   accent: "bg-linear-to-r from-accent to-accent-light",
 }
@@ -423,10 +423,18 @@ export function ButtonLink({
   pill = false,
   external = false,
   newTab = false,
+  newTabLabel,
   icon,
   className = "",
   children,
-}: ButtonLook & { to: string, external?: boolean, newTab?: boolean, children: ReactNode }) {
+}: ButtonLook & {
+  to: string
+  external?: boolean
+  newTab?: boolean
+  /** Said for anyone not looking at the mark. Required wherever `newTab` is. */
+  newTabLabel?: string
+  children: ReactNode
+}) {
   const shape = buttonClass(variant, size, pill, className)
   const inside = (
     <>
@@ -435,10 +443,15 @@ export function ButtonLink({
     </>
   )
   if (!external) return <Link to={to} className={shape}>{inside}</Link>
-  // A new tab is only ever opened where the words say so, and `noreferrer`
-  // keeps the address of the page that opened it out of the other site's log.
+  // A new tab is announced rather than just opened, and `noreferrer` keeps the
+  // address of the page that opened it out of the other site's log.
   return newTab
-    ? <a href={to} target="_blank" rel="noreferrer" className={shape}>{inside}</a>
+    ? (
+        <a href={to} target="_blank" rel="noopener noreferrer" className={shape}>
+          {inside}
+          {newTabLabel !== undefined && <span className="sr-only">{newTabLabel}</span>}
+        </a>
+      )
     : <a href={to} className={shape}>{inside}</a>
 }
 
@@ -464,12 +477,14 @@ const WAY_IN_FILL: Record<"accent" | "brand", string> = {
   brand: "bg-linear-to-r from-brand to-brand-lighter",
 }
 
-export function BigAction({ to, tone, icon, external = false, children }: {
+export function BigAction({ to, tone, icon, external = false, newTabLabel, children }: {
   to: string
   tone: "accent" | "brand"
   icon: IconName
   /** Leaves the site — the application system, the submission navigator. */
   external?: boolean
+  /** Said for anyone not looking at the mark. Required wherever `external` is. */
+  newTabLabel?: string
   children: ReactNode
 }) {
   const shape = `flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg px-6 py-4 text-center font-bold text-lg text-white no-underline visited:text-white hover:brightness-95 ${WAY_IN_FILL[tone]}`
@@ -479,11 +494,12 @@ export function BigAction({ to, tone, icon, external = false, children }: {
       <span className="flex items-center gap-2">
         {children}
         {external && <Icon name="external" />}
+        {external && newTabLabel !== undefined && <span className="sr-only">{newTabLabel}</span>}
       </span>
     </>
   )
   return external
-    ? <a href={to} target="_blank" rel="noreferrer" className={shape}>{inside}</a>
+    ? <a href={to} target="_blank" rel="noopener noreferrer" className={shape}>{inside}</a>
     : <Link to={to} className={shape}>{inside}</Link>
 }
 
@@ -613,6 +629,10 @@ export function Chip({ field, value, to, remove }: {
   return (
     <Link
       to={to}
+      // Lifting a condition leaves the reader where they were: what they are
+      // watching is the listing this chip stands over, and it is still there
+      // afterwards with more in it.
+      preventScrollReset
       className="flex items-stretch overflow-hidden rounded border border-line-strong bg-white text-ink text-xs no-underline hover:bg-surface-hover"
     >
       {field !== undefined && (
@@ -1319,10 +1339,11 @@ export function Menu({ label, icon = "more", round = false, word = false, value,
         title={word ? undefined : label}
         className={`inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
           value !== undefined
-            // A control with a word in it is the height of its word and its
-            // padding, the way `Button` is (`docs/ui.md`) — held to the tap
-            // size it stands 2px over everything else in the row it shares.
-            ? `whitespace-nowrap px-4 py-1.5 text-sm ${MENU_CORNER[corner]}`
+            // A control naming a choice is a step shallower than a button, and a
+            // step narrower on the side the caret is (`docs/ui.md`): the row it
+            // shares already stands 36px squares in it, and a caret carries
+            // whitespace of its own the way a letter does not.
+            ? `whitespace-nowrap py-1 pr-2 pl-3 text-sm ${MENU_CORNER[corner]}`
             : `min-h-tap text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`
         }`}
       >
@@ -1387,12 +1408,12 @@ export function Chooser({ label, value, beside, children }: {
  * **It is the height of what it is welded to, not the tap size.** A glyph on
  * its own is 36px square everywhere else (`docs/ui.md`), but this one shares an
  * edge with a control sized by its word — held to 36 it would stand the pair
- * 2px over the rest of the row. **The press still reaches 36px**: the
- * pseudo-element takes it out to the pill's own outer edge, which is exactly
- * the 1px of border on either side.
+ * over the rest of the row. **The press is 36px all the same**: the
+ * pseudo-element names that height and sits centred on the box, so what can be
+ * pressed stays put when the box around it changes depth.
  */
 export const CHOOSER_SIDE
-  = "relative inline-flex w-tap items-center justify-center rounded-r-full border-brand border-l text-brand no-underline after:absolute after:-inset-y-px after:content-[''] hover:bg-surface-hover"
+  = "relative inline-flex w-tap items-center justify-center rounded-r-full border-brand border-l text-brand no-underline after:-translate-y-1/2 after:absolute after:inset-x-0 after:top-1/2 after:h-tap after:content-[''] hover:bg-surface-hover"
 
 /** How far something has got, for the one operation that takes long enough: an upload. */
 export function Progress({ label, done, total }: { label: string, done: number, total: number }) {

@@ -182,7 +182,7 @@ export function Section({ title, at, children }: {
     <Stack gap="tight" as="section">
       {/* A mark for the whole section sits beside its name rather than under
           it: on a line of its own it reads as belonging to the first value. */}
-      <h2 className="flex flex-wrap items-center gap-2 font-semibold text-brand text-lg">
+      <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-brand text-lg">
         {title}
         {at !== undefined && <Annotation at={at} />}
       </h2>
@@ -194,20 +194,42 @@ export function Section({ title, at, children }: {
 /**
  * One labelled value.
  *
- * The label is set above the value and each pair is closed by a rule, which is
- * how v1 draws the descriptive half of a research page.
+ * **The pairs are flowed into columns rather than laid on a grid.** Two cells on
+ * a grid row are both as tall as the taller one, and these values differ by a
+ * factor of three or more — a summary of aims, methods and participants left 44%
+ * of its box empty and stood 638px, against 11% and 398px flowed. A column is
+ * also why they are not simply set full width: the page is 1,344px across, which
+ * is eighty Japanese characters to a line.
  *
- * **The pairs are laid out on a grid rather than flowed into columns.** Flowed
- * columns break wherever the height happens to fall, so the rules on the left
- * and the rules on the right line up nowhere and the last column ends short —
- * three values under a heading left a quarter of the box empty. On a grid the
- * rules meet across the page and the rows read as rows.
+ * **No value is broken across the two columns.** Split at the foot of one, a
+ * sentence continued at the head of the other reads as a second answer.
+ *
+ * **A rule goes between two pairs and nowhere else.** Drawn under each one, the
+ * last in a column closes against nothing — inside a box it floats a few pixels
+ * above that box's own edge, and at the foot of a flowed column it lands
+ * wherever the balance happened to fall. Drawn over each one, the same is true
+ * at the head of a column.
+ *
+ * **Neither end can be named in CSS**: `:first-child` and `:last-child` are the
+ * ends of the source, not of a column, and which pair a column begins with is
+ * decided after layout. So the rule is drawn over every pair and the two that
+ * land at the top of a column are put out of the box instead: each pair is
+ * shifted up by exactly the width of its own rule, which leaves the rules in
+ * the middle where they were and takes the first one in each column to -1px,
+ * outside what the list clips. **The shift is `top` rather than a margin** — a
+ * margin at the head of a column is dropped by the fragmentation, which is
+ * precisely the case that has to move.
+ *
+ * **The rule belongs here rather than to `KeyValue`.** A pair that is the only
+ * one in its box has nothing to be separated from — the release list sets two
+ * of them side by side, where what divides them is the gap between the columns.
  */
 export function Pairs({ children }: { children: ReactNode }) {
-  // `items-start` because the rule under a value has to sit under *that* value:
-  // stretched to the height of its row, the rule below a one-line answer would
-  // be drawn eight lines under it, beside a long one in the other column.
-  return <dl className="grid items-start gap-x-8 sm:grid-cols-2">{children}</dl>
+  return (
+    <dl className="gap-x-8 overflow-hidden sm:columns-2 [&>*]:-top-px [&>*]:relative [&>*]:border-line [&>*]:border-t">
+      {children}
+    </dl>
+  )
 }
 
 export function KeyValue({ title, at, children }: {
@@ -217,7 +239,7 @@ export function KeyValue({ title, at, children }: {
   children: ReactNode
 }) {
   return (
-    <div className="border-line border-b py-2">
+    <div className="break-inside-avoid py-2">
       <Stack gap="tight">
         <dt className="text-ink-muted text-xs">{title}</dt>
         <dd>
@@ -358,7 +380,22 @@ export function Table({ headers, children, stuck = 0 }: {
         */}
         <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
           <thead>
-            <tr className={`text-left text-white ${BAND_FILL.brand}`}>
+            {/*
+              **The band finishes its sweep inside the box, not inside the
+              table.** A gradient laid across the whole table spends a third of
+              its travel past the right edge of what the reader can see, so the
+              part they do see covers 1.46x in luminance where the whole covers
+              1.77x — the band reads as flatter than it is. Ending it at about
+              the width the box has on the display the portal is read on gives
+              the whole sweep to the first screenful; scrolling sideways runs
+              along the light end, which is where the sweep was going anyway.
+
+              **It belongs here rather than in `BAND_FILL`.** A band elsewhere
+              is as wide as its box already, and the filled circles that take
+              the same fill are 28px across — stopping their sweep at 1200px
+              would leave them flat at the dark end.
+            */}
+            <tr className={`text-left text-white ${BAND_FILL.brand} to-[1200px]`}>
               {/*
                 A header asks for no width of its own: what a column needs is
                 decided by the cells under it, and a header that claimed a floor
@@ -374,7 +411,7 @@ export function Table({ headers, children, stuck = 0 }: {
               {headers.map((header, index) => (
                 <th
                   key={index}
-                  className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-2" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} bg-brand ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                  className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} bg-brand-dark ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                 >
                   {header}
                 </th>
@@ -439,7 +476,7 @@ export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, f
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-2`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>
@@ -647,11 +684,43 @@ export function LinksValue({ links, locale, linked = true }: {
       {links.value.map((link) => (
         <li key={link.id} className="break-all">
           {linked
-            ? <a href={link.url} target="_blank" rel="noreferrer">{link.text === "" ? link.url : link.text}</a>
+            ? (
+                <ExternalLink to={link.url} locale={locale}>
+                  {link.text === "" ? link.url : link.text}
+                </ExternalLink>
+              )
             : (link.text === "" ? link.url : link.text)}
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * A way out of the portal.
+ *
+ * **The mark is part of the link, not decoration beside it.** A tab that opens
+ * without warning leaves the reader pressing a back button that does nothing,
+ * so the icon travels inside the anchor and a word says the same thing for
+ * anyone who is not looking at it. `noopener` is what keeps the page that is
+ * opened from reaching back into this one.
+ */
+export function ExternalLink({ to, locale, children }: {
+  to: string
+  locale: Locale
+  children: ReactNode
+}) {
+  return (
+    <a
+      href={to}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1"
+    >
+      {children}
+      <Icon name="external" />
+      <span className="sr-only">{messagesFor(locale).newTab}</span>
+    </a>
   )
 }
 
@@ -726,7 +795,11 @@ const LOCK: Record<string, { name: IconName, className: string }> = {
 export function AccessTypeBadge({ term }: { term: TermView }) {
   const lock = LOCK[term.code]
   return (
-    <span className="inline-flex items-center gap-1.5 text-nowrap">
+    // **The box is set against the top of the line, not its baseline.** An
+    // inline box as tall as the line it sits in hangs below it when it is
+    // aligned by baseline, and every row holding one grew by that overhang —
+    // which is the rule that a row's height is decided by its text, broken.
+    <span className="inline-flex items-center gap-1.5 align-top text-nowrap">
       {lock !== undefined && <Icon name={lock.name} className={lock.className} />}
       {term.label}
     </span>

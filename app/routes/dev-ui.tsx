@@ -162,7 +162,8 @@ const SECTIONS = [
 ] as const
 
 const COLOURS: [string, string, string][] = [
-  ["brand", "bg-brand", "リンク・見出し・帯の左端"],
+  ["brand", "bg-brand", "リンク・見出し・白地の上の線と字"],
+  ["brand-dark", "bg-brand-dark", "帯の左端"],
   ["brand-light", "bg-brand-light", "帯の右端・添えものの塗り"],
   ["brand-lighter", "bg-brand-lighter", "入り口の右端"],
   ["accent", "bg-accent", "強調"],
@@ -751,6 +752,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </p>
               <ActionRow>
                 <ActionButton
+                  locale={LOCALE}
                   href="https://example.org/"
                   label="利用可能なデータセットを探す"
                   note="データセット ID が未特定の場合"
@@ -758,6 +760,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   icon="search"
                 />
                 <ActionButton
+                  locale={LOCALE}
                   href="https://example.org/"
                   label="制限公開データの利用申請を行う"
                   note="「JGAD」で始まるデータセット ID をお持ちの場合"

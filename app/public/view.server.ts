@@ -619,6 +619,12 @@ export function releaseListView(input: ReleaseListInput, locale: Locale): Releas
 export interface DatasetView {
   label: string
   humLabel: string
+  /**
+   * The JGA study this dataset sits under, for a dataset registered there.
+   * It comes from the upstream cache rather than from content, so a dataset
+   * the portal itself issued an id for does not have one.
+   */
+  studyAccession: string | null
   datePublished: string | null
   dateModified: string | null
   accessType: TermView | null
@@ -636,6 +642,7 @@ export interface DatasetView {
 export interface DatasetViewInput {
   label: string
   humLabel: string
+  studyAccession: string | null
   content: DatasetContent
   datePublished: string | null
   dateModified: string | null
@@ -689,6 +696,7 @@ export function anchoredDatasetView(
   const view: DatasetView = {
     label: input.label,
     humLabel: input.humLabel,
+    studyAccession: input.studyAccession,
     datePublished: input.datePublished,
     dateModified: input.dateModified,
     accessType: row.accessType,

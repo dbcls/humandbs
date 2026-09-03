@@ -17,10 +17,31 @@
  * requirement lives; changing a value here without changing that test fails.
  */
 @theme {
-  /* Links, headings, and the left end of a band. */
+  /* Links, headings, and every edge and word drawn in the brand colour. */
   --color-brand: #1a5fbd;
   /* The right end of a band. */
   --color-brand-light: #157bac;
+
+  /*
+   * The left end of a band, which is not the colour a link is drawn in.
+   *
+   * **A band's travel is held at the light end and free at the dark one.** Both
+   * ends carry small white text, so the right end can go no lighter than 4.5:1
+   * — and starting the sweep from the link's own colour covers 1.43x in
+   * luminance, which the eye reads as a flat fill. Starting one step darker
+   * takes it to 1.77x, which reads as a gradient.
+   *
+   * **It stops one step short of what the dark end allows.** Nothing is lost by
+   * going darker still — the previous portal's sweep was 2.2x, and this end can
+   * reach that at 8.2:1 — but at that width the left end stops reading as the
+   * site's blue and starts reading as navy. What is wanted here is a band that
+   * is seen to travel, not the widest one available.
+   *
+   * **The link colour cannot be moved to get this.** It is also the word in a
+   * badge and the edge of every control standing over a listing, all of them on
+   * white, where darker is a different design rather than a safer one.
+   */
+  --color-brand-dark: #1856ab;
 
   /*
    * The ring around whatever has keyboard focus, and nothing else.
@@ -116,8 +137,9 @@
    * A glyph with nothing beside it is the smallest control a page has, and it
    * is the one a reader misses: 36px square is the size the header circles
    * already were, and every other icon control is held to it rather than
-   * shrinking to fit its own drawing. It is also a row's height in a table
-   * (`py-2` around a line of `text-sm`), so a mark in a listing costs nothing.
+   * shrinking to fit its own drawing. **In a table it is what a one-line row is
+   * as tall as** — the line and its padding come to 34.4px — so a mark in a
+   * listing costs a row 1.6px and nothing else (`docs/ui.md`).
    */
   --spacing-tap: 2.25rem;
 
@@ -139,7 +161,16 @@
   --text-xs--line-height: 1.5;
   --text-sm--line-height: 1.6;
   --text-base--line-height: 1.75;
-  --text-lg--line-height: 1.6;
+  /*
+   * **`text-lg` is a heading size here, so it takes a heading's leading.** It is
+   * the size a section's name is set at and the one the two ways in carry; no
+   * prose is written at it. Left at the body's 1.6 the line box stood 28.8px
+   * around an 18px word, and the rule beside a heading is as long as that box —
+   * which is what made it read as a bar rather than a mark. The previous portal
+   * sets the same 18px heading at 1.2; 1.3 is the value this scale already uses
+   * at its largest.
+   */
+  --text-lg--line-height: 1.3;
   --text-xl--line-height: 1.45;
   --text-2xl--line-height: 1.35;
   --text-3xl--line-height: 1.3;
@@ -217,9 +248,28 @@
    * the top two are heavier as well, which keeps a difference where the sizes
    * come together.
    */
+  /*
+   * The ladder of an article, which is the ladder a research page uses: 24 /
+   * 18 / 16 / 14 over a body of 14, with the top two in brand and the rest in
+   * the colour of the text. `Section` names a part of a page in brand at 18px
+   * and an article's parts are the same kind of thing, so the two agree rather
+   * than each having an h2 of its own.
+   *
+   * **Colour does part of the work of weight**, which is what lets h2 be the
+   * lightest of them: a brand line is already marked as a heading, while an ink
+   * one has only its weight to separate it from the paragraph under it.
+   *
+   * **The section level carries the mark as well.** Blue words in a page of
+   * blue links are read as a link first and a heading second — the size and the
+   * missing underline are both noticed after the colour. The rule beside them
+   * is the one thing on the page no link has. **It stands at the start of what
+   * it names** rather than being hung out through the card's padding: the card
+   * edge belongs to the title of the whole page, and a mark on that line would
+   * put every section on the same footing as it.
+   */
   .markdown h1 { @apply text-2xl font-bold text-brand; }
-  .markdown h2 { @apply text-xl font-bold; }
-  .markdown h3 { @apply text-lg; }
+  .markdown h2 { @apply border-brand border-l-4 pl-2.5 text-lg font-medium text-brand; }
+  .markdown h3 { @apply text-base; }
 
   /*
    * A quotation, which is what a `>` is when it does not name itself as an

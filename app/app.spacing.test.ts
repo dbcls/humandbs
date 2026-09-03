@@ -15,13 +15,7 @@ import { describe, expect, it } from "vitest"
 
 const ROOT = path.join(import.meta.dirname)
 
-/**
- * The screens a reader sees. The eighteen management screens are not here yet —
- * they are the next thing to be rebuilt, and holding them to a rule they carry
- * 93 breaches of would mean a red test for as long as that takes. **Their frame
- * is**, in `MANAGEMENT_FRAME` below: the part that was written after the rule
- * was, and the part a screen added later inherits without reading it.
- */
+/** The screens a reader sees. The management area is `managementFiles` below. */
 const PUBLIC_SCREENS = [
   "home",
   "research-list",
@@ -63,15 +57,39 @@ async function sourcesUnder(dir: string): Promise<{ name: string, text: string }
 }
 
 /**
- * What every management screen is drawn inside, and the one screen the portal
- * put there itself. Widening this list is what finishing the eighteen looks
- * like (`../.claude` の roadmap は U4 と呼んでいる).
+ * The management area: every screen under `/admin`, the frame they are drawn
+ * in, and the parts only they use. **The screens are found rather than listed**,
+ * so one added later is held to the rule without anybody remembering to name it
+ * here.
+ *
+ * **`components/preview.tsx` is deliberately absent.** It draws the marks a
+ * reader of a shared draft sees, and those take a negative margin so that a
+ * 36px control rides inside the row the words set (`docs/ui.md` の「押せるものの
+ * 大きさ」). The rule below cannot tell that apart from a screen choosing a
+ * distance of its own.
  */
-const MANAGEMENT_FRAME = [
-  "routes/admin-layout.tsx",
-  "routes/admin-assistant.tsx",
+const MANAGEMENT_PARTS = [
   "components/admin.tsx",
+  "components/comments.tsx",
+  "components/contents.tsx",
+  "components/dataset-editor.tsx",
+  "components/draft-tools.tsx",
+  "components/editor.tsx",
+  "components/field-review.tsx",
+  "components/fields.tsx",
+  "components/files.tsx",
+  "components/previous.tsx",
+  "components/publish.tsx",
+  "components/review.tsx",
+  "components/upstream.tsx",
 ]
+
+async function managementFiles(): Promise<string[]> {
+  const screens = (await readdir(path.join(ROOT, "routes")))
+    .filter((name) => name.startsWith("admin") && name.endsWith(".tsx") && !name.includes(".test."))
+    .map((name) => `routes/${name}`)
+  return [...screens, ...MANAGEMENT_PARTS]
+}
 
 const MARGIN = /^(sm:|md:|lg:|first:|last:)*-?(mt|mb|my|space-y)-/
 
@@ -90,9 +108,9 @@ describe("縦の間隔", () => {
     expect(offenders).toEqual([])
   })
 
-  it("管理画面の器も margin を書かない", async () => {
+  it("管理画面も margin を書かず、間隔は Stack が持つ", async () => {
     const offenders: string[] = []
-    for (const file of MANAGEMENT_FRAME) {
+    for (const file of await managementFiles()) {
       const hits = marginsIn(await readFile(path.join(ROOT, file), "utf8"))
       if (hits.length > 0) offenders.push(`${file}: ${hits.join(" ")}`)
     }
@@ -246,6 +264,43 @@ describe("表の縁", () => {
     const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
     expect(parts).not.toMatch(/\bborder-collapse\b/)
     expect(parts).toMatch(/\bborder-separate\b/)
+  })
+})
+
+/**
+ * What can be pressed on the control welded to a `Chooser` is stated, not
+ * measured off the box it sits in. Written as an inset it followed the pill
+ * silently: a step of padding off the value beside it and the 36px this has to
+ * reach became 34.4, with nothing on the screen to say so (`docs/ui.md`).
+ */
+describe("溶接された操作の押せる範囲", () => {
+  it("器の高さから引き算せず、36px を名乗る", async () => {
+    const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
+    const side = /export const CHOOSER_SIDE\s*=\s*"([^"]*)"/.exec(parts)?.[1]
+    expect(side).toBeDefined()
+    expect(side).toContain("after:h-tap")
+    expect(side).not.toMatch(/after:-?inset-y-/)
+  })
+})
+
+/**
+ * A part of a page and a part of an article are named by the same level of
+ * heading, so a reader moving between them meets one h2 rather than two
+ * (`docs/ui.md`). The pair is written in two files — one a component, one a
+ * stylesheet — which is the only reason it can drift.
+ */
+describe("見出しの段", () => {
+  it("節の名前は、部品と記事で同じ姿を取る", async () => {
+    const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
+    const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
+    const section = /<h2 className="([^"]*)"/.exec(parts)?.[1]
+    const article = /\.markdown h2 \{ @apply ([^;]*);/.exec(styles)?.[1]
+    expect([section, article]).not.toContain(undefined)
+
+    for (const look of ["text-lg", "font-medium", "text-brand", "border-l-4", "pl-2.5"]) {
+      expect(section).toContain(look)
+      expect(article).toContain(look)
+    }
   })
 })
 

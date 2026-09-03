@@ -103,7 +103,7 @@ describe("a source that fails", () => {
   it("does not take a source that answered down with it", async () => {
     vi.mocked(fetchCauEntries).mockRejectedValueOnce(new Error("connection refused"))
     vi.mocked(fetchHumAccessions).mockResolvedValueOnce([
-      { accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset" },
+      { accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset", study: "JGAS000001" },
     ])
 
     const outcomes = await runUpstreamRefresh(db, ["cau", "hum-accession"])
