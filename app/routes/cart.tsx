@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 
-import { APPLICATION_FORM_URL, applicationPayload, useCart, useHydrated } from "~/cart/store"
+import { APPLICATION_FORM_URL, applicationPayload, useCart } from "~/cart/store"
+import { useHydrated } from "~/hydrated"
 import { Button, ButtonLink, Fold, Heading, IconButton, Note, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Card, Crumbs, Empty, Page, Table, Td } from "~/components/page"

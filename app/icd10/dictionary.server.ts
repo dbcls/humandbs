@@ -71,19 +71,6 @@ export async function lookUpCode(db: Executor, code: string): Promise<Icd10Entry
   return row ?? null
 }
 
-/** The codes of these that the classification holds. */
-export async function knownCodes(
-  db: Executor,
-  codes: readonly string[],
-): Promise<Set<string>> {
-  if (codes.length === 0) return new Set()
-  const rows = await db
-    .select({ code: icd10Reference.code })
-    .from(icd10Reference)
-    .where(inArray(icd10Reference.code, [...codes]))
-  return new Set(rows.map((row) => row.code))
-}
-
 /** The dictionary entries for these codes, by code. */
 export async function titlesOf(
   db: Executor,

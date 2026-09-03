@@ -215,14 +215,3 @@ export function termsPath(): string {
 export function adminAssistantPath(): string {
   return `${adminPath()}/assistant`
 }
-
-/**
- * Where the assistant's own API answers, and **the only way in**. Everything
- * under it is handed on unchanged, so the portal does not have to be edited
- * when the service grows an endpoint.
- *
- * **No language prefix**: nothing it answers with is interface text.
- */
-export function assistantApiPath(rest = ""): string {
-  return `${adminAssistantPath()}/api/${rest}`
-}

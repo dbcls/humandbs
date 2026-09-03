@@ -118,8 +118,6 @@ export const saveDraftSchema = z.object({
   content: researchContentInputSchema,
 })
 
-export type SaveDraftPayload = z.infer<typeof saveDraftSchema>
-
 export interface FieldProblem {
   /** The path of the field the construct was written in (`form.ts`). */
   path: string

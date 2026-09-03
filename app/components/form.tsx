@@ -348,8 +348,8 @@ export function Submit({ children, intent, variant = "secondary", disabled }: {
  *
  * It is a `Note` that announces itself when it appears: a save that answers on
  * the same page is otherwise silent to anybody not watching that corner. The
- * box it is drawn in is the one every other remark uses — this used to be a
- * third hand-written arrangement of the same glyph, border and text.
+ * box it is drawn in is the one every other remark uses, rather than its own
+ * arrangement of the same glyph, border and text.
  */
 export function Result({ ok, children }: { ok: boolean, children: ReactNode }) {
   return (

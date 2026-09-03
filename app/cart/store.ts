@@ -174,17 +174,6 @@ export interface Cart {
   remove: (ids: string[]) => void
 }
 
-/**
- * Whether the page is running in a browser yet.
- *
- * The cart is empty on the server, so a screen that draws from it has to know
- * whether "empty" means "nothing collected" or "not asked yet" — otherwise the
- * cart page renders as empty for everybody and fills in a frame later.
- */
-export function useHydrated(): boolean {
-  return useSyncExternalStore(subscribe, () => true, () => false)
-}
-
 export function useCart(): Cart {
   const ids = useSyncExternalStore(subscribe, readCart, serverSnapshot)
   const add = useCallback((toAdd: string[]) => {

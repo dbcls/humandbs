@@ -157,12 +157,12 @@ schema を落とすと `db:grants` が張った権限も消えるが、`db:push`
 ## 開発用データを入れる
 
 入力は 3 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを、
-JGA 申請管理システム由来の TSV 2 本から上流のキャッシュを読み込む。**画面を書くための実データを用意
+JGA 申請管理システム由来の TSV 3 本から上流のキャッシュを読み込む。**画面を書くための実データを用意
 するのが目的で、値の正しさも網羅性も問わない。**
 
 ```bash
 cp <v1 repo>/.claude/joomla-es/data/es/prod/{research,research-version,dataset}.json migration/input/
-scp <cron のホスト>:~/jga-relation/jga_{study,dataset}_hum_id.tsv migration/input/
+scp <cron のホスト>:~/jga-relation/{jga_study_hum_id,jga_dataset_hum_id,jga_dataset_study}.tsv migration/input/
 docker compose exec app npm run db:load-dev-data
 ```
 
@@ -170,9 +170,11 @@ docker compose exec app npm run db:load-dev-data
 接続しない。** SQL は `.claude/` 側に置いてあり、`document` / `news_item` / `alert` とそれぞれの翻訳を
 1 つの JSON オブジェクトにまとめたものを読む。
 
-TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ送っているのと
-同じもの。外部 accession の日付は v1 の dump が持つ初出日から作る。**本番ではこの 3 つを上流のバッチが
-更新する**が (下の「上流のキャッシュを更新する」)、申請管理システム DB へは手元から届かないので、開発では
+TSV 3 本のうち 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ
+送っているのと同じもの。残る 1 本が JGA の dataset → study の辺で、**3 本とも無いと
+`db:load-dev-data` は読み込みに失敗する。**外部 accession の日付は v1 の dump が持つ初出日から作る。
+**本番ではこの 3 つを上流のバッチが更新する**が (下の「上流のキャッシュを更新する」)、申請管理システム
+DB へは手元から届かないので、開発では
 ファイルと dump を出発点にする。公開ゲートの検算と、DDBJ Search へ供給する endpoint
 ([public-api.md](public-api.md))、公開表現の日付 ([data-model.md](data-model.md) の「外部キャッシュ」)
 がこれを読む。

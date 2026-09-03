@@ -86,9 +86,9 @@ export function LineIcon({ name, className = "" }: { name: IconName, className?:
  * A remark with a glyph at its head: the notices above the page, the asides in
  * an article, and what a form says it did.
  *
- * They differ in colour and in what they are for; the shape is one shape. Three
- * of them used to be written out separately and had drifted apart in padding,
- * in the gap, in the corner and in how the glyph was aligned.
+ * They differ in colour and in what they are for; the shape is one shape. Every
+ * one of them is drawn here, so the padding, the gap, the corner and the way the
+ * glyph is aligned cannot drift apart between them.
  *
  * **The glyph sits at the middle of the box rather than at its first line.** A
  * notice runs to two or three lines as often as to one, and a mark left at the

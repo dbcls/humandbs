@@ -463,8 +463,8 @@ export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, f
    *
    * **A column's floor is written in one place.** A cell that put a second
    * `min-w-*` beside the default would leave two rules of equal weight to be
-   * settled by whichever Tailwind happened to emit last — which is why widening
-   * a column that way appeared to work and narrowing one silently did not.
+   * settled by whichever Tailwind happened to emit last, so a class added that
+   * way widens a column but silently fails to narrow one.
    *
    * **A frozen column has none**: its width is fixed in `STUCK`, and a floor
    * beside it would raise the column above the width the next one starts at.

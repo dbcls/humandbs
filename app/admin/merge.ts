@@ -26,8 +26,6 @@ export interface ThreeWay {
   both: string[]
 }
 
-export const NO_THREE_WAY: ThreeWay = { theirs: [], both: [] }
-
 export function isEmptyThreeWay(compared: ThreeWay): boolean {
   return compared.theirs.length === 0 && compared.both.length === 0
 }

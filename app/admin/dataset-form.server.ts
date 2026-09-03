@@ -99,8 +99,6 @@ export const saveDatasetSchema = z.object({
   content: datasetContentInputSchema,
 })
 
-export type SaveDatasetPayload = z.infer<typeof saveDatasetSchema>
-
 export type DatasetContentResult
   = | { ok: true, content: DatasetContent }
     | { ok: false, problems: FieldProblem[] }
