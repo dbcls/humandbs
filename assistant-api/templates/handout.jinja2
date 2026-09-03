@@ -1,0 +1,74 @@
+大変お世話になっております。
+
+新たにデータ利用申請がありました。
+申請内容は以下の通りです。
+
+【研究代表者】
+{{ researcher_info.organization_jp or researcher_info.organization_en }}
+{{ researcher_info.name_jp or researcher_info.name_en }} 先生
+
+【研究題目】
+{{ title }}
+
+【利用を希望するデータ】
+{%- if dataset_info_list and dataset_info_list|length > 0 %}
+利用目的: {% for purpose, items in dataset_info_list|groupby('purpose') %}
+{{ items|map(attribute='dataset_id')|join(', ') }}: {{ purpose }}
+{%- endfor %}
+
+{% for ds in dataset_info_list %}
+{%- set analysis = dataset_analysis_list | selectattr("id", "equalto", ds.dataset_id) | list | first %}
+{% if not analysis %}
+（データセット{{ ds.dataset_id }}の情報取得失敗）
+{% else %}
+◆{{ ds.dataset_id }}
+{{ humandbs_web_base_url }}/{{ analysis.dataset_api_retrieval_result.hum_id }}
+{%- if analysis.dataset_api_retrieval_result.study_id_list and analysis.dataset_api_retrieval_result.study_id_list | length > 0 %}
+・{{ analysis.dataset_api_retrieval_result.study_id_list | join(' / ') }}
+{%- else %}
+・JGAS番号取得失敗
+{%- endif %}
+{%- set info_dict = analysis.dataset_api_retrieval_result.info_dict %}
+{%- if info_dict and info_dict.get("Materials and Participants") and info_dict.get("Experimental Method") %}
+{{ info_dict.get("Materials and Participants").get("ja").get("text") }}の{{ info_dict.get("Experimental Method").get("ja").get("text") }}
+{%- else %}
+（データセット概要情報取得失敗）
+{%- endif %}
+{% endif %}
+{% endfor %}
+{%- endif %}
+
+【制限事項】
+{%- if dataset_policy_groups and dataset_policy_groups|length == 1 %}
+{{ dataset_policy_groups[0].policy_text }}
+{%- elif dataset_policy_groups and dataset_policy_groups|length > 1 %}
+{% for group in dataset_policy_groups %}
+{{ group.dataset_ids|join(', ') }}: {{ group.policy_text }}
+{% endfor %}
+{%- else %}
+制限事項に関する記載が見つかりませんでした
+{%- endif %}
+
+【関連研究への従事】
+{%- if papers %}
+以下の研究に従事。
+{% for paper in papers %}
+(論文{{ loop.index }}) {{ paper.summary_jp }}
+{% endfor %}
+{%- else %}
+（関連論文情報取得失敗）
+{%- endif %}
+
+【データ利用期間】　
+{{ period_of_data_use_end or '（利用終了日情報取得失敗）' }}
+
+
+【特記事項】
+
+
+以上です。
+
+この申請に関するプロジェクトに参画されておられましたら
+今回の審査に携わることができませんので、その旨を記載してください。
+
+何卒、宜しくお願いいたします。

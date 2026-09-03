@@ -1,0 +1,7 @@
+<task_instruction>
+以下の提供申請（application_form）のテキストからSubmissionApplicationFormDataの形式に従い情報を抽出してください。見つからない項目はnullまたは空配列で返してください。
+英語と日本語が併記されている場合は両方をつなげて抽出してください。
+なお、日本語と英語の意味の一致を判定する際には、概要だけではなく、
+表現単位でどちらか一方にのみ含まれる表現がないかどうか、厳密にチェックするようにしてください。
+</task_instruction>
+<application_form>{form_text}</application_form>

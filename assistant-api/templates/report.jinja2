@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>研究利用申請審査結果レポート</title>
+    <style>
+        .report-container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .report-container h1 { 
+            color: #1e293b; 
+            border-bottom: 3px solid #3b82f6; 
+            padding-bottom: 10px; 
+        }
+        .report-container h2 { 
+            color: #334155; 
+            border-bottom: 2px solid #e2e8f0; 
+            padding-bottom: 8px; 
+            margin-top: 30px; 
+        }
+        .report-container h3 { 
+            color: #475569; 
+            margin-top: 25px; 
+        }
+        .report-container .status-success { 
+            color: #10b981; 
+            font-weight: 600; 
+        }
+        .report-container .status-warning { 
+            color: #f59e0b; 
+            font-weight: 600; 
+        }
+        .report-container .status-error { 
+            color: #ef4444; 
+            font-weight: 600; 
+        }
+        .report-container .person-info {
+            background-color: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .report-container .verification-item {
+            margin: 8px 0;
+        }
+        .report-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        .report-container th, .report-container td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .report-container th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+        .report-container tr:nth-child(even) { 
+            background-color: #f9fafb; 
+        }
+        .report-container .dataset-detail {
+            background-color: #fefefe;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .report-container .detail-table {
+            margin: 10px 0;
+        }
+        .report-container .detail-table td {
+            vertical-align: top;
+            padding: 10px;
+        }
+        .report-container .detail-table td:first-child {
+            font-weight: 600;
+            background-color: #f3f4f6;
+            width: 120px;
+        }
+        .report-container a {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+        .report-container a:hover {
+            text-decoration: underline;
+        }
+        .report-container .code-text {
+            background-color: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        .report-container .indent-1 { 
+            margin-left: 20px; 
+        }
+        .report-container .indent-2 { 
+            margin-left: 40px; 
+        }
+        .report-container .abstract-bilingual-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 10px 0;
+        }
+        .report-container .abstract-panel {
+            background-color: #f8fafc;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .report-container .abstract-panel h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+        .report-container .abstract-sentence {
+            display: inline;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+            cursor: default;
+            white-space: pre-wrap;
+        }
+        .report-container .abstract-sentence + .abstract-sentence {
+            margin-left: 2px;
+        }
+        .report-container .abstract-sentence.is-linked-hover {
+            background-color: #dbeafe;
+            color: #0f172a;
+        }
+        .report-container .consistency-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .report-container .consistency-item-title {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <h1>研究利用申請審査結果レポート</h1>
+
+{# 色付きチェックマーク/バツマークのマクロ #}
+{% macro status_mark(is_success, success_text, failure_text, for_warning=False) -%}
+{% if is_success %}<span class="status-success">✓ {{ success_text }}</span>{% else %}<span class="{{ 'status-warning' if for_warning else 'status-error' }}">✗ {{ failure_text }}</span>{% endif %}
+{%- endmacro %}
+
+{# 名前表示のマクロ #}
+{% macro format_name(person_info) -%}
+{% if person_info.name_jp and person_info.name_en %}
+{{ person_info.name_jp }} ({{ person_info.name_en }})
+{% else %}
+{{ person_info.name_en if person_info.name_en else person_info.name_jp }}
+{% endif %}
+{%- endmacro %}
+
+{# 組織名表示のマクロ #}
+{% macro format_organization(person_info) -%}
+{% if person_info.organization_en and person_info.organization_jp %}
+{{ person_info.organization_jp }} ({{ person_info.organization_en }})
+{% else %}
+{{ person_info.organization_en if person_info.organization_en else person_info.organization_jp }}
+{% endif %}
+{%- endmacro %}
+
+{# 役職表示のマクロ #}
+{% macro format_title(person_info) -%}
+{% if person_info.title_jp and person_info.title_en %}
+{{ person_info.title_jp }} ({{ person_info.title_en }})
+{% else %}
+{{ person_info.title_en if person_info.title_en else person_info.title_jp }}
+{% endif %}
+{%- endmacro %}
+
+{# 電話番号検証表示のマクロ #}
+{% macro phone_verification_display(person_info, phone_result) -%}
+{% set country_code_matched = phone_result.country_code_matched_with_address %}
+{% set phone_verified = phone_result.related_to_researcher_or_organization %} 
+<div class="verification-item">
+    <strong>電話番号:</strong> {{ person_info.phone }}
+    {% if phone_result.corrected_phone_number %} (国際番号正規化後: {{ phone_result.corrected_phone_number }}){% endif %}<br>
+    <div class="indent-1">判定：現在所属している機関の電話番号である。</div>
+    <div class="indent-1">判定結果：{{ status_mark(phone_verified, "OK", "NG") }}</div>
+    <div class="indent-2">電話番号の国コード検証：{{ status_mark(country_code_matched, "確認済み", "未確認") }}({{ phone_result.country_code_message }})</div>
+    {% if phone_result.judge_about_cell_phone %}
+        <div class="indent-2">電話種別判定：{{ phone_result.judge_about_cell_phone }}</div>
+    {% endif %}
+    {% if phone_result.researcher_phone_message is not none  %}
+        <div class="indent-2">研究機関との関連：{{ status_mark(phone_result.related_to_researcher_or_organization, "関連あり", "関連なし") }}
+        {% if phone_result.researcher_phone_url %}
+        <a href="{{ phone_result.researcher_phone_url }}" target="_blank">Webページ</a>(最終更新: {{ (phone_result.researcher_phone_last_updated_year + "年") if phone_result.researcher_phone_last_updated_year else "不明" }})
+        {% endif %}<br>
+        <div class="indent-1">→{{ phone_result.researcher_phone_message }}
+        </div>
+        </div>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{# メールアドレス検証失敗時の詳細表示 #}
+{% macro email_failure_details(verification_result) -%}
+{% set show_org_domain_error = not verification_result.organization_domain_verified %}
+{% if not verification_result.mx_domain_verified %}
+<div class="indent-2">MXレコード検証：{{ status_mark(false, "成功", "失敗") }}
+{% if verification_result.mx_domain_failure_reason %} ({{ verification_result.mx_domain_failure_reason }}){% endif %}</div>
+{% endif %}
+{% if show_org_domain_error %}
+<div class="indent-1">組織ドメイン検証：{{ status_mark(false, "一致", "不一致") }}
+{% if verification_result.organization_domain_evidence_url %} <a href="{{ verification_result.organization_domain_evidence_url }}" target="_blank">Webページ</a>{% endif %}
+{% if verification_result.organization_domain_message %} ({{ verification_result.organization_domain_message }}){% endif %}</div>
+{% endif %}
+{%- endmacro %}
+
+{# メールアドレス検証成功・失敗共通の補足情報表示 #}
+{% macro email_supplementary_details(verification_result) -%}
+<div class="indent-2">本人のメールアドレスかどうか（補足情報）：{{ status_mark(verification_result.researcher_email_verified, "確認済み", "未確認", for_warning=True) }}
+{% if verification_result.researcher_email_message %} ({{ verification_result.researcher_email_message }}){% endif %}
+{% if verification_result.researcher_email_evidence_url %} <a href="{{ verification_result.researcher_email_evidence_url }}" target="_blank">Webページ</a>{% endif %}
+{% if verification_result.researcher_profile_last_updated %} ({{ verification_result.researcher_profile_last_updated }}年){% endif %}</div>
+{%- endmacro %}
+
+{# メールアドレス検証表示のマクロ #}
+{% macro email_verification_display(person_info, verification_result) -%}
+{% set email_verified = verification_result.mx_domain_verified and verification_result.organization_domain_verified %}
+<div class="verification-item">
+    <strong>メールアドレス：</strong><span class="code-text">{{ person_info.email }}</span><br>
+    <div class="indent-1">判定：現在所属している機関が発行するメールアドレスである。</div>
+    <div class="indent-1">判定結果：{{ status_mark(email_verified, "OK", "NG") }}
+    {% if not email_verified %}
+    {{ email_failure_details(verification_result) }}
+    {% endif %}
+    </div>
+    {{ email_supplementary_details(verification_result) }}
+</div>
+{%- endmacro %}
+
+{# 住所検証表示のマクロ #}
+{% macro address_verification_display(person_info, verification_result) -%}
+{% if person_info.address %}
+{% set org_match = verification_result.address_validation_result.organization_match %}
+<div class="verification-item">
+    <strong>住所：</strong>{{ person_info.address }}<br>
+    <div class="indent-1">判定：所属している機関の住所である。</div>
+    <div class="indent-1">住所検証：
+        {% if org_match == "一致" %}<span class="status-success">✓ 一致</span>
+        {% elif org_match == "関連あり" %}<span class="status-warning">△ 関連あり</span>
+        {% elif org_match == "不一致" %}<span class="status-error">✗ 不一致</span>
+        {% else %}<span class="status-warning">- 未確認</span>{% endif %}
+        {% if verification_result.address_validation_result.message %} ({{ verification_result.address_validation_result.message }}){% endif %}</div>
+    {% if org_match != "一致" %}
+        <div class="indent-2">住所の実在：{{ status_mark(verification_result.address_validation_result.address_exists, "確認済み", "未確認") }}</div>
+    {% endif %}
+    <div class="indent-2">
+        {% for url, description, _ in verification_result.address_validation_result.google_map_urls %}
+            <a href="{{ url }}" target="_blank">{{ description }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# 人物情報表示のマクロ #}
+{% macro person_info_display(person_info, verification_result, for_institution_head=False, head_position_verification=None) -%}
+<div class="person-info">
+    <div><strong>氏名：</strong>{{ format_name(person_info) }}</div>
+    {% if for_institution_head %}
+    {% if not person_info.name_jp and not person_info.name_en %}
+    <div class="verification-item"><span class="status-warning">⚠ 氏名が未記載</span></div>
+    {% endif %}
+    {% elif not person_info.name_en %}
+    <div class="verification-item"><span class="status-warning">⚠ 英語氏名が未記載</span></div>
+    {% endif %}
+    <div><strong>役職：</strong>{{ format_title(person_info) }}</div>
+    {% if for_institution_head %}
+    {% if not person_info.title_jp and not person_info.title_en %}
+    <div class="verification-item"><span class="status-warning">⚠ 役職が未記載</span></div>
+    {% endif %}
+    {% elif not person_info.title_en %}
+    <div class="verification-item"><span class="status-warning">⚠ 英語役職が未記載</span></div>
+    {% endif %}
+    <div><strong>所属：</strong>{{ format_organization(person_info) }}<br>
+        <div class="indent-1">
+            {{ status_mark(verification_result.researcher_profile_url, "確認済み", "未確認") }}
+            {% if verification_result.researcher_profile_url %} <a href="{{ verification_result.researcher_profile_url }}" target="_blank">Webページ</a>{% endif %}
+            {% if not verification_result.researcher_profile_url and verification_result.researcher_profile_message %} ({{ verification_result.researcher_profile_message }}){% endif %}
+            {% if verification_result.researcher_profile_last_updated %} ({{ verification_result.researcher_profile_last_updated }}年){% endif %}
+        </div>
+        {% if verification_result.organization_legal_entity_type or verification_result.organization_legal_entity_message %}
+        <div class="indent-1">
+            <strong>法人格：</strong>{{ verification_result.organization_legal_entity_type if verification_result.organization_legal_entity_type else "不明" }}
+            {% if verification_result.organization_legal_entity_message %} ({{ verification_result.organization_legal_entity_message }}){% endif %}
+            {% if verification_result.organization_legal_entity_urls %}
+              <br/><strong>参考URL：</strong>
+              {% for url in verification_result.organization_legal_entity_urls %}
+                <a href="{{ url }}" target="_blank">{{ url | url_domain }}</a>{% if not loop.last %}、{% endif %}
+              {% endfor %}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% if for_institution_head and head_position_verification and not head_position_verification.position_verified %}
+    <div class="verification-item"><span class="status-error">✗ 所属機関長の役職検証に失敗：{{ head_position_verification.position_message }}</span></div>
+    {% endif %}
+    {% if not person_info.organization_jp and not person_info.organization_en %}
+    <div class="verification-item"><span class="status-warning">⚠ 所属が未記載</span></div>
+    {% endif %}
+
+    {% if not person_info.phone %}
+    <div class="verification-item"><span class="status-warning">⚠ 電話番号が未記載</span></div>
+    {% endif %}
+
+    {% if not person_info.email %}
+    <div class="verification-item"><span class="status-warning">⚠ メールアドレスが未記載</span></div>
+    {% endif %}
+
+    {% if not for_institution_head and not person_info.address %}
+    <div class="verification-item"><span class="status-warning">⚠ 住所が未記載</span></div>
+    {% endif %}
+
+    {% if verification_result.phone_validation_result %}
+    {{ phone_verification_display(person_info, verification_result.phone_validation_result) }}
+    {% endif %}
+
+    {{ email_verification_display(person_info, verification_result) }}
+
+    {{ address_verification_display(person_info, verification_result) }}
+    
+    {% if verification_result.orcid_url %}
+    <div class="verification-item"><strong>ORCID:</strong> <a href="{{ verification_result.orcid_url }}" target="_blank">{{ verification_result.orcid_url }}</a></div>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{# ICD10類似度表示のマクロ #}
+{% macro icd10_similarity_str(similarity) -%}
+{{ similarity if similarity else "該当なし" }}
+{%- endmacro %}
+
+{# データセット解析手法詳細のマクロ #}
+{% macro dataset_analysis_method_details(dataset, application_analysis_method, paper_analysis_method_list) -%}
+<strong>データセット</strong>： {{ ', '.join(dataset.analysis_method_list) }}<br><br>
+<strong>申請された研究</strong>： {{ application_analysis_method }}<br>
+<strong>判定</strong>： {{ dataset.analysis_method_similarity.strip() }}{% if dataset.analysis_method_similarity_reason %} {{ dataset.analysis_method_similarity_reason.strip() }}{% endif %}<br><br>
+<strong>発表済み論文</strong>： {{ ', '.join(paper_analysis_method_list) }}<br>
+<strong>判定</strong>： {{ dataset.paper_similarity.strip() }}{% if dataset.paper_similarity_reason %} {{ dataset.paper_similarity_reason.strip() }}{% endif %}
+{%- endmacro %}
+
+{# データセットICD10詳細のマクロ #}
+{% macro dataset_icd10_details(dataset, abstract_icd10_list, paper_icd10_list) -%}
+<strong>データセット</strong>： {{ ', '.join(dataset.icd10_code_list) if dataset.icd10_code_list else "該当なし" }}<br><br>
+<strong>申請された研究</strong>： {{ ', '.join(abstract_icd10_list) if abstract_icd10_list else "該当なし" }}<br>
+<strong>判定</strong>： {{ icd10_similarity_str(dataset.purpose_similarity_icd10) }}<br><br>
+<strong>発表済み論文</strong>： {{ ', '.join(paper_icd10_list) if paper_icd10_list else "該当なし" }}<br>
+<strong>判定</strong>： {{ icd10_similarity_str(dataset.paper_similarity_icd10) }}
+{%- endmacro %}
+
+{# 申請書チェック結果のマクロ #}
+{% macro checklist_display(check_result) -%}
+{% if check_result and check_result.get("items") and check_result.get("items")|length > 0 %}
+<table>
+    <thead>
+        <tr>
+            <th style="min-width: 200px;">項目</th>
+            <th style="min-width: 80px;">結果</th>
+            <th>メッセージ</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in check_result.get("items") %}
+        <tr>
+            <td style="min-width: 200px;">{{ item.description }}</td>
+            <td style="min-width: 80px;">
+                {% if item.status == 'ok' %}
+                <span class="status-success">OK</span>
+                {% elif item.status == 'warning' %}
+                <span class="status-warning">警告</span>
+                {% else %}
+                <span class="status-error">アラート</span>
+                {% endif %}
+            </td>
+            <td style="white-space: pre-line;">{{ item.message }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{%- endmacro %}
+
+        <h2>申請 ID</h2>
+        <p><strong>{{ application_id }}</strong></p>
+
+        <h2>研究代表者</h2>
+        {{ person_info_display(researcher_info, researcher_verification_result) }}
+
+        {% if submitter_info and submitter_verification_result %}
+        <h2>申請者</h2>
+        {% if submitter_info.email == researcher_info.email %}
+        メールアドレスが一致したため、申請者は研究代表者と同一人物と判断されました。<br>
+        {% else %}
+        {{ person_info_display(submitter_info, submitter_verification_result) }}
+        {% endif %}
+        {% endif %}
+
+        {% if head_of_institution_info and head_of_institution_verification_result %}
+        <h2>所属機関の長</h2>
+        {{ person_info_display(head_of_institution_info, head_of_institution_verification_result, for_institution_head=True, head_position_verification=application_data.ethics_document_validation_result.institution_head_position_verification_result if application_data.ethics_document_validation_result else None) }}
+        {% endif %}
+
+        {% if phone_consistency_result or email_domain_consistency_result %}
+        <h2>電話番号・メールの整合性チェック</h2>
+        <div class="consistency-grid">
+            {# 電話番号整合性チェック結果 #}
+            {% if phone_consistency_result %}
+            <div class="person-info">
+                <div class="consistency-item-title">電話番号の整合性チェック</div>
+                研究代表者：{{ researcher_info.phone }}<br>
+                {% if submitter_info %}申請者　　：{{ submitter_info.phone }}<br>{% endif %}
+                {% if head_of_institution_info %}所属機関長：{{ head_of_institution_info.phone }}<br>{% endif %}
+                <div class="verification-item" style="margin-top: 15px;">
+                    <table style="margin-top: 10px; width: auto;">
+                        <thead>
+                            <tr>
+                                <th>比較対象</th>
+                                <th>結果</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detail in phone_consistency_result.details %}
+                            <tr>
+                                {% set parts = detail.split(': ', 1) %}
+                                <td>{{ parts[0] }}</td>
+                                <td>
+                                    {% if '完全一致' in parts[1] %}
+                                    <span class="status-success">{{ parts[1] }}</span>
+                                    {% elif '市外局番一致' in parts[1] %}
+                                    <span class="status-warning">{{ parts[1] }}</span>
+                                    {% else %}
+                                    <span class="status-error">{{ parts[1] }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if phone_consistency_result.head_phone_is_different_from_others == False %}
+                <div class="verification-item" style="margin-top: 10px;">
+                {% if phone_consistency_result.head_phone_is_representative_number %}
+                <span class="status-warning">所属機関長の電話番号が研究代表者、もしくは申請者と同一ですが、所属機関の代表電話として確認されました。</span>
+                {{ phone_consistency_result.head_phone_difference_message }}
+                {% else %}
+                    <span class="status-warning">⚠ 所属機関長の電話番号が研究代表者、もしくは申請者と同一です。</span>
+                {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {# メールドメイン整合性チェック結果 #}
+            {% if email_domain_consistency_result %}
+            <div class="person-info">
+                <div class="consistency-item-title">メールドメインの整合性チェック</div>
+                研究代表者：{{ researcher_info.email }}<br>
+                {% if submitter_info %}申請者　　：{{ submitter_info.email }}<br>{% endif %}
+                {% if head_of_institution_info %}所属機関長：{{ head_of_institution_info.email }}<br>{% endif %}
+                <div class="verification-item" style="margin-top: 15px;">
+                    <div>判定結果：{{ status_mark(email_domain_consistency_result.all_match, "OK", "NG") }}
+                    {{ email_domain_consistency_result.summary }}</div>
+                    <table style="margin-top: 10px; width: auto;">
+                        <thead>
+                            <tr>
+                                <th>比較対象</th>
+                                <th>結果</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detail in email_domain_consistency_result.details %}
+                            <tr>
+                                {% set parts = detail.split(': ', 1) %}
+                                <td>{{ parts[0] }}</td>
+                                <td>
+                                    {% if parts|length > 1 %}
+                                    {% if '一致' in parts[1] and '不一致' not in parts[1] %}
+                                    <span class="status-success">{{ parts[1] }}</span>
+                                    {% elif '判定不可' in parts[1] %}
+                                    <span class="status-warning">{{ parts[1] }}</span>
+                                    {% else %}
+                                    <span class="status-error">{{ parts[1] }}</span>
+                                    {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if application_data.application_type == "提供申請" %}
+        <h2>提供申請に関するチェック</h2>
+        {{ checklist_display(submission_application_check_result) }}
+        {% endif %}
+
+        {% if ethics_document_info %}
+        <h2>研究実施許可書</h2>
+        <div class="person-info">
+            
+            {% if ethics_document_info.research_project_title_jp or ethics_document_info.research_project_title_en %}
+            <div><strong>研究プロジェクトタイトル：</strong>
+                {% if ethics_document_info.research_project_title_jp %}
+                {{ ethics_document_info.research_project_title_jp }}
+                {% endif %}
+                {% if ethics_document_info.research_project_title_en %}
+                {{ ethics_document_info.research_project_title_en }}
+                {% endif %}
+            </div>
+            {% endif %}
+            {% if ethics_document_info.approval_period_start or ethics_document_info.approval_period_end %}
+            <div><strong>承認期間：</strong>
+                {% if ethics_document_info.approval_period_start %}{{ ethics_document_info.approval_period_start }}{% endif %}
+                {% if ethics_document_info.approval_period_start or ethics_document_info.approval_period_end %} ～ {% endif %}
+                {% if ethics_document_info.approval_period_end %}{{ ethics_document_info.approval_period_end }}{% endif %}
+            </div>
+            {% endif %}
+            {% if ethics_document_info.institution_name %}
+            <div><strong>所属機関名：</strong>{{ ethics_document_info.institution_name }}</div>
+            {% endif %}
+            {% if ethics_document_info.institution_head_position %}
+            <div><strong>所属機関長の役職：</strong>{{ ethics_document_info.institution_head_position }}</div>
+            {% endif %}
+
+            {% set ethics_document_validation_result = application_data.ethics_document_validation_result %}
+            {% if ethics_document_validation_result %}
+            {% set ethics_document_items = [] %}
+            {% set _ = ethics_document_items.append({
+                'description': '研究実施許可書記載の研究題目が申請書の研究題目と一致する',
+                'status': 'ok' if ethics_document_validation_result.research_title_matches else 'error',
+                'message': ethics_document_validation_result.research_title_message or ''
+            }) %}
+            {% set position_verification_message = ethics_document_validation_result.institution_head_position_verification_result.position_message %}
+            {% if ethics_document_validation_result.institution_head_position_verification_result.position_evidence_url %}
+            {% set position_verification_message = position_verification_message + '<br><a href="' + ethics_document_validation_result.institution_head_position_verification_result.position_evidence_url + '" target="_blank">Webページ</a>' %}
+            {% endif %}
+            {% set _ = ethics_document_items.append({
+                'description': '所属機関長の役職検証',
+                'status': 'ok' if ethics_document_validation_result.institution_head_position_verification_result.position_verified else 'error',
+                'message': position_verification_message
+            }) %}
+            <h2>研究実施許可書</h2>
+            {{ checklist_display({'items': ethics_document_items}) }}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% include "research_plan_validation.jinja2" %}
+
+        <h2>研究概要</h2>
+        {% if abstract_translation and abstract_sentence_pairs %}
+        <div class="abstract-bilingual-grid">
+            <div class="abstract-panel">
+                <h3>和訳</h3>
+                <div>
+                    {% for pair in abstract_sentence_pairs %}
+                    <span class="abstract-sentence" data-pair-id="{{ pair.pair_id }}">{{ pair.translated_sentence }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="abstract-panel">
+                <h3>原文</h3>
+                <div>
+                    {% for pair in abstract_sentence_pairs %}
+                    <span class="abstract-sentence" data-pair-id="{{ pair.pair_id }}">{{ pair.source_sentence }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% elif abstract_translation %}
+        <div class="abstract-bilingual-grid">
+            <div class="abstract-panel">
+                <h3>和訳</h3>
+                <div style="white-space: pre-wrap;">{{ abstract_translation.translated_abstract }}</div>
+            </div>
+            <div class="abstract-panel">
+                <h3>原文</h3>
+                <div style="white-space: pre-wrap;">{{ abstract }}</div>
+            </div>
+        </div>
+        {% else %}
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            {{ abstract }}
+        </div>
+        {% endif %}
+        <p><strong>ICD10 コード:</strong> {{ ', '.join(abstract_icd10_list) if abstract_icd10_list else "該当なし" }}</p>
+
+        <h2>論文情報</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>論文 タイトル</th>
+                    <th>論文 概要</th>
+                    <th>ICD-10 コード</th>
+                    <th>取得元 URL</th>
+                    <th>ヒトデータの取扱い</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in papers %}
+                <tr>
+                    <td>{{ paper.title }}</td>
+                    <td>{{ paper.summary_jp }}</td>
+                    <td>{{ ', '.join(paper.icd10_code_list) if paper.icd10_code_list else "該当なし" }}</td>
+                    <td><a href="{{ paper.url }}" target="_blank">{{ paper.url }}</a></td>
+
+                    <td>
+                        {% if paper.handles_human_data is sameas true %}
+                        扱っている
+                        {% elif paper.handles_human_data is sameas false %}
+                        扱っていない
+                        {% else %}
+                        未判定
+                        {% endif %}
+                        {% if paper.human_data_reason %}
+                        <br>{{ paper.human_data_reason }}
+                        {% endif %}
+                        {% if paper.human_data_evidence %}
+                        <br><em>「{{ paper.human_data_evidence }}」</em>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if application_data.application_type != "提供申請" %}
+
+        <h2>データセット情報</h2>
+        
+        {# データセット追加フォーム #}
+        <div style="background-color: #fefefe; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 20px 0;">
+            <h3 style="margin-top: 0;">新しいデータセットを追加</h3>
+            <form id="addDatasetForm" data-task-id="{{ application_id }}">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input 
+                        type="text" 
+                        id="newDatasetIds" 
+                        name="dataset_ids"
+                        placeholder="データセットID (カンマまたは空白区切り)"
+                        style="flex: 1; min-width: 250px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
+                    />
+                    <button 
+                        type="submit"
+                        style="padding: 8px 16px; background-color: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;"
+                    >
+                        追加
+                    </button>
+                </div>
+                <div id="datasetAddResult" style="margin-top: 10px; display: none;"></div>
+                <p style="color: #6b7280; font-size: 12px; margin-top: 8px; margin-bottom: 0;">
+                    例: JGAD000001, JGAD000002 または JGAD000001 JGAD000002
+                </p>
+            </form>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>データセット ID</th>
+                    <th>HUM ID</th>
+                    <th>JGAS ID</th>
+                    <th>ICD-10 コード</th>
+                    <th>研究ICD10一致</th>
+                    <th>論文ICD10一致</th>
+                    <th>解析手法類似度</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dataset in dataset_analysis_list %}
+                <tr>
+                    {% if dataset.found_in_database %}
+                    {% if dataset.url %}                 
+                    <td><a href="{{ dataset.url }}" target="_blank">{{ dataset.id }}</a></td>
+                    {% else %}
+                    <td>{{ dataset.id }}</td>
+                    {% endif %}
+                    <td>
+                        {%- set hum_id_humandbs = dataset.dataset_api_retrieval_result.hum_id -%}
+                        {%- set hum_ids_ddbj = dataset.dataset_api_retrieval_result.hum_id_list_from_ddbj -%}
+                        {%- set hum_ids_humandbs = [hum_id_humandbs] if hum_id_humandbs else [] -%}
+                        {%- set hum_id_mismatch = (hum_ids_humandbs | sort) != (hum_ids_ddbj | sort) -%}
+                        {% if hum_id_mismatch %}
+                        <span style="color: #b91c1c; font-weight: bold;">⚠ 情報源間で不一致があります</span><br>
+                        HumanDBs Backend API: {{ hum_id_humandbs or "N/A" }}<br>
+                        DDBJ Search: {{ hum_ids_ddbj | join(', ') or "N/A" }}
+                        {% else %}
+                        {{ hum_id_humandbs | default("N/A", true) }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {%- set ids_humandbs = dataset.dataset_api_retrieval_result.study_id_list -%}
+                        {%- set ids_ddbj = dataset.dataset_api_retrieval_result.study_id_list_from_ddbj -%}
+                        {%- set mismatch = (ids_humandbs | sort) != (ids_ddbj | sort) -%}
+                        {% if mismatch %}
+                        <span style="color: #b91c1c; font-weight: bold;">⚠ 情報源間で不一致があります</span><br>
+                        HumanDBs Backend API: {{ ids_humandbs | join(', ') or "N/A" }}<br>
+                        DDBJ Search: {{ ids_ddbj | join(', ') or "N/A" }}
+                        {% else %}
+                        {{ ids_humandbs | join(', ') | default("N/A", true) }}
+                        {% endif %}
+                    </td>
+                    <td>{{ ', '.join(dataset.icd10_code_list) if dataset.icd10_code_list else "該当なし" }}</td>
+                    <td>{{ icd10_similarity_str(dataset.purpose_similarity_icd10) }}</td>
+                    <td>{{ icd10_similarity_str(dataset.paper_similarity_icd10) }}</td>
+                    <td>{{ dataset.analysis_method_similarity.strip() }}</td>
+                    {% else %}
+                    <td>{{ dataset.id }}</td>
+                    <td colspan="6" style="color: #6b7280; font-style: italic;">登録されていないデータセットです</td>
+                    {% endif %}
+                    <td>
+                        <button
+                            type="button"
+                            data-action="delete-dataset"
+                            data-task-id="{{ application_id }}"
+                            data-dataset-id="{{ dataset.id }}"
+                            style="padding: 6px 10px; background-color: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;"
+                        >
+                            削除
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div id="datasetDeleteResult" style="margin-top: 10px; display: none;"></div>
+
+        <h2>データセット詳細評価</h2>
+        {% for dataset in dataset_analysis_list %}
+        <div class="dataset-detail">
+            {% if dataset.found_in_database %}
+            <h3>データセット ID: <a href="{{ dataset.url }}" target="_blank">{{ dataset.id }}</a></h3>
+            <table class="detail-table">
+                <tr>
+                    <td>解析手法</td>
+                    <td>{{ dataset_analysis_method_details(dataset, application_analysis_method, paper_analysis_method_list) }}</td>
+                </tr>
+                <tr>
+                    <td>ICD10</td>
+                    <td>{{ dataset_icd10_details(dataset, abstract_icd10_list, paper_icd10_list) }}</td>
+                </tr>
+                <tr>
+                    <td>制限事項</td>
+                    <td>
+                        {% set info_dict = dataset.dataset_api_retrieval_result.info_dict | default({}, true) %}
+                        {{ info_dict.get('Policies', {}).get('ja', {}).get('text') | default("制限事項に関する記載が見つかりませんでした", true) }}
+                    </td>
+                </tr>
+            </table>
+            {% else %}
+            <h3>データセット ID: {{ dataset.id }}</h3>
+            <p style="color: #6b7280; font-style: italic;">登録されていないデータセットです</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</body>
+</html>

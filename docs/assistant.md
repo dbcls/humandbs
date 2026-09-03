@@ -77,7 +77,18 @@ volume なので repo には何も溜まらない。
 
 ## 動かす
 
-サービスは profile の後ろにいる。
+サービスは profile の後ろにいる。先にリポジトリ直下の `.env` で、ポータルがアシスタントへ届くよう
+`HUMANDBS_ASSISTANT_ORIGIN` を設定する。compose network 内では次の値になる。
+
+```dotenv
+HUMANDBS_ASSISTANT_ORIGIN=http://assistant-api:8000
+```
+
+使う外部サービスの値は、`.env.example` の `HUMANDBS_ASSISTANT_` で始まる変数に設定する。対応関係は `.env.example` のコメントにある。
+
+Google Cloud のサービスアカウント鍵の設定は [assistant-api/README.md](../assistant-api/README.md#google-cloud) を参の照する。
+
+上記設定の完了後、以下のコマンドでアシスタントを起動する。
 
 ```bash
 docker compose --profile assistant up -d

@@ -1,0 +1,7 @@
+<task_instruction>研究計画書のテキスト（research_plan_text）と、申請書の情報（application_data）を与えます。
+ResearchPlanConsistencyCheckResultの形式に従って、整合性のチェックを実施してください。
+</task_instruction>
+<application_data>
+{application_data_text}
+</application_data>
+<research_plan_text>{research_plan_text}</research_plan_text>

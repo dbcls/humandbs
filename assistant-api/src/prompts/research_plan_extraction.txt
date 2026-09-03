@@ -1,0 +1,7 @@
+<task_instruction>研究計画書のテキスト（research_plan_text）を与えます。
+ResearchPlanExtractionResultの形式に従って、該当文言の抽出を実施してください。
+* 名称が *_description であるフィールドは、計画書に記載されている文言のみを出力し、「〜の記載」などの表現は付加しないでください。
+* public_db_use_descriptionについては、「NBDC」、「JGAS」、「JGAD」を含む記載は結果に含めないでください。
+* joint_research_descriptionについては、共同研究先の名称のみをリストにして抽出してください。共同研究先ではない名称は含めないでください（例：単なるデータ提供元など）。
+</task_instruction>
+<research_plan_text>{research_plan_text}</research_plan_text>

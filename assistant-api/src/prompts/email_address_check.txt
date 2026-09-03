@@ -1,0 +1,3 @@
+以下の人物のメールアドレスが、{email}であることを示すWebページを見つけてください。なお、情報源は {email_domain} ドメインのWebページを優先してください。
+氏名：{researcher_name}
+所属：{organization_name}
