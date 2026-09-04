@@ -23,6 +23,26 @@ const component = fc.oneof(
   ).map(([special, rest]) => `${special}${rest}`),
 ).filter((s) => !s.includes("\0"))
 
+/**
+ * The names that meet the path semantics of the web, which is what
+ * `rawPathOf` exists to get out of the way: `new URL` folds a path of `.` or
+ * `..` away entirely, and libpq would connect to the database this function
+ * would then call unnamed.
+ *
+ * **They are named rather than left to the draw.** A property meets them only
+ * when the seed happens to build one out of the pool, so the same suite passed
+ * on one run and failed on the next, and a regression would be found by luck.
+ * Written here they are run every time, and the random search goes on beside
+ * them.
+ */
+const PATHLIKE: [string, string, string][] = [
+  ["u", "p", "."],
+  ["u", "p", ".."],
+  ["u", "p", "a/b"],
+  ["u", "p", ""],
+  [".", "..", "."],
+]
+
 describe("parseConnection", () => {
   it("recovers user, password and database exactly after percent-encoding them into a URL", () => {
     fc.assert(fc.property(component, component, component, (user, password, database) => {
@@ -30,7 +50,7 @@ describe("parseConnection", () => {
         = `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}`
           + `@db:5432/${encodeURIComponent(database)}`
       expect(parseConnection(url)).toEqual({ user, password, database })
-    }))
+    }), { examples: PATHLIKE })
   })
 })
 
