@@ -6,13 +6,9 @@ import { CONTROL } from "~/components/form"
 import { TermLabel } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import type {
-  FacetCodeEntryView,
-  FacetPanelView,
-  FacetValueView,
-  FacetView,
-} from "~/public/facets.server"
+import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
 import { href, listPath } from "~/public/urls"
+import { useSearchAsTyped } from "~/search-as-typed"
 import type { SearchTarget } from "~/search/query.server"
 
 /**
@@ -31,12 +27,6 @@ import type { SearchTarget } from "~/search/query.server"
  * A value is shown with the number of rows it would leave, counted with this
  * facet's own condition lifted, so that a second value of the same facet is
  * still reachable after the first has been chosen.
- *
- * **The disease facet has a second way in: its code.** Its values are spread
- * over hundreds of roots, so reading the list to find one means opening the
- * list first. What the box produces is the condition the value would have
- * produced, so nothing about the rollup or the counting changes with the way
- * in.
  *
  * **What names this pane is not here.** The heading, the box and the conditions
  * in force stand above it as one block (`components/search.tsx` の
@@ -97,8 +87,6 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   )
 }
 
-/** How many of a facet's values are in force, roll-ups included. */
-
 function Facet({ locale, target, query, sort, facet, open }: {
   locale: Locale
   target: SearchTarget
@@ -127,30 +115,8 @@ function Facet({ locale, target, query, sort, facet, open }: {
           </div>
         )}
 
-        {facet.expanded && facet.kind === "vocabulary" && (
-          <Form method="get" action={href(locale, listPath(target))} preventScrollReset className="flex gap-1">
-            <Carried query={query} sort={sort} facet={facet.code} />
-            <input
-              type="search"
-              name="find"
-              defaultValue={facet.find}
-              aria-label={messages.find}
-              placeholder={messages.find}
-              className={`min-w-0 flex-1 ${CONTROL}`}
-            />
-            <Button variant="secondary">{messages.apply}</Button>
-          </Form>
-        )}
-
-        {facet.codeEntry !== null && (
-          <CodeEntry
-            locale={locale}
-            target={target}
-            query={query}
-            sort={sort}
-            facet={facet}
-            entry={facet.codeEntry}
-          />
+        {facet.expanded && (facet.kind === "vocabulary" || facet.kind === "disease") && (
+          <FindValue locale={locale} target={target} query={query} sort={sort} facet={facet} />
         )}
 
         {facet.range !== null
@@ -236,16 +202,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
               <ul className="flex flex-col">
                 {facet.values.map((value) => (
                   <li key={value.code}>
-                    <Value locale={locale} value={value} />
-                    {value.children.length > 0 && (
-                      <ul className="ml-4 flex flex-col border-line border-l pl-2">
-                        {value.children.map((child) => (
-                          <li key={child.code}>
-                            <Value locale={locale} value={child} />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <Value locale={locale} value={value} kind={facet.kind} />
                   </li>
                 ))}
               </ul>
@@ -262,41 +219,43 @@ function Facet({ locale, target, query, sort, facet, open }: {
 }
 
 /**
- * The box a code is typed into. A GET form like the range inputs: the listing
- * answers it with the address of the refined search, and only what could not be
- * turned into one comes back here to be explained.
+ * The box that narrows an opened facet to the values worth reading.
+ *
+ * **It narrows as the words are typed, and carries no button.** The list it
+ * filters is right underneath it, so the answer to "did that work" is on the
+ * screen already; a button in a pane a quarter of the page wide would take a
+ * quarter of the line to ask for what is about to happen anyway. **Pressing
+ * Enter still submits it** — a form whose only field that blocks implicit
+ * submission is this one needs no button to be submitted — so the keyboard and
+ * a page with no script reach the same address.
+ *
+ * **The two ends of a range keep their button.** Two fields block implicit
+ * submission between them, so a range with no button could not be asked for at
+ * all without a script.
  */
-function CodeEntry({ locale, target, query, sort, facet, entry }: {
+function FindValue({ locale, target, query, sort, facet }: {
   locale: Locale
   target: SearchTarget
   query: string
   sort: string | null
   facet: FacetView
-  entry: FacetCodeEntryView
 }) {
   const messages = messagesFor(locale).search.refine
+  const action = href(locale, listPath(target))
+  const { form, field } = useSearchAsTyped({ action })
+
   return (
-    <Form method="get" action={href(locale, listPath(target))} preventScrollReset>
-      <Stack gap="tight">
-        <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
-        <div className="flex gap-1">
-          <input
-            type="text"
-            name="code"
-            defaultValue={entry.value}
-            aria-label={messages.code}
-            placeholder={messages.codeHint}
-            aria-invalid={entry.problem !== null ? true : undefined}
-            className={`min-w-0 flex-1 ${CONTROL}`}
-          />
-          <Button variant="secondary">{messages.apply}</Button>
-        </div>
-        {entry.problem !== null && (
-          <p role="status" className="text-accent text-xs">
-            {entry.problem === "unknown-code" ? messages.codeUnknown : messages.codeNoData}
-          </p>
-        )}
-      </Stack>
+    <Form ref={form} method="get" action={action} preventScrollReset>
+      <Carried query={query} sort={sort} facet={facet.code} />
+      <input
+        type="search"
+        name="find"
+        defaultValue={facet.find}
+        aria-label={messages.find}
+        placeholder={messages.find}
+        className={`w-full ${CONTROL}`}
+        {...field}
+      />
     </Form>
   )
 }
@@ -374,7 +333,20 @@ function Bound({ name, label, value, kind }: {
   )
 }
 
-function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
+/**
+ * **A disease value shows the code it is filed under, and no other facet does.**
+ * An ICD10 code is a shared key — it is on the dataset page, in the JSON API and
+ * in whatever the reader brought with them — where the code of a platform or an
+ * assay is a slug this site made up to put in an address. It leads rather than
+ * follows because the headings are long and the pane is a quarter of the page:
+ * set first, the codes make a column that can be read down, where after a
+ * heading that wraps to three lines a code lands somewhere different each time.
+ */
+function Value({ locale, value, kind }: {
+  locale: Locale
+  value: FacetValueView
+  kind: FacetView["kind"]
+}) {
   const messages = messagesFor(locale).search.refine
   return (
     <RefineLink
@@ -387,6 +359,12 @@ function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
       }`}
     >
       <span className="min-w-0 break-words">
+        {kind === "disease" && (
+          <>
+            <code className="mr-1 font-mono text-ink-muted text-xs">{value.code}</code>
+            {" "}
+          </>
+        )}
         <TermLabel term={value} />
         {value.selected && (
           <span className="sr-only">

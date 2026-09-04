@@ -671,9 +671,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   locale="ja"
                   clearHref="/research"
                   conditions={[
-                    { field: "アクセス制限", value: "制限公開（Type I）", href: "/research" },
-                    { field: "実験方法", value: "除外: メチル化", href: "/research" },
-                    { field: null, value: "title:ゲノム AND (a OR b)", href: "/research" },
+                    { field: "アクセス制限", value: "制限公開（Type I）", code: null, href: "/research" },
+                    { field: "疾患", value: "気管支及び肺の悪性新生物＜腫瘍＞", code: "C34", href: "/research" },
+                    { field: "実験方法", value: "除外: メチル化", code: null, href: "/research" },
+                    { field: null, value: "title:ゲノム AND (a OR b)", code: null, href: "/research" },
                   ]}
                 />
               </div>
@@ -810,6 +811,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     { value: "text", label: "自由文" },
                     { value: "vocabulary", label: "語彙" },
                     { value: "number", label: "数値" },
+                    { value: "disease", label: "疾患" },
                   ]}
                 />
               </div>

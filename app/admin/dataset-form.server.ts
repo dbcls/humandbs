@@ -22,13 +22,14 @@ import { z } from "zod"
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   Experiment,
   NumberValue,
   ValueSlot,
 } from "~/content/types"
 import { convert } from "~/content/units"
 
-import type { DatasetContentInput, NumberRow, ValueBody, ValueInput } from "./dataset-form"
+import type { DatasetContentInput, DiseaseRow, NumberRow, ValueBody, ValueInput } from "./dataset-form"
 import {
   prosePair,
   slotState,
@@ -53,6 +54,15 @@ const valueBodySchema = z.discriminatedUnion("kind", [
       value: z.string(),
       unit: z.string().nullable(),
       note: z.string(),
+    })),
+  }),
+  z.object({
+    kind: z.literal("disease"),
+    state: slotState,
+    diseases: z.array(z.object({
+      termIds: z.array(z.uuid()),
+      nameJa: z.string(),
+      nameEn: z.string(),
     })),
   }),
 ])
@@ -123,6 +133,22 @@ function numberValue(row: NumberRow, canonical: string | null): NumberValue | nu
   }
 }
 
+/**
+ * The stored form of a disease. Null when the row says nothing — neither a
+ * classification's word for it nor anybody else's — which is a row somebody
+ * added and left alone rather than a disease.
+ */
+function diseaseValue(row: DiseaseRow): DiseaseValue | null {
+  const nameJa = row.nameJa.trim()
+  const nameEn = row.nameEn.trim()
+  if (row.termIds.length === 0 && nameJa === "" && nameEn === "") return null
+  return {
+    termIds: [...row.termIds],
+    nameJa: nameJa === "" ? null : nameJa,
+    nameEn: nameEn === "" ? null : nameEn,
+  }
+}
+
 /** The unit a key stores its numbers in, for the keys that store numbers. */
 export type CanonicalUnits = (keyId: string) => string | null
 
@@ -141,6 +167,16 @@ function contentValue(
         ? { state: "value", value: [...body.termIds] }
         : { state: body.state },
     }
+  }
+  if (body.kind === "disease") {
+    if (body.state !== "value") return { kind: "disease", diseases: { state: body.state } }
+    const held = body.diseases.flatMap((row) => {
+      const one = diseaseValue(row)
+      return one === null ? [] : [one]
+    })
+    return held.length === 0
+      ? null
+      : { kind: "disease", diseases: { state: "value", value: held } }
   }
   if (body.state !== "value") return { kind: "number", values: { state: body.state } }
   const canonical = units(keyId)

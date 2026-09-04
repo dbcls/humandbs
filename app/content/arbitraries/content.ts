@@ -19,6 +19,7 @@ import fc from "fast-check"
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   Experiment,
   LocalizedLinks,
   NumberValue,
@@ -113,6 +114,17 @@ const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
   note: fc.option(fc.string(), { nil: null }),
 })
 
+/**
+ * One disease. **Terms and names are drawn independently**, because a value
+ * with no term and one with no name in a language are both ordinary states the
+ * projections have to answer for (`docs/data-model.md` の「ICD10」).
+ */
+const diseaseValueArb: fc.Arbitrary<DiseaseValue> = fc.record({
+  termIds: fc.array(idArb, { maxLength: 2 }),
+  nameJa: fc.option(fc.string(), { nil: null }),
+  nameEn: fc.option(fc.string(), { nil: null }),
+})
+
 export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
   fc.record({ kind: fc.constant("text" as const), text: translatedRichTextArb }),
   fc.record({ kind: fc.constant("single" as const), value: slotArb(fc.string()) }),
@@ -124,6 +136,10 @@ export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
   fc.record({
     kind: fc.constant("number" as const),
     values: slotArb(fc.array(numberValueArb, { minLength: 1, maxLength: 3 })),
+  }),
+  fc.record({
+    kind: fc.constant("disease" as const),
+    diseases: slotArb(fc.array(diseaseValueArb, { minLength: 1, maxLength: 3 })),
   }),
 )
 

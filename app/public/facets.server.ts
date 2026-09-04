@@ -10,27 +10,23 @@
  * What the panel shows of a facet is the ten commonest values. The rest are one
  * link away, at the same address with `?facet=` naming the key — a vocabulary
  * can hold thousands of values and none of them can be worth sending on every
- * search. Only the expanded facet has a box of its own, and only it shows what
- * sits underneath a value.
+ * search. Only the expanded facet has a box of its own.
  *
  * Counts come from [counts.server.ts](../search/counts.server.ts), which is
  * where the rule that a facet is counted with its own condition lifted lives.
  */
 
 import type { Executor } from "~/db/client.server"
-import { ICD10_SET_CODE } from "~/icd10/codes"
-import { resolveTypedCode } from "~/icd10/entry.server"
+import { icd10Resolve } from "~/icd10/codes"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { makerOf } from "~/public/view.server"
 import type { FacetDefinition } from "~/search/catalog.server"
 import { resolveTerms } from "~/search/catalog.server"
 import {
-  countTermChildren,
   countTerms,
   dateBounds,
   numberBounds,
-  type ChildCount,
   type DateBounds,
   type TermCount,
 } from "~/search/counts.server"
@@ -54,22 +50,6 @@ export interface FacetValueView {
   selected: boolean
   /** The same search with this value toggled. */
   href: string
-  /** Only on an expanded hierarchical facet: what rolls up into this value. */
-  children: FacetValueView[]
-}
-
-/**
- * The box a code is typed into, on the one facet that has one.
- *
- * A code that resolves never reaches the view — the listing answers it with a
- * redirect to the refined address, the same as the range inputs. What arrives
- * here is what could not be turned into a condition, and the two reasons are
- * kept apart because they call for different things of the reader.
- */
-export interface FacetCodeEntryView {
-  /** What was typed, so that the box comes back holding it. */
-  value: string
-  problem: "unknown-code" | "no-data" | null
 }
 
 /**
@@ -107,8 +87,8 @@ export interface FacetView {
    * A date takes the same pair of inputs as a number and a different keyboard,
    * which is the whole of the difference to the screen. **A disease draws like
    * a vocabulary**; it is named apart because it is counted at the root of the
-   * classification and never opens the level below (`docs/public-pages.md` の
-   * 「絞り込み」).
+   * classification and the level below is never offered (`docs/public-pages.md`
+   * の「絞り込み」).
    */
   kind: "vocabulary" | "number" | "date" | "disease"
   values: FacetValueView[]
@@ -128,8 +108,6 @@ export interface FacetView {
   /** What the expanded facet's own box holds. */
   find: string
   range: FacetRangeView | null
-  /** Set on the disease facet, whose values can also be named by code. */
-  codeEntry: FacetCodeEntryView | null
 }
 
 export interface FacetCategoryView {
@@ -160,8 +138,6 @@ export interface FacetPanelRequest {
   expanded: string | null
   /** `?find=`: what was typed into the expanded facet's box. */
   find: string
-  /** `?code=`: an ICD10 code that did not become a condition. */
-  code: string
   /**
    * The calendar day the relative windows are measured back from, `YYYY-MM-DD`.
    * Passed in rather than read from the clock so that the panel a request gets
@@ -175,6 +151,24 @@ function matches(find: string, value: { code: string, label: string }): boolean 
   if (find === "") return true
   const needle = find.toLowerCase()
   return value.code.toLowerCase().includes(needle) || value.label.toLowerCase().includes(needle)
+}
+
+/**
+ * What the box of an expanded disease facet is looking for.
+ *
+ * **A code is rolled up to the one the panel offers.** Only the roots of the
+ * classification are listed, while what an article writes — and therefore what
+ * a reader has in hand — is the code below it: `C340` has to find `C34`, or the
+ * box says the facet holds nothing about a disease the data does carry
+ * (`docs/public-pages.md` の「絞り込み」). The point and the case are the
+ * writer's, so they are not asked about either.
+ *
+ * **Anything not shaped like a code is looked for as it was typed**, which is
+ * what keeps the same box working for a word in either language.
+ */
+function rolledUpFind(find: string, values: readonly FacetValueView[]): string {
+  const held = new Set(values.map((value) => value.code))
+  return icd10Resolve(find, (code) => held.has(code)) ?? find
 }
 
 export async function facetPanel(
@@ -207,23 +201,13 @@ export async function facetPanel(
   const untouched = (one: FacetDefinition) =>
     !selection.terms.has(one.field.code) && !selection.ranges.has(one.field.code)
 
-  const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
-  const typed = request.code !== "" && icd10?.field.setId
-    ? await resolveTypedCode(db, icd10.field.setId, request.code)
-    : null
-  // A code that resolved was answered with a redirect before the panel ran, so
-  // anything still here is one of the two the reader has to be told about.
-  const typedProblem = typed === null || typed.status === "found"
-    ? null
-    : typed.status === "no-data" ? "no-data" as const : "unknown-code" as const
-
   // The dates are counted the same way everything else is: with their own
   // condition lifted, so that a chosen span does not become the only span the
   // inputs will suggest.
   const datesChosen = DATE_FACETS.filter((field) =>
     selection.terms.has(field) || selection.ranges.has(field))
 
-  const [shared, perFacet, sharedBounds, perFacetBounds, children, picked, dates]
+  const [shared, perFacet, sharedBounds, perFacetBounds, dates]
     = await Promise.all([
       countTerms(
         db,
@@ -239,8 +223,6 @@ export async function facetPanel(
       ),
       Promise.all(numbers.filter((one) => !untouched(one)).map((one) =>
         numberBounds(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
-      expandedChildren(db, request, basisFor),
-      chosenChildren(db, request, basisFor, chosenTerms),
       Promise.all([
         dateBounds(db, { target, ast, fields }),
         ...datesChosen.map((field) => dateBounds(db, { target, ast: basisFor(field), fields })),
@@ -259,11 +241,6 @@ export async function facetPanel(
   }
   const bounds = new Map(
     [...sharedBounds, ...perFacetBounds.flat()].map((row) => [row.keyId, row]),
-  )
-  // Counted at their own level rather than rolled up into a root, which is the
-  // only way a chosen four-digit code can say how many rows it matches.
-  const ownLevel = new Map(
-    [...children, ...picked].map((row) => [`${row.keyId}/${row.code}`, row]),
   )
 
   // A value that has been chosen but matches nothing any more still has to be
@@ -296,7 +273,7 @@ export async function facetPanel(
         ? address(withoutFacet(ast, fields, code))
         : null,
     }
-    const empty = { ...shell, values: [], moreHref: null, range: null, codeEntry: null }
+    const empty = { ...shell, values: [], moreHref: null, range: null }
     if (one.field.kind === "number") {
       const chosenRange = selection.ranges.get(code)
       const span = bounds.get(one.field.keyId)
@@ -327,29 +304,20 @@ export async function facetPanel(
         count: row?.count ?? 0,
         selected,
         href: address(toggleTerm(ast, fields, code, termCode)),
-        children: row === undefined ? [] : childrenOf(children, one, row, locale, ast, fields, address),
       }
     }
 
     // The chosen values come first so that opening a facet never pushes one of
-    // them below the cut, where it could not be taken off again. A chosen value
-    // that is not a root is not among the rolled-up counts, so it is looked for
-    // at its own level before it is given up on.
-    const chosenRow = (termCode: string): TermCount | undefined =>
-      byCode.get(termCode) ?? ownLevel.get(`${one.field.keyId}/${termCode}`)
-    const taken = chosen.map((termCode) => valueOf(termCode, chosenRow(termCode), true))
+    // them below the cut, where it could not be taken off again.
+    const taken = chosen.map((termCode) => valueOf(termCode, byCode.get(termCode), true))
     const rest = found
       .filter((row) => !chosen.includes(row.code))
       .map((row) => valueOf(row.code, row, false))
     const all = [...taken, ...rest]
 
+    const needle = one.field.kind === "disease" ? rolledUpFind(find, all) : find
     const shown = expanded
-      ? all
-          .filter((value) =>
-            matches(find, value) || value.children.some((child) => matches(find, child)))
-          .map((value) => (matches(find, value)
-            ? value
-            : { ...value, children: value.children.filter((child) => matches(find, child)) }))
+      ? all.filter((value) => matches(needle, value))
       : [...taken, ...rest.slice(0, Math.max(0, PANEL_VALUES - taken.length))]
 
     return {
@@ -357,9 +325,6 @@ export async function facetPanel(
       values: shown,
       moreHref: !expanded && all.length > shown.length
         ? address(ast, { facet: code, find: "" })
-        : null,
-      codeEntry: one.setCode === ICD10_SET_CODE
-        ? { value: request.code, problem: typedProblem }
         : null,
     }
   })
@@ -439,7 +404,6 @@ function dateView(input: {
     closeHref: null,
     clearHref: chosen === undefined ? null : lifted,
     find: "",
-    codeEntry: null,
     range: {
       from: writtenBound(chosen?.from),
       to: writtenBound(chosen?.to),
@@ -485,70 +449,6 @@ function withDates(
   return first?.label === null
     ? [{ ...first, facets: [...dates, ...first.facets] }, ...rest]
     : [{ code: null, label: null, facets: [...dates] }, ...categories]
-}
-
-/**
- * The chosen values of the hierarchical facets, counted at their own level.
- *
- * `countTerms` groups by the root a value hangs under, so a reader who picked a
- * four-digit ICD10 code is not among its own rows — and a chosen value with no
- * count reads as "this matched nothing", which is a different state the panel
- * also has to be able to say. The expanded facet already has these counted.
- */
-async function chosenChildren(
-  db: Executor,
-  request: FacetPanelRequest,
-  basisFor: (code: string) => QueryNode | null,
-  chosenTerms: (code: string) => string[],
-): Promise<ChildCount[]> {
-  const wanted = request.definitions.filter((one) =>
-    one.hierarchical
-    && one.field.code !== request.expanded
-    && chosenTerms(one.field.code).length > 0)
-  const counted = await Promise.all(wanted.map((one) => countTermChildren(
-    db,
-    { target: request.target, ast: basisFor(one.field.code), fields: request.fields },
-    one.field.keyId,
-  )))
-  return counted.flat()
-}
-
-/** The values beneath the roots of the expanded facet, when it has any. */
-async function expandedChildren(
-  db: Executor,
-  request: FacetPanelRequest,
-  basisFor: (code: string) => QueryNode | null,
-): Promise<ChildCount[]> {
-  const one = request.definitions.find((def) => def.field.code === request.expanded)
-  if (!one?.hierarchical) return []
-  return countTermChildren(
-    db,
-    { target: request.target, ast: basisFor(one.field.code), fields: request.fields },
-    one.field.keyId,
-  )
-}
-
-function childrenOf(
-  children: readonly ChildCount[],
-  definition: FacetDefinition,
-  root: TermCount,
-  locale: Locale,
-  ast: QueryNode | null,
-  fields: QueryFields,
-  address: (query: QueryNode | null) => string,
-): FacetValueView[] {
-  return children
-    .filter((child) => child.rootId === root.termId && child.termId !== root.termId)
-    .map((child) => ({
-      code: child.code,
-      label: catalogLabel(child, locale),
-      maker: makerOf(child.maker, catalogLabel(child, locale)),
-      count: child.count,
-      selected: false,
-      href: address(toggleTerm(ast, fields, definition.field.code, child.code)),
-      children: [],
-    }))
-    .sort((a, b) => a.code.localeCompare(b.code))
 }
 
 function rangeView(input: {
@@ -599,6 +499,11 @@ function categorise(
       facets: [view],
     })
   })
+  // **The expanded facet is drawn whatever its box left.** It holds the box,
+  // what was typed into it and the way back out; dropping it because the search
+  // matched nothing would leave the reader at an address with no control on the
+  // page that can undo it.
   return categories.filter((category) =>
-    category.facets.some((facet) => facet.values.length > 0 || facet.range !== null))
+    category.facets.some((facet) =>
+      facet.values.length > 0 || facet.range !== null || facet.expanded))
 }

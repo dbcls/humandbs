@@ -261,7 +261,7 @@ const DISEASE_SOURCE = "Materials and Participants"
  */
 function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
   const node = experiment.data?.[DISEASE_SOURCE]
-  if (node === undefined || node === null) return []
+  if (node === undefined) return []
   return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
 }
 
@@ -314,10 +314,9 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
   },
   {
     code: DISEASE_KEY,
-    // **The coding system is not part of the name.** The box that takes a code
-    // says which system it is (`messages` の `search.refine.code`), and this
-    // label also stands over the value on the dataset page, where there is no
-    // box for the parenthesis to be about.
+    // **The coding system is not part of the name.** One field holds diseases
+    // named by ICD10 and diseases named by nothing, and the label stands over
+    // the value on the dataset page as well as over the facet.
     labelJa: "疾患",
     labelEn: "Disease",
     categoryCode: "subjects",
@@ -806,7 +805,7 @@ export function collectTerms(
     const searchable = experiment.searchable ?? {}
     for (const facet of VOCABULARY_FACETS) {
       if (facet.read === null) {
-        bySet.set(facet.setCode, bySet.get(facet.setCode) ?? new Map())
+        bySet.set(facet.setCode, bySet.get(facet.setCode) ?? new Map<string, TermSeed>())
         continue
       }
       take(facet.setCode, facet.read(searchable))

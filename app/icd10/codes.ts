@@ -134,6 +134,18 @@ export function parseWhoMeta(text: string): Icd10Entry[] {
 }
 
 /**
+ * The dagger and the asterisk, which e-Stat writes into the code column.
+ *
+ * **They are notation, not part of the code.** A dagger marks the aetiology
+ * (`E14.2†`) and an asterisk the manifestation (`F00*`) of a condition the
+ * classification files under two codes; the code itself is the plain one, which
+ * is what WHO's distribution and every article write. Left in, 451 of the rows
+ * fail the shape test and lose their Japanese title while keeping the English
+ * one — a code named in one language only, for no reason in the data.
+ */
+const ESTAT_MARKS = /[†*]/g
+
+/**
  * The Japanese statistical classification as e-Stat exports it: a CSV whose
  * first line is the classification's own name, then a header, then one row per
  * item. Chapters and blocks share the column with the codes and are dropped by
@@ -143,7 +155,7 @@ export function parseEstatCsv(text: string): Icd10Entry[] {
   const entries: Icd10Entry[] = []
   for (const row of parseCsv(text)) {
     if (row.length < 2) continue
-    const code = icd10Code(row[0] ?? "")
+    const code = icd10Code((row[0] ?? "").replace(ESTAT_MARKS, ""))
     const title = (row[1] ?? "").trim()
     if (code === null || title === "") continue
     entries.push({ code, titleEn: null, titleJa: title })

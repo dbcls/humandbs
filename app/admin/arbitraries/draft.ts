@@ -18,6 +18,7 @@ import {
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   NumberValue,
   ResearchContent,
   ValueSlot,
@@ -48,7 +49,7 @@ export const draftInputArb: fc.Arbitrary<DraftInput> = fc.record({
 /**
  * A dataset as the editor holds it.
  *
- * **All three kinds that have an input control are drawn**, so that a kind the
+ * **All four kinds that have an input control are drawn**, so that a kind the
  * diff has no answer for shows up as a draft that never stops differing from
  * itself. The other kinds have no form to be in, and the write path refuses
  * them long before a diff would see one. Keys are drawn as a subset of the same
@@ -67,7 +68,23 @@ const editableValueArb = (keyId: string): fc.Arbitrary<ContentValue> => fc.oneof
     kind: fc.constant("number" as const),
     values: slotArb(fc.array(numberValueArb(CANONICAL_UNITS(keyId)), { minLength: 1, maxLength: 3 })),
   }),
+  fc.record({
+    kind: fc.constant("disease" as const),
+    diseases: slotArb(fc.array(diseaseValueArb, { minLength: 1, maxLength: 3 })),
+  }),
 )
+
+/**
+ * One disease as it is stored. **A row with no term is drawn**, since that is
+ * the state the type exists for, but never one with nothing at all: the form
+ * drops those on save, so a generated content holding one would not survive a
+ * round trip through it and would be the fixture's fault, not the code's.
+ */
+const diseaseValueArb: fc.Arbitrary<DiseaseValue> = fc.record({
+  termIds: fc.subarray(["term-a", "term-b"]),
+  nameJa: fc.option(fc.constantFrom("肺腺がん", "NASH"), { nil: null }),
+  nameEn: fc.option(fc.constantFrom("Lung adenocarcinoma", "NASH"), { nil: null }),
+}).filter((one) => one.termIds.length > 0 || one.nameJa !== null || one.nameEn !== null)
 
 /**
  * The unit each key in the pool stores its numbers in, so that a test can hand

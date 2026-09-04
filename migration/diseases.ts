@@ -120,16 +120,20 @@ export interface DiseaseSeed {
  * counts live in the free text, not here.
  */
 export function diseasesIn(ja: string, en: string): DiseaseSeed[] {
+  // An annotation standing on its own leaves nothing to call the disease, and
+  // an empty string on the value would read as a name that is blank.
+  const named = (name: string | undefined): string | null =>
+    name === undefined || name === "" ? null : name
   const waiting = mentionsIn(en)
   const seeds: DiseaseSeed[] = []
   for (const one of mentionsIn(ja)) {
     const key = one.codes.join(" ")
     const at = waiting.findIndex((other) => other.codes.join(" ") === key)
     const paired = at === -1 ? undefined : waiting.splice(at, 1)[0]
-    seeds.push({ codes: one.codes, nameJa: one.name || null, nameEn: paired?.name || null })
+    seeds.push({ codes: one.codes, nameJa: named(one.name), nameEn: named(paired?.name) })
   }
   for (const rest of waiting) {
-    seeds.push({ codes: rest.codes, nameJa: null, nameEn: rest.name || null })
+    seeds.push({ codes: rest.codes, nameJa: null, nameEn: named(rest.name) })
   }
 
   const held = new Map<string, DiseaseSeed>()

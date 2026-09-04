@@ -41,6 +41,7 @@ import {
   researchVersion,
   vocabularyTerm,
 } from "~/db/schema"
+import { icd10Code } from "~/icd10/codes"
 
 import { contentFlags, type ContentFlags } from "./flags"
 import { CHECKED_ACCESSION } from "./gate"
@@ -684,6 +685,33 @@ export async function findTerms(
     ))
     .orderBy(vocabularyTerm.code)
     .limit(TERM_CANDIDATES)
+}
+
+/**
+ * The candidates for what was typed into a disease's box.
+ *
+ * A code is normalised before it is looked for — the box is written with and
+ * without the point, in either case — and **the tail is dropped until the
+ * vocabulary answers**. What the articles and the application forms write is
+ * partly ICD-10-CM, which WHO's classification cannot spell: `K75.81` is NASH
+ * and `K758` is what stands for it, so typing the longer code offers the
+ * shorter one rather than nothing (docs/editing.md の「編集フォーム」).
+ *
+ * Anything not shaped like a code is a word, and words are looked for as they
+ * are typed.
+ */
+export async function findDiseaseTerms(
+  db: Executor,
+  setId: string,
+  needle: string,
+): Promise<EditableTerm[]> {
+  const code = icd10Code(needle.trim())
+  if (code === null) return findTerms(db, setId, needle)
+  for (let length = code.length; length >= 3; length -= 1) {
+    const found = await findTerms(db, setId, code.slice(0, length))
+    if (found.length > 0) return found
+  }
+  return []
 }
 
 export async function humLabelOf(db: Executor, researchId: string): Promise<string | null> {

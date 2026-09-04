@@ -5,6 +5,7 @@ import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import type { ContentValue } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -88,8 +89,24 @@ async function freeTextKey(code: string): Promise<string> {
   return id
 }
 
+/**
+ * The value a published dataset is given. A disease keeps its identities one
+ * level deeper than a vocabulary value does, which is the shape "is this term
+ * in use" has to read as well.
+ */
+function diseaseOrTerm(value: { termId?: string, asDisease?: boolean }): ContentValue {
+  if (value.termId === undefined) {
+    return { kind: "text", text: { ja: filled([[{ text: "x" }]]), en: filled([]) } }
+  }
+  return value.asDisease === true
+    ? { kind: "disease", diseases: filled([{ termIds: [value.termId], nameJa: null, nameEn: null }]) }
+    : { kind: "vocabulary", termIds: filled([value.termId]) }
+}
+
 /** A published dataset carrying one value, so that "in use" means something. */
-async function publishedValue(value: { keyId: string, termId?: string }): Promise<void> {
+async function publishedValue(
+  value: { keyId: string, termId?: string, asDisease?: boolean },
+): Promise<void> {
   const { id: researchId } = only(await db.insert(s.research).values({})
     .returning({ id: s.research.id }))
   const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
@@ -103,9 +120,7 @@ async function publishedValue(value: { keyId: string, termId?: string }): Promis
         label: filled("WGS"),
         values: [{
           keyId: value.keyId,
-          value: value.termId === undefined
-            ? { kind: "text", text: { ja: filled([[{ text: "x" }]]), en: filled([]) } }
-            : { kind: "vocabulary", termIds: filled([value.termId]) },
+          value: diseaseOrTerm(value),
         }],
       }],
     },
@@ -253,6 +268,20 @@ describe("the terms of a vocabulary", () => {
     // Deactivated, and still resolvable for the data that names it.
     const held = only(await db.select().from(s.vocabularyTerm))
     expect(held.active).toBe(false)
+  })
+
+  it("counts a term only a disease names as in use, which is a shape of its own", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("icd10")
+    const termId = await term(setId, "K758")
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({ code: "disease", scope: "experiment", valueType: "disease", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
+      .returning({ id: s.contentKey.id }))
+    await publishedValue({ keyId, termId, asDisease: true })
+
+    // Deleting it would leave a published disease pointing at nothing.
+    expect(await catalogAction(post(token, { intent: "delete-term", termId })))
+      .toEqual({ status: "in-use" })
   })
 
   it("renames a term without touching what points at it", async () => {

@@ -15,8 +15,8 @@
  * **Values are counted at the root of their tree.** A flat vocabulary has no
  * ancestors, so the root of a term is the term; a hierarchical one rolls its
  * children up, which is what puts one bucket per 3-character ICD10 code in a
- * panel instead of six hundred. The children are counted separately, and only
- * when the reader opens the facet.
+ * panel instead of six hundred. **The level below a root is never counted** —
+ * the panel has no way of asking for it (docs/public-pages.md の「絞り込み」).
  */
 
 import { sql, type SQL } from "drizzle-orm"
@@ -33,11 +33,6 @@ export interface TermCount {
   labelEn: string
   maker: string | null
   count: number
-}
-
-/** A term counted under the root it rolls up into. */
-export interface ChildCount extends TermCount {
-  rootId: string
 }
 
 export interface NumberBounds {
@@ -99,29 +94,6 @@ export async function countTerms(
     ORDER BY n DESC, root.label_en
   `)
   return result.rows.map(termCount)
-}
-
-/**
- * The values of one facet counted at their own level, each carrying the root it
- * sits under. For a flat vocabulary this is the same list `countTerms` gives.
- */
-export async function countTermChildren(
-  db: Executor,
-  query: SearchQuery,
-  keyId: string,
-): Promise<ChildCount[]> {
-  const result = await db.execute<TermRow & { root_id: string }>(sql`
-    WITH ${hitsCte(query)}
-    SELECT f.key_id, ${ROOT_ID} AS root_id, t.id AS term_id, t.code,
-           t.label_ja, t.label_en, t.maker, count(DISTINCT f.doc_id)::int AS n
-    FROM hits h
-    JOIN search_facet_term f ON f.doc_id = h.doc_id
-    JOIN vocabulary_term t ON t.id = f.term_id
-    WHERE f.key_id = ${keyId}::uuid
-    GROUP BY f.key_id, root_id, t.id
-    ORDER BY n DESC, t.code
-  `)
-  return result.rows.map((row) => ({ ...termCount(row), rootId: row.root_id }))
 }
 
 /**

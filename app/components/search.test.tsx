@@ -42,7 +42,7 @@ describe("the conditions in force", () => {
   it("gives each one an address that removes it", () => {
     const html = render(
       <AppliedConditions
-        conditions={[{ field: "研究題目", value: "ゲノム", href: "/research?q=%E8%A7%A3%E6%9E%90" }]}
+        conditions={[{ field: "研究題目", value: "ゲノム", code: null, href: "/research?q=%E8%A7%A3%E6%9E%90" }]}
         clearHref="/research"
         locale="ja"
       />,
@@ -55,7 +55,7 @@ describe("the conditions in force", () => {
   it("draws the field and the value apart, so a column of them lines up", () => {
     const html = render(
       <AppliedConditions
-        conditions={[{ field: "研究題目", value: "ゲノム", href: "/research" }]}
+        conditions={[{ field: "研究題目", value: "ゲノム", code: null, href: "/research" }]}
         clearHref="/research"
         locale="ja"
       />,
@@ -68,8 +68,41 @@ describe("the conditions in force", () => {
     expect(drawn).not.toContain("研究題目: ゲノム")
   })
 
+  it("writes the ICD10 code on a disease condition, ahead of the heading", () => {
+    const html = render(
+      <AppliedConditions
+        conditions={[{
+          field: "疾患",
+          value: "気管支及び肺の悪性新生物",
+          code: "C34",
+          href: "/research",
+        }]}
+        clearHref="/research"
+        locale="ja"
+      />,
+    )
+
+    // The same value the panel draws, drawn the same way round: a reader
+    // looking for what they chose reads down a column of codes.
+    expect(html).toContain("<code")
+    expect(html.indexOf("C34")).toBeLessThan(html.indexOf("気管支及び肺の悪性新生物"))
+  })
+
+  it("leaves the code off a condition whose code is a slug of this site's own", () => {
+    const html = render(
+      <AppliedConditions
+        conditions={[{ field: "実験方法", value: "WGS", code: null, href: "/research" }]}
+        clearHref="/research"
+        locale="ja"
+      />,
+    )
+
+    expect(html).toContain("WGS")
+    expect(html).not.toContain("<code")
+  })
+
   it("offers the way to lift all of them only when it has one", () => {
-    const conditions = [{ field: null, value: "title:ゲノム OR a", href: "/research" }]
+    const conditions = [{ field: null, value: "title:ゲノム OR a", code: null, href: "/research" }]
     expect(render(<AppliedConditions conditions={conditions} clearHref="/research" locale="ja" />))
       .toContain("すべて解除")
     expect(render(<AppliedConditions conditions={conditions} clearHref={null} locale="ja" />))

@@ -37,10 +37,12 @@ import { useFetcher } from "react-router"
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import {
   datasetContentInput,
+  emptyDiseaseRow,
   emptyNumberRow,
   emptyValueInput,
   UneditableValueKind,
   type DatasetContentInput,
+  type DiseaseRow,
   type ExperimentInput,
   type NumberRow,
   type ValueInput,
@@ -468,7 +470,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 locale={locale}
                 marks={marksFor(at)}
                 setId={key.vocabularySetId}
-                chosen={terms}
+                known={terms}
                 multiple={key.multiple}
                 state={body.state}
                 termIds={body.termIds}
@@ -490,6 +492,20 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 rows={body.rows}
                 onChange={(next) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
+                }}
+              />
+            )}
+            {body.kind === "disease" && (
+              <DiseaseField
+                label={catalogLabel(key, locale)}
+                locale={locale}
+                marks={marksFor(at)}
+                setId={key.vocabularySetId}
+                known={terms}
+                state={body.state}
+                diseases={body.diseases}
+                onChange={(next) => {
+                  replace(value.keyId, { keyId: value.keyId, value: { kind: "disease", ...next } })
                 }}
               />
             )}
@@ -515,31 +531,27 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
   )
 }
 
+/** The key types this screen has an input control for. */
+const EDITABLE: readonly ValueKind[] = ["text", "vocabulary", "number", "disease"]
+
 /**
- * Whether the editor has an input control for a key, and which. Only the three
+ * Whether the editor has an input control for a key, and which. Only the four
  * kinds the catalog uses are editable; a key of any other type arrives with the
  * layer that gives it a control, because **a value nobody can see is a value
  * nobody can keep**.
  *
- * The last case cannot be reached — only keys `isEditable` lets through get
- * here — and it throws rather than falling back so that a fourth kind gaining a
+ * The refusal cannot be reached — only keys `isEditable` lets through get here
+ * — and it throws rather than falling back so that a further kind gaining a
  * control is a change in one place rather than a slot quietly rendered as prose.
  */
 function editableKind(key: EditableKey): ValueKind {
-  switch (key.valueType) {
-    case "text":
-      return "text"
-    case "vocabulary":
-      return "vocabulary"
-    case "number":
-      return "number"
-    default:
-      throw new UneditableValueKind(key.id, key.valueType)
-  }
+  const kind = EDITABLE.find((one) => one === key.valueType)
+  if (kind === undefined) throw new UneditableValueKind(key.id, key.valueType)
+  return kind
 }
 
 function isEditable(key: EditableKey): boolean {
-  return key.valueType === "text" || key.valueType === "vocabulary" || key.valueType === "number"
+  return EDITABLE.some((kind) => kind === key.valueType)
 }
 
 /**
@@ -750,8 +762,188 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
  * A value chosen from a controlled vocabulary. The state sits beside the choice
  * the same way it does beside text: a term that has not been settled is a
  * question, not an absent value.
+ */
+function VocabularyField({
+  label,
+  locale,
+  marks,
+  setId,
+  known,
+  multiple,
+  state,
+  termIds,
+  onChange,
+}: {
+  label: string
+  locale: Locale
+  marks: Marks
+  setId: string | null
+  /** The terms the document names, which is what the chosen list is drawn from. */
+  known: EditableTerm[]
+  multiple: boolean
+  state: SlotState
+  termIds: string[]
+  onChange: (state: SlotState, termIds: string[]) => void
+}) {
+  return (
+    <Stack gap="tight">
+      <FieldHead label={label} marks={marks} locale={locale} />
+      <div className="md:max-w-md">
+        <Stack gap="tight">
+          <StateSwitch
+            state={state}
+            onChange={(next) => { onChange(next, termIds) }}
+            locale={locale}
+          />
+          <TermPicker
+            locale={locale}
+            setId={setId}
+            disabled={state !== "value"}
+            chosen={resolveTerms(known, termIds)}
+            onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
+            onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
+          />
+        </Stack>
+      </div>
+    </Stack>
+  )
+}
+
+/**
+ * The diseases under one key.
  *
- * **The chosen values are listed and the rest are searched for**, whether the
+ * **A row is one disease: which classifications name it, and what it is
+ * called.** The two answer different questions — the terms are what a listing
+ * counts it by, the name is what a reader reads — and neither stands in for the
+ * other. `NASH` is what an article writes and `K758` is where it is filed
+ * (`docs/data-model.md` の「ICD10」).
+ *
+ * **A row naming no term is an ordinary row.** Diseases no classification holds
+ * are in the articles, and a form that refused them would be a portal that
+ * cannot record what was studied. **A row saying nothing at all is dropped on
+ * save**, the same as an empty number.
+ *
+ * **The names get no candidates.** The field holds what an article wrote, so
+ * there is nothing to align it to; offering the spellings already in would pull
+ * a curator away from the source they are copying
+ * (`docs/editing.md` の「編集フォーム」).
+ */
+function DiseaseField({ label, locale, marks, setId, known, state, diseases, onChange }: {
+  label: string
+  locale: Locale
+  marks: Marks
+  setId: string | null
+  known: EditableTerm[]
+  state: SlotState
+  diseases: DiseaseRow[]
+  onChange: (next: { state: SlotState, diseases: DiseaseRow[] }) => void
+}) {
+  const t = messagesFor(locale).admin.datasetEditor
+  const disabled = state !== "value"
+  const box = `${CONTROL} text-sm disabled:opacity-50`
+  const edit = (at: number, next: Partial<DiseaseRow>) => {
+    onChange({ state, diseases: diseases.map((row, i) => (i === at ? { ...row, ...next } : row)) })
+  }
+  const empty = (row: DiseaseRow) =>
+    row.termIds.length === 0 && row.nameJa.trim() === "" && row.nameEn.trim() === ""
+
+  return (
+    <Stack gap="tight">
+      <FieldHead label={label} marks={marks} locale={locale} />
+      <div className="md:max-w-xl">
+        <Stack gap="tight">
+          <StateSwitch
+            state={state}
+            onChange={(next) => { onChange({ state: next, diseases }) }}
+            locale={locale}
+          />
+          {diseases.map((row, at) => (
+            <div key={at} className="rounded border border-line px-3 py-2">
+              <Stack gap="tight">
+                {/*
+                  **The names come first.** They are what the row is called, so
+                  reading down a list of diseases is reading down this line; the
+                  codes are how each one is filed and sit under it.
+                */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={row.nameJa}
+                    disabled={disabled}
+                    aria-label={t.diseaseNameJa}
+                    placeholder={t.diseaseNameJa}
+                    onChange={(event) => { edit(at, { nameJa: event.target.value }) }}
+                    className={`${box} min-w-0 flex-1`}
+                  />
+                  <input
+                    type="text"
+                    value={row.nameEn}
+                    disabled={disabled}
+                    aria-label={t.diseaseNameEn}
+                    placeholder={t.diseaseNameEn}
+                    onChange={(event) => { edit(at, { nameEn: event.target.value }) }}
+                    className={`${box} min-w-0 flex-1`}
+                  />
+                  <IconButton
+                    name="close"
+                    label={t.removeDisease}
+                    disabled={disabled}
+                    onClick={() => {
+                      onChange({ state, diseases: diseases.filter((_, i) => i !== at) })
+                    }}
+                  />
+                </div>
+                <TermPicker
+                  locale={locale}
+                  setId={setId}
+                  kind="disease"
+                  disabled={disabled}
+                  chosen={resolveTerms(known, row.termIds)}
+                  onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
+                  onRemove={(id) => {
+                    edit(at, { termIds: row.termIds.filter((one) => one !== id) })
+                  }}
+                />
+              </Stack>
+            </div>
+          ))}
+          {!disabled && (
+            <div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                icon={<Icon name="plus" />}
+                onClick={() => {
+                  onChange({ state, diseases: [...diseases, emptyDiseaseRow()] })
+                }}
+              >
+                {t.addDisease}
+              </Button>
+            </div>
+          )}
+          {!disabled && diseases.every(empty) && (
+            <p className="text-ink-muted text-xs">{t.emptyDisease}</p>
+          )}
+        </Stack>
+      </div>
+    </Stack>
+  )
+}
+
+/** The terms these identities name, dropping the ones the document did not send. */
+function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): EditableTerm[] {
+  const byId = new Map(known.map((term) => [term.id, term]))
+  return ids.flatMap((id) => {
+    const term = byId.get(id)
+    return term === undefined ? [] : [term]
+  })
+}
+
+/**
+ * The terms a value names, and the box that finds more.
+ *
+ * **The chosen terms are listed and the rest are searched for**, whether the
  * vocabulary holds three terms or twelve thousand. One shape means the screen
  * does not change under the author when a vocabulary grows, and a list of every
  * ICD10 code is not a control anybody can use.
@@ -765,122 +957,95 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
  * condition and the way to lift it are the same object, as they are for a chip
  * over a listing.
  */
-function VocabularyField({
-  label,
-  locale,
-  marks,
-  setId,
-  chosen: known,
-  multiple,
-  state,
-  termIds,
-  onChange,
-}: {
-  label: string
+function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: {
   locale: Locale
-  marks: Marks
   setId: string | null
-  /** The terms the document names, which is what the chosen list is drawn from. */
+  /**
+   * Which reading the box wants of what is typed. A disease is written as a
+   * classification code as often as a word, and the code has to be normalised
+   * and rolled up before the vocabulary is asked (`app/routes/admin-terms.ts`).
+   */
+  kind?: "disease"
+  disabled: boolean
   chosen: EditableTerm[]
-  multiple: boolean
-  state: SlotState
-  termIds: string[]
-  onChange: (state: SlotState, termIds: string[]) => void
+  onAdd: (id: string) => void
+  onRemove: (id: string) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const [find, setFind] = useState("")
   const search = useFetcher<EditableTerm[]>()
-  const disabled = state !== "value"
-  const byId = new Map(known.map((term) => [term.id, term]))
-  const chosen = termIds.flatMap((id) => {
-    const term = byId.get(id)
-    return term === undefined ? [] : [term]
-  })
+  const held = new Set(chosen.map((term) => term.id))
 
   const needle = find.trim()
   const candidates = (search.data ?? [])
-    .filter((term) => term.setId === setId && !termIds.includes(term.id))
+    .filter((term) => term.setId === setId && !held.has(term.id))
     .slice(0, PICKER_RESULTS)
 
   const look = (value: string) => {
     setFind(value)
     if (setId === null || value.trim() === "") return
-    void search.load(
-      `${termsPath()}?${new URLSearchParams({ set: setId, q: value.trim() }).toString()}`,
-    )
-  }
-
-  const add = (id: string) => {
-    onChange(state, multiple ? [...termIds, id] : [id])
-    setFind("")
+    const query = new URLSearchParams({ set: setId, q: value.trim() })
+    if (kind !== undefined) query.set("kind", kind)
+    void search.load(`${termsPath()}?${query.toString()}`)
   }
 
   return (
     <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="md:max-w-md">
-        <Stack gap="tight">
-          <StateSwitch
-            state={state}
-            onChange={(next) => { onChange(next, termIds) }}
-            locale={locale}
-          />
-          {chosen.length === 0
-            ? <p className="text-ink-muted text-sm">{t.noTerm}</p>
-            : (
-                <ul className="flex flex-wrap gap-2">
-                  {chosen.map((term) => (
-                    <li key={term.id}>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="xs"
-                        pill
-                        disabled={disabled}
-                        onClick={() => {
-                          onChange(state, termIds.filter((id) => id !== term.id))
-                        }}
-                      >
-                        {catalogLabel(term, locale)}
-                        <Icon name="close" />
-                        <span className="sr-only">{t.removeTerm}</span>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-          <input
-            type="search"
-            value={find}
-            disabled={disabled}
-            aria-label={t.findTerm}
-            placeholder={t.findTerm}
-            onChange={(event) => { look(event.target.value) }}
-            className={`${CONTROL} text-sm disabled:opacity-50`}
-          />
-          {needle !== "" && candidates.length === 0 && search.state === "idle" && (
-            <p className="text-ink-muted text-sm">{t.noCandidate}</p>
-          )}
-          {candidates.length > 0 && (
-            <ul className="flex flex-col rounded border border-line">
-              {candidates.map((term) => (
+      {chosen.length === 0
+        ? <p className="text-ink-muted text-sm">{t.noTerm}</p>
+        : (
+            <ul className="flex flex-wrap gap-2">
+              {chosen.map((term) => (
                 <li key={term.id}>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     size="xs"
-                    className="w-full justify-start"
-                    onClick={() => { add(term.id) }}
+                    pill
+                    disabled={disabled}
+                    onClick={() => { onRemove(term.id) }}
                   >
-                    <code className="text-ink-muted text-xs">{term.code}</code>
                     {catalogLabel(term, locale)}
+                    <Icon name="close" />
+                    <span className="sr-only">{t.removeTerm}</span>
                   </Button>
                 </li>
               ))}
             </ul>
           )}
-        </Stack>
-      </div>
+      <input
+        type="search"
+        value={find}
+        disabled={disabled}
+        aria-label={t.findTerm}
+        placeholder={t.findTerm}
+        onChange={(event) => { look(event.target.value) }}
+        className={`${CONTROL} text-sm disabled:opacity-50`}
+      />
+      {needle !== "" && candidates.length === 0 && search.state === "idle" && (
+        <p className="text-ink-muted text-sm">{t.noCandidate}</p>
+      )}
+      {candidates.length > 0 && (
+        <ul className="flex flex-col rounded border border-line">
+          {candidates.map((term) => (
+            <li key={term.id}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="w-full justify-start"
+                onClick={() => {
+                  onAdd(term.id)
+                  setFind("")
+                }}
+              >
+                <code className="text-ink-muted text-xs">{term.code}</code>
+                {catalogLabel(term, locale)}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Stack>
   )
 }

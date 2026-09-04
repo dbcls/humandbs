@@ -2,7 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FacetCategoryView, FacetRangeView, FacetView } from "~/public/facets.server"
+import type {
+  FacetCategoryView,
+  FacetRangeView,
+  FacetValueView,
+  FacetView,
+} from "~/public/facets.server"
 
 import { FacetPanel } from "./facets"
 
@@ -31,10 +36,39 @@ function facet(over: Partial<FacetView> & Pick<FacetView, "code" | "label">): Fa
     clearHref: null,
     find: "",
     range: null,
-    codeEntry: null,
     ...over,
   }
 }
+
+/** A value as the panel draws one, with the address it narrows to. */
+function value(code: string, label: string): FacetValueView {
+  return { code, label, maker: null, count: 3, selected: false, href: "/research?q=narrowed" }
+}
+
+const DISEASES = facet({
+  code: "disease",
+  label: "疾患",
+  kind: "disease",
+  values: [value("C34", "気管支及び肺の悪性新生物＜腫瘍＞")],
+})
+
+/** The same shape over a vocabulary whose codes are this site's own slugs. */
+const ASSAYS = facet({
+  code: "assay",
+  label: "実験方法",
+  values: [value("wgs", "WGS")],
+})
+
+/** The same disease facet with its box open, which is the only time it has one. */
+const OPEN_DISEASES = facet({
+  code: "disease",
+  label: "疾患",
+  kind: "disease",
+  expanded: true,
+  closeHref: "/research",
+  find: "C34",
+  values: [value("C34", "気管支及び肺の悪性新生物＜腫瘍＞")],
+})
 
 /** The windows a date facet offers, with one of them in force or none. */
 function windows(lit: "all" | "5y" | null): FacetRangeView["presets"] {
@@ -134,6 +168,42 @@ describe("the refinement panel", () => {
       { code: null, label: null, facets: [DATES] },
       { code: "data", label: "データ", facets: [VOLUME] },
     ])).not.toContain("〜")
+  })
+
+  it("writes the ICD10 code beside a disease, ahead of the heading", () => {
+    const html = render([{ code: "subjects", label: "対象者", facets: [DISEASES] }])
+
+    // The code is a key the reader can carry away — it is on the dataset page
+    // and in the API — and it comes first so that the codes make a column.
+    expect(html).toContain("<code")
+    expect(html).toContain("C34")
+    expect(html.indexOf("C34")).toBeLessThan(html.indexOf("気管支及び肺の悪性新生物＜腫瘍＞"))
+  })
+
+  it("leaves the code off every other facet, whose codes are slugs of this site's own", () => {
+    const html = render([{ code: "methods", label: "手法", facets: [ASSAYS] }])
+
+    expect(html).toContain("WGS")
+    expect(html).not.toContain("<code")
+  })
+
+  it("gives an opened facet a box with no button, which Enter still submits", () => {
+    const html = render([{ code: "subjects", label: "対象者", facets: [OPEN_DISEASES] }])
+
+    // The list it filters is right underneath it, so what a button would ask
+    // for is already on the screen. One field blocks implicit submission and
+    // there is nothing else in the form, so Enter submits it — the keyboard
+    // and a page with no script reach the same address.
+    expect(html).toContain("name=\"find\"")
+    expect(html).toContain("value=\"C34\"")
+    expect(html).not.toContain("<button")
+  })
+
+  it("keeps the button on a range, whose two ends block implicit submission", () => {
+    const html = render([{ code: null, label: null, facets: [DATES] }])
+
+    expect(html).toContain("適用")
+    expect(html).toContain("<button")
   })
 
   it("names the facet the range writes into, so the form says which one it is", () => {

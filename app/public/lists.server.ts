@@ -26,8 +26,6 @@ import {
 } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor, type Messages } from "~/i18n/messages"
-import { ICD10_SET_CODE } from "~/icd10/codes"
-import { resolveTypedCode } from "~/icd10/entry.server"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import {
   group,
@@ -59,7 +57,7 @@ import {
   type SortKey,
   type SortOrder,
 } from "~/search/query.server"
-import { onPanel, withRange, withTerm } from "~/search/selection"
+import { onPanel, withRange } from "~/search/selection"
 
 import { facetPanel, type FacetPanelView } from "./facets.server"
 import { loadCatalog } from "./queries.server"
@@ -83,6 +81,13 @@ export interface ConditionChip {
    */
   field: string | null
   value: string
+  /**
+   * The code the value is filed under, where that is a key the reader can carry
+   * away — ICD10 and nothing else. Null on every other condition, whose codes
+   * are slugs this site made up to put in an address
+   * (`components/facets.tsx` の `Value`).
+   */
+  code: string | null
   /** The address of the same search without this condition. */
   href: string
 }
@@ -163,16 +168,11 @@ async function lastPageInstead(db: Executor, request: SearchRequest): Promise<Se
 /**
  * A submission is answered with the address it should have had.
  *
- * **All three forms on the page arrive here**: the keyword box, which carries
- * what was typed under `k`; the range inputs of a numeric facet, which carry
- * the key and the two ends; and the disease facet's code box. None of them is a
- * way of asking a question the address cannot hold — they are turned into the
- * query straight away and redirected to, so one search has one address and the
- * result can be shared.
- *
- * **A code that names nothing is the one submission with no address of its
- * own.** It is left where it is so that the panel can say which of the two
- * things went wrong (`facets.server.ts`).
+ * **Both forms on the page arrive here**: the keyword box, which carries what
+ * was typed under `k`, and the range inputs of a numeric or date facet, which
+ * carry the key and the two ends. Neither is a way of asking a question the
+ * address cannot hold — they are turned into the query straight away and
+ * redirected to, so one search has one address and the result can be shared.
  */
 export async function canonicalRedirect(
   url: URL,
@@ -181,32 +181,27 @@ export async function canonicalRedirect(
 ): Promise<Response | null> {
   const typed = url.searchParams.get("k")
   const rangeKey = url.searchParams.get("rangeKey")
-  const code = url.searchParams.get("code")
-  if (typed === null && rangeKey === null && code === null) return null
+
+  // Which form was submitted is decided before anything is read, so an ordinary
+  // page load — neither box filled in — costs no query.
+  let asked: (held: QueryNode | null, fields: QueryFields) => QueryNode | null
+  if (typed !== null) {
+    asked = (held) => joinKeyword(typed, splitKeyword(held).conditions)
+  } else if (rangeKey !== null) {
+    const kind = isDateFacet(rangeKey) ? "date" : "number"
+    asked = (held, fields) => withRange(held, fields, rangeKey, {
+      from: bound(url.searchParams.get("rangeFrom"), kind),
+      to: bound(url.searchParams.get("rangeTo"), kind),
+    })
+  } else {
+    return null
+  }
 
   const db = getDb()
   const definitions = await loadFacetDefinitions(db)
   const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(url.searchParams.get("q") ?? "", fields)
-  const held = parsed.ok ? parsed.ast : null
-
-  let ast: QueryNode | null
-  if (typed !== null) {
-    ast = joinKeyword(typed, splitKeyword(held).conditions)
-  } else if (rangeKey !== null) {
-    const kind = isDateFacet(rangeKey) ? "date" : "number"
-    ast = withRange(held, fields, rangeKey, {
-      from: bound(url.searchParams.get("rangeFrom"), kind),
-      to: bound(url.searchParams.get("rangeTo"), kind),
-    })
-  } else {
-    const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
-    const setId = icd10?.field.setId ?? null
-    if (icd10 === undefined || setId === null) return null
-    const resolved = await resolveTypedCode(db, setId, code ?? "")
-    if (resolved.status !== "found") return null
-    ast = withTerm(held, fields, icd10.field.code, resolved.code)
-  }
+  const ast = asked(parsed.ok ? parsed.ast : null, fields)
 
   const sort = url.searchParams.get("sort")
   const order = url.searchParams.get("order")
@@ -313,11 +308,21 @@ function facetChips(panel: FacetPanelView | null, locale: Locale): ConditionChip
     // A range is in force when one of its ends is written; the link that lifts
     // it is the facet's own, which is the same search either way.
     if (range !== null && (range.from !== "" || range.to !== "") && facet.clearHref !== null) {
-      return [{ field: facet.label, value: writtenRange(range, words), href: facet.clearHref }]
+      return [{
+        field: facet.label,
+        value: writtenRange(range, words),
+        code: null,
+        href: facet.clearHref,
+      }]
     }
     return facet.values
       .filter((value) => value.selected)
-      .map((value) => ({ field: facet.label, value: value.label, href: value.href }))
+      .map((value) => ({
+        field: facet.label,
+        value: value.label,
+        code: facet.kind === "disease" ? value.code : null,
+        href: value.href,
+      }))
   }))
 }
 
@@ -398,7 +403,6 @@ async function listShell(
       size: size === PAGE_SIZE ? null : size,
       expanded,
       find,
-      code: request.url.searchParams.get("code") ?? "",
       today: today(),
     }),
   ])
@@ -419,6 +423,8 @@ async function listShell(
     if (shownByPanel(condition, fields)) return []
     return [{
       ...describeCondition(condition, locale),
+      // What the box and the query language hold is words, not classifications.
+      code: null,
       href: at(held.filter((_, other) => other !== index)),
     }]
   })

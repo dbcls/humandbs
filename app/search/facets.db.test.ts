@@ -4,7 +4,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { countTermChildren, countTerms, dateBounds, numberBounds } from "./counts.server"
+import { countTerms, dateBounds, numberBounds } from "./counts.server"
 import { parseQuery, type QueryNode } from "./dsl"
 import { queryFields, type FacetField } from "./fields"
 import { searchDocs, type SearchTarget } from "./query.server"
@@ -230,15 +230,6 @@ describe("counting the facets of a result", () => {
     const counts = await countTerms(db, query(""), [identities.disease ?? ""])
 
     expect(counts.map((row) => [row.code, row.count])).toEqual([["C34", 3], ["C61", 2]])
-  })
-
-  it("counts what sits underneath a root only when the facet is opened", async () => {
-    const children = await countTermChildren(db, query(""), identities.disease ?? "")
-
-    const under = children
-      .filter((row) => row.rootId === identities.lung)
-      .map((row) => [row.code, row.count])
-    expect(under).toEqual([["C349", 2], ["C341", 1]])
   })
 
   it("gives the span a numeric facet covers in the result", async () => {

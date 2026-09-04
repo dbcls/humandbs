@@ -459,14 +459,26 @@ describe("the research screen's forms", () => {
 })
 
 describe("the dataset screens of a draft", () => {
-  async function seedCatalog(): Promise<{ textKey: string, vocabKey: string, terms: string[] }> {
+  async function seedCatalog(): Promise<{
+    textKey: string
+    vocabKey: string
+    diseaseKey: string
+    terms: string[]
+    diseaseTerm: string
+  }> {
     const set = only(await db.insert(s.vocabularySet)
       .values({ code: "access", labelJa: "アクセス制限", labelEn: "Access" })
+      .returning({ id: s.vocabularySet.id }))
+    const icd10 = only(await db.insert(s.vocabularySet)
+      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
       .returning({ id: s.vocabularySet.id }))
     const terms = await db.insert(s.vocabularyTerm).values([
       { setId: set.id, code: "open", labelEn: "Unrestricted" },
       { setId: set.id, code: "closed", labelEn: "Controlled" },
     ]).returning({ id: s.vocabularyTerm.id })
+    const diseaseTerm = only(await db.insert(s.vocabularyTerm)
+      .values({ setId: icd10.id, code: "K758", labelEn: "Other inflammatory liver diseases" })
+      .returning({ id: s.vocabularyTerm.id }))
     const keys = await db.insert(s.contentKey).values([
       {
         code: "type-of-data",
@@ -484,6 +496,15 @@ describe("the dataset screens of a draft", () => {
         vocabularySetId: set.id,
       },
       {
+        code: "disease",
+        scope: "dataset",
+        valueType: "disease",
+        labelJa: "疾患",
+        labelEn: "Disease",
+        vocabularySetId: icd10.id,
+        multiple: true,
+      },
+      {
         code: "coverage",
         scope: "experiment",
         valueType: "text",
@@ -496,7 +517,9 @@ describe("the dataset screens of a draft", () => {
     return {
       textKey: byCode.get("type-of-data") ?? "",
       vocabKey: byCode.get("access-criteria") ?? "",
+      diseaseKey: byCode.get("disease") ?? "",
       terms: terms.map((term) => term.id),
+      diseaseTerm: diseaseTerm.id,
     }
   }
 
@@ -594,8 +617,54 @@ describe("the dataset screens of a draft", () => {
     expect(await refused(datasetPayload(null, [
       { keyId: catalog.vocabKey, value: { kind: "vocabulary", state: "value", termIds: catalog.terms } },
     ]))).toBe(400)
+    // A disease naming a term of another vocabulary.
+    expect(await refused(datasetPayload(null, [
+      {
+        keyId: catalog.diseaseKey,
+        value: {
+          kind: "disease",
+          state: "value",
+          diseases: [{ termIds: catalog.terms.slice(0, 1), nameJa: "", nameEn: "" }],
+        },
+      },
+    ]))).toBe(400)
 
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+  })
+
+  it("stores a disease with the name somebody wrote, and one with no code at all", async () => {
+    const token = await signIn(CURATOR, true)
+    const catalog = await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const datasetId = await datasetOf(researchId)
+
+    const answer = await saveDatasetAction(
+      postJson(token, "/x", datasetPayload(null, [{
+        keyId: catalog.diseaseKey,
+        value: {
+          kind: "disease",
+          state: "value",
+          diseases: [
+            { termIds: [catalog.diseaseTerm], nameJa: "NASH", nameEn: "NASH" },
+            { termIds: [], nameJa: "健常人由来iPS細胞", nameEn: "" },
+          ],
+        },
+      }])),
+      { researchId, draftId, datasetId },
+    )
+
+    expect(answer.status).toBe("saved")
+    const entry = only(await db.select().from(s.draftDatasetEntry))
+    expect(entry.content.values[0]?.value).toEqual({
+      kind: "disease",
+      diseases: {
+        state: "value",
+        value: [
+          { termIds: [catalog.diseaseTerm], nameJa: "NASH", nameEn: "NASH" },
+          { termIds: [], nameJa: "健常人由来iPS細胞", nameEn: null },
+        ],
+      },
+    })
   })
 
   it("refuses a file selection on a dataset an archive issued, which the picker never offers", async () => {

@@ -139,15 +139,25 @@ export function PreviousLines({ locale, lines, heading, termLabel }: {
               {line.state === "not-applicable" && (
                 <em className="text-ink-muted">{states.notApplicable}</em>
               )}
-              {line.state === "value" && (line.termIds === undefined
-                ? line.text
-                : line.termIds.map((id) => termLabel?.(id) ?? id).join(", "))}
+              {line.state === "value" && shownText(line, termLabel)}
             </dd>
           </div>
         ))}
       </dl>
     </OldValue>
   )
+}
+
+/**
+ * What one line says. A value made of identities reads as their labels; one
+ * that also carries words of its own — a disease — reads as the words with the
+ * labels after them, which is how it reads on the page it came from.
+ */
+function shownText(line: ShownLine, termLabel?: (id: string) => string): string {
+  if (line.termIds === undefined) return line.text
+  const terms = line.termIds.map((id) => termLabel?.(id) ?? id).join(", ")
+  if (terms === "") return line.text
+  return line.text === "" ? terms : `${line.text} (${terms})`
 }
 
 function PreviousValue({ locale, value }: { locale: Locale, value: AnchoredValue }) {

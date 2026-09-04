@@ -22,6 +22,7 @@ import { filled } from "~/content/empty"
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   Experiment,
   ResearchContent,
   RichText,
@@ -29,6 +30,7 @@ import type {
   TranslatedText,
   ValueSlot,
 } from "~/content/types"
+import { icd10CodesIn, icd10Resolve } from "~/icd10/codes"
 import type { DsBranchDetail, JgadRegistration } from "~/upstream/application-db.server"
 import type { DraSubmission } from "~/upstream/dra.server"
 
@@ -37,7 +39,7 @@ import type { CatalogWithTerms, EditableKey, EditableTerm } from "./queries.serv
 /** The catalog keys a seeded draft writes under. */
 const ACCESS_TYPE_KEY = "access-criteria"
 const TYPE_OF_DATA_KEY = "type-of-data"
-const DISEASE_KEY = "disease-icd10"
+const DISEASE_KEY = "disease"
 const METHOD_KEY = "experimental-method"
 const PLATFORM_KEY = "platform"
 const READ_TYPE_KEY = "read-type"
@@ -239,28 +241,56 @@ function diseasesOf(
   dropped: DroppedValue[],
 ): ValueSlot[] {
   if (branch === null) return []
-  const codes = icd10Codes(branch.icd10)
+  const codes = icd10CodesIn(branch.icd10)
   if (codes.length === 0) return []
   const values: ValueSlot[] = []
-  take(values, dropped, vocabulary(catalog, DISEASE_KEY, "experiment", codes))
+  take(values, dropped, disease(catalog, codes))
   return values
 }
 
 /**
- * The ICD10 codes written into an application's disease field.
+ * The diseases an application's ICD10 field names.
  *
- * It is a free-text box: the codes arrive separated by commas of both widths,
- * by semicolons and by spaces, written with or without the point, and the box
- * also holds `-` and `dummy`. Anything that is not shaped like a code is left
- * out rather than turned into one.
+ * **The field is free text**, so it is read with the same rules the migration
+ * reads the articles with (`app/icd10/codes.ts`): both widths of comma, with or
+ * without the point, narrow ranges spelled out, and `-` and `dummy` left out
+ * rather than turned into codes.
+ *
+ * **The tail of a code is dropped until the vocabulary answers.** The field
+ * holds ICD-10-CM, which WHO's classification cannot spell — `K75.81` is NASH —
+ * and `K758` is what stands for it (`docs/data-model.md` の「ICD10」). A code
+ * that answers at no length is named as not written rather than minted.
+ *
+ * **What is written is codes and no names.** The application form holds no word
+ * for the disease, so the curator writes them
+ * (`docs/editing.md` の「上流からの下書き」).
  */
-export function icd10Codes(raw: string): string[] {
-  const shape = /^[A-Z][0-9]{2}[0-9A-Z]{0,2}$/
-  const codes = raw
-    .split(/[,、;；/\s]+/)
-    .map((token) => token.replace(/[.\s]/g, "").toUpperCase())
-    .filter((token) => shape.test(token))
-  return [...new Set(codes)]
+function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
+  const key = keyOf(catalog, DISEASE_KEY, "experiment")
+  if (key?.vocabularySetId == null) return { slot: null, dropped: named(DISEASE_KEY, codes) }
+
+  const byCode = new Map(catalog.terms
+    .filter((term) => term.setId === key.vocabularySetId)
+    .map((term) => [term.code, term]))
+  const diseases: DiseaseValue[] = []
+  const missed: string[] = []
+  const taken = new Set<string>()
+  for (const written of codes) {
+    const code = icd10Resolve(written, (candidate) => byCode.has(candidate))
+    const term = code === null ? undefined : byCode.get(code)
+    if (term === undefined) missed.push(written)
+    else if (!taken.has(term.id)) {
+      taken.add(term.id)
+      diseases.push({ termIds: [term.id], nameJa: null, nameEn: null })
+    }
+  }
+
+  const dropped = named(DISEASE_KEY, missed)
+  if (diseases.length === 0) return { slot: null, dropped }
+  return {
+    slot: { keyId: key.id, value: { kind: "disease", diseases: filled(diseases) } },
+    dropped,
+  }
 }
 
 // === writing a value under a key ===
@@ -287,9 +317,11 @@ function keyOf(
  * The terms upstream's words name, and the words that name none.
  *
  * A term is found by its code or by its English label, case aside. Codes have
- * to come first because ICD10 is written as codes while its labels are disease
- * names; labels matter because the instrument models an archive states are
- * spelled exactly as the catalog holds them.
+ * to come first because that is what an application form states — a data access
+ * type is a number and an assay is `WGS` — while labels matter because the
+ * instrument models an archive states are spelled exactly as the catalog holds
+ * them. **Diseases do not come through here**: what they are matched against is
+ * a classification, which is rolled up rather than looked up flat.
  */
 function matchTerms(
   terms: readonly EditableTerm[],

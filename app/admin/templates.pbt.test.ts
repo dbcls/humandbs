@@ -2,6 +2,7 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import type { DatasetContent, ResearchContent, Slot, ValueSlot } from "~/content/types"
+import { icd10CodesIn } from "~/icd10/codes"
 
 import {
   catalogFixture,
@@ -10,7 +11,7 @@ import {
   jgadRegistrationArb,
 } from "./arbitraries/upstream"
 import type { CatalogWithTerms } from "./queries.server"
-import { draDatasetSeed, icd10Codes, jgadDatasetSeed, researchContentFrom, type DatasetSeed } from "./templates"
+import { draDatasetSeed, jgadDatasetSeed, researchContentFrom, type DatasetSeed } from "./templates"
 
 /**
  * The laws a seeded draft obeys, whatever an upstream system happens to say.
@@ -38,11 +39,31 @@ function acceptable(catalog: CatalogWithTerms, scope: string, slot: ValueSlot): 
   const key = KEY_BY_ID.get(slot.keyId)
   if (key?.scope !== scope) return false
   if (key.valueType !== slot.value.kind) return false
+  if (slot.value.kind === "disease") {
+    if (slot.value.diseases.state !== "value") return false
+    const rows = slot.value.diseases.value
+    if (!key.multiple && rows.length > 1) return false
+    return rows.every((one) =>
+      one.termIds.every((id) => TERM_BY_ID.get(id)?.setId === key.vocabularySetId))
+  }
   if (slot.value.kind !== "vocabulary") return true
   if (slot.value.termIds.state !== "value") return false
   const chosen = slot.value.termIds.value
   if (!key.multiple && chosen.length > 1) return false
   return chosen.every((id) => TERM_BY_ID.get(id)?.setId === key.vocabularySetId)
+}
+
+/** The codes of the disease terms a content names. */
+function diseaseCodesIn(content: DatasetContent): string[] {
+  return content.experiments
+    .flatMap((one) => one.values)
+    .flatMap((slot) => (slot.value.kind === "disease" && slot.value.diseases.state === "value"
+      ? slot.value.diseases.value.flatMap((disease) => disease.termIds)
+      : []))
+    .flatMap((id) => {
+      const term = TERM_BY_ID.get(id)
+      return term?.setId === "set-disease" ? [term.code] : []
+    })
 }
 
 /** Every state a value in the content is in, at any depth. */
@@ -94,25 +115,29 @@ describe("what a seeded draft writes", () => {
   it("either writes a term for a disease the application states, or names it as not written", () => {
     fc.assert(fc.property(seedArb, ({ seed, icd10 }) => {
       const named = new Set(
-        seed.dropped.filter((value) => value.keyCode === "disease-icd10")
-          .map((value) => value.value),
+        seed.dropped.filter((value) => value.keyCode === "disease").map((value) => value.value),
       )
-      const written = new Set(
-        seed.content.experiments.flatMap((one) => one.values)
-          .flatMap((slot) => (slot.value.kind === "vocabulary" && slot.value.termIds.state === "value"
-            ? slot.value.termIds.value
-            : []))
-          .flatMap((id) => {
-            const term = TERM_BY_ID.get(id)
-            return term?.setId === "set-disease" ? [term.code] : []
-          }),
-      )
+      const written = diseaseCodesIn(seed.content)
       // An empty seed has nowhere to write, and a disease is only claimed by the
       // experiments that exist; what must never happen is a code being lost.
       if (seed.content.experiments.length === 0) return
-      for (const code of icd10Codes(icd10)) {
-        expect(written.has(code) || named.has(code)).toBe(true)
+      for (const code of icd10CodesIn(icd10)) {
+        // **Rolling up only ever shortens**, so a code that was written is one
+        // the field's code starts with. Anything else has to have been named.
+        const carried = written.some((one) => code.startsWith(one))
+        expect(carried || named.has(code)).toBe(true)
       }
+    }))
+  })
+
+  it("writes no name for a disease, because the application form holds none", () => {
+    fc.assert(fc.property(seedArb, ({ seed }) => {
+      const rows = seed.content.experiments
+        .flatMap((one) => one.values)
+        .flatMap((slot) => (slot.value.kind === "disease" && slot.value.diseases.state === "value"
+          ? slot.value.diseases.value
+          : []))
+      expect(rows.every((one) => one.nameJa === null && one.nameEn === null)).toBe(true)
     }))
   })
 
@@ -120,9 +145,16 @@ describe("what a seeded draft writes", () => {
     fc.assert(fc.property(seedArb, ({ seed }) => {
       const written = new Set(
         slotsOf(seed.content)
-          .flatMap(({ slot }) => (slot.value.kind === "vocabulary" && slot.value.termIds.state === "value"
-            ? slot.value.termIds.value
-            : []))
+          .flatMap(({ slot }) => {
+            const value = slot.value
+            if (value.kind === "vocabulary" && value.termIds.state === "value") {
+              return value.termIds.value
+            }
+            if (value.kind === "disease" && value.diseases.state === "value") {
+              return value.diseases.value.flatMap((one) => one.termIds)
+            }
+            return []
+          })
           .flatMap((id) => {
             const term = TERM_BY_ID.get(id)
             return term === undefined ? [] : [term.code.toLowerCase(), term.labelEn.toLowerCase()]

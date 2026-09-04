@@ -146,6 +146,24 @@ describe("the Japanese statistical classification", () => {
     ])
   })
 
+  it("reads a code the export marks with a dagger or an asterisk as that code", () => {
+    // The marks say which half of a dual-coded condition the row is, not which
+    // code it is. Dropping the row would leave the code named in English only.
+    const held = parseEstatCsv([
+      "\"E14.2†\",\"詳細不明の糖尿病，腎合併症を伴うもの\"",
+      "\"F00*\",\"アルツハイマー＜Alzheimer＞病の認知症\"",
+    ].join("\n"))
+
+    expect(held).toEqual([
+      { code: "E142", titleEn: null, titleJa: "詳細不明の糖尿病，腎合併症を伴うもの" },
+      { code: "F00", titleEn: null, titleJa: "アルツハイマー＜Alzheimer＞病の認知症" },
+    ])
+  })
+
+  it("still leaves a block alone when it is marked, since it is not a code", () => {
+    expect(parseEstatCsv("\"A00-A09*\",\"腸管感染症\"")).toEqual([])
+  })
+
   it("keeps a comma inside a quoted field", () => {
     const held = parseEstatCsv("\"code\",\"name\"\n\"C34.9\",\"気管支，肺\"")
     expect(held).toEqual([{ code: "C349", titleEn: null, titleJa: "気管支，肺" }])

@@ -627,12 +627,21 @@ export type SaveDatasetResult
  * so none of them are things an author can fix. They are answered as a bad
  * request rather than as a problem against a field.
  */
-/** Every vocabulary value a dataset's description names. */
+/**
+ * Every vocabulary value a dataset's description names. **A disease names them
+ * too** — one per classification that holds it — and the screen has to resolve
+ * those labels the same way.
+ */
 function namedTerms(content: DatasetContent): string[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
-    .flatMap((slot) => (slot.value.kind === "vocabulary" && slot.value.termIds.state === "value"
-      ? slot.value.termIds.value
-      : []))
+    .flatMap((slot) => {
+      const value = slot.value
+      if (value.kind === "vocabulary" && value.termIds.state === "value") return value.termIds.value
+      if (value.kind === "disease" && value.diseases.state === "value") {
+        return value.diseases.value.flatMap((one) => one.termIds)
+      }
+      return []
+    })
 }
 
 async function catalogAccepts(
@@ -646,7 +655,11 @@ async function catalogAccepts(
   const named = [
     ...input.values,
     ...input.experiments.flatMap((experiment) => experiment.values),
-  ].flatMap((slot) => (slot.value.kind === "vocabulary" ? slot.value.termIds : []))
+  ].flatMap((slot) => {
+    if (slot.value.kind === "vocabulary") return slot.value.termIds
+    if (slot.value.kind === "disease") return slot.value.diseases.flatMap((one) => one.termIds)
+    return []
+  })
   const setOfTerm = new Map((await termsByIds(db, named)).map((term) => [term.id, term.setId]))
 
   const accepts = (
@@ -663,6 +676,13 @@ async function catalogAccepts(
         if (slot.value.state !== "value") return true
         return slot.value.rows.every((row) => row.unit === null
           || ((key.inputUnits ?? []).includes(row.unit) && convertible(row.unit, key.canonicalUnit)))
+      }
+      if (slot.value.kind === "disease") {
+        // A row may name several terms — one classification each — so what the
+        // key's `multiple` counts is the diseases, not the identities in one.
+        if (!key.multiple && slot.value.diseases.length > 1) return false
+        return slot.value.diseases.every((one) =>
+          one.termIds.every((id) => setOfTerm.get(id) === key.vocabularySetId))
       }
       if (slot.value.kind !== "vocabulary") return true
       if (!key.multiple && slot.value.termIds.length > 1) return false

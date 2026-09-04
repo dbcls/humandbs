@@ -816,7 +816,6 @@ export const FACETS: FacetPanelView = {
             unit: null,
             presets: windows("all"),
           },
-          codeEntry: null,
         },
         {
           code: "date_modified",
@@ -834,7 +833,6 @@ export const FACETS: FacetPanelView = {
             unit: null,
             presets: windows(null),
           },
-          codeEntry: null,
         },
         {
           code: "access-criteria",
@@ -852,7 +850,6 @@ export const FACETS: FacetPanelView = {
               count: 348,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-1",
-              children: [],
             },
             {
               code: "unrestricted-access",
@@ -861,7 +858,6 @@ export const FACETS: FacetPanelView = {
               count: 80,
               selected: false,
               href: "/research?q=access-criteria%3Aunrestricted-access",
-              children: [],
             },
             {
               code: "controlled-access-type-2",
@@ -870,12 +866,10 @@ export const FACETS: FacetPanelView = {
               count: 2,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-2",
-              children: [],
             },
           ],
           moreHref: null,
           range: null,
-          codeEntry: null,
         },
       ],
     },
@@ -884,9 +878,9 @@ export const FACETS: FacetPanelView = {
       label: "対象者",
       facets: [
         {
-          code: "disease-icd10",
-          label: "疾患 (ICD10)",
-          kind: "vocabulary",
+          code: "disease",
+          label: "疾患",
+          kind: "disease",
           expanded: false,
           find: "",
           closeHref: null,
@@ -898,8 +892,7 @@ export const FACETS: FacetPanelView = {
               maker: null,
               count: 33,
               selected: false,
-              href: "/research?q=disease-icd10%3AC34",
-              children: [],
+              href: "/research?q=disease%3AC34",
             },
             {
               code: "C18",
@@ -907,8 +900,7 @@ export const FACETS: FacetPanelView = {
               maker: null,
               count: 31,
               selected: false,
-              href: "/research?q=disease-icd10%3AC18",
-              children: [],
+              href: "/research?q=disease%3AC18",
             },
             {
               code: "C22",
@@ -916,8 +908,7 @@ export const FACETS: FacetPanelView = {
               maker: null,
               count: 23,
               selected: false,
-              href: "/research?q=disease-icd10%3AC22",
-              children: [],
+              href: "/research?q=disease%3AC22",
             },
             {
               code: "C16",
@@ -925,8 +916,7 @@ export const FACETS: FacetPanelView = {
               maker: null,
               count: 20,
               selected: false,
-              href: "/research?q=disease-icd10%3AC16",
-              children: [],
+              href: "/research?q=disease%3AC16",
             },
             {
               code: "C50",
@@ -934,13 +924,11 @@ export const FACETS: FacetPanelView = {
               maker: null,
               count: 17,
               selected: false,
-              href: "/research?q=disease-icd10%3AC50",
-              children: [],
+              href: "/research?q=disease%3AC50",
             },
           ],
-          moreHref: "/research?facet=disease-icd10",
+          moreHref: "/research?facet=disease",
           range: null,
-          codeEntry: null,
         },
         {
           code: "subject-count",
@@ -958,7 +946,6 @@ export const FACETS: FacetPanelView = {
             unit: null,
             presets: [],
           },
-          codeEntry: null,
         },
       ],
     },
@@ -982,7 +969,6 @@ export const FACETS: FacetPanelView = {
               count: 158,
               selected: false,
               href: "/research?q=tissue%3Aperipheral-blood",
-              children: [],
             },
             {
               code: "tumor-tissue",
@@ -991,7 +977,6 @@ export const FACETS: FacetPanelView = {
               count: 114,
               selected: false,
               href: "/research?q=tissue%3Atumor-tissue",
-              children: [],
             },
             {
               code: "normal-tissue",
@@ -1000,7 +985,6 @@ export const FACETS: FacetPanelView = {
               count: 55,
               selected: false,
               href: "/research?q=tissue%3Anormal-tissue",
-              children: [],
             },
             {
               code: "pbmc",
@@ -1009,7 +993,6 @@ export const FACETS: FacetPanelView = {
               count: 25,
               selected: false,
               href: "/research?q=tissue%3Apbmc",
-              children: [],
             },
             {
               code: "bone-marrow",
@@ -1018,12 +1001,10 @@ export const FACETS: FacetPanelView = {
               count: 19,
               selected: false,
               href: "/research?q=tissue%3Abone-marrow",
-              children: [],
             },
           ],
           moreHref: "/research?facet=tissue",
           range: null,
-          codeEntry: null,
         },
       ],
     },
@@ -1047,7 +1028,6 @@ export const FACETS: FacetPanelView = {
               count: 143,
               selected: false,
               href: "/research?q=experimental-method%3Arna-seq",
-              children: [],
             },
             {
               code: "wes",
@@ -1056,7 +1036,6 @@ export const FACETS: FacetPanelView = {
               count: 120,
               selected: false,
               href: "/research?q=experimental-method%3Awes",
-              children: [],
             },
             {
               code: "targeted-dna-sequencing",
@@ -1065,7 +1044,6 @@ export const FACETS: FacetPanelView = {
               count: 74,
               selected: false,
               href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
-              children: [],
             },
             {
               code: "wgs",
@@ -1074,7 +1052,6 @@ export const FACETS: FacetPanelView = {
               count: 70,
               selected: false,
               href: "/research?q=experimental-method%3Awgs",
-              children: [],
             },
             {
               code: "scrna-seq",
@@ -1083,12 +1060,10 @@ export const FACETS: FacetPanelView = {
               count: 56,
               selected: false,
               href: "/research?q=experimental-method%3Ascrna-seq",
-              children: [],
             },
           ],
           moreHref: "/research?facet=experimental-method",
           range: null,
-          codeEntry: null,
         },
         {
           code: "platform",
@@ -1106,7 +1081,6 @@ export const FACETS: FacetPanelView = {
               count: 127,
               selected: false,
               href: "/research?q=platform%3Aillumina-novaseq-6000",
-              children: [],
             },
             {
               code: "illumina-hiseq-2500",
@@ -1115,7 +1089,6 @@ export const FACETS: FacetPanelView = {
               count: 103,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2500",
-              children: [],
             },
             {
               code: "illumina-hiseq-2000",
@@ -1124,7 +1097,6 @@ export const FACETS: FacetPanelView = {
               count: 61,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2000",
-              children: [],
             },
             {
               code: "illumina-miseq",
@@ -1133,7 +1105,6 @@ export const FACETS: FacetPanelView = {
               count: 23,
               selected: false,
               href: "/research?q=platform%3Aillumina-miseq",
-              children: [],
             },
             {
               code: "illumina-hiseq-x-ten",
@@ -1142,12 +1113,10 @@ export const FACETS: FacetPanelView = {
               count: 21,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-x-ten",
-              children: [],
             },
           ],
           moreHref: "/research?facet=platform",
           range: null,
-          codeEntry: null,
         },
       ],
     },
@@ -1178,7 +1147,6 @@ export const REFINED_FACETS: FacetPanelView = {
             unit: null,
             presets: windows("all"),
           },
-          codeEntry: null,
         },
         {
           code: "date_modified",
@@ -1196,7 +1164,6 @@ export const REFINED_FACETS: FacetPanelView = {
             unit: null,
             presets: windows(null),
           },
-          codeEntry: null,
         },
         {
           code: "access-criteria",
@@ -1214,7 +1181,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 348,
               selected: true,
               href: "/research",
-              children: [],
             },
             {
               code: "unrestricted-access",
@@ -1223,7 +1189,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 80,
               selected: false,
               href: "/research?q=access-criteria%3Aunrestricted-access",
-              children: [],
             },
             {
               code: "controlled-access-type-2",
@@ -1232,12 +1197,10 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 2,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-2",
-              children: [],
             },
           ],
           moreHref: null,
           range: null,
-          codeEntry: null,
         },
       ],
     },
@@ -1246,9 +1209,9 @@ export const REFINED_FACETS: FacetPanelView = {
       label: "対象者",
       facets: [
         {
-          code: "disease-icd10",
-          label: "疾患 (ICD10)",
-          kind: "vocabulary",
+          code: "disease",
+          label: "疾患",
+          kind: "disease",
           expanded: false,
           find: "",
           closeHref: null,
@@ -1260,8 +1223,7 @@ export const REFINED_FACETS: FacetPanelView = {
               maker: null,
               count: 33,
               selected: false,
-              href: "/research?q=disease-icd10%3AC34",
-              children: [],
+              href: "/research?q=disease%3AC34",
             },
             {
               code: "C18",
@@ -1269,8 +1231,7 @@ export const REFINED_FACETS: FacetPanelView = {
               maker: null,
               count: 31,
               selected: false,
-              href: "/research?q=disease-icd10%3AC18",
-              children: [],
+              href: "/research?q=disease%3AC18",
             },
             {
               code: "C22",
@@ -1278,8 +1239,7 @@ export const REFINED_FACETS: FacetPanelView = {
               maker: null,
               count: 23,
               selected: false,
-              href: "/research?q=disease-icd10%3AC22",
-              children: [],
+              href: "/research?q=disease%3AC22",
             },
             {
               code: "C16",
@@ -1287,8 +1247,7 @@ export const REFINED_FACETS: FacetPanelView = {
               maker: null,
               count: 20,
               selected: false,
-              href: "/research?q=disease-icd10%3AC16",
-              children: [],
+              href: "/research?q=disease%3AC16",
             },
             {
               code: "C50",
@@ -1296,13 +1255,11 @@ export const REFINED_FACETS: FacetPanelView = {
               maker: null,
               count: 17,
               selected: false,
-              href: "/research?q=disease-icd10%3AC50",
-              children: [],
+              href: "/research?q=disease%3AC50",
             },
           ],
-          moreHref: "/research?facet=disease-icd10",
+          moreHref: "/research?facet=disease",
           range: null,
-          codeEntry: null,
         },
         {
           code: "subject-count",
@@ -1320,7 +1277,6 @@ export const REFINED_FACETS: FacetPanelView = {
             unit: null,
             presets: [],
           },
-          codeEntry: null,
         },
       ],
     },
@@ -1344,7 +1300,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 158,
               selected: false,
               href: "/research?q=tissue%3Aperipheral-blood",
-              children: [],
             },
             {
               code: "tumor-tissue",
@@ -1353,7 +1308,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 114,
               selected: false,
               href: "/research?q=tissue%3Atumor-tissue",
-              children: [],
             },
             {
               code: "normal-tissue",
@@ -1362,7 +1316,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 55,
               selected: false,
               href: "/research?q=tissue%3Anormal-tissue",
-              children: [],
             },
             {
               code: "pbmc",
@@ -1371,7 +1324,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 25,
               selected: false,
               href: "/research?q=tissue%3Apbmc",
-              children: [],
             },
             {
               code: "bone-marrow",
@@ -1380,12 +1332,10 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 19,
               selected: false,
               href: "/research?q=tissue%3Abone-marrow",
-              children: [],
             },
           ],
           moreHref: "/research?facet=tissue",
           range: null,
-          codeEntry: null,
         },
       ],
     },
@@ -1409,7 +1359,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 143,
               selected: false,
               href: "/research?q=experimental-method%3Arna-seq",
-              children: [],
             },
             {
               code: "wes",
@@ -1418,7 +1367,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 120,
               selected: false,
               href: "/research?q=experimental-method%3Awes",
-              children: [],
             },
             {
               code: "targeted-dna-sequencing",
@@ -1427,7 +1375,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 74,
               selected: false,
               href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
-              children: [],
             },
             {
               code: "wgs",
@@ -1436,7 +1383,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 70,
               selected: false,
               href: "/research?q=experimental-method%3Awgs",
-              children: [],
             },
             {
               code: "scrna-seq",
@@ -1445,12 +1391,10 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 56,
               selected: false,
               href: "/research?q=experimental-method%3Ascrna-seq",
-              children: [],
             },
           ],
           moreHref: "/research?facet=experimental-method",
           range: null,
-          codeEntry: null,
         },
         {
           code: "platform",
@@ -1468,7 +1412,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 127,
               selected: false,
               href: "/research?q=platform%3Aillumina-novaseq-6000",
-              children: [],
             },
             {
               code: "illumina-hiseq-2500",
@@ -1477,7 +1420,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 103,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2500",
-              children: [],
             },
             {
               code: "illumina-hiseq-2000",
@@ -1486,7 +1428,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 61,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2000",
-              children: [],
             },
             {
               code: "illumina-miseq",
@@ -1495,7 +1436,6 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 23,
               selected: false,
               href: "/research?q=platform%3Aillumina-miseq",
-              children: [],
             },
             {
               code: "illumina-hiseq-x-ten",
@@ -1504,12 +1444,10 @@ export const REFINED_FACETS: FacetPanelView = {
               count: 21,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-x-ten",
-              children: [],
             },
           ],
           moreHref: "/research?facet=platform",
           range: null,
-          codeEntry: null,
         },
       ],
     },

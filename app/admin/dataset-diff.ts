@@ -53,6 +53,17 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
         && row.unit === other.unit && row.note === other.note
     }))
   }
+  if (a.kind === "disease" && b.kind === "disease") {
+    if (a.state !== b.state) return false
+    // The order of the rows is part of the value: they are read down the page
+    // in the order somebody put them in, the same as the numbers.
+    return a.state !== "value"
+      || (a.diseases.length === b.diseases.length && a.diseases.every((row, at) => {
+        const other = b.diseases[at]
+        return row.nameJa === other?.nameJa && row.nameEn === other.nameEn
+          && sameStrings(row.termIds, other.termIds)
+      }))
+  }
   return false
 }
 

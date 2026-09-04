@@ -157,6 +157,73 @@ describe("reading a dataset back off the form", () => {
     expect(result.content.values[0]?.value).toEqual({ kind: "number", values: { state: "unknown" } })
   })
 
+  it("keeps a disease that names no term, which is what the type is for", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "disease",
+        value: {
+          kind: "disease",
+          state: "value",
+          diseases: [{ termIds: [], nameJa: "NASH", nameEn: "  NASH  " }],
+        },
+      }]
+    }), UNITS)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.content.values[0]?.value).toEqual({
+      kind: "disease",
+      diseases: {
+        state: "value",
+        value: [{ termIds: [], nameJa: "NASH", nameEn: "NASH" }],
+      },
+    })
+  })
+
+  it("reads a name written in one language only as one name, not as an empty other", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "disease",
+        value: {
+          kind: "disease",
+          state: "value",
+          diseases: [{ termIds: ["c9c6d5e2-1f1d-4c17-9a2a-0a3a2c5f6b71"], nameJa: "肺腺がん", nameEn: "" }],
+        },
+      }]
+    }), UNITS)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.content.values[0]?.value).toEqual({
+      kind: "disease",
+      diseases: {
+        state: "value",
+        value: [{
+          termIds: ["c9c6d5e2-1f1d-4c17-9a2a-0a3a2c5f6b71"],
+          nameJa: "肺腺がん",
+          nameEn: null,
+        }],
+      },
+    })
+  })
+
+  it("leaves out a disease row nobody filled in, and the slot with it", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "disease",
+        value: {
+          kind: "disease",
+          state: "value",
+          diseases: [{ termIds: [], nameJa: "   ", nameEn: "" }],
+        },
+      }]
+    }), UNITS)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.content.values).toEqual([])
+  })
+
   it("reads an unwritten date as no date rather than as an empty one", () => {
     const result = datasetContentOf(form(), UNITS)
 
@@ -213,6 +280,42 @@ describe("putting a dataset on the form", () => {
     expect(emptyValueInput("access-criteria", "vocabulary")).toEqual({
       keyId: "access-criteria",
       value: { kind: "vocabulary", state: "value", termIds: [] },
+    })
+    // A row to write in, naming nothing: the identifiers are what a curator
+    // looks up afterwards, and a disease may end with none.
+    expect(emptyValueInput("disease", "disease")).toEqual({
+      keyId: "disease",
+      value: {
+        kind: "disease",
+        state: "value",
+        diseases: [{ termIds: [], nameJa: "", nameEn: "" }],
+      },
+    })
+  })
+
+  it("shows a disease as its terms and the names somebody wrote", () => {
+    const content: DatasetContent = {
+      releaseDate: null,
+      fileSelection: [],
+      values: [{
+        keyId: "disease",
+        value: {
+          kind: "disease",
+          diseases: {
+            state: "value",
+            value: [{ termIds: ["term-a"], nameJa: null, nameEn: "NASH" }],
+          },
+        },
+      }],
+      experiments: [],
+    }
+
+    // A name the article did not write in one language comes back as an empty
+    // box rather than as the other language's word.
+    expect(datasetContentInput(content).values[0]?.value).toEqual({
+      kind: "disease",
+      state: "value",
+      diseases: [{ termIds: ["term-a"], nameJa: "", nameEn: "NASH" }],
     })
   })
 })

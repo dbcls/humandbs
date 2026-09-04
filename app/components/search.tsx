@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Form, Link, useSubmit } from "react-router"
+import { Form, Link } from "react-router"
 
 import {
   BAND_FILL,
@@ -22,6 +22,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
+import { useSearchAsTyped } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type { SortKey } from "~/search/query.server"
 import { defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
@@ -52,9 +53,6 @@ import { Card, Crumbs, Page, PageLinks } from "./page"
  * page, and the rule that asks for a visible edge is there for the fields that
  * look like nothing until you find them.
  */
-/** How long the typing has to stop before a listing searches for itself. */
-export const SEARCH_AFTER_TYPING = 400
-
 /**
  * Three depths of field, and **the press is the same 36px in all of them**
  * (`docs/ui.md`). That is what sets the floor: `compact` is 38.4px, which is
@@ -118,13 +116,8 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const runSearch = useSubmit()
-  const form = useRef<HTMLFormElement>(null)
+  const { form, field: typed } = useSearchAsTyped({ action, enabled: searchAsTyped })
   const field = useRef<HTMLInputElement>(null)
-  const waiting = useRef<number | undefined>(undefined)
-  // Kana is typed as several keystrokes that are not yet a word; searching for
-  // the half-written form of it answers about something nobody asked for.
-  const composing = useRef(false)
 
   /*
     The box is uncontrolled, so React does not write a new `value` into it —
@@ -139,20 +132,6 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
     if (input === null || input === document.activeElement) return
     if (input.value !== value) input.value = value
   }, [value])
-
-  function searchSoon() {
-    if (!searchAsTyped) return
-    window.clearTimeout(waiting.current)
-    waiting.current = window.setTimeout(() => {
-      const fields = form.current
-      if (composing.current || fields === null) return
-      const asked = new FormData(fields)
-      // An empty field is no condition at all, and an address is easier to read
-      // and to share without the parts of it that say nothing.
-      for (const [key, given] of [...asked]) if (given === "") asked.delete(key)
-      void runSearch(asked, { method: "get", action, replace: true, preventScrollReset: true })
-    }, SEARCH_AFTER_TYPING)
-  }
 
   return (
     // The button sits inside the field rather than beside it, the way v1 draws
@@ -178,12 +157,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
         defaultValue={value}
         aria-label={label}
         placeholder={placeholder}
-        onChange={searchSoon}
-        onCompositionStart={() => { composing.current = true }}
-        onCompositionEnd={() => {
-          composing.current = false
-          searchSoon()
-        }}
+        {...typed}
         // The ring goes on the edge of the fill, as it does on a bordered input
         // (`form.tsx` の `CONTROL`): the depth of this field is 38.4px, and a
         // ring standing 2px off a fractional edge is drawn on a different
@@ -388,7 +362,23 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
           <li key={`${condition.field ?? ""}\u0000${condition.value}`}>
             <Chip
               {...(condition.field === null ? {} : { field: condition.field })}
-              value={condition.value}
+              value={(
+                <>
+                  {/*
+                    **The code leads, as it does on the panel** — the two are
+                    the same value drawn twice, and a reader looking for what
+                    they chose reads down one column of codes rather than
+                    hunting for one at the end of a heading that wrapped.
+                  */}
+                  {condition.code !== null && (
+                    <>
+                      <code className="mr-1 font-mono text-ink-muted">{condition.code}</code>
+                      {" "}
+                    </>
+                  )}
+                  {condition.value}
+                </>
+              )}
               to={condition.href}
               remove={messages.removeCondition(
                 condition.field === null

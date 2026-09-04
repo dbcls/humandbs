@@ -314,8 +314,18 @@ async function usageOfTerms(
   return new Map(rows.rows.map((row) => [row.term_id, row.n]))
 }
 
+/**
+ * **Two shapes hold identities.** A vocabulary value keeps them in its own slot;
+ * a disease keeps them inside each disease of its slot, so a path written for
+ * one reads nothing of the other and a term nothing but diseases name would
+ * look free to delete.
+ */
 async function termInUse(db: Executor, termId: string): Promise<boolean> {
-  const match = sql`jsonb_path_exists(content, '$.**.termIds.value[*] ? (@ == $id)', ${JSON.stringify({ id: termId })}::jsonb)`
+  const id = JSON.stringify({ id: termId })
+  const match = sql`(
+    jsonb_path_exists(content, '$.**.termIds.value[*] ? (@ == $id)', ${id}::jsonb)
+    OR jsonb_path_exists(content, '$.**.diseases.value[*].termIds[*] ? (@ == $id)', ${id}::jsonb)
+  )`
   const [published] = await db.select({ hit: sql<number>`1` }).from(datasetContent).where(match).limit(1)
   if (published !== undefined) return true
   const [drafted] = await db
