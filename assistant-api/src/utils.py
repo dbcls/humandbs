@@ -13,17 +13,23 @@ from pathlib import Path
 from urllib.parse import quote
 
 import fitz  # PyMuPDF
+import html2text
 import pymupdf4llm
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
-from langchain_community.document_transformers import Html2TextTransformer
-from langchain_core.documents import Document
 from playwright.async_api import async_playwright
 
 from src.models import ApplicationData, EthicsDocumentInfo
 from src.prompts import load_prompt
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _html_to_markdown(html: str) -> str:
+    converter = html2text.HTML2Text()
+    converter.ignore_links = True
+    converter.ignore_images = True
+    return converter.handle(html)
 
 
 def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
@@ -495,7 +501,7 @@ async def _fetch_with_playwright_impl(
             task_logger.info(f"Successfully navigated to {url}")
             if convert_to_markdown:
                 html = await page.content()
-                text = Html2TextTransformer().transform_documents([Document(page_content=html)])[0].page_content
+                text = _html_to_markdown(html)
             else:
                 # Get only the visible text content directly
                 text = await page.inner_text("body")
