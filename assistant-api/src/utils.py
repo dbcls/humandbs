@@ -171,7 +171,7 @@ async def extract_text_with_ocr(file_path: str, task_id: str = None) -> str:
 
 async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     """Extract application data from PDF file"""
-    from src.services.llm_service import extract_output_from_openai
+    from src.services.google_genai_service import extract_structured_output
 
     # Get application ID for logging
     task_id = None
@@ -179,10 +179,10 @@ async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     # Extract text using the unified function
     pdf_content = await extract_text_from_pdf(file_path, task_id)
 
-    # Extract data using OpenAI
+    # Extract data using Gemini
     prompt = load_prompt("application_form_extraction.txt", pdf_content=pdf_content)
 
-    result = await extract_output_from_openai(prompt, ApplicationData)
+    result = await extract_structured_output(prompt, ApplicationData)
     task_id = result.application_id if result.application_id else None
 
     # 所属機関の長に関しては、所属機関情報が申請書に書かれていないため研究代表者の情報をコピー
@@ -248,15 +248,15 @@ def extract_task_id_from_filename(filename: str) -> str:
 
 async def extract_ethics_document_info(file_path: str) -> EthicsDocumentInfo:
     """Extract ethics document information from PDF file"""
-    from src.services.llm_service import extract_output_from_openai
+    from src.services.google_genai_service import extract_structured_output
 
     # Extract text using the unified function
     pdf_content = await extract_text_from_pdf(file_path)
 
-    # Extract data using OpenAI
+    # Extract data using Gemini
     prompt = load_prompt("ethics_document_extraction.txt", pdf_content=pdf_content)
 
-    result = await extract_output_from_openai(prompt, EthicsDocumentInfo)
+    result = await extract_structured_output(prompt, EthicsDocumentInfo)
     return result
 
 

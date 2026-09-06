@@ -24,6 +24,53 @@ CACHE_ENABLED = os.environ.get("GOOGLE_GENAI_CACHE_ENABLED", "false").lower() ==
 CACHE_DIR = Path(os.environ.get("GOOGLE_GENAI_CACHE_DIR", "work/.cache/genai"))
 
 
+def _build_genai_client() -> genai.Client:
+    scopes = [
+        "https://www.googleapis.com/auth/generative-language",
+        "https://www.googleapis.com/auth/cloud-platform",
+    ]
+    credentials = service_account.Credentials.from_service_account_file(
+        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes
+    )
+    return genai.Client(
+        vertexai=True,
+        project=os.environ.get("GOOGLE_CLOUD_PROJECT_ID"),
+        location=os.environ.get("GOOGLE_GENAI_LOCATION", "asia-northeast1"),
+        credentials=credentials,
+    )
+
+
+def _model_name() -> str:
+    return os.environ.get("GOOGLE_GENAI_MODEL", "gemini-2.5-flash")
+
+
+def _build_contents(prompt: str) -> list[types.Content]:
+    return [types.Content(role="user", parts=[types.Part(text=prompt)])]
+
+
+def _build_generate_content_config(
+    system_message: str | None = None,
+    tools: list[types.Tool] | None = None,
+    response_schema: type[BaseModel] | None = None,
+) -> types.GenerateContentConfig:
+    return types.GenerateContentConfig(
+        system_instruction=system_message,
+        temperature=float(os.environ.get("LLM_TEMPERATURE", 0.2)),
+        seed=0,
+        max_output_tokens=65535,
+        safety_settings=[
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
+        ],
+        tools=tools,
+        thinking_config=types.ThinkingConfig(thinking_budget=-1),
+        response_mime_type="application/json" if response_schema else None,
+        response_schema=response_schema,
+    )
+
+
 def _generate_cache_key(model: str, contents: list, config: types.GenerateContentConfig) -> str:
     """model, contents, configからキャッシュキーを生成する
 
@@ -41,12 +88,11 @@ def _generate_cache_key(model: str, contents: list, config: types.GenerateConten
         [{"role": c.role, "parts": [{"text": p.text} for p in c.parts]} for c in contents], sort_keys=True
     )
 
-    # configはtemperature, seed, max_output_tokens のみ使用
-    config_data = json.dumps(
-        {"temperature": config.temperature, "seed": config.seed, "max_output_tokens": config.max_output_tokens},
-        sort_keys=True,
-        default=str,
-    )
+    config_dict = config.model_dump(mode="python", exclude_none=True)
+    response_schema = config_dict.get("response_schema")
+    if isinstance(response_schema, type) and issubclass(response_schema, BaseModel):
+        config_dict["response_schema"] = response_schema.model_json_schema()
+    config_data = json.dumps(config_dict, sort_keys=True, default=str)
 
     cache_input = f"{model}:{contents_data}:{config_data}"
     return hashlib.sha256(cache_input.encode()).hexdigest()
@@ -156,16 +202,8 @@ async def request_google_genai_api_with_grounding(
         prompt = prompt[:max_length] + "..."
         logger.warning(f"Prompt truncated to {max_length} characters.")
 
-    model = "gemini-2.5-flash"
-
-    contents = []
-
-    if system_message:
-        contents.append(
-            types.Content(role="user", parts=[types.Part(text=system_message)]),
-        )
-
-    contents.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
+    model = _model_name()
+    contents = _build_contents(prompt)
 
     logger.debug(f"System Message: {system_message}" if system_message else "No system message")
     logger.debug(f"User Prompt: {prompt}")
@@ -179,36 +217,8 @@ async def request_google_genai_api_with_grounding(
             types.Tool(google_search=types.GoogleSearch()),
         ]
 
-    scopes = [
-        "https://www.googleapis.com/auth/generative-language",
-        "https://www.googleapis.com/auth/cloud-platform",
-    ]
-    credentials = service_account.Credentials.from_service_account_file(
-        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes
-    )
-
-    client = genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT_ID"),
-        location=os.environ.get("GOOGLE_GENAI_LOCATION", "asia-northeast1"),
-        credentials=credentials,
-    )
-
-    generate_content_config = types.GenerateContentConfig(
-        temperature=float(os.environ.get("LLM_TEMPERATURE", 0.2)),
-        seed=0,
-        max_output_tokens=65535,
-        safety_settings=[
-            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
-            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
-            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
-            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
-        ],
-        tools=tools,
-        thinking_config=types.ThinkingConfig(
-            thinking_budget=-1,
-        ),
-    )
+    client = _build_genai_client()
+    generate_content_config = _build_generate_content_config(system_message=system_message, tools=tools)
 
     # キャッシュキーを生成
     cache_key = _generate_cache_key(model, contents, generate_content_config)
@@ -218,7 +228,8 @@ async def request_google_genai_api_with_grounding(
 
     # キャッシュにない場合は、APIを呼び出す
     if response is None:
-        response = client.models.generate_content(
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=model,
             contents=contents,
             config=generate_content_config,
@@ -264,6 +275,81 @@ async def request_google_genai_api_with_grounding(
     else:
         logger.warning("No response candidates or content found.")
     return response_text, url_list
+
+
+async def query_genai(
+    prompt: str,
+    system_message: str | None = None,
+    task_id: str | None = None,
+) -> str:
+    """Query Google GenAI without grounding."""
+    logger = logging.getLogger(f"app.task.{task_id}") if task_id else default_logger
+    logger.info(f"System Message: {system_message}" if system_message else "No system message")
+    logger.info(f"User Prompt: {prompt}")
+
+    model = _model_name()
+    contents = _build_contents(prompt)
+    config = _build_generate_content_config(system_message=system_message)
+    cache_key = _generate_cache_key(model, contents, config)
+    response = _get_cached_response(cache_key)
+
+    if response is None:
+        client = _build_genai_client()
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=model,
+            contents=contents,
+            config=config,
+        )
+        _save_cached_response(cache_key, response)
+
+    return response.text if response and response.text else ""
+
+
+async def extract_structured_output(
+    prompt: str,
+    output_model: type[BaseModel],
+    system_message: str | None = None,
+    task_id: str | None = None,
+) -> BaseModel | None:
+    """Extract structured output with Google GenAI's native JSON schema support."""
+    max_length = int(1e5)
+    if len(prompt) > max_length:
+        prompt = prompt[:max_length] + "..."
+        default_logger.warning(f"Prompt truncated to {max_length} characters.")
+
+    logger = logging.getLogger(f"app.task.{task_id}") if task_id else default_logger
+    logger.debug(f"System Message: {system_message}" if system_message else "No system message")
+    logger.debug(f"User Prompt: {prompt}")
+
+    model = _model_name()
+    contents = _build_contents(prompt)
+    config = _build_generate_content_config(system_message=system_message, response_schema=output_model)
+    cache_key = _generate_cache_key(model, contents, config)
+
+    try:
+        response = _get_cached_response(cache_key)
+        if response is None:
+            client = _build_genai_client()
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=model,
+                contents=contents,
+                config=config,
+            )
+            _save_cached_response(cache_key, response)
+
+        parsed = getattr(response, "parsed", None)
+        if isinstance(parsed, output_model):
+            return parsed
+        if parsed is not None:
+            return output_model.model_validate(parsed)
+        if response.text:
+            return output_model.model_validate_json(response.text)
+        logger.warning("No structured response content found.")
+    except Exception:
+        logger.exception("Error querying Google GenAI")
+    return None
 
 
 async def extract_output_from_genai(
@@ -324,6 +410,74 @@ async def extract_output_from_genai(
             continue
         return None, None
 
+    return None, None
+
+
+async def suggest_icd10_code_list(prompt: str, task_id: str | None = None) -> list[str]:
+    """Suggest ICD-10 codes based on the prompt."""
+    from src.models import ICD10Suggestion
+    from src.utils import icd10_canonicalized_text
+
+    result = await extract_structured_output(prompt, ICD10Suggestion, task_id=task_id)
+    if not result:
+        return []
+    return [icd10_canonicalized_text(code) for code in result.icd10_code_list]
+
+
+async def translate_research_abstract_sentences(
+    source_sentences: list[str],
+    task_id: str | None = None,
+) -> list[str]:
+    """Translate sentence-split English abstract text into Japanese."""
+    from src.models import ResearchAbstractSentenceTranslationList
+
+    if not source_sentences:
+        return []
+
+    sentence_list_text = "\n".join([f"* {sentence}" for sentence in source_sentences])
+    prompt = load_prompt(
+        "research_abstract_translation.txt",
+        source_sentences=sentence_list_text,
+    )
+
+    result = await extract_structured_output(prompt, ResearchAbstractSentenceTranslationList, task_id=task_id)
+    if not result:
+        return []
+    return result.translated_sentences
+
+
+async def check_icd10_target_relevance(
+    icd10_code_list: list[str],
+    provided_data_target_jp: str | None,
+    provided_data_target_en: str | None,
+    task_id: str | None = None,
+) -> tuple[bool | None, str | None]:
+    """Determine whether ICD-10 codes are relevant to the provided data target."""
+    from src.models import ICD10TargetRelevance
+    from src.utils import get_icd10_description
+
+    if not icd10_code_list or (not provided_data_target_jp and not provided_data_target_en):
+        return None, None
+
+    icd10_with_descriptions = []
+    for code in icd10_code_list:
+        description = get_icd10_description(code)
+        icd10_with_descriptions.append(f"{code}: {description}" if description else code)
+
+    target_text_parts = []
+    if provided_data_target_jp:
+        target_text_parts.append(f"日本語: {provided_data_target_jp}")
+    if provided_data_target_en:
+        target_text_parts.append(f"英語: {provided_data_target_en}")
+
+    prompt = load_prompt(
+        "icd10_target_relevance.txt",
+        icd10_text="\n".join(icd10_with_descriptions),
+        target_text="\n".join(target_text_parts),
+    )
+    result = await extract_structured_output(prompt, ICD10TargetRelevance, task_id=task_id)
+    if result:
+        return result.is_relevant, result.reason
     return None, None
 
 

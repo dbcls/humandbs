@@ -577,7 +577,7 @@ class ICD10TargetRelevance(BaseModel):
 
 
 class ICD10Suggestion(BaseModel):
-    icd10_code_list: list[str] = Field(..., description="ICD-10 codes suggested by OpenAI")
+    icd10_code_list: list[str] = Field(..., description="ICD-10 codes")
 
 
 class ResearchInfoSuggestionResult(ICD10Suggestion):

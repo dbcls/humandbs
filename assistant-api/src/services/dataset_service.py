@@ -14,7 +14,7 @@ from src.models import (
     Similarity,
 )
 from src.prompts import load_prompt
-from src.services.llm_service import extract_output_from_openai
+from src.services.google_genai_service import extract_structured_output
 from src.utils import humandbs_web_base_url, icd10_canonicalized_text
 
 logger = logging.getLogger("dataset_service")
@@ -218,7 +218,7 @@ async def analyze_dataset(
         )
 
     """Summarize dataset information from its URL"""
-    # Summarize dataset using OpenAI
+    # Summarize dataset
     prompt = load_prompt(
         "dataset_summary.txt",
         dataset_id=dataset_id,
@@ -226,7 +226,7 @@ async def analyze_dataset(
     )
 
     system_message = load_prompt("dataset_summary_system_message.txt").strip()
-    summary = await extract_output_from_openai(
+    summary = await extract_structured_output(
         prompt,
         DataSetSummary,
         system_message=system_message,
@@ -239,7 +239,7 @@ async def analyze_dataset(
         dataset_analysis_method_list=summary.analysis_method_list,
     )
 
-    analysis_method_similarity = await extract_output_from_openai(prompt, Similarity, task_id=task_id)
+    analysis_method_similarity = await extract_structured_output(prompt, Similarity, task_id=task_id)
 
     paper_analysis_method_list = [method for paper in paper_info_list for method in paper.analysis_method_list]
 
@@ -248,7 +248,7 @@ async def analyze_dataset(
         paper_analysis_method_list=paper_analysis_method_list,
         dataset_analysis_method_list=summary.analysis_method_list,
     )
-    paper_similarity = await extract_output_from_openai(prompt, Similarity, task_id=task_id)
+    paper_similarity = await extract_structured_output(prompt, Similarity, task_id=task_id)
 
     purpose_similarity_icd10 = check_similarity_of_icd10_code_list(purpose_icd10_code_list, summary.icd10_code_list)
     paper_similarity_icd10 = check_similarity_of_icd10_code_list(paper_icd10_code_list, summary.icd10_code_list)

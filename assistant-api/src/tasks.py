@@ -21,8 +21,11 @@ from src.prompts import load_prompt
 from src.services.dataset_service import analyze_dataset
 from src.services.email_check import validate_email
 from src.services.ethics_document_validator import EthicsDocumentValidator
-from src.services.google_genai_service import investigate_researcher_history
-from src.services.llm_service import suggest_icd10_code_list, translate_research_abstract_sentences
+from src.services.google_genai_service import (
+    investigate_researcher_history,
+    suggest_icd10_code_list,
+    translate_research_abstract_sentences,
+)
 from src.services.research_plan_validator import ResearchPlanValidator
 from src.services.research_service import get_paper_info
 from src.services.submission_application_checks import run_submission_application_checks

@@ -10,8 +10,11 @@ from src.address_validator import AddressValidator
 from src.models import AddressValidationResult, PersonalInfo, ResearcherVerificationResult
 from src.phone_validator import PhoneValidationResult, PhoneValidator
 from src.prompts import load_prompt
-from src.services.google_genai_service import extract_output_from_genai, retrieve_original_url
-from src.services.llm_service import extract_output_from_openai
+from src.services.google_genai_service import (
+    extract_output_from_genai,
+    extract_structured_output,
+    retrieve_original_url,
+)
 from src.utils import (
     add_text_fragment_to_url,
     domain_matches,
@@ -445,7 +448,7 @@ async def verify_with_researcher_page(
                 None, description="The last year when the page content was updated, if available"
             )
 
-        profile_check_result = await extract_output_from_openai(
+        profile_check_result = await extract_structured_output(
             load_prompt(
                 "email_affiliation_check.txt",
                 researcher_name_en=researcher_name_en,
@@ -459,7 +462,7 @@ async def verify_with_researcher_page(
         )
 
         if not profile_check_result:
-            logger.warning(f"Failed to extract profile check result from OpenAI for {url}")
+            logger.warning(f"Failed to extract profile check result from Gemini for {url}")
             continue
 
         # ドメインを見て、組織の公式ページかどうかを確認する。

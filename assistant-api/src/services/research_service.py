@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from src.models import PaperInfoExtractionResult, ResearchInfo, ResearchInfoSuggestionResult
 from src.prompts import load_prompt
-from src.services.llm_service import extract_output_from_openai
+from src.services.google_genai_service import extract_structured_output
 from src.utils import fetch_with_playwright, get_search_response, get_task_logger, icd10_canonicalized_text
 
 logger = logging.getLogger("research_service")
@@ -41,7 +41,7 @@ async def search_paper_by_title(title: str, task_id: str = None) -> list[dict[st
         task_logger.error(f"Failed to fetch HTML content for URL: {first_result['link']}")
         return None
 
-    extraction_result = await extract_output_from_openai(
+    extraction_result = await extract_structured_output(
         load_prompt("paper_info_extraction_from_web.txt", html=html),
         PaperInfoExtractionResult,
         task_id,
@@ -79,7 +79,7 @@ async def get_paper_info(
     if not abstract:
         abstract = ""
 
-    suggestion_result = await extract_output_from_openai(
+    suggestion_result = await extract_structured_output(
         load_prompt("paper_info_suggestion.txt", title=title, abstract=abstract),
         ResearchInfoSuggestionResult,
         task_id,
@@ -195,7 +195,7 @@ async def fetch_from_doi(doi: str) -> dict[str, Any] | None:
                                     description="抽出された論文の概要",
                                 )
 
-                            extraction_result = await extract_output_from_openai(
+                            extraction_result = await extract_structured_output(
                                 load_prompt("paper_abstract_extraction.txt", html=html),
                                 ExtractionResult,
                                 task_id=None,

@@ -9,8 +9,7 @@ from src.models import (
     ResearchPlanValidationResult,
 )
 from src.prompts import load_prompt
-from src.services.google_genai_service import extract_output_from_genai
-from src.services.llm_service import extract_output_from_openai
+from src.services.google_genai_service import extract_output_from_genai, extract_structured_output
 from src.utils import extract_text_from_pdf, get_task_logger
 
 
@@ -38,7 +37,7 @@ class ResearchPlanValidator:
             research_plan_text=research_plan_text,
         )
 
-        consistency_result = await extract_output_from_openai(prompt, ResearchPlanConsistencyCheckResult)
+        consistency_result = await extract_structured_output(prompt, ResearchPlanConsistencyCheckResult)
 
         if consistency_result:
             if consistency_result.researcher_affiliation_matches == "full_match":
@@ -53,7 +52,7 @@ class ResearchPlanValidator:
                 consistency_result.researcher_affiliation_message = f"{consistency_message}\n\n{consistency_result.researcher_affiliation_message}\n\n{web_affiliation_message}\n"
 
         prompt = load_prompt("research_plan_extraction.txt", research_plan_text=research_plan_text)
-        extraction_result = await extract_output_from_openai(prompt, ResearchPlanExtractionResult)
+        extraction_result = await extract_structured_output(prompt, ResearchPlanExtractionResult)
 
         return ResearchPlanValidationResult(**consistency_result.model_dump(), **extraction_result.model_dump())
 
