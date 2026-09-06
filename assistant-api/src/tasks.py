@@ -13,8 +13,10 @@ from src.models import (
     ApplicationVerificationData,
     EmailDomainConsistencyResult,
     EthicsDocumentInfo,
+    PaperInfo,
     ResearchAbstractSentencePair,
     ResearchAbstractTranslation,
+    ResearchInfo,
 )
 from src.phone_validator import PhoneValidator
 from src.prompts import load_prompt
@@ -178,6 +180,51 @@ def _split_english_abstract_into_sentences(research_abstract: str) -> list[str]:
     return merged_sentences if merged_sentences else [normalized]
 
 
+def _complement_research_info(paper_info: PaperInfo) -> ResearchInfo:
+    paper_id = paper_info.doi or (f"PMID:{paper_info.pmid}" if paper_info.pmid else None)
+    title = paper_info.title or ""
+    return ResearchInfo(
+        title=title,
+        summary_jp=title or None,
+        paper_id=paper_id,
+        authors=[],
+        abstract="",
+        url=f"https://doi.org/{paper_info.doi}" if paper_info.doi else "",
+        icd10_code_list=[],
+        analysis_method_list=[],
+    )
+
+
+async def get_research_info_list(
+    related_paper_list: list[PaperInfo], task_id: str, logger: logging.Logger
+) -> list[ResearchInfo]:
+    retrieval_tasks: list[tuple[int, Any]] = []
+    research_info_list = [_complement_research_info(paper_info) for paper_info in related_paper_list]
+
+    for index, paper_info in enumerate(related_paper_list):
+        if paper_info.doi:
+            retrieval_task = get_paper_info(paper_info.doi, paper_info.title, "doi", task_id=task_id)
+        elif paper_info.pmid:
+            retrieval_task = get_paper_info(paper_info.pmid, paper_info.title, "pubmed", task_id=task_id)
+        elif paper_info.title:
+            retrieval_task = get_paper_info(None, paper_info.title, "title", task_id=task_id)
+        else:
+            logger.warning("Using best-effort paper information: %s", paper_info)
+            continue
+        retrieval_tasks.append((index, retrieval_task))
+
+    retrieval_results = await asyncio.gather(
+        *(task for _, task in retrieval_tasks), return_exceptions=True
+    )
+    for (index, _), research_info in zip(retrieval_tasks, retrieval_results):
+        if isinstance(research_info, BaseException) or research_info is None:
+            logger.warning("Using best-effort paper information: %s", related_paper_list[index])
+            continue
+        research_info_list[index] = research_info
+
+    return research_info_list
+
+
 async def analyze_datasets_for_application(
     dataset_id_list: list[str],
     abstract_icd10_list: list[str],
@@ -285,24 +332,11 @@ async def process_application_task(
                 )
             task_logger.info("Research abstract translated to Japanese with sentence alignment")
 
-        research_info_tasks = []
-        for related_paper_info in application_data.related_paper_list:
-            research_info = None
-            if related_paper_info.doi:
-                research_info = get_paper_info(related_paper_info.doi, related_paper_info.title, "doi", task_id=task_id)
-            elif related_paper_info.pmid:
-                research_info = get_paper_info(
-                    related_paper_info.pmid, related_paper_info.title, "pubmed", task_id=task_id
-                )
-            elif related_paper_info.title:
-                research_info = get_paper_info(None, related_paper_info.title, "title", task_id=task_id)
-            if not research_info:
-                task_logger.warning(f"Invalid paper info: {related_paper_info}")
-            else:
-                research_info_tasks.append(research_info)
-
-        research_info_results = await asyncio.gather(*research_info_tasks)
-        research_info_list = [ri for ri in research_info_results if ri]
+        research_info_list = await get_research_info_list(
+            application_data.related_paper_list,
+            task_id,
+            task_logger,
+        )
         task_logger.info(f"Research information retrieved: {research_info_list}")
 
         # Analyze datasets using the reusable function
