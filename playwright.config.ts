@@ -20,6 +20,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
+  // **What is being driven may be across a network.** The default of five
+  // seconds is a local figure; a deployment answering a search takes longer
+  // than that often enough to fail a scenario that is not broken.
+  expect: { timeout: 15_000 },
   reporter: "list",
   use: {
     baseURL: process.env.HUMANDBS_E2E_BASE_URL ?? "http://proxy:8080",

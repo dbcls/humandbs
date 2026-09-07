@@ -121,7 +121,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const { form, field: typed } = useSearchAsTyped({ action, name, enabled: searchAsTyped })
+  const { form, onSubmit, field: typed } = useSearchAsTyped({ action, name, enabled: searchAsTyped })
   const field = useRef<HTMLInputElement>(null)
 
   /*
@@ -144,6 +144,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
     // unrelated circle. The field keeps room for it on the right.
     <Form
       ref={form}
+      onSubmit={onSubmit}
       method="get"
       action={action}
       role="search"

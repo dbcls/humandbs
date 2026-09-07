@@ -69,6 +69,15 @@ export function useAsk(action: string, box: string | null = null): Ask {
 export interface SearchAsTyped {
   /** Put on the `<Form>`, which is what is read and submitted. */
   form: React.RefObject<HTMLFormElement | null>
+  /**
+   * Put on the `<Form>` beside the ref.
+   *
+   * **A submission already answers what the timer was waiting to ask**, so the
+   * timer is dropped rather than left to fire. Left standing it asks after the
+   * reader has gone somewhere else, and because it replaces the history entry
+   * it takes them back to this listing from wherever they had reached.
+   */
+  onSubmit: () => void
   /** Spread onto the one field the form is driven by. */
   field: {
     onChange: () => void
@@ -126,6 +135,9 @@ export function useSearchAsTyped({ action, name, enabled = true }: {
 
   return {
     form,
+    onSubmit: () => {
+      window.clearTimeout(waiting.current)
+    },
     field: {
       onChange: soon,
       onCompositionStart: () => { composing.current = true },
