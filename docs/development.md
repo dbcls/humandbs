@@ -163,6 +163,18 @@ schema を落とすと `db:grants` が張った権限も消えるが、`db:push`
 作り直すまでの間も検索は動く (この規模で 100 倍ほど遅くなる)。`pg_dump` / `pg_restore` は index の定義を
 そのまま運ぶので、PGroonga のために足す手順は無い。
 
+**`db:push` は enum に値を足せない。** 型そのものが無ければ作るが、**既にある型に値が増えたことは
+反映されない** — 走っても何も言わずに通り、その値を使う書き込みが `22P02` で落ちて初めて分かる。
+schema の enum に値を足したときは psql で入れる。
+
+```sql
+ALTER TYPE content_value_type ADD VALUE IF NOT EXISTS 'disease' AFTER 'number';
+```
+
+**位置まで指定する** (`BEFORE` / `AFTER`)。enum の並びは定義順で決まるので、後ろに足しただけだと
+schema が言っている順序と食い違う。**開発用データを入れ直すより先にやる** — 入れ直しのほうが先に
+落ちるので、順番を逆にすると原因が見えにくい。
+
 ## 開発用データを入れる
 
 入力は 3 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを、
