@@ -20,6 +20,10 @@
 **serve する port は dev サーバーと同じ。** proxy の設定を環境ごとに分けないため、`app` の待ち受けは
 どちらでも 1 つの値で、nginx の設定は 1 つしかない。
 
+**圧縮は proxy が掛ける。** 配信するのは HTML と CSS と JS で、**一覧の 1 ページは 946 KB ある** (絞り込み
+パネルが値を全部載せるため)。圧縮すると 101 KB になる。**nginx の image は `gzip` を off で出荷する**ので、
+`docker/nginx/default.conf` の側で立てている。圧縮の水準も既定 (1) では足りず、5 にしてある。
+
 ## image を焼き直さない
 
 source は bind mount のままで、`node_modules` は named volume。**更新は `git pull` と restart で終わり**、

@@ -55,6 +55,7 @@ import {
   Menu,
   MoreLink,
   Note,
+  PANE_LABEL,
   PaneHeading,
   RoundLink,
   type NoteKind,
@@ -305,7 +306,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。帯を使わない。</p>
                 <Heading title="研究一覧" count={`全 ${String(TOTAL)} 件`}>
                   <Button type="button" pill icon={<Icon name="copy" />}>コピー</Button>
-                  <Button type="button" pill icon={<Icon name="download" />}>CSV</Button>
+                  <Button type="button" pill icon={<Icon name="download" />}>TSV</Button>
                   <Button type="button" pill icon={<Icon name="filter" />}>絞り込み</Button>
                 </Heading>
               </div>
@@ -313,7 +314,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <p className="mb-2 text-ink-muted text-sm">
                   切り詰めた箱から全部へ出る道は 3 つで、同じ姿をしている。別の画面へ渡すのが
                   MoreLink (見出しの右端)、一覧の残りをその場で開くのが Clamped、文を刈って
-                  その場で開くのが Excerpt (どちらも表のセル、下の表)。
+                  その場で開くのが Excerpt (どちらも表のセル、下の表)。その場で開く 2 つは、
+                  開いているあいだ chevron が向きを変えて「戻す」を言う。
                 </p>
                 <Heading level="h2" title="News">
                   <MoreLink to="/news">ニュース一覧</MoreLink>
@@ -336,6 +338,16 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <PaneHeading title="絞り込み (start)" rule="start">
                     <span className={CLEAR}>すべて解除</span>
                   </PaneHeading>
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  pane の中の群の名前 (PANE_LABEL)。PaneHeading が pane 自身を名指すのに対し、
+                  これはその中の 1 つの列を名指す — 効いている条件と、facet の箱それぞれ。
+                </p>
+                <div className="flex flex-col gap-2">
+                  <span className={PANE_LABEL}>適用中</span>
+                  <span className={PANE_LABEL}>対象者</span>
                 </div>
               </div>
             </div>

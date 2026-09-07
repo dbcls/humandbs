@@ -132,9 +132,6 @@ export interface ListShell {
   rangeTo: number
   /** How many the other listing matches, or null when there is no query. */
   otherCount: number | null
-  /** Which facet is opened and what its box holds, for the form to carry on. */
-  facet: string | null
-  find: string
   facets: FacetPanelView | null
 }
 
@@ -212,8 +209,6 @@ export async function canonicalRedirect(
     order: isSortOrder(order) ? order : null,
     page: 1,
     size: isPageSize(size) && size !== PAGE_SIZE ? size : null,
-    facet: url.searchParams.get("facet"),
-    find: url.searchParams.get("find"),
   })))
 }
 
@@ -343,8 +338,6 @@ async function listShell(
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
   const requestedSort = request.url.searchParams.get("sort")
   const requestedOrder = request.url.searchParams.get("order")
-  const expanded = request.url.searchParams.get("facet")
-  const find = request.url.searchParams.get("find") ?? ""
   const ast = parsed.ok ? parsed.ast : null
   const sort = isSortKey(requestedSort) ? requestedSort : DEFAULT_SORT
   const order = isSortOrder(requestedOrder) ? requestedOrder : defaultOrder(sort)
@@ -373,8 +366,6 @@ async function listShell(
     rangeFrom: 0,
     rangeTo: 0,
     otherCount: null,
-    facet: expanded,
-    find,
     facets: null,
   }
   if (!parsed.ok) return { shell: empty, hits: [], catalog }
@@ -401,8 +392,6 @@ async function listShell(
       sort: isSortKey(requestedSort) ? requestedSort : null,
       order: isSortOrder(requestedOrder) ? requestedOrder : null,
       size: size === PAGE_SIZE ? null : size,
-      expanded,
-      find,
       today: today(),
     }),
   ])
@@ -414,8 +403,6 @@ async function listShell(
       order: isSortOrder(requestedOrder) ? requestedOrder : null,
       page: 1,
       size: size === PAGE_SIZE ? null : size,
-      facet: expanded,
-      find,
     }))
 
   const held = inForce(ast)

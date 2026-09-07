@@ -19,7 +19,7 @@
  * twice — a mark for the eye and a word for anyone not using one — because a tab
  * that opens unannounced leaves the reader pressing a back button that does
  * nothing. `external` on the button-shaped parts does not mean this: it means an
- * address client-side navigation cannot answer, which the CSV download and the
+ * address client-side navigation cannot answer, which the TSV download and the
  * redirect to the identity provider also are. Those two stay in the same tab and
  * are named here, so that the next `external` written cannot quietly become a
  * third exception.
@@ -76,7 +76,7 @@ const OUTWARD = [
  * without anyone deciding it should.
  */
 const SAME_TAB = [
-  { file: "components/search.tsx", what: "the CSV of a search" },
+  { file: "components/search.tsx", what: "the TSV of a search" },
   { file: "components/layout.tsx", what: "the redirect that signs somebody in" },
 ]
 

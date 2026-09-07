@@ -118,7 +118,7 @@ describe("the research listing", () => {
     expect(view.rows.map((row) => row.humLabel)).toEqual(["hum0001"])
   })
 
-  it("says how many the other listing matches for the same words", async () => {
+  it("says how many the other listing matches for the same conditions", async () => {
     const researchId = await createResearch("hum0001")
     const first = await createDataset(researchId, "JGAD000001", "ATAC-seq")
     const second = await createDataset(researchId, "JGAD000002", "ATAC-seq")
@@ -129,6 +129,34 @@ describe("the research listing", () => {
 
     expect(view.total).toBe(1)
     expect(view.otherCount).toBe(2)
+  })
+
+  /*
+    **It counts the search, not the words in it.** Following it goes to the
+    address the pair of tabs goes to, and that carries every condition in
+    force — so a count taken from the typed words alone would name a number of
+    rows the reader does not find on arriving. The count and the listing it
+    counts are asserted against each other here for that reason.
+  */
+  it("counts the other listing under every condition in force, not the words alone", async () => {
+    const inside = await createResearch("hum0001")
+    const first = await createDataset(inside, "JGAD000001", "ATAC-seq")
+    const second = await createDataset(inside, "JGAD000002", "ATAC-seq")
+    await publish(inside, 1, [first, second], "ゲノム解析")
+    const outside = await createResearch("hum0002")
+    const third = await createDataset(outside, "JGAD000003", "ATAC-seq")
+    await publish(outside, 1, [third], "別の研究")
+    await rebuildSearchDocs(db)
+
+    // ATAC-seq title:ゲノム — the word alone leaves all three datasets.
+    const narrowed = "q=ATAC-seq+title%3A%E3%82%B2%E3%83%8E%E3%83%A0"
+    expect((await researchListPage(request("/research?q=ATAC-seq"))).otherCount).toBe(3)
+
+    const view = await researchListPage(request(`/research?${narrowed}`))
+
+    expect(view.total).toBe(1)
+    expect(view.otherCount).toBe(2)
+    expect((await datasetListPage(request(`/dataset?${narrowed}`))).total).toBe(view.otherCount)
   })
 
   it("leaves the other count out when nothing was searched for", async () => {
@@ -470,17 +498,13 @@ describe("refining a listing", () => {
     expect(view.conditions.map((chip) => chip.href)).toEqual(["/dataset"])
   })
 
-  it("offers the roots and nothing below them, opened or shut", async () => {
+  it("offers the roots and nothing below them", async () => {
     await withDiseases()
 
-    const shut = facetOf(await datasetListPage(request("/dataset")), "disease")
-    expect(shut.values.map((value) => value.code)).toEqual(["C34", "C61"])
-
-    // Opening a facet lifts the ten-value cut. It is not a way down the tree:
-    // C349 is what one of the datasets carries and it is still not offered.
-    const open = facetOf(await datasetListPage(request("/dataset?facet=disease")), "disease")
-    expect(open.expanded).toBe(true)
-    expect(open.values.map((value) => value.code)).toEqual(["C34", "C61"])
+    // Not a way down the tree: C349 is what one of the datasets carries, and
+    // the panel still offers only the root it rolls up to.
+    const disease = facetOf(await datasetListPage(request("/dataset")), "disease")
+    expect(disease.values.map((value) => value.code)).toEqual(["C34", "C61"])
   })
 
   it("keeps a disease that names no code off the panel and in the full text", async () => {
@@ -492,52 +516,10 @@ describe("refining a listing", () => {
     expect((await datasetListPage(request("/dataset?q=NASH"))).rows.map((row) => row.label))
       .toEqual(["JGAD000003"])
   })
-
-  it("looks for a value by its code inside an opened facet", async () => {
-    await withDiseases()
-
-    const view = await datasetListPage(request("/dataset?facet=disease&find=C6"))
-
-    expect(facetOf(view, "disease").values.map((value) => value.code)).toEqual(["C61"])
-  })
-
-  it("rolls a code typed into the box up to the root the panel offers", async () => {
-    await withDiseases()
-
-    // C349 is what the article writes and what a reader has in hand; C34 is
-    // what the panel lists. The point and the case are the writer's.
-    for (const typed of ["C349", "C34.9", "c349"]) {
-      const view = await datasetListPage(request(`/dataset?facet=disease&find=${typed}`))
-      expect(facetOf(view, "disease").values.map((value) => value.code)).toEqual(["C34"])
-    }
-  })
-
-  it("still looks for a word in the heading, which the code path must not swallow", async () => {
-    await withDiseases()
-
-    const one = await datasetListPage(request("/dataset?facet=disease&find=前立腺"))
-    const both = await datasetListPage(request("/dataset?facet=disease&find=悪性新生物"))
-
-    expect(facetOf(one, "disease").values.map((value) => value.code)).toEqual(["C61"])
-    expect(facetOf(both, "disease").values.map((value) => value.code)).toEqual(["C34", "C61"])
-  })
-
-  it("keeps the opened facet on the panel when its box matched nothing", async () => {
-    await withDiseases()
-
-    // The box holds what was typed and the way back out. Dropping the facet
-    // would leave the reader at an address nothing on the page can undo.
-    const view = await datasetListPage(request("/dataset?facet=disease&find=Z998"))
-
-    const disease = facetOf(view, "disease")
-    expect(disease.values).toEqual([])
-    expect(disease.expanded).toBe(true)
-    expect(disease.closeHref).toBe("/dataset")
-  })
 })
 
-describe("a facet with more values than the panel shows", () => {
-  /** A flat vocabulary with one more term than the panel has room for. */
+describe("a facet with more values than stand in its box", () => {
+  /** A flat vocabulary with more terms than the box can hold at once. */
   async function withManyMethods(count: number): Promise<void> {
     const { id: setId } = only(await db.insert(s.vocabularySet)
       .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
@@ -577,16 +559,15 @@ describe("a facet with more values than the panel shows", () => {
     await rebuildSearchDocs(db)
   }
 
-  it("shows ten of them and offers the rest one link away", async () => {
+  /**
+   * The list scrolls inside its box rather than being cut short, so nothing
+   * here decides how much of it the reader can reach.
+   */
+  it("carries every one of them", async () => {
     await withManyMethods(11)
 
-    const shut = facetOf(await datasetListPage(request("/dataset")), "assay")
-    expect(shut.values).toHaveLength(10)
-    expect(shut.moreHref).toBe("/dataset?facet=assay")
-
-    const open = facetOf(await datasetListPage(request("/dataset?facet=assay")), "assay")
-    expect(open.values).toHaveLength(11)
-    expect(open.moreHref).toBeNull()
+    expect(facetOf(await datasetListPage(request("/dataset")), "assay").values)
+      .toHaveLength(11)
   })
 
   it("keeps a chosen value on the panel even when nothing matches it any more", async () => {

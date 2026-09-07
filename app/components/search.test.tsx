@@ -256,7 +256,10 @@ describe("how many rows a page holds", () => {
         rows={50}
       />,
     )
-    expect(html).toContain("sort=dateModified&amp;size=50")
+    expect(html).toContain("sort=datePublished&amp;size=50")
+    // The default ordering names itself by not being written down, which leaves
+    // the link to it carrying the size and nothing else.
+    expect(html).toContain("\"/research?size=50\"")
   })
 
   it("is carried by the box, so searching again keeps it", () => {
@@ -286,7 +289,7 @@ describe("which way the ordering runs", () => {
         rows={null}
       />,
     )
-    expect(html).toContain("\"/research?sort=dateModified&amp;order=asc\"")
+    expect(html).toContain("\"/research?order=asc\"")
     expect(html).toContain("昇順にする")
   })
 
@@ -316,6 +319,19 @@ describe("which way the ordering runs", () => {
     )
     expect(html).toContain("降順にする")
     for (const name of ["更新日", "公開日", "ID"]) expect(html).toContain(name)
+  })
+
+  /*
+    The same rule the size is written under: an address holds what differs from
+    the default, so a reader who asked for nothing is browsing at `/research`
+    and every link on the page says the ordering only when somebody chose one.
+  */
+  it("writes the ordering it is not, and leaves the default out of the address", () => {
+    const html = render(
+      <SortChooser locale="ja" target="research" query="" sort="id" order="asc" rows={null} />,
+    )
+    expect(html).toContain("\"/research?sort=datePublished\"")
+    expect(html).not.toContain("sort=dateModified")
   })
 
   it("survives turning a page", () => {

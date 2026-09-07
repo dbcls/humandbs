@@ -7,17 +7,19 @@
  * shareable by copying the address. Choosing a value and unchoosing it are the
  * same link, because both are just "the search with this condition toggled".
  *
- * What the panel shows of a facet is the ten commonest values. The rest are one
- * link away, at the same address with `?facet=` naming the key — a vocabulary
- * can hold thousands of values and none of them can be worth sending on every
- * search. Only the expanded facet has a box of its own.
+ * **A facet carries every value it has**, and the list scrolls inside the box
+ * it stands in rather than being cut short with a way to the rest. What a way
+ * to the rest would cost is either an address that says something other than
+ * the conditions in force, or a reader without script who cannot reach past
+ * the cut; scrolling costs neither (`docs/public-pages.md` の「絞り込み」).
+ * **The box that narrows the list is drawn in the browser** over the values
+ * already sent (`facet-find.ts`), so it asks nothing of this module.
  *
  * Counts come from [counts.server.ts](../search/counts.server.ts), which is
  * where the rule that a facet is counted with its own condition lifted lives.
  */
 
 import type { Executor } from "~/db/client.server"
-import { icd10Resolve } from "~/icd10/codes"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { makerOf } from "~/public/view.server"
@@ -37,9 +39,6 @@ import type { SearchTarget } from "~/search/query.server"
 import { readSelection, toggleTerm, withoutFacet, withRange } from "~/search/selection"
 
 import { href, listPath, searchQuery } from "./urls"
-
-/** How many values a facet shows before the reader has to open it. */
-export const PANEL_VALUES = 10
 
 export interface FacetValueView {
   code: string
@@ -91,13 +90,8 @@ export interface FacetView {
    * の「絞り込み」).
    */
   kind: "vocabulary" | "number" | "date" | "disease"
+  /** Every value the result carries under this key, the chosen ones first. */
   values: FacetValueView[]
-  /** The address that shows every value of this facet, or null when all are shown. */
-  moreHref: string | null
-  /** Set on the facet named by `?facet=`. */
-  expanded: boolean
-  /** The address without this facet opened. Only on the expanded one. */
-  closeHref: string | null
   /**
    * The address with this facet's own conditions dropped, or null when it has
    * none. **How many values are chosen is not said** — the number beside a
@@ -105,8 +99,6 @@ export interface FacetView {
    * counting something else is read as one of those.
    */
   clearHref: string | null
-  /** What the expanded facet's own box holds. */
-  find: string
   range: FacetRangeView | null
 }
 
@@ -134,41 +126,12 @@ export interface FacetPanelRequest {
   order: string | null
   /** `?size=`, kept for the same reason. `null` is the default size. */
   size: number | null
-  /** `?facet=`: the key whose values are shown in full. */
-  expanded: string | null
-  /** `?find=`: what was typed into the expanded facet's box. */
-  find: string
   /**
    * The calendar day the relative windows are measured back from, `YYYY-MM-DD`.
    * Passed in rather than read from the clock so that the panel a request gets
    * is decided entirely by the request.
    */
   today: string
-}
-
-/** A value is looked for by its code and its label, in whichever language. */
-function matches(find: string, value: { code: string, label: string }): boolean {
-  if (find === "") return true
-  const needle = find.toLowerCase()
-  return value.code.toLowerCase().includes(needle) || value.label.toLowerCase().includes(needle)
-}
-
-/**
- * What the box of an expanded disease facet is looking for.
- *
- * **A code is rolled up to the one the panel offers.** Only the roots of the
- * classification are listed, while what an article writes — and therefore what
- * a reader has in hand — is the code below it: `C340` has to find `C34`, or the
- * box says the facet holds nothing about a disease the data does carry
- * (`docs/public-pages.md` の「絞り込み」). The point and the case are the
- * writer's, so they are not asked about either.
- *
- * **Anything not shaped like a code is looked for as it was typed**, which is
- * what keeps the same box working for a word in either language.
- */
-function rolledUpFind(find: string, values: readonly FacetValueView[]): string {
-  const held = new Set(values.map((value) => value.code))
-  return icd10Resolve(find, (code) => held.has(code)) ?? find
 }
 
 export async function facetPanel(
@@ -179,15 +142,13 @@ export async function facetPanel(
   const selection = readSelection(ast, fields)
   const chosenTerms = (code: string): string[] => selection.terms.get(code) ?? []
 
-  const address = (query: QueryNode | null, opts?: { facet?: string | null, find?: string }) =>
+  const address = (query: QueryNode | null) =>
     href(locale, listPath(target) + searchQuery({
       q: serializeQuery(query),
       sort: request.sort,
       order: request.order,
       page: 1,
       size: request.size,
-      facet: opts?.facet === undefined ? request.expanded : opts.facet,
-      find: opts?.find ?? (request.find === "" ? null : request.find),
     }))
 
   /** The tree a facet is counted against: this search, minus its own condition. */
@@ -259,21 +220,16 @@ export async function facetPanel(
 
   const views = definitions.map((one): FacetView => {
     const code = one.field.code
-    const expanded = request.expanded === code
     const label = catalogLabel(one, locale)
-    const find = expanded ? request.find : ""
     const shell = {
       code,
       label,
       kind: one.field.kind,
-      expanded,
-      find,
-      closeHref: expanded ? address(ast, { facet: null, find: "" }) : null,
       clearHref: selection.terms.has(code) || selection.ranges.has(code)
         ? address(withoutFacet(ast, fields, code))
         : null,
     }
-    const empty = { ...shell, values: [], moreHref: null, range: null }
+    const empty = { ...shell, values: [], range: null }
     if (one.field.kind === "number") {
       const chosenRange = selection.ranges.get(code)
       const span = bounds.get(one.field.keyId)
@@ -307,26 +263,15 @@ export async function facetPanel(
       }
     }
 
-    // The chosen values come first so that opening a facet never pushes one of
-    // them below the cut, where it could not be taken off again.
+    // **The chosen values come first.** The list can be longer than the box it
+    // stands in, and a condition in force that the reader would have to scroll
+    // to find is a filter they cannot see they are under.
     const taken = chosen.map((termCode) => valueOf(termCode, byCode.get(termCode), true))
     const rest = found
       .filter((row) => !chosen.includes(row.code))
       .map((row) => valueOf(row.code, row, false))
-    const all = [...taken, ...rest]
 
-    const needle = one.field.kind === "disease" ? rolledUpFind(find, all) : find
-    const shown = expanded
-      ? all.filter((value) => matches(needle, value))
-      : [...taken, ...rest.slice(0, Math.max(0, PANEL_VALUES - taken.length))]
-
-    return {
-      ...empty,
-      values: shown,
-      moreHref: !expanded && all.length > shown.length
-        ? address(ast, { facet: code, find: "" })
-        : null,
-    }
+    return { ...empty, values: [...taken, ...rest] }
   })
 
   return {
@@ -399,11 +344,7 @@ function dateView(input: {
     label: messagesFor(locale).search.fields[field],
     kind: "date",
     values: [],
-    moreHref: null,
-    expanded: false,
-    closeHref: null,
     clearHref: chosen === undefined ? null : lifted,
-    find: "",
     range: {
       from: writtenBound(chosen?.from),
       to: writtenBound(chosen?.to),
@@ -499,11 +440,6 @@ function categorise(
       facets: [view],
     })
   })
-  // **The expanded facet is drawn whatever its box left.** It holds the box,
-  // what was typed into it and the way back out; dropping it because the search
-  // matched nothing would leave the reader at an address with no control on the
-  // page that can undo it.
   return categories.filter((category) =>
-    category.facets.some((facet) =>
-      facet.values.length > 0 || facet.range !== null || facet.expanded))
+    category.facets.some((facet) => facet.values.length > 0 || facet.range !== null))
 }

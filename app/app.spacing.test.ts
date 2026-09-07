@@ -322,6 +322,29 @@ describe("タブの斜辺", () => {
   })
 })
 
+/**
+ * **件数とページ送りは 1 つのまとまり。** どちらも「いま何ページ目の何件を見ているか」に答えるので、
+ * 同じ行の他のものより近くに立つ (`docs/public-pages.md` の「並びと件数」)。3 つの一覧が同じ組を
+ * 使い、お知らせ一覧だけが窓と 3 つ並べて件数を宙に浮かせていた。
+ */
+describe("一覧の件数とページ送り", () => {
+  it("件数がページ送りと同じ器に立ち、行の他のものより近い", async () => {
+    const owners: string[] = []
+    for (const name of ["components/search.tsx", "routes/news.tsx"]) {
+      const text = await readFile(path.join(ROOT, name), "utf8")
+      for (const found of text.matchAll(/className="([^"]*)">\s*\{counted\}/g)) {
+        owners.push(found[1] ?? "")
+      }
+    }
+
+    // 研究一覧とデータセット一覧が共有する 1 つと、お知らせ一覧の上下 2 つ。
+    expect(owners).toHaveLength(3)
+    for (const one of owners) {
+      expect(one.split(/\s+/)).toContain("gap-2")
+    }
+  })
+})
+
 /** The three numbers the slope is made of, read from where each one lives. */
 async function slope(): Promise<{ width: number, shear: number, radius: number }> {
   const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")

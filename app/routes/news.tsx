@@ -110,7 +110,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
             is not something a reader can see. **It searches as the words are
             typed**, and clearing the box is what lifts the search.
           */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {/*
               Wide enough for the words somebody searches announcements with,
               and no wider: sharing the line with the count and the page links
@@ -130,10 +130,16 @@ export default function News({ loaderData }: Route.ComponentProps) {
               />
             </div>
             {items.length > 0 && (
-              <>
+              // **The gaps say which of them belong together.** The count and
+              // the page links are one thing said twice — both answer "which
+              // page of how many am I looking at" — so they stand a third of
+              // the distance apart that separates them from the box, the way
+              // the two listings the search answers with draw the same pair
+              // (`components/search.tsx`).
+              <div className="flex flex-wrap items-center gap-2">
                 {counted}
                 {pageLinks}
-              </>
+              </div>
             )}
           </div>
 
@@ -143,7 +149,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
                 <Stack gap="normal">
                   <NewsList locale={locale} items={items} dateBeside />
                   {/* The same two, at the end of the page they describe. */}
-                  <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     {counted}
                     {pageLinks}
                   </div>

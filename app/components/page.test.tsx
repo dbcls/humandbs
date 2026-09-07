@@ -1,10 +1,12 @@
+import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { pageWindow, TermLabel, Value } from "./page"
+import { pageWindow, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -175,5 +177,43 @@ describe("a vocabulary value naming a product", () => {
     const html = termLabel("10x Genomics Xenium", "10x Genomics")
     expect(html).toContain(">10x Genomics</span>")
     expect(html).toContain("Xenium")
+  })
+})
+
+/*
+  **The band a table opens with is one line.** The floors below it are measured
+  from the values, so a column whose name is longer than its values had nothing
+  holding it open — and the name wrapped only in the language where it was
+  longer, leaving one table with a band half again as tall as the same table
+  next door.
+*/
+describe("the band a table opens with", () => {
+  function header(headers: ReactNode[]): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <Table headers={headers}><tr><Td>row</Td></tr></Table>,
+    }])
+    const html = renderToStaticMarkup(<Stub initialEntries={["/research"]} />)
+    return html.slice(html.indexOf("<thead"), html.indexOf("</thead>"))
+  }
+
+  it("keeps a name on one line, so the column is at least as wide as it", () => {
+    expect(header(["Date published"])).toContain("whitespace-nowrap")
+  })
+
+  /*
+    A mark is 36px against a line of 22.4px, so the room a word needs would make
+    the band half as tall again. It carries no word, so there is nothing to hold
+    on one line — and holding one would push a fixed-width column open.
+  */
+  it("asks nothing for a header that is a control rather than a word", () => {
+    const html = header([<span key="cart" className="sr-only">カート</span>])
+    expect(html).not.toContain("whitespace-nowrap")
+    expect(html).toContain("w-15")
+  })
+
+  it("holds each name of a row of them, not only the first", () => {
+    const html = header(["Date published", "Date modified"])
+    expect(html.match(/whitespace-nowrap/g)).toHaveLength(2)
   })
 })

@@ -90,13 +90,6 @@ export interface SearchParams {
    * server. Omitting it is what keeps one listing to one address.
    */
   size?: number | null
-  /**
-   * The facet whose values are shown in full, and what its own box holds. They
-   * say what the panel looks like rather than what the search is, which is why
-   * they sit beside the query instead of inside it.
-   */
-  facet?: string | null
-  find?: string | null
 }
 
 /**
@@ -111,8 +104,6 @@ export function searchQuery(params: SearchParams): string {
   if (params.order != null && params.order !== "") search.set("order", params.order)
   if (params.page > 1) search.set("page", String(params.page))
   if (params.size != null) search.set("size", String(params.size))
-  if (params.facet != null && params.facet !== "") search.set("facet", params.facet)
-  if (params.find != null && params.find !== "") search.set("find", params.find)
   return writtenQuery(search)
 }
 

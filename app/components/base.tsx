@@ -591,8 +591,26 @@ const MORE = "inline-flex items-center gap-0.5 whitespace-nowrap font-semibold t
 export const CLEAR = "font-semibold text-brand text-xs"
 
 /**
+ * What names a group inside a pane — the conditions in force, and each box of
+ * dimensions the panel offers.
+ *
+ * **A step below `PaneHeading`, which names the pane itself.** That one is the
+ * pane's title and carries the bar; these sit inside it and are only telling
+ * the reader which of several lists they are looking down, so they take the
+ * muted ink and the weight and nothing else.
+ *
+ * **One string, because the two were the same drawing written twice.** They
+ * had the same colour, size and weight, and differed only by a `uppercase`
+ * that does nothing to Japanese and three tenths of a pixel of tracking — a
+ * difference nobody chose, visible in one language only, and the kind that
+ * grows a third spelling the next time a group is added.
+ */
+export const PANE_LABEL = "font-semibold text-ink-muted text-xs"
+
+/**
  * The way from a few of something to all of it — the five newest announcements
- * to the whole listing, a table's first page to the search behind it.
+ * to the whole listing, a table's first page to the search behind it, one
+ * listing to the same search over the other.
  */
 export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
   return (
@@ -990,34 +1008,90 @@ export function TabPanel({ id, current, children }: {
 /* ------------------------------------------------------- folding and lists */
 
 /**
+ * The shading on an edge a box can still travel towards.
+ *
+ * **A box that scrolls inside itself says nothing about it.** Where the reader
+ * has the bar set to appear only while scrolling — the default on macOS — it
+ * claims no space at all: measured at 0px on both the listing's table and the
+ * panel's list of values. So the box says it, and says it before being touched.
+ * The far edge is shaded from the moment the page opens, and the shading goes
+ * when there is nothing left that way.
+ *
+ * **A shadow rather than a fade to the page behind.** In the table the same
+ * strip crosses the coloured band and the white rows under it, and a shadow is
+ * the one drawing that means the same thing on both.
+ */
+export const EDGE_SHADE = {
+  left: "pointer-events-none absolute inset-y-0 left-0 w-4 bg-linear-to-r from-deep/20 to-transparent",
+  right: "pointer-events-none absolute inset-y-0 right-0 w-4 bg-linear-to-l from-deep/20 to-transparent",
+  top: "pointer-events-none absolute inset-x-0 top-0 h-4 bg-linear-to-b from-deep/20 to-transparent",
+  bottom: "pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-linear-to-t from-deep/20 to-transparent",
+}
+
+/**
  * A part of a panel that can be folded away.
  *
- * A `<details>` rather than a control, so folding costs no script and no state
- * of its own, and the browser tells assistive software whether it is open.
- * **What is open is decided by the caller, and a section holding a chosen value
- * is always open** — a condition in force that cannot be seen is a listing that
- * lies about itself.
+ * A `<details>`, so the markup carries what is open, the browser tells
+ * assistive software about it, and a page with no script folds as well as one
+ * with it.
+ *
+ * **`open` is a reason to be open, not the state of being open.** A section
+ * holding a chosen value has to be seen — a condition in force that cannot be
+ * seen is a listing that lies about itself — but when that reason goes away,
+ * the reader has not asked for the section to be put away. Handing `open`
+ * straight to the element makes the two the same thing, and lifting the last
+ * condition of a facet would close it under a reader who was reading it. So
+ * the reason opens it, and only the reader closes it.
  */
+/**
+ * Whether a fold is open, after the reason for it to be open changed.
+ *
+ * **A reason opens it, and only the reader closes it.** Written as `reason`
+ * alone, a facet whose last condition was lifted would fold up under a reader
+ * who was reading it: the reason went away, but nobody asked for the section to
+ * be put away.
+ */
+export function foldShown(shown: boolean, reason: boolean): boolean {
+  return reason || shown
+}
+
 export function Fold({ summary, note, open = false, children }: {
   summary: ReactNode
   /** What the section is worth glancing at while closed. */
   note?: ReactNode
+  /** Whether there is a reason for this to be open right now. */
   open?: boolean
   children: ReactNode
 }) {
+  const [shown, setShown] = useState(open)
+  const [reason, setReason] = useState(open)
+  if (open !== reason) {
+    setReason(open)
+    setShown(foldShown(shown, open))
+  }
   // No rule of its own: a column of these wants one between them, which the
   // column draws (`divide-y`), and a single one on a page wants none at all —
   // a lone rule under one fold reads as the bottom of something.
+  //
+  // **The padding is on the summary rather than on the `<details>`.** It draws
+  // the same distances either way, but only one of them is inside the thing
+  // that gets pressed: on the outside it left a 22.4px target — the line of
+  // words and nothing else — under 8px of margin nobody could press
+  // (`docs/ui.md` の「押せるものの大きさ」).
   return (
-    <details open={open} className="group py-2">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold text-sm marker:content-none">
+    <details
+      open={shown}
+      onToggle={(event) => { setShown(event.currentTarget.open) }}
+      className="group"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 font-semibold text-sm marker:content-none">
         <span className="flex items-center gap-1.5">
           <Icon name="chevron-right" className="text-ink-muted transition-transform group-open:rotate-90" />
           {summary}
         </span>
         {note !== undefined && <span className="text-ink-muted text-xs">{note}</span>}
       </summary>
-      <div className="mt-2 pl-5">{children}</div>
+      <div className="pb-2 pl-5">{children}</div>
     </details>
   )
 }

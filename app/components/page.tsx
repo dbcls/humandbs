@@ -1,7 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, LISTING_CONTROL, Note, Stack } from "~/components/base"
+import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack } from "~/components/base"
 import { Icon, type IconName } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -278,26 +278,36 @@ export function KeyValue({ title, at, children }: {
  */
 const MARK_COLUMN = "w-15"
 
+/**
+ * Where a frozen column stands — not how wide it is.
+ *
+ * **Only the first carries a width**, because the second reads it as its own
+ * `left`. The second's width belongs to the listing (`Td` の `floor`): what it
+ * holds differs between them, and nothing downstream reads its edge.
+ */
 const STUCK = [
   `sticky left-0 z-10 ${MARK_COLUMN}`,
-  "sticky left-15 z-10 w-26",
+  "sticky left-15 z-10",
 ]
 
 /**
- * The shading on an edge the table can still travel towards.
+ * How the band carries on across a frozen header cell.
  *
- * **A table wider than its box is the only thing on a public page that scrolls
- * inside itself, and nothing on the screen says so.** The bar claims no width,
- * and the box is twice as tall as the window, so even a bar that claimed some
- * would sit below everything the reader can see. So the box says it, and says
- * it before being touched: the far edge is shaded from the moment the page
- * opens, and the shading goes when there is nothing left that way.
+ * **A frozen cell has to paint its own background** — the cells sliding under it
+ * would show through otherwise — and painting it flat restarts the sweep. The
+ * cell then holds the colour the band has at 0 while the band beside it has
+ * already travelled: 164px of a 1,200px sweep is 13.7% along, and the two meet
+ * as a vertical seam down the header.
  *
- * **A shadow rather than a fade to the page behind.** The same strip crosses
- * the coloured band and the white rows under it, and a shadow is the one
- * drawing that means the same thing on both.
+ * **So the cell takes the same sweep, pushed left by where the cell stands.**
+ * The size is written out because the origin has to be the table's, not the
+ * cell's; without it the sweep would be as wide as the cell and run its whole
+ * range inside 60px.
  */
-const EDGE_SHADE = "pointer-events-none absolute inset-y-0 w-4"
+const STUCK_BAND = [
+  "bg-[length:1200px_100%] bg-[position:0px_0] bg-no-repeat",
+  "bg-[length:1200px_100%] bg-[position:-60px_0] bg-no-repeat",
+]
 
 /**
  * What the near edge looks like when a frozen column is standing at it.
@@ -335,7 +345,10 @@ export function Table({ headers, children, stuck = 0 }: {
   stuck?: number
 }) {
   const box = useRef<HTMLDivElement>(null)
+  const rail = useRef<HTMLDivElement>(null)
   const [reach, setReach] = useState({ back: false, on: false })
+  /** How wide the table is while it does not fit, and 0 while it does. */
+  const [span, setSpan] = useState(0)
 
   // Both ends are read from the same event, and the state only changes when one
   // of them crosses: a table this wide holds a hundred cells, and re-drawing
@@ -349,6 +362,8 @@ export function Table({ headers, children, stuck = 0 }: {
       const on = el.scrollLeft < room - 1
       return was.back === back && was.on === on ? was : { back, on }
     })
+    const wide = room > 0 ? el.scrollWidth : 0
+    setSpan((was) => (was === wide ? was : wide))
   }, [])
 
   // A window that grows can leave a table with nothing to travel towards, so
@@ -366,71 +381,124 @@ export function Table({ headers, children, stuck = 0 }: {
     }
   }, [measure])
 
+  // Two boxes over one table: whichever of them the reader took hold of, the
+  // other is put where that one is. The guard is what keeps the pair from
+  // handing the same scroll back and forth, since moving one raises the event
+  // the other is listening for.
+  const tie = useCallback((from: HTMLDivElement | null, to: HTMLDivElement | null) => {
+    if (from === null || to === null || to.scrollLeft === from.scrollLeft) return
+    to.scrollLeft = from.scrollLeft
+  }, [])
+
   const edgeAt = reach.back ? stuck - 1 : -1
 
   return (
-    <div className="relative">
-      <div ref={box} className="overflow-x-auto" onScroll={measure}>
-        {/*
-          **Separate borders rather than collapsed ones.** A collapsed table
-          paints its cell boxes as part of the table's own background, and a
-          shadow asked for on a cell never appears — which is what the frozen
-          column needs to draw its edge with. With no spacing between them the
-          two draw the same rules.
-        */}
-        <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
-          <thead>
-            {/*
-              **The band finishes its sweep inside the box, not inside the
-              table.** A gradient laid across the whole table spends a third of
-              its travel past the right edge of what the reader can see, so the
-              part they do see covers 1.46x in luminance where the whole covers
-              1.77x — the band reads as flatter than it is. Ending it at about
-              the width the box has on the display the portal is read on gives
-              the whole sweep to the first screenful; scrolling sideways runs
-              along the light end, which is where the sweep was going anyway.
+    <div>
+      {/*
+        **A second bar above the table, because the one under it is out of
+        reach.** A listing stands taller than the window, so the box's own
+        scrollbar is below the fold: the shaded edge says that the table travels
+        sideways, but nothing says how far along it the reader is, and there is
+        nothing to take hold of without reading to the end of the page first.
 
-              **It belongs here rather than in `BAND_FILL`.** A band elsewhere
-              is as wide as its box already, and the filled circles that take
-              the same fill are 28px across — stopping their sweep at 1200px
-              would leave them flat at the dark end.
-            */}
-            <tr className={`text-left text-white ${BAND_FILL.brand} to-[1200px]`}>
+        **It is a real scrollbar rather than a drawn one** — a strip of overflow
+        holding the table's own width — so the browser draws it, sizes it and
+        answers a drag on it exactly as it does the one below.
+
+        **It is there only while the table has somewhere to travel**, and it is
+        out of the reading order: the same scroll is reachable from the box
+        below, and a second stop offering nothing to read is noise to anyone
+        listening.
+      */}
+      {span > 0 && (
+        <div
+          ref={rail}
+          className="overflow-x-scroll"
+          aria-hidden="true"
+          tabIndex={-1}
+          onScroll={() => { tie(rail.current, box.current) }}
+        >
+          <div style={{ width: span }} className="h-px" />
+        </div>
+      )}
+      <div className="relative">
+        <div
+          ref={box}
+          className="overflow-x-auto"
+          onScroll={() => {
+            measure()
+            tie(box.current, rail.current)
+          }}
+        >
+          {/*
+            **Separate borders rather than collapsed ones.** A collapsed table
+            paints its cell boxes as part of the table's own background, and a
+            shadow asked for on a cell never appears — which is what the frozen
+            column needs to draw its edge with. With no spacing between them the
+            two draw the same rules.
+          */}
+          <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
+            <thead>
               {/*
-                A header asks for no width of its own: what a column needs is
-                decided by the cells under it, and a header that claimed a floor
-                would widen a column of marks to the width of the word above it.
+                **The band finishes its sweep inside the box, not inside the
+                table.** A gradient laid across the whole table spends a third of
+                its travel past the right edge of what the reader can see, so the
+                part they do see covers 1.46x in luminance where the whole covers
+                1.77x — the band reads as flatter than it is. Ending it at about
+                the width the box has on the display the portal is read on gives
+                the whole sweep to the first screenful; scrolling sideways runs
+                along the light end, which is where the sweep was going anyway.
+
+                **It belongs here rather than in `BAND_FILL`.** A band elsewhere
+                is as wide as its box already, and the filled circles that take
+                the same fill are 28px across — stopping their sweep at 1200px
+                would leave them flat at the dark end.
               */}
-              {/*
-                **A header that is a control keeps no room of its own.** A mark
-                is 36px against a line of 22.4px, so the padding a word needs
-                would make the band half as tall again — which is what made the
-                two listings, drawn from the same frame, open with bands of two
-                different heights.
-              */}
-              {headers.map((header, index) => (
-                <th
-                  key={index}
-                  className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} bg-brand-dark ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <FrozenEdgeAt.Provider value={edgeAt}>{children}</FrozenEdgeAt.Provider>
-          </tbody>
-        </table>
+              <tr className={`text-left text-white ${BAND_FILL.brand} to-[1200px]`}>
+                {/*
+                  **A word in the band stays on one line, which makes it the
+                  other thing a column is at least as wide as.** The floors
+                  below are measured from the values (`Td` の `floor`), and a
+                  date is 96px — but the word naming that column is 124px in
+                  English, so at the table's narrowest the band was the only
+                  part that broke. **The band has to be one line**: it is one
+                  row of one table, and a column whose name wrapped made every
+                  other column's name sit against the top of a box half again
+                  as tall.
+
+                  **The width comes from the word rather than from a number
+                  written here**, because the word is different in each
+                  language — 「公開日」 needs 42px where `Date published` needs
+                  100.4px, and a floor big enough for the longer one is 28px of
+                  space nobody uses in the other.
+
+                  **A header that is a control still asks for nothing.** A mark
+                  is 36px against a line of 22.4px, so the padding a word needs
+                  would make the band half as tall again — which is what made the
+                  two listings, drawn from the same frame, open with bands of two
+                  different heights. It carries no word, so keeping a word on one
+                  line cannot widen it either.
+                */}
+                {headers.map((header, index) => (
+                  <th
+                    key={index}
+                    className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <FrozenEdgeAt.Provider value={edgeAt}>{children}</FrozenEdgeAt.Provider>
+            </tbody>
+          </table>
+        </div>
+        {/* With a frozen column the near edge is that column's own shadow, so the
+            strip is only drawn where there is nothing standing at it. */}
+        {reach.back && stuck === 0 && <div className={EDGE_SHADE.left} />}
+        {reach.on && <div className={EDGE_SHADE.right} />}
       </div>
-      {/* With a frozen column the near edge is that column's own shadow, so the
-          strip is only drawn where there is nothing standing at it. */}
-      {reach.back && stuck === 0 && (
-        <div className={`${EDGE_SHADE} left-0 bg-linear-to-r from-deep/20 to-transparent`} />
-      )}
-      {reach.on && (
-        <div className={`${EDGE_SHADE} right-0 bg-linear-to-l from-deep/20 to-transparent`} />
-      )}
     </div>
   )
 }
@@ -466,8 +534,12 @@ export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, f
    * settled by whichever Tailwind happened to emit last, so a class added that
    * way widens a column but silently fails to narrow one.
    *
-   * **A frozen column has none**: its width is fixed in `STUCK`, and a floor
-   * beside it would raise the column above the width the next one starts at.
+   * **The first frozen column has none** — `MARK_COLUMN` fixes it, because the
+   * second reads that width as its own `left`. **The second one needs a floor of
+   * its own**: `STUCK` says where it stands, not how wide it is, and what it
+   * holds differs between the listings. Left to the content the width follows
+   * whatever rows a page happens to hold, which moves the start of the sideways
+   * scroll every time a page is turned.
    */
   floor?: string
   className?: string
