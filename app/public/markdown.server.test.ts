@@ -43,6 +43,11 @@ describe("サイトコンテンツの markdown", () => {
     expect(renderMarkdown("![x](/files/common/a.png)", "ja")).toContain("src=\"/files/common/a.png\"")
   })
 
+  it("ページの中の場所を指せるのはリンクだけで、画像は src を失う", () => {
+    expect(renderMarkdown("[x](#top)", "ja")).toContain("href=\"#top\"")
+    expect(renderMarkdown("![x](#top)", "ja")).not.toContain("src")
+  })
+
   it("http / https / mailto とサイト内の絶対パスはリンクになる", () => {
     expect(renderMarkdown("[a](https://example.com/)", "ja")).toContain("href=\"https://example.com/\"")
     expect(renderMarkdown("[a](mailto:x@example.com)", "ja")).toContain("href=\"mailto:x@example.com\"")

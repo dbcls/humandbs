@@ -88,8 +88,10 @@ export function removeFromCart(current: string[], ids: string[]): string[] {
  */
 export function cartPressGathers(current: string[], ids: string[]): boolean {
   const cartable = new Set(ids.filter(isCartable))
-  const held = [...cartable].filter((id) => current.includes(id))
-  return held.length < cartable.size
+  const inCart = new Set(current)
+  let held = 0
+  for (const id of cartable) if (inCart.has(id)) held += 1
+  return held < cartable.size
 }
 
 /* ------------------------------------------------------ saying what moved */
@@ -237,8 +239,26 @@ function serverSnapshot(): string[] {
 
 export interface Cart {
   ids: string[]
+  /** Whether the cart holds this dataset. */
+  holds: (id: string) => boolean
   add: (ids: string[]) => void
   remove: (ids: string[]) => void
+}
+
+/**
+ * The cart as a set, for the marks that ask whether they are in it.
+ *
+ * **Made once per cart rather than once per mark.** A page of a listing draws a
+ * hundred marks, each standing for as many as ninety-five datasets, against a
+ * cart that can hold hundreds; asked of a list, one page is millions of
+ * comparisons, and every press asks again. The snapshot is the same array until
+ * the cart changes, which is what lets one set answer for all of them.
+ */
+let membership: { of: string[], set: Set<string> } = { of: EMPTY, set: new Set() }
+
+function heldIn(ids: string[]): Set<string> {
+  if (membership.of !== ids) membership = { of: ids, set: new Set(ids) }
+  return membership.set
 }
 
 /**
@@ -290,13 +310,14 @@ function press(
 
 export function useCart(): Cart {
   const ids = useSyncExternalStore(subscribe, readCart, serverSnapshot)
+  const holds = useCallback((id: string) => heldIn(ids).has(id), [ids])
   const add = useCallback((toAdd: string[]) => {
     press(addToCart, toAdd)
   }, [])
   const remove = useCallback((toRemove: string[]) => {
     press(removeFromCart, toRemove)
   }, [])
-  return { ids, add, remove }
+  return { ids, holds, add, remove }
 }
 
 export interface CartNoticeControl {

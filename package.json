@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:db": "vitest run --project db",
+    "test:e2e": "playwright test",
     "db:push": "drizzle-kit push && npm run db:grants && tsx scripts/push-test-db.ts",
     "db:grants": "tsx scripts/grants.ts",
     "db:load-dev-data": "tsx migration/run.ts",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@react-router/dev": "^8.3.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/vite": "^4.3.3",

@@ -75,6 +75,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
             label={t.find}
             placeholder={t.find}
             submit={t.find}
+            searchAsTyped
           />
 
           <ul className="flex flex-col divide-y divide-line border-line border-y">
@@ -107,6 +108,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
                 label={t.dictionaryFind}
                 placeholder={t.dictionaryFind}
                 submit={t.dictionaryFind}
+                searchAsTyped
               >
                 {view.find !== "" && <input type="hidden" name="find" value={view.find} />}
               </SearchBox>

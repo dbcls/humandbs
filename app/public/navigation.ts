@@ -91,12 +91,12 @@ const DATA_USE: NavLink = {
 
 const RESEARCH_LIST: NavLink = {
   path: "/research",
-  label: { ja: "研究一覧", en: "Research List" },
+  label: { ja: "研究一覧", en: "Research list" },
 }
 
 const DATASET_LIST: NavLink = {
   path: "/dataset",
-  label: { ja: "データセット一覧", en: "Dataset List" },
+  label: { ja: "データセット一覧", en: "Dataset list" },
 }
 
 const DATA_PROCESSING: NavLink = {

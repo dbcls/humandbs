@@ -110,8 +110,9 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 ローカルで再現できないのは TLS と Secure cookie だけで、`X-Content-Type-Options` /
 `Content-Disposition` / `/files/` の配信 / 8080 の redirect URI はローカルの compose も同じ経路を通る。
 
-**シナリオは doc に先に書く。** ただし画面の形が決まる前に書けるのは「誰が」「何を貫通するか」
-「何が成り立つべきか」までで、手順の具体は画面が決まってから足す。
+**シナリオは doc に先に書き、番号で実装と結ぶ。** doc が持つのは「誰が」「何を貫通するか」「何が
+成り立つべきか」までで、手順の具体はコードの側にある。**画面の名前や研究 id をここにもコードにも
+書かない** — 回す先ごとに中身が違うので、シナリオは一覧の先頭から辿って対象を決める。
 
 | ペルソナ | 誰 | 認証 |
 |---|---|---|
@@ -119,12 +120,18 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 | P-PROVIDER | データ提供者 | なし。共有リンクを持つ |
 | P-ADMIN | curator | DDBJ アカウント |
 
-画面の形に依存せず決まっている経路:
+| | 経路 | 実装 |
+|---|---|---|
+| S-PUB-01 | 一覧 → research → 版の一覧 → dataset | 済 |
+| S-PUB-02 | 裸の hum ID が最新公開版に解決する | 済 |
+| S-PUB-03 | 同じ経路が **JS を実行しないクライアントでも**通る | 済 |
+| S-PUB-04 | 公開されていないものと存在しないラベルが同じ 404 を返す (画面と API の両方) | 済 |
+| S-PUB-05 | 版番号を持たない document の slug が恒久的に応答する | 済 |
 
-- P-ANON — 検索 → research → 版 → dataset → ファイルの取得
-- P-ANON — 裸の hum ID が最新公開版に解決する。**JS を実行しないクライアントでも**
+残りの経路:
+
+- P-ANON — dataset からファイルを取得する
 - P-ANON — 取り下げた版と未公開の research がどこからも見えない
-- P-ANON — 版番号を持たない document の slug が恒久的に応答する
 - P-PROVIDER — 共有リンク → preview に未確定値のスロットが見える → コメント → LGTM
 - P-PROVIDER — private に戻すと読めない / 再度有効化すると同じリンクが戻る / 再発行すると旧リンクが死ぬ
 - P-ADMIN — サインイン → draft → 編集 → 公開ゲート → 公開 → 公開画面に出る
@@ -180,6 +187,17 @@ docker compose exec app npm test              # 4 階層すべて
 docker compose exec app npm run test:unit     # 不変量 + 単体 (DB 不要)
 docker compose exec app npm run test:db       # schema + 経路
 ```
+
+e2e はブラウザを持つ別の image で回す。**profile の下にあるので、上の 3 つを回すときには起動しない。**
+
+```bash
+docker compose --profile e2e run --rm e2e                       # このリポジトリの compose に対して
+docker compose --profile e2e run --rm \
+  -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e           # deploy 済みのものに対して
+```
+
+**この compose に向けるときだけ、dev サーバーが `proxy` という Host を許す必要がある**
+(`vite.config.ts` の `allowedHosts`)。deploy 済みのものは build を serve するので、この制限を持たない。
 
 階層はファイル名で分ける。配置は対象ファイルの隣。
 

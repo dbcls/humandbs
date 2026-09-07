@@ -31,20 +31,36 @@ export interface Ask {
 }
 
 /**
- * Reading a GET form and going to the address it stands for.
+ * What a submission is asking, without the fields that say nothing.
  *
  * **An empty field is no condition at all**, so it is dropped: an address is
  * easier to read and to share without the parts of it that say nothing, and a
  * range with both ends empty is a facet nobody asked about.
+ *
+ * **The box the listing searches by is the exception.** Emptying it is how a
+ * reader lifts the word they searched for, and a submission that leaves the
+ * field out altogether says something else — that this is not a search about
+ * words — which holds the word in force and hands it back to the box.
  */
-export function useAsk(action: string): Ask {
+export function conditions(fields: FormData, box: string | null): FormData {
+  const asked = new FormData()
+  for (const [key, given] of fields) if (given !== "" || key === box) asked.append(key, given)
+  return asked
+}
+
+/**
+ * Reading a GET form and going to the address it stands for.
+ *
+ * `box` names the field whose empty value is a condition of its own, if the
+ * form has one.
+ */
+export function useAsk(action: string, box: string | null = null): Ask {
   const runSearch = useSubmit()
   const form = useRef<HTMLFormElement>(null)
   const ask = () => {
     const fields = form.current
     if (fields === null) return
-    const asked = new FormData(fields)
-    for (const [key, given] of [...asked]) if (given === "") asked.delete(key)
+    const asked = conditions(new FormData(fields), box)
     void runSearch(asked, { method: "get", action, replace: true, preventScrollReset: true })
   }
   return { form, ask }
@@ -75,9 +91,11 @@ export interface SearchAsTyped {
  * answer — so a result on the way is the answer coming closer. Digits do not
  * (`facets.tsx` の `Bound`).
  */
-export function useSearchAsTyped({ action, enabled = true }: {
+export function useSearchAsTyped({ action, name, enabled = true }: {
   /** Where the form goes, which the submission has to name for itself. */
   action: string
+  /** What the typed words are called in the address. */
+  name: string
   /**
    * **Only where the box sits over what it searches.** A box that sends the
    * reader to another screen would run early and leave the page in the middle
@@ -85,7 +103,7 @@ export function useSearchAsTyped({ action, enabled = true }: {
    */
   enabled?: boolean
 }): SearchAsTyped {
-  const { form, ask } = useAsk(action)
+  const { form, ask } = useAsk(action, name)
   const waiting = useRef<number | undefined>(undefined)
   const composing = useRef(false)
 

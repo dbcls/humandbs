@@ -21,7 +21,7 @@ import type { ReviewPageView } from "~/review/review.server"
 import { Badge, Confirm, Stack } from "./base"
 import { DdbjMark, Thread, type CommentContext } from "./comments"
 import { Checkbox, Field, Submit } from "./form"
-import { Card, Empty, Page, PageHead, Section } from "./page"
+import { Card, Empty, ExternalLink, Page, PageHead, Section } from "./page"
 
 export function ReviewScreen({ view }: { view: ReviewPageView }) {
   const locale = view.locale
@@ -133,7 +133,7 @@ function Share({ view }: { view: ReviewPageView }) {
               what a provider sees is following it, not copying it. */}
           {share.open && (
             <p className="text-xs">
-              <Link to={share.url} target="_blank" rel="noreferrer">{t.openPreview}</Link>
+              <ExternalLink to={share.url} locale={locale}>{t.openPreview}</ExternalLink>
             </p>
           )}
         </Stack>

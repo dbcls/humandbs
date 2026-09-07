@@ -532,6 +532,9 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
                 {headers.map((header, index) => (
                   <th
                     key={index}
+                    // Which column a value belongs to, for a reader who hears
+                    // the row rather than seeing it line up under the name.
+                    scope="col"
                     className={`max-w-88 px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
                     {header}

@@ -121,7 +121,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const { form, field: typed } = useSearchAsTyped({ action, enabled: searchAsTyped })
+  const { form, field: typed } = useSearchAsTyped({ action, name, enabled: searchAsTyped })
   const field = useRef<HTMLInputElement>(null)
 
   /*
@@ -742,11 +742,24 @@ function ExportLinks({ locale, target, query, sort }: {
         icon={<Icon name="copy" />}
         onClick={() => { void copy() }}
       >
-        {copied ? messages.search.exportCopied : messages.search.exportCopy}
+        {messages.search.exportCopy}
       </Button>
       <ButtonLink to={at("tsv")} external listing icon={<Icon name="download" />}>
         {messages.search.exportTsv}
       </ButtonLink>
+      {/*
+        **Beside the buttons rather than in place of a name.** Renaming the
+        control leaves the screen with nothing saying what it does, and for
+        anyone listening the button itself changed its name — what changed is a
+        status, so a status is what says it. **It stands last** so that saying
+        it does not move the other control out from under the pointer.
+      */}
+      {copied && (
+        <span role="status" className="flex items-center gap-1 text-ink-muted text-sm">
+          <Icon name="check" aria-hidden="true" />
+          {messages.search.exportCopied}
+        </span>
+      )}
     </div>
   )
 }

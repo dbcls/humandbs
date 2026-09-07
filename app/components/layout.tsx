@@ -146,8 +146,10 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
  *
  * They are stacked rather than folded into one: each is a separate thing the
  * office needs read, and there are two or three of them at a time. Closing one
- * is remembered for as long as the page is open (`Announcement`), which is why
- * this holds the state rather than the notice itself.
+ * is remembered for as long as the reader stays on the page they closed it on,
+ * which is why this holds the state rather than the notice itself. Reaching
+ * another page raises them all again: a notice nobody has read is worth more
+ * than the quiet of having dismissed it once.
  */
 export function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
   const messages = messagesFor(locale)

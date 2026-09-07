@@ -89,9 +89,15 @@ function safeDestinations() {
       if (attribute === null) return
       const value = node.properties[attribute]
       if (typeof value !== "string") return
+      const kept = linkHref(value)
+      // **A place on this page is somewhere to go, not somewhere a picture
+      // comes from.** It is the one destination a link may hold that an image
+      // may not, so it is dropped here rather than narrowed in the check the
+      // two share.
+      const allowed = attribute === "src" && kept?.startsWith("#") === true ? null : kept
       // `undefined` is how hast says an attribute is absent; the serialiser
       // leaves it out entirely.
-      node.properties = { ...node.properties, [attribute]: linkHref(value) ?? undefined }
+      node.properties = { ...node.properties, [attribute]: allowed ?? undefined }
     })
   }
 }

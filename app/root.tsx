@@ -124,7 +124,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         }`}
       >
         <SiteHeader locale={locale} account={data?.account ?? null} managing={managing} />
-        {!managing && <Announcements alerts={data?.alerts ?? []} locale={locale} />}
+        {/*
+          **Keyed on the path so that going to another page raises them again.**
+          This stands outside the outlet, so a client-side navigation does not
+          unmount it and what a reader closed here would stay closed for the
+          rest of the visit — which is the one thing closing a notice must not
+          mean.
+        */}
+        {!managing && <Announcements key={path} alerts={data?.alerts ?? []} locale={locale} />}
         {managing && <AdminDrawer locale={locale} path={path} />}
         <div className="flex-1">
           {/*

@@ -199,8 +199,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 <Table headers={[
                   ...(cart ? [<CartColumnHead key="cart" locale={locale} />] : []),
                   messages.dataset.datasetId,
-                  messages.dataset.accessType,
                   messages.dataset.typeOfData,
+                  messages.dataset.accessType,
                   messages.dataset.datePublished,
                 ]}
                 >
@@ -217,10 +217,10 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                         <Td className="break-all">
                           {to === null ? name : <Link to={to}>{name}</Link>}
                         </Td>
-                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
                         <Td>
                           {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
                         </Td>
+                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
                         <Td>{row.datePublished}</Td>
                       </tr>
                     )

@@ -5,7 +5,7 @@ import { adminContentsPath, adminNewsListPath, adminNewsPath } from "~/admin/url
 import { Stack } from "~/components/base"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
+import { Card, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -47,33 +47,31 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />
 
-          {items.length === 0
-            ? <Empty>{t.news.none}</Empty>
-            : (
-                <Stack gap="normal">
-                  <Table headers={[t.news.publishedAt, t.title, t.state]}>
-                    {items.map((item) => (
-                      <tr key={item.id}>
-                        <Td className="text-nowrap">
-                          <Link to={href(locale, adminNewsPath(item.id))}>
-                            {item.publishedAt ?? t.news.undated}
-                          </Link>
-                        </Td>
-                        <Td>{item.title}</Td>
-                        <Td><StateBadges states={item.states} locale={locale} /></Td>
-                      </tr>
-                    ))}
-                  </Table>
-                  <PageLinks
-                    label={messagesFor(locale).search.pagination}
-                    page={page}
-                    pageCount={pageCount}
-                    at={(at) => href(locale, `${adminNewsListPath()}?page=${at}`)}
-                    previous={messagesFor(locale).search.previousPage}
-                    next={messagesFor(locale).search.nextPage}
-                  />
-                </Stack>
-              )}
+          <Stack gap="normal">
+            <Table headers={[t.news.publishedAt, t.title, t.state]} whenEmpty={t.news.none}>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <Td className="text-nowrap">
+                    <Link to={href(locale, adminNewsPath(item.id))}>
+                      {item.publishedAt ?? t.news.undated}
+                    </Link>
+                  </Td>
+                  <Td>{item.title}</Td>
+                  <Td><StateBadges states={item.states} locale={locale} /></Td>
+                </tr>
+              ))}
+            </Table>
+            {items.length > 0 && (
+              <PageLinks
+                label={messagesFor(locale).search.pagination}
+                page={page}
+                pageCount={pageCount}
+                at={(at) => href(locale, `${adminNewsListPath()}?page=${at}`)}
+                previous={messagesFor(locale).search.previousPage}
+                next={messagesFor(locale).search.nextPage}
+              />
+            )}
+          </Stack>
 
           <Section title={t.news.add}>
             <Form method="post">

@@ -1,5 +1,6 @@
 import { ResearchVersionPage } from "~/components/research"
 import { readFilePage } from "~/files/listing.server"
+import { messagesFor } from "~/i18n/messages"
 import { researchPage } from "~/public/pages.server"
 import { parseVersionSegment, readLocale } from "~/public/urls"
 
@@ -17,7 +18,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData.view.versionLabel} - NBDC Human Database` }]
+  return [{ title: `${loaderData.view.versionLabel} - ${messagesFor(loaderData.locale).siteName}` }]
 }
 
 export default function ResearchVersion({ loaderData }: Route.ComponentProps) {

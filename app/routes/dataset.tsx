@@ -1,4 +1,5 @@
 import { DatasetPage } from "~/components/dataset"
+import { messagesFor } from "~/i18n/messages"
 import { datasetPage } from "~/public/pages.server"
 import { readLocale } from "~/public/urls"
 
@@ -10,7 +11,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData.view.label} - NBDC Human Database` }]
+  return [{ title: `${loaderData.view.label} - ${messagesFor(loaderData.locale).siteName}` }]
 }
 
 export default function Dataset({ loaderData }: Route.ComponentProps) {

@@ -15,7 +15,7 @@ import {
 } from "~/admin/urls"
 import { Badge, Excerpt, Stack } from "~/components/base"
 import { Checkbox, Field, Select, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, PageLinks, Table, Td } from "~/components/page"
+import { Card, Page, PageHead, PageLinks, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -72,68 +72,67 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
 
           <p className="text-ink-muted text-sm">{messages.search.results(view.total)}</p>
 
-          {view.rows.length === 0
-            ? <Empty>{t.none}</Empty>
-            : (
-                <Stack gap="normal">
-                  <Table
-                    headers={[
-                      t.columns.humLabel,
-                      t.columns.title,
-                      t.columns.status,
-                      t.columns.versions,
-                      t.columns.drafts,
-                      t.columns.datasets,
-                      t.columns.incomplete,
-                      t.columns.updated,
-                    ]}
-                  >
-                    {view.rows.map((row) => (
-                      <tr key={row.researchId}>
-                        <Td nowrap>
-                          <Link to={href(locale, adminResearchPath(row.researchId))}>
-                            {row.humLabel ?? t.unpinned}
-                          </Link>
-                        </Td>
-                        <Td floor="min-w-64">
-                          {row.title === ""
-                            ? <span className="text-ink-muted">{t.untitled}</span>
-                            : (
-                                <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
-                                  {row.title}
-                                </Excerpt>
-                              )}
-                        </Td>
-                        <Td nowrap>{t.statuses[row.status]}</Td>
-                        <Td>{row.publishedVersions}</Td>
-                        <Td>{row.draftCount}</Td>
-                        <Td>{row.datasetCount}</Td>
-                        <Td>
-                          <ul className="flex flex-col gap-1">
-                            {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
-                              <li key={flag}><Badge tone="accent">{t.flags[flag]}</Badge></li>
-                            ))}
-                          </ul>
-                        </Td>
-                        <Td nowrap>{row.updatedOn}</Td>
-                      </tr>
-                    ))}
-                  </Table>
-                  <PageLinks
-                    label={messages.search.pagination}
-                    page={view.page}
-                    pageCount={view.pageCount}
-                    at={(page) => href(locale, adminResearchListPath() + listingQuery({
-                      keyword: view.keyword,
-                      status: view.status,
-                      flags: view.flags,
-                      page,
-                    }))}
-                    previous={messages.search.previousPage}
-                    next={messages.search.nextPage}
-                  />
-                </Stack>
-              )}
+          <Stack gap="normal">
+            <Table
+              headers={[
+                t.columns.humLabel,
+                t.columns.title,
+                t.columns.status,
+                t.columns.versions,
+                t.columns.drafts,
+                t.columns.datasets,
+                t.columns.incomplete,
+                t.columns.updated,
+              ]}
+              whenEmpty={t.none}
+            >
+              {view.rows.map((row) => (
+                <tr key={row.researchId}>
+                  <Td nowrap>
+                    <Link to={href(locale, adminResearchPath(row.researchId))}>
+                      {row.humLabel ?? t.unpinned}
+                    </Link>
+                  </Td>
+                  <Td floor="min-w-64">
+                    {row.title === ""
+                      ? <span className="text-ink-muted">{t.untitled}</span>
+                      : (
+                          <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
+                            {row.title}
+                          </Excerpt>
+                        )}
+                  </Td>
+                  <Td nowrap>{t.statuses[row.status]}</Td>
+                  <Td>{row.publishedVersions}</Td>
+                  <Td>{row.draftCount}</Td>
+                  <Td>{row.datasetCount}</Td>
+                  <Td>
+                    <ul className="flex flex-col gap-1">
+                      {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
+                        <li key={flag}><Badge tone="accent">{t.flags[flag]}</Badge></li>
+                      ))}
+                    </ul>
+                  </Td>
+                  <Td nowrap>{row.updatedOn}</Td>
+                </tr>
+              ))}
+            </Table>
+            {view.rows.length > 0 && (
+              <PageLinks
+                label={messages.search.pagination}
+                page={view.page}
+                pageCount={view.pageCount}
+                at={(page) => href(locale, adminResearchListPath() + listingQuery({
+                  keyword: view.keyword,
+                  status: view.status,
+                  flags: view.flags,
+                  page,
+                }))}
+                previous={messages.search.previousPage}
+                next={messages.search.nextPage}
+              />
+            )}
+          </Stack>
         </Stack>
       </Card>
     </Page>

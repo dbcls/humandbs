@@ -266,26 +266,21 @@
   }
 
   /*
-   * **Only the article's own title takes the brand colour.** Everything below
-   * it is the text's own, so that a coloured run of words in an article means a
-   * link and nothing else — a guideline is mostly headings, and colouring them
-   * makes the reader test each one by pointing at it.
+   * The ladder of an article, under the page's own title: 18 / 16 / 14 over a
+   * body of 14. **The body never holds the top rung.** One that writes its own
+   * `#` is shifted down so that the page keeps the single `h1` its title is
+   * (`public/markdown.server.ts`), which is why no `h1` is named here.
+   * `Section` names a part of a page in brand at 18px and an article's parts
+   * are the same kind of thing, so the two agree rather than each having an h2
+   * of its own.
    *
    * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
-   * so the levels have to stay apart past the third. Size carries most of it and
-   * the top two are heavier as well, which keeps a difference where the sizes
-   * come together.
-   */
-  /*
-   * The ladder of an article, which is the ladder a research page uses: 24 /
-   * 18 / 16 / 14 over a body of 14, with the top two in brand and the rest in
-   * the colour of the text. `Section` names a part of a page in brand at 18px
-   * and an article's parts are the same kind of thing, so the two agree rather
-   * than each having an h2 of its own.
-   *
-   * **Colour does part of the work of weight**, which is what lets h2 be the
-   * lightest of them: a brand line is already marked as a heading, while an ink
-   * one has only its weight to separate it from the paragraph under it.
+   * so the levels have to stay apart past the third. Size carries most of it,
+   * and **colour does part of the work of weight** — which is what lets h2 be
+   * the lightest of them: a brand line is already marked as a heading, while an
+   * ink one has only its weight to separate it from the paragraph under it.
+   * Below the section level the words are the text's own colour, so that a
+   * coloured run in an article means a link and nothing else.
    *
    * **The section level carries the mark as well.** Blue words in a page of
    * blue links are read as a link first and a heading second — the size and the
@@ -295,7 +290,6 @@
    * edge belongs to the title of the whole page, and a mark on that line would
    * put every section on the same footing as it.
    */
-  .markdown h1 { @apply text-2xl font-bold text-brand; }
   .markdown h2 { @apply border-brand border-l-4 pl-2.5 text-lg font-medium text-brand; }
   .markdown h3 { @apply text-base; }
 

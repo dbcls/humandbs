@@ -14,7 +14,7 @@ import { filePath } from "~/public/urls"
 
 import { Badge, Button, Confirm, Fold, IconButton, Note, Progress, Stack } from "./base"
 import { CONTROL, SelectAll, Submit } from "./form"
-import { Empty, PageLinks, Table, Td } from "./page"
+import { PageLinks, Table, Td } from "./page"
 
 /**
  * The download list, and the box behind it.
@@ -114,12 +114,13 @@ export function BoxTable({ locale, rows, humLabel }: {
 }) {
   const t = messagesFor(locale).admin.files
 
-  if (rows.length === 0) return <Empty>{t.empty}</Empty>
-
   return (
     <Form method="post">
       <Stack gap="normal">
-        <Table headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}>
+        <Table
+          headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}
+          whenEmpty={t.empty}
+        >
           {rows.map((row) => (
             <tr key={row.name}>
               <Td>
@@ -139,13 +140,17 @@ export function BoxTable({ locale, rows, humLabel }: {
           ))}
         </Table>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Submit intent="publish" variant="secondary">{t.publish}</Submit>
-          <Submit intent="unpublish" variant="secondary">{t.unpublish}</Submit>
-          <Confirm label={t.delete} warning={t.deleteWarning} confirm={t.deleteConfirm} cancel={t.cancel}>
-            <input type="hidden" name="intent" value="delete" />
-          </Confirm>
-        </div>
+        {/* Nothing to act on, so nothing to act with — the table stays, because
+            the column names are what say what was being looked for. */}
+        {rows.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Submit intent="publish" variant="secondary">{t.publish}</Submit>
+            <Submit intent="unpublish" variant="secondary">{t.unpublish}</Submit>
+            <Confirm label={t.delete} warning={t.deleteWarning} confirm={t.deleteConfirm} cancel={t.cancel}>
+              <input type="hidden" name="intent" value="delete" />
+            </Confirm>
+          </div>
+        )}
       </Stack>
     </Form>
   )

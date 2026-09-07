@@ -7,3 +7,5 @@
 /.claude/
 /.playwright-cli/
 /compose.override.yml
+/test-results/
+/playwright-report/

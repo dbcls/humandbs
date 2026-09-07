@@ -36,21 +36,22 @@ export function CartToggle({ ids, locale }: {
   const messages = messagesFor(locale)
   const cart = useCart()
   const cartable = [...new Set(ids.filter(isCartable))]
-  const held = cartable.filter((id) => cart.ids.includes(id))
+  const held = cartable.filter((id) => cart.holds(id))
 
   if (cartable.length === 0) return null
   // **Partly in the cart is its own state.** A research with twenty datasets of
   // which nineteen are collected is not "not collected", and saying so would
   // make the control read as untouched.
   const state = held.length === 0 ? false : held.length === cartable.length ? true : "mixed"
-  const gathers = cartPressGathers(cart.ids, cartable)
   return (
     <IconButton
       name="cart"
       pressed={state}
       label={messages.cart.toggleRow}
+      // Asked when the mark is pressed rather than when it is drawn: a page
+      // holds a hundred of these and only one of them is ever pressed.
       onClick={() => {
-        if (gathers) cart.add(cartable)
+        if (cartPressGathers(cart.ids, cartable)) cart.add(cartable)
         else cart.remove(cartable)
       }}
     />
