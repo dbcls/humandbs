@@ -15,6 +15,7 @@ import {
   MENU_ITEM_HERE,
   MoreLink,
   Note,
+  PALE,
   PANE_LABEL,
   PaneHeading,
   Stack,
@@ -23,6 +24,7 @@ import {
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
 import { useSearchAsTyped } from "~/search-as-typed"
@@ -218,8 +220,14 @@ export function SearchForm({
       action={href(locale, listPath(target))}
       name="k"
       value={keyword}
-      label={messages.search.placeholder[target]}
-      placeholder={messages.search.placeholder[target]}
+      label={messages.search.boxName[target]}
+      // **The long one only on the front page.** That box is the one standing
+      // on its own — nothing around it says what it is about to search, so the
+      // grey word has to. Inside a listing the heading, the tabs and the rows
+      // have all already said it, and repeating it there spends the width of a
+      // 256px field on a word nobody needed. **The name is unchanged either
+      // way**, which is what a reader who cannot see the box is told.
+      placeholder={size === "large" ? messages.search.boxName[target] : messages.search.boxHint}
       submit={messages.search.submit}
       size={size}
       searchAsTyped={searchAsTyped}
@@ -258,10 +266,20 @@ export function SearchForm({
  *
  * **The rows carry no gap of their own**, since a gap under the first row would
  * push the table off the line again. Each block below leaves its own space.
+ *
+ * **While the next answer is on its way, what it will replace goes pale.** The
+ * pane and the result are exactly the parts a refinement changes — the counts
+ * beside the values move as much as the rows do — and everything outside them
+ * holds still, so the page reads as one that is answering rather than one that
+ * is being rebuilt. **The old answer stays legible** rather than being swapped
+ * for a skeleton: it is still true of the search behind it, and at the speed
+ * these loaders answer (`app/navigating.ts`) a skeleton would be a flicker.
  */
-export function RefinableList({ open, heading, closed, refine, refineHasMore, tools, panel, children }: {
+export function RefinableList({ open, busy, heading, closed, refine, refineHasMore, tools, panel, children }: {
   /** Whether the pane is showing what it holds. */
   open: boolean
+  /** Whether a refinement of this same listing is still on its way. */
+  busy: boolean
   /** What names the pane. Its rule is the line the table's edge continues. */
   heading: React.ReactNode
   /** What stands in the pane's place while it is folded away. */
@@ -290,7 +308,7 @@ export function RefinableList({ open, heading, closed, refine, refineHasMore, to
   // give the width back.
   if (!open) {
     return (
-      <div>
+      <div className={PALE[busy ? "on" : "off"]} aria-busy={busy}>
         {/* The same 4px the row leaves over the table when the pane is open. */}
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pb-1">
           {closed}
@@ -302,7 +320,10 @@ export function RefinableList({ open, heading, closed, refine, refineHasMore, to
   }
 
   return (
-    <div className="grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div
+      aria-busy={busy}
+      className={`grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)] ${PALE[busy ? "on" : "off"]}`}
+    >
       <div className="flex flex-col justify-end md:col-start-1 md:row-start-1">{heading}</div>
       <div className="pt-4 md:col-start-1 md:row-start-2">{refine}</div>
       {/* The same 4px the heading leaves over its rule, so the two sides sit
@@ -425,9 +446,8 @@ export function SearchExamples({ locale }: { locale: Locale }) {
         <ButtonLink
           key={example}
           to={href(locale, listPath("research") + searchQuery({ q: example, sort: null, page: 1 }))}
-          variant="soft"
+          variant="secondary"
           size="xs"
-          pill
         >
           {example}
         </ButtonLink>
@@ -663,37 +683,6 @@ export function Pagination({ locale, target, query, sort, order, page, pageCount
   )
 }
 
-/**
- * What is shown when nothing matched. No relaxed search is run behind it: the
- * only honest count is of a search somebody asked for.
- *
- * **The other listing is not offered again here.** The same search over the
- * other kind of row stands in the pane, under what is narrowing this one, and
- * a screen with nothing on it saying the same thing twice within 200px reads
- * as two different offers.
- */
-export function NoResults({ locale }: { locale: Locale }) {
-  const messages = messagesFor(locale)
-  return (
-    <div className="rounded border border-line bg-surface px-6 py-6">
-      <Stack gap="normal">
-        <Stack gap="tight">
-          <p className="font-semibold">{messages.search.none}</p>
-          <p className="text-ink-muted text-sm">{messages.search.noneHint}</p>
-        </Stack>
-        <Stack gap="tight">
-          <h2 className="font-semibold text-ink-muted text-xs">{messages.search.syntaxTitle}</h2>
-          <Stack gap="tight" as="ul">
-            <li className="text-ink-muted text-sm">{messages.search.syntaxSpace}</li>
-            <li className="text-ink-muted text-sm">{messages.search.syntaxComma}</li>
-            <li className="text-ink-muted text-sm">{messages.search.syntaxQuote}</li>
-          </Stack>
-        </Stack>
-      </Stack>
-    </div>
-  )
-}
-
 export function InvalidQuery({ locale, column }: { locale: Locale, column: number }) {
   const messages = messagesFor(locale)
   return (
@@ -749,13 +738,13 @@ function ExportLinks({ locale, target, query, sort }: {
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        pill
+        listing
         icon={<Icon name="copy" />}
         onClick={() => { void copy() }}
       >
         {copied ? messages.search.exportCopied : messages.search.exportCopy}
       </Button>
-      <ButtonLink to={at("tsv")} external pill icon={<Icon name="download" />}>
+      <ButtonLink to={at("tsv")} external listing icon={<Icon name="download" />}>
         {messages.search.exportTsv}
       </ButtonLink>
     </div>
@@ -783,6 +772,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
   const locale = view.locale
   const messages = messagesFor(locale)
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
   // What the folded pane announces with, since on screen it is a mark and a
   // number: the pane's own name, and how much is in force behind it.
   const folded = view.conditions.length === 0
@@ -946,15 +936,18 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
             {/*
               Nothing to hand over when the address could not be read: the query
               the file would carry is the empty one, and that is the whole corpus
-              rather than the search on screen.
+              rather than the search on screen. **Nothing to hand over when the
+              search matched nothing either** — the file is a header row and no
+              rows, which is a download that answers a question nobody asked.
             */}
-            {view.parseError === null && (
+            {view.parseError === null && !empty && (
               <ExportLinks locale={locale} target={target} query={view.query} sort={view.requestedSort} />
             )}
           </Heading>
 
           <RefinableList
             open={paneOpen}
+            busy={busy}
             refineHasMore={view.conditions.length > 0 || other !== null}
             heading={(
               <PaneHeading title={messages.search.refine.heading} rule="start">
@@ -1013,14 +1006,12 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
           >
             {view.parseError !== null
               ? <InvalidQuery locale={locale} column={view.parseError.column} />
-              : empty
-                ? <NoResults locale={locale} />
-                : (
-                    <Stack gap="normal">
-                      {children}
-                      {tools}
-                    </Stack>
-                  )}
+              : (
+                  <Stack gap="normal">
+                    {children}
+                    {!empty && tools}
+                  </Stack>
+                )}
           </RefinableList>
         </Stack>
       </Card>

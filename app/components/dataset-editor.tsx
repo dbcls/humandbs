@@ -1001,7 +1001,6 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
                     type="button"
                     variant="secondary"
                     size="xs"
-                    pill
                     disabled={disabled}
                     onClick={() => { onRemove(term.id) }}
                   >

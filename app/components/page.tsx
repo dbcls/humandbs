@@ -1,4 +1,4 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { Children, createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
 import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack } from "~/components/base"
@@ -325,6 +325,25 @@ const FROZEN_EDGE = "shadow-[6px_0_6px_-6px_rgba(0,34,69,0.45)]"
 const FrozenEdgeAt = createContext(-1)
 
 /**
+ * Where a cell's content sits in a row taller than it is.
+ *
+ * **Top by default, because a listing's rows are not one line.** A study's title
+ * runs to three lines and its datasets to four, and the reader takes a row by
+ * reading across its first line — a date centred against a four-line cell sits
+ * beside nothing.
+ *
+ * **Middle where every row is one line.** Then the tallest thing in the row is
+ * not text at all but a control (36px against 22.4px), and top alignment leaves
+ * each cell lifted by a different amount: measured on the cart at 16.4px for a
+ * label, 17.2px for a badge and 18.0px for a button, against a row whose middle
+ * is 18.5px. Nothing is aligned to anything, which is what reads as "not quite
+ * centred" rather than as a mistake anyone can point at.
+ */
+const CellAlign = createContext<"top" | "middle">("top")
+
+const ALIGN = { top: "align-top", middle: "align-middle" }
+
+/**
  * A table.
  *
  * **A header is anything, not a string.** A column whose header is a control —
@@ -337,12 +356,35 @@ const FrozenEdgeAt = createContext(-1)
  * screen squeezes a column of titles down to one character per line rather than
  * letting the table overflow, and without the ceiling one long summary makes
  * every other column unreadably narrow.
+ *
+ * **A table with no rows is still the table**, and `whenEmpty` is what stands
+ * where the rows would be. Swapping the whole table for a box of prose loses the
+ * column names, which are what say what was being looked for, and moves
+ * everything below it — a reader who narrowed one step too far has to work out
+ * where they now are before they can take that step back. **The single cell
+ * spans every column**, which also lets the columns collapse to the width of the
+ * window: the floors are carried by `Td`, so a table of one wide cell stops
+ * travelling sideways for as long as it has no rows.
  */
-export function Table({ headers, children, stuck = 0 }: {
+export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }: {
   headers: ReactNode[]
   children: ReactNode
   /** How many of the leading columns stay put when the table scrolls sideways. */
   stuck?: number
+  /**
+   * What to put in place of the rows when there are none.
+   *
+   * Left out, an empty table draws an empty body — which is right where the
+   * caller has already said elsewhere that nothing came back.
+   */
+  whenEmpty?: ReactNode
+  /**
+   * Where the cells sit in a row taller than their content (`CellAlign`).
+   *
+   * **`middle` only where a row cannot run to two lines.** The cart is the
+   * clearest case: three labels, a badge and a button, none of which wraps.
+   */
+  align?: "top" | "middle"
 }) {
   const box = useRef<HTMLDivElement>(null)
   const rail = useRef<HTMLDivElement>(null)
@@ -478,11 +520,19 @@ export function Table({ headers, children, stuck = 0 }: {
                   two listings, drawn from the same frame, open with bands of two
                   different heights. It carries no word, so keeping a word on one
                   line cannot widen it either.
+
+                  **The band centres what it holds, whatever `align` says.** That
+                  choice is about the rows, where a cell may run to three or four
+                  lines and top is the only edge they share. **A header is one
+                  line by decision** (the word does not wrap), so it has no such
+                  reason — and left at the top, a name 16px tall and a 36px mark
+                  in the same 36px band come out 1px apart, which is the band
+                  reading as not quite straight.
                 */}
                 {headers.map((header, index) => (
                   <th
                     key={index}
-                    className={`max-w-88 px-3 font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`max-w-88 px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
                     {header}
                   </th>
@@ -490,7 +540,22 @@ export function Table({ headers, children, stuck = 0 }: {
               </tr>
             </thead>
             <tbody>
-              <FrozenEdgeAt.Provider value={edgeAt}>{children}</FrozenEdgeAt.Provider>
+              <CellAlign.Provider value={align}>
+                <FrozenEdgeAt.Provider value={edgeAt}>
+                  {whenEmpty !== undefined && Children.count(children) === 0
+                    ? (
+                        <tr>
+                          {/* Its own cell rather than `Td`: the floor and the
+                            ceiling a column keeps are what this row is spanning
+                            past, and the frozen columns have nothing to freeze. */}
+                          <td colSpan={headers.length} className="border-line border-b px-3 py-4">
+                            <Empty>{whenEmpty}</Empty>
+                          </td>
+                        </tr>
+                      )
+                    : children}
+                </FrozenEdgeAt.Provider>
+              </CellAlign.Provider>
             </tbody>
           </table>
         </div>
@@ -545,10 +610,11 @@ export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, f
   className?: string
 }) {
   const edgeAt = useContext(FrozenEdgeAt)
+  const align = useContext(CellAlign)
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 align-top ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`max-w-88 border-line border-b px-3 ${ALIGN[align]} ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>

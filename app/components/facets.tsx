@@ -3,7 +3,7 @@ import { Form, Link } from "react-router"
 
 import { CLEAR, EDGE_SHADE, Fold, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
-import { TermLabel } from "~/components/page"
+import { Empty, TermLabel } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { matches, rolledUpFind } from "~/public/facet-find"
@@ -190,7 +190,12 @@ function Facet({ locale, target, query, sort, facet, open }: {
                 </Form>
               </>
             )
-          : <Values locale={locale} values={facet.values} kind={facet.kind} />}
+          : facet.values.length === 0
+            // **A dimension nothing in the result carries still stands in the
+            // pane** (`facets.server.ts`), so opening it has to say why it is
+            // empty. Left blank it reads as a box that failed to draw.
+            ? <Empty>{messages.none}</Empty>
+            : <Values locale={locale} values={facet.values} kind={facet.kind} />}
       </Stack>
     </Fold>
   )

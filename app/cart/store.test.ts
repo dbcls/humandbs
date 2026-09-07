@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   addToCart,
   applicationPayload,
-  CART_LIMIT,
   cartPressGathers,
   isCartable,
+  noticeOf,
   parseCart,
   removeFromCart,
 } from "./store"
@@ -57,16 +57,8 @@ describe("adding to the cart", () => {
     expect(addToCart([], ["JGAD000001", "DRA014188"])).toEqual(["JGAD000001"])
   })
 
-  it("stops at the limit instead of failing", () => {
-    const full = many(CART_LIMIT)
-    expect(addToCart(full, ["JGAD009999"])).toEqual(full)
-  })
-
-  it("takes as many of a large row as fit", () => {
-    const nearly = many(CART_LIMIT - 1)
-    const added = addToCart(nearly, ["JGAD009998", "JGAD009999"])
-    expect(added).toHaveLength(CART_LIMIT)
-    expect(added.at(-1)).toBe("JGAD009998")
+  it("takes a whole large row, since the cart has no ceiling", () => {
+    expect(addToCart(many(200), ["JGAD009999"])).toHaveLength(201)
   })
 })
 
@@ -102,8 +94,8 @@ describe("reading the stored cart", () => {
     expect(parseCart(JSON.stringify(["JGAD000001", "DRA014188"]))).toEqual(["JGAD000001"])
   })
 
-  it("cuts a stored value that is over the limit", () => {
-    expect(parseCart(JSON.stringify(many(CART_LIMIT + 10)))).toHaveLength(CART_LIMIT)
+  it("keeps a large stored value whole", () => {
+    expect(parseCart(JSON.stringify(many(300)))).toHaveLength(300)
   })
 })
 
@@ -135,16 +127,47 @@ describe("pressing a mark that stands for many", () => {
     expect(cartPressGathers(many(20), many(20))).toBe(false)
   })
 
-  it("lets go when the ceiling stops it reaching every one of them", () => {
-    const held = many(CART_LIMIT)
-    expect(cartPressGathers(held, many(CART_LIMIT + 20))).toBe(false)
-  })
-
   it("counts the same dataset named twice as one, so a repeated id cannot block letting go", () => {
     expect(cartPressGathers(["JGAD000001"], ["JGAD000001", "JGAD000001"])).toBe(false)
   })
 
   it("ignores what could never go in, so a row of archives lets go rather than gathering nothing", () => {
     expect(cartPressGathers([], ["DRA014188", "hum0014-NHA001"])).toBe(false)
+  })
+})
+
+describe("what a press says afterwards", () => {
+  it("says nothing when the cart did not move", () => {
+    expect(noticeOf(["JGAD000001"], ["JGAD000001"], 1)).toBeNull()
+    expect(noticeOf([], [], 1)).toBeNull()
+  })
+
+  it("names the one that went in, since that is what the reader pressed", () => {
+    expect(noticeOf([], ["JGAD000001"], 1))
+      .toMatchObject({ kind: "added", count: 1, only: "JGAD000001", total: 1 })
+  })
+
+  it("counts rather than names when a row put several in", () => {
+    expect(noticeOf([], many(3), 1))
+      .toMatchObject({ kind: "added", count: 3, only: null, total: 3 })
+  })
+
+  it("names the one that came out", () => {
+    expect(noticeOf(["JGAD000001", "JGAD000002"], ["JGAD000002"], 1))
+      .toMatchObject({ kind: "removed", count: 1, only: "JGAD000001", total: 1 })
+  })
+
+  it("counts what is left rather than what moved", () => {
+    expect(noticeOf(many(5), many(2), 1)).toMatchObject({ count: 3, total: 2 })
+  })
+
+  it("holds the whole cart as it was, which is what taking the press back needs", () => {
+    const before = many(3)
+    expect(noticeOf(before, [], 1)?.before).toEqual(before)
+  })
+
+  it("tells one press from the next when the two would read the same", () => {
+    expect(noticeOf([], ["JGAD000001"], 1)?.at)
+      .not.toBe(noticeOf([], ["JGAD000001"], 2)?.at)
   })
 })

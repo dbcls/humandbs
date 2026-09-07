@@ -288,3 +288,31 @@ describe("which facets a panel opens", () => {
     expect(html).not.toContain("<details open")
   })
 })
+
+describe("a facet the result carries no value for", () => {
+  const empty = render([{
+    code: null,
+    label: null,
+    facets: [facet({ code: "platform", label: "プラットフォーム" })],
+  }])
+
+  /*
+    What a folded box says is that the listing can be narrowed by that
+    dimension, which is true whether or not this result happens to carry any
+    value for it. Dropping the boxes takes the pane apart in front of the reader
+    who narrowed one step too far — and at nothing found, took the whole pane.
+  */
+  it("keeps its box, so the pane still says what the listing narrows by", () => {
+    expect(empty).toContain("プラットフォーム")
+    expect(empty).toContain("<details")
+  })
+
+  it("opens on the reason it is empty rather than on nothing", () => {
+    expect(empty).toContain("絞り込める値がありません")
+  })
+
+  it("draws no list and no box to narrow one", () => {
+    expect(empty).not.toContain("<ul")
+    expect(empty).not.toContain("値をさがす")
+  })
+})

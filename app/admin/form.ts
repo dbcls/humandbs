@@ -63,6 +63,12 @@ export interface LinksPairInput {
   en: LinksInput
 }
 
+/** One name in the listing's provider column. */
+export interface ListingProviderInput {
+  id: string
+  name: TextPairInput
+}
+
 export interface DataProviderInput {
   id: string
   name: TextPairInput
@@ -103,6 +109,7 @@ export interface ResearchContentInput {
     methods: TextPairInput
     targets: TextPairInput
     typeOfData: TextPairInput
+    dataProviders: ListingProviderInput[]
   }
   releaseNote: TextPairInput
   dataProviders: DataProviderInput[]
@@ -160,6 +167,10 @@ export function researchContentInput(content: ResearchContent): ResearchContentI
       methods: prosePair(content.listingSummary.methods),
       targets: prosePair(content.listingSummary.targets),
       typeOfData: prosePair(content.listingSummary.typeOfData),
+      dataProviders: content.listingSummary.dataProviders.map((provider) => ({
+        id: provider.id,
+        name: textPair(provider.name),
+      })),
     },
     releaseNote: prosePair(content.releaseNote),
     dataProviders: content.dataProviders.map((provider) => ({

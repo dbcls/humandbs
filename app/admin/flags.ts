@@ -156,6 +156,9 @@ export function researchProblems(content: ResearchContent): ContentProblems {
   walk.rich("listingSummary.methods", content.listingSummary.methods)
   walk.rich("listingSummary.targets", content.listingSummary.targets)
   walk.rich("listingSummary.typeOfData", content.listingSummary.typeOfData)
+  for (const provider of content.listingSummary.dataProviders) {
+    walk.text(`listingSummary.dataProviders.${provider.id}.name`, provider.name)
+  }
   walk.rich("releaseNote", content.releaseNote)
 
   for (const provider of content.dataProviders) {

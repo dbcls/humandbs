@@ -776,9 +776,11 @@ export interface ResearchListRowView {
   targets: FieldView
   accessTypes: TermView[]
   /**
-   * The representative of each provider, and not the organisation beside it.
-   * The research page carries both under one heading; a cell in a listing holds
-   * a line, and the name is the half a reader scans for.
+   * Whom the row names as the provider: the listing's own names where someone
+   * wrote them, and otherwise the representative of each provider the research
+   * carries — not the organisation beside it. The research page carries both
+   * under one heading; a cell in a listing holds a line, and the name is the
+   * half a reader scans for.
    */
   dataProviders: FieldView[]
   datePublished: string | null
@@ -806,6 +808,21 @@ export interface ResearchListRowInput {
  */
 const BY_LABEL = new Intl.Collator("en", { numeric: true })
 
+/**
+ * The names the provider column shows.
+ *
+ * **An empty listing list is not an empty column** — it is the ordinary case,
+ * and it means the research's own providers. A name is only written into the
+ * listing where the two are meant to differ, which is rare enough that a copy
+ * kept on every research would be a copy nobody had chosen and one that a
+ * correction to the section would not reach.
+ */
+export function listingProviders(content: ResearchContent): TranslatedText[] {
+  const chosen = content.listingSummary.dataProviders
+  if (chosen.length > 0) return chosen.map((provider) => provider.name)
+  return content.dataProviders.map((provider) => provider.name)
+}
+
 export function researchListRowView(
   input: ResearchListRowInput,
   locale: Locale,
@@ -822,8 +839,8 @@ export function researchListRowView(
     platforms: termViews(input.platformTermIds, locale, catalog),
     targets: prose(short.targets, locale, fallbacks),
     accessTypes: termViews(input.accessTermIds, locale, catalog),
-    dataProviders: input.content.dataProviders.map((provider) =>
-      translated(provider.name, locale, fallbacks)),
+    dataProviders: listingProviders(input.content).map((name) =>
+      translated(name, locale, fallbacks)),
     datePublished: input.datePublished,
     dateModified: input.dateModified,
   }

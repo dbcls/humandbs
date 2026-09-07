@@ -19,6 +19,7 @@ import { z } from "zod"
 import { parseRichText, type RichTextSyntax } from "~/content/parse.server"
 import type {
   Link,
+  ListingProvider,
   LocalizedLinks,
   ResearchContent,
   RichText,
@@ -29,6 +30,7 @@ import type {
 
 import type {
   LinksPairInput,
+  ListingProviderInput,
   ResearchContentInput,
   TextInput,
   TextPairInput,
@@ -82,6 +84,10 @@ const researchContentInputSchema = z.object({
     methods: textPairSchema,
     targets: textPairSchema,
     typeOfData: textPairSchema,
+    dataProviders: elements(z.object({
+      id: z.string().min(1),
+      name: textPairSchema,
+    })),
   }),
   releaseNote: textPairSchema,
   dataProviders: elements(z.object({
@@ -138,6 +144,23 @@ function textPair(pair: TextPairInput): TranslatedText {
   return { ja: textSlot(pair.ja), en: textSlot(pair.en) }
 }
 
+/**
+ * One name for the listing's provider column, or null where the element says
+ * nothing in either language and is not waiting on an answer either — a card
+ * somebody added and left alone.
+ *
+ * **A blank one cannot be kept.** An empty list is how the column says "the
+ * research's own providers" (`app/public/view.server.ts` の `listingProviders`),
+ * so an element holding nothing would quietly replace those names with a blank
+ * cell, and neither the publish gate nor the form has anything to say about a
+ * field that is legitimately empty.
+ */
+function listingProvider(input: ListingProviderInput): ListingProvider | null {
+  const name = textPair(input.name)
+  const blank = (slot: Slot<string>) => slot.state === "value" && slot.value.trim() === ""
+  return blank(name.ja) && blank(name.en) ? null : { id: input.id, name }
+}
+
 function linksPair(pair: LinksPairInput): LocalizedLinks {
   const side = (input: LinksPairInput["ja"]): Slot<Link[]> =>
     input.state === "value"
@@ -183,6 +206,10 @@ export function researchContentOf(input: ResearchContentInput): ContentResult {
       methods: prose(input.listingSummary.methods, "listingSummary.methods"),
       targets: prose(input.listingSummary.targets, "listingSummary.targets"),
       typeOfData: prose(input.listingSummary.typeOfData, "listingSummary.typeOfData"),
+      dataProviders: input.listingSummary.dataProviders.flatMap((provider) => {
+        const one = listingProvider(provider)
+        return one === null ? [] : [one]
+      }),
     },
     releaseNote: prose(input.releaseNote, "releaseNote"),
     dataProviders: input.dataProviders.map((provider) => ({

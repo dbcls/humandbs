@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { AppliedConditions, PageSizeChooser, Pagination, SearchForm, SortChooser } from "./search"
+import { AppliedConditions, PageSizeChooser, Pagination, RefinableList, SearchForm, SortChooser } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -362,5 +362,54 @@ describe("which way the ordering runs", () => {
       />,
     )
     expect(html).toContain("order=asc&amp;size=50")
+  })
+})
+
+describe("a listing waiting for the answer to replace it", () => {
+  const of = (busy: boolean) => render(
+    <RefinableList
+      open
+      busy={busy}
+      heading={<h2>絞り込み</h2>}
+      closed={null}
+      refine={<p>条件</p>}
+      refineHasMore={false}
+      tools={<p>並び替え</p>}
+      panel={<p>facet</p>}
+    >
+      <p>hum0001</p>
+    </RefinableList>,
+  )
+
+  /*
+    The answer on screen is still the answer to the search behind it, and a
+    block that empties itself moves everything under it twice for one
+    refinement. What it does instead is say that it is not the new one yet.
+  */
+  it("keeps what is on screen readable while the next answer is on its way", () => {
+    const html = of(true)
+    expect(html).toContain("hum0001")
+    expect(html).toContain("facet")
+  })
+
+  it("goes pale and says so, and the pointer says which way to read it", () => {
+    const html = of(true)
+    expect(html).toContain("aria-busy=\"true\"")
+    expect(html).toContain("opacity-60")
+    expect(html).toContain("cursor-progress")
+  })
+
+  it("carries none of that while it is showing an answer", () => {
+    const html = of(false)
+    expect(html).toContain("aria-busy=\"false\"")
+    expect(html).not.toContain("opacity-60")
+    expect(html).not.toContain("cursor-progress")
+  })
+
+  /* Both states carry it, so a state that outlives the delay by 40ms fades
+     rather than blinking. */
+  it("fades in and out of it", () => {
+    expect(of(true)).toContain("transition-opacity")
+    expect(of(false)).toContain("transition-opacity")
   })
 })

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Form, Link, useLocation } from "react-router"
 
-import { useCart } from "~/cart/store"
+import { CartMenu } from "~/components/cart"
 import {
   Announcement,
   LanguagePills,
@@ -22,7 +22,7 @@ import {
   navLabel,
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
-import { cartPath, href, normalizeQuery, readLocale } from "~/public/urls"
+import { href, normalizeQuery, readLocale } from "~/public/urls"
 
 /**
  * Whether an entry names the page being looked at.
@@ -210,7 +210,6 @@ export function SiteHeader({ locale, account, managing = false }: {
   const messages = messagesFor(locale)
   const location = useLocation()
   const { path } = readLocale(location.pathname)
-  const cart = useCart()
 
   // No rule along the bottom of the bar: it is white and the page under it is
   // a tint, so where one stops is already drawn. A line there is a third edge
@@ -348,29 +347,11 @@ export function SiteHeader({ locale, account, managing = false }: {
             }))}
           />
           {/*
-            The address carries what the cart holds, so that following it lands
-            on the rows rather than on an empty cart that fills in a moment
-            later. The count is in the name as well as on the glyph: a label
-            replaces what is inside a link, so a number left in the markup alone
-            would be read by nobody who cannot see it.
-          */}
-          {/*
             **Not on a management screen.** The cart is a reader collecting
             datasets to ask for, which is not what somebody editing them is
             doing; it would sit there holding nothing on all eighteen of them.
           */}
-          {!managing && (
-            <RoundLink
-              to={cart.ids.length === 0
-                ? href(locale, cartPath())
-                : `${href(locale, cartPath())}?${new URLSearchParams({ ids: cart.ids.join(",") }).toString()}`}
-              name="cart"
-              label={cart.ids.length === 0
-                ? messages.cart.open
-                : messages.cart.openWithCount(cart.ids.length)}
-              count={cart.ids.length}
-            />
-          )}
+          {!managing && <CartMenu locale={locale} />}
           <AccountControl account={account} locale={locale} />
         </div>
       </div>

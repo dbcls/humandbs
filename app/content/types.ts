@@ -220,6 +220,20 @@ export interface ResearchContent {
     methods: TranslatedRichText
     targets: TranslatedRichText
     typeOfData: TranslatedRichText
+    /**
+     * Who the listing names as the provider, where that is not everyone the
+     * research names.
+     *
+     * **An empty list means the research's own providers.** The two agree for
+     * all but a handful, so holding a copy of the names on every research would
+     * make a corrected name right on one page and stale on the other — and
+     * would leave no way to tell a name someone chose for the table from one
+     * that was only ever copied there.
+     *
+     * Names alone. The organisation, the ORCID and the address stay on
+     * `dataProviders`, which is the section a reader opens to find them.
+     */
+    dataProviders: ListingProvider[]
   }
   releaseNote: TranslatedRichText
   dataProviders: DataProvider[]
@@ -232,6 +246,16 @@ export interface ResearchContent {
    * it is described now.
    */
   datasetIds: string[]
+}
+
+/**
+ * A name the listing puts in the provider column. Carries an identity for the
+ * same reason the sections below do: the editor addresses an element by it, so
+ * that reordering the list does not move what points at one.
+ */
+export interface ListingProvider {
+  id: string
+  name: TranslatedText
 }
 
 /** Array elements carry an identity because comments address them. */

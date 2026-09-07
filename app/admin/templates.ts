@@ -115,6 +115,7 @@ export function researchContentFrom(branch: DsBranchDetail): ResearchContent {
       methods: prose("", ""),
       targets: prose("", ""),
       typeOfData: prose("", ""),
+      dataProviders: [],
     },
     releaseNote: prose("", ""),
     dataProviders: hasName(branch) ? [provider] : [],

@@ -30,6 +30,8 @@ import remarkStringify from "remark-stringify"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 
+import { headingIds } from "../app/public/heading-id"
+
 /** Superscripts in the source are units, charges and footnote marks. */
 const SUPERSCRIPT: Record<string, string> = {
   "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
@@ -176,6 +178,46 @@ const CALLOUT_KIND: Record<string, string> = {
 const CALLOUT_DEFAULT = "TIP"
 
 /**
+ * A callout that brought its own headings, which is a passage quoted whole
+ * rather than an aside.
+ *
+ * **Three of the thirty-four are one of these**: the FAQ carries forty-three
+ * lines of the personal-information act, and the sharing guidelines carry the
+ * sample wording for a consent form in both languages. All three run to
+ * thousands of characters under headings of their own, and none of them says
+ * which kind of callout it is — so what they are drawn as is only ever the
+ * default. **A statute inside a "ⓘ" box says the wrong thing about what it is**
+ * (`app/public/markdown.server.ts`), so these take the box with no glyph.
+ *
+ * Only the default is overridden. A kind somebody wrote down is a decision, and
+ * this is not the place to overrule one.
+ */
+const QUOTED = "NOTE"
+
+const HEADING_LINE = /^\s*(?:#{1,6}\s|<h[1-6]\b)/
+
+/**
+ * Where each callout's content ends, by the line its fence opens on. Read
+ * ahead, because the kind is written at the top and what decides it is inside.
+ */
+function calloutHeadings(lines: readonly string[]): Set<number> {
+  const carries = new Set<number>()
+  let opened: number | null = null
+  lines.forEach((line, at) => {
+    const rest = FENCE.exec(line)?.[2]?.trim()
+    if (opened === null) {
+      // A fence carrying its own closing `:::` opens and shuts on one line, and
+      // one line cannot be a heading and a fence at once.
+      if (rest !== undefined && rest !== "" && !rest.endsWith(":::")) opened = at
+      return
+    }
+    if (rest === "") opened = null
+    else if (HEADING_LINE.test(line)) carries.add(opened)
+  })
+  return carries
+}
+
+/**
  * v1 extended markdown with `:::callout` and `:::button` fences. v2 writes the
  * aside GitHub's way instead, so a callout becomes a named alert. `:::button` is
  * not handled — it only ever appears on the three pages that are screens now,
@@ -193,9 +235,11 @@ const CALLOUT_DEFAULT = "TIP"
  */
 function foldCallouts(source: string): string {
   const out: string[] = []
+  const lines = source.split("\n")
+  const quoted = calloutHeadings(lines)
   let indent: string | null = null
 
-  for (const line of source.split("\n")) {
+  for (const [at, line] of lines.entries()) {
     const fence = FENCE.exec(line)
     if (fence !== null) {
       const [, fenceIndent = "", rest = ""] = fence
@@ -208,7 +252,7 @@ function foldCallouts(source: string): string {
       if (name !== "callout") throw new Error(`unhandled markdown directive: ${line.trim()}`)
       indent = fenceIndent
       const after = rest.trim().slice(name.length)
-      let kind = CALLOUT_DEFAULT
+      let kind = quoted.has(at) ? QUOTED : CALLOUT_DEFAULT
       for (const [, key = "", value = ""] of after.matchAll(ATTRIBUTE)) {
         if (key !== "type") throw new Error(`unhandled callout attribute: ${key}`)
         kind = CALLOUT_KIND[value.toLowerCase()] ?? CALLOUT_DEFAULT
@@ -241,6 +285,79 @@ function foldCallouts(source: string): string {
   return out.join("\n")
 }
 
+const HEADING = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
+
+/** Whatever this element can be pointed at by. Joomla wrote both spellings. */
+function anchorNames(node: Element): string[] {
+  return ["id", "name"]
+    .map((key) => node.properties[key])
+    .filter((value): value is string => typeof value === "string" && value !== "")
+}
+
+/**
+ * Sends v1's in-page links to the headings v2 will actually put ids on.
+ *
+ * **v1 placed its own anchors and v2 has none of them.** Joomla wrote
+ * `<h2 id="faq-8">` and bare `<a id="faq-8-2">` markers, and the links pointing
+ * at them are the FAQ's own contents list and the cross-references inside the
+ * guidelines. v2 renders no raw HTML and gives a heading an address built from
+ * its words (`app/public/heading-id.ts`), so every one of those links would
+ * arrive at a place that does not exist.
+ *
+ * **What an anchor resolves to is the heading it is in.** One written on a
+ * heading names that heading; one written in the middle of a section names the
+ * heading above it, which is as close as a reader can be put. The rewrite has
+ * to happen here rather than at render time because the anchors are in the
+ * source and are gone by the time the markdown is stored.
+ *
+ * **A link with no heading anywhere above it loses its link and keeps its
+ * text.** One document is a table of file names pointing down at their own
+ * paragraphs and holds no heading at all; a link that goes nowhere reads as a
+ * broken page, while the words alone still say what they said.
+ */
+function resolveAnchors() {
+  return (tree: Root) => {
+    const headings: string[] = []
+    /** Anchor name to the position of the heading it belongs to. */
+    const at = new Map<string, number>()
+
+    visit(tree, "element", (node: Element) => {
+      const heading = HEADING.has(node.tagName)
+      // A heading's own anchor names itself, so it is recorded against the
+      // position this heading is about to take.
+      for (const name of anchorNames(node)) {
+        at.set(name, heading ? headings.length : headings.length - 1)
+      }
+      if (heading) headings.push(textOf(node))
+    })
+
+    const ids = headingIds(headings)
+    visit(tree, "element", (node: Element, index, parent) => {
+      if (node.tagName !== "a") return
+      const href = node.properties.href
+      const inPage = typeof href === "string" && href.startsWith("#")
+      // Anything addressed anywhere else is somebody else's problem.
+      if (typeof href === "string" && href !== "" && !inPage) return
+      if (inPage) {
+        const target = at.get(decodeURIComponent(href.slice(1)))
+        const id = target === undefined || target < 0 ? undefined : ids[target]
+        if (id !== undefined) {
+          node.properties = { ...node.properties, href: `#${id}` }
+          return
+        }
+      }
+      // Nothing left to point at: either the destination this `<a>` marked
+      // (`<a id="crf">crf.tsv</a>` is where a link lands, not a link itself), or
+      // one whose destination no heading can stand for. **The words stay** —
+      // written back as a link they become `[crf.tsv]()`, which is an address a
+      // reader can press and which reloads the page they are on.
+      if (parent === undefined || index === undefined) return
+      parent.children.splice(index, 1, ...node.children)
+      return index
+    })
+  }
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -249,6 +366,7 @@ const processor = unified()
   .use(foldSuperscripts)
   .use(dropBlankParagraphs)
   .use(expandSpans)
+  .use(resolveAnchors)
   .use(rehypeRemark)
   .use(remarkGfm)
   .use(remarkStringify, { bullet: "-", emphasis: "*", strong: "*", fence: "`", rule: "-" })

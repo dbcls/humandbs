@@ -2,7 +2,7 @@ import { Fragment, type ReactNode } from "react"
 import { Link } from "react-router"
 
 import { Clamped } from "~/components/base"
-import { CartToggle } from "~/components/cart"
+import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Table, Td, Value } from "~/components/page"
@@ -88,7 +88,6 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const d = messages.dataset
-  const onThisPage = view.rows.map((row) => row.label)
   // **The column is always the first one**, as it is on the research listing.
   // Most datasets are not applied for at all — the archives' own accessions are
   // open — so on many pages every cell in it is empty; a column that appeared
@@ -96,7 +95,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   // reader to press a mark that was nowhere on the screen, and moved every
   // other column sideways between one page of results and the next.
   const headers = [
-    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
+    <CartColumnHead key="cart" locale={locale} />,
     d.datasetId,
     messages.research.researchId,
     d.typeOfData,
@@ -121,7 +120,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
       )}
       empty={view.rows.length === 0}
     >
-      <Table headers={headers} stuck={2}>
+      <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.label}>
             <Td stuck={0} narrow><CartToggle ids={[row.label]} locale={locale} /></Td>

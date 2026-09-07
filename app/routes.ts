@@ -36,6 +36,7 @@ function pages(scope: string) {
     route("research/:humId/versions", "routes/research-versions.tsx", { id: `${scope}-versions` }),
     route("research/:humId/:version", "routes/research-version.tsx", { id: `${scope}-version` }),
     route("cart", "routes/cart.tsx", { id: `${scope}-cart` }),
+    route("cart/rows", "routes/cart-rows.ts", { id: `${scope}-cart-rows` }),
     route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/export", "routes/dataset-export.ts", { id: `${scope}-dataset-export` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),

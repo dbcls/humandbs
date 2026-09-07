@@ -277,19 +277,16 @@ export async function facetPanel(
   return {
     categories: withDates(
       categorise(views, definitions, locale),
-      DATE_FACETS.flatMap((field) => {
-        const view = dateView({
-          field,
-          locale,
-          selection,
-          span: dateSpan(field),
-          today: request.today,
-          ast,
-          fields,
-          address,
-        })
-        return view === null ? [] : [view]
-      }),
+      DATE_FACETS.map((field) => dateView({
+        field,
+        locale,
+        selection,
+        span: dateSpan(field),
+        today: request.today,
+        ast,
+        fields,
+        address,
+      })),
     ),
     target,
   }
@@ -299,10 +296,14 @@ export async function facetPanel(
  * A date as the panel offers it: the same pair of inputs a number takes, over a
  * column of the search row rather than a facet table ([fields.ts](../search/fields.ts)).
  *
- * **A date the result never carries is not offered.** Two empty boxes over a
- * span that does not exist are a control that cannot do anything, and the
- * modification dates are exactly that until the application system is reachable
- * ([development.md](../../docs/development.md) の「上流のキャッシュを更新する」).
+ * **A date the result never carries keeps its box and loses its inputs.** Two
+ * empty boxes over a span that does not exist are a control that cannot do
+ * anything — the modification dates are exactly that until the application
+ * system is reachable ([development.md](../../docs/development.md) の
+ * 「上流のキャッシュを更新する」) — but taking the whole dimension away says
+ * instead that the listing cannot be narrowed by it at all. **The box stands
+ * and opens on the reason it is empty**, which is what every other dimension
+ * with no values does (`categorise`).
  */
 function dateView(input: {
   field: DateFacet
@@ -313,15 +314,13 @@ function dateView(input: {
   ast: QueryNode | null
   fields: QueryFields
   address: (query: QueryNode | null) => string
-}): FacetView | null {
+}): FacetView {
   const { field, locale, selection, span, today, ast, fields, address } = input
   // A single day written as a condition is a span of one day. The panel has no
   // other way to draw it, and drawing nothing would leave it with no way off.
   const [only] = selection.terms.get(field) ?? []
   const chosen = selection.ranges.get(field)
     ?? (only === undefined ? undefined : { from: only, to: only })
-  if (span === null && chosen === undefined) return null
-
   const messages = messagesFor(locale).search.refine
   const lifted = address(withoutFacet(ast, fields, field))
   const presets: RangePresetView[] = [
@@ -345,12 +344,16 @@ function dateView(input: {
     kind: "date",
     values: [],
     clearHref: chosen === undefined ? null : lifted,
-    range: {
-      from: writtenBound(chosen?.from),
-      to: writtenBound(chosen?.to),
-      unit: null,
-      presets,
-    },
+    // Nothing in the result carries this date and nobody is asking for one, so
+    // the pair of inputs and the windows over them have nothing to act on.
+    range: span === null && chosen === undefined
+      ? null
+      : {
+          from: writtenBound(chosen?.from),
+          to: writtenBound(chosen?.to),
+          unit: null,
+          presets,
+        },
   }
 }
 
@@ -413,7 +416,18 @@ function writtenBound(bound: string | undefined): string {
   return bound === undefined || bound === OPEN_BOUND ? "" : bound
 }
 
-/** Facets grouped under their category heading, in the catalog's order. */
+/**
+ * Facets grouped under their category heading, in the catalog's order.
+ *
+ * **Every facet the catalog holds is here, including the ones nothing in the
+ * result carries.** What a facet's box says, folded, is that the listing can be
+ * narrowed by that dimension — dropping the boxes whose values came back empty
+ * takes the pane apart in front of a reader who has narrowed one step too far,
+ * and at nothing found it took the whole pane away: what was left was a search
+ * box, a row of conditions, and no sign that anything else had ever been there.
+ * **The values inside are a different question** and are dropped as before, so
+ * a box that opens on nothing is telling the truth about that dimension.
+ */
 function categorise(
   views: readonly FacetView[],
   definitions: readonly FacetDefinition[],
@@ -440,6 +454,5 @@ function categorise(
       facets: [view],
     })
   })
-  return categories.filter((category) =>
-    category.facets.some((facet) => facet.values.length > 0 || facet.range !== null))
+  return categories
 }

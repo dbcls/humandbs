@@ -67,6 +67,20 @@ export const translatedTextArb: fc.Arbitrary<TranslatedText> = fc.record({
   en: slotArb(textArb),
 })
 
+/**
+ * A name the listing puts in its provider column. **Never blank in both
+ * languages**: an empty list is what says "the research's own providers", so an
+ * element holding nothing is not content the save path stores
+ * (`app/admin/form.server.ts` の `listingProvider`). Waiting on an answer is a
+ * different thing and is drawn like everywhere else.
+ */
+const listingProviderNameArb: fc.Arbitrary<TranslatedText> = translatedTextArb.map((name) => {
+  const blank = (slot: Slot<string>) => slot.state === "value" && slot.value.trim() === ""
+  return blank(name.ja) && blank(name.en)
+    ? { ...name, ja: { state: "value", value: "提供者" } }
+    : name
+})
+
 /** A span's text never holds a newline: that is what a line boundary is. */
 const spanTextArb = fc.string().map((text) => text.replaceAll("\n", " "))
 
@@ -166,6 +180,10 @@ export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
     methods: translatedRichTextArb,
     targets: translatedRichTextArb,
     typeOfData: translatedRichTextArb,
+    dataProviders: fc.array(
+      fc.record({ id: idArb, name: listingProviderNameArb }),
+      { maxLength: 3 },
+    ),
   }),
   releaseNote: translatedRichTextArb,
   dataProviders: fc.array(

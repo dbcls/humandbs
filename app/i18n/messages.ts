@@ -83,15 +83,19 @@ const ja = {
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSfyKmqCoIegHhRvaDH6JUF4j8C6-2cWWnjwaSAJ9iMxKbukXw/viewform?embedded=true",
   },
   search: {
-    // The word for what is being looked through, so that the same box over two
-    // listings says which one it is over. **It is the field's name as well as
-    // the grey word inside it** — a reader who cannot see the box is the one
-    // who most needs telling which of the two listings they are searching, and
-    // a name is what a screen reader announces instead of the placeholder.
-    placeholder: {
+    // **The field's name says which listing it is over**, and stays that way
+    // wherever the box stands: a reader who cannot see it is the one who most
+    // needs telling which of the two they are searching, and a name is what a
+    // screen reader announces instead of the grey word. It matters most where
+    // nothing came back — the table is empty then, and the name is the only
+    // thing left saying what was being looked through.
+    boxName: {
       research: "キーワードで研究を検索",
       dataset: "キーワードでデータセットを検索",
     },
+    // The grey word, inside a listing. The page around it already says which
+    // listing this is, so the box says what it takes rather than where it looks.
+    boxHint: "キーワード検索",
     submit: "検索",
     pageSize: "表示件数",
     examples: "よく検索されるキーワード",
@@ -111,12 +115,17 @@ const ja = {
     range: (from: number, to: number, total: number) => `${from}–${to} / ${total} 件`,
     alsoInResearch: (count: number) => `同じ条件の研究 (${count} 件)`,
     alsoInDataset: (count: number) => `同じ条件のデータセット (${count} 件)`,
-    none: "条件に合うものは見つかりませんでした。",
-    noneHint: "語を減らすか、別の語で試してみてください。",
-    syntaxTitle: "検索のしかた",
-    syntaxSpace: "空白で区切ると、すべてを含むものを探します。",
-    syntaxComma: "カンマで区切ると、どれかを含むものを探します。",
-    syntaxQuote: "引用符で囲むと、その並びのまま探します。",
+    /**
+     * Where the rows would be, when the search matched none.
+     *
+     * **The fact and nothing else.** What to do next is the pane's, and the pane
+     * is beside this line: the conditions in force, what clears them, and every
+     * dimension the listing can be narrowed by. Advice written here would also
+     * have to cover both ways of narrowing at once — "try fewer words" is about
+     * the box alone, and a reader who got here by choosing values is being told
+     * to edit something they never typed.
+     */
+    none: "条件に合うものはありませんでした。",
     invalid: "検索条件を読み取れませんでした。",
     exclude: "除外",
     /**
@@ -173,7 +182,13 @@ const ja = {
       spanTo: (max: string) => `〜${max}`,
       clearFacet: "解除",
       selected: "選択中",
-      none: "絞り込める項目はありません。",
+      /**
+       * Inside a facet nothing in the result carries a value for.
+       *
+       * **The box itself stays** (`facets.server.ts`), so opening it has to say
+       * why it holds nothing — blank, it reads as a box that failed to draw.
+       */
+      none: "この項目で絞り込める値がありません。",
     },
   },
   research: {
@@ -194,6 +209,7 @@ const ja = {
       methods: "解析手法",
       targets: "参加者（対象集団）",
       typeOfData: "種別",
+      dataProviders: "提供者",
     },
     platforms: "プラットフォーム",
     datasets: "データセット",
@@ -252,16 +268,34 @@ const ja = {
     // A toggle keeps one name whichever state it is in: the state is announced
     // separately, and a name that changed with it would read as its opposite.
     toggleRow: "この研究のデータセットをカートに入れる／外す",
-    togglePage: "この表のデータセットをカートに入れる／外す",
     openWithCount: (count: number) => `カート（${count} 件）`,
     empty: "カートは空です。",
     emptyHint: "研究一覧やデータセット一覧のカートの印から追加してください。",
-    full: (limit: number) => `カートに入れられるのは ${limit} 件までです。`,
-    instructions: "「JSON をコピー」でカートの内容をクリップボードに写し、「利用申請フォームへ」から申請システムに移って貼り付けてください（新しいタブで開きます）。",
+    // The two of them as one line, for the row that stands where the rows would
+    // be: a table cell is a line, and a second sentence under it would push the
+    // one column name a reader still needs off the top of their eye.
+    emptyRow: "カートは空です。研究一覧やデータセット一覧のカートの印から追加してください。",
+    steps: "申請の手順",
+    stepCopy: "カートの内容をコピーする",
+    stepApply: "申請システムに移って貼り付ける",
+    /** Said beside the button once the clipboard holds what the table shows. */
+    copyDone: "コピーしました",
     copy: "JSON をコピー",
     copied: "コピーしました",
     apply: "利用申請フォームへ",
     missing: "このデータセットは見つかりませんでした。",
+    holding: (count: number) => `${count} 件を集めています`,
+    clear: "すべて外す",
+    clearAll: "カートをすべて外す",
+    view: "カートを見る",
+    notice: "カートの知らせ",
+    dismiss: "閉じる",
+    undo: "取り消す",
+    putOne: (label: string) => `${label} をカートに入れました`,
+    putMany: (count: number) => `${count} 件をカートに入れました`,
+    tookOne: (label: string) => `${label} をカートから外しました`,
+    tookMany: (count: number) => `${count} 件をカートから外しました`,
+    clearedAll: (count: number) => `${count} 件をすべて外しました`,
   },
   account: {
     logIn: "ログイン",
@@ -554,6 +588,11 @@ const ja = {
         "not-applicable": "該当なしにする",
       },
       untranslated: "未翻訳",
+      listingProvidersFrom: (names: string) =>
+        names === ""
+          ? "空のあいだは、提供者情報の代表者がそのまま一覧に出ます。"
+          : `空のあいだは、提供者情報の代表者がそのまま一覧に出ます（いまは「${names}」）。`,
+      listingProvidersOwn: "一覧はここに書いた名前だけを出します。提供者情報は変わりません。",
       add: "追加",
       remove: "削除",
       moveUp: "上へ",
@@ -959,10 +998,11 @@ const en: Messages = {
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSessVTsAHFeFNQnd_mS79T7ZRlOCVehbpQfSlrioOhmdYWdjg/viewform?embedded=true",
   },
   search: {
-    placeholder: {
+    boxName: {
       research: "Search research by keyword",
       dataset: "Search datasets by keyword",
     },
+    boxHint: "Search by keyword",
     submit: "Search",
     pageSize: "Per page",
     examples: "Frequent searches",
@@ -981,11 +1021,6 @@ const en: Messages = {
     alsoInResearch: (count: number) => `Same conditions in research (${count})`,
     alsoInDataset: (count: number) => `Same conditions in datasets (${count})`,
     none: "Nothing matches these conditions.",
-    noneHint: "Try fewer words, or different ones.",
-    syntaxTitle: "How to search",
-    syntaxSpace: "Words separated by spaces must all appear.",
-    syntaxComma: "Words separated by commas match any of them.",
-    syntaxQuote: "Quotes match the words in that order.",
     invalid: "This search could not be read.",
     exclude: "Excluding",
     keyword: "Keyword",
@@ -1028,7 +1063,7 @@ const en: Messages = {
       spanTo: (max: string) => `–${max}`,
       clearFacet: "Clear",
       selected: "Selected",
-      none: "There is nothing to refine by.",
+      none: "Nothing here to refine by.",
     },
   },
   research: {
@@ -1043,6 +1078,7 @@ const en: Messages = {
       methods: "Analysis method",
       targets: "Participants",
       typeOfData: "Category",
+      dataProviders: "Data provider",
     },
     platforms: "Platforms",
     datasets: "Datasets",
@@ -1099,16 +1135,30 @@ const en: Messages = {
     payload: "The JSON to paste into the application form",
     showPayload: "Show what will be pasted",
     toggleRow: "Add or remove this research's datasets",
-    togglePage: "Add or remove the datasets in this table",
     openWithCount: (count: number) => `Cart (${count})`,
     empty: "The cart is empty.",
     emptyHint: "Add datasets from the cart marks in the research or dataset listing.",
-    full: (limit: number) => `A cart holds at most ${limit} datasets.`,
-    instructions: "Copy the cart with \"Copy JSON\", open the application system with \"Go to the application form\" (it opens in a new tab), and paste it there.",
+    emptyRow: "The cart is empty. Add datasets from the cart marks in the research or dataset listing.",
+    steps: "How to apply",
+    stepCopy: "Copy what the cart holds",
+    stepApply: "Paste it into the application system",
+    copyDone: "Copied",
     copy: "Copy JSON",
     copied: "Copied",
     apply: "Go to the application form",
     missing: "This dataset was not found.",
+    holding: (count: number) => `${count} collected`,
+    clear: "Remove all",
+    clearAll: "Remove everything from the cart",
+    view: "Go to the cart",
+    notice: "Cart notice",
+    dismiss: "Dismiss",
+    undo: "Undo",
+    putOne: (label: string) => `${label} added to the cart`,
+    putMany: (count: number) => `${count} datasets added to the cart`,
+    tookOne: (label: string) => `${label} removed from the cart`,
+    tookMany: (count: number) => `${count} datasets removed from the cart`,
+    clearedAll: (count: number) => `All ${count} removed from the cart`,
   },
   account: {
     logIn: "Log in",
@@ -1401,6 +1451,12 @@ const en: Messages = {
         "not-applicable": "Mark not applicable",
       },
       untranslated: "Untranslated",
+      listingProvidersFrom: (names: string) =>
+        names === ""
+          ? "Left empty, the listing shows the representatives from the data providers section."
+          : `Left empty, the listing shows the representatives from the data providers section (now “${names}”).`,
+      listingProvidersOwn:
+        "The listing shows only the names written here. The data providers section is unchanged.",
       add: "Add",
       remove: "Remove",
       moveUp: "Up",

@@ -1,7 +1,7 @@
 import { Link } from "react-router"
 
 import { Clamped, Excerpt } from "~/components/base"
-import { CartToggle } from "~/components/cart"
+import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Table, Td, TermLabel, Value } from "~/components/page"
@@ -51,9 +51,8 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(locale)
   const t = messages.research
   const short = t.listingSummary
-  const onThisPage = view.rows.flatMap((row) => row.datasetLabels)
   const headers = [
-    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
+    <CartColumnHead key="cart" locale={locale} />,
     t.researchId,
     t.datasets,
     t.title,
@@ -82,7 +81,7 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
       )}
       empty={view.rows.length === 0}
     >
-      <Table headers={headers} stuck={2}>
+      <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.humLabel}>
             <Td stuck={0} narrow><CartToggle ids={row.datasetLabels} locale={locale} /></Td>

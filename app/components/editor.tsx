@@ -25,6 +25,7 @@ import { Link } from "react-router"
 
 import { diffDraftInput, takeField } from "~/admin/diff"
 import type {
+  DataProviderInput,
   DraftInput,
   LinkInput,
   LinksPairInput,
@@ -394,6 +395,38 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     }}
                   />
                 ))}
+                <FieldHead
+                  label={words.listingSummary.dataProviders}
+                  marks={marksFor("listingSummary.dataProviders")}
+                  locale={locale}
+                />
+                <p className="text-ink-muted text-xs">
+                  {content.listingSummary.dataProviders.length === 0
+                    ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
+                    : t.listingProvidersOwn}
+                </p>
+                <RepeatingList
+                  path="listingSummary.dataProviders"
+                  locale={locale}
+                  items={content.listingSummary.dataProviders}
+                  makeEmpty={() => ({ id: newId(), name: emptyPair() })}
+                  onChange={(next) => {
+                    editContent((c) => ({
+                      ...c,
+                      listingSummary: { ...c.listingSummary, dataProviders: next },
+                    }))
+                  }}
+                >
+                  {(item, path, set) => (
+                    <PairField
+                      label={words.representative}
+                      value={item.name}
+                      marks={marksFor(`${path}.name`)}
+                      locale={locale}
+                      onChange={(name) => { set({ ...item, name }) }}
+                    />
+                  )}
+                </RepeatingList>
               </Section>
 
               <Section id="releaseNote" title={t.sections.releaseNote}>
@@ -665,6 +698,23 @@ function PublishedBand({ view, onGo }: {
 }
 
 /**
+ * The names the provider column would show if the listing named none of its
+ * own, as one line. **Read from the form and not from the listing's own view**,
+ * so that a name being typed into the section above is reflected while it is
+ * being typed.
+ *
+ * Either language, whichever is written: this is a curator being shown what the
+ * table will say, and a name written only in Japanese still answers that.
+ */
+function writtenNames(providers: DataProviderInput[], locale: Locale): string {
+  const written = providers
+    .map((provider) => provider.name[locale].text.trim() || provider.name.ja.text.trim()
+      || provider.name.en.text.trim())
+    .filter((name) => name !== "")
+  return written.join("、")
+}
+
+/**
  * A part of the form holding a list of one kind of thing: providers, projects,
  * grants, papers.
  *
@@ -698,11 +748,50 @@ function RepeatingSection<T extends { id: string }>({
   /** One element's own fields, given the path it is addressed by and its setter. */
   children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
-  const t = messagesFor(locale).admin.editor
-
   return (
     <Section id={id} title={title}>
       <FieldHead label={title} marks={marksFor(id)} locale={locale} />
+      <RepeatingList
+        path={id}
+        locale={locale}
+        items={items}
+        onChange={onChange}
+        makeEmpty={makeEmpty}
+      >
+        {children}
+      </RepeatingList>
+    </Section>
+  )
+}
+
+/**
+ * The cards themselves, without the section around them.
+ *
+ * A list of one kind of thing is usually the whole of a section, and
+ * `RepeatingSection` is that case. **A list that sits among other fields cannot
+ * open a second section**: the path a band jumps to is resolved to an element by
+ * its first name, so a nested section would give one name two places to land.
+ */
+function RepeatingList<T extends { id: string }>({
+  path,
+  locale,
+  items,
+  onChange,
+  makeEmpty,
+  children,
+}: {
+  /** What one element's path opens with. */
+  path: string
+  locale: Locale
+  items: T[]
+  onChange: (next: T[]) => void
+  makeEmpty: () => T
+  children: (item: T, path: string, set: (next: T) => void) => ReactNode
+}) {
+  const t = messagesFor(locale).admin.editor
+
+  return (
+    <>
       {items.map((item, at) => (
         <ElementCard
           key={item.id}
@@ -714,13 +803,13 @@ function RepeatingSection<T extends { id: string }>({
         >
           {children(
             item,
-            `${id}.${item.id}`,
+            `${path}.${item.id}`,
             (next) => { onChange(replacing(items, item.id, next)) },
           )}
         </ElementCard>
       ))}
       <AddElement label={t.add} onClick={() => { onChange([...items, makeEmpty()]) }} />
-    </Section>
+    </>
   )
 }
 

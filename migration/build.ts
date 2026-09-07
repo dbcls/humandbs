@@ -161,6 +161,12 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       methods: prose(listingSummary?.methods),
       targets: prose(listingSummary?.targets),
       typeOfData: prose(listingSummary?.typeOfData),
+      // Empty, which is what makes the listing read the research's own
+      // providers. v1 draws the column from the same names, so a table built
+      // this way says what v1's says; a copy taken here would instead be a
+      // second set of names that no one had chosen and that would not follow a
+      // correction made to the first.
+      dataProviders: [],
     },
     releaseNote: prose(rv.releaseNote),
     dataProviders,

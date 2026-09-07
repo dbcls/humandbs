@@ -364,3 +364,57 @@ async function slope(): Promise<{ width: number, shear: number, radius: number }
     radius: RADIUS[corner?.[2] ?? ""] ?? 4,
   }
 }
+
+/**
+ * Every `.tsx` under `app/`, screens and parts alike. The rules below are about
+ * what a control looks like, and a part draws controls as readily as a screen.
+ */
+async function everySource(): Promise<{ name: string, text: string }[]> {
+  const dirs = ["components", "routes", "public", "admin", "cart", "files", "review", "search"]
+  const found = await Promise.all(dirs.map(async (dir) => {
+    try {
+      return await sourcesUnder(dir)
+    } catch {
+      return []
+    }
+  }))
+  return found.flat()
+}
+
+describe("ボタンの面と形", () => {
+  /**
+   * The round end is where a control stands, not how it should look — the band
+   * of controls above a listing, and nowhere else (`base.tsx` の `ButtonLook`).
+   * Asked for as a taste it had spread to five places that are not a listing,
+   * and the shape had stopped saying anything.
+   */
+  it("丸いのは一覧の帯にいるものだけ", async () => {
+    const wearing = (await everySource())
+      .filter(({ text }) => /<Button(?:Link)?\b[^>]*\slisting\b/s.test(text))
+      .map(({ name }) => name)
+      .sort()
+    expect(wearing).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
+  })
+
+  /**
+   * **The filled face is the one thing a screen is asking for**, so a file that
+   * draws two of them has stopped ranking anything. Counted per file rather than
+   * per screen because a part is drawn inside whichever screen imports it; the
+   * catalogue is exempt, being a page of samples rather than a screen with an
+   * errand.
+   */
+  it("塗りの面は 1 つのファイルに 1 つまで", async () => {
+    const twice = (await everySource())
+      .filter(({ name }) => !name.includes("dev-ui"))
+      .map(({ name, text }) => ({ name, n: (text.match(/variant="primary"/g) ?? []).length }))
+      .filter(({ n }) => n > 1)
+    expect(twice).toEqual([])
+  })
+
+  /** The palette itself, so that a face nobody uses cannot quietly come back. */
+  it("面は 4 つしかない", async () => {
+    const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
+    const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
+    expect(union?.match(/"[a-z]+"/g)).toEqual(["\"primary\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
+  })
+})

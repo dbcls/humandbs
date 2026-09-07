@@ -25,7 +25,6 @@ import { AddToCartButton, CartToggle } from "~/components/cart"
 import { Markdown } from "~/components/markdown"
 import {
   AppliedConditions,
-  NoResults,
   PageSizeChooser,
   Pagination,
   SearchExamples,
@@ -94,6 +93,7 @@ import {
   Value,
 } from "~/components/page"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
 import { renderMarkdown } from "~/public/markdown.server"
 
 import { FACETS, NEWS, REFINED_FACETS, ROWS, TOTAL } from "./dev-ui.data"
@@ -186,7 +186,7 @@ const COLOURS: [string, string, string][] = [
 
 const TEXT_SIZES = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl", "text-3xl"]
 
-const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "soft", "accent", "secondary", "danger", "ghost"]
+const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "secondary", "ghost", "danger"]
 const TONES: Tone[] = ["brand", "accent", "muted", "warning", "danger"]
 const NOTE_KINDS: NoteKind[] = ["info", "tip", "warning", "danger"]
 
@@ -305,9 +305,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。帯を使わない。</p>
                 <Heading title="研究一覧" count={`全 ${String(TOTAL)} 件`}>
-                  <Button type="button" pill icon={<Icon name="copy" />}>コピー</Button>
-                  <Button type="button" pill icon={<Icon name="download" />}>TSV</Button>
-                  <Button type="button" pill icon={<Icon name="filter" />}>絞り込み</Button>
+                  <Button type="button" listing icon={<Icon name="copy" />}>コピー</Button>
+                  <Button type="button" listing icon={<Icon name="download" />}>TSV</Button>
+                  <Button type="button" listing icon={<Icon name="filter" />}>絞り込み</Button>
                 </Heading>
               </div>
               <div>
@@ -355,22 +355,51 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
 
           <Section title="ボタン">
             <div id="button" className="flex flex-col gap-4">
+              <p className="text-ink-muted text-sm">
+                面を決めるのは「その画面がどれだけ押してほしいか」で、そこで何が似合うかではない。
+                塗りは画面に 1 つまで、枠が既定、文字だけは並びの片方にしか立たない。
+              </p>
               <div className="flex flex-wrap items-center gap-3">
                 {BUTTON_VARIANTS.map((variant) => (
                   <Button key={variant} type="button" variant={variant}>{variant}</Button>
                 ))}
               </div>
+              <p className="text-ink-muted text-sm">
+                塗りの隣に文字だけを置いた形。取り消しは単独では立たない — 枠を持たないものが
+                1 つで置かれると、それが押せることを言うものが無くなる。
+              </p>
               <div className="flex flex-wrap items-center gap-3">
-                {BUTTON_VARIANTS.map((variant) => (
-                  <Button key={variant} type="button" variant={variant} pill icon={<Icon name="save" />}>
-                    {`${variant} · pill`}
-                  </Button>
-                ))}
+                <Button type="button" variant="primary" icon={<Icon name="save" />}>保存する</Button>
+                <Button type="button" variant="ghost">取り消す</Button>
               </div>
+              <p className="text-ink-muted text-sm">
+                形も色も「どこに立っているか」で決まる。丸いのは一覧の上の操作の行にいる印
+                (listing) で、好みで選ぶものではない。上の「研究一覧」の見出しに並んでいるのが
+                それ。同じ行でもページ送りの番号だけは 4px で、数字が箱を埋めないため。
+              </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="soft" size="xs" pill>xs — 検索の例</Button>
+                <Button type="button" listing icon={<Icon name="copy" />}>listing — 一覧の行</Button>
+                <Button type="button" icon={<Icon name="copy" />}>listing 無し — それ以外</Button>
+              </div>
+              <p className="text-ink-muted text-sm">
+                帯の上では面が裏返る (onBand)。ページの色はどれも帯の暗い側で 3:1 を割るので、
+                残っているのは白だけになる。順位はそのままで、塗りが白に、枠が白い縁になる。
+              </p>
+              <Band>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="button" onBand variant="primary" icon={<Icon name="cart" />}>
+                    カートに追加
+                  </Button>
+                  <Button type="button" onBand variant="secondary" icon={<Icon name="check" />}>
+                    カートに入っています
+                  </Button>
+                  <Button type="button" onBand variant="ghost">取り消す</Button>
+                </div>
+              </Band>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" size="xs">xs — 値の隣</Button>
                 <Button type="button" variant="primary" size="md">md</Button>
-                <Button type="button" variant="accent" size="lg">lg — 頁の呼びかけ</Button>
+                <Button type="button" variant="primary" size="lg">lg — 頁の呼びかけ</Button>
                 <Button type="button" variant="primary" disabled>変更がありません</Button>
                 <Button type="button" variant="danger" disabled icon={<Icon name="trash" />}>削除する</Button>
                 <ButtonLink to="/research" variant="secondary" icon={<Icon name="external" />}>
@@ -444,6 +473,24 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   に公表されることになります。
                 </Note>
               ))}
+              {/*
+                隅の知らせ (`Toast`) の中身。器そのものは `fixed` なのでここには
+                置けない — カタログの隅に出しっぱなしになる。読み上げる器は
+                `Toast` の側に常駐していて、ここに出ているのは描く箱だけ。
+              */}
+              <div className="max-w-md shadow-lg">
+                <Note
+                  kind="done"
+                  action={<IconButton name="close" label="閉じる" onClick={() => undefined} />}
+                >
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-ink text-sm">
+                      JGAD000117 をカートに入れました（3 件）
+                    </span>
+                    <Button type="button" variant="ghost" size="xs">取り消す</Button>
+                  </span>
+                </Note>
+              </div>
             </div>
           </Section>
 
@@ -469,9 +516,11 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 ]}
               />
               <RoundLink to="/research" name="search" label="キーワード検索" />
-              <RoundLink to="/cart" name="cart" label="カート" />
-              <RoundLink to="/cart" name="cart" label="カート（3 件）" count={3} />
               <RoundLink to="/auth/login" name="log-in" label="ログイン" filled external />
+              {/* 数を持つ丸は `Menu` の側。中身を開くものなのでリンクではない */}
+              <Menu label="カート（3 件）" icon="cart" round count={3}>
+                <p className="px-4 py-2 text-ink-muted text-sm">3 件を集めています</p>
+              </Menu>
               <Menu label="アカウント" icon="menu" round>
                 <Link to="/admin" className="px-4 py-2 text-sm no-underline hover:bg-surface-hover">
                   管理
@@ -605,6 +654,27 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   </tr>
                 ))}
               </Table>
+              <p className="mt-6 mb-2 text-ink-muted text-sm">
+                行が 1 行ずつの表は align=&quot;middle&quot;。上の表が align=&quot;top&quot; なのは、
+                題目とデータセットが 3〜4 行になるため — 4 行のセルの隣で日付が中央に来ると、
+                行の 1 行目を横に読めなくなる。
+              </p>
+              <Table
+                headers={["データセット ID", "アクセス制限", "カートから外す"]}
+                align="middle"
+              >
+                {ROWS.slice(0, 2).map((row) => (
+                  <tr key={row.humLabel} className="bg-white">
+                    <Td nowrap>{row.datasetLabels[0] ?? ""}</Td>
+                    <Td nowrap>
+                      {row.accessTypes[0] !== undefined && <AccessTypeBadge term={row.accessTypes[0]} />}
+                    </Td>
+                    <Td narrow>
+                      <IconButton name="close" label={`${row.humLabel} をカートから外す`} />
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
               {/*
                 3 つ隣までは 1 つずつ、その先は倍々に離れて両端に着く。長い
                 一覧ほど番号は飛ぶが、出る数はページ数の対数でしか増えない。
@@ -718,10 +788,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   />
                 </div>
               </div>
-              <div>
-                <p className="mb-2 text-ink-muted text-sm">0 件のとき。緩めた検索は投げない。</p>
-                <NoResults locale="ja" />
-              </div>
             </div>
           </Section>
 
@@ -730,6 +796,23 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <p className="text-ink-muted text-sm">
                 押すと本当に入る (このページの sessionStorage を触る)。JGAD 以外は印が出ない。
               </p>
+              {/* 上の `CartToggle` は本物のカートを読むので、状態を並べられるのはここだけ。
+                  「一部だけ」は色を分けず、読み上げ (`aria-pressed`) だけが区別する */}
+              <div className="flex flex-wrap items-center gap-6">
+                <span className="flex items-center gap-2 text-sm">
+                  入っている:
+                  <IconButton name="cart" label="外す" pressed onClick={() => undefined} />
+                </span>
+                <span className="flex items-center gap-2 text-sm">
+                  一部だけ:
+                  <IconButton name="cart" label="残りを入れる" pressed="mixed" onClick={() => undefined} />
+                  <span className="text-ink-muted text-xs">(色は同じ)</span>
+                </span>
+                <span className="flex items-center gap-2 text-sm">
+                  入っていない:
+                  <IconButton name="cart" label="入れる" pressed={false} onClick={() => undefined} />
+                </span>
+              </div>
               <div className="flex flex-wrap items-center gap-6">
                 <span className="flex items-center gap-2 text-sm">
                   行:
@@ -747,7 +830,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div className={`flex flex-wrap items-center gap-4 rounded p-3 ${BAND_FILL.deep}`}>
                 <span className="text-sm text-white">帯の上:</span>
-                <CartToggle ids={["JGAD000117", "JGAD000403"]} locale="ja" whole />
                 <AddToCartButton datasetLabel="JGAD000117" locale="ja" />
               </div>
             </div>
@@ -886,12 +968,15 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
           <Section title="何も無いとき">
             <div id="nothing" className="flex flex-col gap-6">
               <div>
-                <p className="mb-2 text-ink-muted text-sm">一覧に 1 件も無いとき。</p>
-                <Table headers={["研究 ID", "研究題目"]}>
-                  <tr>
-                    <Td className="text-center text-ink-muted">見つかりませんでした</Td>
-                    <Td />
-                  </tr>
+                <p className="mb-2 text-ink-muted text-sm">
+                  一覧に 1 件も無いとき。表は残り、行があった場所に 1 行入る (`whenEmpty`)。
+                  緩めた検索も打ち方の案内も出さない。
+                </p>
+                <Table
+                  headers={["研究 ID", "研究題目", "公開日"]}
+                  whenEmpty={messagesFor(LOCALE).search.none}
+                >
+                  {[]}
                 </Table>
               </div>
               <Empty>データがありません</Empty>

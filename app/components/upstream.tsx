@@ -32,7 +32,12 @@ export function UpstreamSearch({ locale, action, keyword }: {
   return (
     <Form method="get" action={action} className="flex flex-wrap items-end gap-3">
       <Field type="search" label={t.keyword} name="q" value={keyword} width="w-96" />
-      <Submit variant="primary">{t.find}</Submit>
+      {/*
+        A tool rather than the errand: this screen is here to take a draft from
+        upstream, and the filled face belongs to the one control that does it
+        (`base.tsx` の `ButtonVariant`).
+      */}
+      <Submit>{t.find}</Submit>
     </Form>
   )
 }
