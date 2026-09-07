@@ -293,12 +293,16 @@ describe("alert", () => {
 
     const shown = await activeAlerts("ja")
     expect(shown).toHaveLength(1)
-    expect(shown[0]).toContain("出る")
+    expect(shown[0]?.html).toContain("出る")
+    expect(shown[0]?.untranslated).toBe(false)
   })
 
-  it("片言語しか無ければもう一方の言語が出る", async () => {
+  it("片言語しか無ければもう一方の言語が出て、そうであると印が付く", async () => {
     await db.insert(s.alert).values({ content: { body: { ja: "日本語だけ", en: "" } }, active: true })
-    expect((await activeAlerts("en"))[0]).toContain("日本語だけ")
+    const shown = await activeAlerts("en")
+    expect(shown[0]?.html).toContain("日本語だけ")
+    // 読者の言語では無いことを画面が言えるように、印が answer に乗る
+    expect(shown[0]?.untranslated).toBe(true)
   })
 
   it("両方空なら何も出ない", async () => {

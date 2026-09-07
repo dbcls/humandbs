@@ -21,6 +21,8 @@ import type { Locale } from "./locale"
 const ja = {
   siteName: "NBDC ヒトデータベース",
   skipToContent: "本文へ",
+  /** Said on an announcement the office wrote in only one language. */
+  otherLanguageOnly: "英語のみ",
   notFoundTitle: "ページが見つかりません",
   notFoundBody: "お探しのページは存在しないか、公開されていません。",
   notApplicable: "該当なし",
@@ -950,6 +952,7 @@ const en: Messages = {
   newTab: " (opens in a new tab)",
   unsettled: "Unsettled",
   untranslatedNotice: "Some items on this page are untranslated. The other language is shown instead.",
+  otherLanguageOnly: "Japanese only",
   globalNavigation: "Global navigation",
   moreNavigation: "Menu",
   breadcrumb: "Breadcrumb",

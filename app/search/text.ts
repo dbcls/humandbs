@@ -71,7 +71,10 @@ function isLink(record: Record<string, unknown>): boolean {
 
 function walk(value: unknown, language: Language, ja: string[], en: string[]): void {
   if (typeof value === "string") {
-    if (!value) return
+    // **Whitespace is not text the content holds.** Rich text made of empty
+    // lines flattens to the newlines between them, and a row found by that
+    // would be a row found by something nobody wrote.
+    if (value.trim() === "") return
     if (language !== "en") ja.push(value)
     if (language !== "ja") en.push(value)
     return

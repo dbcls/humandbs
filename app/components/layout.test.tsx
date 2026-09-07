@@ -21,8 +21,9 @@ function header(locale: Locale, at: string, account: Account | null = null): str
   return render(<SiteHeader locale={locale} account={account} />, at)
 }
 
-function announcements(locale: Locale, alerts: string[]): string {
-  return render(<Announcements locale={locale} alerts={alerts} />, "/")
+function announcements(locale: Locale, alerts: string[], untranslated = false): string {
+  const rows = alerts.map((html) => ({ html, untranslated }))
+  return render(<Announcements locale={locale} alerts={rows} />, "/")
 }
 
 /** The addresses drawn as where the reader is, in the order they appear. */
@@ -96,6 +97,20 @@ describe("サイトの告知", () => {
     const html = announcements("ja", ["<p>一つ目</p>", "<p>二つ目</p>"])
     expect(html).toContain("一つ目")
     expect(html).toContain("二つ目")
+  })
+
+  it("読者の言語で書かれていない alert は、どの言語かを言う", () => {
+    const html = announcements("ja", ["<p>Scheduled maintenance</p>"], true)
+    expect(html).toContain("Scheduled maintenance")
+    expect(html).toContain("英語のみ")
+  })
+
+  it("読者の言語で書かれた alert には、言語の断りを付けない", () => {
+    expect(announcements("ja", ["<p>点検のお知らせ</p>"])).not.toContain("英語のみ")
+  })
+
+  it("英語の読者には、日本語だけの alert であることを英語で言う", () => {
+    expect(announcements("en", ["<p>点検のお知らせ</p>"], true)).toContain("Japanese only")
   })
 })
 

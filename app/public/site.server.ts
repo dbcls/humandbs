@@ -197,7 +197,20 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
  * per-locale row, because a banner is one announcement shown in whichever
  * language the reader is on.
  */
-export async function activeAlerts(locale: Locale): Promise<string[]> {
+export interface AlertView {
+  html: string
+  /**
+   * The reader's language had nothing, so what stands here is the other one.
+   *
+   * **Shown rather than hidden**: what the office is saying today reaches more
+   * readers in a language some of them cannot read than in none at all. The
+   * screen says which language it is, so that a reader who cannot read it knows
+   * that is why rather than wondering what they are looking at.
+   */
+  untranslated: boolean
+}
+
+export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
   const db = getDb()
   const rows = await db
     .select({ content: alert.content })
@@ -206,6 +219,9 @@ export async function activeAlerts(locale: Locale): Promise<string[]> {
     .orderBy(alert.createdAt)
 
   return rows
-    .map((row) => renderMarkdown(resolveBilingual(row.content.body, locale), locale))
-    .filter((html) => html !== "")
+    .map((row) => ({
+      html: renderMarkdown(resolveBilingual(row.content.body, locale), locale),
+      untranslated: row.content.body[locale] === "",
+    }))
+    .filter((one) => one.html !== "")
 }

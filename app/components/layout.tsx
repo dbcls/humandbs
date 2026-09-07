@@ -4,6 +4,7 @@ import { Form, Link, useLocation } from "react-router"
 import { CartMenu } from "~/components/cart"
 import {
   Announcement,
+  Badge,
   LanguagePills,
   Menu,
   MENU_ITEM,
@@ -22,6 +23,7 @@ import {
   navLabel,
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
+import type { AlertView } from "~/public/site.server"
 import { href, normalizeQuery, readLocale } from "~/public/urls"
 
 /**
@@ -151,11 +153,11 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
  * another page raises them all again: a notice nobody has read is worth more
  * than the quiet of having dismissed it once.
  */
-export function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
+export function Announcements({ alerts, locale }: { alerts: AlertView[], locale: Locale }) {
   const messages = messagesFor(locale)
   const [dismissed, setDismissed] = useState<number[]>([])
   const showing = alerts
-    .map((html, index) => ({ html, index }))
+    .map((one, index) => ({ ...one, index }))
     .filter(({ index }) => !dismissed.includes(index))
 
   if (showing.length === 0) return null
@@ -169,12 +171,18 @@ export function Announcements({ alerts, locale }: { alerts: string[], locale: Lo
       className="w-full px-4 pt-4 sm:px-page-gutter"
     >
       <Stack gap="tight">
-        {showing.map(({ html, index }) => (
+        {showing.map(({ html, untranslated, index }) => (
           <Announcement
             key={index}
             dismiss={messages.dismissAnnouncement}
             onDismiss={() => { setDismissed((was) => [...was, index]) }}
           >
+            {/* Which language this is in, where it is not the reader's. It
+                stands above the words rather than after them: a reader who
+                cannot read them should not have to reach the end first. */}
+            {untranslated && (
+              <p className="mb-1"><Badge tone="muted">{messages.otherLanguageOnly}</Badge></p>
+            )}
             <Markdown html={html} />
           </Announcement>
         ))}
