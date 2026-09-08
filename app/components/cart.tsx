@@ -260,30 +260,43 @@ export function CartMenu({ locale }: { locale: Locale }) {
                   </li>
                 ))}
               </ul>
-              {/*
-                **Both are outlined, and the one that leaves carries a chevron.**
-                They were a bare button and a menu line — the same colour, no
-                underline between them, and nothing saying that one of the two
-                took the reader off the page they were collecting from.
-              */}
-              <div className="flex items-center justify-between gap-2 border-line border-t p-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    cart.remove(cart.ids)
-                  }}
-                >
-                  {messages.cart.clear}
-                </Button>
-                <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm">
-                  {messages.cart.view}
-                  <Icon name="chevron-right" aria-hidden="true" />
-                </ButtonLink>
-              </div>
             </>
           )}
+      {/*
+        **The way on stands whether or not anything is in the cart, and in the
+        same place either way.** How many are held is the panel's subject, not a
+        reason for the way to `/cart` to be there or not — a reader who has just
+        emptied the cart from this very panel would otherwise press where the
+        way out was and find nothing, and one who opened it to find where their
+        collection is kept would be sent back to the address bar.
+
+        **Emptying it is what leaves.** It acts on the rows above it, so with no
+        rows it has nothing to act on; the way on does not, so it stays.
+
+        **Both are outlined, and the one that leaves carries a chevron.** They
+        were a bare button and a menu line — the same colour, no underline
+        between them, and nothing saying that one of the two took the reader off
+        the page they were collecting from.
+      */}
+      <div className="flex items-center justify-end gap-2 border-line border-t p-2">
+        {count > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mr-auto"
+            onClick={() => {
+              cart.remove(cart.ids)
+            }}
+          >
+            {messages.cart.clear}
+          </Button>
+        )}
+        <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm">
+          {messages.cart.view}
+          <Icon name="chevron-right" aria-hidden="true" />
+        </ButtonLink>
+      </div>
     </Menu>
   )
 }

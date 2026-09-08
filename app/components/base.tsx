@@ -1499,9 +1499,21 @@ export function Confirm({ label, warning, confirm, cancel, intent, icon = "trash
   )
 }
 
-/** The panel a menu opens. */
+/**
+ * The panel a menu opens.
+ *
+ * **An 8px corner rather than the site's 4px.** It is a sheet lying over the
+ * page rather than a box set into one, and the shadow that says so thickens its
+ * outline enough to swallow a 4px arc — the same reading as the management
+ * area's drawer, which is the only other thing here drawn on top of a screen
+ * (`docs/ui.md` の「角丸」).
+ *
+ * The padding above and below is what keeps a line inside it off the curve, so
+ * nothing has to be clipped — and clipping would take the focus ring of the
+ * first and last lines with it.
+ */
 const MENU_PANEL
-  = "min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg"
+  = "min-w-max flex-col items-stretch rounded-lg border border-line bg-white py-1 shadow-lg"
 
 /**
  * One line inside it. **Exported because the lines are the caller's** — the
@@ -1541,11 +1553,26 @@ const MENU_CORNER = { all: "rounded-full", left: "rounded-l-full" }
  * an entry does not reload the page**, so arriving somewhere has to close it
  * too, which is what the address is watched for.
  */
-export function Menu({ label, icon = "more", round = false, word = false, count, value, corner = "all", children }: {
+export function Menu({ label, icon = "more", glyph, round = false, filled = false, word = false, count, value, corner = "all", children }: {
   label: string
   icon?: IconName
+  /**
+   * What stands in the control in place of a glyph — the letter an account is
+   * drawn by, where a picture of a person would say less than their own name
+   * does. It replaces the icon rather than joining it: the control is 36px and
+   * holds one thing.
+   */
+  glyph?: ReactNode
   /** In the top bar, where the controls on either side of it are circles. */
   round?: boolean
+  /**
+   * Whether the circle is filled, which only a round one can be.
+   *
+   * **The fill is a state, not a rank.** In the top bar it says somebody is
+   * signed in — the outlined circles beside it are the same controls whoever is
+   * looking, and this one is not.
+   */
+  filled?: boolean
   /** How many the panel holds, when that is worth saying before it opens. */
   count?: number
   /**
@@ -1612,10 +1639,16 @@ export function Menu({ label, icon = "more", round = false, word = false, count,
             // shares already stands 36px squares in it, and a caret carries
             // whitespace of its own the way a letter does not.
             ? `whitespace-nowrap py-1 pr-2 pl-3 text-sm ${MENU_CORNER[corner]}`
-            : `min-h-tap text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`
+            // The filled circle is written out whole rather than added to the
+            // outlined one: they disagree about the colour of the word and the
+            // edge, and two classes setting one property are settled by the
+            // order the styles happen to be in.
+            : `min-h-tap ${filled
+              ? `size-tap rounded-full border border-transparent text-white hover:brightness-90 ${BAND_FILL.brand}`
+              : `text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`}`
         }`}
       >
-        {value === undefined && <Icon name={icon} className="text-base" />}
+        {value === undefined && (glyph ?? <Icon name={icon} className="text-base" />)}
         {value}
         {word && label}
         {value !== undefined && <Icon name="chevron-down" aria-hidden="true" />}

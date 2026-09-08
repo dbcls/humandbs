@@ -148,7 +148,7 @@ const SECTIONS = [
   ["note", "注記"],
   ["announcement", "告知"],
   ["header-controls", "ヘッダの操作"],
-  ["admin-shell", "管理の区画"],
+  ["admin-shell", "Admin の区画"],
   ["trail", "パンくず"],
   ["tabs", "タブ"],
   ["table", "表"],
@@ -521,15 +521,25 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <Menu label="カート（3 件）" icon="cart" round count={3}>
                 <p className="px-4 py-2 text-ink-muted text-sm">3 件を集めています</p>
               </Menu>
-              <Menu label="アカウント" icon="menu" round>
+              {/* ログイン中の丸。塗りと頭文字が状態そのもので、隣の丸とは別物に見える */}
+              <Menu
+                label="アカウント: curator"
+                glyph={<span className="font-semibold text-sm">C</span>}
+                round
+                filled
+              >
+                <span className="border-line border-b px-4 py-2 text-sm">
+                  <span className="block text-ink-muted text-xs">ログイン中</span>
+                  curator
+                </span>
                 <Link to="/admin" className="px-4 py-2 text-sm no-underline hover:bg-surface-hover">
-                  管理
+                  Admin
                 </Link>
               </Menu>
             </div>
           </Section>
 
-          <Section title="管理の区画">
+          <Section title="Admin の区画">
             {/*
               **The real one, drawn where it really is.** The tab is fixed to
               the left of the window, so it appears at the edge of this page
@@ -540,7 +550,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             */}
             <div id="admin-shell" className="flex flex-col gap-2 text-sm">
               <p className="text-ink-muted">
-                管理画面から行ける先。窓の左端に出ていて、この箱の中には何も描かれない。
+                Admin 画面から行ける先。窓の左端に出ていて、この箱の中には何も描かれない。
                 指すか、Tab で辿り着いて Enter を押すと開く。Escape と、外を押すことで閉じる。
               </p>
               <AdminDrawer locale={LOCALE} path="/admin/research" />

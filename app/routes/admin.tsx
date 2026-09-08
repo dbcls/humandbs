@@ -62,7 +62,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      {/* 区画の根なので、`AdminCrumbs` は使わない — あれは「管理」の段を足すもので、
+      {/* 区画の根なので、`AdminCrumbs` は使わない — あれは「Admin」の段を足すもので、
           ここではそれが現在地そのものになる。 */}
       <Crumbs locale={locale} current={messages.admin.heading} />
       <Card under={false}>

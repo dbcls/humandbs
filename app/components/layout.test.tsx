@@ -26,6 +26,20 @@ function announcements(locale: Locale, alerts: string[], untranslated = false): 
   return render(<Announcements locale={locale} alerts={rows} />, "/")
 }
 
+/**
+ * What is drawn inside the account's own control, found by the name it
+ * announces itself by. The bar holds three of these — the navigation's overflow
+ * menu and the cart are the others — so the label is what tells them apart.
+ */
+function circle(html: string, name: string): string {
+  const found = new RegExp(`<summary[^>]*aria-label="アカウント: ${name}"[^>]*>(.*?)</summary>`, "s")
+  const inside = found.exec(html)?.[1]
+  // Thrown rather than returned as "": every case below asks what is *not* in
+  // the circle as well as what is, and those pass on an empty string.
+  if (inside === undefined) throw new Error(`アカウントの丸が無い: ${name}`)
+  return inside
+}
+
 /** The addresses drawn as where the reader is, in the order they appear. */
 function marked(html: string): string[] {
   return [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>/g)]
@@ -138,13 +152,42 @@ describe("ヘッダのログイン導線", () => {
     expect(html).not.toContain("/auth/login")
   })
 
-  it("admin でないログイン済みには管理リンクを出さない", () => {
+  it("admin でないログイン済みには Admin への行き先を出さない", () => {
     expect(header("ja", "/", signedIn)).not.toContain("href=\"/admin\"")
   })
 
-  it("admin には管理リンクを出し、英語では /en の下を指す", () => {
+  it("admin には Admin への行き先を出し、英語では /en の下を指す", () => {
     expect(header("ja", "/", admin)).toContain("href=\"/admin\"")
     expect(header("en", "/en", admin)).toContain("href=\"/en/admin\"")
+  })
+
+  it("行き先の名前は「管理」ではない。申請管理システムと読み違えられる", () => {
+    expect(header("ja", "/", admin)).not.toContain(">管理<")
+  })
+
+  it("ログイン済みの丸は、アカウント名の頭文字を大文字で持つ", () => {
+    expect(circle(header("ja", "/", signedIn), "someone")).toContain(">S<")
+  })
+
+  it("頭文字は前後の空白を飛ばし、大文字にできない字はそのまま出る", () => {
+    expect(circle(header("ja", "/", { name: "  curator", isAdmin: false }), "  curator"))
+      .toContain(">C<")
+    expect(circle(header("ja", "/", { name: "山田太郎", isAdmin: false }), "山田太郎"))
+      .toContain(">山<")
+  })
+
+  it("頭文字はコードポイントで 1 字取る。サロゲートの片割れを出さない", () => {
+    const drawn = circle(header("ja", "/", { name: "𝒜lice", isAdmin: false }), "𝒜lice")
+    expect(drawn).toContain(">𝒜<")
+    expect(drawn).not.toContain("\ud835<")
+  })
+
+  it("ログイン済みの丸は、ナビの畳みメニューとグリフを共有しない", () => {
+    expect(circle(header("ja", "/", signedIn), "someone")).not.toContain("<svg")
+  })
+
+  it("未ログインの丸には頭文字が無い。押す先はサインインで、開くものを持たない", () => {
+    expect(header("ja", "/")).not.toContain("aria-label=\"アカウント: ")
   })
 })
 

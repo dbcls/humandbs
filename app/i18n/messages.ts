@@ -296,8 +296,16 @@ const ja = {
   account: {
     logIn: "ログイン",
     logOut: "ログアウト",
-    admin: "管理",
-    menu: "アカウント",
+    /**
+     * The management area, called what the office calls it.
+     *
+     * **Not 「管理」**: that word already names the JGA application system the
+     * portal hands applicants on to, and a link in the bar reading 「管理」 was
+     * read as the way into that rather than into this site's own screens.
+     */
+    admin: "Admin",
+    signedInAs: "ログイン中",
+    menuAs: (name: string) => `アカウント: ${name}`,
   },
   preview: {
     heading: "公開前の確認",
@@ -345,9 +353,9 @@ const ja = {
     closed: "この共有リンクは使えなくなっています。",
   },
   admin: {
-    heading: "管理",
-    overview: "管理トップ",
-    navigation: "管理メニュー",
+    heading: "Admin",
+    overview: "Admin トップ",
+    navigation: "Admin メニュー",
     signedInAs: "ログイン中",
     displayName: "表示名",
     subject: "Keycloak の sub",
@@ -1184,8 +1192,9 @@ const en: Messages = {
   account: {
     logIn: "Log in",
     logOut: "Log out",
-    admin: "Administration",
-    menu: "Account",
+    admin: "Admin",
+    signedInAs: "Signed in as",
+    menuAs: (name: string) => `Account: ${name}`,
   },
   preview: {
     heading: "Review before publication",
@@ -1233,9 +1242,9 @@ const en: Messages = {
     closed: "This share link is no longer usable.",
   },
   admin: {
-    heading: "Administration",
+    heading: "Admin",
     overview: "Overview",
-    navigation: "Administration menu",
+    navigation: "Admin menu",
     signedInAs: "Signed in as",
     displayName: "Display name",
     subject: "Keycloak subject",

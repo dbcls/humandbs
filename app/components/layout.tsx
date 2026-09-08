@@ -83,6 +83,20 @@ export interface Account {
 }
 
 /**
+ * The letter a signed-in account is drawn by.
+ *
+ * The name is Keycloak's `preferred_username`, which is never empty — it falls
+ * back to the subject — so there is always a first character to take. It is
+ * upper-cased because a circle holding one glyph reads as a monogram, and a
+ * lower-case one reads as a typo.
+ */
+function initialOf(name: string): string {
+  // By code point, so that a name beginning outside the BMP is one letter here
+  // rather than half of one.
+  return Array.from(name.trim())[0]?.toUpperCase() ?? "?"
+}
+
+/**
  * Signing in and out.
  *
  * Signing in is a plain anchor because `/auth/login` answers with a redirect to
@@ -90,9 +104,17 @@ export interface Account {
  * data instead of following it. Signing out is a POST, so that neither a link
  * nor an image somebody else placed can end a session.
  *
- * Once signed in the circle becomes a menu: a name, the way to the admin
- * screens, and the way out. Those three would take more room across the top bar
- * than they are worth, and none of them is wanted often.
+ * Once signed in the circle becomes a menu: who is signed in, the way to the
+ * management screens, and the way out. Those three would take more room across
+ * the top bar than they are worth, and none of them is wanted often.
+ *
+ * **Signed in, the circle is filled and holds the account's own initial.** It
+ * was a hamburger — the same glyph the navigation's overflow menu carries two
+ * controls away, drawn in the same outlined circle as the cart, so the one
+ * thing in the bar that is about the reader personally looked like a third way
+ * to reach a page. A letter cannot be mistaken for a set of destinations, and
+ * the fill is what says the state at a glance: nothing else in the bar is
+ * filled while nobody is signed in.
  */
 function AccountControl({ account, locale }: { account: Account | null, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -116,8 +138,21 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
   }
 
   return (
-    <Menu label={messages.account.menu} icon="menu" round>
-      <span className="border-line border-b px-4 py-2 text-ink-muted text-sm">{account.name}</span>
+    <Menu
+      // The name is in the control's own name as well as under it: the circle
+      // says a letter, and a letter is not who you are signed in as.
+      label={messages.account.menuAs(account.name)}
+      glyph={<span className="font-semibold text-sm">{initialOf(account.name)}</span>}
+      round
+      filled
+    >
+      {/* **Who, said in words at the head of the panel.** The circle says that
+          somebody is signed in; only this says which account, which is the
+          question anybody who shares a terminal is opening the menu to ask. */}
+      <span className="border-line border-b px-4 py-2 text-sm">
+        <span className="block text-ink-muted text-xs">{messages.account.signedInAs}</span>
+        {account.name}
+      </span>
       {account.isAdmin && (
         <Link
           to={href(locale, "/admin")}
