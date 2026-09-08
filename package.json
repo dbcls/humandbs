@@ -6,7 +6,9 @@
     "node": ">=24"
   },
   "scripts": {
+    "predev": "tsx scripts/swagger-ui.ts",
     "dev": "react-router dev",
+    "prebuild": "tsx scripts/swagger-ui.ts",
     "build": "NODE_ENV=production react-router build",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
@@ -46,6 +48,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "swagger-ui-dist": "^5.32.15",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
     "zod": "^4.4.3"

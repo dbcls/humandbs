@@ -2,6 +2,7 @@
 .env
 /node_modules/
 /build/
+/public/swagger-ui/
 /.react-router/
 /migration/input/
 /.claude/

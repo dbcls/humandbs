@@ -176,6 +176,7 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 | S-API-03 | 一括取得は 1 行 1 件で、一覧の総数と揃う |
 | S-API-04 | relation の供給が型の一覧から通る |
 | S-API-05 | 読めない検索式は 422 を返し、その理由を言う |
+| S-API-06 | document の画面が operation を描き、色も付く |
 
 **P-ADMIN — 管理画面** (`admin.spec.ts` / `admin.user.spec.ts`)。**署名の要否でファイルが分かれる** —
 `admin.spec.ts` はセッションを持たない側で、これがあるから「サインインしていないと開かない」を

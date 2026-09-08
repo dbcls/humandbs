@@ -199,3 +199,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
 /** The document describes itself; it is not in the list it is generated from. */
 export const OPENAPI_PATH = "api/openapi.json"
 export const OPENAPI_FILE = "routes/api-openapi.ts"
+
+/** Where the document is drawn (`./docs.ts`). A page, so it answers with HTML. */
+export const DOCS_PATH = "api/docs"
+export const DOCS_FILE = "routes/api-docs.ts"

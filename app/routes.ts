@@ -1,6 +1,12 @@
 import { type RouteConfig, index, layout, prefix, route } from "@react-router/dev/routes"
 
-import { API_ENDPOINTS, OPENAPI_FILE, OPENAPI_PATH } from "./api/endpoints"
+import {
+  API_ENDPOINTS,
+  DOCS_FILE,
+  DOCS_PATH,
+  OPENAPI_FILE,
+  OPENAPI_PATH,
+} from "./api/endpoints"
 
 /**
  * The same pages are registered twice, once without a prefix and once under
@@ -175,7 +181,8 @@ const auth = [
 ]
 
 /**
- * The JSON API. **The addresses come from `app/api/endpoints.ts`**, which is the
+ * The JSON API, and the page that draws its document. **The addresses come from
+ * `app/api/endpoints.ts`**, which is the
  * same list the OpenAPI document is generated from, so a route and its entry in
  * the document cannot describe different addresses.
  *
@@ -184,6 +191,7 @@ const auth = [
 const api = [
   ...API_ENDPOINTS.map((endpoint) => route(endpoint.path, endpoint.file)),
   route(OPENAPI_PATH, OPENAPI_FILE),
+  route(DOCS_PATH, DOCS_FILE),
 ]
 
 /**

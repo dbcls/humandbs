@@ -72,4 +72,20 @@ test.describe("public API", () => {
     expect(answer.status()).toBe(422)
     expect(answer.headers()["content-type"]).toContain("problem+json")
   })
+
+  test("S-API-06: document の画面が operation を描き、色も付く", async ({ page }) => {
+    await page.goto("/api/docs")
+
+    // **operation が出るのは document を読めたときだけ。** 画面は JSON を自分で
+    // 取りに行くので、指している先が違えば枠だけが残る
+    const operations = page.locator("#swagger-ui .opblock")
+    await expect(operations.first()).toBeVisible()
+    expect(await operations.count()).toBeGreaterThan(1)
+
+    // **stylesheet が `text/css` で届かなければブラウザは捨てる。** 画面は描かれた
+    // ままなので見えるかどうかでは分からず、色が付いたかで見る
+    const painted = await operations.first().evaluate((el) =>
+      getComputedStyle(el).backgroundColor)
+    expect(painted).not.toBe("rgba(0, 0, 0, 0)")
+  })
 })
