@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { QUERY_EXAMPLES } from "../../app/api/endpoints"
+
 /**
  * The JSON a machine reads (`docs/public-api.md`).
  *
@@ -71,6 +73,51 @@ test.describe("public API", () => {
     const answer = await request.get("/api/research?q=%28unclosed")
     expect(answer.status()).toBe(422)
     expect(answer.headers()["content-type"]).toContain("problem+json")
+  })
+
+  test("S-API-07: document が載せている検索式は、どれも読める", async ({ request }) => {
+    // **文法が書いてあるのは document だけ**なので、そこに載せた式が読めないなら
+    // 呼ぶ側には文法を知る手段が残らない
+    for (const q of QUERY_EXAMPLES) {
+      const answer = await request.get(`/api/research?q=${encodeURIComponent(q)}`)
+      expect(answer.status(), q).toBe(200)
+    }
+  })
+
+  test("S-API-08: fields が挙げた値は、そのまま q に書いて必ず当たる", async ({ request }) => {
+    const { fields } = await (await request.get("/api/fields")).json() as {
+      fields: { code: string, type: string, inAnswers: boolean, values?: { code: string }[] }[]
+    }
+    // 検索行そのものが持つ 4 つは、catalog に何があろうと必ずある
+    expect(fields.map((one) => one.code))
+      .toEqual(expect.arrayContaining(["id", "title", "date_published", "date_modified"]))
+
+    const named = fields.filter((one) => one.type === "term" && (one.values?.length ?? 0) > 0)
+    expect(named.length).toBeGreaterThan(0)
+
+    // **挙げるのは公開されている行が実際に持っている値**なので、どれを書いても
+    // 0 件にはならない。定義されているだけの値を挙げていれば、ここで落ちる
+    for (const field of named.slice(0, 5)) {
+      const q = `${field.code}:"${field.values?.[0]?.code ?? ""}"`
+      const answer = await request.get(`/api/dataset?q=${encodeURIComponent(q)}`)
+      expect(answer.status(), q).toBe(200)
+      const { total } = await answer.json() as { total: number }
+      expect(total, q).toBeGreaterThan(0)
+    }
+
+    // **絞れることと読めることは別で、それを言うのが `inAnswers`。** 公開表現が
+    // 落とすキーは答えに出ないまま、条件としては効く
+    const unshown = named.find((one) => !one.inAnswers)
+    if (unshown !== undefined) {
+      const q = `${unshown.code}:"${unshown.values?.[0]?.code ?? ""}"`
+      const answer = await request.get(`/api/dataset?q=${encodeURIComponent(q)}`)
+      const { total, hits } = await answer.json() as {
+        total: number
+        hits: { values: { key: string }[] }[]
+      }
+      expect(total, q).toBeGreaterThan(0)
+      expect(hits[0]?.values.map((one) => one.key)).not.toContain(unshown.code)
+    }
   })
 
   test("S-API-06: document の画面が operation を描き、色も付く", async ({ page }) => {

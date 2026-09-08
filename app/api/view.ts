@@ -122,7 +122,7 @@ export function linksOf(value: LocalizedLinks): ApiLinks | undefined {
  * — the catalog holds both languages — so an empty one is simply a language the
  * catalog has not been given.
  */
-function labelOf(labels: { labelJa: string | null, labelEn: string }): ApiText {
+export function labelOf(labels: { labelJa: string | null, labelEn: string }): ApiText {
   return plainPair(labels.labelJa ?? "", labels.labelEn)
 }
 

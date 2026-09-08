@@ -35,17 +35,20 @@ import {
   resolveHumLabel,
 } from "~/public/queries.server"
 import { findVersion, latestOf } from "~/public/versions"
-import { loadFacetDefinitions } from "~/search/catalog.server"
+import { loadFacetDefinitions, publishedFacetValues } from "~/search/catalog.server"
 import { parseQuery, serializeQuery } from "~/search/dsl"
-import { queryFields } from "~/search/fields"
+import { BUILT_IN_FIELDS, queryFields } from "~/search/fields"
 import {
   defaultOrder,
   isSortKey,
+  isSortOrder,
   searchDocs,
   DEFAULT_SORT,
   SORT_KEYS,
+  SORT_ORDERS,
   type SearchTarget,
   type SortKey,
+  type SortOrder,
 } from "~/search/query.server"
 
 import {
@@ -58,6 +61,7 @@ import {
 import { jsonResponse, ndjsonResponse, problemResponse } from "./http"
 import { apiDocument } from "./openapi"
 import {
+  invalidOrder,
   invalidParameter,
   invalidQuery,
   invalidSort,
@@ -73,8 +77,8 @@ import {
   type DatasetBundle,
   type ResearchBundle,
 } from "./queries.server"
-import type { ApiDataset, ApiResearch } from "./schema"
-import { apiDataset, apiResearch, type ApiContext } from "./view"
+import type { ApiDataset, ApiResearch, ApiSearchField, ApiTerm } from "./schema"
+import { apiDataset, apiResearch, labelOf, type ApiContext } from "./view"
 
 function originOf(): string {
   return publicOrigin(loadConfig(process.env).auth)
@@ -265,19 +269,28 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
     return problemResponse(invalidSort(request, asked, SORT_KEYS))
   }
 
+  // **The direction is asked for apart from the key** (`app/search/sort.ts`), so
+  // a caller that wants the other end of a listing says so instead of counting
+  // its way to the last page. A direction that is neither is refused for the
+  // same reason an ordering that cannot be given is.
+  const wanted = url.searchParams.get("order")
+  let order: SortOrder
+  if (wanted === null) {
+    order = defaultOrder(sort)
+  } else if (isSortOrder(wanted)) {
+    order = wanted
+  } else {
+    return problemResponse(invalidOrder(request, wanted, SORT_ORDERS))
+  }
+
   const page = Number(url.searchParams.get("page") ?? "1")
   if (!Number.isInteger(page) || page < 1) {
     return problemResponse(invalidParameter(request, "page", "page must be a positive integer."))
   }
 
-  // **The direction is the screen's; here only the key is on offer.** A client
-  // reading a page at a time gets to the other end of a list with `?page=`, and
-  // one spelling of an ordering is what keeps two clients on the same page.
-  const result = await searchDocs(db, {
-    target, ast, fields, sort, order: defaultOrder(sort), page,
-  })
+  const result = await searchDocs(db, { target, ast, fields, sort, order, page })
   const context = await contextOf()
-  const order = result.hits.map((hit) =>
+  const ranking = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")
   const boxes = await publicBoxesOf(result.hits.map((hit) => hit.humLabel))
   const ids = result.hits.map((hit) => hit.targetId)
@@ -290,7 +303,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
     page: result.page,
     pageCount: result.pageCount,
     query: serializeQuery(ast),
-    hits: inOrder(hits, order),
+    hits: inOrder(hits, ranking),
   })
 }
 
@@ -300,6 +313,64 @@ function inOrder<T extends { id: string }>(objects: readonly T[], order: readonl
   return order.flatMap((id) => {
     const object = byId.get(id)
     return object === undefined ? [] : [object]
+  })
+}
+
+// --- fields ---------------------------------------------------------------
+
+/**
+ * What a query may be written against.
+ *
+ * **The catalog is the list.** A key typed as a vocabulary, a number or a
+ * disease is a field and no other key is (`app/search/catalog.server.ts`), so
+ * this answer and the refinement panel are one set read twice — what the screen
+ * can filter by is what `?q=` can name.
+ *
+ * **The values are the ones the published set holds**, not the ones the
+ * vocabulary defines, so a value taken from here always matches something. The
+ * keys whose values are prose are not fields: the search row keeps their text
+ * but not which key it came from, so their words are reachable as free text and
+ * not as `key:word` (`docs/data-model.md` の「検索用の行」).
+ *
+ * **A field an object does not show is still a field to ask by.** Thirteen keys
+ * are drawn in the refinement panel and left off the page (`show_on_public_page`),
+ * and the public projection is one function, so what the page leaves off the API
+ * leaves off too. `inAnswers` is how a caller learns that before it goes looking
+ * for a value that will not be there.
+ */
+export async function searchFields(): Promise<Response> {
+  const db = getDb()
+  const [definitions, values] = await Promise.all([
+    loadFacetDefinitions(db),
+    publishedFacetValues(db),
+  ])
+  const fields = queryFields(definitions.map((one) => one.field))
+
+  const held = new Map<string, ApiTerm[]>()
+  for (const value of values) {
+    held.set(value.keyId, [...held.get(value.keyId) ?? [], {
+      code: value.code,
+      label: labelOf(value),
+    }])
+  }
+
+  /** A name the query language does not know is left out: it could not be used. */
+  function described(code: string, rest: Omit<ApiSearchField, "code" | "type">): ApiSearchField[] {
+    const type = fields.typeOf(code)
+    return type === undefined ? [] : [{ code, type, ...rest }]
+  }
+
+  return jsonResponse({
+    fields: [
+      // The four the search row is made of are the ones an answer opens with.
+      ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, { inAnswers: true })),
+      ...definitions.flatMap((one) => described(one.field.code, {
+        label: labelOf({ labelJa: one.labelJa, labelEn: one.labelEn }),
+        ...one.canonicalUnit === null ? {} : { unit: one.canonicalUnit },
+        ...one.field.kind === "number" ? {} : { values: held.get(one.field.keyId) ?? [] },
+        inAnswers: one.showOnPublicPage,
+      })),
+    ],
   })
 }
 

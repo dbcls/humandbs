@@ -45,8 +45,13 @@ export interface NumberBounds {
  * The root of a term's chain. `ancestor_ids` runs from the immediate parent
  * upwards, so the last of them is the root; an empty array indexes to null and
  * the term stands for itself.
+ *
+ * Exported because the values a query may name have to be rolled up the same
+ * way they are counted (`./catalog.server.ts`), and two spellings of one rule
+ * would let the panel offer a value the query cannot use. **Assumes the facet
+ * rows are aliased `f`.**
  */
-const ROOT_ID = sql`coalesce(f.ancestor_ids[array_length(f.ancestor_ids, 1)], f.term_id)`
+export const ROOT_ID = sql`coalesce(f.ancestor_ids[array_length(f.ancestor_ids, 1)], f.term_id)`
 
 /** A list of identities as a parenthesised list, which is what `IN` takes. */
 function anyOf(ids: readonly string[]): SQL {

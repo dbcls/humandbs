@@ -4,6 +4,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
+import { publishedFacetValues } from "./catalog.server"
 import { countTerms, dateBounds, numberBounds } from "./counts.server"
 import { parseQuery, type QueryNode } from "./dsl"
 import { queryFields, type FacetField } from "./fields"
@@ -119,6 +120,8 @@ beforeAll(async () => {
   const prostate = await term(icd10, "C61")
   const wgs = await term(assay, "wgs")
   const rna = await term(assay, "rna-seq")
+  // Defined and carried by nothing, which is the case the offer has to leave out
+  await term(assay, "unused")
 
   const disease = await key("disease", "vocabulary", icd10)
   const method = await key("assay", "vocabulary", assay)
@@ -278,5 +281,37 @@ describe("filtering by a date, which is a column rather than a facet row", () =>
     expect(await labels("date_published:[2015-01-01 TO 2019-12-31] assay:wgs"))
       .toEqual(["JGAD000001", "JGAD000003"])
     expect(await labels("date_published:[2019-01-01 TO *] assay:wgs")).toEqual([])
+  })
+})
+
+/**
+ * What `/api/fields` offers as values. **The offer is a promise**: a caller that
+ * takes a value from it and writes it into a query gets rows back, so a value
+ * nothing carries must not appear.
+ */
+describe("the values a query may name", () => {
+  it("offers a term at the root of its tree, which is the level a query can name", async () => {
+    const values = await publishedFacetValues(db)
+    const diseases = values
+      .filter((one) => one.keyId === identities.disease)
+      .map((one) => one.code)
+      .sort()
+
+    // Two rows are filed under C349 and C341; both are offered as C34
+    expect(diseases).toEqual(["C34", "C61"])
+  })
+
+  it("offers nothing that no published row carries", async () => {
+    const codes = (await publishedFacetValues(db)).map((one) => one.code)
+
+    // Defined in the vocabulary and used by nobody
+    expect(codes).not.toContain("unused")
+    // The level below a root: real, carried, and not nameable
+    expect(codes).not.toContain("C341")
+  })
+
+  it("carries both labels, so a value can be shown as well as written", async () => {
+    const values = await publishedFacetValues(db)
+    expect(values.every((one) => one.labelEn !== "")).toBe(true)
   })
 })

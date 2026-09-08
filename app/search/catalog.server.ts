@@ -18,6 +18,7 @@ import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
 import type { Executor } from "~/db/client.server"
 import { contentKey, facetCategory, vocabularyTerm } from "~/db/schema"
 
+import { ROOT_ID } from "./counts.server"
 import type { FacetField } from "./fields"
 
 export interface FacetDefinition {
@@ -31,6 +32,12 @@ export interface FacetDefinition {
   categoryLabelEn: string | null
   /** Set for a number key: the unit its stored values are in. */
   canonicalUnit: string | null
+  /**
+   * Whether an object carrying this key says so. **A key can be filtered on
+   * without being shown** — thirteen of them are, and they are the ones the
+   * panel offers as questions rather than as descriptions.
+   */
+  showOnPublicPage: boolean
 }
 
 interface FacetRow extends Record<string, unknown> {
@@ -44,6 +51,7 @@ interface FacetRow extends Record<string, unknown> {
   categoryCode: string | null
   categoryLabelJa: string | null
   categoryLabelEn: string | null
+  showOnPublicPage: boolean
 }
 
 /**
@@ -66,6 +74,7 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
       labelEn: contentKey.labelEn,
       setId: contentKey.vocabularySetId,
       canonicalUnit: contentKey.canonicalUnit,
+      showOnPublicPage: contentKey.showOnPublicPage,
       categoryCode: facetCategory.code,
       categoryLabelJa: facetCategory.labelJa,
       categoryLabelEn: facetCategory.labelEn,
@@ -97,6 +106,7 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
     categoryLabelJa: row.categoryLabelJa,
     categoryLabelEn: row.categoryLabelEn,
     canonicalUnit: row.canonicalUnit,
+    showOnPublicPage: row.showOnPublicPage,
   }))
 }
 
@@ -132,4 +142,43 @@ export async function resolveTerms(
     .where(and(inArray(vocabularyTerm.setId, setIds), inArray(vocabularyTerm.code, codes)))
   const asked = new Set(wanted.map((one) => `${one.setId}/${one.code}`))
   return rows.filter((row) => asked.has(`${row.setId}/${row.code}`))
+}
+
+export interface FacetValue {
+  keyId: string
+  code: string
+  labelJa: string | null
+  labelEn: string
+}
+
+/**
+ * Every value the published set actually carries, by key.
+ *
+ * **Rolled up to the root of its tree**, because the root is the only level a
+ * query can name (`./counts.server.ts`). **Read off the facet rows rather than
+ * the vocabulary**, so that a value nothing carries is not offered: the set
+ * behind `disease` holds every ICD10 code there is, and all but a few hundred
+ * of them would match nothing.
+ *
+ * **No counts.** How many rows a value would leave is a question about a
+ * result; this is the list of what may be asked.
+ */
+export async function publishedFacetValues(db: Executor): Promise<FacetValue[]> {
+  const result = await db.execute<{
+    key_id: string
+    code: string
+    label_ja: string | null
+    label_en: string
+  }>(sql`
+    SELECT DISTINCT f.key_id, root.code, root.label_ja, root.label_en
+    FROM search_facet_term f
+    JOIN vocabulary_term root ON root.id = ${ROOT_ID}
+    ORDER BY root.code
+  `)
+  return result.rows.map((row) => ({
+    keyId: row.key_id,
+    code: row.code,
+    labelJa: row.label_ja,
+    labelEn: row.label_en,
+  }))
 }
