@@ -1,8 +1,7 @@
 import { Form } from "react-router"
 
 import { catalogAction, fieldTermsPage, type TermRow } from "~/admin/catalog.server"
-import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { adminExperimentFieldPath } from "~/admin/urls"
 import { Badge, Button, Confirm, Fold, Stack } from "~/components/base"
 import { Field, Result, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Paging, Section } from "~/components/page"
@@ -60,11 +59,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[{ label: t.heading, to: href(locale, adminExperimentFieldsPath()) }]}
-        current={title}
-      />
       <PageHead label={title} />
       <Card>
         <Stack gap="block">

@@ -53,10 +53,7 @@ import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftPath,
   adminDraftReviewPath,
-  adminResearchListPath,
-  adminResearchPath,
   datasetPagePath,
   draftCommentsPath,
   draftPresencePath,
@@ -80,7 +77,7 @@ import { href, researchPath } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { AdminCrumbs, PaneSpot, usePanes } from "./admin"
+import { PaneSpot, usePanes } from "./admin"
 import { DraftBar, useDraftEditing, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
@@ -421,30 +418,16 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          {
-            label: messagesFor(locale).admin.research.heading,
-            to: href(locale, adminResearchListPath()),
-          },
-          {
-            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
-            to: href(locale, adminResearchPath(researchId)),
-          },
-          { label: editor.heading, to: href(locale, adminDraftPath(researchId, draftId)) },
-          {
-            label: messagesFor(locale).admin.draft.datasets,
-            to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
-          },
-        ]}
-        current={view.datasetLabel ?? editor.unpinnedDataset}
-      />
       <Stack>
-        {/* The way out is the trail above; these are the draft's other faces. */}
+        {/* The way out is the list this dataset is in; beside it, the draft's
+            other face. */}
         <DraftBar
           locale={locale}
           heading={view.datasetLabel ?? editor.unpinnedDataset}
+          back={{
+            to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
+            label: t.backToList,
+          }}
           links={[
             { to: href(locale, adminDraftReviewPath(researchId, draftId)), label: editor.review },
           ]}

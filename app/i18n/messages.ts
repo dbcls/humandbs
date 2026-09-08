@@ -477,7 +477,7 @@ const ja = {
     },
     draft: {
       datasets: "データセット",
-      backToDraft: "研究本体の編集へ",
+      backToDraft: "下書きの編集へ",
       noDatasets: "この研究にはまだデータセットがありません。",
       createDataset: "新しいデータセットを作る",
       listed: "この版に掲載",
@@ -501,7 +501,6 @@ const ja = {
     },
     datasetEditor: {
       backToList: "データセット一覧へ",
-      backToDraft: "研究本体の編集へ",
       basics: "基本情報",
       releaseDate: "公開日",
       releaseDateHint: "NHA ID のときだけ入力します。外部 accession の日付は登録先から取ります。",
@@ -655,6 +654,7 @@ const ja = {
     templates: {
       heading: "データ提供申請から研究を作る",
       headingDataset: "外部アクセッションからデータセットを足す",
+      backToDatasets: "データセット一覧へ",
       open: "データ提供申請から作る",
       openDataset: "外部アクセッションから足す",
       notConnected: "この環境からは申請管理システムに接続していません。",
@@ -845,7 +845,6 @@ const ja = {
       removeAlertConfirm: "消す",
       noDocument: "文書はまだありません。",
       done: "保存しました。",
-      backToTree: "サイトコンテンツ一覧",
       address: "アドレス",
       rename: "slug を変える",
       renameNote: "slug は読者が持っているアドレスです。変えると、外部から書き込まれた参照は届かなくなります。",
@@ -923,6 +922,7 @@ const ja = {
     },
     files: {
       heading: "ファイル",
+      backToResearch: "研究の画面へ",
       open: "ファイルを見る",
       summary: (count: number, size: string) => `${count} 件 / ${size}`,
       totalSize: (size: string) => `箱の合計 ${size}`,
@@ -1351,7 +1351,7 @@ const en: Messages = {
     },
     draft: {
       datasets: "Datasets",
-      backToDraft: "Back to the research",
+      backToDraft: "Back to the draft",
       noDatasets: "This research has no datasets yet.",
       createDataset: "Add a dataset",
       listed: "listed by this version",
@@ -1375,7 +1375,6 @@ const en: Messages = {
     },
     datasetEditor: {
       backToList: "Back to the datasets",
-      backToDraft: "Back to the research",
       basics: "Basics",
       releaseDate: "Date published",
       releaseDateHint: "Only NHA IDs carry one here; dates for external accessions come from the archive.",
@@ -1530,6 +1529,7 @@ const en: Messages = {
     templates: {
       heading: "Start a research from a data submission application",
       headingDataset: "Add datasets from an external accession",
+      backToDatasets: "Back to the datasets",
       open: "From an application",
       openDataset: "From an accession",
       notConnected: "This deployment cannot reach the application system.",
@@ -1720,7 +1720,6 @@ const en: Messages = {
       removeAlertConfirm: "Delete",
       noDocument: "There is no document yet.",
       done: "Saved.",
-      backToTree: "All site content",
       address: "Address",
       rename: "Change the slug",
       renameNote: "A slug is an address readers hold. Changing it leaves every reference written elsewhere pointing at nothing.",
@@ -1798,6 +1797,7 @@ const en: Messages = {
     },
     files: {
       heading: "Files",
+      backToResearch: "Back to the research",
       open: "Open the files",
       summary: (count: number, size: string) => `${count} files / ${size}`,
       totalSize: (size: string) => `${size} in the box altogether`,

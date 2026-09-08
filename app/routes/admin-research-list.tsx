@@ -13,7 +13,6 @@ import {
   adminUpstreamResearchPath,
   listingQuery,
 } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
 import { Badge, Excerpt, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Select, Submit } from "~/components/form"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
@@ -59,7 +58,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
 
   return (
     <Page>
-      <AdminCrumbs locale={locale} current={t.heading} />
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={t.heading}>

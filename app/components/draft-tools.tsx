@@ -21,6 +21,7 @@ import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
+import { AdminBack } from "./admin"
 import { Button, Heading, Menu, MENU_ITEM, Stack } from "./base"
 import { Empty } from "./page"
 import type { Marks } from "./fields"
@@ -134,6 +135,7 @@ function stamp(iso: string): string {
 export function DraftBar({
   locale,
   heading,
+  back,
   links,
   note,
   dirty,
@@ -150,7 +152,9 @@ export function DraftBar({
   locale: Locale
   /** What this screen edits, as it is known: a research ID, a dataset label. */
   heading: string
-  /** Where this screen leads back out to, in the order it offers them. */
+  /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
+  back: { to: string, label: string }
+  /** The other faces of what is being edited, in the order it offers them. */
   links: { to: string, label: string }[]
   /** Anything else the screen has to say about what it is editing. */
   note?: ReactNode
@@ -174,6 +178,7 @@ export function DraftBar({
               than the links beside it, and a shared baseline drops the smaller
               of the two below the middle of the row (`docs/ui.md`). */}
           <div className="flex flex-wrap items-center gap-3">
+            <AdminBack to={back.to} label={back.label} />
             <Heading level="h1" look="bar" rule="start" title={heading} />
             {links.map((link) => (
               <Link key={link.to} to={link.to} className="text-sm">{link.label}</Link>

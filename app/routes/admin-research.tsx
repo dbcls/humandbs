@@ -7,9 +7,7 @@ import {
   adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchFilesPath,
-  adminResearchListPath,
 } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
 import { Badge, Confirm, Note, Stack } from "~/components/base"
 import { Checkbox, Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
@@ -65,14 +63,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[{
-          label: messages.admin.research.heading,
-          to: href(locale, adminResearchListPath()),
-        }]}
-        current={view.humLabel ?? t.heading}
-      />
       <PageHead kicker={messages.research.researchId} label={view.humLabel ?? t.heading} />
       <Card>
         <Stack gap="block">

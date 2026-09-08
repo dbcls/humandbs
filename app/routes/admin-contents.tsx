@@ -3,7 +3,6 @@ import { Form, Link } from "react-router"
 import { nextVersionNumber, type TreeEntry } from "~/admin/contents"
 import { contentsAction, contentsPage, type AlertRow } from "~/admin/contents.server"
 import { adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Badge, Confirm, Fold, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Result, Select, Submit, TextArea } from "~/components/form"
@@ -52,7 +51,6 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
 
   return (
     <Page>
-      <AdminCrumbs locale={locale} current={t.heading} />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading}>

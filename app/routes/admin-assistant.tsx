@@ -1,5 +1,4 @@
 import { requireCapability } from "~/auth/actor.server"
-import { AdminCrumbs } from "~/components/admin"
 import { Heading, Stack } from "~/components/base"
 import { Card, Empty, Page } from "~/components/page"
 import { loadConfig } from "~/config.server"
@@ -45,7 +44,6 @@ export default function AdminAssistant({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <AdminCrumbs locale={locale} current={words.heading} />
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={words.heading} />

@@ -37,7 +37,6 @@ import {
   adminDraftDatasetsPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
-  adminResearchListPath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
@@ -52,7 +51,7 @@ import { RESEARCH } from "~/review/anchors"
 import { threadsByPath, unresolvedCount } from "~/review/comments"
 import type { DrawnDraft } from "~/review/preview.server"
 
-import { AdminCrumbs, PaneSpot, usePanes } from "./admin"
+import { PaneSpot, usePanes } from "./admin"
 import { Button, Note, Stack } from "./base"
 import { DraftBar, useDraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
@@ -594,29 +593,19 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          {
-            label: messagesFor(locale).admin.research.heading,
-            to: href(locale, adminResearchListPath()),
-          },
-          {
-            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
-            to: href(locale, adminResearchPath(view.researchId)),
-          },
-        ]}
-        current={t.heading}
-      />
       <Stack>
         {/*
-          **The links beside the name are the way across, not the way back.**
-          The trail above holds the way out of here; what a curator reaches from
-          this screen and nowhere else is the draft's other two faces.
+          **One of these is the way out and the rest are the way across.** A
+          draft is left for the research it belongs to; what a curator reaches
+          from this screen and nowhere else is its other two faces.
         */}
         <DraftBar
           locale={locale}
           heading={view.humLabel ?? t.heading}
+          back={{
+            to: href(locale, adminResearchPath(view.researchId)),
+            label: t.backToResearch,
+          }}
           links={[
             {
               to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),

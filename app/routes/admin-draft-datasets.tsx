@@ -5,12 +5,10 @@ import type { DraftDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetPath,
   adminDraftPath,
-  adminResearchListPath,
-  adminResearchPath,
   adminUpstreamDatasetPath,
   draftPresencePath,
 } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { AdminBack } from "~/components/admin"
 import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { PresenceLine } from "~/components/draft-tools"
 import { Submit } from "~/components/form"
@@ -60,27 +58,14 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          {
-            label: messagesFor(locale).admin.research.heading,
-            to: href(locale, adminResearchListPath()),
-          },
-          {
-            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
-            to: href(locale, adminResearchPath(view.researchId)),
-          },
-          {
-            label: messagesFor(locale).admin.editor.heading,
-            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
-          },
-        ]}
-        current={t.datasets}
-      />
       <Card under={false}>
         <Stack gap="normal">
-          <Heading title={t.datasets} />
+          <Heading title={t.datasets}>
+            <AdminBack
+              to={href(locale, adminDraftPath(view.researchId, view.draftId))}
+              label={t.backToDraft}
+            />
+          </Heading>
           <PresenceLine
             locale={locale}
             path={draftPresencePath(view.researchId, view.draftId)}

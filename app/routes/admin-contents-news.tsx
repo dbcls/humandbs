@@ -1,8 +1,7 @@
 import { Form, Link } from "react-router"
 
 import { newsListAction, newsListPage } from "~/admin/contents.server"
-import { adminContentsPath, adminNewsListPath, adminNewsPath } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { adminNewsListPath, adminNewsPath } from "~/admin/urls"
 import { Heading, Stack } from "~/components/base"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Submit } from "~/components/form"
@@ -41,11 +40,6 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[{ label: t.heading, to: href(locale, adminContentsPath()) }]}
-        current={t.news.heading}
-      />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.news.heading} />

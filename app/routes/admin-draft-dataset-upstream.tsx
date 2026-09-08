@@ -3,13 +3,10 @@ import { data, Form, Link } from "react-router"
 import { upstreamDatasetAction, upstreamDatasetPage } from "~/admin/templates.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftPath,
-  adminResearchListPath,
-  adminResearchPath,
   adminUpstreamDatasetPath,
   upstreamQuery,
 } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
 import { Field, Submit } from "~/components/form"
 import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
@@ -65,28 +62,14 @@ export default function AdminDraftDatasetUpstream({
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          { label: messages.admin.research.heading, to: href(locale, adminResearchListPath()) },
-          {
-            label: view.humLabel ?? messages.admin.detail.heading,
-            to: href(locale, adminResearchPath(view.researchId)),
-          },
-          {
-            label: messages.admin.editor.heading,
-            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
-          },
-          {
-            label: messages.admin.draft.datasets,
-            to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
-          },
-        ]}
-        current={t.headingDataset}
-      />
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.headingDataset} />
+          <Heading title={t.headingDataset}>
+            <AdminBack
+              to={href(locale, adminDraftDatasetsPath(view.researchId, view.draftId))}
+              label={t.backToDatasets}
+            />
+          </Heading>
 
           {actionData?.status === "taken" && <Note kind="warning" live>{t.takenLabel}</Note>}
           {actionData?.status === "conflict" && <Note kind="danger" live>{t.conflict}</Note>}

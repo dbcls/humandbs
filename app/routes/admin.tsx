@@ -4,7 +4,7 @@ import { adminDestinations, type AdminDestination } from "~/admin/navigation"
 import { adminPath } from "~/admin/urls"
 import { requireActor } from "~/auth/actor.server"
 import { Heading, Note, Stack } from "~/components/base"
-import { Card, Crumbs, Empty, KeyValue, Page, Section, Table, Td } from "~/components/page"
+import { Card, Empty, KeyValue, Page, Section, Table, Td } from "~/components/page"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -64,9 +64,6 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      {/* 区画の根なので、`AdminCrumbs` は使わない — あれは「Admin」の段を足すもので、
-          ここではそれが現在地そのものになる。 */}
-      <Crumbs locale={locale} current={messages.admin.heading} />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={messages.admin.heading} />

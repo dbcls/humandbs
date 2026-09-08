@@ -1,8 +1,7 @@
 import { data, Form, Link } from "react-router"
 
 import { upstreamResearchAction, upstreamResearchPage } from "~/admin/templates.server"
-import { adminResearchListPath, adminResearchPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { adminResearchPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
 import { Heading, Note, Stack } from "~/components/base"
 import { Card, Page, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
@@ -56,14 +55,6 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[{
-          label: messages.admin.research.heading,
-          to: href(locale, adminResearchListPath()),
-        }]}
-        current={t.heading}
-      />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} />

@@ -46,22 +46,23 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-02: どの管理画面からもパンくずで区画のトップに戻れる", async ({ page }) => {
+  test("S-ADMIN-02: つまみに親が無い画面だけが、その親への戻る道を持つ", async ({ page }) => {
+    // つまみが開ける画面は、区画の中の位置を自分では言わない。
     for (const path of [...STANDALONE, "/admin"]) {
       await page.goto(path)
-      const trail = page.getByRole("navigation", { name: "現在地" })
-      await expect(trail, path).toBeVisible()
-      if (path === "/admin") continue
-      await expect(trail.locator("a[href=\"/admin\"]"), path).toBeVisible()
+      await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
     }
 
-    // いちばん深いところからも同じこと。研究 → 下書き → データセット一覧。
+    // いちばん深いところからは、1 段ずつ親へ。データセット一覧 → 下書き → 研究。
     const draft = await openADraft(page)
+    const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
+
     await page.goto(`${draft}/dataset`)
-    const trail = page.getByRole("navigation", { name: "現在地" })
-    await expect(trail.locator("a[href=\"/admin\"]")).toBeVisible()
-    await trail.locator("a[href=\"/admin\"]").click()
-    await expect(page).toHaveURL(/\/admin$/)
+    await page.getByRole("link", { name: "下書きの編集へ" }).click()
+    await expect(page).toHaveURL(draft)
+
+    await page.getByRole("link", { name: "研究の画面へ" }).click()
+    await expect(page).toHaveURL(research)
   })
 
   test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ", async ({ page }) => {

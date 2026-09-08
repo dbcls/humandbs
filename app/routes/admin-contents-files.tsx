@@ -1,7 +1,6 @@
 import { data, Form } from "react-router"
 
-import { adminContentFilesPath, adminContentsPath, contentFileUploadPath } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { adminContentFilesPath, contentFileUploadPath } from "~/admin/urls"
 import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { UploadPanel } from "~/components/files"
 import { Result, SelectAll } from "~/components/form"
@@ -50,14 +49,6 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[{
-          label: messagesFor(locale).admin.contents.heading,
-          to: href(locale, adminContentsPath()),
-        }]}
-        current={t.heading}
-      />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} />

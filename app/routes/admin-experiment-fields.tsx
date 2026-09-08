@@ -3,7 +3,6 @@ import { Form, Link } from "react-router"
 import { SETTLED_VOCABULARIES } from "~/admin/catalog"
 import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.server"
 import { adminExperimentFieldPath } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
 import { Button, Confirm, Fold, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Result, Select, Submit } from "~/components/form"
 import { Card, Empty, Page, Section } from "~/components/page"
@@ -61,7 +60,6 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <AdminCrumbs locale={locale} current={t.heading} />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} />

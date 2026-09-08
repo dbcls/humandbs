@@ -11,9 +11,7 @@ import {
 import { Link, useLocation } from "react-router"
 
 import { adminDestinations, isHere } from "~/admin/navigation"
-import { adminPath } from "~/admin/urls"
 import { Icon } from "~/components/icons"
-import { Crumbs } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -21,29 +19,30 @@ import { href } from "~/public/urls"
 import { IconButton, SectionTabs } from "./base"
 
 /**
- * The trail into a management screen.
+ * The way out of a screen the handle does not open.
  *
- * **Every one of them starts at the area's front page**, which is what makes
- * the map there the way to all nineteen and back: a screen four levels down
- * used to carry one hand-written link to its parent, so getting out of a draft
- * meant three presses or finding the tab at the edge of the window.
+ * **Only a screen whose parent is missing from the handle carries one**
+ * (`admin/navigation.ts` is what the handle lists): the box and the draft lead
+ * to their research, the datasets and the publish and review screens lead to
+ * their draft, a dataset leads to the list it is in. A screen the handle
+ * already reaches would be saying the same thing twice, and a management area
+ * that repeats its own shape at the top of every screen is one where a curator
+ * reads the depth instead of the work.
  *
- * The trail below that step is the screen's own, and it names what the reader
- * came through rather than what the address spells — a research is a hum label
- * to the person reading it and a uuid in the URL.
+ * **It names where it goes rather than the step.** One link on a screen has
+ * nothing beside it to say what "back" would be back to.
+ *
+ * `onBand` is for the one standing in a page's opening band (`base.tsx` の
+ * `Band`), where the colour the rest of the site draws links in is unreadable
+ * against the fill.
  */
-export function AdminCrumbs({ locale, trail = [], current }: {
-  locale: Locale
-  trail?: { label: string, to: string }[]
-  current: string
+export function AdminBack({ to, label, onBand = false }: {
+  to: string
+  label: string
+  onBand?: boolean
 }) {
-  const words = messagesFor(locale).admin
   return (
-    <Crumbs
-      locale={locale}
-      trail={[{ label: words.heading, to: href(locale, adminPath()) }, ...trail]}
-      current={current}
-    />
+    <Link to={to} className={`text-sm ${onBand ? "text-white" : ""}`}>{label}</Link>
   )
 }
 

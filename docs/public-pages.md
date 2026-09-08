@@ -852,3 +852,4 @@ literal として扱う。
 | cookie / `Accept-Language` による言語の切り替え | 言語は URL が決める |
 | 欄ごとの未翻訳の印 | ページ単位で 1 度だけ告げる |
 | サイトコンテンツの未翻訳フォールバック | locale ごとに公開状態を持つので、無い言語は 404 |
+| robots.txt でのクロールの遮断 | 公開画面は読まれるために出している。未公開のものはトークンが要り、その応答が自身で `X-Robots-Tag: noindex` を持つ ([editing.md](editing.md)) |

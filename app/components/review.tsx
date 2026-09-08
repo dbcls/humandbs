@@ -12,15 +12,13 @@ import { Form, Link } from "react-router"
 import {
   adminDraftPath,
   adminDraftReviewPath,
-  adminResearchListPath,
-  adminResearchPath,
 } from "~/admin/urls"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import type { ReviewPageView } from "~/review/review.server"
 
-import { AdminCrumbs } from "./admin"
+import { AdminBack } from "./admin"
 import { Badge, Confirm, Stack } from "./base"
 import { DdbjMark, Thread, type CommentContext } from "./comments"
 import { Checkbox, Field, Submit } from "./form"
@@ -40,22 +38,13 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          { label: messages.admin.research.heading, to: href(locale, adminResearchListPath()) },
-          {
-            label: view.humLabel ?? messages.admin.detail.heading,
-            to: href(locale, adminResearchPath(view.researchId)),
-          },
-          {
-            label: messages.admin.editor.heading,
-            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
-          },
-        ]}
-        current={t.heading}
-      />
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
+        <AdminBack
+          onBand
+          to={href(locale, adminDraftPath(view.researchId, view.draftId))}
+          label={t.backToDraft}
+        />
+      </PageHead>
 
       <Card>
         <Stack gap="block">

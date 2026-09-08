@@ -2,11 +2,10 @@ import { data } from "react-router"
 
 import {
   adminResearchFilesPath,
-  adminResearchListPath,
   adminResearchPath,
   fileUploadPath,
 } from "~/admin/urls"
-import { AdminCrumbs } from "~/components/admin"
+import { AdminBack } from "~/components/admin"
 import { Note, Stack } from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
 import { Card, Page, PageHead, Paging, Section } from "~/components/page"
@@ -57,18 +56,13 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <AdminCrumbs
-        locale={locale}
-        trail={[
-          { label: messages.admin.research.heading, to: href(locale, adminResearchListPath()) },
-          {
-            label: view.humLabel ?? messages.admin.detail.heading,
-            to: href(locale, adminResearchPath(view.researchId)),
-          },
-        ]}
-        current={t.heading}
-      />
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
+        <AdminBack
+          onBand
+          to={href(locale, adminResearchPath(view.researchId))}
+          label={t.backToResearch}
+        />
+      </PageHead>
       <Card>
         <Stack gap="block">
           {actionData?.status === "nothing-selected" && <Note kind="danger" live>{t.nothingSelected}</Note>}
