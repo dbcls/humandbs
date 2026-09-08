@@ -1,7 +1,7 @@
 import { Form, Link } from "react-router"
 
 import type { UpstreamChoiceView } from "~/admin/templates.server"
-import { adminCatalogPath, adminResearchPath } from "~/admin/urls"
+import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -15,7 +15,7 @@ import { Empty } from "./page"
  *
  * They show the same thing in the same order — what is coming, what is not, and
  * why — because the two differ only in whether a research is made along with the
- * datasets (docs/editing.md の「上流からの下書き」).
+ * datasets (docs/editing.md の「下書きを外から作る」).
  */
 
 /**
@@ -135,7 +135,7 @@ export function UpstreamChoice({ locale, choice, submit }: {
             <p className="text-ink-muted text-xs">
               {t.droppedHint}
               {" "}
-              <Link to={href(locale, adminCatalogPath())}>{t.openCatalog}</Link>
+              <Link to={href(locale, adminExperimentFieldsPath())}>{t.openCatalog}</Link>
             </p>
           </Stack>
         </Stack>

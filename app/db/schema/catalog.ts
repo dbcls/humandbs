@@ -72,7 +72,7 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
  * The ICD10 classification itself, held as a dictionary rather than as a
  * vocabulary. **It is never read by the public side.** Its three uses are all
  * on the editing side: seeding the labels of a new term, deciding what a
- * written code resolves to, and finding a code by name in `/admin/catalog`.
+ * written code resolves to, and finding a code by name on the disease field's screen.
  *
  * Keeping it out of `vocabularyTerm` is what lets every term be editable. An
  * import replaces this table wholesale and touches nothing else, so a label a

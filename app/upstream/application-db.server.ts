@@ -8,7 +8,7 @@
  * (docs/development.md の「上流のキャッシュを更新する」).
  *
  * The queries answer three of the four cached sources, and the reads that seed a
- * draft from an approved application (docs/editing.md の「上流からの下書き」).
+ * draft from an approved application (docs/editing.md の「下書きを外から作る」).
  * The cached three are written as one statement each because the joins that
  * resolve a hum label are expensive enough — a full pass over the accession
  * history and the current entries' 24 million relations — that pulling the
@@ -441,7 +441,7 @@ const APPROVED = 60
  * the pivot cheap**, and it is also the whole of what leaves the upstream
  * system: the connection can reach the addresses and the telephone numbers, and
  * this list is where it is decided that it does not
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  */
 const FORM_KEYS = [
   "submission_study_title", "submission_study_title_en",

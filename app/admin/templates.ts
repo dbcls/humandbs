@@ -5,7 +5,7 @@
  * `templates.server.ts`; this is the part that decides what of their answer a
  * curator is handed, and it is the part worth testing on its own.
  *
- * Two rules shape all of it (docs/editing.md の「上流からの下書き」):
+ * Two rules shape all of it (docs/editing.md の「下書きを外から作る」):
  *
  * - **Only what a public page shows.** The application form holds addresses,
  *   telephone numbers and every collaborator, and the content it seeds carries
@@ -264,7 +264,7 @@ function diseasesOf(
  *
  * **What is written is codes and no names.** The application form holds no word
  * for the disease, so the curator writes them
- * (`docs/editing.md` の「上流からの下書き」).
+ * (`docs/editing.md` の「下書きを外から作る」).
  */
 function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
   const key = keyOf(catalog, DISEASE_KEY, "experiment")

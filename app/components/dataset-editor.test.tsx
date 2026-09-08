@@ -7,6 +7,8 @@ import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog } from "~/admin/queries.server"
 import { emptyDatasetContent, filled } from "~/content/empty"
 import type { DatasetContent } from "~/content/types"
+import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
+import type { DrawnDataset } from "~/review/preview.server"
 
 import { DatasetEditor } from "./dataset-editor"
 
@@ -122,6 +124,32 @@ const TERMS = [
   },
 ]
 
+/** Nothing in this fixture has values, so an empty catalog draws every place. */
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+
+/** The dataset drawn as its page, which the editor stands beside the form. */
+function drawn(content: DatasetContent): DrawnDataset {
+  const anchored = anchoredDatasetView({
+    label: "hum0001-NHA001",
+    humLabel: "hum0001",
+    studyAccession: null,
+    content,
+    datePublished: null,
+    dateModified: null,
+    files: [],
+  }, "ja", NO_CATALOG)
+  return {
+    humLabel: "hum0001",
+    publishedNumber: null,
+    label: "hum0001-NHA001",
+    view: anchored.view,
+    accessAnchor: null,
+    typeOfDataAnchor: null,
+    changed: [],
+    previous: {},
+  }
+}
+
 function view(
   content: DatasetContent = emptyDatasetContent(),
   portalIssued = true,
@@ -136,6 +164,7 @@ function view(
     published: true,
     portalIssued,
     terms: TERMS,
+    page: drawn(content),
     box: [],
     revision: 2,
     input: datasetContentInput(content),

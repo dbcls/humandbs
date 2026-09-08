@@ -122,6 +122,7 @@ import {
 
 import type { ThreadView } from "~/review/comments"
 import { readThreads } from "~/review/comments.server"
+import { drawDatasetDraft, drawDraft, type DrawnDataset, type DrawnDraft } from "~/review/preview.server"
 import {
   draftReviewSummaries,
   latestPublishedVersion,
@@ -316,6 +317,12 @@ export interface AdminDraftPageView {
   undo: UndoEntryRow[]
   upstream: UpstreamView<DraftInput> | null
   review: ReviewMarksView
+  /**
+   * The draft drawn as the page it is going to be, which the editor stands
+   * beside the form. It is the same drawing the share link shows, so that the
+   * question "where does this value come out" has one answer.
+   */
+  page: DrawnDraft
 }
 
 /**
@@ -359,7 +366,7 @@ export async function draftEditorPage(
 ): Promise<AdminDraftPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, datasets, presence, undo, moved, threads, published] = await Promise.all([
+  const [humLabel, datasets, presence, undo, moved, threads, published, page] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     activePresence(db, draftId),
@@ -367,6 +374,7 @@ export async function draftEditorPage(
     upstreamResearch(db, researchId, draft.parentSnapshotId),
     readThreads(db, draftId),
     latestPublishedVersion(db, researchId),
+    drawDraft(request, locale, { researchId, draftId, content: draft.content }),
   ])
 
   const input = { note: draft.note, content: researchContentInput(draft.content) }
@@ -392,6 +400,7 @@ export async function draftEditorPage(
       publishedNumber: published?.number ?? null,
       signedInName: actor.name,
     },
+    page,
   }
 }
 
@@ -496,6 +505,11 @@ export interface DatasetEditorView {
    */
   revision: number | null
   input: DatasetContentInput
+  /**
+   * The dataset drawn as the page it is going to be, which the editor stands
+   * beside the form. It is the same drawing the share link shows.
+   */
+  page: DrawnDataset
   catalog: EditableCatalog
   /**
    * The terms this document names, and only those. The catalog carries none, so
@@ -565,6 +579,7 @@ export async function datasetEditorPage(
     ...namedTerms(content),
     ...(published === null ? [] : namedTerms(published)),
   ])
+  const page = await drawDatasetDraft(request, locale, { researchId, draftId }, datasetId)
 
   return {
     locale,
@@ -576,6 +591,7 @@ export async function datasetEditorPage(
     published: row.published,
     revision: entry?.revision ?? null,
     input,
+    page,
     catalog,
     terms,
     presence: presenceView(presence, actor.sessionId),
@@ -1237,4 +1253,68 @@ export async function saveDraftAction(
     revision: current.revision,
     current: { note: current.note, content: researchContentInput(current.content) },
   }
+}
+
+/**
+ * The draft drawn from content that has not been saved yet.
+ *
+ * **The pane beside the form has to show what is being typed, not what is
+ * filed.** The projection and the view builder are pure, so the drawing can be
+ * made from a posted content without anything being written down; the same
+ * function draws it as the share link uses, so the two cannot disagree.
+ *
+ * **Prose the tree cannot keep is not an error here.** Refusing markup is the
+ * save's job and it says where the problem is; a pane that answered 422 would
+ * empty itself in the middle of a sentence. It answers with nothing instead and
+ * the pane keeps the last drawing it had.
+ */
+export async function draftPageAction(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<DrawnDraft | null> {
+  await requireCapability(request, "edit-content")
+
+  const researchId = identity(params.researchId)
+  const draftId = identity(params.draftId)
+
+  const payload = saveDraftSchema.safeParse(await request.json())
+  if (!payload.success) badRequest()
+
+  const db = getDb()
+  const draft = await readDraft(db, draftId)
+  if (draft?.researchId !== researchId) notFound()
+
+  const content = researchContentOf(payload.data.content)
+  if (!content.ok) return null
+  return drawDraft(request, locale, { researchId, draftId, content: content.content })
+}
+
+/**
+ * One dataset of a draft, drawn from content that has not been saved yet.
+ *
+ * The research's counterpart is `draftPageAction`, and the same two things hold:
+ * the drawing is made without writing anything, and prose the tree cannot keep
+ * answers with nothing rather than with half a page.
+ */
+export async function datasetPageAction(
+  request: Request,
+  locale: Locale,
+  params: {
+    researchId: string | undefined
+    draftId: string | undefined
+    datasetId: string | undefined
+  },
+): Promise<DrawnDataset | null> {
+  const { db, researchId, draftId } = await draftOf(request, params)
+  const datasetId = identity(params.datasetId)
+
+  const payload = saveDatasetSchema.safeParse(await request.json())
+  if (!payload.success) badRequest()
+
+  const catalog = await loadEditableCatalog(db)
+  const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
+  const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)
+  if (!content.ok) return null
+  return drawDatasetDraft(request, locale, { researchId, draftId }, datasetId, content.content)
 }

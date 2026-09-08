@@ -1,7 +1,7 @@
 import { Form } from "react-router"
 
-import { catalogAction, vocabularyPage, type TermRow } from "~/admin/catalog.server"
-import { adminCatalogPath, adminVocabularyPath } from "~/admin/urls"
+import { catalogAction, fieldTermsPage, type TermRow } from "~/admin/catalog.server"
+import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
 import { AdminCrumbs } from "~/components/admin"
 import { Badge, Button, Confirm, Fold, Stack } from "~/components/base"
 import { Field, Result, Submit } from "~/components/form"
@@ -11,10 +11,15 @@ import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import type { Route } from "./+types/admin-catalog-vocabulary"
+import type { Route } from "./+types/admin-experiment-field-terms"
 
 /**
- * One vocabulary and its terms.
+ * The terms one field draws its values from.
+ *
+ * **The screen is named after the field, not after the vocabulary.** Every
+ * vocabulary belongs to exactly one field, so a screen called 「語彙」 could
+ * only ever be answered with "which vocabulary?" — while 「プラットフォームで
+ * 選べる語」 says both what is here and what it is for (`admin/urls.ts`).
  *
  * **Every term is editable.** ICD10 arrives as a dictionary that seeds and
  * checks the terms rather than as a vocabulary of its own, so there is no set
@@ -26,7 +31,7 @@ import type { Route } from "./+types/admin-catalog-vocabulary"
  * can render.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const view = await vocabularyPage(request, params.code)
+  const view = await fieldTermsPage(request, params.key)
   if (view === null) throw new Response(null, { status: 404, statusText: "Not Found" })
   return view
 }
@@ -37,27 +42,30 @@ export async function action({ request }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
+  const title = messages.admin.catalog.termsOf(catalogLabel(loaderData.field, loaderData.locale))
   return [
-    { title: `${loaderData.set.code} - ${messages.admin.catalog.heading} - ${messages.siteName}` },
+    { title: `${title} - ${messages.siteName}` },
     { name: "robots", content: "noindex" },
   ]
 }
 
-export default function AdminVocabulary({ loaderData, actionData }: Route.ComponentProps) {
+export default function AdminFieldTerms({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.catalog
   const set = view.set
+  const here = adminExperimentFieldPath(view.field.code)
+  const title = t.termsOf(catalogLabel(view.field, locale))
 
   return (
     <Page>
       <AdminCrumbs
         locale={locale}
-        trail={[{ label: t.heading, to: href(locale, adminCatalogPath()) }]}
-        current={catalogLabel(set, locale)}
+        trail={[{ label: t.heading, to: href(locale, adminExperimentFieldsPath()) }]}
+        current={title}
       />
-      <PageHead kicker={t.terms} label={catalogLabel(set, locale)} />
+      <PageHead label={title} />
       <Card>
         <Stack gap="block">
           {actionData !== undefined && (
@@ -66,13 +74,12 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
             </Result>
           )}
 
-          <p className="flex flex-wrap items-center gap-3 text-sm">
-            <code>{set.code}</code>
-            {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
-          </p>
+          {set.hierarchical && (
+            <p className="text-sm"><Badge>{t.hierarchical}</Badge></p>
+          )}
 
           <SearchBox
-            action={href(locale, adminVocabularyPath(set.code))}
+            action={href(locale, here)}
             name="find"
             value={view.find}
             label={t.find}
@@ -100,7 +107,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
               pageCount={view.pageCount}
               at={(to) => href(
                 locale,
-                `${adminVocabularyPath(set.code)}?${new URLSearchParams({
+                `${here}?${new URLSearchParams({
                   ...(view.find === "" ? {} : { find: view.find }),
                   page: String(to),
                 }).toString()}`,
@@ -112,7 +119,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
             <Section title={t.dictionary}>
               <p className="text-ink-muted text-sm">{t.dictionaryNote}</p>
               <SearchBox
-                action={href(locale, adminVocabularyPath(set.code))}
+                action={href(locale, here)}
                 name="dictionary"
                 value={view.dictionary.find}
                 label={t.dictionaryFind}
@@ -135,7 +142,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
                       <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
                       <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
                       <code className="w-24 shrink-0">{row.code}</code>
-                      <span className="flex-1 min-w-0 break-words">
+                      <span className="min-w-0 flex-1 break-words">
                         {row.titleEn ?? "—"}
                         {row.titleJa !== null && ` / ${row.titleJa}`}
                       </span>

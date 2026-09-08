@@ -20,7 +20,7 @@ import { draDatasetSeed, jgadDatasetSeed, researchContentFrom, type DatasetSeed 
  * screen would then refuse: a slot under a key the catalog does not hold, or a
  * value marked as a question nobody asked. The third is the whole of the promise
  * about vocabularies — a word upstream states is either written or named, and
- * the answer is never "quietly neither" (docs/editing.md の「上流からの下書き」).
+ * the answer is never "quietly neither" (docs/editing.md の「下書きを外から作る」).
  */
 
 const KEY_BY_ID = new Map(catalogFixture.keys.map((key) => [key.id, key]))

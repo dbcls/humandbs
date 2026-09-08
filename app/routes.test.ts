@@ -76,6 +76,9 @@ describe("管理画面の登録", () => {
       || path?.includes("/presence") === true
       || path?.includes("/undo/") === true
       || path?.includes("/comments") === true
+      // The draft drawn as its page, which the editor's second pane asks for
+      // as the content changes. It answers with the drawing, not with a screen.
+      || path?.endsWith("/page") === true
       || path === "admin/terms")).toBe(true)
   })
 

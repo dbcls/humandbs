@@ -11,7 +11,7 @@ import { expect, test } from "@playwright/test"
  */
 test.describe("P-ANON 管理画面", () => {
   test("S-ADMIN-00: 署名の無いブラウザは、どの管理画面もサインインに送られる", async ({ request }) => {
-    for (const path of ["/admin", "/admin/research", "/admin/catalog", "/admin/contents"]) {
+    for (const path of ["/admin", "/admin/research", "/admin/experiment-fields", "/admin/contents"]) {
       const answer = await request.get(path, { maxRedirects: 0 })
       expect(answer.status(), path).toBe(302)
       // The address it was asked for travels with it, so signing in lands where

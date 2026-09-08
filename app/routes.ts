@@ -53,11 +53,15 @@ function pages(scope: string) {
      */
     layout("routes/admin-layout.tsx", { id: `${scope}-admin-layout` }, [
       route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
-      route("admin/catalog", "routes/admin-catalog.tsx", { id: `${scope}-admin-catalog` }),
       route(
-        "admin/catalog/vocabulary/:code",
-        "routes/admin-catalog-vocabulary.tsx",
-        { id: `${scope}-admin-catalog-vocabulary` },
+        "admin/experiment-fields",
+        "routes/admin-experiment-fields.tsx",
+        { id: `${scope}-admin-experiment-fields` },
+      ),
+      route(
+        "admin/experiment-fields/:key",
+        "routes/admin-experiment-field-terms.tsx",
+        { id: `${scope}-admin-experiment-field-terms` },
       ),
       route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
       route(
@@ -143,6 +147,11 @@ const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
+  route("admin/research/:researchId/draft/:draftId/page", "routes/admin-draft-page.ts"),
+  route(
+    "admin/research/:researchId/draft/:draftId/dataset/:datasetId/page",
+    "routes/admin-draft-dataset-page.ts",
+  ),
   route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
   route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),

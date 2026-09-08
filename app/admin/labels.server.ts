@@ -138,7 +138,7 @@ export type PinManyOutcome
  * Seeding a draft from an approved application pins a hum label and one
  * accession per dataset, and a research can arrive carrying two hundred of them
  * — so the ledger is checked once for the whole set rather than once per label
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  *
  * **Nothing here demotes and nothing derives the search rows.** The identities
  * being labelled were made a moment ago and hold no earlier label, and nothing

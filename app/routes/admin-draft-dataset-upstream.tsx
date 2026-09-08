@@ -25,7 +25,7 @@ import type { Route } from "./+types/admin-draft-dataset-upstream"
  * Two ways in, because the two archives are reached differently: JGA datasets
  * hang off an approved application and are chosen a branch at a time, while DRA
  * is not in the application system at all and is named by its accession
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  *
  * **The research's own description is not touched.** Bringing upstream's newer
  * wording into a draft somebody is writing is the three-way take-up, which the

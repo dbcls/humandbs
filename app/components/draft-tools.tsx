@@ -397,6 +397,7 @@ export function useDraftEditing<T>({
     const moved = upstream?.both.includes(path) ?? false
     const theirs = refused ? conflict?.theirs : moved ? upstream?.theirs : undefined
     return {
+      at: path,
       changed: refused || moved,
       onTake: theirs === undefined
         ? null

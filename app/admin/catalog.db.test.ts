@@ -10,7 +10,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { catalogAction, catalogPage, vocabularyPage } from "./catalog.server"
+import { catalogAction, catalogPage, fieldTermsPage } from "./catalog.server"
 
 /**
  * The catalog screens with their guard on, against the development database.
@@ -55,7 +55,7 @@ function get(token: string | null, path: string): Request {
 function post(token: string, fields: Record<string, string>): Request {
   const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
   headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
-  return new Request("http://localhost:8080/admin/catalog", {
+  return new Request("http://localhost:8080/admin/experiment-fields", {
     method: "POST",
     headers,
     body: new URLSearchParams(fields).toString(),
@@ -73,6 +73,21 @@ async function vocabulary(code: string): Promise<string> {
     .values({ code, labelJa: code, labelEn: code })
     .returning({ id: s.vocabularySet.id }))
   return id
+}
+
+/**
+ * The field a vocabulary belongs to. The terms are addressed through it, so a
+ * vocabulary without one is not reachable at all (`admin/urls.ts`).
+ */
+async function fieldFor(code: string, setId: string): Promise<void> {
+  await db.insert(s.contentKey).values({
+    code,
+    scope: "experiment",
+    valueType: "vocabulary",
+    labelJa: code,
+    labelEn: code,
+    vocabularySetId: setId,
+  })
 }
 
 async function term(setId: string, code: string): Promise<string> {
@@ -140,7 +155,7 @@ describe("who may read the catalog", () => {
   it("refuses somebody who is signed in but not an administrator", async () => {
     const token = await signIn(READER, false)
 
-    const answer = await thrown(() => catalogPage(get(token, "/admin/catalog")))
+    const answer = await thrown(() => catalogPage(get(token, "/admin/experiment-fields")))
     expect(answer.status).toBe(403)
   })
 })
@@ -317,7 +332,7 @@ describe("the terms of a vocabulary", () => {
     // what rebuilds them.
     await catalogAction(post(token, { intent: "update-term", termId, labelEn: "WGS" }))
 
-    const view = await vocabularyPage(get(token, "/admin/catalog/vocabulary/assay"), "assay")
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
     expect(view?.terms.map((row) => row.used)).toEqual([2])
   })
 })
@@ -365,11 +380,12 @@ describe("the ICD10 dictionary", () => {
   it("offers the codes it holds, and says which the vocabulary already has", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await icd10()
+    await fieldFor("disease", setId)
     await term(setId, "C34")
 
-    const view = await vocabularyPage(
-      get(token, "/admin/catalog/vocabulary/icd10?dictionary=bronchus"),
-      "icd10",
+    const view = await fieldTermsPage(
+      get(token, "/admin/experiment-fields/disease?dictionary=bronchus"),
+      "disease",
     )
 
     expect(view?.dictionary?.rows).toEqual([
@@ -390,9 +406,9 @@ describe("the ICD10 dictionary", () => {
 
   it("is not offered on a vocabulary that is not ICD10", async () => {
     const token = await signIn(CURATOR, true)
-    await vocabulary("assay")
+    await fieldFor("assay", await vocabulary("assay"))
 
-    const view = await vocabularyPage(get(token, "/admin/catalog/vocabulary/assay"), "assay")
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
 
     expect(view?.dictionary).toBeNull()
   })

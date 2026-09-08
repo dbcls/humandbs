@@ -63,9 +63,19 @@ function NavItemLink({ item, locale, here, className, whenHere }: {
   )
 }
 
-/** How an entry in the top bar is drawn. */
+/**
+ * How an entry in the top bar is drawn.
+ *
+ * **It stands `tap` tall rather than as tall as its own words.** Everything
+ * else in the row — the language pills, the cart, the account — is 36px, while
+ * a word on a 22.4px line with 8px above and below comes to 38.4 and was the
+ * tallest thing in the bar. The navigation is not drawn on a management screen,
+ * so the bar was 2.4px shorter there and the wordmark, its name and the
+ * controls all sat 1.2px higher: one header, two heights. The pressable area is
+ * the same 36px either way.
+ */
 const NAV_ITEM
-  = "block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
+  = "flex h-tap items-center whitespace-nowrap px-2 font-medium text-ink text-sm no-underline hover:text-brand"
 
 /**
  * The same entry when the reader is on it. Heavier and in the brand colour, so
@@ -74,7 +84,7 @@ const NAV_ITEM
  * property are settled by the order the styles happen to be in.
  */
 const NAV_ITEM_HERE
-  = "block whitespace-nowrap px-2 py-2 font-bold text-brand text-sm no-underline"
+  = "flex h-tap items-center whitespace-nowrap px-2 font-bold text-brand text-sm no-underline"
 
 /** What the header knows about the person asking. Never their capabilities. */
 export interface Account {

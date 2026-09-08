@@ -22,7 +22,7 @@ test.describe("P-ADMIN", () => {
   const STANDALONE = [
     "/admin/research",
     "/admin/research/upstream",
-    "/admin/catalog",
+    "/admin/experiment-fields",
     "/admin/contents",
     "/admin/contents/news",
     "/admin/contents/files",
@@ -41,8 +41,8 @@ test.describe("P-ADMIN", () => {
     }
 
     // 行き先はリンクであって、説明の文ではない。1 つ押して、その先が開くことまで見る。
-    await map.locator("a[href=\"/admin/catalog\"]").first().click()
-    await expect(page).toHaveURL(/\/admin\/catalog$/)
+    await map.locator("a[href=\"/admin/experiment-fields\"]").first().click()
+    await expect(page).toHaveURL(/\/admin\/experiment-fields$/)
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
@@ -117,13 +117,24 @@ test.describe("P-ADMIN", () => {
     for (const [listing, prefix] of [
       ["/admin/contents", "/admin/contents/document/"],
       ["/admin/contents/news", "/admin/contents/news/"],
-      ["/admin/catalog", "/admin/catalog/vocabulary/"],
     ] as const) {
       await page.goto(listing)
       await page.locator(`a[href^="${prefix}"]`).first().click()
       await expect(page, listing).toHaveURL(new RegExp(prefix.replaceAll("/", "\\/")))
       await expect(page.getByRole("heading", { level: 1 }), listing).not.toBeEmpty()
     }
+
+    // 項目の語は、その項目を開いた先にある。行は `<details>` なので、たたまれた
+    // ままではリンクを押せない — 語彙を持つ行を 1 つ開いてから辿る。
+    await page.goto("/admin/experiment-fields")
+    const withTerms = page
+      .locator("details")
+      .filter({ has: page.locator("a[href^=\"/admin/experiment-fields/\"]") })
+      .first()
+    await withTerms.locator("summary").click()
+    await withTerms.locator("a[href^=\"/admin/experiment-fields/\"]").click()
+    await expect(page).toHaveURL(/\/admin\/experiment-fields\/[^/]+$/)
+    await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 })
 

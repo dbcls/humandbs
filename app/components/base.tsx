@@ -40,13 +40,20 @@ import { Icon, type IconName } from "~/components/icons"
  */
 const STACK_GAP = { tight: "gap-2", normal: "gap-4", block: "gap-8" }
 
-export function Stack({ gap = "normal", as: Tag = "div", children }: {
+export function Stack({ gap = "normal", as: Tag = "div", at, children }: {
   gap?: keyof typeof STACK_GAP
   /** A list of things is a list; anything else is a plain box. */
   as?: "div" | "ul" | "section" | "nav"
+  /**
+   * The place in the content this box holds, when it holds one. It goes onto
+   * the markup so that something outside the form can tell which place the
+   * caret is in by looking upwards from it, rather than every field having to
+   * report it on the way in and out.
+   */
+  at?: string
   children: ReactNode
 }) {
-  return <Tag className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
+  return <Tag data-at={at} className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
 }
 
 /* ------------------------------------------------------- marks and boxes */
@@ -1016,11 +1023,23 @@ export function SwitchTabs({ label, tabs }: {
  * all and says nothing about why. Validate on the server, which is where the
  * rules are (`docs/editing.md`).
  */
-export function SectionTabs({ label, tabs, current, onSelect }: {
+/**
+ * What a tab and its panel are named.
+ *
+ * **A strip can be told to name its own**, because a screen may carry two of
+ * them offering the same choices. Without it both write the same id, and
+ * `aria-controls` then leads from one strip's tab to the other strip's panel.
+ */
+function tabbedAs(scope: string | undefined, id: string): string {
+  return scope === undefined ? id : `${scope}-${id}`
+}
+
+export function SectionTabs({ label, tabs, current, onSelect, scope }: {
   label: string
   tabs: { id: string, label: string, mark?: ReactNode }[]
   current: string
   onSelect: (id: string) => void
+  scope?: string
 }) {
   const strip = useRef<HTMLDivElement>(null)
 
@@ -1029,7 +1048,9 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
     const next = tabs[at]
     if (next === undefined) return
     onSelect(next.id)
-    strip.current?.querySelector<HTMLButtonElement>(`#tab-${CSS.escape(next.id)}`)?.focus()
+    strip.current
+      ?.querySelector<HTMLButtonElement>(`#tab-${CSS.escape(tabbedAs(scope, next.id))}`)
+      ?.focus()
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
@@ -1055,9 +1076,9 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
           key={tab.id}
           type="button"
           role="tab"
-          id={`tab-${tab.id}`}
+          id={`tab-${tabbedAs(scope, tab.id)}`}
           aria-selected={tab.id === current}
-          aria-controls={`tabpanel-${tab.id}`}
+          aria-controls={`tabpanel-${tabbedAs(scope, tab.id)}`}
           tabIndex={tab.id === current ? 0 : -1}
           onClick={() => { onSelect(tab.id) }}
           className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-2 text-sm ${
@@ -1074,16 +1095,17 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
   )
 }
 
-export function TabPanel({ id, current, children }: {
+export function TabPanel({ id, current, children, scope }: {
   id: string
   current: string
   children: ReactNode
+  scope?: string
 }) {
   return (
     <div
       role="tabpanel"
-      id={`tabpanel-${id}`}
-      aria-labelledby={`tab-${id}`}
+      id={`tabpanel-${tabbedAs(scope, id)}`}
+      aria-labelledby={`tab-${tabbedAs(scope, id)}`}
       hidden={id !== current}
     >
       {children}

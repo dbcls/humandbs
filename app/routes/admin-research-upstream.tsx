@@ -17,7 +17,7 @@ import type { Route } from "./+types/admin-research-upstream"
  * The application system already holds the study's title, its aims, its methods,
  * the people it is about and the accessions it registered, so a research begins
  * from those rather than from an empty form
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  *
  * **A branch whose hum label already names a research offers no button.** The
  * ledger would refuse the pin, and the answer the curator wants is the research

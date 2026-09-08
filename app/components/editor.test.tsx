@@ -5,8 +5,29 @@ import { describe, expect, it } from "vitest"
 import { researchContentInput, type DraftInput } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import { emptyResearchContent } from "~/content/empty"
+import { anchoredResearchView, type CatalogView } from "~/public/view.server"
+import type { DrawnDraft } from "~/review/preview.server"
 
 import { DraftEditor } from "./editor"
+
+/** Nothing in this fixture has values, so an empty catalog draws every place. */
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+
+/** The draft drawn as its page, which the editor stands beside the form. */
+function drawn(): DrawnDraft {
+  const anchored = anchoredResearchView({
+    humLabel: "hum0001",
+    versionNumber: 1,
+    releaseDate: "",
+    latestVersionNumber: 1,
+    content: emptyResearchContent(),
+    datasets: [],
+    datasetLabelById: new Map(),
+    cau: [],
+    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+  }, "ja", NO_CATALOG)
+  return { humLabel: "hum0001", publishedNumber: null, view: anchored.view, changed: [], previous: {} }
+}
 
 function view(produce: (input: DraftInput) => void = () => undefined): AdminDraftPageView {
   const input: DraftInput = { note: "", content: researchContentInput(emptyResearchContent()) }
@@ -29,6 +50,7 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
       publishedNumber: null,
       signedInName: "curator",
     },
+    page: drawn(),
   }
 }
 

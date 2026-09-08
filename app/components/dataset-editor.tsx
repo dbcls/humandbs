@@ -31,8 +31,7 @@
  * itself.
  */
 
-import { useState, type ReactNode } from "react"
-import { flushSync } from "react-dom"
+import { useEffect, useState } from "react"
 import { useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
@@ -58,33 +57,33 @@ import {
   adminDraftReviewPath,
   adminResearchListPath,
   adminResearchPath,
+  datasetPagePath,
   draftCommentsPath,
   draftPresencePath,
   draftUndoPath,
   termsPath,
 } from "~/admin/urls"
 import {
-  Badge,
   Button,
   Fold,
   IconButton,
   Note,
-  SectionTabs,
   Stack,
-  TabPanel,
 } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Empty, Page } from "~/components/page"
+import { AnnotationLayer, Empty, Page } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href } from "~/public/urls"
+import { href, researchPath } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
+import type { DrawnDataset } from "~/review/preview.server"
 
-import { AdminCrumbs } from "./admin"
+import { AdminCrumbs, PaneSpot, usePanes } from "./admin"
 import { DraftBar, useDraftEditing, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
+import { DatasetBody } from "./dataset"
 import { FileSelection } from "./files"
 import {
   AddElement,
@@ -111,19 +110,18 @@ import {
  */
 const PICKER_RESULTS = 20
 
+/** How long the keys have to be still before the pane beside the form is redrawn. */
+const DRAW_AFTER = 300
+
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
 
 /**
- * Which tab a field lives on, by the head of its path.
- *
- * **A band names a field by its path and knows nothing about tabs.** A tab that
- * is not showing is `hidden`, so an anchor into it lands on an element with no
- * position and the press does nothing at all — the research editor answers the
- * same way (`editor.tsx` の `goTo`).
+ * The section a field is written in, by the head of its path — which is also
+ * the id that section carries, so one lookup finds both.
  */
-const TAB_OF: Record<string, string> = {
+const SECTION_OF: Record<string, string> = {
   releaseDate: BASICS,
   values: BASICS,
   fileSelection: FILES,
@@ -171,23 +169,47 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       return entry === undefined ? null : datasetContentInput(entry.content)
     },
     undoPath: (undoId) => draftUndoPath(researchId, draftId, undoId),
-    extraFor: (path) => <FieldReview review={review} at={path} />,
   })
 
-  const [tab, setTab] = useState(BASICS)
+  /**
+   * The pane catching up with what is being typed, and where the caret is.
+   *
+   * The research editor works the same way and for the same reasons
+   * (`editor.tsx`): a pause rather than a keystroke, and a place rather than a
+   * box — the ja and en sides of one value are one place.
+   */
+  const drawing = useFetcher<DrawnDataset | null>()
+  const submit = drawing.submit
+  const drawAt = href(locale, datasetPagePath(researchId, draftId, view.datasetId, locale))
+  const drawBody = JSON.stringify({ revision: view.revision, content: editing.value })
+  useEffect(() => {
+    const waiting = setTimeout(() => {
+      void submit(drawBody, { method: "post", action: drawAt, encType: "application/json" })
+    }, DRAW_AFTER)
+    return () => {
+      clearTimeout(waiting)
+    }
+  }, [drawBody, drawAt, submit])
+  const page = drawing.data ?? view.page
+
+  const [at, setAt] = useState<string | null>(null)
+  function onFormFocus(event: React.FocusEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const found = target.closest("[data-at]")?.getAttribute("data-at")
+    if (found !== undefined && found !== null) setAt(found)
+  }
 
   /**
-   * Going to the place a band names: the tab holding it is opened first and
-   * that change is flushed, because a panel is `hidden` until React has drawn
-   * it again and an element with no position cannot be scrolled to.
+   * Going to the place a band names.
+   *
+   * **Scrolling is not enough on its own.** An anchor moves the page and leaves
+   * the keyboard where it was, so what is focused here is the first thing in
+   * the section that will take it.
    */
   function goTo(path: string): void {
-    const at = path.split(".")[0] ?? path
-    const wanted = TAB_OF[at]
+    const wanted = SECTION_OF[path.split(".")[0] ?? path]
     if (wanted === undefined) return
-    flushSync(() => {
-      setTab(wanted)
-    })
     const section = document.getElementById(wanted)
     if (section === null) return
     section.scrollIntoView()
@@ -214,40 +236,188 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const markedUnder = (prefix: string) =>
     marked.filter((path) => path === prefix || path.startsWith(`${prefix}.`)).length
 
-  function tabMark(count: number): ReactNode {
-    if (count === 0) return undefined
-    return (
-      <Badge tone="accent">
-        <span aria-hidden="true">{count}</span>
-        <span className="sr-only">{t.markedItems(count)}</span>
-      </Badge>
-    )
-  }
-
   /** What is worth knowing about an experiment while it is folded away. */
   function experimentNote(experiment: ExperimentInput): string {
     const count = t.valueCount(experiment.values.length)
     return markedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changed}` : count
   }
 
-  const tabs = [
-    {
-      id: BASICS,
-      label: t.basics,
-      mark: tabMark(markedUnder("releaseDate") + markedUnder("values")),
-    },
-    // Only a dataset the portal issued the id for. An archive's dataset is
-    // distributed by the archive, so there is nothing here to choose from and a
-    // selection on one is refused on save.
-    ...(view.portalIssued
-      ? [{ id: FILES, label: t.files, mark: tabMark(markedUnder("fileSelection")) }]
-      : []),
-    {
-      id: EXPERIMENTS,
-      label: t.experiments,
-      mark: tabMark(markedUnder("experiments")),
-    },
-  ]
+  const formBody = (
+    <div onFocusCapture={onFormFocus}>
+      <Stack>
+        {view.review.changed.length > 0 && (
+          <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
+        )}
+        {editing.conflict !== null && (
+          <div onClick={onBandJump}>
+            <ConflictBand locale={locale} changed={editing.conflict.changed} />
+          </div>
+        )}
+        {editing.upstream !== null
+          && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
+          <UpstreamBand
+            locale={locale}
+            only={editing.upstream.only}
+            both={editing.upstream.both}
+            onTakeAll={editing.takeUpstream}
+          />
+        )}
+        {editing.problems.length > 0 && (
+          <ProblemBand locale={locale} problems={editing.problems} />
+        )}
+        {editing.undoMissing && <Note kind="plain">{t.undoWithoutEntry}</Note>}
+
+        <Section id={BASICS} title={t.basics}>
+          <Stack gap="tight">
+            <FieldHead
+              label={t.releaseDate}
+              marks={editing.marksFor("releaseDate")}
+              locale={locale}
+            />
+            <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
+            <div>
+              <input
+                type="date"
+                className={`${CONTROL} text-sm`}
+                value={input.releaseDate}
+                onChange={(event) => {
+                  editing.edit({ ...input, releaseDate: event.target.value })
+                }}
+              />
+            </div>
+          </Stack>
+          <Values
+            locale={locale}
+            catalog={view.catalog}
+            terms={view.terms}
+            scope="dataset"
+            path="values"
+            values={input.values}
+            marksFor={editing.marksFor}
+            onChange={(values) => { editing.edit({ ...input, values }) }}
+          />
+        </Section>
+
+        {view.portalIssued && (
+          <Section id={FILES} title={t.files}>
+            <FieldHead
+              label={t.files}
+              marks={editing.marksFor("fileSelection")}
+              locale={locale}
+            />
+            <FileSelection
+              locale={locale}
+              listing={view.box}
+              selected={input.fileSelection}
+              onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
+            />
+          </Section>
+        )}
+
+        <Section id={EXPERIMENTS} title={t.experiments}>
+          <FieldHead
+            label={t.experiments}
+            marks={editing.marksFor("experiments")}
+            locale={locale}
+          />
+          {input.experiments.map((experiment, at) => (
+            <ElementCard
+              key={experiment.id}
+              index={at}
+              count={input.experiments.length}
+              locale={locale}
+              onMove={(by) => {
+                editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
+              }}
+              onRemove={() => {
+                editing.edit({
+                  ...input,
+                  experiments: input.experiments.filter((row) => row.id !== experiment.id),
+                })
+              }}
+            >
+              <Fold
+                summary={experiment.label.text === ""
+                  ? t.unnamedExperiment
+                  : experiment.label.text}
+                note={experimentNote(experiment)}
+                open={experiment.label.text === ""
+                  || markedUnder(`experiments.${experiment.id}`) > 0}
+              >
+                <Experiment
+                  locale={locale}
+                  catalog={view.catalog}
+                  terms={view.terms}
+                  experiment={experiment}
+                  marksFor={editing.marksFor}
+                  onChange={(next) => {
+                    editing.edit({
+                      ...input,
+                      experiments: replacing(input.experiments, experiment.id, next),
+                    })
+                  }}
+                />
+              </Fold>
+            </ElementCard>
+          ))}
+          <AddElement
+            label={t.addExperiment}
+            onClick={() => {
+              editing.edit({
+                ...input,
+                experiments: [
+                  ...input.experiments,
+                  { id: newId(), label: emptySlot(), values: [] },
+                ],
+              })
+            }}
+          />
+        </Section>
+      </Stack>
+    </div>
+  )
+  const panes = usePanes({
+    locale,
+    remember: `${view.draftId}:${view.datasetId}`,
+    contents: [
+      { id: "form", label: editor.paneForm, body: formBody },
+      {
+        id: "page",
+        label: editor.panePage,
+        body: (
+          <AnnotationLayer
+            annotate={(anchor) => (
+              <>
+                {/*
+                  The difference from what is published and the comments belong
+                  to the place a reader looks at; what a save refused and what
+                  somebody else moved belong to the hands typing, and stay in
+                  the form.
+                */}
+                <FieldReview review={review} at={anchor} />
+                <PaneSpot
+                  here={anchor === at}
+                  label={editor.goToField}
+                  onGo={() => { goTo(anchor) }}
+                />
+              </>
+            )}
+          >
+            <DatasetBody
+              view={page.view}
+              locale={locale}
+              // The way a reader goes back to the research. The label may not be
+              // pinned yet, in which case the page it names does not exist —
+              // the same as it is under a share link.
+              researchHref={href(locale, researchPath(page.humLabel ?? ""))}
+              accessAnchor={page.accessAnchor}
+              typeOfDataAnchor={page.typeOfDataAnchor}
+            />
+          </AnnotationLayer>
+        ),
+      },
+    ],
+  })
 
   return (
     <Page>
@@ -293,143 +463,10 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           presencePath={draftPresencePath(researchId, draftId)}
           presence={view.presence}
         >
-          <SectionTabs label={t.tabsLabel} tabs={tabs} current={tab} onSelect={setTab} />
+          {panes.control}
         </DraftBar>
 
-        {view.review.changed.length > 0 && (
-          <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
-        )}
-        {editing.conflict !== null && (
-          <div onClick={onBandJump}>
-            <ConflictBand locale={locale} changed={editing.conflict.changed} />
-          </div>
-        )}
-        {editing.upstream !== null
-          && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
-          <UpstreamBand
-            locale={locale}
-            only={editing.upstream.only}
-            both={editing.upstream.both}
-            onTakeAll={editing.takeUpstream}
-          />
-        )}
-        {editing.problems.length > 0 && (
-          <ProblemBand locale={locale} problems={editing.problems} />
-        )}
-        {editing.undoMissing && <Note kind="plain">{t.undoWithoutEntry}</Note>}
-
-        <TabPanel id={BASICS} current={tab}>
-          <Section id={BASICS} title={t.basics}>
-            <Stack gap="tight">
-              <FieldHead
-                label={t.releaseDate}
-                marks={editing.marksFor("releaseDate")}
-                locale={locale}
-              />
-              <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
-              <div>
-                <input
-                  type="date"
-                  className={`${CONTROL} text-sm`}
-                  value={input.releaseDate}
-                  onChange={(event) => {
-                    editing.edit({ ...input, releaseDate: event.target.value })
-                  }}
-                />
-              </div>
-            </Stack>
-            <Values
-              locale={locale}
-              catalog={view.catalog}
-              terms={view.terms}
-              scope="dataset"
-              path="values"
-              values={input.values}
-              marksFor={editing.marksFor}
-              onChange={(values) => { editing.edit({ ...input, values }) }}
-            />
-          </Section>
-        </TabPanel>
-
-        {view.portalIssued && (
-          <TabPanel id={FILES} current={tab}>
-            <Section id={FILES} title={t.files}>
-              <FieldHead
-                label={t.files}
-                marks={editing.marksFor("fileSelection")}
-                locale={locale}
-              />
-              <FileSelection
-                locale={locale}
-                listing={view.box}
-                selected={input.fileSelection}
-                onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
-              />
-            </Section>
-          </TabPanel>
-        )}
-
-        <TabPanel id={EXPERIMENTS} current={tab}>
-          <Section id={EXPERIMENTS} title={t.experiments}>
-            <FieldHead
-              label={t.experiments}
-              marks={editing.marksFor("experiments")}
-              locale={locale}
-            />
-            {input.experiments.map((experiment, at) => (
-              <ElementCard
-                key={experiment.id}
-                index={at}
-                count={input.experiments.length}
-                locale={locale}
-                onMove={(by) => {
-                  editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
-                }}
-                onRemove={() => {
-                  editing.edit({
-                    ...input,
-                    experiments: input.experiments.filter((row) => row.id !== experiment.id),
-                  })
-                }}
-              >
-                <Fold
-                  summary={experiment.label.text === ""
-                    ? t.unnamedExperiment
-                    : experiment.label.text}
-                  note={experimentNote(experiment)}
-                  open={experiment.label.text === ""
-                    || markedUnder(`experiments.${experiment.id}`) > 0}
-                >
-                  <Experiment
-                    locale={locale}
-                    catalog={view.catalog}
-                    terms={view.terms}
-                    experiment={experiment}
-                    marksFor={editing.marksFor}
-                    onChange={(next) => {
-                      editing.edit({
-                        ...input,
-                        experiments: replacing(input.experiments, experiment.id, next),
-                      })
-                    }}
-                  />
-                </Fold>
-              </ElementCard>
-            ))}
-            <AddElement
-              label={t.addExperiment}
-              onClick={() => {
-                editing.edit({
-                  ...input,
-                  experiments: [
-                    ...input.experiments,
-                    { id: newId(), label: emptySlot(), values: [] },
-                  ],
-                })
-              }}
-            />
-          </Section>
-        </TabPanel>
+        {panes.view}
       </Stack>
     </Page>
   )

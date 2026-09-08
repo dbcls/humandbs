@@ -22,9 +22,9 @@ import { messagesFor } from "~/i18n/messages"
 
 import {
   adminAssistantPath,
-  adminCatalogPath,
   adminContentFilesPath,
   adminContentsPath,
+  adminExperimentFieldsPath,
   adminNewsListPath,
   adminPath,
   adminResearchListPath,
@@ -34,8 +34,6 @@ import {
 export interface AdminDestination {
   path: string
   label: string
-  /** What the screen is for, said on the area's front page. */
-  note: string
   /** Addresses that hang off it and are reachable without knowing an identity. */
   under?: AdminDestination[]
 }
@@ -43,36 +41,42 @@ export interface AdminDestination {
 /**
  * The destinations, as a tree.
  *
- * **The tab shows the top of it and the front page shows all of it.** Eleven of
- * the nineteen screens are about one research, one draft, one document — they
- * are reached by choosing that thing rather than by an address anybody can
- * type, so what a map can offer is the eight that stand on their own and a
- * sentence saying what lies under each.
+ * **The tab shows the top of it; the front page shows all of it, flat.** Twelve
+ * of the nineteen screens are about one research, one draft, one document, one
+ * field — they are reached by choosing that thing rather than by an address
+ * anybody can type, so what a map can offer is the seven that stand on their
+ * own.
+ *
+ * **The tree is here for the tab, not for the map.** Every entry below is
+ * reachable without knowing an identity, so drawing the map indented would
+ * claim that a parent has to be opened first; the tab needs the shape because a
+ * 36px handle can only hold the areas.
+ *
+ * **Nothing is said under a name.** A line of prose beneath each entry says
+ * what the name should have said — a screen whose name needs a sentence has the
+ * wrong name.
  */
 export function adminDestinations(locale: Locale): AdminDestination[] {
   const words = messagesFor(locale).admin
-  const map = words.map
   return [
-    { path: adminPath(), label: words.overview, note: map.overview },
+    { path: adminPath(), label: words.overview },
     {
       path: adminResearchListPath(),
       label: words.research.heading,
-      note: map.research,
       under: [
-        { path: adminUpstreamResearchPath(), label: words.templates.heading, note: map.researchUpstream },
+        { path: adminUpstreamResearchPath(), label: words.templates.heading },
       ],
     },
-    { path: adminCatalogPath(), label: words.catalog.heading, note: map.catalog },
+    { path: adminExperimentFieldsPath(), label: words.catalog.heading },
     {
       path: adminContentsPath(),
       label: words.contents.heading,
-      note: map.contents,
       under: [
-        { path: adminNewsListPath(), label: words.contents.news.heading, note: map.contentsNews },
-        { path: adminContentFilesPath(), label: words.contents.files.heading, note: map.contentsFiles },
+        { path: adminNewsListPath(), label: words.contents.news.heading },
+        { path: adminContentFilesPath(), label: words.contents.files.heading },
       ],
     },
-    { path: adminAssistantPath(), label: words.assistant.heading, note: map.assistant },
+    { path: adminAssistantPath(), label: words.assistant.heading },
   ]
 }
 
