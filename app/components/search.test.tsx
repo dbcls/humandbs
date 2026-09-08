@@ -111,7 +111,7 @@ describe("the conditions in force", () => {
 })
 
 describe("paging", () => {
-  it("is not drawn when everything fits on one page", () => {
+  it("draws the count but no numbers when everything fits on one page", () => {
     const html = render(
       <Pagination
         locale="ja"
@@ -122,9 +122,14 @@ describe("paging", () => {
         page={1}
         pageCount={1}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
-    expect(html).toBe("")
+    // 件数はページが 1 つでも答えになる。番号は「どこへ行けるか」なので出ない。
+    expect(html).toContain("21–40 / 200 件")
+    expect(html).not.toContain("<nav")
   })
 
   it("keeps the query and the ordering on every page it links to", () => {
@@ -138,6 +143,9 @@ describe("paging", () => {
         page={2}
         pageCount={9}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("q=cancer&amp;sort=dateModified&amp;page=3")
@@ -156,6 +164,9 @@ describe("paging", () => {
         page={20}
         pageCount={50}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain(">1</a>")
@@ -239,6 +250,9 @@ describe("how many rows a page holds", () => {
         page={2}
         pageCount={9}
         rows={100}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("size=100")
@@ -345,6 +359,9 @@ describe("which way the ordering runs", () => {
         page={2}
         pageCount={9}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("order=asc")

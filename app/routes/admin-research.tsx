@@ -9,6 +9,7 @@ import {
   adminResearchFilesPath,
   adminResearchListPath,
 } from "~/admin/urls"
+import { AdminCrumbs } from "~/components/admin"
 import { Badge, Confirm, Note, Stack } from "~/components/base"
 import { Checkbox, Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
@@ -64,11 +65,15 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
   return (
     <Page>
-      <PageHead label={view.humLabel ?? t.heading}>
-        <Link to={href(locale, adminResearchListPath())} className="text-white">
-          {messages.admin.research.heading}
-        </Link>
-      </PageHead>
+      <AdminCrumbs
+        locale={locale}
+        trail={[{
+          label: messages.admin.research.heading,
+          to: href(locale, adminResearchListPath()),
+        }]}
+        current={view.humLabel ?? t.heading}
+      />
+      <PageHead kicker={messages.research.researchId} label={view.humLabel ?? t.heading} />
       <Card>
         <Stack gap="block">
           {actionData?.status === "conflict" && <Note kind="danger" live>{t.discardConflict}</Note>}
@@ -101,34 +106,31 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           </Section>
 
           <Section title={t.versions}>
-            {view.versions.length === 0
-              ? <Empty>{t.noVersions}</Empty>
-              : (
-                  <Table headers={[t.version, t.releaseDate, t.visibility, ""]}>
-                    {view.versions.map((version) => (
-                      <tr key={version.id}>
-                        <Td className="whitespace-nowrap">
-                          {view.humLabel === null || !version.published
-                            ? `v${version.number}`
-                            : (
-                                <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
-                                  {`v${version.number}`}
-                                </Link>
-                              )}
-                        </Td>
-                        <Td className="whitespace-nowrap">{version.releaseDate}</Td>
-                        <Td>{version.published ? t.published : t.withdrawn}</Td>
-                        <Td>
-                          <Visibility
-                            versionId={version.id}
-                            published={version.published}
-                            locale={locale}
-                          />
-                        </Td>
-                      </tr>
-                    ))}
-                  </Table>
-                )}
+            {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
+            <Table headers={[t.version, t.releaseDate, t.visibility, ""]} whenEmpty={t.noVersions}>
+              {view.versions.map((version) => (
+                <tr key={version.id}>
+                  <Td className="whitespace-nowrap">
+                    {view.humLabel === null || !version.published
+                      ? `v${version.number}`
+                      : (
+                          <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
+                            {`v${version.number}`}
+                          </Link>
+                        )}
+                  </Td>
+                  <Td className="whitespace-nowrap">{version.releaseDate}</Td>
+                  <Td>{version.published ? t.published : t.withdrawn}</Td>
+                  <Td>
+                    <Visibility
+                      versionId={version.id}
+                      published={version.published}
+                      locale={locale}
+                    />
+                  </Td>
+                </tr>
+              ))}
+            </Table>
           </Section>
 
           <Section title={t.drafts}>

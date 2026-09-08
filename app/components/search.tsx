@@ -32,7 +32,7 @@ import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type { SortKey } from "~/search/query.server"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
 
-import { Card, Crumbs, Page, PageLinks } from "./page"
+import { Card, Crumbs, Page, Paging } from "./page"
 
 /**
  * The search box is a GET form. It carries the keywords under `k` and whatever
@@ -649,10 +649,11 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
 }
 
 /**
- * Page links, and nothing clever. Every ordering ends in the row's label, so a
- * row cannot move between pages and be seen twice or not at all.
+ * How much of the result is on screen and the way through the rest, at the
+ * listing's own addresses. Every ordering ends in the row's label, so a row
+ * cannot move between pages and be seen twice or not at all.
  */
-export function Pagination({ locale, target, query, sort, order, page, pageCount, rows }: {
+export function Pagination({ locale, target, query, sort, order, page, pageCount, rows, total, from, to }: {
   locale: Locale
   target: "research" | "dataset"
   query: string
@@ -664,22 +665,26 @@ export function Pagination({ locale, target, query, sort, order, page, pageCount
   pageCount: number
   /** The page size to keep, or `null` for the default. */
   rows: number | null
+  total: number
+  /** 1-based positions of the shown rows within the whole result. */
+  from: number
+  to: number
 }) {
-  const messages = messagesFor(locale)
   return (
-    <PageLinks
-      label={messages.search.pagination}
+    <Paging
+      locale={locale}
+      total={total}
+      from={from}
+      to={to}
       page={page}
       pageCount={pageCount}
-      at={(to) => href(locale, listPath(target) + searchQuery({
+      at={(at) => href(locale, listPath(target) + searchQuery({
         q: query,
         sort,
         order,
-        page: to,
+        page: at,
         size: rows,
       }))}
-      previous={messages.search.previousPage}
-      next={messages.search.nextPage}
     />
   )
 }
@@ -800,13 +805,6 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
       page: 1,
       size: view.requestedSize,
     }))
-  const counted = (
-    <p className="text-ink-muted text-sm">
-      {view.total === 0
-        ? messages.search.results(0)
-        : messages.search.range(view.rangeFrom, view.rangeTo, view.total)}
-    </p>
-  )
   /*
     The pane: the way to ask, what is narrowing the answer, and the same search
     over the other listing. It is built here rather than inside the panel
@@ -884,10 +882,9 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
     answer "which page of how many am I looking at" (this is the order IBM
     Carbon and MUI put the last three in).
 
-    **The gaps say which of them belong together.** The count and the page links
-    are one thing said twice, so they stand a third of the distance apart that
-    separates the rest — at one gap for all four, the count floats between two
-    controls and reads as belonging to neither.
+    **The count and the page links are one control here**, drawn as one thing
+    with its own inner distance (`page.tsx` の `Paging`) rather than as two of
+    the four.
   */
   const tools = (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
@@ -907,19 +904,19 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
         order={view.requestedOrder}
         size={view.size}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        {counted}
-        <Pagination
-          locale={locale}
-          target={target}
-          query={view.query}
-          sort={view.requestedSort}
-          order={view.requestedOrder}
-          page={view.page}
-          pageCount={view.pageCount}
-          rows={view.requestedSize}
-        />
-      </div>
+      <Pagination
+        locale={locale}
+        target={target}
+        query={view.query}
+        sort={view.requestedSort}
+        order={view.requestedOrder}
+        page={view.page}
+        pageCount={view.pageCount}
+        rows={view.requestedSize}
+        total={view.total}
+        from={view.rangeFrom}
+        to={view.rangeTo}
+      />
     </div>
   )
 

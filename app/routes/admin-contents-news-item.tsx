@@ -1,7 +1,8 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import { newsAction, newsPage } from "~/admin/contents.server"
-import { adminNewsListPath } from "~/admin/urls"
+import { adminContentsPath, adminNewsListPath } from "~/admin/urls"
+import { AdminCrumbs } from "~/components/admin"
 import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Field, Submit } from "~/components/form"
@@ -31,21 +32,40 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
+  const words = messages.admin.contents
+  // Named by the announcement, not by the screen: every item shared one title,
+  // so a window holding two of them said the same thing twice.
+  const label = titleOf(loaderData.editors) ?? loaderData.publishedAt ?? words.news.undated
   return [
-    { title: `${messages.admin.contents.news.heading} - ${messages.siteName}` },
+    { title: `${label} - ${words.news.heading} - ${messages.siteName}` },
     { name: "robots", content: "noindex" },
   ]
+}
+
+/** The first language that has been given a title. */
+function titleOf(editors: { draftTitle: string }[]): string | null {
+  return editors.map((editor) => editor.draftTitle).find((one) => one !== "") ?? null
 }
 
 export default function AdminContentsNewsItem({ loaderData, actionData }: Route.ComponentProps) {
   const { locale, publishedAt, editors } = loaderData
   const t = messagesFor(locale).admin.contents
+  // What this announcement is called, in whichever language has been written.
+  // An item with neither is one somebody has just created, and its date is the
+  // only thing naming it.
+  const title = titleOf(editors) ?? publishedAt ?? t.news.undated
 
   return (
     <Page>
-      <PageHead label={t.news.heading}>
-        <Link to={href(locale, adminNewsListPath())} className="text-white">{t.news.backToList}</Link>
-      </PageHead>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          { label: t.heading, to: href(locale, adminContentsPath()) },
+          { label: t.news.heading, to: href(locale, adminNewsListPath()) },
+        ]}
+        current={title}
+      />
+      <PageHead kicker={t.news.heading} label={title} />
       <Card>
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />

@@ -23,11 +23,10 @@ import { createHash, randomBytes } from "node:crypto"
 import { parseCookie, stringifySetCookie } from "cookie"
 import { and, eq, gt, lt, or, sql } from "drizzle-orm"
 
+import { SESSION_COOKIE } from "~/auth/cookie"
 import { cookiesAreSecure, loadConfig } from "~/config.server"
 import type { Executor } from "~/db/client.server"
 import { session } from "~/db/schema"
-
-export const SESSION_COOKIE = "humandbs_session"
 
 const IDLE_DAYS = 7
 const ABSOLUTE_DAYS = 30

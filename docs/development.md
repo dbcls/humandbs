@@ -98,6 +98,7 @@ docker compose exec app npm run db:push     # 開発用と test 用の両方に 
 docker compose exec app npm run s3:buckets  # 2 つの bucket を作る (無ければ)
 docker compose exec app npm run admin:list  # admin の一覧
 docker compose exec app npm run upstream:refresh  # 上流のキャッシュを取り直す
+docker compose exec app npm run e2e:session # e2e の署名を 1 本作る ([testing.md](testing.md))
 ```
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし

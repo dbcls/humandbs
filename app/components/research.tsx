@@ -237,6 +237,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             humLabel={view.humLabel === "" ? null : view.humLabel}
             rows={view.files.rows}
             total={view.files.total}
+            rangeFrom={view.files.rangeFrom}
+            rangeTo={view.files.rangeTo}
             page={view.files.page}
             pageCount={view.files.pageCount}
             // Only the query string changes, so the same links work from the

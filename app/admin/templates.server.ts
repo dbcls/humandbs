@@ -46,7 +46,12 @@ import {
   type SeededDataset,
 } from "./drafts.server"
 import { actorOf, badRequest, identity, notFound } from "./pages.server"
-import { loadCatalogWithTerms, readDraft, type CatalogWithTerms } from "./queries.server"
+import {
+  humLabelOf,
+  loadCatalogWithTerms,
+  readDraft,
+  type CatalogWithTerms,
+} from "./queries.server"
 import {
   draDatasetSeed,
   jgadDatasetSeed,
@@ -129,6 +134,8 @@ export interface UpstreamDatasetView {
   chosen: UpstreamChoiceView | null
   /** An accession that was typed and is not one upstream holds. */
   unknown: string | null
+  /** What the research is called on the way here, for the trail. */
+  humLabel: string | null
 }
 
 /** What either screen answers with when it could not do as it was asked. */
@@ -514,12 +521,12 @@ async function requireSeeding(request: Request): Promise<Actor> {
 async function draftAt(
   db: Executor,
   params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<{ researchId: string, draftId: string, revision: number }> {
+): Promise<{ researchId: string, draftId: string, revision: number, humLabel: string | null }> {
   const researchId = identity(params.researchId)
   const draftId = identity(params.draftId)
   const draft = await readDraft(db, draftId)
   if (draft?.researchId !== researchId) notFound()
-  return { researchId, draftId, revision: draft.revision }
+  return { researchId, draftId, revision: draft.revision, humLabel: await humLabelOf(db, researchId) }
 }
 
 function accessionsIn(form: FormData): Set<string> {

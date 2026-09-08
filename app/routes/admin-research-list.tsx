@@ -13,9 +13,10 @@ import {
   adminUpstreamResearchPath,
   listingQuery,
 } from "~/admin/urls"
-import { Badge, Excerpt, Stack } from "~/components/base"
+import { AdminCrumbs } from "~/components/admin"
+import { Badge, Excerpt, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Select, Submit } from "~/components/form"
-import { Card, Page, PageHead, PageLinks, Table, Td } from "~/components/page"
+import { Card, Page, Paging, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -58,19 +59,19 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
 
   return (
     <Page>
-      <PageHead label={t.heading}>
-        <Form method="post">
-          <Submit variant="secondary">{t.create}</Submit>
-        </Form>
-        <Link to={href(locale, adminUpstreamResearchPath())} className="text-white">
-          {messages.admin.templates.open}
-        </Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs locale={locale} current={t.heading} />
+      <Card under={false}>
         <Stack gap="normal">
-          <Filters view={view} locale={locale} />
+          <Heading title={t.heading}>
+            <Form method="post">
+              <Submit variant="secondary">{t.create}</Submit>
+            </Form>
+            <Link to={href(locale, adminUpstreamResearchPath())}>
+              {messages.admin.templates.open}
+            </Link>
+          </Heading>
 
-          <p className="text-ink-muted text-sm">{messages.search.results(view.total)}</p>
+          <Filters view={view} locale={locale} />
 
           <Stack gap="normal">
             <Table
@@ -117,9 +118,12 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                 </tr>
               ))}
             </Table>
-            {view.rows.length > 0 && (
-              <PageLinks
-                label={messages.search.pagination}
+            <div className="flex justify-end">
+              <Paging
+                locale={locale}
+                total={view.total}
+                from={view.rangeFrom}
+                to={view.rangeTo}
                 page={view.page}
                 pageCount={view.pageCount}
                 at={(page) => href(locale, adminResearchListPath() + listingQuery({
@@ -128,10 +132,8 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                   flags: view.flags,
                   page,
                 }))}
-                previous={messages.search.previousPage}
-                next={messages.search.nextPage}
               />
-            )}
+            </div>
           </Stack>
         </Stack>
       </Card>

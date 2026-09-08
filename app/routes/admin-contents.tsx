@@ -3,10 +3,11 @@ import { Form, Link } from "react-router"
 import { nextVersionNumber, type TreeEntry } from "~/admin/contents"
 import { contentsAction, contentsPage, type AlertRow } from "~/admin/contents.server"
 import { adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
+import { AdminCrumbs } from "~/components/admin"
 import { ResultLine, StateBadges } from "~/components/contents"
-import { Badge, Confirm, Fold, Stack } from "~/components/base"
+import { Badge, Confirm, Fold, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Result, Select, Submit, TextArea } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section } from "~/components/page"
+import { Card, Empty, Page, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -51,12 +52,13 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
 
   return (
     <Page>
-      <PageHead label={t.heading}>
-        <Link to={href(locale, adminNewsListPath())} className="text-white">{t.news.heading}</Link>
-        <Link to={href(locale, adminContentFilesPath())} className="text-white">{t.files.heading}</Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs locale={locale} current={t.heading} />
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading}>
+            <Link to={href(locale, adminNewsListPath())}>{t.news.heading}</Link>
+            <Link to={href(locale, adminContentFilesPath())}>{t.files.heading}</Link>
+          </Heading>
           <ResultLine result={actionData} locale={locale} />
           <Empty>{t.note}</Empty>
 
@@ -67,6 +69,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
           ))}
 
           <Section title={t.documents}>
+            {tree.length === 0 && <Empty>{t.noDocument}</Empty>}
             <ul className="flex flex-col divide-y divide-line border-line border-y">
               {tree.map((entry) => (
                 <Entry
@@ -110,7 +113,7 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
 
   if (entry.kind === "document") {
     return (
-      <li className={`flex flex-wrap items-baseline gap-3 py-2 text-sm ${indent}`}>
+      <li className={`flex flex-wrap items-center gap-3 py-2 text-sm ${indent}`}>
         <Link to={href(locale, adminDocumentPath(entry.document.id))} className="w-96 shrink-0">
           <code>{entry.document.slug}</code>
         </Link>
@@ -124,7 +127,7 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
   return (
     <li className={`py-2 text-sm ${indent}`}>
       <Stack gap="tight">
-        <div className="flex flex-wrap items-baseline gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <code className="w-96 shrink-0">{series.slug}</code>
           <Badge>{t.seriesBadge}</Badge>
           <span className="flex-1">{current === null ? t.noCurrent : current.title}</span>
@@ -169,7 +172,7 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
         <Fold summary={t.revisions(series.revisions.length)}>
           <ul className="flex flex-col divide-y divide-line border-line border-y">
             {series.revisions.map((revision) => (
-              <li key={revision.id} className="flex flex-wrap items-baseline gap-3 py-2 pl-6">
+              <li key={revision.id} className="flex flex-wrap items-center gap-3 py-2 pl-6">
                 <Link to={href(locale, adminDocumentPath(revision.id))} className="w-96 shrink-0">
                   <code>{revision.slug}</code>
                 </Link>
@@ -188,15 +191,32 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
 function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
   const t = messagesFor(locale).admin.contents
   return (
-    <Form method="post" className="flex flex-col gap-2 border-line border-b pb-4">
-      <input type="hidden" name="alertId" value={row.id} />
-      <TextArea label={t.languages.ja} name="ja" value={row.ja} rows={2} />
-      <TextArea label={t.languages.en} name="en" value={row.en} rows={2} />
-      <div className="flex flex-wrap items-center gap-3">
-        <Checkbox label={t.alertActive} name="active" checked={row.active} />
-        <Submit intent="update-alert">{t.save}</Submit>
-        <Submit intent="delete-alert">{t.remove}</Submit>
-      </div>
-    </Form>
+    <div className="flex flex-col gap-2 border-line border-b pb-4">
+      <Form method="post" className="flex flex-col gap-2">
+        <input type="hidden" name="alertId" value={row.id} />
+        <TextArea label={t.languages.ja} name="ja" value={row.ja} rows={2} />
+        <TextArea label={t.languages.en} name="en" value={row.en} rows={2} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Checkbox label={t.alertActive} name="active" checked={row.active} />
+          <Submit intent="update-alert">{t.save}</Submit>
+        </div>
+      </Form>
+      {/*
+        Taking a banner away asks twice, the way every other removal on this
+        screen does — and in a form of its own, because an intent written as a
+        hidden field cannot share one with buttons that name their own.
+      */}
+      <Form method="post">
+        <input type="hidden" name="alertId" value={row.id} />
+        <Confirm
+          label={t.remove}
+          warning={t.removeAlertWarning}
+          confirm={t.removeAlertConfirm}
+          cancel={t.cancel}
+        >
+          <input type="hidden" name="intent" value="delete-alert" />
+        </Confirm>
+      </Form>
+    </div>
   )
 }

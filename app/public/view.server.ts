@@ -499,6 +499,9 @@ export interface FileListView {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 export interface ResearchViewInput {

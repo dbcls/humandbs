@@ -30,7 +30,7 @@ import { Badge, Button, Stack } from "./base"
 import { CommentSpot, DdbjMark, rememberName, useRememberedName, type CommentContext } from "./comments"
 import { DatasetBody } from "./dataset"
 import { CONTROL } from "./form"
-import { AnnotationLayer, Card, Page, PageHead } from "./page"
+import { AnnotationLayer, Card, Empty, Page, PageHead } from "./page"
 import { PreviousMark } from "./previous"
 import { ResearchBody } from "./research"
 
@@ -208,7 +208,7 @@ function PreviewHead({ shell, label, threads, locale, children }: {
                   ? t.differsNone
                   : t.differs(shell.changed.length)}
             </p>
-            {open.length === 0 && <p className="text-ink-muted text-xs">{t.noComments}</p>}
+            {open.length === 0 && <Empty>{t.noComments}</Empty>}
             {open.length > 0 && (
               <Stack gap="tight">
                 <p className="text-ink-muted text-xs">

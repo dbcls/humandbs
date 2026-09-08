@@ -266,7 +266,7 @@ async function publishedResearchAnchors(
     datasetLabelById: labelOf,
     cau: [],
     // Only the anchors of this are read, and no file carries one.
-    files: { rows: [], total: 0, page: 1, pageCount: 1 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog).byAnchor
 }
 

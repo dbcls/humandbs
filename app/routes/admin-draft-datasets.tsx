@@ -5,13 +5,16 @@ import type { DraftDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetPath,
   adminDraftPath,
+  adminResearchListPath,
+  adminResearchPath,
   adminUpstreamDatasetPath,
   draftPresencePath,
 } from "~/admin/urls"
-import { Confirm, Stack } from "~/components/base"
+import { AdminCrumbs } from "~/components/admin"
+import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { PresenceLine } from "~/components/draft-tools"
 import { Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead } from "~/components/page"
+import { Card, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -57,29 +60,35 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <PageHead label={view.humLabel ?? t.datasets}>
-        <Link to={href(locale, adminDraftPath(view.researchId, view.draftId))} className="text-white">
-          {t.backToDraft}
-        </Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          {
+            label: messagesFor(locale).admin.research.heading,
+            to: href(locale, adminResearchListPath()),
+          },
+          {
+            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
+            to: href(locale, adminResearchPath(view.researchId)),
+          },
+          {
+            label: messagesFor(locale).admin.editor.heading,
+            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
+          },
+        ]}
+        current={t.datasets}
+      />
+      <Card under={false}>
         <Stack gap="normal">
+          <Heading title={t.datasets} />
           <PresenceLine
             locale={locale}
             path={draftPresencePath(view.researchId, view.draftId)}
             initial={view.presence}
           />
 
-          {actionData?.status === "conflict" && (
-            <p className="rounded border border-accent bg-surface px-4 py-2 text-sm">
-              {t.listConflict}
-            </p>
-          )}
-          {actionData?.status === "refused" && (
-            <p className="rounded border border-danger bg-surface px-4 py-2 text-sm">
-              {t.deleteRefused}
-            </p>
-          )}
+          {actionData?.status === "conflict" && <Note kind="warning" live>{t.listConflict}</Note>}
+          {actionData?.status === "refused" && <Note kind="danger" live>{t.deleteRefused}</Note>}
 
           {view.rows.length === 0
             ? <Empty>{t.noDatasets}</Empty>

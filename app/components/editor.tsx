@@ -36,7 +36,9 @@ import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
+  adminDraftPublishPath,
   adminDraftReviewPath,
+  adminResearchListPath,
   adminResearchPath,
   draftCommentsPath,
   draftPresencePath,
@@ -44,11 +46,12 @@ import {
 } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { Page } from "~/components/page"
+import { Empty, Page } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import { threadsByPath, unresolvedCount } from "~/review/comments"
 
+import { AdminCrumbs } from "./admin"
 import { Badge, Button, Note, SectionTabs, Stack, TabPanel, type Tone } from "./base"
 import { DraftBar, useDraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
@@ -273,12 +276,30 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   return (
     <Page>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          {
+            label: messagesFor(locale).admin.research.heading,
+            to: href(locale, adminResearchListPath()),
+          },
+          {
+            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
+            to: href(locale, adminResearchPath(view.researchId)),
+          },
+        ]}
+        current={t.heading}
+      />
       <Stack>
+        {/*
+          **The links beside the name are the way across, not the way back.**
+          The trail above holds the way out of here; what a curator reaches from
+          this screen and nowhere else is the draft's other two faces.
+        */}
         <DraftBar
           locale={locale}
           heading={view.humLabel ?? t.heading}
           links={[
-            { to: href(locale, adminResearchPath(view.researchId)), label: t.backToResearch },
             {
               to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
               label: messagesFor(locale).admin.draft.datasets,
@@ -286,6 +307,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             {
               to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
               label: t.review,
+            },
+            {
+              to: href(locale, adminDraftPublishPath(view.researchId, view.draftId)),
+              label: messagesFor(locale).admin.publish.open,
             },
           ]}
           dirty={editing.dirty}
@@ -331,7 +356,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             reaches a reader, and looking for it under a tab named after a part
             of the description would be looking in the wrong place. */}
         <Section id="note" title={t.sections.note}>
-          <p className="text-ink-muted text-sm">{t.noteHint}</p>
+          <Empty>{t.noteHint}</Empty>
           <textarea
             className={`${CONTROL} w-full text-sm`}
             rows={3}
@@ -628,7 +653,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
           <TabPanel id="datasets" current={current}>
             <Section id="datasetIds" title={t.sections.datasets}>
-              <p className="text-ink-muted text-sm">{t.selectDatasets}</p>
+              <Empty>{t.selectDatasets}</Empty>
               <Stack gap="tight">
                 <FieldHead
                   label={t.sections.datasets}
@@ -664,7 +689,7 @@ function PublishedBand({ view, onGo }: {
   const open = unresolvedCount(review.threads)
 
   if (review.publishedNumber === null) {
-    return <p className="text-ink-muted text-sm">{t.noPublishedVersion}</p>
+    return <Empty>{t.noPublishedVersion}</Empty>
   }
   if (review.changed.length === 0 && open === 0) return null
 
@@ -961,7 +986,7 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
   const unselected = datasets.filter((row) => !selected.includes(row.id))
 
   if (datasets.length === 0 && selected.length === 0) {
-    return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+    return <Empty>{t.noDatasets}</Empty>
   }
 
   return (
@@ -1019,7 +1044,7 @@ function DatasetChecklist({ locale, datasets, selected, onChange }: {
   onChange: (next: string[]) => void
 }) {
   const t = messagesFor(locale).admin.editor
-  if (datasets.length === 0) return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+  if (datasets.length === 0) return <Empty>{t.noDatasets}</Empty>
 
   return (
     <ul className="flex flex-wrap gap-3 text-sm">

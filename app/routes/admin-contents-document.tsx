@@ -1,7 +1,8 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import { documentAction, documentPage } from "~/admin/contents.server"
 import { adminContentsPath } from "~/admin/urls"
+import { AdminCrumbs } from "~/components/admin"
 import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Field, Submit } from "~/components/form"
@@ -47,9 +48,12 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead label={slug}>
-        <Link to={href(locale, adminContentsPath())} className="text-white">{t.backToTree}</Link>
-      </PageHead>
+      <AdminCrumbs
+        locale={locale}
+        trail={[{ label: t.heading, to: href(locale, adminContentsPath()) }]}
+        current={slug}
+      />
+      <PageHead kicker={t.documents} label={slug} />
       <Card>
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />

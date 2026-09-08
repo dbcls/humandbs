@@ -1,10 +1,11 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import { catalogAction, vocabularyPage, type TermRow } from "~/admin/catalog.server"
 import { adminCatalogPath, adminVocabularyPath } from "~/admin/urls"
-import { Badge, Button, Fold, Stack } from "~/components/base"
+import { AdminCrumbs } from "~/components/admin"
+import { Badge, Button, Confirm, Fold, Stack } from "~/components/base"
 import { Field, Result, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, PageLinks, Section } from "~/components/page"
+import { Card, Empty, Page, PageHead, Paging, Section } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
@@ -51,9 +52,12 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
 
   return (
     <Page>
-      <PageHead label={`${t.terms} - ${catalogLabel(set, locale)}`}>
-        <Link to={href(locale, adminCatalogPath())} className="text-white">{t.heading}</Link>
-      </PageHead>
+      <AdminCrumbs
+        locale={locale}
+        trail={[{ label: t.heading, to: href(locale, adminCatalogPath()) }]}
+        current={catalogLabel(set, locale)}
+      />
+      <PageHead kicker={t.terms} label={catalogLabel(set, locale)} />
       <Card>
         <Stack gap="block">
           {actionData !== undefined && (
@@ -62,10 +66,9 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
             </Result>
           )}
 
-          <p className="flex flex-wrap items-baseline gap-3 text-sm">
+          <p className="flex flex-wrap items-center gap-3 text-sm">
             <code>{set.code}</code>
             {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
-            <span className="text-ink-muted">{t.termCount(set.terms)}</span>
           </p>
 
           <SearchBox
@@ -78,25 +81,32 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
             searchAsTyped
           />
 
-          <ul className="flex flex-col divide-y divide-line border-line border-y">
-            {view.terms.map((term) => (
-              <Term key={term.id} term={term} locale={locale} />
-            ))}
-          </ul>
-          <PageLinks
-            label={messages.search.pagination}
-            page={view.page}
-            pageCount={view.pageCount}
-            at={(to) => href(
-              locale,
-              `${adminVocabularyPath(set.code)}?${new URLSearchParams({
-                ...(view.find === "" ? {} : { find: view.find }),
-                page: String(to),
-              }).toString()}`,
-            )}
-            previous={messages.search.previousPage}
-            next={messages.search.nextPage}
-          />
+          {view.terms.length === 0
+            ? <Empty>{view.find === "" ? t.noTerm : t.noMatchingTerm}</Empty>
+            : (
+                <ul className="flex flex-col divide-y divide-line border-line border-y">
+                  {view.terms.map((term) => (
+                    <Term key={term.id} term={term} locale={locale} />
+                  ))}
+                </ul>
+              )}
+          <div className="flex justify-end">
+            <Paging
+              locale={locale}
+              total={set.terms}
+              from={view.rangeFrom}
+              to={view.rangeTo}
+              page={view.page}
+              pageCount={view.pageCount}
+              at={(to) => href(
+                locale,
+                `${adminVocabularyPath(set.code)}?${new URLSearchParams({
+                  ...(view.find === "" ? {} : { find: view.find }),
+                  page: String(to),
+                }).toString()}`,
+              )}
+            />
+          </div>
 
           {view.dictionary !== null && (
             <Section title={t.dictionary}>
@@ -118,7 +128,7 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
               <ul className="flex flex-col divide-y divide-line">
                 {view.dictionary.rows.map((row) => (
                   <li key={row.code} className="py-2">
-                    <Form method="post" className="flex flex-wrap items-baseline gap-2 text-sm">
+                    <Form method="post" className="flex flex-wrap items-center gap-2 text-sm">
                       <input type="hidden" name="intent" value="create-term" />
                       <input type="hidden" name="setId" value={set.id} />
                       <input type="hidden" name="code" value={row.code} />
@@ -187,8 +197,22 @@ function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
           <Button size="xs" name="intent" value="set-term-active">
             {term.active ? t.deactivate : t.activate}
           </Button>
-          {term.used === 0 && <Button size="xs" name="intent" value="delete-term">{t.remove}</Button>}
         </Form>
+        {/* Nothing names this term, so it can go — and going is what cannot be
+            undone, unlike deactivating it. */}
+        {term.used === 0 && (
+          <Form method="post">
+            <input type="hidden" name="termId" value={term.id} />
+            <Confirm
+              label={t.remove}
+              warning={t.removeWarning}
+              confirm={t.removeConfirm}
+              cancel={t.cancel}
+            >
+              <input type="hidden" name="intent" value="delete-term" />
+            </Confirm>
+          </Form>
+        )}
       </Fold>
     </li>
   )

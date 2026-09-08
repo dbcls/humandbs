@@ -85,8 +85,8 @@ export function UpstreamChoice({ locale, choice, submit }: {
           : (
               <ul className="flex flex-col gap-2 text-sm">
                 {choice.datasets.map((entry) => (
-                  <li key={entry.accession} className="flex flex-wrap items-baseline gap-2">
-                    <label className="flex items-baseline gap-2">
+                  <li key={entry.accession} className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         name="accession"

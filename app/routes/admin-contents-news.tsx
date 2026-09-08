@@ -2,10 +2,11 @@ import { Form, Link } from "react-router"
 
 import { newsListAction, newsListPage } from "~/admin/contents.server"
 import { adminContentsPath, adminNewsListPath, adminNewsPath } from "~/admin/urls"
-import { Stack } from "~/components/base"
+import { AdminCrumbs } from "~/components/admin"
+import { Heading, Stack } from "~/components/base"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Submit } from "~/components/form"
-import { Card, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
+import { Card, Page, Paging, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -35,16 +36,19 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function AdminContentsNews({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, items, page, pageCount } = loaderData
+  const { locale, items, page, pageCount, total, rangeFrom, rangeTo } = loaderData
   const t = messagesFor(locale).admin.contents
 
   return (
     <Page>
-      <PageHead label={t.news.heading}>
-        <Link to={href(locale, adminContentsPath())} className="text-white">{t.backToTree}</Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs
+        locale={locale}
+        trail={[{ label: t.heading, to: href(locale, adminContentsPath()) }]}
+        current={t.news.heading}
+      />
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.news.heading} />
           <ResultLine result={actionData} locale={locale} />
 
           <Stack gap="normal">
@@ -61,16 +65,17 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
                 </tr>
               ))}
             </Table>
-            {items.length > 0 && (
-              <PageLinks
-                label={messagesFor(locale).search.pagination}
+            <div className="flex justify-end">
+              <Paging
+                locale={locale}
+                total={total}
+                from={rangeFrom}
+                to={rangeTo}
                 page={page}
                 pageCount={pageCount}
                 at={(at) => href(locale, `${adminNewsListPath()}?page=${at}`)}
-                previous={messagesFor(locale).search.previousPage}
-                next={messagesFor(locale).search.nextPage}
               />
-            )}
+            </div>
           </Stack>
 
           <Section title={t.news.add}>

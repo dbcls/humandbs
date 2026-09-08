@@ -32,6 +32,7 @@
  */
 
 import { useState, type ReactNode } from "react"
+import { flushSync } from "react-dom"
 import { useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
@@ -55,6 +56,8 @@ import {
   adminDraftDatasetsPath,
   adminDraftPath,
   adminDraftReviewPath,
+  adminResearchListPath,
+  adminResearchPath,
   draftCommentsPath,
   draftPresencePath,
   draftUndoPath,
@@ -72,13 +75,14 @@ import {
 } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Page } from "~/components/page"
+import { Empty, Page } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
 
+import { AdminCrumbs } from "./admin"
 import { DraftBar, useDraftEditing, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { FileSelection } from "./files"
@@ -110,6 +114,21 @@ const PICKER_RESULTS = 20
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
+
+/**
+ * Which tab a field lives on, by the head of its path.
+ *
+ * **A band names a field by its path and knows nothing about tabs.** A tab that
+ * is not showing is `hidden`, so an anchor into it lands on an element with no
+ * position and the press does nothing at all — the research editor answers the
+ * same way (`editor.tsx` の `goTo`).
+ */
+const TAB_OF: Record<string, string> = {
+  releaseDate: BASICS,
+  values: BASICS,
+  fileSelection: FILES,
+  experiments: EXPERIMENTS,
+}
 
 export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const locale = view.locale
@@ -156,6 +175,40 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   })
 
   const [tab, setTab] = useState(BASICS)
+
+  /**
+   * Going to the place a band names: the tab holding it is opened first and
+   * that change is flushed, because a panel is `hidden` until React has drawn
+   * it again and an element with no position cannot be scrolled to.
+   */
+  function goTo(path: string): void {
+    const at = path.split(".")[0] ?? path
+    const wanted = TAB_OF[at]
+    if (wanted === undefined) return
+    flushSync(() => {
+      setTab(wanted)
+    })
+    const section = document.getElementById(wanted)
+    if (section === null) return
+    section.scrollIntoView()
+    // The first box that will take the caret, rather than the first in the
+    // markup: the review layer hangs its own hidden boxes beside every field.
+    for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
+      box.focus({ preventScroll: true })
+      if (document.activeElement === box) return
+    }
+  }
+
+  /** The same move, for a band that draws its own anchors. */
+  function onBandJump(event: React.MouseEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const path = target.closest("a[href^='#']")?.getAttribute("href")?.slice(1)
+    if (path === undefined) return
+    event.preventDefault()
+    goTo(path)
+  }
+
   const input = editing.value
   const marked = markedPaths(editing)
   const markedUnder = (prefix: string) =>
@@ -198,13 +251,31 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   return (
     <Page>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          {
+            label: messagesFor(locale).admin.research.heading,
+            to: href(locale, adminResearchListPath()),
+          },
+          {
+            label: view.humLabel ?? messagesFor(locale).admin.detail.heading,
+            to: href(locale, adminResearchPath(researchId)),
+          },
+          { label: editor.heading, to: href(locale, adminDraftPath(researchId, draftId)) },
+          {
+            label: messagesFor(locale).admin.draft.datasets,
+            to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
+          },
+        ]}
+        current={view.datasetLabel ?? editor.unpinnedDataset}
+      />
       <Stack>
+        {/* The way out is the trail above; these are the draft's other faces. */}
         <DraftBar
           locale={locale}
           heading={view.datasetLabel ?? editor.unpinnedDataset}
           links={[
-            { to: href(locale, adminDraftDatasetsPath(researchId, draftId)), label: t.backToList },
-            { to: href(locale, adminDraftPath(researchId, draftId)), label: t.backToDraft },
             { to: href(locale, adminDraftReviewPath(researchId, draftId)), label: editor.review },
           ]}
           note={!view.published && (
@@ -229,7 +300,9 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
         )}
         {editing.conflict !== null && (
-          <ConflictBand locale={locale} changed={editing.conflict.changed} />
+          <div onClick={onBandJump}>
+            <ConflictBand locale={locale} changed={editing.conflict.changed} />
+          </div>
         )}
         {editing.upstream !== null
           && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
@@ -604,7 +677,7 @@ function AddValue({ locale, keys, onAdd }: {
         </label>
         <p className="text-ink-muted text-xs">{t.shownOf(offered.length, keys.length)}</p>
         {offered.length === 0
-          ? <p className="text-ink-muted text-sm">{t.noKey}</p>
+          ? <Empty>{t.noKey}</Empty>
           : (
               <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
                 {offered.map((key) => (
@@ -992,7 +1065,7 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
   return (
     <Stack gap="tight">
       {chosen.length === 0
-        ? <p className="text-ink-muted text-sm">{t.noTerm}</p>
+        ? <Empty>{t.noTerm}</Empty>
         : (
             <ul className="flex flex-wrap gap-2">
               {chosen.map((term) => (
@@ -1022,7 +1095,7 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
         className={`${CONTROL} text-sm disabled:opacity-50`}
       />
       {needle !== "" && candidates.length === 0 && search.state === "idle" && (
-        <p className="text-ink-muted text-sm">{t.noCandidate}</p>
+        <Empty>{t.noCandidate}</Empty>
       )}
       {candidates.length > 0 && (
         <ul className="flex flex-col rounded border border-line">

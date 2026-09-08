@@ -2,9 +2,10 @@ import { Form, Link } from "react-router"
 
 import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.server"
 import { adminVocabularyPath } from "~/admin/urls"
-import { Badge, Button, Fold, Stack } from "~/components/base"
+import { AdminCrumbs } from "~/components/admin"
+import { Badge, Button, Confirm, Fold, Heading, Stack } from "~/components/base"
 import { Checkbox, Field, Result, Select, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section } from "~/components/page"
+import { Card, Empty, Page, Section } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -51,9 +52,10 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
 
   return (
     <Page>
-      <PageHead label={t.heading} />
-      <Card>
+      <AdminCrumbs locale={locale} current={t.heading} />
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading} />
           {actionData !== undefined && (
             <Result ok={actionData.status === "ok"}>
               {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
@@ -66,11 +68,15 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
               key={scope}
               title={scope === "dataset" ? t.datasetKeys : t.experimentKeys}
             >
-              <ul className="flex flex-col divide-y divide-line border-line border-y">
-                {view.keys.filter((key) => key.scope === scope).map((key) => (
-                  <KeyRow key={key.id} entry={key} categories={categories} locale={locale} />
-                ))}
-              </ul>
+              {view.keys.filter((key) => key.scope === scope).length === 0
+                ? <Empty>{t.noKey}</Empty>
+                : (
+                    <ul className="flex flex-col divide-y divide-line border-line border-y">
+                      {view.keys.filter((key) => key.scope === scope).map((key) => (
+                        <KeyRow key={key.id} entry={key} categories={categories} locale={locale} />
+                      ))}
+                    </ul>
+                  )}
             </Section>
           ))}
 
@@ -94,9 +100,10 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
           </Section>
 
           <Section title={t.vocabularies}>
+            {view.vocabularies.length === 0 && <Empty>{t.noVocabulary}</Empty>}
             <ul className="flex flex-col divide-y divide-line border-line border-y">
               {view.vocabularies.map((set) => (
-                <li key={set.id} className="flex flex-wrap items-baseline gap-3 py-2 text-sm">
+                <li key={set.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
                   <code className="w-56 shrink-0">{set.code}</code>
                   <span className="flex-1">{catalogLabel(set, locale)}</span>
                   {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
@@ -122,7 +129,17 @@ export default function AdminCatalog({ loaderData, actionData }: Route.Component
                           <Submit intent="update-category">{t.save}</Submit>
                           <Submit intent="move-category-up">{t.up}</Submit>
                           <Submit intent="move-category-down">{t.down}</Submit>
-                          <Submit intent="delete-category">{t.remove}</Submit>
+                        </Form>
+                        <Form method="post" className="pt-2">
+                          <input type="hidden" name="categoryId" value={category.id} />
+                          <Confirm
+                            label={t.remove}
+                            warning={t.removeWarning}
+                            confirm={t.removeConfirm}
+                            cancel={t.cancel}
+                          >
+                            <input type="hidden" name="intent" value="delete-category" />
+                          </Confirm>
                         </Form>
                       </li>
                     ))}
@@ -190,9 +207,23 @@ function KeyRow({ entry, categories, locale }: {
               checked={entry.showOnPublicPage}
             />
             <Button size="xs" name="intent" value="update-key">{t.save}</Button>
-            {/* A typed key is a facet; taking one away is a development change too. */}
-            {!typed && <Button size="xs" name="intent" value="delete-key">{t.remove}</Button>}
           </Form>
+          {/* A typed key is a facet; taking one away is a development change
+              too. Its own form: an intent written as a hidden field cannot
+              share one with the buttons that name their own. */}
+          {!typed && (
+            <Form method="post" className="pt-2">
+              <input type="hidden" name="keyId" value={entry.id} />
+              <Confirm
+                label={t.remove}
+                warning={t.removeWarning}
+                confirm={t.removeConfirm}
+                cancel={t.cancel}
+              >
+                <input type="hidden" name="intent" value="delete-key" />
+              </Confirm>
+            </Form>
+          )}
         </Fold>
       </div>
       <Form method="post" className="flex shrink-0 gap-1 pt-1.5">

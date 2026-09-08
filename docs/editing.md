@@ -8,9 +8,11 @@
 
 ## 管理画面
 
+19 画面ある。**8 つは識別子を要らず、残る 11 は研究・下書き・文書を 1 つ選んだ先にある。**
+
 | アドレス | 何の画面か |
 |---|---|
-| `/admin` | 入口。自分の `sub` と capability、上流の取得の状態 |
+| `/admin` | 入口。行き先の地図、自分の `sub` と capability、上流の取得の状態 |
 | `/admin/research` | 研究の一覧 |
 | `/admin/research/upstream` | 申請から研究を作る (下の「上流からの下書き」) |
 | `/admin/research/:researchId` | 1 研究。pin されたラベル・公開版・draft・データセット |
@@ -21,10 +23,20 @@
 | `…/draft/:draftId/dataset/:datasetId` | データセット 1 件を書く (experiment を含む) |
 | `…/draft/:draftId/publish` | 公開の確認 ([publishing.md](publishing.md)) |
 | `…/draft/:draftId/review` | 共有リンクとコメント (下の「レビュー」) |
+| `/admin/catalog` | キーと語彙と facet のカテゴリ ([data-model.md](data-model.md) の「catalog と語彙」) |
+| `/admin/catalog/vocabulary/:code` | 1 語彙の語を足す・直す・無効にする |
+| `/admin/contents` | 文書の木と帯 (下の「サイトコンテンツ」) |
+| `/admin/contents/document/:documentId` | 1 文書の ja / en |
+| `/admin/contents/news` | お知らせの一覧 |
+| `/admin/contents/news/:newsId` | 1 件の ja / en と日付 |
+| `/admin/contents/files` | `common/` の箱 (記事が貼る画像と PDF) |
+| `/admin/assistant` | 申請支援アシスタント ([assistant.md](assistant.md)) |
 
-公開ページと同じく ja / en の両方にアドレスを持つ。catalog (`/admin/catalog`) とサイトコンテンツ
-(`/admin/contents`) は別の流れなので、それぞれ [data-model.md](data-model.md) の「catalog と語彙」と
-下の「サイトコンテンツ」にある。
+公開ページと同じく ja / en の両方にアドレスを持つ。
+
+**行き先とパンくずの規則は [ui.md](ui.md) の「管理画面の枠」**にある。要点は 2 つ — **足す先は
+`app/admin/navigation.ts` の 1 箇所**で、そこに載せた画面が窓の端のつまみと `/admin` の地図の両方に
+出る。そして**どの画面のパンくずも `/admin` から始まる**ので、いちばん深いところからでも 1 回で戻れる。
 
 **research も dataset も identity で指す。** ラベルはまだ pin されていないことがあり、pin は訂正も
 されるので、管理画面のアドレスをラベルに寄せると開けない研究と動くアドレスが生まれる。
@@ -443,6 +455,10 @@ document / news / alert は research とは別の流れで編集する。版も 
 **公開が出すのは画面にある本文。** 保存と公開が同じ form の中にあるので、押した時点で見えているものが
 そのまま公開される — 「保存を忘れたので 1 つ前が出た」が起きない。**非公開に戻すことと下書きを捨てる
 ことは別の form**にあり、送っていない編集を巻き込まない。
+
+**4 つのうち 2 つは確認を挟む。** 非公開に戻すことは読者が持っているアドレスを黙らせ、下書きを捨てる
+ことは書いた本人以外には見えない作業を消す。**公開と保存は挟まない** — どちらも隣のボタンで元に
+戻せる。同じ線がファイルの箱にも引いてあり、公開に倒すのは確認なし、非公開に戻すのと削除は確認あり。
 
 - **保存は revision で照合する。** research の draft と同じで、影響行数が 0 なら 409
 - **保存の時点で本文を parse し、生 HTML と落とせないリンクの行き先を弾く。** 弾いたら保存全体を止め、

@@ -754,6 +754,58 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
 }
 
 /**
+ * How much of a listing is on screen, and the way to the rest.
+ *
+ * **The two are one thing said twice** — both answer "which page of how many am
+ * I looking at" — so they are drawn together rather than placed by each screen.
+ * Written apart they drift, and the management area is where that showed: five
+ * listings said it five ways, one of them counting a whole vocabulary while the
+ * rows on screen were a search within it, and two not saying it at all.
+ *
+ * **The range, not the total.** "675 件" over twenty rows says nothing about
+ * which twenty. The bare total is the answer only when there is no page to be
+ * on, which is what nothing-matched is.
+ *
+ * The bounds come from the loader, like everything else about which rows these
+ * are: how many fill a page belongs to the module that asked for them, and a
+ * route that read that number out of a `.server` module could not be split
+ * from its loader.
+ */
+export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
+  locale: Locale
+  total: number
+  /** 1-based positions of the shown rows within the whole result. */
+  from: number
+  to: number
+  page: number
+  pageCount: number
+  at: (page: number) => string
+  /** At most this many page numbers, where the room for them is short. */
+  most?: number
+}) {
+  const messages = messagesFor(locale)
+  // **The gap is a third of what separates the pair from the rest of the row.**
+  // At one distance for everything, the count floats between two controls and
+  // reads as belonging to neither.
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="text-ink-muted text-sm">
+        {total === 0 ? messages.search.results(0) : messages.search.range(from, to, total)}
+      </p>
+      <PageLinks
+        label={messages.search.pagination}
+        page={page}
+        pageCount={pageCount}
+        at={at}
+        previous={messages.search.previousPage}
+        next={messages.search.nextPage}
+        most={most}
+      />
+    </div>
+  )
+}
+
+/**
  * A run of prose. A span is a link only if its destination is one the page may
  * follow — everything else keeps its text and loses the link, so a `javascript:`
  * URL written into a value cannot become an anchor on the portal's own origin.

@@ -775,7 +775,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     rows={null}
                   />
                   <PageSizeChooser locale="ja" target="research" query="" sort="dateModified" order={null} size={50} />
-                  <p className="text-ink-muted text-sm">1–50 / 397 件</p>
                   <Pagination
                     locale="ja"
                     target="research"
@@ -785,6 +784,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     page={3}
                     pageCount={8}
                     rows={50}
+                    total={397}
+                    from={101}
+                    to={150}
                   />
                 </div>
               </div>

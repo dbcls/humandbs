@@ -34,6 +34,7 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 import { ICD10_SET_CODE, icd10Parent } from "~/icd10/codes"
+import { pageRange } from "~/paging"
 import { lookUpCode, searchDictionary } from "~/icd10/dictionary.server"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
@@ -105,6 +106,9 @@ export interface VocabularyView {
   terms: TermRow[]
   page: number
   pageCount: number
+  /** 1-based positions of the shown terms within what the box matched. */
+  rangeFrom: number
+  rangeTo: number
   find: string
   /**
    * Set on the ICD10 vocabulary: what was typed into the dictionary's box and
@@ -250,6 +254,7 @@ export async function vocabularyPage(
     terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0 })),
     page: at,
     pageCount,
+    ...pageRange(at, TERMS_PER_PAGE, total?.count ?? 0),
     find,
     dictionary: set.code === ICD10_SET_CODE
       ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }

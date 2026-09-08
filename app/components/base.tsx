@@ -160,6 +160,27 @@ export function Band({ tone = "brand", className = "", children }: {
 }
 
 /**
+ * Where the mark stands, and how far the word sits from it.
+ *
+ * **The gap is forced in one and chosen in the other.** Hung out through the
+ * card's padding, the mark has to leave exactly enough for the words to land
+ * back on the content edge — 24px out, 4px of rule, 20px of gap. Standing at
+ * the start there is nothing to land on, so the gap is only what binds the mark
+ * to the word: 10px, which is what db-portal gives its own.
+ */
+const PANE_RULE = {
+  edge: "-ml-6 pl-5",
+  start: "pl-2.5",
+}
+
+/** The three sizes a heading is set at, largest first. */
+const HEADING_LOOK = {
+  h1: "text-3xl",
+  h2: "text-xl",
+  bar: "text-lg",
+}
+
+/**
  * What a listing or an article opens with: a rule in the brand colour, the
  * title, and — where there is one — how many rows the reader is looking at.
  *
@@ -177,17 +198,32 @@ export function Band({ tone = "brand", className = "", children }: {
  * puts their middles below its middle — measured at 5.7px for the count and
  * 2.8px for the controls, which reads as the title floating above its own row.
  */
-export function Heading({ level = "h1", title, count, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", title, count, children }: {
   level?: "h1" | "h2"
+  /**
+   * How large it is drawn, when that is not what its level would give.
+   *
+   * **The one place the two part is the bar an editing screen hangs under**
+   * (`draft-tools.tsx`): the name there is the page's h1, but the bar is stuck
+   * to the top of the window and shares its row with the way to save — set at
+   * the size of a page heading it would take a third of the room a screen has
+   * to type in.
+   */
+  look?: keyof typeof HEADING_LOOK
+  /**
+   * Where the mark stands (`PANE_RULE`): hung out through a card's padding, or
+   * at the start of the line for a heading that opens no card.
+   */
+  rule?: keyof typeof PANE_RULE
   title: string
   count?: string
   children?: ReactNode
 }) {
   const Tag = level
   return (
-    <div className="-ml-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <div className="flex items-center gap-3 border-brand border-l-4 pl-5">
-        <Tag className={`font-bold text-brand ${level === "h1" ? "text-3xl" : "text-xl"}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 ${rule === "edge" ? "-ml-6" : ""}`}>
+      <div className={`flex items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
+        <Tag className={`font-bold text-brand ${HEADING_LOOK[look]}`}>
           {title}
         </Tag>
         {count !== undefined && <span className="text-ink-muted text-sm">{count}</span>}
@@ -214,20 +250,6 @@ export function Heading({ level = "h1", title, count, children }: {
  * choice**, and there are two of them (`PANE_RULE`). The line is the pane's;
  * the rule belongs either to the card or to the thing it names.
  */
-/**
- * Where the mark stands, and how far the word sits from it.
- *
- * **The gap is forced in one and chosen in the other.** Hung out through the
- * card's padding, the mark has to leave exactly enough for the words to land
- * back on the content edge — 24px out, 4px of rule, 20px of gap. Standing at
- * the start there is nothing to land on, so the gap is only what binds the mark
- * to the word: 10px, which is what db-portal gives its own.
- */
-const PANE_RULE = {
-  edge: "-ml-6 pl-5",
-  start: "pl-2.5",
-}
-
 export function PaneHeading({ title, level = "h2", rule = "edge", children }: {
   title: string
   level?: "h2" | "h3"
@@ -1431,11 +1453,23 @@ export function Toast({ label, announce, children }: {
  * be dismissed, moved around and given focus, and all it would add here is that
  * the reader can no longer see what they are about to act on.
  */
-export function Confirm({ label, warning, confirm, cancel, children }: {
+export function Confirm({ label, warning, confirm, cancel, intent, icon = "trash", children }: {
   label: string
   warning: string
   confirm: string
   cancel: string
+  /**
+   * What the form is being asked to do, put on the button rather than into a
+   * hidden field.
+   *
+   * **Where a form holds more than one of these, it has to be this and not a
+   * child.** A hidden field is submitted whichever button was pressed, so two
+   * open confirmations in one form would send two intents and the reader would
+   * get whichever came first in the markup.
+   */
+  intent?: string
+  /** The mark on the confirming button. Taking something away is the default. */
+  icon?: IconName
   /** The hidden fields naming what is being acted on. */
   children?: ReactNode
 }) {
@@ -1452,7 +1486,14 @@ export function Confirm({ label, warning, confirm, cancel, children }: {
     <span className="flex flex-wrap items-center gap-2">
       {children}
       <span className="text-danger text-sm">{warning}</span>
-      <Button type="submit" variant="danger" icon={<Icon name="trash" />}>{confirm}</Button>
+      <Button
+        type="submit"
+        variant="danger"
+        icon={<Icon name={icon} />}
+        {...(intent === undefined ? {} : { name: "intent", value: intent })}
+      >
+        {confirm}
+      </Button>
       <Button type="button" variant="ghost" onClick={() => { setAsking(false) }}>{cancel}</Button>
     </span>
   )

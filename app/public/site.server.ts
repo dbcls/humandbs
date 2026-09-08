@@ -22,6 +22,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm"
 import { getDb } from "~/db/client.server"
 import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { resolveBilingual } from "~/i18n/locale"
+import { pageRange } from "~/paging"
 import type { Locale } from "~/i18n/locale"
 
 import { leadingText, renderMarkdown } from "./markdown.server"
@@ -154,8 +155,7 @@ export async function newsList(
     page: at,
     pageCount,
     total,
-    rangeFrom: total === 0 ? 0 : (at - 1) * perPage + 1,
-    rangeTo: Math.min(at * perPage, total),
+    ...pageRange(at, perPage, total),
   }
 }
 

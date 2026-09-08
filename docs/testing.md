@@ -175,6 +175,23 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 | S-API-04 | relation の供給が型の一覧から通る |
 | S-API-05 | 読めない検索式は 422 を返し、その理由を言う |
 
+**P-ADMIN — 管理画面** (`admin.spec.ts` / `admin.user.spec.ts`)。**署名の要否でファイルが分かれる** —
+`admin.spec.ts` はセッションを持たない側で、これがあるから「サインインしていないと開かない」を
+signed-in の走行が取りこぼさない。
+
+| | 経路 |
+|---|---|
+| S-ADMIN-00 | 署名の無いブラウザは、どの管理画面もサインインに送られる (行き先を持ったまま) |
+| S-ADMIN-01 | 区画のトップから、識別子を要らない画面すべてに行ける |
+| S-ADMIN-02 | どの管理画面からも、パンくずで区画のトップに戻れる |
+| S-ADMIN-03 | 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ |
+| S-ADMIN-04 | 絞り込んで 0 件になっても、表と列の名前は残る |
+| S-ADMIN-05 | 一覧から 1 件選んだ先の画面すべてに、リンクを辿って着ける |
+
+**これらは読むだけで、公開しない。** 実物は 1 組の行しか持たないので、版を出すシナリオは他の
+シナリオが読んでいるものを変えてしまう。**下書きを作るのだけは例外** — 未公開の作業コピーなので
+読者から見えるものは動かず、開発用データは下書きを 1 つも持たないので作らないと入れない。
+
 まだ書いていない経路:
 
 - P-ANON — dataset からファイルを取得する (**開発用データがファイルを持たないので書けない**。
@@ -182,7 +199,8 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 - P-ANON — 取り下げた版と未公開の research がどこからも見えない (同じく、そういう行が要る)
 - P-PROVIDER — 共有リンク → preview に未確定値のスロットが見える → コメント → LGTM
 - P-PROVIDER — private に戻すと読めない / 再度有効化すると同じリンクが戻る / 再発行すると旧リンクが死ぬ
-- P-ADMIN — サインイン → draft → 編集 → 公開ゲート → 公開 → 公開画面に出る
+- P-ADMIN — 編集 → 公開ゲート → 公開 → 公開画面に出る (**実物の公開データが動くので、
+  回す先を専用に用意してから**)
 - P-ADMIN — 2 つのセッションで同じ draft を編集すると、後の保存が 409 になって入力が残る
 - P-ADMIN — draft の中で dataset を作る → experiment を書く → 版の一覧に載っている
 - P-ADMIN — 保存 → 履歴から直前を読み込む → 保存し直すと元に戻る
@@ -244,6 +262,20 @@ docker compose --profile e2e run --rm \
   -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e           # deploy 済みのものに対して
 ```
 
+**署名の要るシナリオはセッションを渡して回す。** ブラウザは外からサインインできない — 認証は
+自前のログイン画面を持つ別のサービスで、そこを打つシナリオはその画面の test になる。だから
+**セッションは回す先の実物の上で作り**、環境変数で渡す。渡さなければ `.user.spec.ts` は理由を
+言って skip する (通ってしまうことはない)。
+
+```bash
+export HUMANDBS_E2E_SESSION=$(docker compose exec -T app npm run --silent e2e:session)
+docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION e2e
+docker compose exec -T app npm run e2e:session -- clean          # 済んだら外す
+```
+
+**この session が名乗る `sub` は実在の人のものではなく、作った時点で管理者になる。**
+`clean` がそれを外すところまでが手順で、**回す先が本番であってはならない**理由もそこにある。
+
 **この compose に向けるときだけ、dev サーバーが `proxy` という Host を許す必要がある**
 (`vite.config.ts` の `allowedHosts`)。deploy 済みのものは build を serve するので、この制限を持たない。
 
@@ -254,7 +286,8 @@ docker compose --profile e2e run --rm \
 | `*.pbt.test.ts` | 不変量 |
 | `*.db.test.ts` | schema と経路 |
 | `*.test.ts` | 単体 |
-| `tests/e2e/*.spec.ts` | e2e |
+| `tests/e2e/*.spec.ts` | e2e (署名を持たない) |
+| `tests/e2e/*.user.spec.ts` | e2e (署名を持つ) |
 
 ## 意図的にやっていないこと
 

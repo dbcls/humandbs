@@ -37,6 +37,7 @@ import {
   type QueryNode,
 } from "~/search/dsl"
 import { isDateFacet, queryFields, type QueryFields } from "~/search/fields"
+import { pageRange } from "~/paging"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import type { ExportTable } from "~/search/export"
 import {
@@ -427,8 +428,7 @@ async function listShell(
       total: result.total,
       page: result.page,
       pageCount: result.pageCount,
-      rangeFrom: result.total === 0 ? 0 : (result.page - 1) * size + 1,
-      rangeTo: Math.min(result.page * size, result.total),
+      ...pageRange(result.page, size, result.total),
       otherCount,
     },
     hits: result.hits,

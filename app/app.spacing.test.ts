@@ -78,6 +78,7 @@ const MANAGEMENT_PARTS = [
   "components/field-review.tsx",
   "components/fields.tsx",
   "components/files.tsx",
+  "components/form.tsx",
   "components/previous.tsx",
   "components/publish.tsx",
   "components/review.tsx",
@@ -324,24 +325,35 @@ describe("タブの斜辺", () => {
 
 /**
  * **件数とページ送りは 1 つのまとまり。** どちらも「いま何ページ目の何件を見ているか」に答えるので、
- * 同じ行の他のものより近くに立つ (`docs/public-pages.md` の「並びと件数」)。3 つの一覧が同じ組を
- * 使い、お知らせ一覧だけが窓と 3 つ並べて件数を宙に浮かせていた。
+ * 同じ器に立つ (`docs/public-pages.md` の「並びと件数」)。**それを守らせる方法は「近くに書く」ではなく
+ * 「1 か所でしか書けないようにする」** — 件数を各画面が書いていた間、5 つの管理画面が 5 通りの
+ * 出し方をしていて、うち 2 つは何も出していなかった。
  */
 describe("一覧の件数とページ送り", () => {
-  it("件数がページ送りと同じ器に立ち、行の他のものより近い", async () => {
-    const owners: string[] = []
-    for (const name of ["components/search.tsx", "routes/news.tsx"]) {
-      const text = await readFile(path.join(ROOT, name), "utf8")
-      for (const found of text.matchAll(/className="([^"]*)">\s*\{counted\}/g)) {
-        owners.push(found[1] ?? "")
-      }
-    }
+  it("件数を出すのは Paging だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const writers = sources
+      .filter(({ text }) => /messages\.search\.(range|results)\b/.test(text))
+      .map(({ name }) => name)
+      .sort()
+    // カートだけは別: ページに切られないので、答えは範囲ではなく総数そのもの。
+    expect(writers).toEqual(["components/page.tsx", "routes/cart.tsx"])
+  })
 
-    // 研究一覧とデータセット一覧が共有する 1 つと、お知らせ一覧の上下 2 つ。
-    expect(owners).toHaveLength(3)
-    for (const one of owners) {
-      expect(one.split(/\s+/)).toContain("gap-2")
-    }
+  it("その Paging の中で、件数とページ送りが同じ器に立つ", async () => {
+    const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
+    const box = /export function Paging[\s\S]*?<div className="([^"]*)">/.exec(parts)?.[1]
+    expect(box).toBeDefined()
+    expect(box?.split(/\s+/)).toContain("gap-2")
+  })
+
+  it("ページ送りを描くのも Paging だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const writers = sources
+      .filter(({ text }) => /<PageLinks\b/.test(text))
+      .map(({ name }) => name)
+      .sort()
+    expect(writers).toEqual(["components/page.tsx", "routes/dev-ui.tsx"])
   })
 })
 

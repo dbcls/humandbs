@@ -14,7 +14,7 @@ import { ResearchBody, ResearchVersionPage } from "./research"
  * losing it because a bucket was unreachable would be the wrong trade.
  */
 
-const NOTHING: FileListView = { rows: [], total: 0, page: 1, pageCount: 1 }
+const NOTHING: FileListView = { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 }
 
 const NO_LINKS: LinksView = { state: "value", value: [], untranslated: false }
 
@@ -68,22 +68,26 @@ describe("the research page", () => {
     expect(render(NOTHING)).not.toContain("ダウンロード")
   })
 
-  it("draws the section, with the count of the whole box rather than the page", () => {
+  it("draws the section, with the range within the whole box rather than the page", () => {
     const html = render({
       rows: [{ name: "a.zip", size: 1, isPublic: true }],
       total: 101,
+      rangeFrom: 1,
+      rangeTo: 100,
       page: 1,
       pageCount: 2,
     })
 
     expect(html).toContain("ダウンロード")
-    expect(html).toContain("101 件")
+    expect(html).toContain("1–100 / 101 件")
   })
 
   it("offers the next page as an address rather than as a script", () => {
     const html = render({
       rows: [{ name: "a.zip", size: 1, isPublic: true }],
       total: 101,
+      rangeFrom: 1,
+      rangeTo: 100,
       page: 1,
       pageCount: 2,
     })

@@ -14,7 +14,7 @@ import { filePath } from "~/public/urls"
 
 import { Badge, Button, Confirm, Fold, IconButton, Note, Progress, Stack } from "./base"
 import { CONTROL, SelectAll, Submit } from "./form"
-import { PageLinks, Table, Td } from "./page"
+import { Empty, Paging, Table, Td } from "./page"
 
 /**
  * The download list, and the box behind it.
@@ -31,22 +31,25 @@ export interface DownloadRow {
   isPublic: boolean
 }
 
-export function Downloads({ locale, humLabel, rows, total, page, pageCount, at }: {
+export function Downloads({ locale, humLabel, rows, total, rangeFrom, rangeTo, page, pageCount, at }: {
   locale: Locale
   /** Null while nothing has been pinned, which is only ever the case in a preview. */
   humLabel: string | null
   rows: readonly DownloadRow[]
   total: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
   page: number
   pageCount: number
   at: (page: number) => string
 }) {
-  const messages = messagesFor(locale)
-  const t = messages.research
+  const t = messagesFor(locale).research
 
   return (
     <Stack gap="tight">
-      <p className="text-ink-muted text-sm">{t.fileCount(total)}</p>
+      {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
+          (`research.tsx` / `dataset.tsx`)。 */}
       <Table headers={[t.downloadName, t.downloadSize]}>
         {rows.map((row) => (
           <tr key={row.name}>
@@ -59,14 +62,17 @@ export function Downloads({ locale, humLabel, rows, total, page, pageCount, at }
           </tr>
         ))}
       </Table>
-      <PageLinks
-        label={messages.search.pagination}
-        page={page}
-        pageCount={pageCount}
-        at={at}
-        previous={messages.search.previousPage}
-        next={messages.search.nextPage}
-      />
+      <div className="flex justify-end">
+        <Paging
+          locale={locale}
+          total={total}
+          from={rangeFrom}
+          to={rangeTo}
+          page={page}
+          pageCount={pageCount}
+          at={at}
+        />
+      </div>
     </Stack>
   )
 }
@@ -144,11 +150,26 @@ export function BoxTable({ locale, rows, humLabel }: {
             the column names are what say what was being looked for. */}
         {rows.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 text-sm">
+            {/* **Making a file public is not asked about and taking one back
+                is.** Readers hold the addresses of what is out, so withdrawing
+                is what somebody notices; putting a file out is undone by the
+                button beside it. */}
             <Submit intent="publish" variant="secondary">{t.publish}</Submit>
-            <Submit intent="unpublish" variant="secondary">{t.unpublish}</Submit>
-            <Confirm label={t.delete} warning={t.deleteWarning} confirm={t.deleteConfirm} cancel={t.cancel}>
-              <input type="hidden" name="intent" value="delete" />
-            </Confirm>
+            <Confirm
+              label={t.unpublish}
+              warning={t.unpublishWarning}
+              confirm={t.unpublishConfirm}
+              cancel={t.cancel}
+              intent="unpublish"
+              icon="lock"
+            />
+            <Confirm
+              label={t.delete}
+              warning={t.deleteWarning}
+              confirm={t.deleteConfirm}
+              cancel={t.cancel}
+              intent="delete"
+            />
           </div>
         )}
       </Stack>
@@ -468,7 +489,7 @@ export function FileSelection({ locale, listing, selected, onChange }: {
   const files = messagesFor(locale).admin.files
   const [filter, setFilter] = useState("")
 
-  if (listing === null) return <p className="text-ink-muted text-sm">{t.filesUnavailable}</p>
+  if (listing === null) return <Empty>{t.filesUnavailable}</Empty>
 
   const held = new Set(selected)
   const offered = listing.filter((entry) =>
@@ -527,7 +548,7 @@ export function FileSelection({ locale, listing, selected, onChange }: {
       )}
 
       {listing.length === 0
-        ? <p className="text-ink-muted text-sm">{t.filesEmpty}</p>
+        ? <Empty>{t.filesEmpty}</Empty>
         : (
             <Fold summary={t.addFile}>
               <Stack gap="normal">

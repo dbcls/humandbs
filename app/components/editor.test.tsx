@@ -86,6 +86,6 @@ describe("the editing form", () => {
     }))
 
     expect(html).toContain("2026 年公開分の下書き")
-    expect(html).toContain("preview には出ません")
+    expect(html).toContain("プレビューには出ません")
   })
 })

@@ -1,10 +1,18 @@
 import { data, Form, Link } from "react-router"
 
 import { upstreamDatasetAction, upstreamDatasetPage } from "~/admin/templates.server"
-import { adminDraftDatasetsPath, adminUpstreamDatasetPath, upstreamQuery } from "~/admin/urls"
-import { Stack } from "~/components/base"
+import {
+  adminDraftDatasetsPath,
+  adminDraftPath,
+  adminResearchListPath,
+  adminResearchPath,
+  adminUpstreamDatasetPath,
+  upstreamQuery,
+} from "~/admin/urls"
+import { AdminCrumbs } from "~/components/admin"
+import { Heading, Note, Stack } from "~/components/base"
 import { Field, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -57,19 +65,32 @@ export default function AdminDraftDatasetUpstream({
 
   return (
     <Page>
-      <PageHead label={t.headingDataset}>
-        <Link
-          to={href(locale, adminDraftDatasetsPath(view.researchId, view.draftId))}
-          className="text-white"
-        >
-          {messages.admin.draft.datasets}
-        </Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          { label: messages.admin.research.heading, to: href(locale, adminResearchListPath()) },
+          {
+            label: view.humLabel ?? messages.admin.detail.heading,
+            to: href(locale, adminResearchPath(view.researchId)),
+          },
+          {
+            label: messages.admin.editor.heading,
+            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
+          },
+          {
+            label: messages.admin.draft.datasets,
+            to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
+          },
+        ]}
+        current={t.headingDataset}
+      />
+      <Card under={false}>
         <Stack gap="block">
-          {actionData?.status === "taken" && <Notice>{t.takenLabel}</Notice>}
-          {actionData?.status === "conflict" && <Notice>{t.conflict}</Notice>}
-          {view.unknown !== null && <Notice>{t.unknown(view.unknown)}</Notice>}
+          <Heading title={t.headingDataset} />
+
+          {actionData?.status === "taken" && <Note kind="warning" live>{t.takenLabel}</Note>}
+          {actionData?.status === "conflict" && <Note kind="danger" live>{t.conflict}</Note>}
+          {view.unknown !== null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
 
           <Section title={t.byAccession}>
             <Form method="get" action={href(locale, here)} className="flex flex-wrap items-end gap-3">
@@ -91,29 +112,28 @@ export default function AdminDraftDatasetUpstream({
               : (
                   <Stack gap="normal">
                     <UpstreamSearch locale={locale} action={href(locale, here)} keyword={view.keyword} />
-                    {view.rows.length === 0
-                      ? <Empty>{t.none}</Empty>
-                      : (
-                          <Table
-                            headers={[t.application, t.humLabel, t.approvedOn, t.title, t.registered]}
-                          >
-                            {view.rows.map((row) => (
-                              <tr key={row.applicationId}>
-                                <Td className="whitespace-nowrap">
-                                  <Link to={at({ applicationId: row.applicationId })}>
-                                    {row.applicationId}
-                                  </Link>
-                                </Td>
-                                <Td className="whitespace-nowrap">{row.humLabel ?? ""}</Td>
-                                <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                                <Td floor="min-w-64">
-                                  {row.titleJa === "" ? row.titleEn : row.titleJa}
-                                </Td>
-                                <Td className="text-xs">{row.accessions.join(", ")}</Td>
-                              </tr>
-                            ))}
-                          </Table>
-                        )}
+                    {/* No count and no page links, for the reason the research
+                        side gives (`routes/admin-research-upstream.tsx`). */}
+                    <Table
+                      headers={[t.application, t.humLabel, t.approvedOn, t.title, t.registered]}
+                      whenEmpty={t.none}
+                    >
+                      {view.rows.map((row) => (
+                        <tr key={row.applicationId}>
+                          <Td className="whitespace-nowrap">
+                            <Link to={at({ applicationId: row.applicationId })}>
+                              {row.applicationId}
+                            </Link>
+                          </Td>
+                          <Td className="whitespace-nowrap">{row.humLabel ?? ""}</Td>
+                          <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
+                          <Td floor="min-w-64">
+                            {row.titleJa === "" ? row.titleEn : row.titleJa}
+                          </Td>
+                          <Td className="text-xs">{row.accessions.join(", ")}</Td>
+                        </tr>
+                      ))}
+                    </Table>
                   </Stack>
                 )}
           </Section>
@@ -132,11 +152,5 @@ export default function AdminDraftDatasetUpstream({
         </Stack>
       </Card>
     </Page>
-  )
-}
-
-function Notice({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded border border-accent bg-accent/5 px-3 py-2 text-sm">{children}</p>
   )
 }

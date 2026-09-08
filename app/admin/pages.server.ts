@@ -170,6 +170,9 @@ export interface AdminListView {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole result. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 function readPage(value: string | null): number {
@@ -202,6 +205,8 @@ export async function researchListPage(
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
+    rangeFrom: page.rangeFrom,
+    rangeTo: page.rangeTo,
     rows: page.rows.map((row) => ({
       researchId: row.researchId,
       humLabel: row.humLabel,

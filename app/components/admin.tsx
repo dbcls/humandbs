@@ -7,11 +7,40 @@ import {
 } from "react"
 import { Link, useLocation } from "react-router"
 
-import { adminNavigation, isHere } from "~/admin/navigation"
+import { adminDestinations, isHere } from "~/admin/navigation"
+import { adminPath } from "~/admin/urls"
 import { Icon } from "~/components/icons"
+import { Crumbs } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+
+/**
+ * The trail into a management screen.
+ *
+ * **Every one of them starts at the area's front page**, which is what makes
+ * the map there the way to all nineteen and back: a screen four levels down
+ * used to carry one hand-written link to its parent, so getting out of a draft
+ * meant three presses or finding the tab at the edge of the window.
+ *
+ * The trail below that step is the screen's own, and it names what the reader
+ * came through rather than what the address spells — a research is a hum label
+ * to the person reading it and a uuid in the URL.
+ */
+export function AdminCrumbs({ locale, trail = [], current }: {
+  locale: Locale
+  trail?: { label: string, to: string }[]
+  current: string
+}) {
+  const words = messagesFor(locale).admin
+  return (
+    <Crumbs
+      locale={locale}
+      trail={[{ label: words.heading, to: href(locale, adminPath()) }, ...trail]}
+      current={current}
+    />
+  )
+}
 
 /** How long a pointer may be between the handle and the card before it shuts. */
 const LINGER = 200
@@ -167,7 +196,7 @@ export function AdminDrawer({ locale, path }: { locale: Locale, path: string }) 
           <span className="font-bold text-ink text-sm">{words.heading}</span>
         </div>
         <nav aria-label={words.navigation} className="flex flex-1 flex-col overflow-y-auto py-2">
-          {adminNavigation(locale).map((entry) => {
+          {adminDestinations(locale).map((entry) => {
             const current = isHere(entry, path)
             return (
               <Link

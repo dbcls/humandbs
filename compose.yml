@@ -183,6 +183,10 @@ services:
       # otherwise, so that a scenario can be tried before it is pointed at a
       # deployment.
       HUMANDBS_E2E_BASE_URL: ${HUMANDBS_E2E_BASE_URL:-http://proxy:8080}
+      # The session the signed-in scenarios carry, made on that instance with
+      # `npm run e2e:session`. Absent, they skip rather than pass
+      # (`playwright.config.ts`).
+      HUMANDBS_E2E_SESSION: ${HUMANDBS_E2E_SESSION:-}
     volumes:
       - .:/app
       - e2e_modules:/app/node_modules

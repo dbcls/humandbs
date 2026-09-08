@@ -2,8 +2,9 @@ import { data, Form, Link } from "react-router"
 
 import { upstreamResearchAction, upstreamResearchPage } from "~/admin/templates.server"
 import { adminResearchListPath, adminResearchPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
-import { Note, Stack } from "~/components/base"
-import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { AdminCrumbs } from "~/components/admin"
+import { Heading, Note, Stack } from "~/components/base"
+import { Card, Page, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
@@ -55,13 +56,17 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead label={t.heading}>
-        <Link to={href(locale, adminResearchListPath())} className="text-white">
-          {messages.admin.research.heading}
-        </Link>
-      </PageHead>
-      <Card>
+      <AdminCrumbs
+        locale={locale}
+        trail={[{
+          label: messages.admin.research.heading,
+          to: href(locale, adminResearchListPath()),
+        }]}
+        current={t.heading}
+      />
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading} />
           {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
 
           {!view.connected
@@ -73,37 +78,42 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
                     action={href(locale, adminUpstreamResearchPath())}
                     keyword={view.keyword}
                   />
+                  {/*
+                    **No count and no page links.** What the box answers with is
+                    the applications that matched, cut at a fixed number
+                    (`admin/templates.server.ts`) — a total under it would be the
+                    size of the cut rather than of what is there, and a reader
+                    who cannot see what they came for narrows the words instead
+                    of turning a page.
+                  */}
                   <Section title={t.applications}>
-                    {view.rows.length === 0
-                      ? <Empty>{t.none}</Empty>
-                      : (
-                          <Table
-                            headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
-                          >
-                            {view.rows.map((row) => (
-                              <tr key={row.applicationId}>
-                                <Td className="whitespace-nowrap">
-                                  <Link to={at(row.applicationId)}>{row.applicationId}</Link>
-                                </Td>
-                                <Td className="whitespace-nowrap">
-                                  {row.humLabel === null
-                                    ? <span className="text-ink-muted">{t.noHumLabel}</span>
-                                    : row.heldBy === null
-                                      ? row.humLabel
-                                      : (
-                                          <Link to={href(locale, adminResearchPath(row.heldBy))}>
-                                            {row.humLabel}
-                                          </Link>
-                                        )}
-                                </Td>
-                                <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                                <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
-                                <Td className="whitespace-nowrap">{row.piName}</Td>
-                                <Td className="text-xs">{row.accessions.join(", ")}</Td>
-                              </tr>
-                            ))}
-                          </Table>
-                        )}
+                    <Table
+                      headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
+                      whenEmpty={t.none}
+                    >
+                      {view.rows.map((row) => (
+                        <tr key={row.applicationId}>
+                          <Td className="whitespace-nowrap">
+                            <Link to={at(row.applicationId)}>{row.applicationId}</Link>
+                          </Td>
+                          <Td className="whitespace-nowrap">
+                            {row.humLabel === null
+                              ? <span className="text-ink-muted">{t.noHumLabel}</span>
+                              : row.heldBy === null
+                                ? row.humLabel
+                                : (
+                                    <Link to={href(locale, adminResearchPath(row.heldBy))}>
+                                      {row.humLabel}
+                                    </Link>
+                                  )}
+                          </Td>
+                          <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
+                          <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
+                          <Td className="whitespace-nowrap">{row.piName}</Td>
+                          <Td className="text-xs">{row.accessions.join(", ")}</Td>
+                        </tr>
+                      ))}
+                    </Table>
                   </Section>
 
                   {view.branch !== null && view.chosen !== null && (

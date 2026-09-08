@@ -19,6 +19,7 @@
  */
 
 import type { TranslatedText } from "~/content/types"
+import { pageRange } from "~/paging"
 
 import type { ContentFlags } from "./flags"
 
@@ -126,6 +127,9 @@ export interface ListingPage {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole result. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 export function pageOf(rows: readonly AdminResearchRow[], page: number): ListingPage {
@@ -137,5 +141,6 @@ export function pageOf(rows: readonly AdminResearchRow[], page: number): Listing
     total: rows.length,
     page: wanted,
     pageCount,
+    ...pageRange(wanted, ADMIN_PAGE_SIZE, rows.length),
   }
 }

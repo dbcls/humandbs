@@ -2,10 +2,11 @@ import { useState } from "react"
 import { Form, Link } from "react-router"
 
 import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
-import { adminDraftPath } from "~/admin/urls"
+import { adminDraftPath, adminResearchListPath, adminResearchPath } from "~/admin/urls"
 import { href } from "~/public/urls"
 
-import { ButtonLink, Fold, Note, PaneHeading, Stack } from "./base"
+import { AdminCrumbs } from "./admin"
+import { ButtonLink, Fold, Note, Stack } from "./base"
 import { Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
 import { Card, Empty, Page, PageHead, Section } from "./page"
 import { messagesFor } from "~/i18n/messages"
@@ -39,17 +40,24 @@ export function PublishConfirmation({ view, result }: {
 
   return (
     <Page>
-      <PageHead label={view.humLabel ?? messages.admin.detail.heading}>
-        <Link
-          to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-          className="text-white"
-        >
-          {t.backToDraft}
-        </Link>
-      </PageHead>
+      <AdminCrumbs
+        locale={locale}
+        trail={[
+          { label: messages.admin.research.heading, to: href(locale, adminResearchListPath()) },
+          {
+            label: view.humLabel ?? messages.admin.detail.heading,
+            to: href(locale, adminResearchPath(view.researchId)),
+          },
+          {
+            label: messages.admin.editor.heading,
+            to: href(locale, adminDraftPath(view.researchId, view.draftId)),
+          },
+        ]}
+        current={t.heading}
+      />
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
       <Card>
         <Stack gap="block">
-          <PaneHeading title={t.heading} />
 
           {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
           {actionData?.status === "gone" && <Result ok={false}>{t.gone}</Result>}
