@@ -6,7 +6,6 @@ from src.utils import add_text_fragment_to_url, humandbs_web_base_url, icd10_dis
 
 logger = logging.getLogger("assessment_service")
 
-report_template = jinja_env.get_template("report.jinja2")
 handout_template = jinja_env.get_template("handout.jinja2")
 
 
@@ -117,17 +116,6 @@ def assessment_data(application_data: dict) -> dict:
         for key, value in parameters.items()
         if key not in {"application_data", "humandbs_web_base_url"}
     }
-
-
-async def create_assessment_report(application_data: dict) -> str:
-    """Create report to assess if the application meets the requirements"""
-    global report_template
-    parameters = template_parameters(application_data)
-
-    # Render the template
-    report = report_template.render(parameters)
-
-    return report
 
 
 async def create_handout(application_data: dict) -> str:
