@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import xml.etree.ElementTree as ET
 from typing import Any, Literal
 
@@ -9,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from src.models import PaperInfoExtractionResult, ResearchInfo, ResearchInfoSuggestionResult
 from src.prompts import load_prompt
-from src.services.google_genai_service import extract_structured_output
-from src.utils import fetch_with_playwright, get_search_response, get_task_logger, icd10_canonicalized_text
+from src.services.google_genai_service import extract_output_from_genai, extract_structured_output
+from src.utils import fetch_with_playwright, get_task_logger, icd10_canonicalized_text
 
 logger = logging.getLogger("research_service")
 
@@ -20,28 +21,81 @@ retry_options = ExponentialRetry(
 )
 
 
+def _has_paper_content(paper_info: dict[str, Any]) -> bool:
+    placeholder_values = {"", "n/a", "na", "none", "null"}
+    return any(
+        isinstance(value, str) and value.strip().casefold() not in placeholder_values
+        for value in (paper_info.get("title"), paper_info.get("abstract"))
+    )
+
+
+async def find_doi_by_bibliographic_query(query: str) -> str | None:
+    """Find the most relevant DOI for a citation or paper title using Crossref."""
+    url = "https://api.crossref.org/works"
+    params = {"query.bibliographic": query, "rows": 1, "select": "DOI"}
+    try:
+        async with aiohttp.ClientSession() as session:
+            retry_client = RetryClient(client_session=session, retry_options=retry_options)
+            async with retry_client.get(url, params=params) as resp:
+                if resp.status != 200:
+                    logger.warning("Crossref bibliographic search failed for %r: %s", query, resp.status)
+                    return None
+                items = (await resp.json()).get("message", {}).get("items", [])
+                if not items:
+                    return None
+                doi = items[0].get("DOI")
+                return doi.strip() if isinstance(doi, str) and doi.strip() else None
+    except (aiohttp.ClientError, json.JSONDecodeError):
+        logger.exception("Crossref bibliographic search failed for %r", query)
+        return None
+
+
+async def find_pmid_by_citation(citation: str) -> str | None:
+    """Resolve an author-journal-year-volume-page citation to one PubMed record."""
+    match = re.fullmatch(
+        r"\s*(?P<author>[^,]+),\s*et al\.\s*(?P<journal>.+?)\.\s*"
+        r"(?P<year>\d{4});(?P<volume>\d+):(?P<pagination>[\d-]+)\.\s*",
+        citation,
+    )
+    if not match:
+        return None
+
+    parts = match.groupdict()
+    term = (
+        f'{parts["author"]}[Author] AND {parts["journal"]}[Journal] AND '
+        f'{parts["year"]}[Publication Date] AND {parts["volume"]}[Volume] AND '
+        f'{parts["pagination"]}[Pagination]'
+    )
+    url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+    try:
+        async with aiohttp.ClientSession() as session:
+            retry_client = RetryClient(client_session=session, retry_options=retry_options)
+            async with retry_client.get(url, params={"db": "pubmed", "retmode": "json", "term": term}) as resp:
+                if resp.status != 200:
+                    logger.warning("PubMed citation search failed for %r: %s", citation, resp.status)
+                    return None
+                id_list = (await resp.json()).get("esearchresult", {}).get("idlist", [])
+                return id_list[0] if len(id_list) == 1 and isinstance(id_list[0], str) else None
+    except (aiohttp.ClientError, json.JSONDecodeError):
+        logger.exception("PubMed citation search failed for %r", citation)
+        return None
+
+
 async def search_paper_by_title(title: str, task_id: str | None = None) -> dict[str, Any] | None:
     task_logger = get_task_logger(task_id)
-    search_result = await get_search_response(title)
-    if search_result is None:
-        task_logger.error(f"Search result is None for title: {title}")
+    class PaperSearchResult(BaseModel):
+        source_url: str | None = Field(None, description="論文の公開ランディングページのURL")
+
+    search_result, _ = await extract_output_from_genai(
+        load_prompt("paper_url_search.txt", paper_reference=title),
+        PaperSearchResult,
+        logger=task_logger,
+    )
+    source_url = search_result.source_url if search_result else None
+    if not isinstance(source_url, str) or not source_url.startswith(("http://", "https://")):
+        task_logger.error(f"No grounded paper URL found for title: {title}")
         return None
-    if not isinstance(search_result, list):
-        task_logger.error(f"Search result is not a list: {search_result}")
-        return None
-    if not search_result:
-        task_logger.error(f"No search results found for title: {title}")
-        return None
-    first_result = search_result[0]
-    if not isinstance(first_result, dict):
-        task_logger.error(f"First search result is not an object: {first_result}")
-        return None
-    source_url = first_result.get("link")
-    if not isinstance(source_url, str) or not source_url.strip():
-        task_logger.error(f"First search result has no valid link: {first_result}")
-        return None
-    source_url = source_url.strip()
-    task_logger.info(f"First search result: {first_result}")
+    task_logger.info(f"Grounded paper URL: {source_url}")
 
     html = await fetch_with_playwright(source_url, True, task_id)
 
@@ -56,12 +110,20 @@ async def search_paper_by_title(title: str, task_id: str | None = None) -> dict[
     )
     task_logger.info(f"Extraction result: {extraction_result}")
 
-    return {
+    if not extraction_result:
+        task_logger.error(f"Failed to extract paper information from URL: {source_url}")
+        return None
+
+    paper_info = {
         "title": extraction_result.title,
         "authors": extraction_result.authors,
         "abstract": extraction_result.abstract,
         "url": source_url,
     }
+    if not _has_paper_content(paper_info):
+        task_logger.error(f"No paper information extracted from URL: {source_url}")
+        return None
+    return paper_info
 
 
 async def get_paper_info(
@@ -75,7 +137,17 @@ async def get_paper_info(
     elif id_type == "pubmed":
         paper_info = await fetch_from_pubmed(paper_id)
         paper_id = "PMID:" + paper_id
-    if id_type == "title" or not paper_info or (not paper_info.get("abstract") and title):
+    if id_type == "title":
+        pmid = await find_pmid_by_citation(title)
+        if pmid:
+            paper_id = f"PMID:{pmid}"
+            paper_info = await fetch_from_pubmed(pmid)
+        else:
+            doi = await find_doi_by_bibliographic_query(title)
+            if doi:
+                paper_id = doi
+                paper_info = await fetch_from_doi(doi)
+    if not paper_info or (not paper_info.get("abstract") and title):
         paper_info = await search_paper_by_title(title, task_id)
     if not paper_info:
         task_logger.error(f"Failed to fetch paper info for {paper_id} with id_type {id_type}")
@@ -208,7 +280,7 @@ async def fetch_from_doi(doi: str) -> dict[str, Any] | None:
                                 ExtractionResult,
                                 task_id=None,
                             )
-                            abstract = extraction_result.abstract
+                            abstract = extraction_result.abstract if extraction_result else None
 
                     url = ""
                     if "link" in data:
