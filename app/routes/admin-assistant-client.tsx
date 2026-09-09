@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react"
 
 import { assistantApiPath } from "~/admin/urls"
 import { Fold, Note, Stack } from "~/components/base"
@@ -164,7 +171,7 @@ interface RequestedDataset {
   purpose?: string | null
 }
 
-interface AssessmentData {
+export interface AssessmentData {
   application_id?: string | null
   title?: string
   abstract?: string
@@ -671,6 +678,10 @@ function errorMessage(response: Response, fallback: string): Promise<string> {
     .catch(() => fallback)
 }
 
+export function datasetIds(value: string): string[] {
+  return [...new Set(value.split(/[\s,]+/u).map((id) => id.trim()).filter(Boolean))]
+}
+
 export function AssistantContents({ locale }: { locale: Locale }) {
   const words = messagesFor(locale).admin.assistant
   const [application, setApplication] = useState<File | null>(null)
@@ -817,6 +828,69 @@ export function AssistantContents({ locale }: { locale: Locale }) {
     }
   }
 
+  const addDatasets = async (ids: string[]) => {
+    if (selected === null) return false
+    setBusy(true)
+    setNotice(null)
+    try {
+      const response = await fetch(
+        assistantApiPath(
+          `applications/${encodeURIComponent(selected.task_id)}/add-datasets`,
+        ),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataset_ids: ids }),
+        },
+      )
+      if (!response.ok)
+        throw new Error(await errorMessage(response, words.addDatasetsFailed))
+      const result = record(await response.json())
+      const addedCount
+        = typeof result?.added_count === "number" ? result.added_count : ids.length
+      await loadDetail(selected.task_id)
+      setNotice({ ok: true, text: words.datasetsAdded(addedCount) })
+      return true
+    } catch (error) {
+      setNotice({
+        ok: false,
+        text: error instanceof Error ? error.message : words.addDatasetsFailed,
+      })
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeDataset = async (datasetId: string) => {
+    if (selected === null) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      const response = await fetch(
+        assistantApiPath(
+          `applications/${encodeURIComponent(selected.task_id)}/remove-dataset`,
+        ),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataset_id: datasetId }),
+        },
+      )
+      if (!response.ok)
+        throw new Error(await errorMessage(response, words.removeDatasetFailed))
+      await loadDetail(selected.task_id)
+      setNotice({ ok: true, text: words.datasetRemoved(datasetId) })
+    } catch (error) {
+      setNotice({
+        ok: false,
+        text: error instanceof Error ? error.message : words.removeDatasetFailed,
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Stack gap="block">
       {notice !== null && (
@@ -866,6 +940,9 @@ export function AssistantContents({ locale }: { locale: Locale }) {
               report={selected.assessment_data}
               words={words}
               applicationType={selected.application_type}
+              busy={busy}
+              onAddDatasets={addDatasets}
+              onRemoveDataset={(datasetId) => { void removeDataset(datasetId) }}
             />
           )}
         </AdminAssistantTaskDetail>
@@ -874,21 +951,27 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   )
 }
 
-function AssistantReport({
+export function AssistantReport({
   report,
   words,
   applicationType,
+  busy,
+  onAddDatasets,
+  onRemoveDataset,
 }: {
   report: AssessmentData
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
   applicationType: string | undefined
+  busy: boolean
+  onAddDatasets: (ids: string[]) => Promise<boolean>
+  onRemoveDataset: (datasetId: string) => void
 }) {
   const sameEmail
     = report.researcher_info?.email !== undefined
       && report.researcher_info.email !== ""
       && report.researcher_info.email === report.submitter_info?.email
   return (
-    <Fold summary={words.assessment}>
+    <Fold summary={words.assessment} open>
       <Stack>
         {report.application_id !== undefined
           && report.application_id !== null && (
@@ -907,7 +990,7 @@ function AssistantReport({
             <p className="text-sm">{report.period_of_data_use_end}</p>
           </Section>
         )}
-        <div className="grid gap-4 lg:grid-cols-3">
+        <Stack gap="block">
           <PersonReport
             title={words.researcher}
             validation={{
@@ -919,7 +1002,9 @@ function AssistantReport({
           {sameEmail
             ? (
                 <Section title={words.submitter}>
-                  <p className="text-sm">{words.sameAsResearcher}</p>
+                  <PersonPanel>
+                    <p className="text-sm">{words.sameAsResearcher}</p>
+                  </PersonPanel>
                 </Section>
               )
             : (
@@ -945,7 +1030,7 @@ function AssistantReport({
             isInstitutionHead
             words={words}
           />
-        </div>
+        </Stack>
         <ConsistencyReport
           title={words.phoneConsistency}
           result={report.phone_consistency_result}
@@ -1086,6 +1171,10 @@ function AssistantReport({
           applicationMethod={report.application_analysis_method}
           paperMethods={report.paper_analysis_method_list}
           abstractIcd10={report.abstract_icd10_list}
+          canManage={applicationType !== "提供申請"}
+          busy={busy}
+          onAddDatasets={onAddDatasets}
+          onRemoveDataset={onRemoveDataset}
           words={words}
         />
       </Stack>
@@ -1093,7 +1182,7 @@ function AssistantReport({
   )
 }
 
-function PersonReport({
+export function PersonReport({
   title,
   validation,
   positionVerification,
@@ -1124,51 +1213,106 @@ function PersonReport({
   ].filter((warning): warning is string => warning !== null)
   return (
     <Section title={title}>
-      <Stack gap="tight">
-        <Pairs>
-          <KeyValue title={words.name}>
-            {joinFields(person.name_jp, person.name_en, words)}
-          </KeyValue>
-          <KeyValue title={words.position}>
-            {joinFields(person.title_jp, person.title_en, words)}
-          </KeyValue>
-          <KeyValue title={words.organization}>
-            {joinFields(person.organization_jp, person.organization_en, words)}
-          </KeyValue>
-          <KeyValue title={words.email}>
-            {display(person.email, words)}
-          </KeyValue>
-          <KeyValue title={words.phone}>
-            {display(person.phone, words)}
-          </KeyValue>
-          <KeyValue title={words.address}>
-            {display(person.address, words)}
-          </KeyValue>
-        </Pairs>
-        {warnings.length > 0 && (
-          <Note kind="warning">
-            {warnings.join(", ")}
-            :
-            {words.missing}
-          </Note>
-        )}
-        <VerificationDetails
-          verification={verification}
-          person={person}
-          words={words}
-        />
-        {positionVerification !== undefined
-          && positionVerification !== null && (
-          <VerificationRow
-            label={words.headPositionVerification}
-            result={positionVerification.position_verified}
-            message={positionVerification.position_message}
-            evidence={positionVerification.position_evidence_url}
-            words={words}
-          />
-        )}
-      </Stack>
+      <PersonPanel>
+        <Stack gap="tight">
+          <Pairs>
+            <KeyValue title={words.name}>
+              {joinFields(person.name_jp, person.name_en, words)}
+            </KeyValue>
+            <KeyValue title={words.position}>
+              {joinFields(person.title_jp, person.title_en, words)}
+            </KeyValue>
+          </Pairs>
+          {positionVerification !== undefined
+            && positionVerification !== null && (
+            <GroupedVerification>
+              <VerificationRow
+                label={words.headPositionVerification}
+                result={positionVerification.position_verified}
+                message={positionVerification.position_message}
+                evidence={positionVerification.position_evidence_url}
+                words={words}
+              />
+            </GroupedVerification>
+          )}
+          <Pairs>
+            <KeyValue title={words.organization}>
+              {joinFields(person.organization_jp, person.organization_en, words)}
+            </KeyValue>
+          </Pairs>
+          {verification !== undefined && (
+            <GroupedVerification>
+              <OrganizationVerification verification={verification} words={words} />
+            </GroupedVerification>
+          )}
+          <Pairs>
+            <KeyValue title={words.email}>
+              {display(person.email, words)}
+            </KeyValue>
+          </Pairs>
+          {verification !== undefined && (
+            <GroupedVerification>
+              <EmailVerification verification={verification} words={words} />
+            </GroupedVerification>
+          )}
+          <Pairs>
+            <KeyValue title={words.phone}>
+              {display(person.phone, words)}
+            </KeyValue>
+          </Pairs>
+          {verification?.phone_validation_result != null && (
+            <GroupedVerification>
+              <PhoneVerificationDetails
+                verification={verification}
+                person={person}
+                words={words}
+              />
+            </GroupedVerification>
+          )}
+          {!isInstitutionHead && (
+            <>
+              <Pairs>
+                <KeyValue title={words.address}>
+                  {display(person.address, words)}
+                </KeyValue>
+              </Pairs>
+              {verification?.address_validation_result != null && (
+                <GroupedVerification>
+                  <AddressVerificationDetails
+                    verification={verification}
+                    person={person}
+                    words={words}
+                  />
+                </GroupedVerification>
+              )}
+            </>
+          )}
+          {warnings.length > 0 && (
+            <Note kind="warning">
+              {warnings.join(", ")}
+              :
+              {words.missing}
+            </Note>
+          )}
+        </Stack>
+      </PersonPanel>
     </Section>
+  )
+}
+
+function PersonPanel({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-r border-brand border-l-4 bg-surface px-4 py-3 sm:px-5">
+      {children}
+    </div>
+  )
+}
+
+function GroupedVerification({ children }: { children: ReactNode }) {
+  return (
+    <div className="ml-4 border-line border-l pl-3">
+      {children}
+    </div>
   )
 }
 
@@ -1217,7 +1361,7 @@ function ConsistencyReport({
               return (
                 <tr key={`${comparison}-${index}`}>
                   <Td>{comparison}</Td>
-                  <Td>{outcome}</Td>
+                  <Td><JudgmentText value={outcome} /></Td>
                 </tr>
               )
             })}
@@ -1312,13 +1456,17 @@ function Papers({
   )
 }
 
-function Datasets({
+export function Datasets({
   datasets,
   requestedDatasets,
   policies,
   applicationMethod,
   paperMethods,
   abstractIcd10,
+  canManage,
+  busy,
+  onAddDatasets,
+  onRemoveDataset,
   words,
 }: {
   datasets: AssessmentData["dataset_analysis_list"]
@@ -1327,12 +1475,59 @@ function Datasets({
   applicationMethod: string | null | undefined
   paperMethods: string[] | null | undefined
   abstractIcd10: string[] | null | undefined
+  canManage: boolean
+  busy: boolean
+  onAddDatasets: (ids: string[]) => Promise<boolean>
+  onRemoveDataset: (datasetId: string) => void
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
+  const [newDatasetIds, setNewDatasetIds] = useState("")
   if (datasets === undefined) return null
+  const policyGroups
+    = policies !== undefined && policies.length > 0
+      ? policies
+      : datasets.some((dataset) => dataset.found_in_database !== false)
+        ? [{
+            dataset_ids: datasets
+              .filter((dataset) => dataset.found_in_database !== false)
+              .map((dataset) => dataset.id),
+            policy_text: "",
+          }]
+        : []
+  const add = async (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const ids = datasetIds(newDatasetIds)
+    if (ids.length === 0) return
+    if (await onAddDatasets(ids)) setNewDatasetIds("")
+  }
   return (
     <Section title={words.datasets}>
       <Stack>
+        {canManage && (
+          <form onSubmit={(event) => { void add(event) }} className="rounded border border-border p-4">
+            <label htmlFor="assistant-dataset-ids" className="mb-2 block font-semibold text-sm">
+              {words.addDatasets}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <input
+                id="assistant-dataset-ids"
+                value={newDatasetIds}
+                onChange={(event) => { setNewDatasetIds(event.target.value) }}
+                placeholder={words.datasetIdsPlaceholder}
+                disabled={busy}
+                className="min-w-64 flex-1 rounded border border-border px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={busy || datasetIds(newDatasetIds).length === 0}
+                className="cursor-pointer rounded border border-brand px-3 py-2 text-brand text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? words.addingDatasets : words.add}
+              </button>
+            </div>
+            <p className="mt-2 text-ink-muted text-xs">{words.datasetIdsHint}</p>
+          </form>
+        )}
         {datasets.length === 0
           ? (
               <Empty>{words.noDatasets}</Empty>
@@ -1348,10 +1543,21 @@ function Datasets({
                     words.researchIcd10,
                     words.paperIcd10,
                     words.analysis,
+                    ...(canManage ? [""] : []),
                   ]}
                 >
                   {datasets.map((dataset) => (
-                    <DatasetRow key={dataset.id} dataset={dataset} words={words} />
+                    <DatasetRow
+                      key={dataset.id}
+                      dataset={dataset}
+                      canManage={canManage}
+                      busy={busy}
+                      onRemove={() => {
+                        if (window.confirm(words.removeDatasetConfirm(dataset.id)))
+                          onRemoveDataset(dataset.id)
+                      }}
+                      words={words}
+                    />
                   ))}
                 </Table>
                 {datasets.map((dataset) => (
@@ -1371,17 +1577,15 @@ function Datasets({
                 ))}
               </>
             )}
-        {policies !== undefined && policies.length > 0 && (
+        {policyGroups.length > 0 && (
           <div>
             <h3 className="mb-2 font-semibold text-sm">{words.policies}</h3>
-            {policies.map((policy) => (
+            {policyGroups.map((policy) => (
               <Fold
-                key={policy.policy_text}
+                key={`${policy.dataset_ids.join(",")}-${policy.policy_text}`}
                 summary={policy.dataset_ids.join(", ")}
               >
-                <p className="whitespace-pre-wrap text-sm">
-                  {policy.policy_text}
-                </p>
+                <p className="whitespace-pre-wrap text-sm">{policy.policy_text}</p>
               </Fold>
             ))}
           </div>
@@ -1390,7 +1594,6 @@ function Datasets({
     </Section>
   )
 }
-
 function display(
   value: string | null | undefined,
   words: ReturnType<typeof messagesFor>["admin"]["assistant"],
@@ -1474,7 +1677,7 @@ function StatusText({
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   if (result === true)
-    return <span className="text-ink-muted">{words.verified}</span>
+    return <span className="text-green-700">{words.verified}</span>
   if (result === false)
     return <span className="text-danger">{words.unverified}</span>
   return <span className="text-warning">-</span>
@@ -1489,7 +1692,7 @@ function ChecklistStatus({
 }) {
   const className
     = status === "ok"
-      ? "text-ink-muted"
+      ? "text-green-700"
       : status === "warning"
         ? "text-warning"
         : "text-danger"
@@ -1521,6 +1724,14 @@ function ExternalLink({
   )
 }
 
+function domain(url: string): string {
+  try {
+    return new URL(url).hostname || url
+  } catch {
+    return url
+  }
+}
+
 function VerificationRow({
   label,
   result,
@@ -1535,7 +1746,7 @@ function VerificationRow({
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   return (
-    <div className="rounded border border-line p-2 text-sm">
+    <div className="rounded p-2 text-sm">
       <span className="font-semibold">
         {label}
         :
@@ -1546,7 +1757,7 @@ function VerificationRow({
         <span>
           {" "}
           —
-          {message}
+          <JudgmentText value={message} />
         </span>
       )}
       {evidence && (
@@ -1559,31 +1770,63 @@ function VerificationRow({
   )
 }
 
-function VerificationDetails({
+function JudgmentText({ value }: { value: string }) {
+  const className
+    = /不一致|一致(?:しない|しません|していない|していません)|未確認|確認(?:できない|できません)|NOT\s+OK|(?:^|[^A-Z])NG(?:$|[^A-Z])/iu.test(value)
+      ? "text-danger"
+      : /一致|確認済み|(?:^|[^A-Z])OK(?:$|[^A-Z])/iu.test(value)
+        ? "text-green-700"
+        : undefined
+  return <span className={className}>{value}</span>
+}
+
+function OrganizationVerification({
   verification,
-  person,
   words,
 }: {
   verification: VerificationResult | undefined
-  person: Person
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   if (verification === undefined) return null
-  const phone = verification.phone_validation_result
-  const address = verification.address_validation_result
   const hasLegalEntity = [
     verification.organization_legal_entity_type,
     verification.organization_legal_entity_message,
     ...(verification.organization_legal_entity_urls ?? []),
   ].some((value) => typeof value === "string" && value.trim() !== "")
-  const emailVerified
-    = verification.mx_domain_verified === undefined
-      || verification.organization_domain_verified === undefined
-      ? undefined
-      : verification.mx_domain_verified
-        && verification.organization_domain_verified
   return (
     <Stack gap="tight">
+      {hasLegalEntity && (
+        <div className="rounded p-2 text-sm">
+          <span className="font-semibold">
+            {words.legalEntity}
+            :
+            {" "}
+          </span>
+          {display(verification.organization_legal_entity_type, words)}
+          {verification.organization_legal_entity_message && (
+            <span>
+              {" "}
+              —
+              {verification.organization_legal_entity_message}
+            </span>
+          )}
+          {(verification.organization_legal_entity_urls?.length ?? 0) > 0 && (
+            <div>
+              <span className="font-semibold">
+                {words.referenceUrl}
+                :
+                {" "}
+              </span>
+              {(verification.organization_legal_entity_urls ?? []).map((url, index) => (
+                <span key={url}>
+                  {index > 0 && ", "}
+                  <ExternalLink url={url} label={domain(url)} words={words} />
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <VerificationRow
         label={words.profile}
         result={
@@ -1599,28 +1842,6 @@ function VerificationDetails({
         evidence={verification.researcher_profile_url}
         words={words}
       />
-      {hasLegalEntity && (
-        <div className="rounded border border-line p-2 text-sm">
-          <span className="font-semibold">
-            {words.legalEntity}
-            :
-            {" "}
-          </span>
-          {display(verification.organization_legal_entity_type, words)}
-          {verification.organization_legal_entity_message && (
-            <span>
-              {" "}
-              —
-              {verification.organization_legal_entity_message}
-            </span>
-          )}
-          {verification.organization_legal_entity_urls?.map((url) => (
-            <div key={url}>
-              <ExternalLink url={url} words={words} />
-            </div>
-          ))}
-        </div>
-      )}
       {verification.orcid_url && (
         <div className="text-sm">
           <span className="font-semibold">
@@ -1631,6 +1852,26 @@ function VerificationDetails({
           <ExternalLink url={verification.orcid_url} words={words} />
         </div>
       )}
+    </Stack>
+  )
+}
+
+function EmailVerification({
+  verification,
+  words,
+}: {
+  verification: VerificationResult | undefined
+  words: ReturnType<typeof messagesFor>["admin"]["assistant"]
+}) {
+  if (verification === undefined) return null
+  const emailVerified
+    = verification.mx_domain_verified === undefined
+      || verification.organization_domain_verified === undefined
+      ? undefined
+      : verification.mx_domain_verified
+        && verification.organization_domain_verified
+  return (
+    <Stack gap="tight">
       <VerificationRow
         label={words.emailVerification}
         result={emailVerified}
@@ -1659,65 +1900,101 @@ function VerificationDetails({
         evidence={verification.researcher_email_evidence_url}
         words={words}
       />
-      {phone !== undefined && phone !== null && (
-        <div className="rounded border border-line p-2 text-sm">
-          <p className="font-semibold">{words.phoneVerification}</p>
-          <Pairs>
-            <KeyValue title={words.normalizedPhone}>
-              {display(phone.corrected_phone_number ?? person.phone, words)}
-            </KeyValue>
-            <KeyValue title={words.countryCode}>
-              <StatusText
-                result={phone.country_code_matched_with_address}
-                words={words}
-              />
-              {phone.country_code_message && ` — ${phone.country_code_message}`}
-            </KeyValue>
-            <KeyValue title={words.phoneType}>
-              {display(phone.judge_about_cell_phone, words)}
-            </KeyValue>
-            <KeyValue title={words.phoneRelation}>
-              <StatusText
-                result={phone.related_to_researcher_or_organization}
-                words={words}
-              />
-              {phone.researcher_phone_message
-                && ` — ${joinText(
-                  phone.researcher_phone_message,
-                  phone.researcher_phone_last_updated_year,
-                )}`}
-              {phone.researcher_phone_url && (
-                <>
-                  {" "}
-                  <ExternalLink
-                    url={phone.researcher_phone_url}
-                    words={words}
-                  />
-                </>
-              )}
-            </KeyValue>
-          </Pairs>
-        </div>
-      )}
-      {address !== undefined && address !== null && (
-        <div className="rounded border border-line p-2 text-sm">
-          <p className="font-semibold">{words.addressVerification}</p>
-          <Pairs>
-            <KeyValue title={words.formattedAddress}>
-              {display(address.formatted_address ?? person.address, words)}
-            </KeyValue>
-            <KeyValue title={words.result}>
-              <StatusText result={address.address_exists} words={words} />
-              {address.organization_match && ` — ${address.organization_match}`}
-              {address.message && ` — ${address.message}`}
-            </KeyValue>
-            <KeyValue title={words.maps}>
-              <MapLinks links={address.google_map_urls} words={words} />
-            </KeyValue>
-          </Pairs>
-        </div>
-      )}
     </Stack>
+  )
+}
+
+function PhoneVerificationDetails({
+  verification,
+  person,
+  words,
+}: {
+  verification: VerificationResult | undefined
+  person: Person
+  words: ReturnType<typeof messagesFor>["admin"]["assistant"]
+}) {
+  const phone = verification?.phone_validation_result
+  if (phone === undefined || phone === null) return null
+  return (
+    <div className="rounded p-2 text-sm">
+      <p className="font-semibold">{words.phoneVerification}</p>
+      <Pairs>
+        {phone.corrected_phone_number
+          && phone.corrected_phone_number !== person.phone && (
+          <KeyValue title={words.normalizedPhone}>
+            {phone.corrected_phone_number}
+          </KeyValue>
+        )}
+        <KeyValue title={words.countryCode}>
+          <StatusText
+            result={phone.country_code_matched_with_address}
+            words={words}
+          />
+          {phone.country_code_message && ` — ${phone.country_code_message}`}
+        </KeyValue>
+        <KeyValue title={words.phoneType}>
+          {display(phone.judge_about_cell_phone, words)}
+        </KeyValue>
+        <KeyValue title={words.phoneRelation}>
+          <StatusText
+            result={phone.related_to_researcher_or_organization}
+            words={words}
+          />
+          {phone.researcher_phone_message
+            && ` — ${joinText(
+              phone.researcher_phone_message,
+              phone.researcher_phone_last_updated_year,
+            )}`}
+          {phone.researcher_phone_url && (
+            <>
+              {" "}
+              <ExternalLink
+                url={phone.researcher_phone_url}
+                words={words}
+              />
+            </>
+          )}
+        </KeyValue>
+      </Pairs>
+    </div>
+  )
+}
+
+function AddressVerificationDetails({
+  verification,
+  person,
+  words,
+}: {
+  verification: VerificationResult | undefined
+  person: Person
+  words: ReturnType<typeof messagesFor>["admin"]["assistant"]
+}) {
+  const address = verification?.address_validation_result
+  if (address === undefined || address === null) return null
+  return (
+    <div className="rounded p-2 text-sm">
+      <p className="font-semibold">{words.addressVerification}</p>
+      <Pairs>
+        <KeyValue title={words.formattedAddress}>
+          {display(address.formatted_address ?? person.address, words)}
+        </KeyValue>
+        <KeyValue title={words.result}>
+          <StatusText result={address.address_exists} words={words} />
+          {address.organization_match && (
+            <>
+              {" "}
+              —
+              {" "}
+              <JudgmentText value={address.organization_match} />
+            </>
+          )}
+          {address.message && ` — ${address.message}`}
+        </KeyValue>
+        <KeyValue title={words.maps}>
+          <MapLinks links={address.google_map_urls} words={words} />
+        </KeyValue>
+      </Pairs>
+    </div>
   )
 }
 
@@ -1831,20 +2108,31 @@ function PlanNotes({
   )
 }
 
-function Abstract({
+export function Abstract({
   report,
   words,
 }: {
   report: AssessmentData
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
-  const pairs = report.abstract_sentence_pairs?.filter(
-    (pair) =>
-      [pair.source_sentence, pair.translated_sentence].some(
-        (sentence) => sentence?.trim() !== "",
-      ),
-  )
-  const translation = report.abstract_translation?.translated_abstract
+  const sentencePairs = report.abstract_sentence_pairs
+  const pairs = sentencePairs !== undefined
+    && sentencePairs.length > 0
+    && sentencePairs.every(
+      (pair) =>
+        Boolean(pair.source_sentence?.trim())
+        && Boolean(pair.translated_sentence?.trim()),
+    )
+    ? sentencePairs.map((pair, index) => {
+        const pairId = pair.pair_id?.trim()
+        return {
+          ...pair,
+          comparisonId: `${pairId === undefined || pairId === "" ? "abstract-sentence" : pairId}-${index}`,
+        }
+      })
+    : undefined
+  const translation = report.abstract_translation?.translated_abstract?.trim()
+  const [activePairId, setActivePairId] = useState<string>()
   return (
     <Section title={words.abstract}>
       <Stack gap="tight">
@@ -1853,12 +2141,22 @@ function Abstract({
               <div className="grid gap-4 lg:grid-cols-2">
                 <AbstractPanel
                   title={words.translation}
-                  sentences={pairs.map((pair) => pair.translated_sentence)}
+                  sentences={pairs.map((pair) => ({
+                    id: pair.comparisonId,
+                    text: pair.translated_sentence,
+                  }))}
+                  activePairId={activePairId}
+                  setActivePairId={setActivePairId}
                   words={words}
                 />
                 <AbstractPanel
                   title={words.original}
-                  sentences={pairs.map((pair) => pair.source_sentence)}
+                  sentences={pairs.map((pair) => ({
+                    id: pair.comparisonId,
+                    text: pair.source_sentence,
+                  }))}
+                  activePairId={activePairId}
+                  setActivePairId={setActivePairId}
                   words={words}
                 />
               </div>
@@ -1897,20 +2195,37 @@ function AbstractPanel({
   title,
   sentences,
   text,
+  activePairId,
+  setActivePairId,
   words,
 }: {
   title: string
-  sentences?: (string | null | undefined)[]
+  sentences?: { id: string, text?: string | null }[]
   text?: string | null
+  activePairId?: string
+  setActivePairId?: (id: string | undefined) => void
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   return (
     <div className="rounded border border-line bg-surface p-3">
       <h3 className="mb-2 font-semibold text-sm">{title}</h3>
       <p className="whitespace-pre-wrap text-sm">
-        {sentences?.map((sentence, index) => (
-          <span key={index} className="mr-1">
-            {display(sentence, words)}
+        {sentences?.map((sentence) => (
+          <span
+            key={sentence.id}
+            data-abstract-pair-id={sentence.id}
+            tabIndex={0}
+            className={`mr-1 rounded px-1 outline-none transition-colors ${
+              activePairId === sentence.id
+                ? "bg-blue-100 text-ink"
+                : "focus-visible:ring-2 focus-visible:ring-blue-500"
+            }`}
+            onMouseEnter={() => setActivePairId?.(sentence.id)}
+            onMouseLeave={() => setActivePairId?.(undefined)}
+            onFocus={() => setActivePairId?.(sentence.id)}
+            onBlur={() => setActivePairId?.(undefined)}
+          >
+            {display(sentence.text, words)}
           </span>
         )) ?? display(text, words)}
       </p>
@@ -1920,9 +2235,15 @@ function AbstractPanel({
 
 function DatasetRow({
   dataset,
+  canManage,
+  busy,
+  onRemove,
   words,
 }: {
   dataset: DatasetAnalysis
+  canManage: boolean
+  busy: boolean
+  onRemove: () => void
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   if (dataset.found_in_database === false) {
@@ -1930,6 +2251,13 @@ function DatasetRow({
       <tr>
         <Td>{dataset.id}</Td>
         <Td colSpan={6}>{words.notRegistered}</Td>
+        {canManage && (
+          <Td>
+            <button type="button" disabled={busy} onClick={onRemove} className="cursor-pointer text-danger text-xs underline">
+              {words.removeDataset}
+            </button>
+          </Td>
+        )}
       </tr>
     )
   }
@@ -1957,6 +2285,13 @@ function DatasetRow({
       <Td>{joined(dataset.purpose_similarity_icd10, " / ")}</Td>
       <Td>{joined(dataset.paper_similarity_icd10, " / ")}</Td>
       <Td>{display(dataset.analysis_method_similarity, words)}</Td>
+      {canManage && (
+        <Td>
+          <button type="button" disabled={busy} onClick={onRemove} className="cursor-pointer text-danger text-xs underline">
+            {words.removeDataset}
+          </button>
+        </Td>
+      )}
     </tr>
   )
 }

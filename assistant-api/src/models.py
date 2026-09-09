@@ -424,6 +424,11 @@ class ApplicationData(BaseModel):
 class ApplicationVerificationData(ApplicationData):
     application_type: str = Field(..., description="Type of application (e.g., 利用申請, 提供申請)")
 
+    abstract_icd10_list: list[str] = Field(
+        ...,
+        description="ICD-10 codes suggested from the research abstract",
+    )
+
     research_abstract_translation: ResearchAbstractTranslation | None = Field(
         None,
         description="Japanese translation of the research abstract with sentence-level alignment when the original abstract is in English",

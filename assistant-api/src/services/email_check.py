@@ -30,7 +30,11 @@ BLACKLISTED_DOMAINS = [
 
 
 async def validate_email(
-    researcher_info: PersonalInfo, exclude_researcher_name_verification: bool, logger=None, provided_country_code=None
+    researcher_info: PersonalInfo,
+    exclude_researcher_name_verification: bool,
+    logger=None,
+    provided_country_code=None,
+    validate_address: bool = True,
 ) -> ResearcherVerificationResult:
     """
     研究者についてメールアドレスを含めた検証を行う。
@@ -39,6 +43,7 @@ async def validate_email(
         researcher_info (PersonalInfo): 研究者の情報を含むPydanticモデル
         exclude_researcher_name_verification: 研究者名に関する検証を省略する
         logger: ログ記録用のロガーオブジェクト (省略可能)
+        validate_address: 住所が申請要件に含まれる場合に住所検証を行う
 
     Returns:
         ResearcherVerificationResult: 検証結果を含むPydanticモデル
@@ -79,7 +84,7 @@ async def validate_email(
 
     # 住所検証の実行（住所が提供されている場合のみ）
     address_validation_result = None
-    if researcher_info.address:
+    if validate_address and researcher_info.address:
         try:
             validator = AddressValidator(logger)
 

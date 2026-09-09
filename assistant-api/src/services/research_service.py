@@ -20,10 +20,10 @@ retry_options = ExponentialRetry(
 )
 
 
-async def search_paper_by_title(title: str, task_id: str = None) -> list[dict[str, Any]]:
+async def search_paper_by_title(title: str, task_id: str | None = None) -> dict[str, Any] | None:
     task_logger = get_task_logger(task_id)
     search_result = await get_search_response(title)
-    if not search_result:
+    if search_result is None:
         task_logger.error(f"Search result is None for title: {title}")
         return None
     if not isinstance(search_result, list):
@@ -33,12 +33,20 @@ async def search_paper_by_title(title: str, task_id: str = None) -> list[dict[st
         task_logger.error(f"No search results found for title: {title}")
         return None
     first_result = search_result[0]
+    if not isinstance(first_result, dict):
+        task_logger.error(f"First search result is not an object: {first_result}")
+        return None
+    source_url = first_result.get("link")
+    if not isinstance(source_url, str) or not source_url.strip():
+        task_logger.error(f"First search result has no valid link: {first_result}")
+        return None
+    source_url = source_url.strip()
     task_logger.info(f"First search result: {first_result}")
 
-    html = await fetch_with_playwright(first_result["link"], True, task_id)
+    html = await fetch_with_playwright(source_url, True, task_id)
 
     if not html:
-        task_logger.error(f"Failed to fetch HTML content for URL: {first_result['link']}")
+        task_logger.error(f"Failed to fetch HTML content for URL: {source_url}")
         return None
 
     extraction_result = await extract_structured_output(
@@ -52,7 +60,7 @@ async def search_paper_by_title(title: str, task_id: str = None) -> list[dict[st
         "title": extraction_result.title,
         "authors": extraction_result.authors,
         "abstract": extraction_result.abstract,
-        "url": extraction_result.url,
+        "url": source_url,
     }
 
 
