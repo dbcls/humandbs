@@ -5,14 +5,6 @@ import pytest
 from src.services import email_check
 
 
-@pytest.mark.parametrize(
-    ("search_results", "expected_message"),
-    [
-        (None, "検索結果の取得に失敗しました"),
-        ([], "example.edu を含むWebページが見つかりませんでした。検索結果: "),
-    ],
-)
-
 @pytest.mark.parametrize("search_results", [None, []])
 async def test_search_email_evidence_handles_no_results(monkeypatch, search_results) -> None:
     search = AsyncMock(return_value=search_results)
