@@ -249,3 +249,11 @@ export function termsPath(): string {
 export function adminAssistantPath(): string {
   return `${adminPath()}/assistant`
 }
+
+/**
+ * The assistant service is accessed through the portal's authorized proxy,
+ * never through its private service address.
+ */
+export function assistantApiPath(path: string): string {
+  return `${adminAssistantPath()}/api/${path}`
+}
