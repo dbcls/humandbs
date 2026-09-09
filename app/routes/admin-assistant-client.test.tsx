@@ -315,6 +315,30 @@ describe("アシスタントレポートのレイアウト", () => {
     expect(html).toMatch(/データセット ID: JGAD000002.*データセット 2 の制限/)
     expect(html).not.toContain("href=\"/policy-companylimitation\"")
   })
+
+  it("解析手法と ICD10 の詳細をレポートと同じ比較順で表示する", () => {
+    const html = renderReport({
+      application_analysis_method: "申請手法",
+      paper_analysis_method_list: ["論文手法"],
+      abstract_icd10_list: ["A01"],
+      papers: [{ title: "論文", icd10_code_list: ["B02"] }],
+      dataset_analysis_list: [{
+        id: "JGAD000001",
+        found_in_database: true,
+        analysis_method_list: ["データセット手法"],
+        analysis_method_similarity: "一致",
+        analysis_method_similarity_reason: "理由",
+        paper_similarity: "不一致",
+        paper_similarity_reason: "論文の理由",
+        icd10_code_list: ["C03"],
+        purpose_similarity_icd10: ["一致"],
+        paper_similarity_icd10: ["不一致"],
+      }],
+    })
+
+    expect(html).toMatch(/解析手法.*データセット.*データセット手法.*申請された研究.*申請手法.*判定.*一致 理由.*発表済み論文.*論文手法.*判定.*不一致 論文の理由/)
+    expect(html).toMatch(/ICD10.*データセット.*C03.*申請された研究.*A01.*判定.*一致.*発表済み論文.*B02.*判定.*不一致/)
+  })
 })
 
 function renderDatasets(canManage: boolean): string {
@@ -326,6 +350,7 @@ function renderDatasets(canManage: boolean): string {
       applicationMethod=""
       paperMethods={[]}
       abstractIcd10={[]}
+      paperIcd10={[]}
       canManage={canManage}
       busy={false}
       onAddDatasets={() => Promise.resolve(true)}

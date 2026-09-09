@@ -1171,6 +1171,7 @@ export function AssistantReport({
           applicationMethod={report.application_analysis_method}
           paperMethods={report.paper_analysis_method_list}
           abstractIcd10={report.abstract_icd10_list}
+          paperIcd10={report.papers?.flatMap((paper) => paper.icd10_code_list ?? [])}
           canManage={applicationType !== "提供申請"}
           busy={busy}
           onAddDatasets={onAddDatasets}
@@ -1463,6 +1464,7 @@ export function Datasets({
   applicationMethod,
   paperMethods,
   abstractIcd10,
+  paperIcd10,
   canManage,
   busy,
   onAddDatasets,
@@ -1475,6 +1477,7 @@ export function Datasets({
   applicationMethod: string | null | undefined
   paperMethods: string[] | null | undefined
   abstractIcd10: string[] | null | undefined
+  paperIcd10: string[] | null | undefined
   canManage: boolean
   busy: boolean
   onAddDatasets: (ids: string[]) => Promise<boolean>
@@ -1572,6 +1575,7 @@ export function Datasets({
                     applicationMethod={applicationMethod}
                     paperMethods={paperMethods}
                     abstractIcd10={abstractIcd10}
+                    paperIcd10={paperIcd10}
                     policyTexts={policyGroups
                       .filter((policy) => policy.dataset_ids.includes(dataset.id))
                       .map((policy) => policy.policy_text)}
@@ -2331,6 +2335,7 @@ function DatasetDetails({
   applicationMethod,
   paperMethods,
   abstractIcd10,
+  paperIcd10,
   policyTexts,
   words,
 }: {
@@ -2339,6 +2344,7 @@ function DatasetDetails({
   applicationMethod: string | null | undefined
   paperMethods: string[] | null | undefined
   abstractIcd10: string[] | null | undefined
+  paperIcd10: string[] | null | undefined
   policyTexts: string[]
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
@@ -2348,31 +2354,27 @@ function DatasetDetails({
         <KeyValue title={words.requestedPurpose}>
           {display(requestedPurpose, words)}
         </KeyValue>
-        <KeyValue title={words.datasetMethod}>
-          {joined(dataset.analysis_method_list, ", ")}
-        </KeyValue>
-        <KeyValue title={words.applicationMethod}>
-          {display(applicationMethod, words)}
-        </KeyValue>
-        <KeyValue title={words.papersMethod}>
-          {joined(paperMethods, ", ")}
-        </KeyValue>
         <KeyValue title={words.analysis}>
-          {display(dataset.analysis_method_similarity, words)}
-          {dataset.analysis_method_similarity_reason
-            && ` — ${dataset.analysis_method_similarity_reason}`}
+          <DatasetComparison
+            datasetValue={joinedOrMissing(dataset.analysis_method_list, words)}
+            applicationValue={display(applicationMethod, words)}
+            applicationResult={display(dataset.analysis_method_similarity, words)}
+            applicationReason={dataset.analysis_method_similarity_reason}
+            paperValue={joinedOrMissing(paperMethods, words)}
+            paperResult={display(dataset.paper_similarity, words)}
+            paperReason={dataset.paper_similarity_reason}
+            words={words}
+          />
         </KeyValue>
-        <KeyValue title={words.researchIcd10}>
-          {joined(dataset.purpose_similarity_icd10, " / ")}
-          {" ("}
-          {joined(abstractIcd10, ", ")}
-          {" )"}
-        </KeyValue>
-        <KeyValue title={words.paperIcd10}>
-          {joined(dataset.paper_similarity_icd10, " / ")}
-          {dataset.paper_similarity && ` — ${dataset.paper_similarity}`}
-          {dataset.paper_similarity_reason
-            && `: ${dataset.paper_similarity_reason}`}
+        <KeyValue title="ICD10">
+          <DatasetComparison
+            datasetValue={joinedOrMissing(dataset.icd10_code_list, words)}
+            applicationValue={joinedOrMissing(abstractIcd10, words)}
+            applicationResult={joinedOrMissing(dataset.purpose_similarity_icd10, words)}
+            paperValue={joinedOrMissing(paperIcd10, words)}
+            paperResult={joinedOrMissing(dataset.paper_similarity_icd10, words)}
+            words={words}
+          />
         </KeyValue>
         <KeyValue title={words.policies}>
           {policyTexts.length === 0
@@ -2386,4 +2388,68 @@ function DatasetDetails({
       </Pairs>
     </Fold>
   )
+}
+
+function DatasetComparison({
+  datasetValue,
+  applicationValue,
+  applicationResult,
+  applicationReason,
+  paperValue,
+  paperResult,
+  paperReason,
+  words,
+}: {
+  datasetValue: string
+  applicationValue: string
+  applicationResult: string
+  applicationReason?: string | null
+  paperValue: string
+  paperResult: string
+  paperReason?: string | null
+  words: ReturnType<typeof messagesFor>["admin"]["assistant"]
+}) {
+  const withReason = (result: string, reason?: string | null) =>
+    reason?.trim() ? `${result} ${reason.trim()}` : result
+  return (
+    <div className="space-y-3">
+      <p>
+        <strong>{words.datasetMethod}</strong>
+        ：
+        {datasetValue}
+      </p>
+      <div>
+        <p>
+          <strong>{words.applicationMethod}</strong>
+          ：
+          {applicationValue}
+        </p>
+        <p>
+          <strong>{words.judgment}</strong>
+          ：
+          {withReason(applicationResult, applicationReason)}
+        </p>
+      </div>
+      <div>
+        <p>
+          <strong>{words.papersMethod}</strong>
+          ：
+          {paperValue}
+        </p>
+        <p>
+          <strong>{words.judgment}</strong>
+          ：
+          {withReason(paperResult, paperReason)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function joinedOrMissing(
+  values: string[] | null | undefined,
+  words: ReturnType<typeof messagesFor>["admin"]["assistant"],
+): string {
+  const value = values?.filter((item) => item.trim() !== "").join(", ")
+  return value === undefined || value === "" ? words.missing : value
 }
