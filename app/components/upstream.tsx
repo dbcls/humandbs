@@ -1,7 +1,7 @@
 import { Form, Link } from "react-router"
 
 import type { UpstreamChoiceView } from "~/admin/templates.server"
-import { adminCatalogPath, adminResearchPath } from "~/admin/urls"
+import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -15,7 +15,7 @@ import { Empty } from "./page"
  *
  * They show the same thing in the same order — what is coming, what is not, and
  * why — because the two differ only in whether a research is made along with the
- * datasets (docs/editing.md の「上流からの下書き」).
+ * datasets (docs/editing.md の「下書きを外から作る」).
  */
 
 /**
@@ -32,7 +32,12 @@ export function UpstreamSearch({ locale, action, keyword }: {
   return (
     <Form method="get" action={action} className="flex flex-wrap items-end gap-3">
       <Field type="search" label={t.keyword} name="q" value={keyword} width="w-96" />
-      <Submit variant="primary">{t.find}</Submit>
+      {/*
+        A tool rather than the errand: this screen is here to take a draft from
+        upstream, and the filled face belongs to the one control that does it
+        (`base.tsx` の `ButtonVariant`).
+      */}
+      <Submit>{t.find}</Submit>
     </Form>
   )
 }
@@ -80,8 +85,8 @@ export function UpstreamChoice({ locale, choice, submit }: {
           : (
               <ul className="flex flex-col gap-2 text-sm">
                 {choice.datasets.map((entry) => (
-                  <li key={entry.accession} className="flex flex-wrap items-baseline gap-2">
-                    <label className="flex items-baseline gap-2">
+                  <li key={entry.accession} className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         name="accession"
@@ -130,7 +135,7 @@ export function UpstreamChoice({ locale, choice, submit }: {
             <p className="text-ink-muted text-xs">
               {t.droppedHint}
               {" "}
-              <Link to={href(locale, adminCatalogPath())}>{t.openCatalog}</Link>
+              <Link to={href(locale, adminExperimentFieldsPath())}>{t.openCatalog}</Link>
             </p>
           </Stack>
         </Stack>

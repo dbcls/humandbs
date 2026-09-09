@@ -28,6 +28,9 @@ describe("searchTextOf", () => {
         if (word === "") continue
         expect(seen.some((s) => s.split(" ").includes(word))).toBe(true)
       }
-    }))
+    // **More runs than the default.** The counterexample that found the
+    // newlines an empty rich text left behind stood 1,591 cases in, which the
+    // hundred a property is given by default does not reach.
+    }), { numRuns: 5000 })
   })
 })

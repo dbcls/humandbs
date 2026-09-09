@@ -29,6 +29,9 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["app/**/*.db.test.ts", "migration/**/*.db.test.ts"],
+          // Points the connections at the test database and refuses to go on if
+          // they landed anywhere else (docs/testing.md).
+          setupFiles: ["./vitest.db-setup.ts"],
           // These share one database and each empties it before every case, so
           // two files running at once would clear each other's rows.
           fileParallelism: false,

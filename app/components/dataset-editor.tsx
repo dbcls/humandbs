@@ -31,16 +31,18 @@
  * itself.
  */
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import {
   datasetContentInput,
+  emptyDiseaseRow,
   emptyNumberRow,
   emptyValueInput,
   UneditableValueKind,
   type DatasetContentInput,
+  type DiseaseRow,
   type ExperimentInput,
   type NumberRow,
   type ValueInput,
@@ -51,34 +53,34 @@ import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftPath,
   adminDraftReviewPath,
+  datasetPagePath,
   draftCommentsPath,
   draftPresencePath,
   draftUndoPath,
   termsPath,
 } from "~/admin/urls"
 import {
-  Badge,
   Button,
   Fold,
   IconButton,
   Note,
-  SectionTabs,
   Stack,
-  TabPanel,
 } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Page } from "~/components/page"
+import { AnnotationLayer, Empty, Page } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href } from "~/public/urls"
+import { href, researchPath } from "~/public/urls"
 import { threadsByPath } from "~/review/comments"
+import type { DrawnDataset } from "~/review/preview.server"
 
+import { PaneSpot, usePanes } from "./admin"
 import { DraftBar, useDraftEditing, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
+import { DatasetBody } from "./dataset"
 import { FileSelection } from "./files"
 import {
   AddElement,
@@ -105,9 +107,23 @@ import {
  */
 const PICKER_RESULTS = 20
 
+/** How long the keys have to be still before the pane beside the form is redrawn. */
+const DRAW_AFTER = 300
+
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
+
+/**
+ * The section a field is written in, by the head of its path — which is also
+ * the id that section carries, so one lookup finds both.
+ */
+const SECTION_OF: Record<string, string> = {
+  releaseDate: BASICS,
+  values: BASICS,
+  fileSelection: FILES,
+  experiments: EXPERIMENTS,
+}
 
 export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const locale = view.locale
@@ -150,24 +166,72 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       return entry === undefined ? null : datasetContentInput(entry.content)
     },
     undoPath: (undoId) => draftUndoPath(researchId, draftId, undoId),
-    extraFor: (path) => <FieldReview review={review} at={path} />,
   })
 
-  const [tab, setTab] = useState(BASICS)
+  /**
+   * The pane catching up with what is being typed, and where the caret is.
+   *
+   * The research editor works the same way and for the same reasons
+   * (`editor.tsx`): a pause rather than a keystroke, and a place rather than a
+   * box — the ja and en sides of one value are one place.
+   */
+  const drawing = useFetcher<DrawnDataset | null>()
+  const submit = drawing.submit
+  const drawAt = href(locale, datasetPagePath(researchId, draftId, view.datasetId, locale))
+  const drawBody = JSON.stringify({ revision: view.revision, content: editing.value })
+  useEffect(() => {
+    const waiting = setTimeout(() => {
+      void submit(drawBody, { method: "post", action: drawAt, encType: "application/json" })
+    }, DRAW_AFTER)
+    return () => {
+      clearTimeout(waiting)
+    }
+  }, [drawBody, drawAt, submit])
+  const page = drawing.data ?? view.page
+
+  const [at, setAt] = useState<string | null>(null)
+  function onFormFocus(event: React.FocusEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const found = target.closest("[data-at]")?.getAttribute("data-at")
+    if (found !== undefined && found !== null) setAt(found)
+  }
+
+  /**
+   * Going to the place a band names.
+   *
+   * **Scrolling is not enough on its own.** An anchor moves the page and leaves
+   * the keyboard where it was, so what is focused here is the first thing in
+   * the section that will take it.
+   */
+  function goTo(path: string): void {
+    const wanted = SECTION_OF[path.split(".")[0] ?? path]
+    if (wanted === undefined) return
+    const section = document.getElementById(wanted)
+    if (section === null) return
+    section.scrollIntoView()
+    // The first box that will take the caret, rather than the first in the
+    // markup: the review layer hangs its own hidden boxes beside every field.
+    for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
+      box.focus({ preventScroll: true })
+      if (document.activeElement === box) return
+    }
+  }
+
+  /** The same move, for a band that draws its own anchors. */
+  function onBandJump(event: React.MouseEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const path = target.closest("a[href^='#']")?.getAttribute("href")?.slice(1)
+    if (path === undefined) return
+    event.preventDefault()
+    goTo(path)
+  }
+
   const input = editing.value
   const marked = markedPaths(editing)
   const markedUnder = (prefix: string) =>
     marked.filter((path) => path === prefix || path.startsWith(`${prefix}.`)).length
-
-  function tabMark(count: number): ReactNode {
-    if (count === 0) return undefined
-    return (
-      <Badge tone="accent">
-        <span aria-hidden="true">{count}</span>
-        <span className="sr-only">{t.markedItems(count)}</span>
-      </Badge>
-    )
-  }
 
   /** What is worth knowing about an experiment while it is folded away. */
   function experimentNote(experiment: ExperimentInput): string {
@@ -175,34 +239,196 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     return markedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changed}` : count
   }
 
-  const tabs = [
-    {
-      id: BASICS,
-      label: t.basics,
-      mark: tabMark(markedUnder("releaseDate") + markedUnder("values")),
-    },
-    // Only a dataset the portal issued the id for. An archive's dataset is
-    // distributed by the archive, so there is nothing here to choose from and a
-    // selection on one is refused on save.
-    ...(view.portalIssued
-      ? [{ id: FILES, label: t.files, mark: tabMark(markedUnder("fileSelection")) }]
-      : []),
-    {
-      id: EXPERIMENTS,
-      label: t.experiments,
-      mark: tabMark(markedUnder("experiments")),
-    },
-  ]
+  const formBody = (
+    <div onFocusCapture={onFormFocus}>
+      <Stack>
+        {view.review.changed.length > 0 && (
+          <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
+        )}
+        {editing.conflict !== null && (
+          <div onClick={onBandJump}>
+            <ConflictBand locale={locale} changed={editing.conflict.changed} />
+          </div>
+        )}
+        {editing.upstream !== null
+          && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
+          <UpstreamBand
+            locale={locale}
+            only={editing.upstream.only}
+            both={editing.upstream.both}
+            onTakeAll={editing.takeUpstream}
+          />
+        )}
+        {editing.problems.length > 0 && (
+          <ProblemBand locale={locale} problems={editing.problems} />
+        )}
+        {editing.undoMissing && <Note kind="plain">{t.undoWithoutEntry}</Note>}
+
+        <Section id={BASICS} title={t.basics}>
+          <Stack gap="tight">
+            <FieldHead
+              label={t.releaseDate}
+              marks={editing.marksFor("releaseDate")}
+              locale={locale}
+            />
+            <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
+            <div>
+              <input
+                type="date"
+                className={`${CONTROL} text-sm`}
+                value={input.releaseDate}
+                onChange={(event) => {
+                  editing.edit({ ...input, releaseDate: event.target.value })
+                }}
+              />
+            </div>
+          </Stack>
+          <Values
+            locale={locale}
+            catalog={view.catalog}
+            terms={view.terms}
+            scope="dataset"
+            path="values"
+            values={input.values}
+            marksFor={editing.marksFor}
+            onChange={(values) => { editing.edit({ ...input, values }) }}
+          />
+        </Section>
+
+        {view.portalIssued && (
+          <Section id={FILES} title={t.files}>
+            <FieldHead
+              label={t.files}
+              marks={editing.marksFor("fileSelection")}
+              locale={locale}
+            />
+            <FileSelection
+              locale={locale}
+              listing={view.box}
+              selected={input.fileSelection}
+              onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
+            />
+          </Section>
+        )}
+
+        <Section id={EXPERIMENTS} title={t.experiments}>
+          <FieldHead
+            label={t.experiments}
+            marks={editing.marksFor("experiments")}
+            locale={locale}
+          />
+          {input.experiments.map((experiment, at) => (
+            <ElementCard
+              key={experiment.id}
+              index={at}
+              count={input.experiments.length}
+              locale={locale}
+              onMove={(by) => {
+                editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
+              }}
+              onRemove={() => {
+                editing.edit({
+                  ...input,
+                  experiments: input.experiments.filter((row) => row.id !== experiment.id),
+                })
+              }}
+            >
+              <Fold
+                summary={experiment.label.text === ""
+                  ? t.unnamedExperiment
+                  : experiment.label.text}
+                note={experimentNote(experiment)}
+                open={experiment.label.text === ""
+                  || markedUnder(`experiments.${experiment.id}`) > 0}
+              >
+                <Experiment
+                  locale={locale}
+                  catalog={view.catalog}
+                  terms={view.terms}
+                  experiment={experiment}
+                  marksFor={editing.marksFor}
+                  onChange={(next) => {
+                    editing.edit({
+                      ...input,
+                      experiments: replacing(input.experiments, experiment.id, next),
+                    })
+                  }}
+                />
+              </Fold>
+            </ElementCard>
+          ))}
+          <AddElement
+            label={t.addExperiment}
+            onClick={() => {
+              editing.edit({
+                ...input,
+                experiments: [
+                  ...input.experiments,
+                  { id: newId(), label: emptySlot(), values: [] },
+                ],
+              })
+            }}
+          />
+        </Section>
+      </Stack>
+    </div>
+  )
+  const panes = usePanes({
+    locale,
+    remember: `${view.draftId}:${view.datasetId}`,
+    contents: [
+      { id: "form", label: editor.paneForm, body: formBody },
+      {
+        id: "page",
+        label: editor.panePage,
+        body: (
+          <AnnotationLayer
+            annotate={(anchor) => (
+              <>
+                {/*
+                  The difference from what is published and the comments belong
+                  to the place a reader looks at; what a save refused and what
+                  somebody else moved belong to the hands typing, and stay in
+                  the form.
+                */}
+                <FieldReview review={review} at={anchor} />
+                <PaneSpot
+                  here={anchor === at}
+                  label={editor.goToField}
+                  onGo={() => { goTo(anchor) }}
+                />
+              </>
+            )}
+          >
+            <DatasetBody
+              view={page.view}
+              locale={locale}
+              // The way a reader goes back to the research. The label may not be
+              // pinned yet, in which case the page it names does not exist —
+              // the same as it is under a share link.
+              researchHref={href(locale, researchPath(page.humLabel ?? ""))}
+              accessAnchor={page.accessAnchor}
+              typeOfDataAnchor={page.typeOfDataAnchor}
+            />
+          </AnnotationLayer>
+        ),
+      },
+    ],
+  })
 
   return (
     <Page>
       <Stack>
+        {/* The way out is the list this dataset is in; beside it, the draft's
+            other face. */}
         <DraftBar
           locale={locale}
           heading={view.datasetLabel ?? editor.unpinnedDataset}
+          back={{
+            to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
+            label: t.backToList,
+          }}
           links={[
-            { to: href(locale, adminDraftDatasetsPath(researchId, draftId)), label: t.backToList },
-            { to: href(locale, adminDraftPath(researchId, draftId)), label: t.backToDraft },
             { to: href(locale, adminDraftReviewPath(researchId, draftId)), label: editor.review },
           ]}
           note={!view.published && (
@@ -220,141 +446,10 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           presencePath={draftPresencePath(researchId, draftId)}
           presence={view.presence}
         >
-          <SectionTabs label={t.tabsLabel} tabs={tabs} current={tab} onSelect={setTab} />
+          {panes.control}
         </DraftBar>
 
-        {view.review.changed.length > 0 && (
-          <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
-        )}
-        {editing.conflict !== null && (
-          <ConflictBand locale={locale} changed={editing.conflict.changed} />
-        )}
-        {editing.upstream !== null
-          && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
-          <UpstreamBand
-            locale={locale}
-            only={editing.upstream.only}
-            both={editing.upstream.both}
-            onTakeAll={editing.takeUpstream}
-          />
-        )}
-        {editing.problems.length > 0 && (
-          <ProblemBand locale={locale} problems={editing.problems} />
-        )}
-        {editing.undoMissing && <Note kind="plain">{t.undoWithoutEntry}</Note>}
-
-        <TabPanel id={BASICS} current={tab}>
-          <Section id={BASICS} title={t.basics}>
-            <Stack gap="tight">
-              <FieldHead
-                label={t.releaseDate}
-                marks={editing.marksFor("releaseDate")}
-                locale={locale}
-              />
-              <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
-              <div>
-                <input
-                  type="date"
-                  className={`${CONTROL} text-sm`}
-                  value={input.releaseDate}
-                  onChange={(event) => {
-                    editing.edit({ ...input, releaseDate: event.target.value })
-                  }}
-                />
-              </div>
-            </Stack>
-            <Values
-              locale={locale}
-              catalog={view.catalog}
-              terms={view.terms}
-              scope="dataset"
-              path="values"
-              values={input.values}
-              marksFor={editing.marksFor}
-              onChange={(values) => { editing.edit({ ...input, values }) }}
-            />
-          </Section>
-        </TabPanel>
-
-        {view.portalIssued && (
-          <TabPanel id={FILES} current={tab}>
-            <Section id={FILES} title={t.files}>
-              <FieldHead
-                label={t.files}
-                marks={editing.marksFor("fileSelection")}
-                locale={locale}
-              />
-              <FileSelection
-                locale={locale}
-                listing={view.box}
-                selected={input.fileSelection}
-                onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
-              />
-            </Section>
-          </TabPanel>
-        )}
-
-        <TabPanel id={EXPERIMENTS} current={tab}>
-          <Section id={EXPERIMENTS} title={t.experiments}>
-            <FieldHead
-              label={t.experiments}
-              marks={editing.marksFor("experiments")}
-              locale={locale}
-            />
-            {input.experiments.map((experiment, at) => (
-              <ElementCard
-                key={experiment.id}
-                index={at}
-                count={input.experiments.length}
-                locale={locale}
-                onMove={(by) => {
-                  editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
-                }}
-                onRemove={() => {
-                  editing.edit({
-                    ...input,
-                    experiments: input.experiments.filter((row) => row.id !== experiment.id),
-                  })
-                }}
-              >
-                <Fold
-                  summary={experiment.label.text === ""
-                    ? t.unnamedExperiment
-                    : experiment.label.text}
-                  note={experimentNote(experiment)}
-                  open={experiment.label.text === ""
-                    || markedUnder(`experiments.${experiment.id}`) > 0}
-                >
-                  <Experiment
-                    locale={locale}
-                    catalog={view.catalog}
-                    terms={view.terms}
-                    experiment={experiment}
-                    marksFor={editing.marksFor}
-                    onChange={(next) => {
-                      editing.edit({
-                        ...input,
-                        experiments: replacing(input.experiments, experiment.id, next),
-                      })
-                    }}
-                  />
-                </Fold>
-              </ElementCard>
-            ))}
-            <AddElement
-              label={t.addExperiment}
-              onClick={() => {
-                editing.edit({
-                  ...input,
-                  experiments: [
-                    ...input.experiments,
-                    { id: newId(), label: emptySlot(), values: [] },
-                  ],
-                })
-              }}
-            />
-          </Section>
-        </TabPanel>
+        {panes.view}
       </Stack>
     </Page>
   )
@@ -468,7 +563,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 locale={locale}
                 marks={marksFor(at)}
                 setId={key.vocabularySetId}
-                chosen={terms}
+                known={terms}
                 multiple={key.multiple}
                 state={body.state}
                 termIds={body.termIds}
@@ -490,6 +585,20 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 rows={body.rows}
                 onChange={(next) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
+                }}
+              />
+            )}
+            {body.kind === "disease" && (
+              <DiseaseField
+                label={catalogLabel(key, locale)}
+                locale={locale}
+                marks={marksFor(at)}
+                setId={key.vocabularySetId}
+                known={terms}
+                state={body.state}
+                diseases={body.diseases}
+                onChange={(next) => {
+                  replace(value.keyId, { keyId: value.keyId, value: { kind: "disease", ...next } })
                 }}
               />
             )}
@@ -515,31 +624,27 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
   )
 }
 
+/** The key types this screen has an input control for. */
+const EDITABLE: readonly ValueKind[] = ["text", "vocabulary", "number", "disease"]
+
 /**
- * Whether the editor has an input control for a key, and which. Only the three
+ * Whether the editor has an input control for a key, and which. Only the four
  * kinds the catalog uses are editable; a key of any other type arrives with the
  * layer that gives it a control, because **a value nobody can see is a value
  * nobody can keep**.
  *
- * The last case cannot be reached — only keys `isEditable` lets through get
- * here — and it throws rather than falling back so that a fourth kind gaining a
+ * The refusal cannot be reached — only keys `isEditable` lets through get here
+ * — and it throws rather than falling back so that a further kind gaining a
  * control is a change in one place rather than a slot quietly rendered as prose.
  */
 function editableKind(key: EditableKey): ValueKind {
-  switch (key.valueType) {
-    case "text":
-      return "text"
-    case "vocabulary":
-      return "vocabulary"
-    case "number":
-      return "number"
-    default:
-      throw new UneditableValueKind(key.id, key.valueType)
-  }
+  const kind = EDITABLE.find((one) => one === key.valueType)
+  if (kind === undefined) throw new UneditableValueKind(key.id, key.valueType)
+  return kind
 }
 
 function isEditable(key: EditableKey): boolean {
-  return key.valueType === "text" || key.valueType === "vocabulary" || key.valueType === "number"
+  return EDITABLE.some((kind) => kind === key.valueType)
 }
 
 /**
@@ -592,7 +697,7 @@ function AddValue({ locale, keys, onAdd }: {
         </label>
         <p className="text-ink-muted text-xs">{t.shownOf(offered.length, keys.length)}</p>
         {offered.length === 0
-          ? <p className="text-ink-muted text-sm">{t.noKey}</p>
+          ? <Empty>{t.noKey}</Empty>
           : (
               <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
                 {offered.map((key) => (
@@ -750,8 +855,188 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
  * A value chosen from a controlled vocabulary. The state sits beside the choice
  * the same way it does beside text: a term that has not been settled is a
  * question, not an absent value.
+ */
+function VocabularyField({
+  label,
+  locale,
+  marks,
+  setId,
+  known,
+  multiple,
+  state,
+  termIds,
+  onChange,
+}: {
+  label: string
+  locale: Locale
+  marks: Marks
+  setId: string | null
+  /** The terms the document names, which is what the chosen list is drawn from. */
+  known: EditableTerm[]
+  multiple: boolean
+  state: SlotState
+  termIds: string[]
+  onChange: (state: SlotState, termIds: string[]) => void
+}) {
+  return (
+    <Stack gap="tight">
+      <FieldHead label={label} marks={marks} locale={locale} />
+      <div className="md:max-w-md">
+        <Stack gap="tight">
+          <StateSwitch
+            state={state}
+            onChange={(next) => { onChange(next, termIds) }}
+            locale={locale}
+          />
+          <TermPicker
+            locale={locale}
+            setId={setId}
+            disabled={state !== "value"}
+            chosen={resolveTerms(known, termIds)}
+            onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
+            onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
+          />
+        </Stack>
+      </div>
+    </Stack>
+  )
+}
+
+/**
+ * The diseases under one key.
  *
- * **The chosen values are listed and the rest are searched for**, whether the
+ * **A row is one disease: which classifications name it, and what it is
+ * called.** The two answer different questions — the terms are what a listing
+ * counts it by, the name is what a reader reads — and neither stands in for the
+ * other. `NASH` is what an article writes and `K758` is where it is filed
+ * (`docs/data-model.md` の「ICD10」).
+ *
+ * **A row naming no term is an ordinary row.** Diseases no classification holds
+ * are in the articles, and a form that refused them would be a portal that
+ * cannot record what was studied. **A row saying nothing at all is dropped on
+ * save**, the same as an empty number.
+ *
+ * **The names get no candidates.** The field holds what an article wrote, so
+ * there is nothing to align it to; offering the spellings already in would pull
+ * a curator away from the source they are copying
+ * (`docs/editing.md` の「編集フォーム」).
+ */
+function DiseaseField({ label, locale, marks, setId, known, state, diseases, onChange }: {
+  label: string
+  locale: Locale
+  marks: Marks
+  setId: string | null
+  known: EditableTerm[]
+  state: SlotState
+  diseases: DiseaseRow[]
+  onChange: (next: { state: SlotState, diseases: DiseaseRow[] }) => void
+}) {
+  const t = messagesFor(locale).admin.datasetEditor
+  const disabled = state !== "value"
+  const box = `${CONTROL} text-sm disabled:opacity-50`
+  const edit = (at: number, next: Partial<DiseaseRow>) => {
+    onChange({ state, diseases: diseases.map((row, i) => (i === at ? { ...row, ...next } : row)) })
+  }
+  const empty = (row: DiseaseRow) =>
+    row.termIds.length === 0 && row.nameJa.trim() === "" && row.nameEn.trim() === ""
+
+  return (
+    <Stack gap="tight">
+      <FieldHead label={label} marks={marks} locale={locale} />
+      <div className="md:max-w-xl">
+        <Stack gap="tight">
+          <StateSwitch
+            state={state}
+            onChange={(next) => { onChange({ state: next, diseases }) }}
+            locale={locale}
+          />
+          {diseases.map((row, at) => (
+            <div key={at} className="rounded border border-line px-3 py-2">
+              <Stack gap="tight">
+                {/*
+                  **The names come first.** They are what the row is called, so
+                  reading down a list of diseases is reading down this line; the
+                  codes are how each one is filed and sit under it.
+                */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={row.nameJa}
+                    disabled={disabled}
+                    aria-label={t.diseaseNameJa}
+                    placeholder={t.diseaseNameJa}
+                    onChange={(event) => { edit(at, { nameJa: event.target.value }) }}
+                    className={`${box} min-w-0 flex-1`}
+                  />
+                  <input
+                    type="text"
+                    value={row.nameEn}
+                    disabled={disabled}
+                    aria-label={t.diseaseNameEn}
+                    placeholder={t.diseaseNameEn}
+                    onChange={(event) => { edit(at, { nameEn: event.target.value }) }}
+                    className={`${box} min-w-0 flex-1`}
+                  />
+                  <IconButton
+                    name="close"
+                    label={t.removeDisease}
+                    disabled={disabled}
+                    onClick={() => {
+                      onChange({ state, diseases: diseases.filter((_, i) => i !== at) })
+                    }}
+                  />
+                </div>
+                <TermPicker
+                  locale={locale}
+                  setId={setId}
+                  kind="disease"
+                  disabled={disabled}
+                  chosen={resolveTerms(known, row.termIds)}
+                  onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
+                  onRemove={(id) => {
+                    edit(at, { termIds: row.termIds.filter((one) => one !== id) })
+                  }}
+                />
+              </Stack>
+            </div>
+          ))}
+          {!disabled && (
+            <div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                icon={<Icon name="plus" />}
+                onClick={() => {
+                  onChange({ state, diseases: [...diseases, emptyDiseaseRow()] })
+                }}
+              >
+                {t.addDisease}
+              </Button>
+            </div>
+          )}
+          {!disabled && diseases.every(empty) && (
+            <p className="text-ink-muted text-xs">{t.emptyDisease}</p>
+          )}
+        </Stack>
+      </div>
+    </Stack>
+  )
+}
+
+/** The terms these identities name, dropping the ones the document did not send. */
+function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): EditableTerm[] {
+  const byId = new Map(known.map((term) => [term.id, term]))
+  return ids.flatMap((id) => {
+    const term = byId.get(id)
+    return term === undefined ? [] : [term]
+  })
+}
+
+/**
+ * The terms a value names, and the box that finds more.
+ *
+ * **The chosen terms are listed and the rest are searched for**, whether the
  * vocabulary holds three terms or twelve thousand. One shape means the screen
  * does not change under the author when a vocabulary grows, and a list of every
  * ICD10 code is not a control anybody can use.
@@ -765,122 +1050,94 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
  * condition and the way to lift it are the same object, as they are for a chip
  * over a listing.
  */
-function VocabularyField({
-  label,
-  locale,
-  marks,
-  setId,
-  chosen: known,
-  multiple,
-  state,
-  termIds,
-  onChange,
-}: {
-  label: string
+function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: {
   locale: Locale
-  marks: Marks
   setId: string | null
-  /** The terms the document names, which is what the chosen list is drawn from. */
+  /**
+   * Which reading the box wants of what is typed. A disease is written as a
+   * classification code as often as a word, and the code has to be normalised
+   * and rolled up before the vocabulary is asked (`app/routes/admin-terms.ts`).
+   */
+  kind?: "disease"
+  disabled: boolean
   chosen: EditableTerm[]
-  multiple: boolean
-  state: SlotState
-  termIds: string[]
-  onChange: (state: SlotState, termIds: string[]) => void
+  onAdd: (id: string) => void
+  onRemove: (id: string) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const [find, setFind] = useState("")
   const search = useFetcher<EditableTerm[]>()
-  const disabled = state !== "value"
-  const byId = new Map(known.map((term) => [term.id, term]))
-  const chosen = termIds.flatMap((id) => {
-    const term = byId.get(id)
-    return term === undefined ? [] : [term]
-  })
+  const held = new Set(chosen.map((term) => term.id))
 
   const needle = find.trim()
   const candidates = (search.data ?? [])
-    .filter((term) => term.setId === setId && !termIds.includes(term.id))
+    .filter((term) => term.setId === setId && !held.has(term.id))
     .slice(0, PICKER_RESULTS)
 
   const look = (value: string) => {
     setFind(value)
     if (setId === null || value.trim() === "") return
-    void search.load(
-      `${termsPath()}?${new URLSearchParams({ set: setId, q: value.trim() }).toString()}`,
-    )
-  }
-
-  const add = (id: string) => {
-    onChange(state, multiple ? [...termIds, id] : [id])
-    setFind("")
+    const query = new URLSearchParams({ set: setId, q: value.trim() })
+    if (kind !== undefined) query.set("kind", kind)
+    void search.load(`${termsPath()}?${query.toString()}`)
   }
 
   return (
     <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="md:max-w-md">
-        <Stack gap="tight">
-          <StateSwitch
-            state={state}
-            onChange={(next) => { onChange(next, termIds) }}
-            locale={locale}
-          />
-          {chosen.length === 0
-            ? <p className="text-ink-muted text-sm">{t.noTerm}</p>
-            : (
-                <ul className="flex flex-wrap gap-2">
-                  {chosen.map((term) => (
-                    <li key={term.id}>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="xs"
-                        pill
-                        disabled={disabled}
-                        onClick={() => {
-                          onChange(state, termIds.filter((id) => id !== term.id))
-                        }}
-                      >
-                        {catalogLabel(term, locale)}
-                        <Icon name="close" />
-                        <span className="sr-only">{t.removeTerm}</span>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-          <input
-            type="search"
-            value={find}
-            disabled={disabled}
-            aria-label={t.findTerm}
-            placeholder={t.findTerm}
-            onChange={(event) => { look(event.target.value) }}
-            className={`${CONTROL} text-sm disabled:opacity-50`}
-          />
-          {needle !== "" && candidates.length === 0 && search.state === "idle" && (
-            <p className="text-ink-muted text-sm">{t.noCandidate}</p>
-          )}
-          {candidates.length > 0 && (
-            <ul className="flex flex-col rounded border border-line">
-              {candidates.map((term) => (
+      {chosen.length === 0
+        ? <Empty>{t.noTerm}</Empty>
+        : (
+            <ul className="flex flex-wrap gap-2">
+              {chosen.map((term) => (
                 <li key={term.id}>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     size="xs"
-                    className="w-full justify-start"
-                    onClick={() => { add(term.id) }}
+                    disabled={disabled}
+                    onClick={() => { onRemove(term.id) }}
                   >
-                    <code className="text-ink-muted text-xs">{term.code}</code>
                     {catalogLabel(term, locale)}
+                    <Icon name="close" />
+                    <span className="sr-only">{t.removeTerm}</span>
                   </Button>
                 </li>
               ))}
             </ul>
           )}
-        </Stack>
-      </div>
+      <input
+        type="search"
+        value={find}
+        disabled={disabled}
+        aria-label={t.findTerm}
+        placeholder={t.findTerm}
+        onChange={(event) => { look(event.target.value) }}
+        className={`${CONTROL} text-sm disabled:opacity-50`}
+      />
+      {needle !== "" && candidates.length === 0 && search.state === "idle" && (
+        <Empty>{t.noCandidate}</Empty>
+      )}
+      {candidates.length > 0 && (
+        <ul className="flex flex-col rounded border border-line">
+          {candidates.map((term) => (
+            <li key={term.id}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="w-full justify-start"
+                onClick={() => {
+                  onAdd(term.id)
+                  setFind("")
+                }}
+              >
+                <code className="text-ink-muted text-xs">{term.code}</code>
+                {catalogLabel(term, locale)}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Stack>
   )
 }

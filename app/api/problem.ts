@@ -32,6 +32,7 @@ export type ProblemSlug
     | "invalid-query"
     | "invalid-parameter"
     | "invalid-sort"
+    | "invalid-order"
     | "unknown-accession-type"
 
 const TITLES: Record<number, string> = {
@@ -123,6 +124,20 @@ export function invalidSort(request: Request, wanted: string, offered: readonly 
     status: 422,
     detail: `"${wanted}" is not an ordering this query can be answered in. `
       + `Available: ${offered.join(", ")}.`,
+    instance: instanceOf(request),
+  })
+}
+
+/**
+ * A direction that is neither of the two. Apart from `invalidSort` because the
+ * key and the direction are asked for apart, and a caller that got one of them
+ * wrong should not have to guess which.
+ */
+export function invalidOrder(request: Request, wanted: string, offered: readonly string[]): Problem {
+  return problemOf({
+    slug: "invalid-order",
+    status: 422,
+    detail: `"${wanted}" is not a direction to sort in. Available: ${offered.join(", ")}.`,
     instance: instanceOf(request),
   })
 }

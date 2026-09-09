@@ -13,18 +13,18 @@
  * leaves the form exactly as it was and offers their version one field at a
  * time.
  *
- * **The document is cut into tabs and every field stays in it.** One save
- * carries the whole draft, so moving between tabs can lose nothing; what the
- * tabs change is how much of one document stands between a curator and the part
- * of it they came to write.
+ * **The form is one column, in the order the public page runs in.** It is read
+ * beside that page, and a reader following the two together cannot do it if one
+ * of them is cut into panels. Nothing is hidden, so a mark beside a field is
+ * always where the field is.
  */
 
-import { useState, type ReactNode } from "react"
-import { flushSync } from "react-dom"
-import { Link } from "react-router"
+import { useEffect, useState, type ReactNode } from "react"
+import { Link, useFetcher } from "react-router"
 
 import { diffDraftInput, takeField } from "~/admin/diff"
 import type {
+  DataProviderInput,
   DraftInput,
   LinkInput,
   LinksPairInput,
@@ -35,22 +35,27 @@ import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
+  adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchPath,
   draftCommentsPath,
+  draftPagePath,
   draftPresencePath,
   draftUndoPath,
 } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { Page } from "~/components/page"
+import { AnnotationLayer, Empty, Page } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import { threadsByPath, unresolvedCount } from "~/review/comments"
+import type { DrawnDraft } from "~/review/preview.server"
 
-import { Badge, Button, Note, SectionTabs, Stack, TabPanel, type Tone } from "./base"
+import { PaneSpot, usePanes } from "./admin"
+import { Button, Note, Stack } from "./base"
 import { DraftBar, useDraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
+import { ResearchBody } from "./research"
 import {
   AddElement,
   ConflictBand,
@@ -74,72 +79,24 @@ import {
 import { CONTROL } from "./form"
 
 /**
- * The parts of the form, in the order they are offered.
+ * The section a path is written in, which is the first name in it.
  *
- * **Four of the six hold one repeated list each**, because a list grows with the
- * research and carries its own adding, ordering and removing — put together they
- * would be one tab as long as the whole screen was before there were any. The
- * first holds everything written once about the research, none of which depends
- * on how many of anything there are.
+ * **A section's anchor is that same first name**, so going to a place named by
+ * a band is finding the element with that id. The bands stand outside the
+ * sections and name what they are about by path, and nothing between them and
+ * the field is hidden.
  */
-const TABS = [
-  "overview",
-  "dataProviders",
-  "researchProjects",
-  "grants",
-  "relatedPublications",
-  "datasets",
-] as const
+/** How long the keys have to be still before the pane is redrawn. */
+const DRAW_AFTER = 300
 
-type Tab = (typeof TABS)[number]
-
-/**
- * Which tab a path is edited on, by the first name in it.
- *
- * The bands stand outside the tabs and name the places they are about by path,
- * so going to one means opening the tab that holds it first: a field inside a
- * panel that is not showing is `hidden`, and nothing can be moved to a place
- * with no position. **A section's anchor is that same first name**, which is
- * what makes one table enough to find both the tab and the element.
- */
-const TAB_OF: Record<string, Tab> = {
-  title: "overview",
-  summary: "overview",
-  listingSummary: "overview",
-  releaseNote: "overview",
-  dataProviders: "dataProviders",
-  researchProjects: "researchProjects",
-  grants: "grants",
-  relatedPublications: "relatedPublications",
-  datasetIds: "datasets",
-}
-
-/**
- * The four things a place can be waiting for, and how urgent each one is.
- *
- * Markup a save refused has to be dealt with before anything can be saved at
- * all; a field somebody else moved is a choice to make; a comment is to be read;
- * a difference from the published version is only where the work has been done.
- * **The order they are written in is the order they win in.**
- */
-const MARK_TONE = {
-  problem: "danger",
-  conflict: "accent",
-  comment: "brand",
-  differs: "muted",
-} as const satisfies Record<string, Tone>
-
-type MarkKind = keyof typeof MARK_TONE
-
-function tabOf(path: string): Tab | undefined {
-  return TAB_OF[path.split(".")[0] ?? path]
+function sectionOf(path: string): string {
+  return path.split(".")[0] ?? path
 }
 
 export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const locale = view.locale
   const t = messagesFor(locale).admin.editor
   const words = messagesFor(locale).research
-  const [current, setCurrent] = useState<string>(TABS[0])
 
   const review: FieldReviewData = {
     context: {
@@ -169,7 +126,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       content: researchContentInput(snapshot.content),
     }),
     undoPath: (undoId) => draftUndoPath(view.researchId, view.draftId, undoId),
-    extraFor: (path) => <FieldReview review={review} at={path} />,
   })
 
   const input = editing.value
@@ -182,22 +138,63 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   }
 
   /**
+   * The pane catching up with what is being typed.
+   *
+   * **It waits for the keys to stop.** Drawing the page is a round trip, and
+   * one per keystroke would be a request per letter for an answer nobody has
+   * time to read; a pause is also when somebody looks up at it.
+   *
+   * **The same content is not asked for twice.** Moving the caret, marking a
+   * value unsettled and back, or undoing to where it already was all leave the
+   * content as it was, and the pane has nothing to redraw.
+   *
+   * **Prose the tree cannot hold leaves the pane on the page as it was loaded.**
+   * Refusing markup is the save's job and it says where the problem is; the
+   * drawing answers with nothing rather than with half a page, and comes back
+   * as soon as the prose parses again.
+   */
+  const drawing = useFetcher<DrawnDraft | null>()
+  const submit = drawing.submit
+  const drawAt = href(locale, draftPagePath(view.researchId, view.draftId, locale))
+  const body = JSON.stringify({ revision: view.revision, note: input.note, content })
+  useEffect(() => {
+    const waiting = setTimeout(() => {
+      void submit(body, { method: "post", action: drawAt, encType: "application/json" })
+    }, DRAW_AFTER)
+    return () => {
+      clearTimeout(waiting)
+    }
+  }, [body, drawAt, submit])
+
+  const page = drawing.data ?? view.page
+
+  /**
+   * Where the caret is, as a place in the content rather than a box on screen.
+   *
+   * **The ja and en boxes of one field are the same place**, so tabbing between
+   * them is not a move and the pane beside the form does not redraw or scroll.
+   * The place is read off the markup rather than reported by every field
+   * (`Stack`'s `at`), so a field added later is found without being told to
+   * announce itself.
+   */
+  const [at, setAt] = useState<string | null>(null)
+  function onFormFocus(event: React.FocusEvent): void {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const found = target.closest("[data-at]")?.getAttribute("data-at")
+    if (found !== undefined && found !== null) setAt(found)
+  }
+
+  /**
    * Going to the place a band names.
    *
-   * The tab holding it is opened first and that change is flushed: the panel is
-   * `hidden` until React has drawn it again, and an element with no position
-   * cannot be scrolled to. What is focused afterwards is the first thing in the
-   * section that can be typed in, so the keyboard arrives where the eye does.
+   * **Scrolling is not enough on its own.** An anchor moves the page to the
+   * section and leaves the keyboard where it was, so the eye and the caret end
+   * up in different places; what is focused here is the first thing in the
+   * section that will take it.
    */
   function goTo(path: string): void {
-    const at = path.split(".")[0] ?? path
-    const tab = TAB_OF[at]
-    if (tab !== undefined) {
-      flushSync(() => {
-        setCurrent(tab)
-      })
-    }
-    const section = document.getElementById(at)
+    const section = document.getElementById(sectionOf(path))
     if (section === null) return
     section.scrollIntoView()
     // The first box that will take it, rather than the first one in the markup:
@@ -213,9 +210,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   /**
    * The same move, for a band that draws its own anchors.
    *
-   * The parts that draw the bands know nothing about tabs, so a link to a field
-   * on a tab that is not showing lands on a `hidden` element and does nothing at
-   * all. The click is caught on its way out and answered here instead.
+   * The parts that draw the bands write plain `#` links, which scroll without
+   * taking the keyboard with them. The click is caught on its way out and
+   * answered by `goTo` instead, so that every route to a field lands the same
+   * way.
    */
   function onBandJump(event: React.MouseEvent): void {
     const target = event.target
@@ -226,89 +224,9 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     goTo(path)
   }
 
-  // Every place waiting for something, most pressing first (`MARK_TONE`).
-  const waiting: { kind: MarkKind, paths: string[] }[] = [
-    { kind: "problem", paths: editing.problems.map((problem) => problem.path) },
-    {
-      kind: "conflict",
-      paths: [
-        ...editing.conflict?.changed ?? [],
-        ...upstream?.only ?? [],
-        ...upstream?.both ?? [],
-      ],
-    },
-    {
-      kind: "comment",
-      paths: Object.entries(review.threads)
-        .filter(([, threads]) => unresolvedCount(threads) > 0)
-        .map(([path]) => path),
-    },
-    { kind: "differs", paths: view.review.changed },
-  ]
-
-  /**
-   * What is waiting on a tab, since the marks beside its fields are hidden along
-   * with them.
-   *
-   * **One badge rather than one per kind.** The strip is read across in a
-   * glance, and numbers side by side get compared rather than counted; the
-   * colour says which kind is the most pressing one there, and the word beside
-   * it says the same to anybody not looking.
-   */
-  function markOf(tab: Tab): ReactNode {
-    const here = waiting.filter((group) => group.paths.some((path) => tabOf(path) === tab))
-    const first = here[0]
-    if (first === undefined) return undefined
-    const places = new Set(
-      here.flatMap((group) => group.paths).filter((path) => tabOf(path) === tab),
-    )
-    return (
-      <Badge tone={MARK_TONE[first.kind]}>
-        {places.size}
-        <span className="sr-only">{t.marks[first.kind]}</span>
-      </Badge>
-    )
-  }
-
-  return (
-    <Page>
+  const formBody = (
+    <div onFocusCapture={onFormFocus}>
       <Stack>
-        <DraftBar
-          locale={locale}
-          heading={view.humLabel ?? t.heading}
-          links={[
-            { to: href(locale, adminResearchPath(view.researchId)), label: t.backToResearch },
-            {
-              to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
-              label: messagesFor(locale).admin.draft.datasets,
-            },
-            {
-              to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
-              label: t.review,
-            },
-          ]}
-          dirty={editing.dirty}
-          saved={editing.saved}
-          saving={editing.saving}
-          onSave={editing.save}
-          undo={view.undo}
-          onUndo={editing.undo}
-          undoLoading={editing.undoLoading}
-          presencePath={draftPresencePath(view.researchId, view.draftId)}
-          presence={view.presence}
-        >
-          <SectionTabs
-            label={t.tabsLabel}
-            tabs={TABS.map((id) => ({
-              id,
-              label: id === "overview" ? t.tabOverview : t.sections[id],
-              mark: markOf(id),
-            }))}
-            current={current}
-            onSelect={setCurrent}
-          />
-        </DraftBar>
-
         <PublishedBand view={view} onGo={goTo} />
 
         {editing.conflict !== null && (
@@ -330,7 +248,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             reaches a reader, and looking for it under a tab named after a part
             of the description would be looking in the wrong place. */}
         <Section id="note" title={t.sections.note}>
-          <p className="text-ink-muted text-sm">{t.noteHint}</p>
+          <Empty>{t.noteHint}</Empty>
           <textarea
             className={`${CONTROL} w-full text-sm`}
             rows={3}
@@ -340,93 +258,82 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         </Section>
 
         <Stack gap="block">
-          <TabPanel id="overview" current={current}>
-            <Stack gap="block">
-              <Section id="title" title={t.sections.title}>
-                <PairField
-                  label={words.title}
-                  value={content.title}
-                  marks={marksFor("title")}
-                  locale={locale}
-                  onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
-                />
-              </Section>
+          <Stack gap="block">
+            <Section id="title" title={t.sections.title}>
+              <PairField
+                label={words.title}
+                value={content.title}
+                marks={marksFor("title")}
+                locale={locale}
+                onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
+              />
+            </Section>
 
-              <Section id="summary" title={t.sections.summary}>
-                {(["aims", "methods", "targets"] as const).map((field) => (
-                  <PairField
-                    key={field}
-                    label={words[field]}
-                    value={content.summary[field]}
-                    multiline
-                    marks={marksFor(`summary.${field}`)}
-                    locale={locale}
-                    onChange={(next) => {
-                      editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
-                    }}
-                  />
-                ))}
-                <LinksField
-                  label={words.url}
-                  value={content.summary.url}
-                  marks={marksFor("summary.url")}
+            <Section id="summary" title={t.sections.summary}>
+              {(["aims", "methods", "targets"] as const).map((field) => (
+                <PairField
+                  key={field}
+                  label={words[field]}
+                  value={content.summary[field]}
+                  multiline
+                  marks={marksFor(`summary.${field}`)}
                   locale={locale}
                   onChange={(next) => {
-                    editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
+                    editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
                   }}
                 />
-              </Section>
+              ))}
+              <LinksField
+                label={words.url}
+                value={content.summary.url}
+                marks={marksFor("summary.url")}
+                locale={locale}
+                onChange={(next) => {
+                  editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
+                }}
+              />
+            </Section>
 
-              <Section id="listingSummary" title={t.sections.listingSummary}>
-                {(["methods", "targets", "typeOfData"] as const).map((field) => (
-                  <PairField
-                    key={field}
-                    label={words.listingSummary[field]}
-                    value={content.listingSummary[field]}
-                    multiline
-                    marks={marksFor(`listingSummary.${field}`)}
-                    locale={locale}
-                    onChange={(next) => {
-                      editContent((c) => ({
-                        ...c,
-                        listingSummary: { ...c.listingSummary, [field]: next },
-                      }))
-                    }}
-                  />
-                ))}
-              </Section>
-
-              <Section id="releaseNote" title={t.sections.releaseNote}>
+            <Section id="listingSummary" title={t.sections.listingSummary}>
+              {(["methods", "targets", "typeOfData"] as const).map((field) => (
                 <PairField
-                  label={t.sections.releaseNote}
-                  value={content.releaseNote}
+                  key={field}
+                  label={words.listingSummary[field]}
+                  value={content.listingSummary[field]}
                   multiline
-                  marks={marksFor("releaseNote")}
+                  marks={marksFor(`listingSummary.${field}`)}
                   locale={locale}
-                  onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
+                  onChange={(next) => {
+                    editContent((c) => ({
+                      ...c,
+                      listingSummary: { ...c.listingSummary, [field]: next },
+                    }))
+                  }}
                 />
-              </Section>
-            </Stack>
-          </TabPanel>
-
-          <TabPanel id="dataProviders" current={current}>
-            <RepeatingSection
-              id="dataProviders"
-              title={t.sections.dataProviders}
-              locale={locale}
-              items={content.dataProviders}
-              marksFor={marksFor}
-              onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
-              makeEmpty={() => ({
-                id: newId(),
-                name: emptyPair(),
-                organization: { name: emptyPair(), address: emptyPair() },
-                orcid: emptySlot(),
-                email: emptySlot(),
-              })}
-            >
-              {(item, path, set) => (
-                <>
+              ))}
+              <FieldHead
+                label={words.listingSummary.dataProviders}
+                marks={marksFor("listingSummary.dataProviders")}
+                locale={locale}
+              />
+              <p className="text-ink-muted text-xs">
+                {content.listingSummary.dataProviders.length === 0
+                  ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
+                  : t.listingProvidersOwn}
+              </p>
+              <RepeatingList
+                path="listingSummary.dataProviders"
+                locale={locale}
+                items={content.listingSummary.dataProviders}
+                makeEmpty={() => ({ id: newId(), name: emptyPair() })}
+                onChange={(next) => {
+                  editContent((c) => ({
+                    ...c,
+                    listingSummary: { ...c.listingSummary, dataProviders: next },
+                  }))
+                }}
+              >
+                {(item, path, set) => (
                   <PairField
                     label={words.representative}
                     value={item.name}
@@ -434,184 +341,299 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     locale={locale}
                     onChange={(name) => { set({ ...item, name }) }}
                   />
-                  <PairField
-                    label={words.organization}
-                    value={item.organization.name}
-                    marks={marksFor(`${path}.organization.name`)}
-                    locale={locale}
-                    onChange={(name) => {
-                      set({ ...item, organization: { ...item.organization, name } })
-                    }}
-                  />
-                  <PairField
-                    label={t.address}
-                    value={item.organization.address}
-                    marks={marksFor(`${path}.organization.address`)}
-                    locale={locale}
-                    onChange={(address) => {
-                      set({ ...item, organization: { ...item.organization, address } })
-                    }}
-                  />
-                  <SingleField
-                    label={t.orcid}
-                    value={item.orcid}
-                    marks={marksFor(`${path}.orcid`)}
-                    locale={locale}
-                    onChange={(orcid) => { set({ ...item, orcid }) }}
-                  />
-                  <SingleField
-                    label={t.email}
-                    value={item.email}
-                    marks={marksFor(`${path}.email`)}
-                    locale={locale}
-                    onChange={(email) => { set({ ...item, email }) }}
-                  />
-                </>
-              )}
-            </RepeatingSection>
-          </TabPanel>
-
-          <TabPanel id="researchProjects" current={current}>
-            <RepeatingSection
-              id="researchProjects"
-              title={t.sections.researchProjects}
-              locale={locale}
-              items={content.researchProjects}
-              marksFor={marksFor}
-              onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
-              makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
-            >
-              {(item, path, set) => (
-                <>
-                  <PairField
-                    label={words.researchProjectName}
-                    value={item.name}
-                    marks={marksFor(`${path}.name`)}
-                    locale={locale}
-                    onChange={(name) => { set({ ...item, name }) }}
-                  />
-                  <LinksField
-                    label={words.url}
-                    value={item.url}
-                    marks={marksFor(`${path}.url`)}
-                    locale={locale}
-                    onChange={(url) => { set({ ...item, url }) }}
-                  />
-                </>
-              )}
-            </RepeatingSection>
-          </TabPanel>
-
-          <TabPanel id="grants" current={current}>
-            <RepeatingSection
-              id="grants"
-              title={t.sections.grants}
-              locale={locale}
-              items={content.grants}
-              marksFor={marksFor}
-              onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
-              makeEmpty={() => ({
-                id: newId(),
-                title: emptyPair(),
-                agency: { name: emptyPair() },
-                grantIds: [],
-              })}
-            >
-              {(item, path, set) => (
-                <>
-                  <PairField
-                    label={words.grantTitle}
-                    value={item.title}
-                    marks={marksFor(`${path}.title`)}
-                    locale={locale}
-                    onChange={(title) => { set({ ...item, title }) }}
-                  />
-                  <PairField
-                    label={words.grantAgency}
-                    value={item.agency.name}
-                    marks={marksFor(`${path}.agency.name`)}
-                    locale={locale}
-                    onChange={(name) => { set({ ...item, agency: { name } }) }}
-                  />
-                  <GrantIds
-                    locale={locale}
-                    value={item.grantIds}
-                    marks={marksFor(`${path}.grantIds`)}
-                    onChange={(grantIds) => { set({ ...item, grantIds }) }}
-                  />
-                </>
-              )}
-            </RepeatingSection>
-          </TabPanel>
-
-          <TabPanel id="relatedPublications" current={current}>
-            <RepeatingSection
-              id="relatedPublications"
-              title={t.sections.relatedPublications}
-              locale={locale}
-              items={content.relatedPublications}
-              marksFor={marksFor}
-              onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
-              makeEmpty={() => ({
-                id: newId(),
-                title: emptySlot(),
-                doi: emptySlot(),
-                datasetIds: [],
-              })}
-            >
-              {(item, path, set) => (
-                <>
-                  <SingleField
-                    label={words.publicationTitle}
-                    value={item.title}
-                    marks={marksFor(`${path}.title`)}
-                    locale={locale}
-                    onChange={(title) => { set({ ...item, title }) }}
-                  />
-                  <SingleField
-                    label={t.doi}
-                    value={item.doi}
-                    marks={marksFor(`${path}.doi`)}
-                    locale={locale}
-                    onChange={(doi) => { set({ ...item, doi }) }}
-                  />
-                  <Stack gap="tight">
-                    <FieldHead
-                      label={t.citedDatasets}
-                      marks={marksFor(`${path}.datasetIds`)}
-                      locale={locale}
-                    />
-                    <DatasetChecklist
-                      locale={locale}
-                      datasets={view.datasets}
-                      selected={item.datasetIds}
-                      onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
-                    />
-                  </Stack>
-                </>
-              )}
-            </RepeatingSection>
-          </TabPanel>
-
-          <TabPanel id="datasets" current={current}>
-            <Section id="datasetIds" title={t.sections.datasets}>
-              <p className="text-ink-muted text-sm">{t.selectDatasets}</p>
-              <Stack gap="tight">
-                <FieldHead
-                  label={t.sections.datasets}
-                  marks={marksFor("datasetIds")}
-                  locale={locale}
-                />
-                <DatasetOrder
-                  locale={locale}
-                  datasets={view.datasets}
-                  selected={content.datasetIds}
-                  onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
-                />
-              </Stack>
+                )}
+              </RepeatingList>
             </Section>
-          </TabPanel>
+
+            <Section id="releaseNote" title={t.sections.releaseNote}>
+              <PairField
+                label={t.sections.releaseNote}
+                value={content.releaseNote}
+                multiline
+                marks={marksFor("releaseNote")}
+                locale={locale}
+                onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
+              />
+            </Section>
+          </Stack>
+
+          <RepeatingSection
+            id="dataProviders"
+            title={t.sections.dataProviders}
+            locale={locale}
+            items={content.dataProviders}
+            marksFor={marksFor}
+            onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
+            makeEmpty={() => ({
+              id: newId(),
+              name: emptyPair(),
+              organization: { name: emptyPair(), address: emptyPair() },
+              orcid: emptySlot(),
+              email: emptySlot(),
+            })}
+          >
+            {(item, path, set) => (
+              <>
+                <PairField
+                  label={words.representative}
+                  value={item.name}
+                  marks={marksFor(`${path}.name`)}
+                  locale={locale}
+                  onChange={(name) => { set({ ...item, name }) }}
+                />
+                <PairField
+                  label={words.organization}
+                  value={item.organization.name}
+                  marks={marksFor(`${path}.organization.name`)}
+                  locale={locale}
+                  onChange={(name) => {
+                    set({ ...item, organization: { ...item.organization, name } })
+                  }}
+                />
+                <PairField
+                  label={t.address}
+                  value={item.organization.address}
+                  marks={marksFor(`${path}.organization.address`)}
+                  locale={locale}
+                  onChange={(address) => {
+                    set({ ...item, organization: { ...item.organization, address } })
+                  }}
+                />
+                <SingleField
+                  label={t.orcid}
+                  value={item.orcid}
+                  marks={marksFor(`${path}.orcid`)}
+                  locale={locale}
+                  onChange={(orcid) => { set({ ...item, orcid }) }}
+                />
+                <SingleField
+                  label={t.email}
+                  value={item.email}
+                  marks={marksFor(`${path}.email`)}
+                  locale={locale}
+                  onChange={(email) => { set({ ...item, email }) }}
+                />
+              </>
+            )}
+          </RepeatingSection>
+
+          <RepeatingSection
+            id="researchProjects"
+            title={t.sections.researchProjects}
+            locale={locale}
+            items={content.researchProjects}
+            marksFor={marksFor}
+            onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
+            makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
+          >
+            {(item, path, set) => (
+              <>
+                <PairField
+                  label={words.researchProjectName}
+                  value={item.name}
+                  marks={marksFor(`${path}.name`)}
+                  locale={locale}
+                  onChange={(name) => { set({ ...item, name }) }}
+                />
+                <LinksField
+                  label={words.url}
+                  value={item.url}
+                  marks={marksFor(`${path}.url`)}
+                  locale={locale}
+                  onChange={(url) => { set({ ...item, url }) }}
+                />
+              </>
+            )}
+          </RepeatingSection>
+
+          <RepeatingSection
+            id="grants"
+            title={t.sections.grants}
+            locale={locale}
+            items={content.grants}
+            marksFor={marksFor}
+            onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
+            makeEmpty={() => ({
+              id: newId(),
+              title: emptyPair(),
+              agency: { name: emptyPair() },
+              grantIds: [],
+            })}
+          >
+            {(item, path, set) => (
+              <>
+                <PairField
+                  label={words.grantTitle}
+                  value={item.title}
+                  marks={marksFor(`${path}.title`)}
+                  locale={locale}
+                  onChange={(title) => { set({ ...item, title }) }}
+                />
+                <PairField
+                  label={words.grantAgency}
+                  value={item.agency.name}
+                  marks={marksFor(`${path}.agency.name`)}
+                  locale={locale}
+                  onChange={(name) => { set({ ...item, agency: { name } }) }}
+                />
+                <GrantIds
+                  locale={locale}
+                  value={item.grantIds}
+                  marks={marksFor(`${path}.grantIds`)}
+                  onChange={(grantIds) => { set({ ...item, grantIds }) }}
+                />
+              </>
+            )}
+          </RepeatingSection>
+
+          <RepeatingSection
+            id="relatedPublications"
+            title={t.sections.relatedPublications}
+            locale={locale}
+            items={content.relatedPublications}
+            marksFor={marksFor}
+            onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
+            makeEmpty={() => ({
+              id: newId(),
+              title: emptySlot(),
+              doi: emptySlot(),
+              datasetIds: [],
+            })}
+          >
+            {(item, path, set) => (
+              <>
+                <SingleField
+                  label={words.publicationTitle}
+                  value={item.title}
+                  marks={marksFor(`${path}.title`)}
+                  locale={locale}
+                  onChange={(title) => { set({ ...item, title }) }}
+                />
+                <SingleField
+                  label={t.doi}
+                  value={item.doi}
+                  marks={marksFor(`${path}.doi`)}
+                  locale={locale}
+                  onChange={(doi) => { set({ ...item, doi }) }}
+                />
+                <Stack gap="tight">
+                  <FieldHead
+                    label={t.citedDatasets}
+                    marks={marksFor(`${path}.datasetIds`)}
+                    locale={locale}
+                  />
+                  <DatasetChecklist
+                    locale={locale}
+                    datasets={view.datasets}
+                    selected={item.datasetIds}
+                    onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
+                  />
+                </Stack>
+              </>
+            )}
+          </RepeatingSection>
+
+          <Section id="datasetIds" title={t.sections.datasets}>
+            <Empty>{t.selectDatasets}</Empty>
+            <Stack gap="tight">
+              <FieldHead
+                label={t.sections.datasets}
+                marks={marksFor("datasetIds")}
+                locale={locale}
+              />
+              <DatasetOrder
+                locale={locale}
+                datasets={view.datasets}
+                selected={content.datasetIds}
+                onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
+              />
+            </Stack>
+          </Section>
         </Stack>
+      </Stack>
+    </div>
+  )
+  const panes = usePanes({
+    locale,
+    remember: view.draftId,
+    contents: [
+      { id: "form", label: t.paneForm, body: formBody },
+      {
+        id: "page",
+        label: t.panePage,
+        // The release note is drawn because this is a draft: on a published
+        // page the note belongs to the release list, and a draft has none.
+        body: (
+          <AnnotationLayer
+            annotate={(anchor) => (
+              <>
+                {/*
+                  **What the page carries and what the form carries are split by
+                  whose question it is.** A difference from the published version
+                  and a comment are about the place a reader looks at, so they
+                  belong here; a field somebody else moved and markup a save
+                  refused are about the hands typing, and stay in the form. Drawn
+                  in both, one thing waiting would appear on the screen twice.
+                */}
+                <FieldReview review={review} at={anchor} />
+                <PaneSpot
+                  here={anchor === at}
+                  label={t.goToField}
+                  onGo={() => { goTo(anchor) }}
+                />
+              </>
+            )}
+          >
+            <ResearchBody view={page.view} locale={locale} releaseNote />
+          </AnnotationLayer>
+        ),
+      },
+    ],
+  })
+
+  return (
+    <Page>
+      <Stack>
+        {/*
+          **One of these is the way out and the rest are the way across.** A
+          draft is left for the research it belongs to; what a curator reaches
+          from this screen and nowhere else is its other two faces.
+        */}
+        <DraftBar
+          locale={locale}
+          heading={view.humLabel ?? t.heading}
+          back={{
+            to: href(locale, adminResearchPath(view.researchId)),
+            label: t.backToResearch,
+          }}
+          links={[
+            {
+              to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
+              label: messagesFor(locale).admin.draft.datasets,
+            },
+            {
+              to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
+              label: t.review,
+            },
+            {
+              to: href(locale, adminDraftPublishPath(view.researchId, view.draftId)),
+              label: messagesFor(locale).admin.publish.open,
+            },
+          ]}
+          dirty={editing.dirty}
+          saved={editing.saved}
+          saving={editing.saving}
+          onSave={editing.save}
+          undo={view.undo}
+          onUndo={editing.undo}
+          undoLoading={editing.undoLoading}
+          presencePath={draftPresencePath(view.researchId, view.draftId)}
+          presence={view.presence}
+        >
+          {panes.control}
+        </DraftBar>
+
+        {panes.view}
       </Stack>
     </Page>
   )
@@ -631,7 +653,7 @@ function PublishedBand({ view, onGo }: {
   const open = unresolvedCount(review.threads)
 
   if (review.publishedNumber === null) {
-    return <p className="text-ink-muted text-sm">{t.noPublishedVersion}</p>
+    return <Empty>{t.noPublishedVersion}</Empty>
   }
   if (review.changed.length === 0 && open === 0) return null
 
@@ -662,6 +684,23 @@ function PublishedBand({ view, onGo }: {
       </Stack>
     </Note>
   )
+}
+
+/**
+ * The names the provider column would show if the listing named none of its
+ * own, as one line. **Read from the form and not from the listing's own view**,
+ * so that a name being typed into the section above is reflected while it is
+ * being typed.
+ *
+ * Either language, whichever is written: this is a curator being shown what the
+ * table will say, and a name written only in Japanese still answers that.
+ */
+function writtenNames(providers: DataProviderInput[], locale: Locale): string {
+  const written = providers
+    .map((provider) => provider.name[locale].text.trim() || provider.name.ja.text.trim()
+      || provider.name.en.text.trim())
+    .filter((name) => name !== "")
+  return written.join("、")
 }
 
 /**
@@ -698,11 +737,50 @@ function RepeatingSection<T extends { id: string }>({
   /** One element's own fields, given the path it is addressed by and its setter. */
   children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
-  const t = messagesFor(locale).admin.editor
-
   return (
     <Section id={id} title={title}>
       <FieldHead label={title} marks={marksFor(id)} locale={locale} />
+      <RepeatingList
+        path={id}
+        locale={locale}
+        items={items}
+        onChange={onChange}
+        makeEmpty={makeEmpty}
+      >
+        {children}
+      </RepeatingList>
+    </Section>
+  )
+}
+
+/**
+ * The cards themselves, without the section around them.
+ *
+ * A list of one kind of thing is usually the whole of a section, and
+ * `RepeatingSection` is that case. **A list that sits among other fields cannot
+ * open a second section**: the path a band jumps to is resolved to an element by
+ * its first name, so a nested section would give one name two places to land.
+ */
+function RepeatingList<T extends { id: string }>({
+  path,
+  locale,
+  items,
+  onChange,
+  makeEmpty,
+  children,
+}: {
+  /** What one element's path opens with. */
+  path: string
+  locale: Locale
+  items: T[]
+  onChange: (next: T[]) => void
+  makeEmpty: () => T
+  children: (item: T, path: string, set: (next: T) => void) => ReactNode
+}) {
+  const t = messagesFor(locale).admin.editor
+
+  return (
+    <>
       {items.map((item, at) => (
         <ElementCard
           key={item.id}
@@ -714,13 +792,13 @@ function RepeatingSection<T extends { id: string }>({
         >
           {children(
             item,
-            `${id}.${item.id}`,
+            `${path}.${item.id}`,
             (next) => { onChange(replacing(items, item.id, next)) },
           )}
         </ElementCard>
       ))}
       <AddElement label={t.add} onClick={() => { onChange([...items, makeEmpty()]) }} />
-    </Section>
+    </>
   )
 }
 
@@ -738,7 +816,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
   const t = messagesFor(locale).admin.editor
 
   return (
-    <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
       <FieldHead label={label} marks={marks} locale={locale} />
       <div className="grid gap-4 md:grid-cols-2">
         {(["ja", "en"] as const).map((language) => {
@@ -819,7 +897,7 @@ function GrantIds({ locale, value, marks, onChange }: {
   const t = messagesFor(locale).admin.editor
 
   return (
-    <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
       <FieldHead label={t.grantIds} marks={marks} locale={locale} />
       <div className="md:max-w-md">
         <Stack gap="tight">
@@ -872,7 +950,7 @@ function DatasetOrder({ locale, datasets, selected, onChange }: {
   const unselected = datasets.filter((row) => !selected.includes(row.id))
 
   if (datasets.length === 0 && selected.length === 0) {
-    return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+    return <Empty>{t.noDatasets}</Empty>
   }
 
   return (
@@ -930,7 +1008,7 @@ function DatasetChecklist({ locale, datasets, selected, onChange }: {
   onChange: (next: string[]) => void
 }) {
   const t = messagesFor(locale).admin.editor
-  if (datasets.length === 0) return <p className="text-ink-muted text-sm">{t.noDatasets}</p>
+  if (datasets.length === 0) return <Empty>{t.noDatasets}</Empty>
 
   return (
     <ul className="flex flex-wrap gap-3 text-sm">

@@ -1,10 +1,10 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
-import { adminContentFilesPath, adminContentsPath, contentFileUploadPath } from "~/admin/urls"
-import { Confirm, Stack } from "~/components/base"
+import { adminContentFilesPath, contentFileUploadPath } from "~/admin/urls"
+import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { UploadPanel } from "~/components/files"
 import { Result, SelectAll } from "~/components/form"
-import { Card, Empty, Page, PageHead, PageLinks, Section, Table, Td } from "~/components/page"
+import { Card, Empty, Page, Paging, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { commonFilesAction, commonFilesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
@@ -49,13 +49,9 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <PageHead label={t.heading}>
-        <Link to={href(locale, adminContentsPath())} className="text-white">
-          {messagesFor(locale).admin.contents.backToTree}
-        </Link>
-      </PageHead>
-      <Card>
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading} />
           {/*
             The only reachable status here is "nothing-selected" — this box has
             no hum label and no publish step for "no-box" to answer to, unlike
@@ -75,45 +71,67 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
           </Section>
 
           <Section title={t.list}>
-            {view.rows === null && <Empty>{t.failed}</Empty>}
-            {view.rows !== null && view.rows.length === 0 && <Empty>{t.none}</Empty>}
-            {view.rows !== null && view.rows.length > 0 && (
-              <Form method="post">
-                <Stack gap="normal">
-                  <Table headers={[<SelectAll key="all" name="name" label={messagesFor(locale).admin.files.selectAll} />, t.name, t.size, t.updatedAt, t.url]}>
-                    {view.rows.map((row) => (
-                      <tr key={row.name}>
-                        <Td>
-                          <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
-                        </Td>
-                        <Td>{row.name}</Td>
-                        <Td className="text-nowrap">{formatSize(row.size)}</Td>
-                        <Td className="text-nowrap">{row.updatedAt.slice(0, 10)}</Td>
-                        <Td>
-                          <code className="text-xs">{filePath("common", row.name)}</code>
-                        </Td>
-                      </tr>
-                    ))}
-                  </Table>
-                  <Confirm
-                    label={t.removeFile}
-                    warning={t.removeConfirm}
-                    confirm={t.removeFileConfirm}
-                    cancel={messagesFor(locale).admin.contents.cancel}
-                  >
-                    <input type="hidden" name="intent" value="delete" />
-                  </Confirm>
-                </Stack>
-              </Form>
-            )}
-            <PageLinks
-              label={messagesFor(locale).search.pagination}
-              page={view.page}
-              pageCount={view.pageCount}
-              at={(page) => href(locale, `${adminContentFilesPath()}?page=${page}`)}
-              previous={messagesFor(locale).search.previousPage}
-              next={messagesFor(locale).search.nextPage}
-            />
+            {/* The store did not answer, which is not the same as an empty box —
+                so it is said as a failure rather than in the place a reason for
+                nothing goes. */}
+            {view.rows === null
+              ? <Note kind="danger">{t.failed}</Note>
+              : (
+                  <Form method="post">
+                    <Stack gap="normal">
+                      <Table
+                        headers={[
+                          <SelectAll key="all" name="name" label={messagesFor(locale).admin.files.selectAll} />,
+                          t.name,
+                          t.size,
+                          t.updatedAt,
+                          t.url,
+                        ]}
+                        whenEmpty={t.none}
+                      >
+                        {view.rows.map((row) => (
+                          <tr key={row.name}>
+                            <Td>
+                              <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
+                            </Td>
+                            <Td>{row.name}</Td>
+                            <Td className="text-nowrap">{formatSize(row.size)}</Td>
+                            <Td className="text-nowrap">{row.updatedAt.slice(0, 10)}</Td>
+                            <Td>
+                              <code className="text-xs">{filePath("common", row.name)}</code>
+                            </Td>
+                          </tr>
+                        ))}
+                      </Table>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        {/* Nothing to act on, so nothing to act with — the table
+                            stays, because the column names are what say what was
+                            being looked for. */}
+                        {view.rows.length > 0
+                          ? (
+                              <Confirm
+                                label={t.removeFile}
+                                warning={t.removeConfirm}
+                                confirm={t.removeFileConfirm}
+                                cancel={messagesFor(locale).admin.contents.cancel}
+                              >
+                                <input type="hidden" name="intent" value="delete" />
+                              </Confirm>
+                            )
+                          : <span />}
+                        <Paging
+                          locale={locale}
+                          total={view.total}
+                          from={view.rangeFrom}
+                          to={view.rangeTo}
+                          page={view.page}
+                          pageCount={view.pageCount}
+                          at={(page) => href(locale, `${adminContentFilesPath()}?page=${page}`)}
+                        />
+                      </div>
+                    </Stack>
+                  </Form>
+                )}
           </Section>
         </Stack>
       </Card>

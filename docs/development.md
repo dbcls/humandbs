@@ -44,7 +44,7 @@ docker compose exec app npm run icd10:import
 
 `npm install` を先に走らせるのは、`node_modules` が named volume にあり image に焼かれていないため。
 `docker compose down -v` で volume を消したら install からやり直す。**`db:push` を初回に打つ必要があるのは、
-アプリが繋ぐ role をそれが作るから** (「[DB を触る](#db-を触る)」)。**`s3:buckets` が要るのは、bucket を
+アプリが繋ぐ role と test 用の database をそれが作るから** (「[DB を触る](#db-を触る)」)。**`s3:buckets` が要るのは、bucket を
 書き込みの副作用で作らないから** — どちらの bucket に居るかがファイルの公開状態そのものなので、
 最初の書き込みで bucket が生まれる形にすると公開が操作の順序に依存する
 ([data-model.md](data-model.md) の「ファイル」)。**`icd10:import` が要るのは、分類の配布物を repo に
@@ -56,7 +56,7 @@ docker compose exec app npm run icd10:import
 |---|---|---|
 | `proxy` | nginx。`/files/` と `/private/` を `s3` に、それ以外を `app` に渡す | `127.0.0.1:8080` |
 | `app` | React Router の dev サーバー | proxy 経由のみ |
-| `db` | Postgres + PGroonga | 公開しない |
+| `db` | Postgres + PGroonga。開発用と test 用の 2 つの database を持つ | 公開しない |
 | `s3` | SeaweedFS (master / volume / filer / S3 API) | 公開しない |
 | `assistant-api` | 申請支援アシスタント。profile の後ろにいる | 公開しない |
 
@@ -94,10 +94,11 @@ docker compose exec app npm run test:unit   # 不変量 + 単体 (DB 不要)
 docker compose exec app npm run test:db     # schema + 経路 (db が要る)
 docker compose exec app npm run typecheck   # react-router typegen && tsc
 docker compose exec app npm run build       # 本番ビルド
-docker compose exec app npm run db:push     # schema 定義を DB に反映し、権限を張り直す
+docker compose exec app npm run db:push     # 開発用と test 用の両方に schema を反映し、権限を張り直す
 docker compose exec app npm run s3:buckets  # 2 つの bucket を作る (無ければ)
 docker compose exec app npm run admin:list  # admin の一覧
 docker compose exec app npm run upstream:refresh  # 上流のキャッシュを取り直す
+docker compose exec app npm run e2e:session # e2e の署名を 1 本作る ([testing.md](testing.md))
 ```
 
 `app` が起動していないときは `docker compose run --rm --no-deps app <command>` で単発実行する。ただし
@@ -120,6 +121,12 @@ owner で入るので、上のコマンドには制限がかからない。
 role の定義は `HUMANDBS_DATABASE_URL` そのもの — 接続文字列から role 名とパスワードを読むので、
 アプリが繋ぐ先と作られる role がずれない。
 
+**database は 2 つある。** 開発用と、末尾に `_test` を付けた test 用。**test はこちらだけを触るので、
+回しても開発用データは消えない** ([testing.md](testing.md) の「test 間の独立性」)。test 用の名前は
+開発用から導かれ、設定では変えられない。`db:push` は無ければ作った上で両方に schema を反映し、
+どちらにも同じ role の権限を張る。psql で入る先は開発用のほうで、test 用を見るなら
+`-d humandbs_test`。
+
 PGroonga は初回の initdb で入る (`docker/db/initdb/`)。入っているかは
 `SELECT extname, extversion FROM pg_extension` で見る。initdb は volume が空のときにしか走らないので、
 拡張や初期 SQL を足したら `docker compose down -v` からやり直す。
@@ -128,9 +135,12 @@ schema を DB に入れるのは `npm run db:push`。**migration file を持た�
 直して開発用データを作り直す。全文検索の生成列と PGroonga の index も schema 定義に含まれるので、
 別途 SQL を流す手順は無い。
 
-**行が残っていると危うい変更は `db:push` が対話で確認を求め、TTY が無いので落ちる。** 列や制約を消す
+**行が残っていると危うい変更は `db:push` が対話で確認を求め、TTY が無いので反映せずに止まる。** 列や制約を消す
 変更だけではない — **既にある行に unique 制約を足すのも同じで**、「その表を truncate してよいか」と
-聞いてくる。落ち方はどちらも同じで、`Interactive prompts require a TTY terminal` を出して止まる。
+聞いてくる。止まり方はどちらも同じで、`Interactive prompts require a TTY terminal` を出して何も
+反映しない。**このとき終了コードは 0 のまま**なので、`&&` で繋いだ後ろは動き続ける — schema を変えた
+つもりで反映されていないときは、まずこれを疑う。
+
 **開発用データを作り直すつもりなら、先に空にしてから push すれば聞かれない** (行が無ければ失うものが
 無い)。schema ごと作り直しても同じところに着く。
 
@@ -154,15 +164,27 @@ schema を落とすと `db:grants` が張った権限も消えるが、`db:push`
 作り直すまでの間も検索は動く (この規模で 100 倍ほど遅くなる)。`pg_dump` / `pg_restore` は index の定義を
 そのまま運ぶので、PGroonga のために足す手順は無い。
 
+**`db:push` は enum に値を足せない。** 型そのものが無ければ作るが、**既にある型に値が増えたことは
+反映されない** — 走っても何も言わずに通り、その値を使う書き込みが `22P02` で落ちて初めて分かる。
+schema の enum に値を足したときは psql で入れる。
+
+```sql
+ALTER TYPE content_value_type ADD VALUE IF NOT EXISTS 'disease' AFTER 'number';
+```
+
+**位置まで指定する** (`BEFORE` / `AFTER`)。enum の並びは定義順で決まるので、後ろに足しただけだと
+schema が言っている順序と食い違う。**開発用データを入れ直すより先にやる** — 入れ直しのほうが先に
+落ちるので、順番を逆にすると原因が見えにくい。
+
 ## 開発用データを入れる
 
 入力は 3 つ。v1 の Elasticsearch dump から research 系を、v1 の CMS データベースからサイトコンテンツを、
-JGA 申請管理システム由来の TSV 2 本から上流のキャッシュを読み込む。**画面を書くための実データを用意
+JGA 申請管理システム由来の TSV 3 本から上流のキャッシュを読み込む。**画面を書くための実データを用意
 するのが目的で、値の正しさも網羅性も問わない。**
 
 ```bash
 cp <v1 repo>/.claude/joomla-es/data/es/prod/{research,research-version,dataset}.json migration/input/
-scp <cron のホスト>:~/jga-relation/jga_{study,dataset}_hum_id.tsv migration/input/
+scp <cron のホスト>:~/jga-relation/{jga_study_hum_id,jga_dataset_hum_id,jga_dataset_study}.tsv migration/input/
 docker compose exec app npm run db:load-dev-data
 ```
 
@@ -170,16 +192,18 @@ docker compose exec app npm run db:load-dev-data
 接続しない。** SQL は `.claude/` 側に置いてあり、`document` / `news_item` / `alert` とそれぞれの翻訳を
 1 つの JSON オブジェクトにまとめたものを読む。
 
-TSV 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ送っているのと
-同じもの。外部 accession の日付は v1 の dump が持つ初出日から作る。**本番ではこの 3 つを上流のバッチが
-更新する**が (下の「上流のキャッシュを更新する」)、申請管理システム DB へは手元から届かないので、開発では
+TSV 3 本のうち 2 本は hum ラベル ↔ JGA accession の対応で、いま日次の cron が作って DDBJ Search へ
+送っているのと同じもの。残る 1 本が JGA の dataset → study の辺で、**3 本とも無いと
+`db:load-dev-data` は読み込みに失敗する。**外部 accession の日付は v1 の dump が持つ初出日から作る。
+**本番ではこの 3 つを上流のバッチが更新する**が (下の「上流のキャッシュを更新する」)、申請管理システム
+DB へは手元から届かないので、開発では
 ファイルと dump を出発点にする。公開ゲートの検算と、DDBJ Search へ供給する endpoint
 ([public-api.md](public-api.md))、公開表現の日付 ([data-model.md](data-model.md) の「外部キャッシュ」)
 がこれを読む。
 
 `migration/input/` は git 管理外。10 秒ほどで終わり、**全部を 1 つのトランザクションで置き換える**ので、
-途中で落ちても前のデータが残る。**疾患のラベルは ICD10 の辞書から埋める**ので、辞書を入れる前に流すと
-コードだけの語彙になる (下の「[ICD10 の辞書を入れる](#icd10-の辞書を入れる)」)。
+途中で落ちても前のデータが残る。**疾患の見出し語は ICD10 の辞書から埋める**ので、辞書を入れる前に流すと
+コードだけの語彙になる (記事に書かれた呼称は原文から入るので、辞書の有無に関わらず埋まる) (下の「[ICD10 の辞書を入れる](#icd10-の辞書を入れる)」)。
 
 記事が参照する画像と PDF は content に入らない。実体はファイルストアの `common/` の箱にあり、本文からは
 `/files/common/…` で参照される ([files.md](files.md))。**投入は本文の書き換えまでしかしない**ので、
@@ -193,13 +217,6 @@ docker compose exec app npm run s3:common-assets
 `migration/input/public-files/` に残り、2 回目からは外に出ない。取得元は現行ポータルで、
 `HUMANDBS_LEGACY_ORIGIN` で変えられる。**箱の中身は test で消えない**ので、入れ直すのは本文が別のものを
 指し始めたときだけ。
-
-**test は開発用 DB を空にする**ので、test の後は辞書と開発用データの両方を入れ直す。
-
-```bash
-docker compose exec app npm run icd10:import
-docker compose exec app npm run db:load-dev-data
-```
 
 意図的にやっていないことがある。どれも機械的な変換ではなく判断が要るもので、本番のデータを作る移行の
 側で決める。
@@ -243,8 +260,8 @@ docker compose exec app npm run admin:grant -- <sub> "表示名"
 # 3. /admin を開き直すと capability の一覧が出る
 ```
 
-外すのは `admin:revoke -- <sub>`。**開発用データの投入は admin も session も消さない**ので
-`db:load-dev-data` を流し直しても入り直さなくてよいが、**test は DB を空にするので admin は消える**。
+外すのは `admin:revoke -- <sub>`。**開発用データの投入は admin も session も消さない**ので、
+`db:load-dev-data` を流し直しても入り直さなくてよい。
 
 サインアウトは Keycloak 側のセッションも終わらせるので、押した後は DDBJ アカウントのログインから
 やり直しになる。
@@ -260,7 +277,7 @@ ICD-10 2019 Meta、日本語は e-Stat の「疾病、傷害及び死因の統�
 `icd10_reference` を全置換する。**語彙 (`vocabulary_term`) には触らない** ので、admin が直した
 ラベルが取り込みで消えることはない。
 
-**配布物を repo に置かないので、初回セットアップと `test:db` の後に打つ必要がある。** 落としたものは
+**配布物を repo に置かないので、初回セットアップで打つ必要がある。** 落としたものは
 `migration/input/` (git 管理外) に残り、2 回目からはそこを読むので外に出ない。手で置いた版を使いたい
 ときは同じ場所に同じ名前で置く。
 
@@ -302,7 +319,7 @@ DB が直接見える ([deployment.md](deployment.md))。
 **接続は read-only を強制する** (`default_transaction_read_only`)。他プロジェクトの所管なので、設定の
 間違いで書き込みが通る余地を残さない。**staging は使えない** — hum が 3 件しか無く、検証にならない。
 
-同じ接続を上流からの下書き ([editing.md](editing.md)) も使う。こちらはキャッシュではなく画面からの
+同じ接続を「下書きを外から作る」経路 ([editing.md](editing.md)) も使う。こちらはキャッシュではなく画面からの
 直読みなので、**接続が無ければその画面が繋がっていないと言う**。
 
 ## ファイルストアを触る
@@ -339,7 +356,7 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip
 本番の build に入ってしまう。この不変条件は `app/routes.test.ts` が守っている。
 
 **並んでいる行は開発用データから 1 度取って凍結したもの** (`app/routes/dev-ui.data.ts`)。
-DB を読むと db test を回すたびに空になり、部品が壊れたのか行が 0 件なのか区別できなくなる。
+DB を読むと、部品が壊れたのか行が 0 件なのかを見た目から区別できなくなる。
 view の型が変わったら手で取り直す。
 
 規則は [ui.md](ui.md)。

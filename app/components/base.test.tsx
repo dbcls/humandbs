@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { Chip, Clamped, PaneHeading } from "./base"
+import { Chip, Clamped, Fold, foldShown, PaneHeading } from "./base"
 
 /** Rendered at an address, since a part may hold a link. */
 function render(element: React.ReactNode): string {
@@ -127,5 +127,44 @@ describe("a condition in force", () => {
   it("says what pressing it takes off", () => {
     expect(render(<Chip field="性別" value="男性" to="/research" remove="性別: 男性 を解除" />))
       .toContain("性別: 男性 を解除")
+  })
+})
+
+describe("a part of a panel that folds", () => {
+  it("is open while there is a reason for it to be", () => {
+    expect(render(<Fold summary="疾患" open>C34</Fold>)).toContain("<details open")
+  })
+
+  it("is shut when there is none", () => {
+    expect(render(<Fold summary="疾患">C34</Fold>)).not.toContain("<details open")
+  })
+
+  it("opens when a reason appears", () => {
+    expect(foldShown(false, true)).toBe(true)
+  })
+
+  /**
+   * The reason going away is not the reader asking for the section to be put
+   * away. Written as the reason alone, lifting the last condition of a facet
+   * would fold it up under a reader who was reading it.
+   */
+  it("stays open when the reason goes away, which nobody asked for", () => {
+    expect(foldShown(true, false)).toBe(true)
+  })
+
+  it("stays shut while nothing has opened it", () => {
+    expect(foldShown(false, false)).toBe(false)
+  })
+
+  /**
+   * The same distances either way, but only one of them is inside the thing
+   * that gets pressed: on the `<details>` it left a 22.4px target — the line of
+   * words and nothing else — under 8px of margin nobody could press.
+   */
+  it("puts its padding inside the thing that gets pressed", () => {
+    const html = render(<Fold summary="疾患">C34</Fold>)
+
+    expect(html).toMatch(/<summary[^>]*\bpy-2\b/)
+    expect(html).not.toMatch(/<details[^>]*\bpy-2\b/)
   })
 })

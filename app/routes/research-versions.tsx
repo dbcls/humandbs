@@ -32,7 +32,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const t = messagesFor(loaderData.locale).research
-  return [{ title: `${t.releaseInfoOf(loaderData.view.humLabel)} - NBDC Human Database` }]
+  return [{ title: `${t.releaseInfoOf(loaderData.view.humLabel)} - ${messagesFor(loaderData.locale).siteName}` }]
 }
 
 /**

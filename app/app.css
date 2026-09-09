@@ -174,6 +174,34 @@
   --text-xl--line-height: 1.45;
   --text-2xl--line-height: 1.35;
   --text-3xl--line-height: 1.3;
+
+  /*
+   * The two movements the site has, both of them saying that something changed
+   * rather than decorating it.
+   *
+   * `bump` is a number that has just been counted up, and `rise` is a notice
+   * arriving in a corner nobody is looking at — a change that does not move is
+   * missed, which is the whole reason the count in the bar went unnoticed.
+   *
+   * **Both are drawn behind `motion-safe:`**, and what they say is said again
+   * without them: the number changes, and the notice is announced. Turning
+   * motion off takes away the movement, never the answer.
+   */
+  --animate-bump: bump 200ms ease-out;
+  --animate-rise: rise 200ms ease-out;
+}
+
+@keyframes bump {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
 }
 
 @layer base {
@@ -238,37 +266,37 @@
   }
 
   /*
-   * **Only the article's own title takes the brand colour.** Everything below
-   * it is the text's own, so that a coloured run of words in an article means a
-   * link and nothing else — a guideline is mostly headings, and colouring them
-   * makes the reader test each one by pointing at it.
+   * The ladder of an article, under the page's own title: 18 / 16 / 14 over a
+   * body of 14. **The body never holds the top rung.** One that writes its own
+   * `#` is shifted down so that the page keeps the single `h1` its title is
+   * (`public/markdown.server.ts`), which is why no `h1` is named here.
+   *
+   * **No heading in an article carries colour — only its title does.** An
+   * article is made of headings and its paragraphs are dense with links, so a
+   * coloured line is read as a link first and a heading second: the size and
+   * the missing underline are both noticed after the colour. Leaving colour to
+   * links means a coloured run in an article means a link and nothing else,
+   * including where the heading itself is one.
    *
    * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
-   * so the levels have to stay apart past the third. Size carries most of it and
-   * the top two are heavier as well, which keeps a difference where the sizes
-   * come together.
-   */
-  /*
-   * The ladder of an article, which is the ladder a research page uses: 24 /
-   * 18 / 16 / 14 over a body of 14, with the top two in brand and the rest in
-   * the colour of the text. `Section` names a part of a page in brand at 18px
-   * and an article's parts are the same kind of thing, so the two agree rather
-   * than each having an h2 of its own.
+   * so the levels have to stay apart past the third. Size carries it, and every
+   * rung holds the same weight — the heading has only its weight to separate it
+   * from the paragraph under it, and that is as true of the section level as of
+   * the ones below it.
    *
-   * **Colour does part of the work of weight**, which is what lets h2 be the
-   * lightest of them: a brand line is already marked as a heading, while an ink
-   * one has only its weight to separate it from the paragraph under it.
+   * **What tells the section level apart is the mark.** The rule beside it is
+   * the one thing on the page no link has, which is why it can be dropped from
+   * `h3` down without the ladder losing a step. **It stands at the start of
+   * what it names** rather than being hung out through the card's padding: the
+   * card edge belongs to the title of the whole page, and a mark on that line
+   * would put every section on the same footing as it.
    *
-   * **The section level carries the mark as well.** Blue words in a page of
-   * blue links are read as a link first and a heading second — the size and the
-   * missing underline are both noticed after the colour. The rule beside them
-   * is the one thing on the page no link has. **It stands at the start of what
-   * it names** rather than being hung out through the card's padding: the card
-   * edge belongs to the title of the whole page, and a mark on that line would
-   * put every section on the same footing as it.
+   * `Section` names a part of a *page* in brand at the same size, and that one
+   * keeps its colour: a research page is fields and tables rather than running
+   * prose, so its section names are landmarks in a page that is not otherwise
+   * a field of links.
    */
-  .markdown h1 { @apply text-2xl font-bold text-brand; }
-  .markdown h2 { @apply border-brand border-l-4 pl-2.5 text-lg font-medium text-brand; }
+  .markdown h2 { @apply border-brand border-l-4 pl-2.5 text-lg; }
   .markdown h3 { @apply text-base; }
 
   /*

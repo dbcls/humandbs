@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { AppliedConditions, PageSizeChooser, Pagination, SearchForm, SortChooser } from "./search"
+import { AppliedConditions, PageSizeChooser, Pagination, RefinableList, SearchForm, SortChooser } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -42,7 +42,7 @@ describe("the conditions in force", () => {
   it("gives each one an address that removes it", () => {
     const html = render(
       <AppliedConditions
-        conditions={[{ field: "研究題目", value: "ゲノム", href: "/research?q=%E8%A7%A3%E6%9E%90" }]}
+        conditions={[{ field: "研究題目", value: "ゲノム", code: null, href: "/research?q=%E8%A7%A3%E6%9E%90" }]}
         clearHref="/research"
         locale="ja"
       />,
@@ -55,7 +55,7 @@ describe("the conditions in force", () => {
   it("draws the field and the value apart, so a column of them lines up", () => {
     const html = render(
       <AppliedConditions
-        conditions={[{ field: "研究題目", value: "ゲノム", href: "/research" }]}
+        conditions={[{ field: "研究題目", value: "ゲノム", code: null, href: "/research" }]}
         clearHref="/research"
         locale="ja"
       />,
@@ -68,8 +68,41 @@ describe("the conditions in force", () => {
     expect(drawn).not.toContain("研究題目: ゲノム")
   })
 
+  it("writes the ICD10 code on a disease condition, ahead of the heading", () => {
+    const html = render(
+      <AppliedConditions
+        conditions={[{
+          field: "疾患",
+          value: "気管支及び肺の悪性新生物",
+          code: "C34",
+          href: "/research",
+        }]}
+        clearHref="/research"
+        locale="ja"
+      />,
+    )
+
+    // The same value the panel draws, drawn the same way round: a reader
+    // looking for what they chose reads down a column of codes.
+    expect(html).toContain("<code")
+    expect(html.indexOf("C34")).toBeLessThan(html.indexOf("気管支及び肺の悪性新生物"))
+  })
+
+  it("leaves the code off a condition whose code is a slug of this site's own", () => {
+    const html = render(
+      <AppliedConditions
+        conditions={[{ field: "実験方法", value: "WGS", code: null, href: "/research" }]}
+        clearHref="/research"
+        locale="ja"
+      />,
+    )
+
+    expect(html).toContain("WGS")
+    expect(html).not.toContain("<code")
+  })
+
   it("offers the way to lift all of them only when it has one", () => {
-    const conditions = [{ field: null, value: "title:ゲノム OR a", href: "/research" }]
+    const conditions = [{ field: null, value: "title:ゲノム OR a", code: null, href: "/research" }]
     expect(render(<AppliedConditions conditions={conditions} clearHref="/research" locale="ja" />))
       .toContain("すべて解除")
     expect(render(<AppliedConditions conditions={conditions} clearHref={null} locale="ja" />))
@@ -78,7 +111,7 @@ describe("the conditions in force", () => {
 })
 
 describe("paging", () => {
-  it("is not drawn when everything fits on one page", () => {
+  it("draws the count but no numbers when everything fits on one page", () => {
     const html = render(
       <Pagination
         locale="ja"
@@ -89,9 +122,14 @@ describe("paging", () => {
         page={1}
         pageCount={1}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
-    expect(html).toBe("")
+    // 件数はページが 1 つでも答えになる。番号は「どこへ行けるか」なので出ない。
+    expect(html).toContain("21–40 / 200 件")
+    expect(html).not.toContain("<nav")
   })
 
   it("keeps the query and the ordering on every page it links to", () => {
@@ -105,6 +143,9 @@ describe("paging", () => {
         page={2}
         pageCount={9}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("q=cancer&amp;sort=dateModified&amp;page=3")
@@ -123,6 +164,9 @@ describe("paging", () => {
         page={20}
         pageCount={50}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain(">1</a>")
@@ -206,6 +250,9 @@ describe("how many rows a page holds", () => {
         page={2}
         pageCount={9}
         rows={100}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("size=100")
@@ -223,7 +270,10 @@ describe("how many rows a page holds", () => {
         rows={50}
       />,
     )
-    expect(html).toContain("sort=dateModified&amp;size=50")
+    expect(html).toContain("sort=datePublished&amp;size=50")
+    // The default ordering names itself by not being written down, which leaves
+    // the link to it carrying the size and nothing else.
+    expect(html).toContain("\"/research?size=50\"")
   })
 
   it("is carried by the box, so searching again keeps it", () => {
@@ -253,7 +303,7 @@ describe("which way the ordering runs", () => {
         rows={null}
       />,
     )
-    expect(html).toContain("\"/research?sort=dateModified&amp;order=asc\"")
+    expect(html).toContain("\"/research?order=asc\"")
     expect(html).toContain("昇順にする")
   })
 
@@ -285,6 +335,19 @@ describe("which way the ordering runs", () => {
     for (const name of ["更新日", "公開日", "ID"]) expect(html).toContain(name)
   })
 
+  /*
+    The same rule the size is written under: an address holds what differs from
+    the default, so a reader who asked for nothing is browsing at `/research`
+    and every link on the page says the ordering only when somebody chose one.
+  */
+  it("writes the ordering it is not, and leaves the default out of the address", () => {
+    const html = render(
+      <SortChooser locale="ja" target="research" query="" sort="id" order="asc" rows={null} />,
+    )
+    expect(html).toContain("\"/research?sort=datePublished\"")
+    expect(html).not.toContain("sort=dateModified")
+  })
+
   it("survives turning a page", () => {
     const html = render(
       <Pagination
@@ -296,6 +359,9 @@ describe("which way the ordering runs", () => {
         page={2}
         pageCount={9}
         rows={null}
+        total={200}
+        from={21}
+        to={40}
       />,
     )
     expect(html).toContain("order=asc")
@@ -313,5 +379,54 @@ describe("which way the ordering runs", () => {
       />,
     )
     expect(html).toContain("order=asc&amp;size=50")
+  })
+})
+
+describe("a listing waiting for the answer to replace it", () => {
+  const of = (busy: boolean) => render(
+    <RefinableList
+      open
+      busy={busy}
+      heading={<h2>絞り込み</h2>}
+      closed={null}
+      refine={<p>条件</p>}
+      refineHasMore={false}
+      tools={<p>並び替え</p>}
+      panel={<p>facet</p>}
+    >
+      <p>hum0001</p>
+    </RefinableList>,
+  )
+
+  /*
+    The answer on screen is still the answer to the search behind it, and a
+    block that empties itself moves everything under it twice for one
+    refinement. What it does instead is say that it is not the new one yet.
+  */
+  it("keeps what is on screen readable while the next answer is on its way", () => {
+    const html = of(true)
+    expect(html).toContain("hum0001")
+    expect(html).toContain("facet")
+  })
+
+  it("goes pale and says so, and the pointer says which way to read it", () => {
+    const html = of(true)
+    expect(html).toContain("aria-busy=\"true\"")
+    expect(html).toContain("opacity-60")
+    expect(html).toContain("cursor-progress")
+  })
+
+  it("carries none of that while it is showing an answer", () => {
+    const html = of(false)
+    expect(html).toContain("aria-busy=\"false\"")
+    expect(html).not.toContain("opacity-60")
+    expect(html).not.toContain("cursor-progress")
+  })
+
+  /* Both states carry it, so a state that outlives the delay by 40ms fades
+     rather than blinking. */
+  it("fades in and out of it", () => {
+    expect(of(true)).toContain("transition-opacity")
+    expect(of(false)).toContain("transition-opacity")
   })
 })

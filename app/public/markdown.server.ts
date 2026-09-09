@@ -45,6 +45,8 @@ import { linkHref } from "~/content/richtext"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
+import { headingIds } from "./heading-id"
+
 const HEADING = /^h([1-6])$/
 
 function headingLevel(tagName: string): number | null {
@@ -87,27 +89,17 @@ function safeDestinations() {
       if (attribute === null) return
       const value = node.properties[attribute]
       if (typeof value !== "string") return
+      const kept = linkHref(value)
+      // **A place on this page is somewhere to go, not somewhere a picture
+      // comes from.** It is the one destination a link may hold that an image
+      // may not, so it is dropped here rather than narrowed in the check the
+      // two share.
+      const allowed = attribute === "src" && kept?.startsWith("#") === true ? null : kept
       // `undefined` is how hast says an attribute is absent; the serialiser
       // leaves it out entirely.
-      node.properties = { ...node.properties, [attribute]: linkHref(value) ?? undefined }
+      node.properties = { ...node.properties, [attribute]: allowed ?? undefined }
     })
   }
-}
-
-/**
- * The address a heading answers at, built from its words.
- *
- * **Words rather than a counter**: an address that survives an edit elsewhere
- * in the article is one a reader can quote. Everything that is not a letter, a
- * digit or a separator goes, which takes the numbering the guidelines carry
- * (`５．` becomes `５`) — punctuation in an address is noise, and a heading that
- * is punctuation alone has no words to name it by.
- */
-function slugFor(text: string): string {
-  const said = text.trim().toLowerCase().replaceAll(/\s+/g, "-").replaceAll(/[^\p{L}\p{N}_-]/gu, "")
-  // A heading of punctuation alone leaves separators and nothing to read, and
-  // `#---` names a place no better than `#section` does.
-  return /[\p{L}\p{N}]/u.test(said) ? said : "section"
 }
 
 function textOf(node: Element): string {
@@ -139,13 +131,15 @@ const ANCHOR = [
 
 function headingAnchors(options: { label: string }) {
   return (tree: Root) => {
-    const used = new Map<string, number>()
+    // Numbered as a whole rather than one at a time, because what a repeat is
+    // numbered from is the article and not the heading (`headingIds`).
+    const headings: Element[] = []
     visit(tree, "element", (node: Element) => {
-      if (headingLevel(node.tagName) === null) return
-      const base = slugFor(textOf(node))
-      const seen = used.get(base)
-      used.set(base, (seen ?? 0) + 1)
-      const id = seen === undefined ? base : `${base}-${seen + 1}`
+      if (headingLevel(node.tagName) !== null) headings.push(node)
+    })
+    const ids = headingIds(headings.map((node) => textOf(node)))
+    headings.forEach((node, at) => {
+      const id = ids[at] ?? "section"
       node.properties = { ...node.properties, id, className: ["group", "relative"] }
       node.children = [
         {

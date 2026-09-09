@@ -1,18 +1,15 @@
-import type { ComponentProps } from "react"
+import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react"
 import { Form, Link } from "react-router"
 
-import { Button, CLEAR, Fold, Stack } from "~/components/base"
+import { CLEAR, EDGE_SHADE, Fold, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
-import { TermLabel } from "~/components/page"
+import { Empty, TermLabel } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import type {
-  FacetCodeEntryView,
-  FacetPanelView,
-  FacetValueView,
-  FacetView,
-} from "~/public/facets.server"
+import { matches, rolledUpFind } from "~/public/facet-find"
+import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
 import { href, listPath } from "~/public/urls"
+import { useAsk } from "~/search-as-typed"
 import type { SearchTarget } from "~/search/query.server"
 
 /**
@@ -31,12 +28,6 @@ import type { SearchTarget } from "~/search/query.server"
  * A value is shown with the number of rows it would leave, counted with this
  * facet's own condition lifted, so that a second value of the same facet is
  * still reachable after the first has been chosen.
- *
- * **The disease facet has a second way in: its code.** Its values are spread
- * over hundreds of roots, so reading the list to find one means opening the
- * list first. What the box produces is the condition the value would have
- * produced, so nothing about the rollup or the counting changes with the way
- * in.
  *
  * **What names this pane is not here.** The heading, the box and the conditions
  * in force stand above it as one block (`components/search.tsx` の
@@ -67,10 +58,10 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   return (
     <nav aria-label={messages.heading} className="text-sm">
       <Stack gap="normal">
-        {panel.categories.map((category, index) => (
+        {panel.categories.map((category) => (
           <section key={category.code ?? "-"}>
             {category.label !== null && (
-              <h3 className="mb-2 font-semibold text-ink-muted text-xs uppercase tracking-wide">
+              <h3 className={`mb-2 ${PANE_LABEL}`}>
                 {category.label}
               </h3>
             )}
@@ -83,10 +74,14 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
                   query={query}
                   sort={sort}
                   facet={facet}
-                  // The first group is the one a reader who has chosen nothing
-                  // is most likely to choose from, and a panel that opened
-                  // nothing at all would read as having nothing to offer.
-                  open={index === 0 || facet.clearHref !== null || facet.expanded}
+                  // **A facet is opened by a reason, not by where it sits.** A
+                  // condition in force that cannot be seen is a listing that
+                  // lies about itself, and that is the only reason there is:
+                  // opening the first group as well cost 800px of scroll
+                  // before the reader reached the dimension they came for.
+                  // **The reason going away does not close it again** — that
+                  // part is `Fold`'s.
+                  open={facet.clearHref !== null}
                 />
               ))}
             </div>
@@ -97,8 +92,6 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   )
 }
 
-/** How many of a facet's values are in force, roll-ups included. */
-
 function Facet({ locale, target, query, sort, facet, open }: {
   locale: Locale
   target: SearchTarget
@@ -108,6 +101,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
   open: boolean
 }) {
   const messages = messagesFor(locale).search.refine
+  const { form, ask } = useAsk(href(locale, listPath(target)))
   return (
     <Fold
       summary={facet.label}
@@ -121,38 +115,6 @@ function Facet({ locale, target, query, sort, facet, open }: {
           )}
     >
       <Stack gap="tight">
-        {facet.closeHref !== null && (
-          <div className="flex justify-end">
-            <RefineLink to={facet.closeHref} className="text-brand">{messages.close}</RefineLink>
-          </div>
-        )}
-
-        {facet.expanded && facet.kind === "vocabulary" && (
-          <Form method="get" action={href(locale, listPath(target))} preventScrollReset className="flex gap-1">
-            <Carried query={query} sort={sort} facet={facet.code} />
-            <input
-              type="search"
-              name="find"
-              defaultValue={facet.find}
-              aria-label={messages.find}
-              placeholder={messages.find}
-              className={`min-w-0 flex-1 ${CONTROL}`}
-            />
-            <Button variant="secondary">{messages.apply}</Button>
-          </Form>
-        )}
-
-        {facet.codeEntry !== null && (
-          <CodeEntry
-            locale={locale}
-            target={target}
-            query={query}
-            sort={sort}
-            facet={facet}
-            entry={facet.codeEntry}
-          />
-        )}
-
         {facet.range !== null
           ? (
               <>
@@ -174,9 +136,14 @@ function Facet({ locale, target, query, sort, facet, open }: {
                     ))}
                   </div>
                 )}
-                <Form method="get" action={href(locale, listPath(target))} preventScrollReset>
+                <Form
+                  ref={form}
+                  method="get"
+                  action={href(locale, listPath(target))}
+                  preventScrollReset
+                >
                   <Stack gap="tight">
-                    <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
+                    <Carried query={query} sort={sort} />
                     <input type="hidden" name="rangeKey" value={facet.code} />
                     {facet.kind === "date"
                       ? (
@@ -186,16 +153,15 @@ function Facet({ locale, target, query, sort, facet, open }: {
                               label={messages.dateFrom}
                               value={facet.range.from}
                               kind={facet.kind}
+                              ask={ask}
                             />
                             <Bound
                               name="rangeTo"
                               label={messages.dateTo}
                               value={facet.range.to}
                               kind={facet.kind}
+                              ask={ask}
                             />
-                            <div className="flex justify-end">
-                              <Button variant="secondary" size="xs">{messages.apply}</Button>
-                            </div>
                           </>
                         )
                       : (
@@ -205,6 +171,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
                               label={messages.from}
                               value={facet.range.from}
                               kind={facet.kind}
+                              ask={ask}
                             />
                             <span aria-hidden="true">–</span>
                             <Bound
@@ -212,92 +179,124 @@ function Facet({ locale, target, query, sort, facet, open }: {
                               label={messages.to}
                               value={facet.range.to}
                               kind={facet.kind}
+                              ask={ask}
                             />
                             {facet.range.unit !== null && (
                               <span className="text-ink-muted text-xs">{facet.range.unit}</span>
                             )}
-                            {/*
-                              **The gap that holds the pair together is not the
-                              one that separates them from the operation.** Both
-                              ends and the unit are one thing to read; pushing
-                              the button to the edge says so, and stands it on
-                              the same line as the one a date facet ends with.
-                            */}
-                            <Button variant="secondary" size="xs" className="ml-auto">
-                              {messages.apply}
-                            </Button>
                           </div>
                         )}
                   </Stack>
                 </Form>
               </>
             )
-          : (
-              <ul className="flex flex-col">
-                {facet.values.map((value) => (
-                  <li key={value.code}>
-                    <Value locale={locale} value={value} />
-                    {value.children.length > 0 && (
-                      <ul className="ml-4 flex flex-col border-line border-l pl-2">
-                        {value.children.map((child) => (
-                          <li key={child.code}>
-                            <Value locale={locale} value={child} />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-        {facet.moreHref !== null && (
-          <RefineLink to={facet.moreHref} className="inline-block text-brand">
-            {messages.seeAll}
-          </RefineLink>
-        )}
+          : facet.values.length === 0
+            // **A dimension nothing in the result carries still stands in the
+            // pane** (`facets.server.ts`), so opening it has to say why it is
+            // empty. Left blank it reads as a box that failed to draw.
+            ? <Empty>{messages.none}</Empty>
+            : <Values locale={locale} values={facet.values} kind={facet.kind} />}
       </Stack>
     </Fold>
   )
 }
 
 /**
- * The box a code is typed into. A GET form like the range inputs: the listing
- * answers it with the address of the refined search, and only what could not be
- * turned into one comes back here to be explained.
+ * How many values stand in the box before the list has to be scrolled.
+ *
+ * Measured rather than chosen: a value is 29.5px (three values 139px, five
+ * 198px), so nine of them fill the 288px the list is allowed. **What this
+ * decides is only whether the box to narrow them is drawn** — the list itself
+ * always carries the ceiling, which does nothing until there is something to
+ * scroll.
  */
-function CodeEntry({ locale, target, query, sort, facet, entry }: {
+const VALUES_IN_BOX = 9
+
+/**
+ * Every value a facet holds, and the box that narrows them.
+ *
+ * **The list scrolls rather than being cut short.** The widest facet carries
+ * 389 values; cutting it and offering a way to the rest costs either an address
+ * that says something other than the conditions in force, or a reader without
+ * script who cannot reach past the cut (`docs/public-pages.md` の「絞り込み」).
+ *
+ * **The box narrows what is already on the page**, so it asks the server for
+ * nothing and what it was given does not go into the address — it changes what
+ * the reader is looking at, not what the search returned. Without script it
+ * does nothing, and the values are all there to be scrolled to.
+ *
+ * **The chosen values are first** (`facets.server.ts`), so a condition in force
+ * is never below the fold of the box.
+ */
+function Values({ locale, values, kind }: {
   locale: Locale
-  target: SearchTarget
-  query: string
-  sort: string | null
-  facet: FacetView
-  entry: FacetCodeEntryView
+  values: FacetValueView[]
+  kind: FacetView["kind"]
 }) {
   const messages = messagesFor(locale).search.refine
+  const [find, setFind] = useState("")
+  const needle = kind === "disease" ? rolledUpFind(find, values) : find
+  const shown = values.filter((value) => matches(needle, value))
+  const box = useRef<HTMLUListElement>(null)
+  // **The far edge is shaded before anything has measured it.** How many values
+  // stand in the box is known where the page is built, and a reader with no
+  // script never reaches the measurement — the one thing saying the list goes
+  // on would be the thing that needs script to appear.
+  const [reach, setReach] = useState({ back: false, on: values.length > VALUES_IN_BOX })
+
+  // Both ends are read from the same event, and the state only changes when one
+  // of them crosses.
+  const measure = useCallback(() => {
+    const el = box.current
+    if (el === null) return
+    const room = el.scrollHeight - el.clientHeight
+    setReach((was) => {
+      const back = el.scrollTop > 1
+      const on = el.scrollTop < room - 1
+      return was.back === back && was.on === on ? was : { back, on }
+    })
+  }, [])
+
+  // **The list is drawn inside a shut fold**, so how much of it there is cannot
+  // be known until the reader opens one; and the box above it changes how much
+  // there is left to travel with every word typed into it.
+  useEffect(() => {
+    const el = box.current
+    if (el === null) return
+    measure()
+    const watch = new ResizeObserver(() => {
+      measure()
+    })
+    watch.observe(el)
+    return () => {
+      watch.disconnect()
+    }
+  }, [measure])
+
   return (
-    <Form method="get" action={href(locale, listPath(target))} preventScrollReset>
-      <Stack gap="tight">
-        <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
-        <div className="flex gap-1">
-          <input
-            type="text"
-            name="code"
-            defaultValue={entry.value}
-            aria-label={messages.code}
-            placeholder={messages.codeHint}
-            aria-invalid={entry.problem !== null ? true : undefined}
-            className={`min-w-0 flex-1 ${CONTROL}`}
-          />
-          <Button variant="secondary">{messages.apply}</Button>
-        </div>
-        {entry.problem !== null && (
-          <p role="status" className="text-accent text-xs">
-            {entry.problem === "unknown-code" ? messages.codeUnknown : messages.codeNoData}
-          </p>
-        )}
-      </Stack>
-    </Form>
+    <Stack gap="tight">
+      {values.length > VALUES_IN_BOX && (
+        <input
+          type="search"
+          value={find}
+          onChange={(event) => { setFind(event.target.value) }}
+          aria-label={messages.find}
+          placeholder={messages.find}
+          className={`w-full ${CONTROL}`}
+        />
+      )}
+      <div className="relative">
+        <ul ref={box} onScroll={measure} className="flex max-h-72 flex-col overflow-y-auto">
+          {shown.map((value) => (
+            <li key={value.code}>
+              <Value locale={locale} value={value} kind={kind} />
+            </li>
+          ))}
+        </ul>
+        {reach.back && <div className={EDGE_SHADE.top} />}
+        {reach.on && <div className={EDGE_SHADE.bottom} />}
+      </div>
+    </Stack>
   )
 }
 
@@ -321,16 +320,14 @@ function RefineLink(props: ComponentProps<typeof Link>) {
  * What a form has to hand back untouched: a GET form replaces the whole query
  * string, so anything it does not carry is dropped from the address.
  */
-function Carried({ query, sort, facet }: {
+function Carried({ query, sort }: {
   query: string
   sort: string | null
-  facet: string | null
 }) {
   return (
     <>
       <input type="hidden" name="q" value={query} />
       {sort !== null && <input type="hidden" name="sort" value={sort} />}
-      {facet !== null && <input type="hidden" name="facet" value={facet} />}
     </>
   )
 }
@@ -347,14 +344,38 @@ function Carried({ query, sort, facet }: {
  * two dates stand one above the other, and a bound on its own line has room
  * for the word that says which one it is. The numbers keep their pair around a
  * dash, which is what says it there.
+ *
+ * **Neither end has a button, and the two ask at different moments.**
+ *
+ * **A date asks the moment it has one.** The control hands over a whole date or
+ * nothing at all, and the way most readers give it one is a single gesture in
+ * the picker — so there is nothing to wait for, and the presets above it
+ * already work this way.
+ *
+ * **A number waits until it has been left.** Digits are not letters: every
+ * prefix of a word matches a superset of what the reader meant, so a result on
+ * the way is the answer coming closer, but **each digit multiplies the bound by
+ * ten**, and the numbers on the way are different questions with correct and
+ * useless answers. Measured on the read length, an upper bound typed as `150`
+ * passes 4 rows and 13 rows before reaching 827; the smallest probe number in
+ * the data is 450, so typing it answers "nothing found" twice first. So the
+ * form asks on the way out of the field, **and only if the value is not the one
+ * already in force** — tabbing through a pane must not re-ask what it is
+ * already showing. Enter asks too, since a form with two fields and no button
+ * would otherwise do nothing with it.
  */
-function Bound({ name, label, value, kind }: {
+function Bound({ name, label, value, kind, ask }: {
   name: string
   label: string
   value: string
   kind: FacetView["kind"]
+  /** Go to the address this form now stands for. */
+  ask: () => void
 }) {
   const date = kind === "date"
+  const settled = (event: { currentTarget: HTMLInputElement }) => {
+    if (event.currentTarget.value !== value) ask()
+  }
   const input = (
     <input
       type={date ? "date" : "text"}
@@ -362,6 +383,18 @@ function Bound({ name, label, value, kind }: {
       name={name}
       defaultValue={value}
       aria-label={date ? undefined : label}
+      {...(date
+        ? { onChange: settled }
+        : {
+            onBlur: settled,
+            onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key !== "Enter") return
+              // The form has no button to submit it, so nothing would happen —
+              // and a page reload here would be a page the reader lost.
+              event.preventDefault()
+              settled(event)
+            },
+          })}
       className={`${date ? "w-full" : "w-16"} ${CONTROL}`}
     />
   )
@@ -374,7 +407,20 @@ function Bound({ name, label, value, kind }: {
   )
 }
 
-function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
+/**
+ * **A disease value shows the code it is filed under, and no other facet does.**
+ * An ICD10 code is a shared key — it is on the dataset page, in the JSON API and
+ * in whatever the reader brought with them — where the code of a platform or an
+ * assay is a slug this site made up to put in an address. It leads rather than
+ * follows because the headings are long and the pane is a quarter of the page:
+ * set first, the codes make a column that can be read down, where after a
+ * heading that wraps to three lines a code lands somewhere different each time.
+ */
+function Value({ locale, value, kind }: {
+  locale: Locale
+  value: FacetValueView
+  kind: FacetView["kind"]
+}) {
   const messages = messagesFor(locale).search.refine
   return (
     <RefineLink
@@ -387,6 +433,12 @@ function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
       }`}
     >
       <span className="min-w-0 break-words">
+        {kind === "disease" && (
+          <>
+            <code className="mr-1 font-mono text-ink-muted text-xs">{value.code}</code>
+            {" "}
+          </>
+        )}
         <TermLabel term={value} />
         {value.selected && (
           <span className="sr-only">

@@ -144,7 +144,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-
+      start_period: 20s
     init: true
 
   proxy:
@@ -162,8 +162,41 @@ services:
         condition: service_started
     init: true
 
+  # The end-to-end tests, which drive a browser against a running instance.
+  #
+  # **Behind a profile because the browser image is far larger than the app's
+  # and nothing else needs it**, and because these are not run while developing
+  # (docs/testing.md): `docker compose --profile e2e run --rm e2e`.
+  #
+  # Its modules are its own rather than the app's — the two images are built on
+  # different distributions, and the packages that ship a compiled binary would
+  # be the wrong one for whichever container installed second.
+  e2e:
+    profiles: ["e2e"]
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /app
+    environment:
+      TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+      # Which instance is driven. The proxy in this compose unless told
+      # otherwise, so that a scenario can be tried before it is pointed at a
+      # deployment.
+      HUMANDBS_E2E_BASE_URL: ${HUMANDBS_E2E_BASE_URL:-http://proxy:8080}
+      # The session the signed-in scenarios carry, made on that instance with
+      # `npm run e2e:session`. Absent, they skip rather than pass
+      # (`playwright.config.ts`).
+      HUMANDBS_E2E_SESSION: ${HUMANDBS_E2E_SESSION:-}
+    volumes:
+      - .:/app
+      - e2e_modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - test -d node_modules/@playwright/test || npm ci --no-audit --no-fund; npx playwright test
+    init: true
+
 volumes:
   pgdata:
   s3data:
   node_modules:
   assistant-work:
+  e2e_modules:

@@ -9,7 +9,7 @@
  * **A value carries the kind of its catalog key.** The kind is stored with the
  * value rather than looked up, so a form can be built without the catalog, and
  * a value whose kind disagrees with its key never gets that far — the write
- * path checks it. Three of the five kinds are editable here; a key typed as a
+ * path checks it. Four of the six kinds are editable here; a key typed as a
  * single value or an accession has no input control yet, and one turning up is
  * a fault rather than something to render blank, because a value nobody can see
  * is a value nobody can keep.
@@ -37,8 +37,8 @@ import type {
 
 import type { SlotState, TextInput, TextPairInput } from "./form"
 
-/** The editable kinds. The catalog uses these three and nothing else yet. */
-export type ValueKind = "text" | "vocabulary" | "number"
+/** The editable kinds. The catalog uses these four and nothing else yet. */
+export type ValueKind = "text" | "vocabulary" | "number" | "disease"
 
 /**
  * One number as it is typed: the value and unit as written, and the two words
@@ -55,6 +55,21 @@ export interface NumberRow {
   note: string
 }
 
+/**
+ * One disease as it is typed: **which terms name it, and what it is called.**
+ *
+ * The names are empty strings rather than nulls for the same reason the number
+ * rows hold strings — that is what a text box carries — and become nulls on the
+ * way in. **A row naming no term is an ordinary row**: a disease no
+ * classification holds is one somebody still has to be able to write
+ * (`docs/data-model.md` の「ICD10」).
+ */
+export interface DiseaseRow {
+  termIds: string[]
+  nameJa: string
+  nameEn: string
+}
+
 export type ValueBody
   = | { kind: "text", text: TextPairInput }
     | { kind: "vocabulary", state: SlotState, termIds: string[] }
@@ -67,6 +82,12 @@ export type ValueBody
      * piece of prose does.
      */
     | { kind: "number", state: SlotState, rows: NumberRow[] }
+    /**
+     * **A row that names nothing at all is dropped on save**, the same way an
+     * empty number box is: a disease with neither a term nor a name says
+     * nothing, and a key left with no rows loses its slot.
+     */
+    | { kind: "disease", state: SlotState, diseases: DiseaseRow[] }
 
 export interface ValueInput {
   keyId: string
@@ -136,6 +157,18 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
             })),
           }
         : { kind: "number", state: value.values.state, rows: [] }
+    case "disease":
+      return value.diseases.state === "value"
+        ? {
+            kind: "disease",
+            state: "value",
+            diseases: value.diseases.value.map((one) => ({
+              termIds: [...one.termIds],
+              nameJa: one.nameJa ?? "",
+              nameEn: one.nameEn ?? "",
+            })),
+          }
+        : { kind: "disease", state: value.diseases.state, diseases: [] }
     default:
       throw new UneditableValueKind(keyId, value.kind)
   }
@@ -185,9 +218,18 @@ export function emptyValueInput(keyId: string, kind: ValueKind, unit?: string | 
         keyId,
         value: { kind: "number", state: "value", rows: [emptyNumberRow(unit ?? null)] },
       }
+    case "disease":
+      return {
+        keyId,
+        value: { kind: "disease", state: "value", diseases: [emptyDiseaseRow()] },
+      }
   }
 }
 
 export function emptyNumberRow(unit: string | null): NumberRow {
   return { label: "", value: "", unit, note: "" }
+}
+
+export function emptyDiseaseRow(): DiseaseRow {
+  return { termIds: [], nameJa: "", nameEn: "" }
 }

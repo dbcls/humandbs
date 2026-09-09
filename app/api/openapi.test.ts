@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import routes from "~/routes"
 
-import { API_ENDPOINTS, OPENAPI_PATH } from "./endpoints"
+import { API_ENDPOINTS, DOCS_PATH, OPENAPI_PATH } from "./endpoints"
 import { apiDocument, documentPath } from "./openapi"
 
 interface Document {
@@ -35,6 +35,7 @@ describe("the document and the routes", () => {
     const served = new Set(registered(routes))
     for (const endpoint of API_ENDPOINTS) expect(served.has(endpoint.path)).toBe(true)
     expect(served.has(OPENAPI_PATH)).toBe(true)
+    expect(served.has(DOCS_PATH)).toBe(true)
   })
 
   it("spell a parameter the way OpenAPI spells it", () => {

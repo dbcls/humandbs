@@ -67,7 +67,13 @@ export interface FacetField {
   /** `content_key.code`, which is how the field is spelled in a query. */
   code: string
   keyId: string
-  kind: "vocabulary" | "number"
+  /**
+   * **A disease is a term field too**: it is counted by the vocabulary terms it
+   * points at, and a query names it the same way. The kind is kept apart from
+   * `vocabulary` because the panel draws the two differently
+   * (`docs/public-pages.md` の「絞り込み」).
+   */
+  kind: "vocabulary" | "number" | "disease"
   /** The set a term value is resolved in. Null for a number. */
   setId: string | null
 }
@@ -91,7 +97,7 @@ export function queryFields(facets: readonly FacetField[]): QueryFields {
       if (built !== undefined) return built
       const facet = byCode.get(name)
       if (facet === undefined) return undefined
-      return facet.kind === "vocabulary" ? "term" : "number"
+      return facet.kind === "number" ? "number" : "term"
     },
     facet: (name) => byCode.get(name),
   }

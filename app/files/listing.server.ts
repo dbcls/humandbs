@@ -141,7 +141,14 @@ export function boxRows(entries: readonly BoxEntry[] | null): FileRowView[] {
  */
 export function fileListOf(rows: readonly FileRowView[], page: number): FileListView {
   const cut = pageOfBox(rows, page)
-  return { rows: cut.rows, total: cut.total, page: cut.page, pageCount: cut.pageCount }
+  return {
+    rows: cut.rows,
+    total: cut.total,
+    page: cut.page,
+    pageCount: cut.pageCount,
+    rangeFrom: cut.rangeFrom,
+    rangeTo: cut.rangeTo,
+  }
 }
 
 /** The page a `?files=` parameter asks for. Anything unreadable is the first. */

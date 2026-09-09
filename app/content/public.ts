@@ -185,6 +185,10 @@ export function publicResearchContent(
       methods: rich(content.listingSummary.methods, options),
       targets: rich(content.listingSummary.targets, options),
       typeOfData: rich(content.listingSummary.typeOfData, options),
+      dataProviders: content.listingSummary.dataProviders.map((provider) => ({
+        id: provider.id,
+        name: text(provider.name, options),
+      })),
     },
     releaseNote: rich(content.releaseNote, options),
     dataProviders: content.dataProviders.map((provider) => ({
@@ -228,7 +232,9 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
   if (options.keepUnsettled) return value
   const state = value.kind === "vocabulary"
     ? value.termIds.state
-    : value.kind === "number" ? value.values.state : value.value.state
+    : value.kind === "number"
+      ? value.values.state
+      : value.kind === "disease" ? value.diseases.state : value.value.state
   return state === "unknown" ? null : value
 }
 

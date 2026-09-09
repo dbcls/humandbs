@@ -18,10 +18,11 @@ import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import type { ReviewPageView } from "~/review/review.server"
 
+import { AdminBack } from "./admin"
 import { Badge, Confirm, Stack } from "./base"
 import { DdbjMark, Thread, type CommentContext } from "./comments"
 import { Checkbox, Field, Submit } from "./form"
-import { Card, Empty, Page, PageHead, Section } from "./page"
+import { Card, Empty, ExternalLink, Page, PageHead, Section } from "./page"
 
 export function ReviewScreen({ view }: { view: ReviewPageView }) {
   const locale = view.locale
@@ -37,13 +38,12 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
 
   return (
     <Page>
-      <PageHead label={`${view.humLabel ?? messages.admin.research.unpinned} — ${t.heading}`}>
-        <Link
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
+        <AdminBack
+          onBand
           to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-          className="text-white visited:text-white"
-        >
-          {t.backToDraft}
-        </Link>
+          label={t.backToDraft}
+        />
       </PageHead>
 
       <Card>
@@ -133,7 +133,7 @@ function Share({ view }: { view: ReviewPageView }) {
               what a provider sees is following it, not copying it. */}
           {share.open && (
             <p className="text-xs">
-              <Link to={share.url} target="_blank" rel="noreferrer">{t.openPreview}</Link>
+              <ExternalLink to={share.url} locale={locale}>{t.openPreview}</ExternalLink>
             </p>
           )}
         </Stack>

@@ -44,6 +44,37 @@ export function termCodeProblem(code: string): CodeProblem | null {
 }
 
 /**
+ * The vocabularies whose values are settled by what the portal is, rather than
+ * by what arrives in the data.
+ *
+ * **Every one of them is an axis of classification** — two to five terms, and
+ * five of them share the same 「混在」. Nothing a new study brings can add to
+ * one: a study does not arrive with a fourth sex or a second way of being
+ * unrestricted. So the migration puts them in and no screen edits them
+ * afterwards — which is what the glossary already said about the access types,
+ * that they are settled by the structure and must not be reworded
+ * (docs/glossary.md).
+ *
+ * **The other twelve grow with the data** — platform, library prep kit, tissue,
+ * disease and the rest — and those are the ones an administrator keeps
+ * (docs/data-model.md の「catalog と語彙」).
+ *
+ * The label of the *field* one of these belongs to is not settled by this: what
+ * a refinement is called is the administrator's to write, and only what it may
+ * hold is fixed.
+ */
+export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
+  "access-criteria",
+  "age-group",
+  "has-phenotype-data",
+  "health-status",
+  "is-tumor",
+  "read-type",
+  "sex",
+  "subject-count-type",
+])
+
+/**
  * The positions of a list after one entry has been moved one place. Positions
  * are rewritten from the order rather than swapped, so a list that arrived with
  * gaps or duplicates comes back consecutive.

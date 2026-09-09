@@ -21,6 +21,7 @@ import type { CauUsage } from "~/content/public"
 import type {
   ContentValue,
   DatasetContent,
+  DiseaseValue,
   Link,
   LocalizedLinks,
   ResearchContent,
@@ -246,6 +247,28 @@ function plainOf(slot: Slot<string>): FieldView {
 }
 
 /**
+ * A disease as the page shows it: **the name the article wrote, and the code
+ * after it in brackets.**
+ *
+ * The name falls back to the other language before it falls back to the
+ * classification, because a name written in one language only is what the
+ * article had — dropping to the heading would put a word on the page that
+ * nobody wrote. **No code means no brackets**: a disease no classification
+ * names is an ordinary value (`docs/public-pages.md` の「dataset」).
+ */
+function writtenDisease(disease: DiseaseValue, locale: Locale, catalog: CatalogView): string {
+  const terms = disease.termIds
+    .map((id) => catalog.termById.get(id))
+    .filter((term) => term !== undefined)
+  const written = (locale === "ja" ? disease.nameJa : disease.nameEn)
+    ?? (locale === "ja" ? disease.nameEn : disease.nameJa)
+    ?? (terms[0] === undefined ? null : catalogLabel(terms[0], locale))
+  const codes = terms.map((term) => term.code).join(", ")
+  if (written === null) return codes
+  return codes === "" ? written : `${written} (${codes})`
+}
+
+/**
  * The state of a value lives inside it: prose holds one per language and
  * resolves like any other translated pair, everything else holds a single one.
  */
@@ -274,6 +297,17 @@ function valueField(
         .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
         .map((term) => catalogLabel(term, locale))
       return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
+    }
+    case "disease": {
+      if (value.diseases.state === "not-applicable") return { state: "not-applicable" }
+      if (value.diseases.state === "unknown") return { state: "unsettled" }
+      // A line each, like the numbers: a name with a code after it is a phrase,
+      // and running several together makes the brackets unreadable.
+      return {
+        state: "rich",
+        text: value.diseases.value.map((one) => [{ text: writtenDisease(one, locale, catalog) }]),
+        untranslated: false,
+      }
     }
     case "number": {
       if (value.values.state === "not-applicable") return { state: "not-applicable" }
@@ -465,6 +499,9 @@ export interface FileListView {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 export interface ResearchViewInput {
@@ -742,9 +779,11 @@ export interface ResearchListRowView {
   targets: FieldView
   accessTypes: TermView[]
   /**
-   * The representative of each provider, and not the organisation beside it.
-   * The research page carries both under one heading; a cell in a listing holds
-   * a line, and the name is the half a reader scans for.
+   * Whom the row names as the provider: the listing's own names where someone
+   * wrote them, and otherwise the representative of each provider the research
+   * carries — not the organisation beside it. The research page carries both
+   * under one heading; a cell in a listing holds a line, and the name is the
+   * half a reader scans for.
    */
   dataProviders: FieldView[]
   datePublished: string | null
@@ -772,6 +811,21 @@ export interface ResearchListRowInput {
  */
 const BY_LABEL = new Intl.Collator("en", { numeric: true })
 
+/**
+ * The names the provider column shows.
+ *
+ * **An empty listing list is not an empty column** — it is the ordinary case,
+ * and it means the research's own providers. A name is only written into the
+ * listing where the two are meant to differ, which is rare enough that a copy
+ * kept on every research would be a copy nobody had chosen and one that a
+ * correction to the section would not reach.
+ */
+export function listingProviders(content: ResearchContent): TranslatedText[] {
+  const chosen = content.listingSummary.dataProviders
+  if (chosen.length > 0) return chosen.map((provider) => provider.name)
+  return content.dataProviders.map((provider) => provider.name)
+}
+
 export function researchListRowView(
   input: ResearchListRowInput,
   locale: Locale,
@@ -788,8 +842,8 @@ export function researchListRowView(
     platforms: termViews(input.platformTermIds, locale, catalog),
     targets: prose(short.targets, locale, fallbacks),
     accessTypes: termViews(input.accessTermIds, locale, catalog),
-    dataProviders: input.content.dataProviders.map((provider) =>
-      translated(provider.name, locale, fallbacks)),
+    dataProviders: listingProviders(input.content).map((name) =>
+      translated(name, locale, fallbacks)),
     datePublished: input.datePublished,
     dateModified: input.dateModified,
   }

@@ -39,7 +39,7 @@ describe("what a public page renders from publicBox", () => {
     const listing = await publicBox("hum0001")
 
     expect(fileListOf(publicRows(listing), 1))
-      .toEqual({ rows: [], total: 0, page: 1, pageCount: 1 })
+      .toEqual({ rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 })
   })
 })
 

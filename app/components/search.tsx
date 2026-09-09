@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Form, Link, useSubmit } from "react-router"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
+import { Form, Link } from "react-router"
 
 import {
   BAND_FILL,
@@ -10,9 +10,13 @@ import {
   CHOOSER_SIDE,
   CLEAR,
   Heading,
+  LISTING_CONTROL,
   MENU_ITEM,
   MENU_ITEM_HERE,
+  MoreLink,
   Note,
+  PALE,
+  PANE_LABEL,
   PaneHeading,
   Stack,
   SwitchTabs,
@@ -20,13 +24,15 @@ import {
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
+import { useSearchAsTyped } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type { SortKey } from "~/search/query.server"
-import { defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
+import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
 
-import { Card, Crumbs, Page, PageLinks } from "./page"
+import { Card, Crumbs, Page, Paging } from "./page"
 
 /**
  * The search box is a GET form. It carries the keywords under `k` and whatever
@@ -52,9 +58,6 @@ import { Card, Crumbs, Page, PageLinks } from "./page"
  * page, and the rule that asks for a visible edge is there for the fields that
  * look like nothing until you find them.
  */
-/** How long the typing has to stop before a listing searches for itself. */
-export const SEARCH_AFTER_TYPING = 400
-
 /**
  * Three depths of field, and **the press is the same 36px in all of them**
  * (`docs/ui.md`). That is what sets the floor: `compact` is 38.4px, which is
@@ -118,13 +121,8 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const runSearch = useSubmit()
-  const form = useRef<HTMLFormElement>(null)
+  const { form, onSubmit, field: typed } = useSearchAsTyped({ action, name, enabled: searchAsTyped })
   const field = useRef<HTMLInputElement>(null)
-  const waiting = useRef<number | undefined>(undefined)
-  // Kana is typed as several keystrokes that are not yet a word; searching for
-  // the half-written form of it answers about something nobody asked for.
-  const composing = useRef(false)
 
   /*
     The box is uncontrolled, so React does not write a new `value` into it —
@@ -140,26 +138,13 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
     if (input.value !== value) input.value = value
   }, [value])
 
-  function searchSoon() {
-    if (!searchAsTyped) return
-    window.clearTimeout(waiting.current)
-    waiting.current = window.setTimeout(() => {
-      const fields = form.current
-      if (composing.current || fields === null) return
-      const asked = new FormData(fields)
-      // An empty field is no condition at all, and an address is easier to read
-      // and to share without the parts of it that say nothing.
-      for (const [key, given] of [...asked]) if (given === "") asked.delete(key)
-      void runSearch(asked, { method: "get", action, replace: true, preventScrollReset: true })
-    }, SEARCH_AFTER_TYPING)
-  }
-
   return (
     // The button sits inside the field rather than beside it, the way v1 draws
     // it: the two are one control, and set apart they read as a box and an
     // unrelated circle. The field keeps room for it on the right.
     <Form
       ref={form}
+      onSubmit={onSubmit}
       method="get"
       action={action}
       role="search"
@@ -178,12 +163,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
         defaultValue={value}
         aria-label={label}
         placeholder={placeholder}
-        onChange={searchSoon}
-        onCompositionStart={() => { composing.current = true }}
-        onCompositionEnd={() => {
-          composing.current = false
-          searchSoon()
-        }}
+        {...typed}
         // The ring goes on the edge of the fill, as it does on a bordered input
         // (`form.tsx` の `CONTROL`): the depth of this field is 38.4px, and a
         // ring standing 2px off a fractional edge is drawn on a different
@@ -216,8 +196,6 @@ export function SearchForm({
   target,
   keyword,
   query,
-  facet = null,
-  find = "",
   rows = null,
   size = "normal",
   searchAsTyped = false,
@@ -227,9 +205,6 @@ export function SearchForm({
   keyword: string
   /** The conditions to keep, written out; the box does not show these. */
   query: string
-  /** Which facet is open, so that searching again does not close it. */
-  facet?: string | null
-  find?: string
   /**
    * How many rows a page holds, when it is not the default. **Carried across a
    * new search, unlike the ordering**: how much of a listing a reader wants to
@@ -246,15 +221,19 @@ export function SearchForm({
       action={href(locale, listPath(target))}
       name="k"
       value={keyword}
-      label={messages.search.placeholder[target]}
-      placeholder={messages.search.placeholder[target]}
+      label={messages.search.boxName[target]}
+      // **The long one only on the front page.** That box is the one standing
+      // on its own — nothing around it says what it is about to search, so the
+      // grey word has to. Inside a listing the heading, the tabs and the rows
+      // have all already said it, and repeating it there spends the width of a
+      // 256px field on a word nobody needed. **The name is unchanged either
+      // way**, which is what a reader who cannot see the box is told.
+      placeholder={size === "large" ? messages.search.boxName[target] : messages.search.boxHint}
       submit={messages.search.submit}
       size={size}
       searchAsTyped={searchAsTyped}
     >
       <input type="hidden" name="q" value={query} />
-      {facet !== null && <input type="hidden" name="facet" value={facet} />}
-      {find !== "" && <input type="hidden" name="find" value={find} />}
       {rows !== null && <input type="hidden" name="size" value={String(rows)} />}
     </SearchBox>
   )
@@ -288,19 +267,64 @@ export function SearchForm({
  *
  * **The rows carry no gap of their own**, since a gap under the first row would
  * push the table off the line again. Each block below leaves its own space.
+ *
+ * **While the next answer is on its way, what it will replace goes pale.** The
+ * pane and the result are exactly the parts a refinement changes — the counts
+ * beside the values move as much as the rows do — and everything outside them
+ * holds still, so the page reads as one that is answering rather than one that
+ * is being rebuilt. **The old answer stays legible** rather than being swapped
+ * for a skeleton: it is still true of the search behind it, and at the speed
+ * these loaders answer (`app/navigating.ts`) a skeleton would be a flicker.
  */
-export function RefinableList({ heading, refine, tools, panel, children }: {
+export function RefinableList({ open, busy, heading, closed, refine, refineHasMore, tools, panel, children }: {
+  /** Whether the pane is showing what it holds. */
+  open: boolean
+  /** Whether a refinement of this same listing is still on its way. */
+  busy: boolean
   /** What names the pane. Its rule is the line the table's edge continues. */
   heading: React.ReactNode
+  /** What stands in the pane's place while it is folded away. */
+  closed: React.ReactNode
   /** The box and the conditions in force. */
   refine: React.ReactNode
+  /**
+   * Whether anything stands under the box in the first group.
+   *
+   * **A block separates two groups, and there are two only when the first one
+   * holds more than the way to ask.** With nothing in force, the box and the
+   * dimensions are one column of controls with a box at its head, and the step
+   * between them is the one inside a group.
+   */
+  refineHasMore: boolean
   /** How the result is presented, over the table it presents. */
   tools: React.ReactNode
   panel: React.ReactNode
   children: React.ReactNode
 }) {
+  // **Folded, there is no pane and so no grid.** The way back into it joins the
+  // row of controls over the table and stands at that row's left end, which is
+  // the table's own left edge now that nothing is beside it. A grid kept with an
+  // empty column would leave the table where it was, and leaving the way back
+  // in a column of its own would spend the width on the control that exists to
+  // give the width back.
+  if (!open) {
+    return (
+      <div className={PALE[busy ? "on" : "off"]} aria-busy={busy}>
+        {/* The same 4px the row leaves over the table when the pane is open. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pb-1">
+          {closed}
+          {tools}
+        </div>
+        <div className="min-w-0">{children}</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div
+      aria-busy={busy}
+      className={`grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)] ${PALE[busy ? "on" : "off"]}`}
+    >
       <div className="flex flex-col justify-end md:col-start-1 md:row-start-1">{heading}</div>
       <div className="pt-4 md:col-start-1 md:row-start-2">{refine}</div>
       {/* The same 4px the heading leaves over its rule, so the two sides sit
@@ -311,9 +335,96 @@ export function RefinableList({ heading, refine, tools, panel, children }: {
       {/* The result keeps a floor of nothing so that a table wider than the
           column scrolls inside its own box rather than stretching the grid. */}
       <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-2">{children}</div>
-      <div className="pt-6 md:col-start-1 md:row-start-3">{panel}</div>
+      {/* **The pane is two groups, and the space between them is the widest in
+          it.** What it asks with — the box and the conditions in force — is one
+          thing, and the dimensions it can narrow by are another; at the step
+          that separates the parts of each, the two read as one long column of
+          unrelated controls. **With nothing in force there is only one group**,
+          and the widest gap in the pane under the box separates it from nothing.
+
+          **The numbers written here are 8px short of what they mean.** The first
+          facet's own summary carries 8px above it, so what a reader sees is the
+          sum: 16 + 8 = 24px between the groups, 8 + 8 = 16px where there is only
+          one. **What has to hold is the order, not a particular number** — 24px
+          is above the 16px between the parts of a group and the 17px between two
+          facets, so the boundary is still the widest thing in the column. A
+          block (32px) there was twice the widest gap inside a group, and read as
+          a gap rather than as a boundary.
+
+          **So the boundary is written with the same number as the step inside a
+          group, and the difference is made by the summary's 8px.** Reading this
+          class alone it looks like the two were set alike; they are 16px and
+          24px apart on screen, which is the only place the distances are. */}
+      <div className={`md:col-start-1 md:row-start-3 ${refineHasMore ? "pt-4" : "pt-2"}`}>
+        {panel}
+      </div>
     </div>
   )
+}
+
+/** Where the pane remembers whether it is folded. */
+const PANE_KEY = "humandbs.refine"
+
+const paneListeners = new Set<() => void>()
+
+/**
+ * **Reaching the store can throw**, not just come back empty: a browser set to
+ * block all storage raises on the property itself. This is a `getSnapshot` and
+ * so runs during render, and a throw here would take the whole listing down
+ * with it — a reader with storage turned off gets a pane that cannot remember,
+ * which is the worst that should happen.
+ */
+function readPaneOpen(): boolean {
+  try {
+    return window.sessionStorage.getItem(PANE_KEY) !== "folded"
+  } catch {
+    return true
+  }
+}
+
+function writePaneOpen(open: boolean): void {
+  try {
+    window.sessionStorage.setItem(PANE_KEY, open ? "open" : "folded")
+  } catch {
+    return
+  }
+  // `storage` is not delivered to the tab that wrote, so this tab is told here.
+  for (const listener of paneListeners) listener()
+}
+
+function subscribePane(listener: () => void): () => void {
+  paneListeners.add(listener)
+  window.addEventListener("storage", listener)
+  return () => {
+    paneListeners.delete(listener)
+    window.removeEventListener("storage", listener)
+  }
+}
+
+/** The server has no storage, so the pane is drawn open and folds on hydration. */
+function paneOpenOnServer(): boolean {
+  return true
+}
+
+/**
+ * Whether the pane of conditions is showing what it holds.
+ *
+ * **It is not in the address.** What an address carries is what would change the
+ * rows in the table — the search, the ordering, how many rows a page holds,
+ * which page. Folding the pane beside them changes none of it, so an address
+ * carrying the fold would hand whoever it was sent to a screen folded the way
+ * this reader happened to leave it.
+ *
+ * **`sessionStorage` rather than `localStorage`**, for the reason the cart uses
+ * it: a fold is part of what somebody is doing now rather than a setting they
+ * carry between visits.
+ */
+function usePaneOpen(): [boolean, () => void] {
+  const open = useSyncExternalStore(subscribePane, readPaneOpen, paneOpenOnServer)
+  const toggle = useCallback(() => {
+    writePaneOpen(!readPaneOpen())
+  }, [])
+  return [open, toggle]
 }
 
 /**
@@ -336,9 +447,8 @@ export function SearchExamples({ locale }: { locale: Locale }) {
         <ButtonLink
           key={example}
           to={href(locale, listPath("research") + searchQuery({ q: example, sort: null, page: 1 }))}
-          variant="soft"
+          variant="secondary"
           size="xs"
-          pill
         >
           {example}
         </ButtonLink>
@@ -377,8 +487,8 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
   if (conditions.length === 0) return null
   return (
     <Stack gap="tight">
-      <div className="flex items-center justify-between gap-x-3 text-xs">
-        <span className="font-semibold text-ink-muted">{messages.applied}</span>
+      <div className="flex items-center justify-between gap-x-3">
+        <span className={PANE_LABEL}>{messages.applied}</span>
         {clearHref !== null && (
           <Link to={clearHref} preventScrollReset className={CLEAR}>{messages.clear}</Link>
         )}
@@ -388,7 +498,23 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
           <li key={`${condition.field ?? ""}\u0000${condition.value}`}>
             <Chip
               {...(condition.field === null ? {} : { field: condition.field })}
-              value={condition.value}
+              value={(
+                <>
+                  {/*
+                    **The code leads, as it does on the panel** — the two are
+                    the same value drawn twice, and a reader looking for what
+                    they chose reads down one column of codes rather than
+                    hunting for one at the end of a heading that wrapped.
+                  */}
+                  {condition.code !== null && (
+                    <>
+                      <code className="mr-1 font-mono text-ink-muted">{condition.code}</code>
+                      {" "}
+                    </>
+                  )}
+                  {condition.value}
+                </>
+              )}
               to={condition.href}
               remove={messages.removeCondition(
                 condition.field === null
@@ -429,11 +555,17 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
   const turn = flipped === "asc"
     ? messages.search.sort.toAscending
     : messages.search.sort.toDescending
+  // **The ordering in force is not the ordering to write down.** A reader who
+  // asked for nothing is reading the default, and the bare address already says
+  // so — writing it out would put a setting into every link on the page that
+  // nobody chose, which is the same reason the direction below is dropped when
+  // it is the one the key runs by.
+  const written = sort === DEFAULT_SORT ? null : sort
   const flip = (
     <Link
       to={href(locale, listPath(target) + searchQuery({
         q: query,
-        sort,
+        sort: written,
         order: flipped === defaultOrder(sort) ? null : flipped,
         page: 1,
         size: rows,
@@ -456,7 +588,7 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
           key={option}
           to={href(locale, listPath(target) + searchQuery({
             q: query,
-            sort: option,
+            sort: option === DEFAULT_SORT ? null : option,
             page: 1,
             size: rows,
           }))}
@@ -486,7 +618,8 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
   locale: Locale
   target: "research" | "dataset"
   query: string
-  sort: SortKey
+  /** The ordering to keep, or `null` when nobody asked for one. */
+  sort: string | null
   /** The direction to keep, or `null` when it is the one the key runs by. */
   order: string | null
   size: PageSize
@@ -516,68 +649,43 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
 }
 
 /**
- * Page links, and nothing clever. Every ordering ends in the row's label, so a
- * row cannot move between pages and be seen twice or not at all.
+ * How much of the result is on screen and the way through the rest, at the
+ * listing's own addresses. Every ordering ends in the row's label, so a row
+ * cannot move between pages and be seen twice or not at all.
  */
-export function Pagination({ locale, target, query, sort, order, page, pageCount, rows }: {
+export function Pagination({ locale, target, query, sort, order, page, pageCount, rows, total, from, to }: {
   locale: Locale
   target: "research" | "dataset"
   query: string
-  sort: SortKey
+  /** The ordering to keep, or `null` when nobody asked for one. */
+  sort: string | null
   /** The direction to keep, or `null` when it is the one the key runs by. */
   order: string | null
   page: number
   pageCount: number
   /** The page size to keep, or `null` for the default. */
   rows: number | null
+  total: number
+  /** 1-based positions of the shown rows within the whole result. */
+  from: number
+  to: number
 }) {
-  const messages = messagesFor(locale)
   return (
-    <PageLinks
-      label={messages.search.pagination}
+    <Paging
+      locale={locale}
+      total={total}
+      from={from}
+      to={to}
       page={page}
       pageCount={pageCount}
-      at={(to) => href(locale, listPath(target) + searchQuery({
+      at={(at) => href(locale, listPath(target) + searchQuery({
         q: query,
         sort,
         order,
-        page: to,
+        page: at,
         size: rows,
       }))}
-      previous={messages.search.previousPage}
-      next={messages.search.nextPage}
     />
-  )
-}
-
-/**
- * What is shown when nothing matched. No relaxed search is run behind it: the
- * only honest count is of a search somebody asked for.
- *
- * **The other listing is not offered again here.** The same search over the
- * other kind of row stands in the pane, under what is narrowing this one, and
- * a screen with nothing on it saying the same thing twice within 200px reads
- * as two different offers.
- */
-export function NoResults({ locale }: { locale: Locale }) {
-  const messages = messagesFor(locale)
-  return (
-    <div className="rounded border border-line bg-surface px-6 py-6">
-      <Stack gap="normal">
-        <Stack gap="tight">
-          <p className="font-semibold">{messages.search.none}</p>
-          <p className="text-ink-muted text-sm">{messages.search.noneHint}</p>
-        </Stack>
-        <Stack gap="tight">
-          <h2 className="font-semibold text-ink-muted text-xs">{messages.search.syntaxTitle}</h2>
-          <Stack gap="tight" as="ul">
-            <li className="text-ink-muted text-sm">{messages.search.syntaxSpace}</li>
-            <li className="text-ink-muted text-sm">{messages.search.syntaxComma}</li>
-            <li className="text-ink-muted text-sm">{messages.search.syntaxQuote}</li>
-          </Stack>
-        </Stack>
-      </Stack>
-    </div>
   )
 }
 
@@ -597,10 +705,9 @@ export function InvalidQuery({ locale, column }: { locale: Locale, column: numbe
  *
  * **Every row the search matched, not the page being looked at**, which is what
  * v1 exports and the only reading under which "export these results" is true.
- * The file is comma-separated and opens in a spreadsheet; the copy is
- * tab-separated and goes straight into one. There is no third format — writing
- * an actual workbook would mean a dependency for a file every spreadsheet
- * already reads.
+ * **Both forms are tab-separated**: the file opens in a spreadsheet and the copy
+ * goes straight into one. There is no third format — writing an actual workbook
+ * would mean a dependency for a file every spreadsheet already reads.
  *
  * Copying needs a browser and the address bar cannot do it, so that one is a
  * control; the file is a link, and downloads without any script at all.
@@ -609,12 +716,20 @@ function ExportLinks({ locale, target, query, sort }: {
   locale: Locale
   target: "research" | "dataset"
   query: string
-  sort: SortKey
+  /** The ordering to carry, or `null` when nobody asked for one. */
+  sort: string | null
 }) {
   const messages = messagesFor(locale)
   const [copied, setCopied] = useState(false)
-  const at = (format: "copy" | "csv") =>
-    `${href(locale, exportPath(target))}?${new URLSearchParams({ format, q: query, sort }).toString()}`
+  // **The search is written the way the listing writes it.** Assembling the
+  // pairs here instead would spell the same search a second way — an empty `q`
+  // and an ordering nobody asked for both end up in the address — and the file
+  // would stop being the thing on screen.
+  const at = (format: "copy" | "tsv") => {
+    const search = new URLSearchParams(searchQuery({ q: query, sort, page: 1 }))
+    search.set("format", format)
+    return `${href(locale, exportPath(target))}?${search.toString()}`
+  }
 
   async function copy() {
     const answer = await fetch(at("copy"))
@@ -629,15 +744,28 @@ function ExportLinks({ locale, target, query, sort }: {
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        pill
+        listing
         icon={<Icon name="copy" />}
         onClick={() => { void copy() }}
       >
-        {copied ? messages.search.exportCopied : messages.search.exportCopy}
+        {messages.search.exportCopy}
       </Button>
-      <ButtonLink to={at("csv")} external pill icon={<Icon name="download" />}>
-        {messages.search.exportCsv}
+      <ButtonLink to={at("tsv")} external listing icon={<Icon name="download" />}>
+        {messages.search.exportTsv}
       </ButtonLink>
+      {/*
+        **Beside the buttons rather than in place of a name.** Renaming the
+        control leaves the screen with nothing saying what it does, and for
+        anyone listening the button itself changed its name — what changed is a
+        status, so a status is what says it. **It stands last** so that saying
+        it does not move the other control out from under the pointer.
+      */}
+      {copied && (
+        <span role="status" className="flex items-center gap-1 text-ink-muted text-sm">
+          <Icon name="check" aria-hidden="true" />
+          {messages.search.exportCopied}
+        </span>
+      )}
     </div>
   )
 }
@@ -650,20 +778,26 @@ function ExportLinks({ locale, target, query, sort }: {
  * tabs at the top right carries the search from one to the other — which is how
  * v1 presents them and why the two files below hold only their own table.
  */
-export function ListingScreen({ view, target, heading, panel, other, empty, children }: {
+export function ListingScreen({ view, target, heading, panel, empty, children }: {
   view: ListShell
   target: "research" | "dataset"
   /** What this listing is called, which is also where the trail ends. */
   heading: string
   panel: ReactNode
-  /** The same search over the other listing, when there is anything there. */
-  other?: ReactNode
   /** Whether the table below has any rows at all. */
   empty: boolean
   children: ReactNode
 }) {
   const locale = view.locale
   const messages = messagesFor(locale)
+  const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
+  // What the folded pane announces with, since on screen it is a mark and a
+  // number: the pane's own name, and how much is in force behind it.
+  const folded = view.conditions.length === 0
+    ? messages.search.refine.heading
+    : messages.search.refine.foldedWith(view.conditions.length)
+  const swap = target === "research" ? "dataset" : "research"
   const carry = (which: "research" | "dataset") =>
     href(locale, listPath(which) + searchQuery({
       q: view.query,
@@ -671,15 +805,8 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
       page: 1,
       size: view.requestedSize,
     }))
-  const counted = (
-    <p className="text-ink-muted text-sm">
-      {view.total === 0
-        ? messages.search.results(0)
-        : messages.search.range(view.rangeFrom, view.rangeTo, view.total)}
-    </p>
-  )
   /*
-    The pane: the way to ask, what is narrowing the answer, and the same words
+    The pane: the way to ask, what is narrowing the answer, and the same search
     over the other listing. It is built here rather than inside the panel
     because the panel is what a parse error leaves empty, and a reader whose
     query did not parse needs the box more than anyone.
@@ -689,7 +816,28 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
     not "what came back — over the result it read as a caption on rows it has
     nothing to do with, and it stood between the heading and the table where
     the reader had already stopped looking for controls.
+
+    **It is the way out of this pane, so it is drawn as one** (`MoreLink`). Set
+    as a sentence it was the only thing in the pane with no shape at all — no
+    border like the chips above it and no weight like the dimensions below —
+    and readers took it for a note rather than something to press, while the
+    tab that goes to the very same address sits at the top of the screen in a
+    shape nobody can mistake.
+
+    **It is built from the same `carry` as the tab**, because it is the same
+    address. Written out where each is drawn, the two drifted: the tab kept how
+    many rows a page holds and this one dropped it, so switching listings from
+    the pane silently put the reader back on twenty.
   */
+  const other = view.otherCount === null
+    ? null
+    : (
+        <MoreLink to={carry(swap)}>
+          {swap === "dataset"
+            ? messages.search.alsoInDataset(view.otherCount)
+            : messages.search.alsoInResearch(view.otherCount)}
+        </MoreLink>
+      )
   const refine = (
     <Stack gap="normal">
       <SearchForm
@@ -697,8 +845,6 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
         target={target}
         keyword={view.keyword}
         query={view.query}
-        facet={view.facet}
-        find={view.find}
         rows={view.requestedSize}
         size="compact"
         searchAsTyped
@@ -708,7 +854,15 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
         conditions={view.conditions}
         clearHref={view.clearHref}
       />
-      {other !== undefined && <p className="text-sm">{other}</p>}
+      {/* The wrapper keeps the link at the width of its own words: a flex item
+          of its own would stretch, and the whole quarter-page row would be
+          pressable with most of it blank.
+
+          **It sits at the far edge.** Everything above it in the pane starts at
+          the left — the box, the heading over the conditions, each condition —
+          so a link starting there too reads as one more condition rather than
+          as the way to the same search somewhere else. */}
+      {other !== null && <div className="flex justify-end">{other}</div>}
     </Stack>
   )
   /*
@@ -728,10 +882,9 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
     answer "which page of how many am I looking at" (this is the order IBM
     Carbon and MUI put the last three in).
 
-    **The gaps say which of them belong together.** The count and the page links
-    are one thing said twice, so they stand a third of the distance apart that
-    separates the rest — at one gap for all four, the count floats between two
-    controls and reads as belonging to neither.
+    **The count and the page links are one control here**, drawn as one thing
+    with its own inner distance (`page.tsx` の `Paging`) rather than as two of
+    the four.
   */
   const tools = (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
@@ -747,23 +900,23 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
         locale={locale}
         target={target}
         query={view.query}
-        sort={view.sort}
+        sort={view.requestedSort}
         order={view.requestedOrder}
         size={view.size}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        {counted}
-        <Pagination
-          locale={locale}
-          target={target}
-          query={view.query}
-          sort={view.sort}
-          order={view.requestedOrder}
-          page={view.page}
-          pageCount={view.pageCount}
-          rows={view.requestedSize}
-        />
-      </div>
+      <Pagination
+        locale={locale}
+        target={target}
+        query={view.query}
+        sort={view.requestedSort}
+        order={view.requestedOrder}
+        page={view.page}
+        pageCount={view.pageCount}
+        rows={view.requestedSize}
+        total={view.total}
+        from={view.rangeFrom}
+        to={view.rangeTo}
+      />
     </div>
   )
 
@@ -794,29 +947,82 @@ export function ListingScreen({ view, target, heading, panel, other, empty, chil
             {/*
               Nothing to hand over when the address could not be read: the query
               the file would carry is the empty one, and that is the whole corpus
-              rather than the search on screen.
+              rather than the search on screen. **Nothing to hand over when the
+              search matched nothing either** — the file is a header row and no
+              rows, which is a download that answers a question nobody asked.
             */}
-            {view.parseError === null && (
-              <ExportLinks locale={locale} target={target} query={view.query} sort={view.sort} />
+            {view.parseError === null && !empty && (
+              <ExportLinks locale={locale} target={target} query={view.query} sort={view.requestedSort} />
             )}
           </Heading>
 
           <RefinableList
-            heading={<PaneHeading title={messages.search.refine.heading} rule="start" />}
+            open={paneOpen}
+            busy={busy}
+            refineHasMore={view.conditions.length > 0 || other !== null}
+            heading={(
+              <PaneHeading title={messages.search.refine.heading} rule="start">
+                {/*
+                  **It is read at the heading's size and carries a mark
+                  pointing the way it folds.** At the size the pane's other
+                  asides take (12px, no glyph) it stands beside a bold heading
+                  and is not found — the reader has to already know a control
+                  is there.
+                */}
+                <button
+                  type="button"
+                  onClick={togglePane}
+                  aria-expanded="true"
+                  className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
+                >
+                  <Icon name="chevron-left" aria-hidden="true" />
+                  {messages.search.refine.fold}
+                </button>
+              </PaneHeading>
+            )}
+            closed={(
+              // **A mark and a count, and no word.** What folding gives back is
+              // the pane's width, so the way into it again keeps as little of
+              // that as it can — the glyph says what it opens and the number
+              // says how much is in force, and the words for both are in the
+              // name it announces with. **The count is not decoration**: the
+              // conditions stand in the pane, so a fold naming nothing would
+              // leave a reader looking at a narrowed result with nothing on
+              // screen admitting to the narrowing.
+              //
+              // **4px rather than a circle**, for the reason the page numbers
+              // beside it keep theirs (`docs/ui.md`): a glyph of 16px in a box
+              // of 36 does not fill it, and a round box around something that
+              // leaves that much air reads as a disc with a mark on it rather
+              // than as one of the controls in the row.
+              <button
+                type="button"
+                onClick={togglePane}
+                aria-expanded="false"
+                aria-label={folded}
+                title={folded}
+                className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
+              >
+                <Icon name="filter" aria-hidden="true" />
+                {view.conditions.length > 0 && (
+                  <span className="rounded-full bg-brand px-1.5 font-semibold text-white text-xs">
+                    {view.conditions.length}
+                  </span>
+                )}
+              </button>
+            )}
             refine={refine}
             tools={view.parseError === null && !empty ? tools : null}
             panel={panel}
           >
             {view.parseError !== null
               ? <InvalidQuery locale={locale} column={view.parseError.column} />
-              : empty
-                ? <NoResults locale={locale} />
-                : (
-                    <Stack gap="normal">
-                      {children}
-                      {tools}
-                    </Stack>
-                  )}
+              : (
+                  <Stack gap="normal">
+                    {children}
+                    {!empty && tools}
+                  </Stack>
+                )}
           </RefinableList>
         </Stack>
       </Card>

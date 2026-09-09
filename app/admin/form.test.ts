@@ -90,6 +90,38 @@ describe("what the editor sends back", () => {
       value: "# not a heading, *not* emphasis",
     })
   })
+
+  /**
+   * The listing reads an empty list as "the research's own providers", so a card
+   * added and left alone would not sit there looking unfinished — it would take
+   * those names off the table and put a blank cell in their place.
+   */
+  it("drops a listing provider nobody typed a name into", () => {
+    const input = researchContentInput(emptyResearchContent())
+    input.listingSummary.dataProviders = [
+      { id: "l1", name: { ja: { state: "value", text: "  " }, en: { state: "value", text: "" } } },
+      { id: "l2", name: { ja: { state: "value", text: "森下 真一" }, en: { state: "value", text: "" } } },
+    ]
+
+    expect(contentOf(input).listingSummary.dataProviders).toEqual([
+      { id: "l2", name: { ja: { state: "value", value: "森下 真一" }, en: { state: "value", value: "" } } },
+    ])
+  })
+
+  /**
+   * A name somebody is still asking about is not a card left alone. Dropping it
+   * would take the question off the publish gate's list along with it.
+   */
+  it("keeps a listing provider whose name is a question rather than a blank", () => {
+    const input = researchContentInput(emptyResearchContent())
+    input.listingSummary.dataProviders = [
+      { id: "l1", name: { ja: { state: "unknown", text: "" }, en: { state: "unknown", text: "" } } },
+    ]
+
+    expect(contentOf(input).listingSummary.dataProviders).toEqual([
+      { id: "l1", name: { ja: { state: "unknown" }, en: { state: "unknown" } } },
+    ])
+  })
 })
 
 describe("the payload a save has to be", () => {

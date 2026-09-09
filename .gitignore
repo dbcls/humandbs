@@ -2,8 +2,11 @@
 .env
 /node_modules/
 /build/
+/public/swagger-ui/
 /.react-router/
 /migration/input/
 /.claude/
 /.playwright-cli/
 /compose.override.yml
+/test-results/
+/playwright-report/

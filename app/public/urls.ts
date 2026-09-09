@@ -36,9 +36,32 @@ export interface ReadLocale {
   redundantPrefix: boolean
 }
 
+/**
+ * What a client navigation appends to the address it asks for. The router
+ * strips it before it matches a route, but the request's own URL keeps it.
+ */
+const DATA_SUFFIX = ".data"
+
+/**
+ * The language an address is written in, and the address with the prefix taken
+ * off.
+ *
+ * **The `.data` a client navigation appends comes off here.** It is stripped
+ * before the routes are matched, so the right route is reached, but a loader
+ * reading the language out of `request.url` still sees it — and for the English
+ * front page, whose whole path is the prefix, `/en.data` has no segment that
+ * spells a locale and reads as Japanese. Pressing EN on the front page left it
+ * in Japanese while opening `/en` directly did not, and the same suffix left a
+ * `.data` on the end of every path returned from a navigation. Taking it off in
+ * the one place that reads an address beats asking forty-odd loaders to
+ * remember.
+ */
 export function readLocale(pathname: string): ReadLocale {
-  const [, head = "", ...rest] = pathname.split("/")
-  if (!isLocale(head)) return { locale: DEFAULT_LOCALE, path: pathname, redundantPrefix: false }
+  const asked = pathname.endsWith(DATA_SUFFIX)
+    ? pathname.slice(0, -DATA_SUFFIX.length)
+    : pathname
+  const [, head = "", ...rest] = asked.split("/")
+  if (!isLocale(head)) return { locale: DEFAULT_LOCALE, path: asked, redundantPrefix: false }
   return {
     locale: head,
     path: `/${rest.join("/")}`,
@@ -90,13 +113,6 @@ export interface SearchParams {
    * server. Omitting it is what keeps one listing to one address.
    */
   size?: number | null
-  /**
-   * The facet whose values are shown in full, and what its own box holds. They
-   * say what the panel looks like rather than what the search is, which is why
-   * they sit beside the query instead of inside it.
-   */
-  facet?: string | null
-  find?: string | null
 }
 
 /**
@@ -111,8 +127,6 @@ export function searchQuery(params: SearchParams): string {
   if (params.order != null && params.order !== "") search.set("order", params.order)
   if (params.page > 1) search.set("page", String(params.page))
   if (params.size != null) search.set("size", String(params.size))
-  if (params.facet != null && params.facet !== "") search.set("facet", params.facet)
-  if (params.find != null && params.find !== "") search.set("find", params.find)
   return writtenQuery(search)
 }
 

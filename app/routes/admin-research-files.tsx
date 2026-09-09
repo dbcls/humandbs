@@ -1,9 +1,14 @@
-import { data, Link } from "react-router"
+import { data } from "react-router"
 
-import { adminResearchFilesPath, adminResearchPath, fileUploadPath } from "~/admin/urls"
+import {
+  adminResearchFilesPath,
+  adminResearchPath,
+  fileUploadPath,
+} from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
 import { Note, Stack } from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
-import { Card, Empty, Page, PageHead, PageLinks, Section } from "~/components/page"
+import { Card, Page, PageHead, Paging, Section } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { filesAction, filesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
@@ -51,10 +56,12 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <PageHead label={`${view.humLabel ?? messages.admin.detail.heading} - ${t.heading}`}>
-        <Link to={href(locale, adminResearchPath(view.researchId))} className="text-white">
-          {messages.admin.detail.heading}
-        </Link>
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
+        <AdminBack
+          onBand
+          to={href(locale, adminResearchPath(view.researchId))}
+          label={t.backToResearch}
+        />
       </PageHead>
       <Card>
         <Stack gap="block">
@@ -73,27 +80,31 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
 
           <Section title={t.heading}>
             {view.rows === null
-              ? <Empty>{t.unavailable}</Empty>
+              ? <Note kind="danger">{t.unavailable}</Note>
               : (
                   <Stack gap="normal">
-                    <p className="text-ink-muted text-sm">
-                      {t.summary(view.total, formatSize(view.totalBytes))}
-                    </p>
+                    {/* What the box holds altogether, which the count beside the
+                        page links does not say: a hundred rows of a thousand is
+                        not how much storage this research is using. */}
+                    <p className="text-ink-muted text-sm">{t.totalSize(formatSize(view.totalBytes))}</p>
                     {view.switching > 0 && (
                       <p className="text-accent text-sm">{t.switching(view.switching)}</p>
                     )}
                     <BoxTable locale={locale} rows={view.rows} humLabel={view.humLabel} />
-                    <PageLinks
-                      label={messages.search.pagination}
-                      page={view.page}
-                      pageCount={view.pageCount}
-                      at={(to) => href(
-                        locale,
-                        `${adminResearchFilesPath(view.researchId)}?page=${to}`,
-                      )}
-                      previous={messages.search.previousPage}
-                      next={messages.search.nextPage}
-                    />
+                    <div className="flex justify-end">
+                      <Paging
+                        locale={locale}
+                        total={view.total}
+                        from={view.rangeFrom}
+                        to={view.rangeTo}
+                        page={view.page}
+                        pageCount={view.pageCount}
+                        at={(to) => href(
+                          locale,
+                          `${adminResearchFilesPath(view.researchId)}?page=${to}`,
+                        )}
+                      />
+                    </div>
                   </Stack>
                 )}
           </Section>

@@ -142,6 +142,8 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             humLabel={view.humLabel === "" ? null : view.humLabel}
             rows={view.files}
             total={view.files.length}
+            rangeFrom={view.files.length === 0 ? 0 : 1}
+            rangeTo={view.files.length}
             page={1}
             pageCount={1}
             at={(to) => `?files=${to}`}

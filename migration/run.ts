@@ -44,7 +44,7 @@ import {
   vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
-import { titlesOf } from "~/icd10/dictionary.server"
+import { knownCodes, titlesOf } from "~/icd10/dictionary.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -162,8 +162,11 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       .returning({ id: vocabularySet.id }),
   )
 
-  const searchables = datasets.flatMap((d) =>
-    (d.doc.experiments ?? []).flatMap((e) => (e.searchable ? [e.searchable] : [])))
+  // The dictionary decides which written codes become terms, so it has to be in
+  // before this runs (`docs/development.md` の「ICD10 の辞書を入れる」).
+  const known = await knownCodes(tx)
+  const knownCode = (code: string) => known.has(code)
+  const experiments = datasets.flatMap((d) => d.doc.experiments ?? [])
   const terms = [
     ...ACCESS_CRITERIA_TERMS.map((t) => ({
       setCode: ACCESS_CRITERIA_SET,
@@ -171,7 +174,7 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       parentCode: null,
       maker: null,
     })),
-    ...[...collectTerms(searchables)].flatMap(([setCode, held]) =>
+    ...[...collectTerms(experiments, knownCode)].flatMap(([setCode, held]) =>
       held.map((term) => ({ setCode, ...term }))),
   ]
   // The disease vocabulary takes its labels from the ICD10 dictionary rather
@@ -250,7 +253,7 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       .returning({ id: contentKey.id }),
   )
 
-  return { keyIdByCode, termIdBySetAndCode, codeBySourceKey }
+  return { keyIdByCode, termIdBySetAndCode, codeBySourceKey, knownCode }
 }
 
 /**
@@ -341,7 +344,7 @@ async function load() {
                      hum_accession, accession_date, upstream_refresh, document, news, alert CASCADE
     `)
 
-    const { keyIdByCode, termIdBySetAndCode, codeBySourceKey } = await seedCatalog(
+    const { keyIdByCode, termIdBySetAndCode, codeBySourceKey, knownCode } = await seedCatalog(
       tx,
       selection.datasets,
     )
@@ -394,6 +397,7 @@ async function load() {
         keyIdByCode,
         codeBySourceKey,
         termIdBySetAndCode,
+        knownCode,
         accessCriteriaKeyCode: ACCESS_CRITERIA_KEY,
         typeOfDataKeyCode: TYPE_OF_DATA_KEY,
         datasetLabels,

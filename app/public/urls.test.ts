@@ -53,6 +53,24 @@ describe("readLocale", () => {
   it("treats a bare prefix as the front page of that language", () => {
     expect(readLocale("/en")).toEqual({ locale: "en", path: "/", redundantPrefix: false })
   })
+
+  /**
+   * A client navigation asks for `<path>.data`, and the request's own URL keeps
+   * the suffix even though the router strips it before it matches. The English
+   * front page is the address that hides the whole prefix behind it.
+   */
+  it("reads the language through the suffix a client navigation appends", () => {
+    expect(readLocale("/en.data")).toEqual({ locale: "en", path: "/", redundantPrefix: false })
+  })
+
+  it("leaves that suffix out of the path it hands back", () => {
+    expect(readLocale("/en/research/hum0001.data")).toEqual({
+      locale: "en",
+      path: "/research/hum0001",
+      redundantPrefix: false,
+    })
+    expect(readLocale("/research/hum0001.data").path).toBe("/research/hum0001")
+  })
 })
 
 describe("href", () => {

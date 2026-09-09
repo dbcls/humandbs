@@ -17,6 +17,8 @@
  */
 
 export const PUBLIC_BUCKET = "files"
+import { pageRange } from "~/paging"
+
 export const PRIVATE_BUCKET = "private"
 
 /** Files a reader gets one page of. Most boxes hold fewer than this in total. */
@@ -148,6 +150,9 @@ export interface BoxPage<T> {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 /**
@@ -159,7 +164,13 @@ export function pageOfBox<T>(rows: readonly T[], page: number, size = BOX_PAGE_S
   const pageCount = Math.max(1, Math.ceil(rows.length / size))
   const wanted = Math.min(Math.max(page, 1), pageCount)
   const from = (wanted - 1) * size
-  return { rows: rows.slice(from, from + size), total: rows.length, page: wanted, pageCount }
+  return {
+    rows: rows.slice(from, from + size),
+    total: rows.length,
+    page: wanted,
+    pageCount,
+    ...pageRange(wanted, size, rows.length),
+  }
 }
 
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]

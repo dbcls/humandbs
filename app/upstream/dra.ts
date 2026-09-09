@@ -10,7 +10,7 @@
  * an experiment here is one table of an article, and a published dataset carries
  * one of those four times out of five. The strategy is what the article's tables
  * are divided by, so it is what these are divided by
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  */
 
 import type { SraEntry } from "./ddbj-search.server"

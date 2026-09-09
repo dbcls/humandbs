@@ -1,0 +1,5 @@
+# Everything served here is public and meant to be read, by people and by
+# machines alike, so nothing is disallowed. Unpublished content is not reachable
+# without a token, and those responses carry `X-Robots-Tag: noindex` themselves.
+User-agent: *
+Disallow:

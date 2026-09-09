@@ -28,6 +28,7 @@ import { getDb, type Executor } from "~/db/client.server"
 import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
+import { pageRange } from "~/paging"
 import { href, readLocale } from "~/public/urls"
 
 import { today } from "~/dates"
@@ -139,6 +140,11 @@ export interface NewsListView {
   items: NewsSummary[]
   page: number
   pageCount: number
+  /** Every announcement there is, not the page being looked at. */
+  total: number
+  /** 1-based positions of the shown items within that total. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 export interface NewsView {
@@ -399,6 +405,8 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
     items: [...items.values()],
     page: at,
     pageCount,
+    total: total?.count ?? 0,
+    ...pageRange(at, NEWS_PER_PAGE, total?.count ?? 0),
   }
 }
 

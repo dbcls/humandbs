@@ -2,8 +2,14 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FacetCategoryView, FacetRangeView, FacetView } from "~/public/facets.server"
+import type {
+  FacetCategoryView,
+  FacetRangeView,
+  FacetValueView,
+  FacetView,
+} from "~/public/facets.server"
 
+import { EDGE_SHADE } from "./base"
 import { FacetPanel } from "./facets"
 
 /** Rendered at a given address, since the links are built relative to none. */
@@ -25,16 +31,51 @@ function facet(over: Partial<FacetView> & Pick<FacetView, "code" | "label">): Fa
   return {
     kind: "vocabulary",
     values: [],
-    moreHref: null,
-    expanded: false,
-    closeHref: null,
     clearHref: null,
-    find: "",
     range: null,
-    codeEntry: null,
     ...over,
   }
 }
+
+/** As many values as a facet has when the box that narrows them is warranted. */
+function many(count: number): FacetValueView[] {
+  return Array.from({ length: count }, (_, at) => value(`C${String(at).padStart(2, "0")}`, `疾患 ${String(at)}`))
+}
+
+/** A value as the panel draws one, with the address it narrows to. */
+function value(code: string, label: string): FacetValueView {
+  return { code, label, maker: null, count: 3, selected: false, href: "/research?q=narrowed" }
+}
+
+const DISEASES = facet({
+  code: "disease",
+  label: "疾患",
+  kind: "disease",
+  values: [value("C34", "気管支及び肺の悪性新生物＜腫瘍＞")],
+})
+
+/** The same shape over a vocabulary whose codes are this site's own slugs. */
+const ASSAYS = facet({
+  code: "assay",
+  label: "実験方法",
+  values: [value("wgs", "WGS")],
+})
+
+/** The same facet holding more values than stand in the box at once. */
+const MANY_DISEASES = facet({
+  code: "disease",
+  label: "疾患",
+  kind: "disease",
+  values: many(20),
+})
+
+/** One with a condition of its own in force, which is a reason to be open. */
+const NARROWED = facet({
+  code: "assay",
+  label: "実験方法",
+  values: [value("wgs", "WGS")],
+  clearHref: "/research",
+})
 
 /** The windows a date facet offers, with one of them in force or none. */
 function windows(lit: "all" | "5y" | null): FacetRangeView["presets"] {
@@ -136,8 +177,142 @@ describe("the refinement panel", () => {
     ])).not.toContain("〜")
   })
 
+  it("writes the ICD10 code beside a disease, ahead of the heading", () => {
+    const html = render([{ code: "subjects", label: "対象者", facets: [DISEASES] }])
+
+    // The code is a key the reader can carry away — it is on the dataset page
+    // and in the API — and it comes first so that the codes make a column.
+    expect(html).toContain("<code")
+    expect(html).toContain("C34")
+    expect(html.indexOf("C34")).toBeLessThan(html.indexOf("気管支及び肺の悪性新生物＜腫瘍＞"))
+  })
+
+  it("leaves the code off every other facet, whose codes are slugs of this site's own", () => {
+    const html = render([{ code: "methods", label: "手法", facets: [ASSAYS] }])
+
+    expect(html).toContain("WGS")
+    expect(html).not.toContain("<code")
+  })
+
+  /*
+    **A range has no button.** Both ends ask for themselves — a date the moment
+    it has one, a number on the way out of the field — so all a button would add
+    is a second way to do what has already happened. **The cost is that a range
+    needs script**, which the values of a facet do not: those are all on the page
+    whether anything runs or not.
+  */
+  it("puts no button on a range, since both ends ask for themselves", () => {
+    const html = render([{ code: null, label: null, facets: [DATES] }])
+
+    expect(html).not.toContain("<button")
+    expect(html).toContain("type=\"date\"")
+  })
+
   it("names the facet the range writes into, so the form says which one it is", () => {
     expect(render([{ code: null, label: null, facets: [DATES] }]))
       .toContain("name=\"rangeKey\" value=\"date_published\"")
+  })
+})
+
+describe("the values of a facet", () => {
+  /**
+   * The widest facet carries 389 values. Cutting the list and offering a way to
+   * the rest costs either an address that says something other than the
+   * conditions in force, or a reader without script who cannot reach past the
+   * cut; scrolling costs neither.
+   */
+  it("are all drawn, however many there are", () => {
+    const html = render([{ code: null, label: null, facets: [MANY_DISEASES] }])
+
+    expect((html.match(/<li>/g) ?? []).length).toBe(20)
+    expect(html).toContain("疾患 19")
+  })
+
+  it("stand in a box with a ceiling, so a long one scrolls where it is", () => {
+    expect(render([{ code: null, label: null, facets: [MANY_DISEASES] }]))
+      .toContain("max-h-72")
+  })
+
+  /**
+   * The box narrows what is already on the page, so it takes no name and its
+   * words never reach the address — it changes what the reader is looking at,
+   * not what the search returned.
+   */
+  it("get a box to narrow them once they no longer stand in the ceiling", () => {
+    const html = render([{ code: null, label: null, facets: [MANY_DISEASES] }])
+
+    expect(html).toContain("type=\"search\"")
+    expect(html).not.toContain("name=\"find\"")
+  })
+
+  it("get no box while every one of them is in view", () => {
+    expect(render([{ code: null, label: null, facets: [DISEASES] }]))
+      .not.toContain("type=\"search\"")
+  })
+
+  /**
+   * A scrollbar does not say the list goes on — where the reader has it set to
+   * appear only while scrolling, it claims no space at all. **And the shading
+   * is drawn before anything measures it**, or the one thing saying so would
+   * be the thing that needs script to appear.
+   */
+  it("shade the far edge of a list that goes on past its box", () => {
+    expect(render([{ code: null, label: null, facets: [MANY_DISEASES] }]))
+      .toContain(EDGE_SHADE.bottom)
+  })
+
+  it("shade nothing while the whole list is in view", () => {
+    expect(render([{ code: null, label: null, facets: [DISEASES] }]))
+      .not.toContain(EDGE_SHADE.bottom)
+  })
+})
+
+describe("which facets a panel opens", () => {
+  /** A condition in force that cannot be seen is a listing that lies. */
+  it("opens the ones holding a condition of their own", () => {
+    expect(render([{ code: "methods", label: "手法", facets: [NARROWED] }]))
+      .toContain("<details open")
+  })
+
+  /**
+   * Opening the first group as well cost 800px of scroll before the reader
+   * reached the dimension they came for, and what stood there — dates and the
+   * access type — is not what a reader who has chosen nothing reaches for.
+   */
+  it("opens none of the rest, wherever in the panel they stand", () => {
+    const html = render([
+      { code: null, label: null, facets: [DISEASES] },
+      { code: "methods", label: "手法", facets: [ASSAYS] },
+    ])
+
+    expect(html).not.toContain("<details open")
+  })
+})
+
+describe("a facet the result carries no value for", () => {
+  const empty = render([{
+    code: null,
+    label: null,
+    facets: [facet({ code: "platform", label: "プラットフォーム" })],
+  }])
+
+  /*
+    What a folded box says is that the listing can be narrowed by that
+    dimension, which is true whether or not this result happens to carry any
+    value for it. Dropping the boxes takes the pane apart in front of the reader
+    who narrowed one step too far — and at nothing found, took the whole pane.
+  */
+  it("keeps its box, so the pane still says what the listing narrows by", () => {
+    expect(empty).toContain("プラットフォーム")
+    expect(empty).toContain("<details")
+  })
+
+  it("opens on the reason it is empty rather than on nothing", () => {
+    expect(empty).toContain("絞り込める値がありません")
+  })
+
+  it("draws no list and no box to narrow one", () => {
+    expect(empty).not.toContain("<ul")
+    expect(empty).not.toContain("値をさがす")
   })
 })

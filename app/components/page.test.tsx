@@ -1,10 +1,12 @@
+import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { pageWindow, TermLabel, Value } from "./page"
+import { pageWindow, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -175,5 +177,118 @@ describe("a vocabulary value naming a product", () => {
     const html = termLabel("10x Genomics Xenium", "10x Genomics")
     expect(html).toContain(">10x Genomics</span>")
     expect(html).toContain("Xenium")
+  })
+})
+
+/*
+  **The band a table opens with is one line.** The floors below it are measured
+  from the values, so a column whose name is longer than its values had nothing
+  holding it open — and the name wrapped only in the language where it was
+  longer, leaving one table with a band half again as tall as the same table
+  next door.
+*/
+describe("the band a table opens with", () => {
+  function header(headers: ReactNode[]): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <Table headers={headers}><tr><Td>row</Td></tr></Table>,
+    }])
+    const html = renderToStaticMarkup(<Stub initialEntries={["/research"]} />)
+    return html.slice(html.indexOf("<thead"), html.indexOf("</thead>"))
+  }
+
+  it("keeps a name on one line, so the column is at least as wide as it", () => {
+    expect(header(["Date published"])).toContain("whitespace-nowrap")
+  })
+
+  /*
+    A mark is 36px against a line of 22.4px, so the room a word needs would make
+    the band half as tall again. It carries no word, so there is nothing to hold
+    on one line — and holding one would push a fixed-width column open.
+  */
+  it("asks nothing for a header that is a control rather than a word", () => {
+    const html = header([<span key="cart" className="sr-only">カート</span>])
+    expect(html).not.toContain("whitespace-nowrap")
+    expect(html).toContain("w-15")
+  })
+
+  it("holds each name of a row of them, not only the first", () => {
+    const html = header(["Date published", "Date modified"])
+    expect(html.match(/whitespace-nowrap/g)).toHaveLength(2)
+  })
+})
+
+describe("a table with no rows", () => {
+  const of = (whenEmpty?: string) => renderToStaticMarkup(
+    <Table headers={["研究 ID", "研究題目"]} whenEmpty={whenEmpty}>{[]}</Table>,
+  )
+
+  /*
+    Swapping the table for a box of prose loses the column names, which are what
+    say what was being looked for, and moves everything below it — a reader who
+    narrowed one step too far has to work out where they now are before they can
+    take that step back.
+  */
+  it("keeps its columns and puts the line where the rows would be", () => {
+    const html = of("見つかりませんでした")
+    expect(html).toContain("研究 ID")
+    expect(html).toContain("研究題目")
+    expect(html).toContain("見つかりませんでした")
+  })
+
+  it("spans every column, so the table stops travelling sideways while empty", () => {
+    expect(of("なし")).toMatch(/colspan="2"/i)
+  })
+
+  it("draws an empty body where the caller says nothing, which is most tables", () => {
+    expect(of()).not.toMatch(/colspan/i)
+  })
+
+  it("leaves the rows alone when it has any", () => {
+    const html = renderToStaticMarkup(
+      <Table headers={["研究 ID"]} whenEmpty="なし"><tr><Td>hum0001</Td></tr></Table>,
+    )
+    expect(html).toContain("hum0001")
+    expect(html).not.toContain("なし")
+  })
+})
+
+describe("where a cell sits in a row taller than it is", () => {
+  const of = (align?: "top" | "middle") => renderToStaticMarkup(
+    <Table headers={["ID"]} align={align}>
+      <tr><Td>hum0001</Td></tr>
+    </Table>,
+  )
+
+  /*
+    A listing's rows are not one line — a title runs to three and its datasets to
+    four — and the reader takes a row by reading across its first line. A date
+    centred against a four-line cell sits beside nothing.
+  */
+  it("sits at the top unless the caller says otherwise", () => {
+    expect(of()).toMatch(/<td[^>]*align-top/)
+    expect(of()).not.toMatch(/<td[^>]*align-middle/)
+  })
+
+  /*
+    Where no row can run to two lines the tallest thing in it is a control
+    (36px against 22.4px), and top alignment lifts each cell by a different
+    amount — measured on the cart at 16.4 / 17.2 / 18.0px against a middle of
+    18.0. Nothing is aligned to anything, which reads as "not quite centred".
+  */
+  it("centres them where the caller says every row is one line", () => {
+    expect(of("middle")).toMatch(/<td[^>]*align-middle/)
+    expect(of("middle")).not.toMatch(/<td[^>]*align-top/)
+  })
+
+  /*
+    **The choice is about the cells, not the band.** A column name does not wrap
+    (`docs/ui.md` の「幅」), so the header row is one line whatever the rows under
+    it do — and the same 1px the cells had was there between the words (17.0) and
+    the mark that sets the row's height (18.0).
+  */
+  it("centres the header whichever way the cells go", () => {
+    expect(of()).toMatch(/<th[^>]*align-middle/)
+    expect(of("middle")).toMatch(/<th[^>]*align-middle/)
   })
 })

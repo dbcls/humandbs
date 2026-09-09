@@ -14,7 +14,7 @@ import {
   READ_TYPE_KEY,
   TYPE_KEY,
 } from "./arbitraries/upstream"
-import { draDatasetSeed, icd10Codes, jgadDatasetSeed, researchContentFrom } from "./templates"
+import { draDatasetSeed, jgadDatasetSeed, researchContentFrom } from "./templates"
 
 const branch: DsBranchDetail = {
   applicationId: "J-DS000136-010",
@@ -54,28 +54,12 @@ function termsUnder(values: ValueSlot[], keyId: string): string[] {
   return value.termIds.value
 }
 
-describe("the ICD10 codes an application states", () => {
-  it("reads codes written with the point and without it as the same code", () => {
-    expect(icd10Codes("C34.9")).toEqual(["C349"])
-    expect(icd10Codes("C349")).toEqual(["C349"])
-  })
-
-  it("splits on both widths of comma, on semicolons and on spaces", () => {
-    expect(icd10Codes("D469, C920")).toEqual(["D469", "C920"])
-    expect(icd10Codes("F00、F06.7")).toEqual(["F00", "F067"])
-    expect(icd10Codes("C25.3 D13.6")).toEqual(["C253", "D136"])
-  })
-
-  it("leaves out what is not shaped like a code, which the box is full of", () => {
-    expect(icd10Codes("-")).toEqual([])
-    expect(icd10Codes("dummy")).toEqual([])
-    expect(icd10Codes("")).toEqual([])
-  })
-
-  it("names a code once however many times it is written", () => {
-    expect(icd10Codes("C253, C25.3, c253")).toEqual(["C253"])
-  })
-})
+/** The diseases written under a key, each as the terms naming it. */
+function diseasesUnder(values: ValueSlot[], keyId: string): string[][] {
+  const value = valueUnder(values, keyId)
+  if (value?.kind !== "disease" || value.diseases.state !== "value") return []
+  return value.diseases.value.map((one) => one.termIds)
+}
 
 describe("the research an application seeds", () => {
   it("writes no email and no ORCID, which are what the public API would carry", () => {
@@ -164,19 +148,37 @@ describe("the dataset a JGA registration seeds", () => {
       .toEqual({ state: "value", value: "Whole genome sequencing of a cohort" })
   })
 
-  it("writes the diseases the application states onto the experiment", () => {
+  it("writes the diseases the application states onto the experiment, one row each", () => {
     const seed = jgadDatasetSeed(registration, branch, catalogFixture)
 
-    expect(termsUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY))
-      .toEqual(["set-disease/C349", "set-disease/E110"])
+    expect(diseasesUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY))
+      .toEqual([["set-disease/C349"], ["set-disease/E110"]])
+  })
+
+  it("writes no name, because the application form holds none", () => {
+    const seed = jgadDatasetSeed(registration, branch, catalogFixture)
+
+    const value = seed.content.experiments[0]?.values
+      .find((slot) => slot.keyId === DISEASE_KEY)?.value
+    expect(value?.kind === "disease" && value.diseases.state === "value"
+      ? value.diseases.value.map((one) => [one.nameJa, one.nameEn])
+      : null).toEqual([[null, null], [null, null]])
+  })
+
+  it("rolls a code up until the vocabulary answers, which is what ICD-10-CM needs", () => {
+    // The classification cannot spell `E110A`; `E110` is what stands for it.
+    const seed = jgadDatasetSeed(registration, { ...branch, icd10: "E110A" }, catalogFixture)
+
+    expect(diseasesUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY))
+      .toEqual([["set-disease/E110"]])
   })
 
   it("names a disease the catalog has no term for instead of writing it", () => {
     const unknown = { ...branch, icd10: "Z999" }
     const seed = jgadDatasetSeed(registration, unknown, catalogFixture)
 
-    expect(termsUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY)).toEqual([])
-    expect(seed.dropped).toContainEqual({ keyCode: "disease-icd10", value: "Z999" })
+    expect(diseasesUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY)).toEqual([])
+    expect(seed.dropped).toContainEqual({ keyCode: "disease", value: "Z999" })
   })
 
   it("names an assay the catalog has no term for instead of minting one", () => {

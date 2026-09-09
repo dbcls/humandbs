@@ -30,6 +30,7 @@ export function emptyResearchContent(): ResearchContent {
       methods: emptyRich(),
       targets: emptyRich(),
       typeOfData: emptyRich(),
+      dataProviders: [],
     },
     releaseNote: emptyRich(),
     dataProviders: [],

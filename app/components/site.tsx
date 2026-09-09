@@ -10,10 +10,9 @@ import { href, newsItemPath } from "~/public/urls"
 
 /**
  * The pieces the screens are built from — the ones that are layout rather than
- * text. These used to be written inside the CMS, as a markdown directive for
- * the button and inline flex styles for the row that holds them, which is what
- * put an extension to markdown and a raw-HTML route into every document. They
- * are components now, so the markdown dialect does not have to carry them.
+ * text. They are components rather than something the CMS writes, so the
+ * markdown dialect carries no directive for the button and no inline styles for
+ * the row that holds them, and no document needs a raw-HTML route.
  */
 export function ActionRow({ children }: { children: ReactNode }) {
   // Centred in the card. The ways in are the one thing on a page that is

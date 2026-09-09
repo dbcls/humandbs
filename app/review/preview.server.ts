@@ -8,10 +8,16 @@
  * is to fill in exactly those, and a preview that showed the published face
  * would hide the question.
  *
- * Every function here begins by turning the token into a draft, and a token
- * that does not open answers as a page that is not there. Nothing else on this
- * path consults the session: signing in only decides what a comment is signed
- * with.
+ * Every function that takes a token begins by turning it into a draft, and a
+ * token that does not open answers as a page that is not there. Nothing else on
+ * this path consults the session: signing in only decides what a comment is
+ * signed with.
+ *
+ * **`drawDraft` and `drawDatasetDraft` are the exceptions, and deliberately so.**
+ * Drawing a draft as its page is wanted in two places — the share link and the
+ * second pane of the editor — and doing it twice would be two answers to the
+ * same question. They take a draft rather than a token, so whoever calls them
+ * has already settled whether the asker may see it.
  */
 
 import { redirect } from "react-router"
@@ -22,7 +28,7 @@ import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
 import { adminBox, boxRows, fileListOf, readFilePage } from "~/files/listing.server"
-import type { ResearchContent } from "~/content/types"
+import type { DatasetContent, ResearchContent } from "~/content/types"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import {
@@ -167,15 +173,34 @@ function previousAt(
   return held
 }
 
-export async function previewResearchPage(
+/**
+ * A draft drawn as the page it is going to be.
+ *
+ * **There is one of these, and both the share link and the editor go through
+ * it.** The projection, the view builder and the components are the public
+ * page's; the one thing that differs is that unsettled values are kept, which
+ * is the point of looking at a draft at all. A second way of drawing the same
+ * thing would be a second answer to "what will this look like".
+ *
+ * Nothing here consults the session — who is asking decides whether they may
+ * ask, which is the caller's to settle.
+ */
+export interface DrawnDraft {
+  humLabel: string | null
+  publishedNumber: number | null
+  view: ResearchView
+  /** Anchors the page draws where the draft and the published version differ. */
+  changed: string[]
+  /** What the published version says at each of those, and only at those. */
+  previous: Record<string, AnchoredValue>
+}
+
+export async function drawDraft(
   request: Request,
   locale: Locale,
-  token: string,
-): Promise<PreviewResearchPageView> {
+  draft: { researchId: string, draftId: string, content: ResearchContent },
+): Promise<DrawnDraft> {
   const db = getDb()
-  const draft = await sharedDraftByToken(db, token)
-  if (draft === null) notFound()
-
   const [humLabel, catalog, datasets, published] = await Promise.all([
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
@@ -224,15 +249,34 @@ export async function previewResearchPage(
       )
 
   return {
-    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel, [
-      { kind: "research" },
-      ...draft.content.datasetIds.map((id) => ({ kind: "dataset" as const, datasetId: id })),
-    ]),
+    humLabel,
+    publishedNumber: published?.number ?? null,
     view: anchored.view,
     changed,
     previous: changed.length === 0 || published === null
       ? {}
       : previousAt(changed, await publishedResearchAnchors(published.content, locale, catalog, humLabel)),
+  }
+}
+
+export async function previewResearchPage(
+  request: Request,
+  locale: Locale,
+  token: string,
+): Promise<PreviewResearchPageView> {
+  const db = getDb()
+  const draft = await sharedDraftByToken(db, token)
+  if (draft === null) notFound()
+
+  const drawn = await drawDraft(request, locale, draft)
+  return {
+    ...await shellOf(request, locale, draft, drawn.publishedNumber, drawn.humLabel, [
+      { kind: "research" },
+      ...draft.content.datasetIds.map((id) => ({ kind: "dataset" as const, datasetId: id })),
+    ]),
+    view: drawn.view,
+    changed: drawn.changed,
+    previous: drawn.previous,
   }
 }
 
@@ -266,22 +310,37 @@ async function publishedResearchAnchors(
     datasetLabelById: labelOf,
     cau: [],
     // Only the anchors of this are read, and no file carries one.
-    files: { rows: [], total: 0, page: 1, pageCount: 1 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog).byAnchor
 }
 
-export async function previewDatasetPage(
+/**
+ * One dataset of a draft, drawn as the page it is going to be.
+ *
+ * The research's counterpart is `drawDraft`, and this is the same bargain: one
+ * drawing for the share link and for the pane beside the form, so that the two
+ * cannot come to disagree about where a value comes out.
+ */
+export interface DrawnDataset {
+  humLabel: string | null
+  publishedNumber: number | null
+  label: string | null
+  view: DatasetView
+  accessAnchor: string | null
+  typeOfDataAnchor: string | null
+  changed: string[]
+  previous: Record<string, AnchoredValue>
+}
+
+export async function drawDatasetDraft(
   request: Request,
   locale: Locale,
-  token: string,
+  draft: { researchId: string, draftId: string },
   datasetId: string,
-): Promise<PreviewDatasetPageView> {
+  /** The content being written, when it is not the one that is filed. */
+  content?: DatasetContent,
+): Promise<DrawnDataset> {
   const db = getDb()
-  const draft = await sharedDraftByToken(db, token)
-  if (draft === null) notFound()
-  // The preview is the version's face, so it shows what the version lists.
-  if (!draft.content.datasetIds.includes(datasetId)) notFound()
-
   const [humLabel, catalog, rows, published] = await Promise.all([
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
@@ -290,10 +349,12 @@ export async function previewDatasetPage(
   ])
   const row = rows[0]
   if (row === undefined) notFound()
+  // What is being written, which is not what is filed while a form is open.
+  const writing = content ?? row.content
   const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
 
   const dataset = publicDataset(
-    row.content,
+    writing,
     { keys: catalog.keyById, files: listing, archive: row.archive },
     PREVIEW,
   )
@@ -312,7 +373,7 @@ export async function previewDatasetPage(
   const changed = row.published === null
     ? []
     : markedAnchors(
-        changedDatasetFromPublished(row.published, row.content),
+        changedDatasetFromPublished(row.published, writing),
         anchored.byAnchor,
       )
 
@@ -333,16 +394,41 @@ export async function previewDatasetPage(
       }, locale, catalog).byAnchor)
 
   return {
-    ...await shellOf(request, locale, draft, published?.number ?? null, humLabel, [
-      { kind: "dataset", datasetId },
-    ]),
-    datasetId,
-    datasetLabel: row.label,
+    humLabel,
+    publishedNumber: published?.number ?? null,
+    label: row.label,
     view: anchored.view,
     accessAnchor: anchorUnderCode(catalog, ACCESS_TYPE_KEY),
     typeOfDataAnchor: anchorUnderCode(catalog, TYPE_OF_DATA_KEY),
     changed,
     previous,
+  }
+}
+
+export async function previewDatasetPage(
+  request: Request,
+  locale: Locale,
+  token: string,
+  datasetId: string,
+): Promise<PreviewDatasetPageView> {
+  const db = getDb()
+  const draft = await sharedDraftByToken(db, token)
+  if (draft === null) notFound()
+  // The preview is the version's face, so it shows what the version lists.
+  if (!draft.content.datasetIds.includes(datasetId)) notFound()
+
+  const drawn = await drawDatasetDraft(request, locale, draft, datasetId)
+  return {
+    ...await shellOf(request, locale, draft, drawn.publishedNumber, drawn.humLabel, [
+      { kind: "dataset", datasetId },
+    ]),
+    datasetId,
+    datasetLabel: drawn.label,
+    view: drawn.view,
+    accessAnchor: drawn.accessAnchor,
+    typeOfDataAnchor: drawn.typeOfDataAnchor,
+    changed: drawn.changed,
+    previous: drawn.previous,
   }
 }
 

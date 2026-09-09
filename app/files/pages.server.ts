@@ -72,6 +72,9 @@ export interface FilesPageView {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
   /** How many switches have not finished, over the whole box rather than the page. */
   switching: number
   totalBytes: number
@@ -103,6 +106,8 @@ export async function filesPage(
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
+    rangeFrom: page.rangeFrom,
+    rangeTo: page.rangeTo,
     switching: (box ?? []).filter((entry) => entry.pending !== null).length,
     totalBytes: (box ?? []).reduce((sum, entry) => sum + entry.size, 0),
     multipartThreshold: MULTIPART_THRESHOLD,
@@ -307,6 +312,9 @@ export interface CommonFilesView {
   total: number
   page: number
   pageCount: number
+  /** 1-based positions of the shown rows within the whole box. */
+  rangeFrom: number
+  rangeTo: number
   multipartThreshold: number
   partSize: number
 }
@@ -331,6 +339,8 @@ export async function commonFilesPage(
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
+    rangeFrom: page.rangeFrom,
+    rangeTo: page.rangeTo,
     multipartThreshold: MULTIPART_THRESHOLD,
     partSize: MULTIPART_PART_SIZE,
   }

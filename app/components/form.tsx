@@ -195,8 +195,9 @@ export function Checkbox({ label, name, value, checked, hint, error, disabled }:
         defaultChecked={checked}
         disabled={disabled}
         /* Half a step down, so the box sits on the line of the label beside it
-           rather than on the top of the text box. */
-        className="mt-0.5 size-4 accent-brand disabled:opacity-50"
+           rather than on the top of the text box. Shifted rather than pushed:
+           this is where the box is drawn, not a distance between two things. */
+        className="size-4 translate-y-0.5 accent-brand disabled:opacity-50"
         {...invalid(id, error)}
       />
     </Labelled>
@@ -348,13 +349,13 @@ export function Submit({ children, intent, variant = "secondary", disabled }: {
  *
  * It is a `Note` that announces itself when it appears: a save that answers on
  * the same page is otherwise silent to anybody not watching that corner. The
- * box it is drawn in is the one every other remark uses — this used to be a
- * third hand-written arrangement of the same glyph, border and text.
+ * box it is drawn in is the one every other remark uses, rather than its own
+ * arrangement of the same glyph, border and text.
+ *
+ * **It carries no margin.** Every screen that draws one puts it inside the same
+ * `Stack` as everything else, and a margin of its own was adding sixteen pixels
+ * to the thirty-two that stack already keeps.
  */
 export function Result({ ok, children }: { ok: boolean, children: ReactNode }) {
-  return (
-    <div className="mb-4">
-      <Note kind={ok ? "done" : "danger"} live>{children}</Note>
-    </div>
-  )
+  return <Note kind={ok ? "done" : "danger"} live>{children}</Note>
 }

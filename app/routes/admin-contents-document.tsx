@@ -1,13 +1,11 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import { documentAction, documentPage } from "~/admin/contents.server"
-import { adminContentsPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Field, Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
-import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-document"
 
@@ -47,9 +45,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead label={slug}>
-        <Link to={href(locale, adminContentsPath())} className="text-white">{t.backToTree}</Link>
-      </PageHead>
+      <PageHead kicker={t.documents} label={slug} />
       <Card>
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />

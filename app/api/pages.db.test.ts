@@ -300,6 +300,37 @@ describe("what apiSearch answers about its own parameters", () => {
     }
   })
 
+  /**
+   * **The key and the direction are asked for apart** (`app/search/sort.ts`). A
+   * listing that only ever ran one way would leave its other end reachable only
+   * by counting to the last page — which a caller cannot do until it has asked
+   * once and been told how many there are.
+   */
+  it("runs an ordering either way when the direction is asked for", async () => {
+    for (const label of ["hum0001", "hum0002", "hum0003"]) {
+      await publish(await createResearch(label), 1, [])
+    }
+    await rebuildSearchDocs(db)
+
+    async function head(query: string): Promise<string | undefined> {
+      const answer = await apiSearch(get(`/api/research?${query}`), "research")
+      expect(answer.status).toBe(200)
+      return (await body(answer) as { hits: { id: string }[] }).hits[0]?.id
+    }
+
+    expect(await head("sort=id&order=asc")).toBe("hum0001")
+    expect(await head("sort=id&order=desc")).toBe("hum0003")
+    // Asking for none of it reads an identifier the way it was issued
+    expect(await head("sort=id")).toBe("hum0001")
+  })
+
+  it("refuses a direction that is neither of the two", async () => {
+    const answer = await apiSearch(get("/api/research?order=sideways"), "research")
+    const { status, type } = await problemType(answer)
+    expect(status).toBe(422)
+    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-order")
+  })
+
   it("refuses a negative page with 422", async () => {
     const answer = await apiSearch(get("/api/research?page=-1"), "research")
     const { status, type } = await problemType(answer)

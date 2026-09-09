@@ -1,14 +1,28 @@
 import { describe, expect, it } from "vitest"
 
-import type { EsSearchable } from "./es"
+import type { EsExperiment, EsSearchable } from "./es"
 import type { TermSeed, VocabularyFacet } from "./facets"
 
-import { collectTerms, DISEASE_SET, VOCABULARY_FACETS } from "./facets"
+import { collectTerms, DISEASE_KEY, DISEASE_SET, diseaseSlots, VOCABULARY_FACETS } from "./facets"
 
 function facetNamed(code: string): VocabularyFacet {
   const facet = VOCABULARY_FACETS.find((one) => one.code === code)
   if (facet === undefined) throw new Error(`no facet is named ${code}`)
   return facet
+}
+
+function readerOf(code: string): (searchable: EsSearchable) => TermSeed[] {
+  const read = facetNamed(code).read
+  if (read === null) throw new Error(`${code} builds its values on its own path`)
+  return read
+}
+
+/** These examples are not about the classification. */
+const NOTHING_KNOWN = () => false
+
+/** The v1 layer is one field of an experiment; these examples only set that. */
+function collectFrom(searchables: EsSearchable[]): Map<string, TermSeed[]> {
+  return collectTerms(searchables.map((searchable) => ({ searchable })), NOTHING_KNOWN)
 }
 
 interface Platform {
@@ -17,7 +31,7 @@ interface Platform {
 }
 
 function platformTerms(...written: Platform[]): TermSeed[] {
-  return facetNamed("platform").read({ platforms: written } satisfies EsSearchable)
+  return readerOf("platform")({ platforms: written } satisfies EsSearchable)
 }
 
 function platformsOf(...written: Platform[]): string[] {
@@ -90,7 +104,7 @@ describe("a platform value written a second way", () => {
 
 describe("the order the terms are numbered in", () => {
   it("puts one maker's machines together and orders the rest by label", () => {
-    const held = collectTerms([{ platforms: [
+    const held = collectFrom([{ platforms: [
       { vendor: "Oxford Nanopore Technologies", model: "PromethION" },
       { vendor: "Illumina", model: "NovaSeq 6000" },
       { vendor: "Illumina", model: "HiSeq 2500" },
@@ -105,11 +119,11 @@ describe("the order the terms are numbered in", () => {
   })
 
   it("does not depend on the order the dump mentions the values in", () => {
-    const one = collectTerms([{ platforms: [
+    const one = collectFrom([{ platforms: [
       { vendor: "MGI", model: "DNBSEQ-T7" },
       { vendor: "Illumina", model: "MiSeq" },
     ] }])
-    const other = collectTerms([{ platforms: [
+    const other = collectFrom([{ platforms: [
       { vendor: "Illumina", model: "MiSeq" },
       { vendor: "MGI", model: "DNBSEQ-T7" },
     ] }])
@@ -117,7 +131,7 @@ describe("the order the terms are numbered in", () => {
   })
 
   it("folds a machine named twice into one value", () => {
-    const terms = collectTerms([
+    const terms = collectFrom([
       { platforms: [{ vendor: "Illumina", model: "HiSeq 2000/2500" }] },
       { platforms: [{ vendor: "Illumina", model: "HiSeq 2500" }] },
     ])
@@ -125,8 +139,7 @@ describe("the order the terms are numbered in", () => {
   })
 
   it("keeps parents before children, so that a child can point at one", () => {
-    const codes = (collectTerms([{ diseases: [{ label: "breast", icd10: "C50.1" }] }])
-      .get(DISEASE_SET) ?? []).map((term) => term.code)
+    const codes = diseaseCodes("乳がん(ICD10: C50.1)", ["C50", "C501"])
     expect(codes).toContain("C501")
     expect(codes.indexOf("C50")).toBeLessThan(codes.indexOf("C501"))
   })
@@ -135,3 +148,66 @@ describe("the order the terms are numbered in", () => {
 function held(terms: Map<string, TermSeed[]>): string[] {
   return (terms.get("platform") ?? []).map((term) => term.labelEn)
 }
+
+function experimentSaying(ja: string, en = ""): EsExperiment {
+  return { data: { "Materials and Participants": { ja: { text: ja }, en: { text: en } } } }
+}
+
+function diseaseCodes(ja: string, dictionary: string[]): string[] {
+  const held = collectTerms([experimentSaying(ja)], (code) => dictionary.includes(code))
+  return (held.get(DISEASE_SET) ?? []).map((term) => term.code)
+}
+
+describe("the diseases an article names", () => {
+  it("becomes a term for the code the dictionary holds", () => {
+    expect(diseaseCodes("肺がん(ICD10: C34.9)", ["C34", "C349"])).toEqual(["C34", "C349"])
+  })
+
+  it("shortens a code the dictionary does not hold until it does", () => {
+    // The five-character codes are ICD-10-CM (`docs/data-model.md` の「ICD10」).
+    // The root comes with it: a four-character term needs one to roll up into.
+    expect(diseaseCodes("NASH(ICD10: K75.81)", ["K75", "K758"])).toEqual(["K75", "K758"])
+  })
+
+  it("makes no term at all when even the root is unknown", () => {
+    expect(diseaseCodes("リンチ症候群(ICD10: Z15.09)", ["C34"])).toEqual([])
+  })
+
+  it("takes no term from the layer v1 extracted", () => {
+    // That layer holds no name, which is the reason the articles are read
+    // instead (`migration/diseases.ts`).
+    const held = collectFrom([{ diseases: [{ label: "breast cancer", icd10: "C50" }] }])
+    expect(held.get(DISEASE_SET) ?? []).toEqual([])
+  })
+})
+
+describe("the disease slot an experiment carries", () => {
+  const identity = {
+    keyIdByCode: new Map([[DISEASE_KEY, "key-1"]]),
+    termIdBySetAndCode: new Map([[`${DISEASE_SET}/C349`, "term-1"], [`${DISEASE_SET}/C34`, "term-2"]]),
+    knownCode: (code: string) => ["C34", "C349"].includes(code),
+  }
+
+  it("holds the names the article wrote beside the terms", () => {
+    expect(diseaseSlots(experimentSaying("肺がん(ICD10: C34.9)", "Lung cancer (ICD10: C34.9)"), identity))
+      .toEqual([{
+        keyId: "key-1",
+        value: {
+          kind: "disease",
+          diseases: { state: "value", value: [{ termIds: ["term-1"], nameJa: "肺がん", nameEn: "Lung cancer" }] },
+        },
+      }])
+  })
+
+  it("keeps a disease whose code no dictionary holds, with no term", () => {
+    const held = diseaseSlots(experimentSaying("リンチ症候群(ICD10: Z15.09)"), identity)
+    expect(held[0]?.value).toEqual({
+      kind: "disease",
+      diseases: { state: "value", value: [{ termIds: [], nameJa: "リンチ症候群", nameEn: null }] },
+    })
+  })
+
+  it("carries no slot when the article names no disease", () => {
+    expect(diseaseSlots(experimentSaying("健常者: 7名"), identity)).toEqual([])
+  })
+})

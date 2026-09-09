@@ -161,6 +161,12 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       methods: prose(listingSummary?.methods),
       targets: prose(listingSummary?.targets),
       typeOfData: prose(listingSummary?.typeOfData),
+      // Empty, which is what makes the listing read the research's own
+      // providers. v1 draws the column from the same names, so a table built
+      // this way says what v1's says; a copy taken here would instead be a
+      // second set of names that no one had chosen and that would not follow a
+      // correction made to the first.
+      dataProviders: [],
     },
     releaseNote: prose(rv.releaseNote),
     dataProviders,
@@ -259,6 +265,8 @@ export interface DatasetContentInput {
   codeBySourceKey: Map<string, string>
   /** `{set code}/{term code}` to identity. */
   termIdBySetAndCode: Map<string, string>
+  /** Whether the ICD10 dictionary holds a code, which is what resolves one. */
+  knownCode: (code: string) => boolean
   accessCriteriaKeyCode: string
   typeOfDataKeyCode: string
   /** Every dataset label in the dump, so a line's label can be recognised. */
@@ -276,7 +284,7 @@ export interface DatasetContentInput {
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
-  const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode } = input
+  const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
 
   /** A cell with the lines about other datasets taken out (`ownLines`). */
@@ -376,7 +384,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
             ? []
             : [{ keyId, value: { kind: "number" as const, values: { state: "value" as const, value: held } } }]
         }),
-        ...facetValueSlots(e.searchable ?? {}, { keyIdByCode, termIdBySetAndCode }),
+        ...facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode }),
       ],
     }
   })

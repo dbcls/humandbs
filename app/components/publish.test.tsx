@@ -65,7 +65,7 @@ describe("the publish screen", () => {
     }))
 
     expect(html).toContain("公開できないもの")
-    expect(html).toContain("hum ラベルが pin されていません")
+    expect(html).toContain("研究 ID が pin されていません")
     expect(html).toContain("disabled=\"\"")
   })
 

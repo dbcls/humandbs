@@ -7,27 +7,33 @@
  * the block of JSON on `/cart`. So it is held in the browser and nowhere else —
  * no row, no account, nothing to migrate, and nothing to keep in step.
  *
- * **`sessionStorage` rather than `localStorage`**, because a cart is a task
- * somebody is in the middle of rather than a preference. A shared terminal
- * would otherwise hand the next reader the previous one's collection, and
- * storing something beyond a visit is a choice that has to earn itself.
+ * **`localStorage`, so it outlives the window.** Gathering the datasets for one
+ * application is not one sitting's work — a reader picks through several
+ * research pages and comes back the next day, and would otherwise find the
+ * collection gone with nothing to say it had ever been there. What is kept is a list of published
+ * accessions and nothing else: no name, no session, nothing about the person.
+ * A shared terminal does hand the next reader what was left behind, which is
+ * why **emptying it is one press** from the bar and from the cart's own page.
+ *
+ * It also means the two tabs a reader has open agree: `storage` fires across
+ * them, and `subscribe` was already listening for it.
  *
  * **Only JGA datasets go in.** They are the ones the application system takes;
  * an unrestricted-access dataset needs no application at all, and a portal-issued
  * NHA id would have nowhere to be pasted.
+ *
+ * **There is no ceiling on how many.** There was one, of a hundred, and what it
+ * held back was a mark that put a whole page of results in at once — a control
+ * that no longer exists. On its own a reader cannot reach that far: the largest
+ * research holds 95 JGA datasets, and every one in the portal comes to 681,
+ * which is 37 KB of the 5 MB the browser will keep. A number the portal made up
+ * cannot stand in for a limit the application system might have, either — if
+ * there is one at the far end, a hundred is not it.
  */
 
 import { useCallback, useSyncExternalStore } from "react"
 
 const KEY = "humandbs.cart"
-
-/**
- * How many a cart may hold. The application form is filled in by hand at the
- * other end, and the largest research has over two hundred datasets — without a
- * ceiling, "add every dataset on the page" would produce something nobody can
- * check.
- */
-export const CART_LIMIT = 100
 
 /**
  * Case-sensitive: the ids that reach here are the labels the archive issued and
@@ -54,18 +60,17 @@ export function parseCart(raw: string | null): string[] {
   const ids = (parsed as unknown[]).filter(
     (id): id is string => typeof id === "string" && isCartable(id),
   )
-  return [...new Set(ids)].slice(0, CART_LIMIT)
+  return [...new Set(ids)]
 }
 
 /**
- * Adding keeps the order things were put in and drops what does not fit — a
- * reader who adds forty rows at once should get the first of them rather than
- * an error, and the ones already in the cart are not moved.
+ * Adding keeps the order things were put in, and what is already in the cart is
+ * not moved to the end of it.
  */
 export function addToCart(current: string[], ids: string[]): string[] {
   const held = new Set(current)
   const added = ids.filter((id) => isCartable(id) && !held.has(id))
-  return [...current, ...new Set(added)].slice(0, CART_LIMIT)
+  return [...current, ...new Set(added)]
 }
 
 export function removeFromCart(current: string[], ids: string[]): string[] {
@@ -76,18 +81,79 @@ export function removeFromCart(current: string[], ids: string[]): string[] {
 /**
  * Whether pressing a cart mark gathers what it stands for, or lets it go.
  *
- * **Pressing again always undoes.** A mark stands for every dataset under it —
- * a whole row, or a whole page of them — and the cart has a ceiling, so a mark
- * standing for more than fits can never reach "all of them in". Deciding by
- * that state alone leaves it resting half-lit while every further press adds
- * nothing and takes nothing out, and the reader has no way back through the
- * control they came in by. So a press gathers while there is room to gather,
- * and lets go the moment there is not.
+ * **Pressing again always undoes.** A mark stands for every dataset under a
+ * row, so a press gathers while any of them is still out, and lets the whole
+ * row go once they are all in. A reader always gets back out through the
+ * control they came in by.
  */
 export function cartPressGathers(current: string[], ids: string[]): boolean {
   const cartable = new Set(ids.filter(isCartable))
-  const held = [...cartable].filter((id) => current.includes(id))
-  return held.length < cartable.size && current.length < CART_LIMIT
+  const inCart = new Set(current)
+  let held = 0
+  for (const id of cartable) if (inCart.has(id)) held += 1
+  return held < cartable.size
+}
+
+/* ------------------------------------------------------ saying what moved */
+
+/**
+ * What to say about a press, and how to take it back.
+ *
+ * **The cart is not where the reader is looking.** The count sits in the top
+ * bar, and a mark pressed at the foot of a listing is two thousand pixels below
+ * it — so without this, the only thing that answers a press is the colour of a
+ * 36px glyph. What is said belongs beside the press.
+ *
+ * **`before` is the way back.** Holding the whole list rather than the
+ * difference is what lets one control undo a press that both added and dropped,
+ * and the list is a hundred short strings at the very most.
+ */
+export interface CartNotice {
+  kind: "added" | "removed"
+  /** How many ids moved. Never zero: a press that moves nothing says nothing. */
+  count: number
+  /** The one id that moved, when exactly one did: the reader wants to see it. */
+  only: string | null
+  /** How many the cart holds now. */
+  total: number
+  /** What it held before. */
+  before: string[]
+  /** Tells one notice from the next when the two would read the same. */
+  at: number
+}
+
+/**
+ * Reads a press from the cart on either side of it.
+ *
+ * **A press that moves nothing has nothing to say.** Every mark either gathers
+ * what is still out or lets go of what is in, so the only way to arrive here
+ * with an unchanged cart is to press one that stands for no cartable dataset —
+ * and those are not drawn at all.
+ */
+export function noticeOf(before: string[], after: string[], at: number): CartNotice | null {
+  const moved = after.length - before.length
+  if (moved === 0) return null
+  const held = new Set(before)
+  if (moved > 0) {
+    const added = after.filter((id) => !held.has(id))
+    return {
+      kind: "added",
+      count: moved,
+      only: added.length === 1 ? (added[0] ?? null) : null,
+      total: after.length,
+      before,
+      at,
+    }
+  }
+  const gone = before.filter((id) => !after.includes(id))
+  return {
+    kind: "removed",
+    count: -moved,
+    only: gone.length === 1 ? (gone[0] ?? null) : null,
+    total: after.length,
+    before,
+    at,
+  }
 }
 
 /**
@@ -135,7 +201,7 @@ let cached: { raw: string | null, value: string[] } = { raw: null, value: EMPTY 
 function readCart(): string[] {
   let raw: string | null
   try {
-    raw = window.sessionStorage.getItem(KEY)
+    raw = window.localStorage.getItem(KEY)
   } catch {
     return EMPTY
   }
@@ -144,14 +210,17 @@ function readCart(): string[] {
   return cached.value
 }
 
-function writeCart(next: string[]): void {
+/** Whether the cart actually changed: storage may be blocked (see `readCart`). */
+function writeCart(next: string[]): boolean {
   try {
-    window.sessionStorage.setItem(KEY, JSON.stringify(next))
+    window.localStorage.setItem(KEY, JSON.stringify(next))
   } catch {
-    return
+    return false
   }
-  // `storage` is not delivered to the tab that wrote, so this tab is told here.
+  // `storage` is delivered to the other tabs but never to the one that wrote,
+  // so this tab is told here.
   for (const listener of listeners) listener()
+  return true
 }
 
 function subscribe(listener: () => void): () => void {
@@ -170,28 +239,109 @@ function serverSnapshot(): string[] {
 
 export interface Cart {
   ids: string[]
+  /** Whether the cart holds this dataset. */
+  holds: (id: string) => boolean
   add: (ids: string[]) => void
   remove: (ids: string[]) => void
 }
 
 /**
- * Whether the page is running in a browser yet.
+ * The cart as a set, for the marks that ask whether they are in it.
  *
- * The cart is empty on the server, so a screen that draws from it has to know
- * whether "empty" means "nothing collected" or "not asked yet" — otherwise the
- * cart page renders as empty for everybody and fills in a frame later.
+ * **Made once per cart rather than once per mark.** A page of a listing draws a
+ * hundred marks, each standing for as many as ninety-five datasets, against a
+ * cart that can hold hundreds; asked of a list, one page is millions of
+ * comparisons, and every press asks again. The snapshot is the same array until
+ * the cart changes, which is what lets one set answer for all of them.
  */
-export function useHydrated(): boolean {
-  return useSyncExternalStore(subscribe, () => true, () => false)
+let membership: { of: string[], set: Set<string> } = { of: EMPTY, set: new Set() }
+
+function heldIn(ids: string[]): Set<string> {
+  if (membership.of !== ids) membership = { of: ids, set: new Set(ids) }
+  return membership.set
+}
+
+/**
+ * The last press, and what it takes to answer for it.
+ *
+ * **One at a time.** Two notices stacked would make the reader choose which to
+ * read before either goes, and the second is always the one they just caused.
+ */
+let notice: CartNotice | null = null
+let pressed = 0
+const noticeListeners = new Set<() => void>()
+
+function setNotice(next: CartNotice | null): void {
+  notice = next
+  for (const listener of noticeListeners) listener()
+}
+
+function subscribeNotice(listener: () => void): () => void {
+  noticeListeners.add(listener)
+  return () => {
+    noticeListeners.delete(listener)
+  }
+}
+
+function readNotice(): CartNotice | null {
+  return notice
+}
+
+function serverNotice(): null {
+  return null
+}
+
+/**
+ * Every way the cart changes goes through here, so that every way of changing
+ * it is answered for. **A press that could not be written says nothing** — a
+ * reader whose browser blocks storage is told the cart is empty by the cart
+ * itself, and telling them something went in as well would be a lie.
+ */
+function press(
+  move: (current: string[], ids: string[]) => string[],
+  ids: string[],
+): void {
+  const before = readCart()
+  const after = move(before, ids)
+  if (before.length === after.length) return
+  if (!writeCart(after)) return
+  setNotice(noticeOf(before, after, ++pressed))
 }
 
 export function useCart(): Cart {
   const ids = useSyncExternalStore(subscribe, readCart, serverSnapshot)
+  const holds = useCallback((id: string) => heldIn(ids).has(id), [ids])
   const add = useCallback((toAdd: string[]) => {
-    writeCart(addToCart(readCart(), toAdd))
+    press(addToCart, toAdd)
   }, [])
   const remove = useCallback((toRemove: string[]) => {
-    writeCart(removeFromCart(readCart(), toRemove))
+    press(removeFromCart, toRemove)
   }, [])
-  return { ids, add, remove }
+  return { ids, holds, add, remove }
+}
+
+export interface CartNoticeControl {
+  notice: CartNotice | null
+  dismiss: () => void
+  /** Puts the cart back as it was before the notice. */
+  undo: () => void
+}
+
+/**
+ * Kept apart from `useCart` because every mark on a listing holds a cart: a
+ * notice arriving would otherwise redraw all twenty of them.
+ */
+export function useCartNotice(): CartNoticeControl {
+  const current = useSyncExternalStore(subscribeNotice, readNotice, serverNotice)
+  const dismiss = useCallback(() => {
+    setNotice(null)
+  }, [])
+  // Read from the module rather than from `current`: the way back belongs to
+  // the notice standing when the press lands, not to the one this render saw.
+  const undo = useCallback(() => {
+    const back = notice?.before
+    if (back === undefined) return
+    if (writeCart(back)) setNotice(null)
+  }, [])
+  return { notice: current, dismiss, undo }
 }

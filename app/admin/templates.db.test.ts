@@ -43,7 +43,7 @@ import { upstreamResearchAction, upstreamResearchPage } from "./templates.server
  * The point of these is what must not happen: a label somebody else holds has to
  * leave nothing behind at all, because the identities and the pins are made
  * together and a half-made research is one nobody could find or finish
- * (docs/editing.md の「上流からの下書き」).
+ * (docs/editing.md の「下書きを外から作る」).
  */
 const db = getDb()
 

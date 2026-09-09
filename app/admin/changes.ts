@@ -51,7 +51,11 @@ export interface ShownLine {
   label: string
   state: SlotState
   text: string
-  /** A vocabulary value: the screen has the catalog and resolves the labels. */
+  /**
+   * The identities this line names: the screen has the catalog and resolves
+   * the labels. A vocabulary value is nothing but these; a disease carries them
+   * beside the name somebody wrote, and both are shown.
+   */
   termIds?: string[]
 }
 
@@ -66,6 +70,9 @@ export function describeInput(value: unknown): ShownLine[] | null {
   // A value slot, and then the body inside it.
   if (typeof value.keyId === "string" && isRecord(value.value)) return describeInput(value.value)
   if (value.kind === "text") return describeInput(value.text)
+  if (value.kind === "disease" && Array.isArray(value.diseases)) {
+    return diseaseLines(value.state, value.diseases)
+  }
 
   if (isRecord(value.ja) && isRecord(value.en)) {
     const ja = lineOf("ja", value.ja)
@@ -109,6 +116,33 @@ export function describedDataset(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * The diseases of a value, a line each.
+ *
+ * **Both names on one line, with the codes after them**, which is how the value
+ * reads on the page it came from: the terms say what counts it and the name is
+ * what the article called it, and neither on its own tells one row from the
+ * next.
+ */
+function diseaseLines(state: unknown, diseases: readonly unknown[]): ShownLine[] | null {
+  if (state !== "value" && state !== "unknown" && state !== "not-applicable") return null
+  if (state !== "value") return [{ label: "", state, text: "" }]
+  return diseases.map((one) => {
+    const row = isRecord(one) ? one : {}
+    const names = ["nameJa", "nameEn"]
+      .map((key) => (typeof row[key] === "string" ? row[key] : ""))
+      .filter((name) => name !== "")
+    return {
+      label: "",
+      state,
+      text: names.join(" / "),
+      termIds: Array.isArray(row.termIds)
+        ? row.termIds.filter((id) => typeof id === "string")
+        : [],
+    }
+  })
 }
 
 function lineOf(label: string, slot: Record<string, unknown>): ShownLine | null {

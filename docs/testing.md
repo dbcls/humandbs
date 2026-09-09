@@ -83,7 +83,9 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 - 未公開の research がどの公開経路からも出てこない
 - **リンクを辿って開いたページが、アドレスを直接開いたときと同じものに解決する。** client-side の遷移は
   `<path>.data` を要求し、この接尾辞は route の照合の前に外れるが要求そのものには残る。アドレスを
-  `request.url` から読む loader は、直接開くと動いてリンクからは 404 になる
+  `request.url` から読む loader は、直接開くと動いてリンクからは 404 になる。**外れるのは行き先だけでは
+  ない** — 言語 prefix が全体であるアドレス (`/en`) では `/en.data` に locale を綴るセグメントが残らず、
+  トップページだけがリンクからは日本語で開いていた。接尾辞は `readLocale` が落とす
 - 版を取り下げると公開画面と検索から同時に消える
 - revision の合わない保存が 409 になり、手元の入力が残る
 - 変更エントリの初回作成は「無ければ挿入」で、挿入されなかった側が 409 になる
@@ -110,8 +112,9 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 ローカルで再現できないのは TLS と Secure cookie だけで、`X-Content-Type-Options` /
 `Content-Disposition` / `/files/` の配信 / 8080 の redirect URI はローカルの compose も同じ経路を通る。
 
-**シナリオは doc に先に書く。** ただし画面の形が決まる前に書けるのは「誰が」「何を貫通するか」
-「何が成り立つべきか」までで、手順の具体は画面が決まってから足す。
+**シナリオは doc に先に書き、番号で実装と結ぶ。** doc が持つのは「誰が」「何を貫通するか」「何が
+成り立つべきか」までで、手順の具体はコードの側にある。**画面の名前や研究 id をここにもコードにも
+書かない** — 回す先ごとに中身が違うので、シナリオは一覧の先頭から辿って対象を決める。
 
 | ペルソナ | 誰 | 認証 |
 |---|---|---|
@@ -119,15 +122,90 @@ loader / action を通し、実 DB に対して回す。ここに置くのは **
 | P-PROVIDER | データ提供者 | なし。共有リンクを持つ |
 | P-ADMIN | curator | DDBJ アカウント |
 
-画面の形に依存せず決まっている経路:
+**P-ANON — 読む** (`tests/e2e/reading.spec.ts`)
 
-- P-ANON — 検索 → research → 版 → dataset → ファイルの取得
-- P-ANON — 裸の hum ID が最新公開版に解決する。**JS を実行しないクライアントでも**
-- P-ANON — 取り下げた版と未公開の research がどこからも見えない
-- P-ANON — 版番号を持たない document の slug が恒久的に応答する
+| | 経路 |
+|---|---|
+| S-PUB-01 | 一覧 → research → 版の一覧 → dataset |
+| S-PUB-02 | 裸の hum ID が最新公開版に解決する |
+| S-PUB-03 | 同じ経路が **JS を実行しないクライアントでも**通る |
+| S-PUB-04 | 公開されていないものと存在しないラベルが同じ 404 を返す (画面と API の両方) |
+| S-PUB-05 | 版番号を持たない document の slug が恒久的に応答する |
+
+**P-ANON — 絞る** (`search.spec.ts` / `refine.spec.ts`)
+
+| | 経路 |
+|---|---|
+| S-SEARCH-01 | キーワードで絞ると、条件がアドレスに載る |
+| S-SEARCH-02 | 窓を空にするとキーワードが解除される |
+| S-SEARCH-03 | 結果が 0 件でも、表と絞り込みは残って理由を出す |
+| S-SEARCH-04 | ページ送りがアドレスに載り、戻れる |
+| S-SEARCH-05 | 一覧の切り替えが条件を持ち越す |
+| S-FACET-01 | 値を選ぶと条件がアドレスに載り、外して戻せる |
+| S-EXPORT-01 | 書き出しは画面と同じ条件を持ち、表として返る |
+| S-EXPORT-02 | 書き出しはページに切られず全部を返す |
+
+**P-ANON — カート** (`cart.spec.ts`)。**unit はここに届かない** — 窓が無い環境で走るので、
+`localStorage` を読む経路は e2e だけが踏める。
+
+| | 経路 |
+|---|---|
+| S-CART-01 | 一覧で印を押すとカートに入り、リロードしても残る |
+| S-CART-02 | 入れたものがカートの画面に出る |
+| S-CART-03 | 押し直すと出ていき、カートの画面もそう言う |
+| S-CART-04 | 何も入れていないカートは、行を持たない |
+
+**P-ANON — 言語と読み物** (`language.spec.ts` / `content.spec.ts`)
+
+| | 経路 |
+|---|---|
+| S-LANG-01 | 言語を切り替えても、見ていたページに留まる |
+| S-LANG-02 | 絞り込んだまま言語を変えても、条件は落ちない |
+| S-LANG-03 | 文書は両方の言語で応答し、`lang` を名乗る |
+| S-DOC-01 | 記事の見出しはそれぞれのアドレスを持ち、そこへ飛べる |
+| S-DOC-02 | お知らせは一覧から個別へ辿れる |
+| S-DOC-03 | お知らせを絞り込むと、条件がアドレスに載る |
+| S-DOC-04 | 案内の 3 画面が応答する |
+
+**機械が読む面** (`api.spec.ts`)
+
+| | 経路 |
+|---|---|
+| S-API-01 | OpenAPI が出て、載っている道が実際に答える |
+| S-API-02 | 一覧は一定の件数で切られ、ページを渡すと違う行が返る (`size` は読まれない) |
+| S-API-03 | 一括取得は 1 行 1 件で、一覧の総数と揃う |
+| S-API-04 | relation の供給が型の一覧から通る |
+| S-API-05 | 読めない検索式は 422 を返し、その理由を言う |
+| S-API-06 | document の画面が operation を描き、色も付く |
+| S-API-07 | document が載せている検索式は、どれも読める |
+| S-API-08 | fields が挙げた値は、そのまま `q` に書いて必ず当たる |
+
+**P-ADMIN — 管理画面** (`admin.spec.ts` / `admin.user.spec.ts`)。**署名の要否でファイルが分かれる** —
+`admin.spec.ts` はセッションを持たない側で、これがあるから「サインインしていないと開かない」を
+signed-in の走行が取りこぼさない。
+
+| | 経路 |
+|---|---|
+| S-ADMIN-00 | 署名の無いブラウザは、どの管理画面もサインインに送られる (行き先を持ったまま) |
+| S-ADMIN-01 | 区画のトップから、識別子を要らない画面すべてに行ける |
+| S-ADMIN-02 | つまみに親が無い画面だけが、その親への戻る道を持つ |
+| S-ADMIN-03 | 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ |
+| S-ADMIN-04 | 絞り込んで 0 件になっても、表と列の名前は残る |
+| S-ADMIN-05 | 一覧から 1 件選んだ先の画面すべてに、リンクを辿って着ける |
+
+**これらは読むだけで、公開しない。** 実物は 1 組の行しか持たないので、版を出すシナリオは他の
+シナリオが読んでいるものを変えてしまう。**下書きを作るのだけは例外** — 未公開の作業コピーなので
+読者から見えるものは動かず、開発用データは下書きを 1 つも持たないので作らないと入れない。
+
+まだ書いていない経路:
+
+- P-ANON — dataset からファイルを取得する (**開発用データがファイルを持たないので書けない**。
+  ファイルのある環境が要る)
+- P-ANON — 取り下げた版と未公開の research がどこからも見えない (同じく、そういう行が要る)
 - P-PROVIDER — 共有リンク → preview に未確定値のスロットが見える → コメント → LGTM
 - P-PROVIDER — private に戻すと読めない / 再度有効化すると同じリンクが戻る / 再発行すると旧リンクが死ぬ
-- P-ADMIN — サインイン → draft → 編集 → 公開ゲート → 公開 → 公開画面に出る
+- P-ADMIN — 編集 → 公開ゲート → 公開 → 公開画面に出る (**実物の公開データが動くので、
+  回す先を専用に用意してから**)
 - P-ADMIN — 2 つのセッションで同じ draft を編集すると、後の保存が 409 になって入力が残る
 - P-ADMIN — draft の中で dataset を作る → experiment を書く → 版の一覧に載っている
 - P-ADMIN — 保存 → 履歴から直前を読み込む → 保存し直すと元に戻る
@@ -160,14 +238,17 @@ route ごと組んだ状態で回して、その内側の HTTP だけを境界�
 
 状態を共有しない。実行順序に依存しない。
 
-- DB を使う 2 階層は 1 つの開発 DB を共有し、各 test が前に空にする。したがって**ファイル並列は切る**
-  (`fileParallelism: false`)。空にするのは owner の接続で、アプリが繋ぐ role には TRUNCATE が無い
-  ([publishing.md](publishing.md) の「証跡」)。**test 本体は必ずアプリの role で回す** — 権限まで含めて
-  本番と同じ条件にするため
+- **DB を使う 2 階層は専用の database に対して回す。** 名前は開発用のものの後ろに `_test` を付けた
+  もので、**設定では切り替えられない** — 向き先を 1 つ間違えると開発用データが消えるので、間違えようの
+  無い形にしてある (cookie の `Secure` を redirect URI から導くのと同じ理由)。`db:push` が両方に schema を
+  反映するので、2 つがずれることはない
+- **走り出す前に、繋いだ先が test 用の database かどうかを確かめる。** 違えば 1 件も実行せずに落ちる。
+  導出と合わせて二重になっているのは、**ここが破れたときに失われるのが test では取り戻せないものだから**
+- 各 test が前に空にする。したがって**ファイル並列は切る** (`fileParallelism: false`)。空にするのは
+  owner の接続で、アプリが繋ぐ role には TRUNCATE が無い ([publishing.md](publishing.md) の「証跡」)。
+  **test 本体は必ずアプリの role で回す** — 権限まで含めて本番と同じ条件にするため
 - 直列で 60 秒を超えたら、worker ごとに DB を複製する形に切り替える (`CREATE DATABASE ... TEMPLATE` は
   数十 ms で終わる)
-- **test は開発用 DB を空にする。** 開発用データは test の後に入れ直す
-  ([development.md](development.md))
 - helper と fixture は collection から外すため `_` prefix のファイル名にする
 
 ## 実行
@@ -178,6 +259,31 @@ docker compose exec app npm run test:unit     # 不変量 + 単体 (DB 不要)
 docker compose exec app npm run test:db       # schema + 経路
 ```
 
+e2e はブラウザを持つ別の image で回す。**profile の下にあるので、上の 3 つを回すときには起動しない。**
+
+```bash
+docker compose --profile e2e run --rm e2e                       # このリポジトリの compose に対して
+docker compose --profile e2e run --rm \
+  -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e           # deploy 済みのものに対して
+```
+
+**署名の要るシナリオはセッションを渡して回す。** ブラウザは外からサインインできない — 認証は
+自前のログイン画面を持つ別のサービスで、そこを打つシナリオはその画面の test になる。だから
+**セッションは回す先の実物の上で作り**、環境変数で渡す。渡さなければ `.user.spec.ts` は理由を
+言って skip する (通ってしまうことはない)。
+
+```bash
+export HUMANDBS_E2E_SESSION=$(docker compose exec -T app npm run --silent e2e:session)
+docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION e2e
+docker compose exec -T app npm run e2e:session -- clean          # 済んだら外す
+```
+
+**この session が名乗る `sub` は実在の人のものではなく、作った時点で管理者になる。**
+`clean` がそれを外すところまでが手順で、**回す先が本番であってはならない**理由もそこにある。
+
+**この compose に向けるときだけ、dev サーバーが `proxy` という Host を許す必要がある**
+(`vite.config.ts` の `allowedHosts`)。deploy 済みのものは build を serve するので、この制限を持たない。
+
 階層はファイル名で分ける。配置は対象ファイルの隣。
 
 | 名前 | 階層 |
@@ -185,7 +291,8 @@ docker compose exec app npm run test:db       # schema + 経路
 | `*.pbt.test.ts` | 不変量 |
 | `*.db.test.ts` | schema と経路 |
 | `*.test.ts` | 単体 |
-| `tests/e2e/*.spec.ts` | e2e |
+| `tests/e2e/*.spec.ts` | e2e (署名を持たない) |
+| `tests/e2e/*.user.spec.ts` | e2e (署名を持つ) |
 
 ## 意図的にやっていないこと
 

@@ -7,6 +7,8 @@ import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog } from "~/admin/queries.server"
 import { emptyDatasetContent, filled } from "~/content/empty"
 import type { DatasetContent } from "~/content/types"
+import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
+import type { DrawnDataset } from "~/review/preview.server"
 
 import { DatasetEditor } from "./dataset-editor"
 
@@ -15,7 +17,9 @@ const VOCAB_KEY = "00000000-0000-0000-0000-0000000000a2"
 const SPARE_KEY = "00000000-0000-0000-0000-0000000000a3"
 const EXPERIMENT_KEY = "00000000-0000-0000-0000-0000000000a4"
 const NUMBER_KEY = "00000000-0000-0000-0000-0000000000a5"
+const DISEASE_KEY = "00000000-0000-0000-0000-0000000000a6"
 const SET = "00000000-0000-0000-0000-0000000000b1"
+const ICD10_SET = "00000000-0000-0000-0000-0000000000b2"
 
 const catalog: EditableCatalog = {
   keys: [
@@ -72,6 +76,19 @@ const catalog: EditableCatalog = {
       inputUnits: ["MB", "GB", "TB"],
     },
     {
+      id: DISEASE_KEY,
+      code: "disease",
+      scope: "dataset",
+      valueType: "disease",
+      labelJa: "疾患",
+      labelEn: "Disease",
+      position: 4,
+      vocabularySetId: ICD10_SET,
+      multiple: true,
+      canonicalUnit: null,
+      inputUnits: null,
+    },
+    {
       id: EXPERIMENT_KEY,
       code: "coverage",
       scope: "experiment",
@@ -97,7 +114,41 @@ const TERMS = [
     labelEn: "Unrestricted",
     position: 0,
   },
+  {
+    id: "term-k758",
+    setId: ICD10_SET,
+    code: "K758",
+    labelJa: "その他の明示された炎症性肝疾患",
+    labelEn: "Other specified inflammatory liver diseases",
+    position: 0,
+  },
 ]
+
+/** Nothing in this fixture has values, so an empty catalog draws every place. */
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+
+/** The dataset drawn as its page, which the editor stands beside the form. */
+function drawn(content: DatasetContent): DrawnDataset {
+  const anchored = anchoredDatasetView({
+    label: "hum0001-NHA001",
+    humLabel: "hum0001",
+    studyAccession: null,
+    content,
+    datePublished: null,
+    dateModified: null,
+    files: [],
+  }, "ja", NO_CATALOG)
+  return {
+    humLabel: "hum0001",
+    publishedNumber: null,
+    label: "hum0001-NHA001",
+    view: anchored.view,
+    accessAnchor: null,
+    typeOfDataAnchor: null,
+    changed: [],
+    previous: {},
+  }
+}
 
 function view(
   content: DatasetContent = emptyDatasetContent(),
@@ -113,6 +164,7 @@ function view(
     published: true,
     portalIssued,
     terms: TERMS,
+    page: drawn(content),
     box: [],
     revision: 2,
     input: datasetContentInput(content),
@@ -202,6 +254,45 @@ describe("the dataset editing form", () => {
     expect(html).toContain("データ量")
     expect(html).toContain("value=\"1.5\"")
     expect(html).toContain("<option value=\"TB\" selected=\"\">TB</option>")
+  })
+
+  it("shows a disease as the name somebody wrote and the code it is filed under", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: DISEASE_KEY,
+        value: {
+          kind: "disease",
+          diseases: filled([{ termIds: ["term-k758"], nameJa: "NASH", nameEn: "NASH" }]),
+        },
+      }],
+    }))
+
+    expect(html).toContain("疾患")
+    expect(html).toContain("value=\"NASH\"")
+    // The classification's own heading stands beside the name rather than
+    // instead of it: the two answer different questions.
+    expect(html).toContain("その他の明示された炎症性肝疾患")
+    expect(html).toContain("疾患を足す")
+  })
+
+  it("shows a disease naming no code as an ordinary row, not as an empty item", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: DISEASE_KEY,
+        value: {
+          kind: "disease",
+          diseases: filled([{ termIds: [], nameJa: "健常人由来iPS細胞", nameEn: null }]),
+        },
+      }],
+    }))
+
+    expect(html).toContain("健常人由来iPS細胞")
+    expect(html).toContain("未選択")
+    // The name is missing in one language, which is not a state: the box is
+    // simply empty and the row is there to be written in.
+    expect(html).toContain("疾患名（英語）")
   })
 
   it("puts an experiment's items under the experiment rather than the dataset", () => {

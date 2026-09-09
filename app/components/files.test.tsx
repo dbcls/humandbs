@@ -27,6 +27,8 @@ function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009"): st
       humLabel={humLabel}
       rows={rows}
       total={rows.length}
+      rangeFrom={rows.length === 0 ? 0 : 1}
+      rangeTo={rows.length}
       page={1}
       pageCount={1}
       at={(to) => `?files=${to}`}

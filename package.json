@@ -6,7 +6,9 @@
     "node": ">=24"
   },
   "scripts": {
+    "predev": "tsx scripts/swagger-ui.ts",
     "dev": "react-router dev",
+    "prebuild": "tsx scripts/swagger-ui.ts",
     "build": "NODE_ENV=production react-router build",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
@@ -15,7 +17,9 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:db": "vitest run --project db",
-    "db:push": "drizzle-kit push && npm run db:grants",
+    "test:e2e": "playwright test",
+    "e2e:session": "tsx scripts/e2e-session.ts",
+    "db:push": "drizzle-kit push && npm run db:grants && tsx scripts/push-test-db.ts",
     "db:grants": "tsx scripts/grants.ts",
     "db:load-dev-data": "tsx migration/run.ts",
     "s3:buckets": "tsx scripts/buckets.ts",
@@ -44,12 +48,14 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "swagger-ui-dist": "^5.32.15",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@react-router/dev": "^8.3.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/vite": "^4.3.3",

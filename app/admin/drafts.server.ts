@@ -254,7 +254,7 @@ function pinRequests(
 
 /**
  * A research written from what an upstream system already says about it, with
- * its datasets in the same breath (docs/editing.md の「上流からの下書き」).
+ * its datasets in the same breath (docs/editing.md の「下書きを外から作る」).
  *
  * **The labels are pinned as the identities are made.** A draft holding two
  * hundred datasets that are told apart only by an internal identity is a draft

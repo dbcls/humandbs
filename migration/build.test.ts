@@ -54,6 +54,7 @@ function datasetOf(all: readonly PublishedDataset[], label: string) {
     keyIdByCode: KEY_IDS,
     codeBySourceKey: CODE_BY_SOURCE,
     termIdBySetAndCode: TERM_IDS,
+    knownCode: () => false,
     accessCriteriaKeyCode: "access-criteria",
     typeOfDataKeyCode: "type-of-data",
     datasetLabels: new Set(all.map((row) => row.label)),

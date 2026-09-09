@@ -1,5 +1,6 @@
 import { requireCapability } from "~/auth/actor.server"
-import { Card, Empty, Page, PageHead } from "~/components/page"
+import { Heading, Stack } from "~/components/base"
+import { Card, Empty, Page } from "~/components/page"
 import { loadConfig } from "~/config.server"
 import { messagesFor } from "~/i18n/messages"
 import { readLocale } from "~/public/urls"
@@ -45,8 +46,12 @@ export default function AdminAssistant({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <PageHead label={words.heading} />
-      {deployed ? <AssistantContents locale={locale} /> : <Card><Empty>{words.absent}</Empty></Card>}
+      <Card under={false}>
+        <Stack gap="normal">
+          <Heading title={words.heading} />
+          {deployed ? <AssistantContents locale={locale} /> : <Card><Empty>{words.absent}</Empty></Card>}
+        </Stack>
+      </Card>
     </Page>
   )
 }

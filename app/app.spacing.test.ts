@@ -78,6 +78,7 @@ const MANAGEMENT_PARTS = [
   "components/field-review.tsx",
   "components/fields.tsx",
   "components/files.tsx",
+  "components/form.tsx",
   "components/previous.tsx",
   "components/publish.tsx",
   "components/review.tsx",
@@ -156,6 +157,55 @@ describe("管理画面の幅", () => {
       }
     }
     expect(offenders).toEqual([])
+  })
+})
+
+/**
+ * The drawer's card is fixed to the window and the screens under it are inset
+ * by their page's gutter plus what the area adds for the tab, so where the two
+ * start is written across three files and can only agree by saying the same sum
+ * twice (`components/admin.tsx`). It drifted by 4px unnoticed, which is what
+ * this holds.
+ */
+describe("行き先のカードの左端", () => {
+  /** Tailwind's spacing unit; `app.css` does not redefine `--spacing`. */
+  const STEP = 4
+
+  async function card() {
+    const drawer = await readFile(path.join(ROOT, "components/admin.tsx"), "utf8")
+    const list = /id="admin-drawer"[\s\S]*?className={`([^`]*)`/.exec(drawer)?.[1]
+    expect(list).toBeDefined()
+    return { drawer, list: list ?? "" }
+  }
+
+  it("その下の画面が始まる線に立つ", async () => {
+    const { list } = await card()
+    const layout = await readFile(path.join(ROOT, "routes/admin-layout.tsx"), "utf8")
+    const page = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
+    const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
+
+    const inset = Number(/className="pl-(\d+)"/.exec(layout)?.[1]) * STEP
+    const narrowGutter = Number(/w-full px-(\d+) /.exec(page)?.[1]) * STEP
+    const wideGutter = Number(/--spacing-page-gutter:\s*(\d+)px/.exec(styles)?.[1])
+
+    const narrow = Number(/(?:^|\s)left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
+    const wide = Number(/(?:^|\s)sm:left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
+
+    expect(narrow).toBe(narrowGutter + inset)
+    expect(wide).toBe(wideGutter + inset)
+  })
+
+  it("畳んだとき、影ごと窓の外へ出る", async () => {
+    const { list } = await card()
+    const wide = Number(/(?:^|\s)sm:left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
+    const away = Number(/-translate-x-\[calc\(100%\+([\d.]+)rem\)\]/.exec(list)?.[1]) * 16
+
+    // A shadow reaches its offset plus half its blur past the edge it is cast
+    // from, and the near edge is the one that would show.
+    const [offset, , blur] = /shadow-\[(\d+)px_(\d+)_(\d+)px/.exec(list)?.slice(1) ?? []
+    const reach = Number(offset) + Number(blur) / 2
+
+    expect(wide - away + reach).toBeLessThan(0)
   })
 })
 
@@ -284,22 +334,63 @@ describe("溶接された操作の押せる範囲", () => {
 })
 
 /**
+ * The bar at the top is one part in two states — a public page draws the
+ * navigation, a management screen does not — so what stands in its row has to
+ * be one height. The pills, the cart and the account are 36px; a destination
+ * left on its own line box came to 38.4 and made the header 2.4px taller
+ * wherever the navigation was drawn, carrying the wordmark, its name and the
+ * controls 1.2px with it (`docs/ui.md`). **Two and a half pixels are not
+ * something looking at it finds**, which is why the height is read out of the
+ * source instead.
+ */
+describe("ヘッダの行の高さ", () => {
+  it("バーの行き先が、隣に並ぶものと同じ 36px に立つ", async () => {
+    const parts = await readFile(path.join(ROOT, "components/layout.tsx"), "utf8")
+    for (const name of ["NAV_ITEM", "NAV_ITEM_HERE"]) {
+      const look = new RegExp(String.raw`const ${name}\s*=\s*"([^"]*)"`).exec(parts)?.[1]
+      expect(look).toBeDefined()
+      expect(look).toContain("h-tap")
+      // The height is the class, not a line box plus padding.
+      expect(look).not.toMatch(/\bpy-/)
+    }
+  })
+})
+
+/**
  * A part of a page and a part of an article are named by the same level of
  * heading, so a reader moving between them meets one h2 rather than two
- * (`docs/ui.md`). The pair is written in two files — one a component, one a
+ * (`docs/ui.md`). **The size and the mark are what they share; the colour is
+ * not.** The pair is written in two files — one a component, one a
  * stylesheet — which is the only reason it can drift.
  */
 describe("見出しの段", () => {
-  it("節の名前は、部品と記事で同じ姿を取る", async () => {
+  it("節の名前は、部品と記事で同じ大きさと棒を取る", async () => {
     const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
     const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
     const section = /<h2 className="([^"]*)"/.exec(parts)?.[1]
     const article = /\.markdown h2 \{ @apply ([^;]*);/.exec(styles)?.[1]
     expect([section, article]).not.toContain(undefined)
 
-    for (const look of ["text-lg", "font-medium", "text-brand", "border-l-4", "pl-2.5"]) {
+    for (const look of ["text-lg", "border-l-4", "pl-2.5"]) {
       expect(section).toContain(look)
       expect(article).toContain(look)
+    }
+  })
+
+  /**
+   * An article is running prose full of links, so a coloured line in one is
+   * read as a link before it is read as a heading. Colour is left to links and
+   * the mark says "heading" instead — which also means every rung holds the
+   * same weight, since weight is then the only thing separating a heading from
+   * the paragraph under it.
+   */
+  it("記事の見出しは色を持たず、weight も段で変えない", async () => {
+    const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
+    for (const level of ["h2", "h3"]) {
+      const look = new RegExp(String.raw`\.markdown ${level} \{ @apply ([^;]*);`).exec(styles)?.[1]
+      expect(look).toBeDefined()
+      expect(look).not.toMatch(/\btext-(brand|brand-light|accent|deep)\b/)
+      expect(look).not.toMatch(/\bfont-(light|normal|medium)\b/)
     }
   })
 })
@@ -322,6 +413,40 @@ describe("タブの斜辺", () => {
   })
 })
 
+/**
+ * **件数とページ送りは 1 つのまとまり。** どちらも「いま何ページ目の何件を見ているか」に答えるので、
+ * 同じ器に立つ (`docs/public-pages.md` の「並びと件数」)。**それを守らせる方法は「近くに書く」ではなく
+ * 「1 か所でしか書けないようにする」** — 件数を各画面が書いていた間、5 つの管理画面が 5 通りの
+ * 出し方をしていて、うち 2 つは何も出していなかった。
+ */
+describe("一覧の件数とページ送り", () => {
+  it("件数を出すのは Paging だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const writers = sources
+      .filter(({ text }) => /messages\.search\.(range|results)\b/.test(text))
+      .map(({ name }) => name)
+      .sort()
+    // カートだけは別: ページに切られないので、答えは範囲ではなく総数そのもの。
+    expect(writers).toEqual(["components/page.tsx", "routes/cart.tsx"])
+  })
+
+  it("その Paging の中で、件数とページ送りが同じ器に立つ", async () => {
+    const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
+    const box = /export function Paging[\s\S]*?<div className="([^"]*)">/.exec(parts)?.[1]
+    expect(box).toBeDefined()
+    expect(box?.split(/\s+/)).toContain("gap-2")
+  })
+
+  it("ページ送りを描くのも Paging だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const writers = sources
+      .filter(({ text }) => /<PageLinks\b/.test(text))
+      .map(({ name }) => name)
+      .sort()
+    expect(writers).toEqual(["components/page.tsx", "routes/dev-ui.tsx"])
+  })
+})
+
 /** The three numbers the slope is made of, read from where each one lives. */
 async function slope(): Promise<{ width: number, shear: number, radius: number }> {
   const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
@@ -341,3 +466,57 @@ async function slope(): Promise<{ width: number, shear: number, radius: number }
     radius: RADIUS[corner?.[2] ?? ""] ?? 4,
   }
 }
+
+/**
+ * Every `.tsx` under `app/`, screens and parts alike. The rules below are about
+ * what a control looks like, and a part draws controls as readily as a screen.
+ */
+async function everySource(): Promise<{ name: string, text: string }[]> {
+  const dirs = ["components", "routes", "public", "admin", "cart", "files", "review", "search"]
+  const found = await Promise.all(dirs.map(async (dir) => {
+    try {
+      return await sourcesUnder(dir)
+    } catch {
+      return []
+    }
+  }))
+  return found.flat()
+}
+
+describe("ボタンの面と形", () => {
+  /**
+   * The round end is where a control stands, not how it should look — the band
+   * of controls above a listing, and nowhere else (`base.tsx` の `ButtonLook`).
+   * Asked for as a taste it had spread to five places that are not a listing,
+   * and the shape had stopped saying anything.
+   */
+  it("丸いのは一覧の帯にいるものだけ", async () => {
+    const wearing = (await everySource())
+      .filter(({ text }) => /<Button(?:Link)?\b[^>]*\slisting\b/s.test(text))
+      .map(({ name }) => name)
+      .sort()
+    expect(wearing).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
+  })
+
+  /**
+   * **The filled face is the one thing a screen is asking for**, so a file that
+   * draws two of them has stopped ranking anything. Counted per file rather than
+   * per screen because a part is drawn inside whichever screen imports it; the
+   * catalogue is exempt, being a page of samples rather than a screen with an
+   * errand.
+   */
+  it("塗りの面は 1 つのファイルに 1 つまで", async () => {
+    const twice = (await everySource())
+      .filter(({ name }) => !name.includes("dev-ui"))
+      .map(({ name, text }) => ({ name, n: (text.match(/variant="primary"/g) ?? []).length }))
+      .filter(({ n }) => n > 1)
+    expect(twice).toEqual([])
+  })
+
+  /** The palette itself, so that a face nobody uses cannot quietly come back. */
+  it("面は 4 つしかない", async () => {
+    const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
+    const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
+    expect(union?.match(/"[a-z]+"/g)).toEqual(["\"primary\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
+  })
+})

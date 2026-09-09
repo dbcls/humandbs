@@ -12,6 +12,7 @@ import {
 import { isAdminPath } from "~/admin/urls"
 import { readActor } from "~/auth/actor.server"
 import { AdminDrawer } from "~/components/admin"
+import { CartToast } from "~/components/cart"
 import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
 import { startFileRunner } from "~/files/runner.server"
@@ -123,9 +124,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
         }`}
       >
         <SiteHeader locale={locale} account={data?.account ?? null} managing={managing} />
-        {!managing && <Announcements alerts={data?.alerts ?? []} locale={locale} />}
+        {/*
+          **Keyed on the path so that going to another page raises them again.**
+          This stands outside the outlet, so a client-side navigation does not
+          unmount it and what a reader closed here would stay closed for the
+          rest of the visit — which is the one thing closing a notice must not
+          mean.
+        */}
+        {!managing && <Announcements key={path} alerts={data?.alerts ?? []} locale={locale} />}
         {managing && <AdminDrawer locale={locale} path={path} />}
         <div className="flex-1">
+          {/*
+            What the cart says back when it is pressed. **It belongs to the
+            page's own content rather than to the window**: it sticks to the top
+            of this box, so it lies over the first rows of whatever listing
+            raised it and follows the reader down. Put in a corner of the window
+            instead, it sat where nobody was looking.
+          */}
+          {!managing && <CartToast locale={locale} />}
           {children}
         </div>
         {!managing && <SiteFooter locale={locale} />}

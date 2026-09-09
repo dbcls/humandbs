@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { addToCart, CART_LIMIT, isCartable, parseCart, removeFromCart } from "./store"
+import { addToCart, isCartable, noticeOf, parseCart, removeFromCart } from "./store"
 
 /** An accession the application system takes. */
 const jgad = fc.integer({ min: 1, max: 999_999 })
@@ -14,11 +14,11 @@ const anyId = fc.oneof(
   fc.string(),
 )
 
-const cart = fc.array(jgad, { maxLength: 120 }).map((ids) => [...new Set(ids)].slice(0, CART_LIMIT))
+const cart = fc.array(jgad, { maxLength: 120 }).map((ids) => [...new Set(ids)])
 
 /**
  * The cart is edited by a reader clicking rows, so what has to hold is not any
- * one operation but the state it leaves behind: three things are true of a cart
+ * one operation but the state it leaves behind: two things are true of a cart
  * however it was arrived at, and they are what the screens rely on.
  */
 describe("a cart", () => {
@@ -34,19 +34,12 @@ describe("a cart", () => {
       expect(new Set(next).size).toBe(next.length)
     }))
   })
-
-  it("never grows past the limit", () => {
-    fc.assert(fc.property(cart, fc.array(anyId, { maxLength: 200 }), (held, adding) => {
-      expect(addToCart(held, adding).length).toBeLessThanOrEqual(CART_LIMIT)
-    }))
-  })
 })
 
 describe("adding then removing the same datasets", () => {
   it("leaves the cart as it was, in the order it was", () => {
     fc.assert(fc.property(cart, fc.array(jgad), (held, adding) => {
       const fresh = adding.filter((id) => !held.includes(id))
-      // Only what actually went in comes back out; what did not fit never went in.
       const added = addToCart(held, fresh)
       expect(removeFromCart(added, fresh)).toEqual(held)
     }))
@@ -65,7 +58,58 @@ describe("what was stored", () => {
       const read = parseCart(JSON.stringify(value))
       expect(read.every(isCartable)).toBe(true)
       expect(new Set(read).size).toBe(read.length)
-      expect(read.length).toBeLessThanOrEqual(CART_LIMIT)
+    }))
+  })
+})
+
+/**
+ * **The notice is the only way back.** Undo puts `before` into the cart, so a
+ * notice that holds the wrong list silently loses whatever the reader had.
+ * These say it holds the right one for any press, and that what it claims moved
+ * is what moved.
+ */
+describe("what a press says about itself", () => {
+  it("holds exactly the cart the press started from", () => {
+    fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
+      const after = addToCart(held, ids)
+      const notice = noticeOf(held, after, 1)
+      if (notice === null) expect(after).toEqual(held)
+      else expect(notice.before).toEqual(held)
+    }))
+  })
+
+  it("counts what actually moved, and says where the cart stands now", () => {
+    fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
+      const after = addToCart(held, ids)
+      const notice = noticeOf(held, after, 1)
+      if (notice === null) return
+      expect(notice.kind).toBe("added")
+      expect(notice.count).toBe(after.length - held.length)
+      expect(notice.total).toBe(after.length)
+    }))
+  })
+
+  it("names a dataset only when that one is what went in", () => {
+    fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
+      const only = noticeOf(held, addToCart(held, ids), 1)?.only
+      if (only === undefined || only === null) return
+      expect(held).not.toContain(only)
+      expect(addToCart(held, ids)).toContain(only)
+    }))
+  })
+
+  it("reads a removal from the other side, and names only what left", () => {
+    fc.assert(fc.property(cart, fc.array(jgad), (held, ids) => {
+      const after = removeFromCart(held, ids)
+      const notice = noticeOf(held, after, 1)
+      if (notice === null) return
+      expect(notice.kind).toBe("removed")
+      expect(notice.count).toBe(held.length - after.length)
+      expect(notice.total).toBe(after.length)
+      if (notice.only !== null) {
+        expect(held).toContain(notice.only)
+        expect(after).not.toContain(notice.only)
+      }
     }))
   })
 })

@@ -15,12 +15,22 @@ import {
 
 const locale = fc.constantFrom(...LOCALES)
 
-/** An internal path: what `href` prefixes and `readLocale` gives back. */
+/**
+ * An internal path: what `href` prefixes and `readLocale` gives back.
+ *
+ * **It cannot end in `.data`.** That suffix is what a client navigation appends
+ * to the address it asks for, and `readLocale` takes one off so that a loader
+ * reading the request's own URL sees the address rather than the request. An
+ * address that ends in it would come back one suffix shorter; none does, and a
+ * document slug that did could not be reached by a link either.
+ */
 const internalPath = fc
-  .array(fc.string({ minLength: 1 }).filter((s) => !s.includes("/") && !LOCALES.includes(s as never)), {
-    minLength: 1,
-    maxLength: 4,
-  })
+  .array(
+    fc.string({ minLength: 1 }).filter(
+      (s) => !s.includes("/") && !LOCALES.includes(s as never) && !s.endsWith(".data"),
+    ),
+    { minLength: 1, maxLength: 4 },
+  )
   .map((segments) => `/${segments.join("/")}`)
 
 const humLabel = fc.integer({ min: 1, max: 9999 })
@@ -38,6 +48,28 @@ describe("the locale in an address", () => {
   it("never leaves a redundant prefix on an address the site itself writes", () => {
     fc.assert(fc.property(locale, internalPath, (wanted, path) => {
       expect(readLocale(href(wanted, path)).redundantPrefix).toBe(false)
+    }))
+  })
+
+  /**
+   * A link is followed by asking for the same address with `.data` on the end,
+   * and what reaches a loader keeps it. **Reading a page through a link and
+   * reading it by opening its address have to give the same answer** — the
+   * front page came back in Japanese after pressing EN because `/en.data` has
+   * no segment left that spells a locale.
+   */
+  it("is the same one a client navigation asks for", () => {
+    fc.assert(fc.property(locale, internalPath, (wanted, path) => {
+      const read = readLocale(`${href(wanted, path)}.data`)
+      expect(read.locale).toBe(wanted)
+      expect(read.path).toBe(path)
+    }))
+  })
+
+  it("is read the same way from the front page of a language", () => {
+    fc.assert(fc.property(locale, (wanted) => {
+      const address = href(wanted, "/")
+      expect(readLocale(address)).toEqual(readLocale(`${address}.data`))
     }))
   })
 })

@@ -88,6 +88,32 @@ describe("showing what the published version says at a path", () => {
     expect(describeInput(slot)).toEqual([{ label: "", state: "value", text: "", termIds: ["t1"] }])
   })
 
+  it("gives a disease as its names and the terms that file it", () => {
+    const slot = {
+      keyId: "k2",
+      value: {
+        kind: "disease",
+        state: "value",
+        diseases: [
+          { termIds: ["t2"], nameJa: "NASH", nameEn: "NASH" },
+          { termIds: [], nameJa: "健常人由来iPS細胞", nameEn: "" },
+        ],
+      },
+    }
+
+    // Both names on one line, because the row is the disease; the terms go
+    // beside them and the screen resolves the labels.
+    expect(describeInput(slot)).toEqual([
+      { label: "", state: "value", text: "NASH / NASH", termIds: ["t2"] },
+      { label: "", state: "value", text: "健常人由来iPS細胞", termIds: [] },
+    ])
+  })
+
+  it("gives a disease marked unsettled as the state alone, with nothing to read", () => {
+    const slot = { keyId: "k2", value: { kind: "disease", state: "unknown", diseases: [] } }
+    expect(describeInput(slot)).toEqual([{ label: "", state: "unknown", text: "" }])
+  })
+
   /**
    * A list whose membership moved has no single value to show, so the mark
    * stands on its own rather than inventing one.

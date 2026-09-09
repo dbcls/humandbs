@@ -13,13 +13,17 @@ import type { CatalogView } from "~/public/view.server"
  * a law that never saw one would not be saying anything about that.
  */
 
-/** Every vocabulary term id a dataset content refers to. */
+/** Every vocabulary term id a dataset content refers to, diseases included. */
 export function termIdsIn(content: DatasetContent): string[] {
   const slots = [...content.values, ...content.experiments.flatMap((one) => one.values)]
-  return [...new Set(slots.flatMap((slot) =>
-    slot.value.kind === "vocabulary" && slot.value.termIds.state === "value"
-      ? slot.value.termIds.value
-      : []))]
+  return [...new Set(slots.flatMap((slot) => {
+    const value = slot.value
+    if (value.kind === "vocabulary" && value.termIds.state === "value") return value.termIds.value
+    if (value.kind === "disease" && value.diseases.state === "value") {
+      return value.diseases.value.flatMap((one) => one.termIds)
+    }
+    return []
+  }))]
 }
 
 export function catalogViewArb(termIds: readonly string[]): fc.Arbitrary<CatalogView> {

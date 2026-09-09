@@ -12,7 +12,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 
 | ファイル | 中身 |
 |---|---|
-| [docs/data-model.md](docs/data-model.md) | 何をどう持つか。identity と label、版と pin、言語と値の状態、値と文、catalog と語彙と ICD10、公開表現、検索用の行、外部キャッシュ、日付、サイトコンテンツ |
+| [docs/data-model.md](docs/data-model.md) | 何をどう持つか。identity と label、版と pin、言語と値の状態、値と文、catalog と語彙、疾患と ICD10、公開表現、検索用の行、外部キャッシュ、日付、サイトコンテンツ |
 | [docs/public-pages.md](docs/public-pages.md) | 読者が見る画面。URL 体系、言語の載せ方、各ページに何を出すか、一覧と公開検索と絞り込み、サイトコンテンツ |
 | [docs/public-api.md](docs/public-api.md) | 機械が読む JSON。応答の形、エラー、一括取得、DDBJ Search への relation の供給 |
 | [docs/editing.md](docs/editing.md) | 書く側の不変条件。draft、上流からの下書き、保存の単位、同時編集、巻き戻し、レビュー、サイトコンテンツの編集 |

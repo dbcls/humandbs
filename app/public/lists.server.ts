@@ -26,8 +26,6 @@ import {
 } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor, type Messages } from "~/i18n/messages"
-import { ICD10_SET_CODE } from "~/icd10/codes"
-import { resolveTypedCode } from "~/icd10/entry.server"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import {
   group,
@@ -39,6 +37,7 @@ import {
   type QueryNode,
 } from "~/search/dsl"
 import { isDateFacet, queryFields, type QueryFields } from "~/search/fields"
+import { pageRange } from "~/paging"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import type { ExportTable } from "~/search/export"
 import {
@@ -59,7 +58,7 @@ import {
   type SortKey,
   type SortOrder,
 } from "~/search/query.server"
-import { onPanel, withRange, withTerm } from "~/search/selection"
+import { onPanel, withRange } from "~/search/selection"
 
 import { facetPanel, type FacetPanelView } from "./facets.server"
 import { loadCatalog } from "./queries.server"
@@ -83,6 +82,13 @@ export interface ConditionChip {
    */
   field: string | null
   value: string
+  /**
+   * The code the value is filed under, where that is a key the reader can carry
+   * away — ICD10 and nothing else. Null on every other condition, whose codes
+   * are slugs this site made up to put in an address
+   * (`components/facets.tsx` の `Value`).
+   */
+  code: string | null
   /** The address of the same search without this condition. */
   href: string
 }
@@ -127,9 +133,6 @@ export interface ListShell {
   rangeTo: number
   /** How many the other listing matches, or null when there is no query. */
   otherCount: number | null
-  /** Which facet is opened and what its box holds, for the form to carry on. */
-  facet: string | null
-  find: string
   facets: FacetPanelView | null
 }
 
@@ -163,16 +166,11 @@ async function lastPageInstead(db: Executor, request: SearchRequest): Promise<Se
 /**
  * A submission is answered with the address it should have had.
  *
- * **All three forms on the page arrive here**: the keyword box, which carries
- * what was typed under `k`; the range inputs of a numeric facet, which carry
- * the key and the two ends; and the disease facet's code box. None of them is a
- * way of asking a question the address cannot hold — they are turned into the
- * query straight away and redirected to, so one search has one address and the
- * result can be shared.
- *
- * **A code that names nothing is the one submission with no address of its
- * own.** It is left where it is so that the panel can say which of the two
- * things went wrong (`facets.server.ts`).
+ * **Both forms on the page arrive here**: the keyword box, which carries what
+ * was typed under `k`, and the range inputs of a numeric or date facet, which
+ * carry the key and the two ends. Neither is a way of asking a question the
+ * address cannot hold — they are turned into the query straight away and
+ * redirected to, so one search has one address and the result can be shared.
  */
 export async function canonicalRedirect(
   url: URL,
@@ -181,32 +179,27 @@ export async function canonicalRedirect(
 ): Promise<Response | null> {
   const typed = url.searchParams.get("k")
   const rangeKey = url.searchParams.get("rangeKey")
-  const code = url.searchParams.get("code")
-  if (typed === null && rangeKey === null && code === null) return null
+
+  // Which form was submitted is decided before anything is read, so an ordinary
+  // page load — neither box filled in — costs no query.
+  let asked: (held: QueryNode | null, fields: QueryFields) => QueryNode | null
+  if (typed !== null) {
+    asked = (held) => joinKeyword(typed, splitKeyword(held).conditions)
+  } else if (rangeKey !== null) {
+    const kind = isDateFacet(rangeKey) ? "date" : "number"
+    asked = (held, fields) => withRange(held, fields, rangeKey, {
+      from: bound(url.searchParams.get("rangeFrom"), kind),
+      to: bound(url.searchParams.get("rangeTo"), kind),
+    })
+  } else {
+    return null
+  }
 
   const db = getDb()
   const definitions = await loadFacetDefinitions(db)
   const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(url.searchParams.get("q") ?? "", fields)
-  const held = parsed.ok ? parsed.ast : null
-
-  let ast: QueryNode | null
-  if (typed !== null) {
-    ast = joinKeyword(typed, splitKeyword(held).conditions)
-  } else if (rangeKey !== null) {
-    const kind = isDateFacet(rangeKey) ? "date" : "number"
-    ast = withRange(held, fields, rangeKey, {
-      from: bound(url.searchParams.get("rangeFrom"), kind),
-      to: bound(url.searchParams.get("rangeTo"), kind),
-    })
-  } else {
-    const icd10 = definitions.find((one) => one.setCode === ICD10_SET_CODE)
-    const setId = icd10?.field.setId ?? null
-    if (icd10 === undefined || setId === null) return null
-    const resolved = await resolveTypedCode(db, setId, code ?? "")
-    if (resolved.status !== "found") return null
-    ast = withTerm(held, fields, icd10.field.code, resolved.code)
-  }
+  const ast = asked(parsed.ok ? parsed.ast : null, fields)
 
   const sort = url.searchParams.get("sort")
   const order = url.searchParams.get("order")
@@ -217,8 +210,6 @@ export async function canonicalRedirect(
     order: isSortOrder(order) ? order : null,
     page: 1,
     size: isPageSize(size) && size !== PAGE_SIZE ? size : null,
-    facet: url.searchParams.get("facet"),
-    find: url.searchParams.get("find"),
   })))
 }
 
@@ -313,11 +304,21 @@ function facetChips(panel: FacetPanelView | null, locale: Locale): ConditionChip
     // A range is in force when one of its ends is written; the link that lifts
     // it is the facet's own, which is the same search either way.
     if (range !== null && (range.from !== "" || range.to !== "") && facet.clearHref !== null) {
-      return [{ field: facet.label, value: writtenRange(range, words), href: facet.clearHref }]
+      return [{
+        field: facet.label,
+        value: writtenRange(range, words),
+        code: null,
+        href: facet.clearHref,
+      }]
     }
     return facet.values
       .filter((value) => value.selected)
-      .map((value) => ({ field: facet.label, value: value.label, href: value.href }))
+      .map((value) => ({
+        field: facet.label,
+        value: value.label,
+        code: facet.kind === "disease" ? value.code : null,
+        href: value.href,
+      }))
   }))
 }
 
@@ -338,8 +339,6 @@ async function listShell(
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
   const requestedSort = request.url.searchParams.get("sort")
   const requestedOrder = request.url.searchParams.get("order")
-  const expanded = request.url.searchParams.get("facet")
-  const find = request.url.searchParams.get("find") ?? ""
   const ast = parsed.ok ? parsed.ast : null
   const sort = isSortKey(requestedSort) ? requestedSort : DEFAULT_SORT
   const order = isSortOrder(requestedOrder) ? requestedOrder : defaultOrder(sort)
@@ -368,8 +367,6 @@ async function listShell(
     rangeFrom: 0,
     rangeTo: 0,
     otherCount: null,
-    facet: expanded,
-    find,
     facets: null,
   }
   if (!parsed.ok) return { shell: empty, hits: [], catalog }
@@ -396,9 +393,6 @@ async function listShell(
       sort: isSortKey(requestedSort) ? requestedSort : null,
       order: isSortOrder(requestedOrder) ? requestedOrder : null,
       size: size === PAGE_SIZE ? null : size,
-      expanded,
-      find,
-      code: request.url.searchParams.get("code") ?? "",
       today: today(),
     }),
   ])
@@ -410,8 +404,6 @@ async function listShell(
       order: isSortOrder(requestedOrder) ? requestedOrder : null,
       page: 1,
       size: size === PAGE_SIZE ? null : size,
-      facet: expanded,
-      find,
     }))
 
   const held = inForce(ast)
@@ -419,6 +411,8 @@ async function listShell(
     if (shownByPanel(condition, fields)) return []
     return [{
       ...describeCondition(condition, locale),
+      // What the box and the query language hold is words, not classifications.
+      code: null,
       href: at(held.filter((_, other) => other !== index)),
     }]
   })
@@ -434,8 +428,7 @@ async function listShell(
       total: result.total,
       page: result.page,
       pageCount: result.pageCount,
-      rangeFrom: result.total === 0 ? 0 : (result.page - 1) * size + 1,
-      rangeTo: Math.min(result.page * size, result.total),
+      ...pageRange(result.page, size, result.total),
       otherCount,
     },
     hits: result.hits,

@@ -5,6 +5,7 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import {
+  findDiseaseTerms,
   findTerms,
   loadCatalogWithTerms,
   loadEditableCatalog,
@@ -43,12 +44,13 @@ beforeAll(async () => {
     { setId, code: "C349", labelEn: "Bronchus or lung, unspecified", labelJa: "気管支又は肺" },
     { setId, code: "C50", labelEn: "Breast", labelJa: "乳房" },
     { setId, code: "C61", labelEn: "Prostate", labelJa: "前立腺", active: false },
+    { setId, code: "K758", labelEn: "Other specified inflammatory liver diseases", labelJa: "その他の明示された炎症性肝疾患" },
   ]).returning({ id: s.vocabularyTerm.id, code: s.vocabularyTerm.code })
   for (const row of rows) held[row.code] = row.id
   await db.insert(s.contentKey).values({
-    code: "disease-icd10",
+    code: "disease",
     scope: "experiment",
-    valueType: "vocabulary",
+    valueType: "disease",
     labelJa: "疾患",
     labelEn: "Disease",
     vocabularySetId: setId,
@@ -63,7 +65,7 @@ describe("the catalog an editing screen gets", () => {
   it("carries the keys and no terms at all", async () => {
     const catalog = await loadEditableCatalog(db)
 
-    expect(catalog.keys.map((key) => key.code)).toEqual(["disease-icd10"])
+    expect(catalog.keys.map((key) => key.code)).toEqual(["disease"])
     expect(catalog).not.toHaveProperty("terms")
   })
 
@@ -71,7 +73,7 @@ describe("the catalog an editing screen gets", () => {
     // Only the server side may ask for this: nothing of it reaches a page.
     const catalog = await loadCatalogWithTerms(db)
 
-    expect(catalog.terms.map((term) => term.code).sort()).toEqual(["C34", "C349", "C50"])
+    expect(catalog.terms.map((term) => term.code).sort()).toEqual(["C34", "C349", "C50", "K758"])
   })
 })
 
@@ -98,6 +100,8 @@ describe("resolving what a document names", () => {
 describe("the candidates for what was typed", () => {
   const codesOf = async (needle: string) =>
     (await findTerms(db, setId, needle)).map((term) => term.code)
+  const diseaseCodesOf = async (needle: string) =>
+    (await findDiseaseTerms(db, setId, needle)).map((term) => term.code)
 
   it("matches on the code and on either label", async () => {
     expect(await codesOf("C34")).toEqual(["C34", "C349"])
@@ -112,6 +116,27 @@ describe("the candidates for what was typed", () => {
 
   it("leaves out a deactivated term, which is what deactivating is for", async () => {
     expect(await codesOf("prostate")).toEqual([])
+  })
+
+  it("reads a code as a code, however the box was written", async () => {
+    // The box takes both, and neither is the spelling the vocabulary holds.
+    expect(await diseaseCodesOf("C34.9")).toEqual(["C349"])
+    expect(await diseaseCodesOf("c349")).toEqual(["C349"])
+  })
+
+  it("offers the code a longer one rolls up into, which is what ICD-10-CM needs", async () => {
+    // K75.81 is NASH, which WHO's classification cannot spell. Answering with
+    // nothing would leave the curator with a code and nowhere to put it.
+    expect(await diseaseCodesOf("K75.81")).toEqual(["K758"])
+  })
+
+  it("looks for anything not shaped like a code as a word", async () => {
+    expect(await diseaseCodesOf("breast")).toEqual(["C50"])
+    expect(await diseaseCodesOf("気管支")).toEqual(["C34", "C349"])
+  })
+
+  it("answers with nothing when no length of the code is held", async () => {
+    expect(await diseaseCodesOf("Q999")).toEqual([])
   })
 
   it("stops at the cap however many match", async () => {

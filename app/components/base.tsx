@@ -40,13 +40,20 @@ import { Icon, type IconName } from "~/components/icons"
  */
 const STACK_GAP = { tight: "gap-2", normal: "gap-4", block: "gap-8" }
 
-export function Stack({ gap = "normal", as: Tag = "div", children }: {
+export function Stack({ gap = "normal", as: Tag = "div", at, children }: {
   gap?: keyof typeof STACK_GAP
   /** A list of things is a list; anything else is a plain box. */
   as?: "div" | "ul" | "section" | "nav"
+  /**
+   * The place in the content this box holds, when it holds one. It goes onto
+   * the markup so that something outside the form can tell which place the
+   * caret is in by looking upwards from it, rather than every field having to
+   * report it on the way in and out.
+   */
+  at?: string
   children: ReactNode
 }) {
-  return <Tag className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
+  return <Tag data-at={at} className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
 }
 
 /* ------------------------------------------------------- marks and boxes */
@@ -86,9 +93,9 @@ export function LineIcon({ name, className = "" }: { name: IconName, className?:
  * A remark with a glyph at its head: the notices above the page, the asides in
  * an article, and what a form says it did.
  *
- * They differ in colour and in what they are for; the shape is one shape. Three
- * of them used to be written out separately and had drifted apart in padding,
- * in the gap, in the corner and in how the glyph was aligned.
+ * They differ in colour and in what they are for; the shape is one shape. Every
+ * one of them is drawn here, so the padding, the gap, the corner and the way the
+ * glyph is aligned cannot drift apart between them.
  *
  * **The glyph sits at the middle of the box rather than at its first line.** A
  * notice runs to two or three lines as often as to one, and a mark left at the
@@ -160,6 +167,27 @@ export function Band({ tone = "brand", className = "", children }: {
 }
 
 /**
+ * Where the mark stands, and how far the word sits from it.
+ *
+ * **The gap is forced in one and chosen in the other.** Hung out through the
+ * card's padding, the mark has to leave exactly enough for the words to land
+ * back on the content edge — 24px out, 4px of rule, 20px of gap. Standing at
+ * the start there is nothing to land on, so the gap is only what binds the mark
+ * to the word: 10px, which is what db-portal gives its own.
+ */
+const PANE_RULE = {
+  edge: "-ml-6 pl-5",
+  start: "pl-2.5",
+}
+
+/** The three sizes a heading is set at, largest first. */
+const HEADING_LOOK = {
+  h1: "text-3xl",
+  h2: "text-xl",
+  bar: "text-lg",
+}
+
+/**
  * What a listing or an article opens with: a rule in the brand colour, the
  * title, and — where there is one — how many rows the reader is looking at.
  *
@@ -177,17 +205,32 @@ export function Band({ tone = "brand", className = "", children }: {
  * puts their middles below its middle — measured at 5.7px for the count and
  * 2.8px for the controls, which reads as the title floating above its own row.
  */
-export function Heading({ level = "h1", title, count, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", title, count, children }: {
   level?: "h1" | "h2"
+  /**
+   * How large it is drawn, when that is not what its level would give.
+   *
+   * **The one place the two part is the bar an editing screen hangs under**
+   * (`draft-tools.tsx`): the name there is the page's h1, but the bar is stuck
+   * to the top of the window and shares its row with the way to save — set at
+   * the size of a page heading it would take a third of the room a screen has
+   * to type in.
+   */
+  look?: keyof typeof HEADING_LOOK
+  /**
+   * Where the mark stands (`PANE_RULE`): hung out through a card's padding, or
+   * at the start of the line for a heading that opens no card.
+   */
+  rule?: keyof typeof PANE_RULE
   title: string
   count?: string
   children?: ReactNode
 }) {
   const Tag = level
   return (
-    <div className="-ml-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <div className="flex items-center gap-3 border-brand border-l-4 pl-5">
-        <Tag className={`font-bold text-brand ${level === "h1" ? "text-3xl" : "text-xl"}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 ${rule === "edge" ? "-ml-6" : ""}`}>
+      <div className={`flex items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
+        <Tag className={`font-bold text-brand ${HEADING_LOOK[look]}`}>
           {title}
         </Tag>
         {count !== undefined && <span className="text-ink-muted text-sm">{count}</span>}
@@ -214,20 +257,6 @@ export function Heading({ level = "h1", title, count, children }: {
  * choice**, and there are two of them (`PANE_RULE`). The line is the pane's;
  * the rule belongs either to the card or to the thing it names.
  */
-/**
- * Where the mark stands, and how far the word sits from it.
- *
- * **The gap is forced in one and chosen in the other.** Hung out through the
- * card's padding, the mark has to leave exactly enough for the words to land
- * back on the content edge — 24px out, 4px of rule, 20px of gap. Standing at
- * the start there is nothing to land on, so the gap is only what binds the mark
- * to the word: 10px, which is what db-portal gives its own.
- */
-const PANE_RULE = {
-  edge: "-ml-6 pl-5",
-  start: "pl-2.5",
-}
-
 export function PaneHeading({ title, level = "h2", rule = "edge", children }: {
   title: string
   level?: "h2" | "h3"
@@ -335,28 +364,56 @@ export function Badge({
 export const LISTING_CONTROL = "border border-brand bg-white text-brand"
 
 /**
- * What a control looks like, by what pressing it does.
+ * What a control looks like, and **what decides it is how much the screen wants
+ * it pressed** — never how it would look nicest there.
  *
- * `primary` is the one thing the screen wants done, and there is at most one on
- * a screen. `soft` is an offer rather than an instruction — the words a reader
- * might try in the search box — and there are several of them at once, so it is
- * filled but lighter than the one thing being asked for. `danger` is reserved
- * for what cannot be undone — unpublishing, deleting, discarding a draft — so
- * that its colour keeps meaning something.
+ * **Three faces, and a fourth that is a warning rather than a rank.** A reader
+ * arriving at any screen should be able to read the row of controls without
+ * reading the words: one filled thing is what they came to do, an outlined
+ * thing is a tool, and words alone are the way back out.
  *
- * `pill` is the outlined, fully rounded shape v1 gives the controls over a
- * listing (copy, export, refine). It is a shape rather than a rank, so it
- * combines with any variant.
+ * | | 姿 | いつ |
+ * |---|---|---|
+ * | `primary` | brand の塗り | **その画面が頼んでいる 1 つ。画面に 1 つまで** |
+ * | `secondary` | 白地に brand の枠 | 道具・その場の操作。**既定** |
+ * | `ghost` | 枠を持たない文字 | 取り消し・閉じる・繰り返し要素の上下と削除 |
+ * | `danger` | 白地に danger の枠 | **取り消せないもの** — 公開の取り下げ、削除、draft の破棄 |
+ *
+ * **`ghost` は並びの片方にしか立たない。** 枠を持たないものが単独で置かれると、
+ * それが押せることを言うものが何も無い — 「取り消し」が「保存」の隣にいるから
+ * 押せると分かる。**`danger` を数で薄めない**のも同じ理由で、色が意味を持ち続ける
+ * のは滅多に出ないあいだだけになる。
+ *
+ * **面の数を増やさない。**塗りを 3 色持っていたとき、そのうち 1 つ (`accent`) は
+ * カタログの中にしか無く、もう 1 つ (`soft`) は画面 1 か所だけだった。**選べる面が
+ * あると、次に画面を書く人はそこから選ぶ** — 減らすことが規則を保つ唯一の方法になる。
  */
-export type ButtonVariant = "primary" | "soft" | "accent" | "secondary" | "danger" | "ghost"
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost"
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: "border-transparent bg-brand text-white hover:brightness-90",
-  soft: "border-transparent bg-brand-light text-white hover:brightness-90",
-  accent: "border-transparent bg-accent text-white hover:brightness-90",
   secondary: "border-brand bg-white text-brand hover:bg-surface-hover",
   danger: "border-danger bg-white text-danger hover:bg-danger hover:text-white",
   ghost: "border-transparent bg-transparent text-brand hover:bg-surface-hover",
+}
+
+/**
+ * The same ranking, drawn on one of the page's coloured bands.
+ *
+ * **None of the page's colours can be used on a band.** `brand` on the band's
+ * darkest end is 2.60:1 — under the 3:1 the site requires of the boundary of
+ * something you can operate — so a button keeping its usual face would lose its
+ * edge into the fill. **White is what the band leaves free** (15.97:1 there),
+ * which is why a badge on a band already inverts the same way (`Badge onBand`).
+ *
+ * So the ranking survives and the palette turns over: what was filled becomes
+ * the white one, and what was outlined keeps only its edge.
+ */
+const BUTTON_ON_BAND: Record<ButtonVariant, string> = {
+  primary: "border-transparent bg-white text-brand hover:bg-surface-hover",
+  secondary: "border-white/70 bg-transparent text-white hover:bg-white/15",
+  danger: "border-transparent bg-white text-danger hover:bg-surface-hover",
+  ghost: "border-transparent bg-transparent text-white hover:bg-white/15",
 }
 
 const BUTTON_SIZE = {
@@ -369,21 +426,39 @@ const BUTTON_SIZE = {
 
 type ButtonSize = keyof typeof BUTTON_SIZE
 
-function buttonClass(variant: ButtonVariant, size: ButtonSize, pill: boolean, extra: string) {
+function buttonClass(look: Required<Omit<ButtonLook, "icon">>) {
+  const { variant, size, listing, onBand, className } = look
   return [
     "inline-flex cursor-pointer items-center justify-center border font-medium no-underline transition-colors",
-    pill ? "rounded-full" : "rounded",
+    listing ? "rounded-full" : "rounded",
     "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100",
-    BUTTON_VARIANT[variant],
+    onBand ? BUTTON_ON_BAND[variant] : BUTTON_VARIANT[variant],
     BUTTON_SIZE[size],
-    extra,
+    className,
   ].join(" ")
 }
 
 interface ButtonLook {
   variant?: ButtonVariant
   size?: ButtonSize
-  pill?: boolean
+  /**
+   * **In the row of controls above a listing**, which is the one place a
+   * control is fully rounded (`LISTING_CONTROL`, and `Chooser` beside it).
+   *
+   * **Where it stands, not how it should look.** As a taste the round end was
+   * asked for in five places that are not a listing — the cart's two, the words
+   * offered under the search box, a term in the editor — and the shape stopped
+   * saying anything. **The page numbers stay square inside the same band** for a
+   * reason of their own (`page.tsx` の `PAGE_BOX`): a digit fills a 36px box so
+   * poorly that rounding the ends leaves a chain of rings to count along.
+   */
+  listing?: boolean
+  /**
+   * **On one of the page's coloured bands**, where the usual faces cannot be
+   * read (`BUTTON_ON_BAND`). Placement again, not rank: what the button is for
+   * has not changed, only what is behind it.
+   */
+  onBand?: boolean
   icon?: ReactNode
   className?: string
 }
@@ -391,7 +466,8 @@ interface ButtonLook {
 export function Button({
   variant = "secondary",
   size = "sm",
-  pill = false,
+  listing = false,
+  onBand = false,
   type = "submit",
   icon,
   className = "",
@@ -400,7 +476,11 @@ export function Button({
 }: ButtonLook & { children?: ReactNode }
   & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
   return (
-    <button type={type} className={buttonClass(variant, size, pill, className)} {...rest}>
+    <button
+      type={type}
+      className={buttonClass({ variant, size, listing, onBand, className })}
+      {...rest}
+    >
       {icon}
       {children}
     </button>
@@ -420,7 +500,8 @@ export function ButtonLink({
   to,
   variant = "secondary",
   size = "sm",
-  pill = false,
+  listing = false,
+  onBand = false,
   external = false,
   newTab = false,
   newTabLabel,
@@ -435,7 +516,7 @@ export function ButtonLink({
   newTabLabel?: string
   children: ReactNode
 }) {
-  const shape = buttonClass(variant, size, pill, className)
+  const shape = buttonClass({ variant, size, listing, onBand, className })
   const inside = (
     <>
       {icon}
@@ -510,7 +591,7 @@ export function BigAction({ to, tone, icon, external = false, newTabLabel, child
  * text under it: without one the control announces as "button" and is
  * unusable by anybody not looking at it.
  */
-export function IconButton({ name, label, pressed, onBand = false, onClick, type = "button", ...rest }: {
+export function IconButton({ name, label, pressed, onClick, type = "button", ...rest }: {
   name: IconName
   label: string
   /**
@@ -519,20 +600,19 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
    * **The state is announced, not only coloured** — and the name stays the same
    * whichever way it is, because a control that renamed itself would be read as
    * "remove … , pressed" and say two opposite things at once.
+   *
+   * **It is a colour, not a fill.** A filled square is the strongest thing in a
+   * table made of rules and text — stronger than the band over it — and a column
+   * of them reads as a column of buttons rather than as marks against rows. Part
+   * way in takes the same colour as in: a row holding nineteen of its twenty
+   * datasets is not untouched, and the difference between the two is carried by
+   * `aria-pressed` rather than by a third shade.
    */
   pressed?: boolean | "mixed"
-  /**
-   * On a band, where the page's own colours are unreadable: `ink-muted` on the
-   * brand fill is 1.2:1, and the focus ring (brand) disappears entirely. White
-   * is 6.2:1 there, and the pressed state becomes a fill rather than a tint.
-   */
-  onBand?: boolean
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
-  const look = onBand
-    ? (pressed === true
-        ? "bg-white text-brand focus-visible:outline-white"
-        : "text-white hover:bg-white/20 focus-visible:outline-white")
-    : (pressed === true ? "text-accent hover:bg-surface-hover" : "text-ink-muted hover:bg-surface-hover hover:text-ink")
+  const look = pressed === true || pressed === "mixed"
+    ? "text-accent hover:bg-surface-hover"
+    : "text-ink-muted hover:bg-surface-hover hover:text-ink"
   return (
     <button
       type={type}
@@ -540,7 +620,7 @@ export function IconButton({ name, label, pressed, onBand = false, onClick, type
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`inline-flex size-tap cursor-pointer items-center justify-center rounded ${look}`}
+      className={`inline-flex size-tap cursor-pointer items-center justify-center rounded transition-colors ${look}`}
       {...rest}
     >
       <Icon name={name} className="text-base" />
@@ -591,8 +671,26 @@ const MORE = "inline-flex items-center gap-0.5 whitespace-nowrap font-semibold t
 export const CLEAR = "font-semibold text-brand text-xs"
 
 /**
+ * What names a group inside a pane — the conditions in force, and each box of
+ * dimensions the panel offers.
+ *
+ * **A step below `PaneHeading`, which names the pane itself.** That one is the
+ * pane's title and carries the bar; these sit inside it and are only telling
+ * the reader which of several lists they are looking down, so they take the
+ * muted ink and the weight and nothing else.
+ *
+ * **One string, because the two were the same drawing written twice.** They
+ * had the same colour, size and weight, and differed only by a `uppercase`
+ * that does nothing to Japanese and three tenths of a pixel of tracking — a
+ * difference nobody chose, visible in one language only, and the kind that
+ * grows a third spelling the next time a group is added.
+ */
+export const PANE_LABEL = "font-semibold text-ink-muted text-xs"
+
+/**
  * The way from a few of something to all of it — the five newest announcements
- * to the whole listing, a table's first page to the search behind it.
+ * to the whole listing, a table's first page to the search behind it, one
+ * listing to the same search over the other.
  */
 export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
   return (
@@ -732,31 +830,44 @@ export function LanguagePills({ label, options }: {
  * `filled` is for the one that starts something rather than showing something,
  * which in the header is signing in.
  */
-export function RoundLink({ to, name, label, count, filled = false, external = false }: {
+/**
+ * The number riding on a round control, drawn only when there is one to draw.
+ *
+ * It sits outside the flow, so **whatever carries it has to be `relative`** and
+ * has to say the number in its own name as well: a label replaces what is
+ * inside a control, and a number left in the markup alone is read by nobody who
+ * cannot see it.
+ */
+function CountBadge({ count }: { count?: number }) {
+  if (count === undefined || count <= 0) return null
+  return (
+    <span
+      // **Keyed by the number**, so a new one is mounted whenever it changes and
+      // the animation runs again. Without that the badge counts up in silence,
+      // a thousand pixels from wherever the press was.
+      key={count}
+      aria-hidden="true"
+      className="-top-1 -right-1 absolute inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1 font-semibold text-white text-xs motion-safe:animate-bump"
+    >
+      {count}
+    </span>
+  )
+}
+
+export function RoundLink({ to, name, label, filled = false, external = false }: {
   to: string
   name: IconName
   label: string
-  /** Drawn only when there is something to count. */
-  count?: number
   filled?: boolean
   /** For an address no client-side navigation can answer, such as `/auth/login`. */
   external?: boolean
 }) {
-  const className = `relative inline-flex size-tap items-center justify-center rounded-full border no-underline ${
+  const className = `inline-flex size-tap items-center justify-center rounded-full border no-underline ${
     filled
       ? `border-transparent text-white hover:brightness-90 ${BAND_FILL.brand}`
       : "border-line text-ink-muted hover:bg-surface-hover hover:text-ink"
   }`
-  const inside = (
-    <>
-      <Icon name={name} className="text-base" />
-      {count !== undefined && count > 0 && (
-        <span className="-top-1 -right-1 absolute inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1 font-semibold text-white text-xs">
-          {count}
-        </span>
-      )}
-    </>
-  )
+  const inside = <Icon name={name} className="text-base" />
   return external
     ? <a href={to} aria-label={label} title={label} className={className}>{inside}</a>
     : <Link to={to} aria-label={label} title={label} className={className}>{inside}</Link>
@@ -912,11 +1023,23 @@ export function SwitchTabs({ label, tabs }: {
  * all and says nothing about why. Validate on the server, which is where the
  * rules are (`docs/editing.md`).
  */
-export function SectionTabs({ label, tabs, current, onSelect }: {
+/**
+ * What a tab and its panel are named.
+ *
+ * **A strip can be told to name its own**, because a screen may carry two of
+ * them offering the same choices. Without it both write the same id, and
+ * `aria-controls` then leads from one strip's tab to the other strip's panel.
+ */
+function tabbedAs(scope: string | undefined, id: string): string {
+  return scope === undefined ? id : `${scope}-${id}`
+}
+
+export function SectionTabs({ label, tabs, current, onSelect, scope }: {
   label: string
   tabs: { id: string, label: string, mark?: ReactNode }[]
   current: string
   onSelect: (id: string) => void
+  scope?: string
 }) {
   const strip = useRef<HTMLDivElement>(null)
 
@@ -925,7 +1048,9 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
     const next = tabs[at]
     if (next === undefined) return
     onSelect(next.id)
-    strip.current?.querySelector<HTMLButtonElement>(`#tab-${CSS.escape(next.id)}`)?.focus()
+    strip.current
+      ?.querySelector<HTMLButtonElement>(`#tab-${CSS.escape(tabbedAs(scope, next.id))}`)
+      ?.focus()
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
@@ -951,9 +1076,9 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
           key={tab.id}
           type="button"
           role="tab"
-          id={`tab-${tab.id}`}
+          id={`tab-${tabbedAs(scope, tab.id)}`}
           aria-selected={tab.id === current}
-          aria-controls={`tabpanel-${tab.id}`}
+          aria-controls={`tabpanel-${tabbedAs(scope, tab.id)}`}
           tabIndex={tab.id === current ? 0 : -1}
           onClick={() => { onSelect(tab.id) }}
           className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-2 text-sm ${
@@ -970,16 +1095,17 @@ export function SectionTabs({ label, tabs, current, onSelect }: {
   )
 }
 
-export function TabPanel({ id, current, children }: {
+export function TabPanel({ id, current, children, scope }: {
   id: string
   current: string
   children: ReactNode
+  scope?: string
 }) {
   return (
     <div
       role="tabpanel"
-      id={`tabpanel-${id}`}
-      aria-labelledby={`tab-${id}`}
+      id={`tabpanel-${tabbedAs(scope, id)}`}
+      aria-labelledby={`tab-${tabbedAs(scope, id)}`}
       hidden={id !== current}
     >
       {children}
@@ -990,34 +1116,109 @@ export function TabPanel({ id, current, children }: {
 /* ------------------------------------------------------- folding and lists */
 
 /**
+ * The shading on an edge a box can still travel towards.
+ *
+ * **A box that scrolls inside itself says nothing about it.** Where the reader
+ * has the bar set to appear only while scrolling — the default on macOS — it
+ * claims no space at all: measured at 0px on both the listing's table and the
+ * panel's list of values. So the box says it, and says it before being touched.
+ * The far edge is shaded from the moment the page opens, and the shading goes
+ * when there is nothing left that way.
+ *
+ * **A shadow rather than a fade to the page behind.** In the table the same
+ * strip crosses the coloured band and the white rows under it, and a shadow is
+ * the one drawing that means the same thing on both.
+ */
+export const EDGE_SHADE = {
+  left: "pointer-events-none absolute inset-y-0 left-0 w-4 bg-linear-to-r from-deep/20 to-transparent",
+  right: "pointer-events-none absolute inset-y-0 right-0 w-4 bg-linear-to-l from-deep/20 to-transparent",
+  top: "pointer-events-none absolute inset-x-0 top-0 h-4 bg-linear-to-b from-deep/20 to-transparent",
+  bottom: "pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-linear-to-t from-deep/20 to-transparent",
+}
+
+/**
+ * What is about to be replaced, while its replacement is on its way.
+ *
+ * **Pale rather than gone.** What is on screen is still the answer to the search
+ * behind it, so it stays readable — and a block that empties itself moves
+ * everything under it twice for one refinement.
+ *
+ * **It stays live.** A reader who reaches for another value while the last one
+ * is still arriving means to go there, and a pane that stopped taking presses
+ * would drop that. The pointer says which of the two is happening.
+ *
+ * **The fade is on the way in and out**, so a state that lasts 40ms past the
+ * delay does not blink.
+ */
+export const PALE = {
+  on: "cursor-progress opacity-60 transition-opacity",
+  off: "transition-opacity",
+}
+
+/**
  * A part of a panel that can be folded away.
  *
- * A `<details>` rather than a control, so folding costs no script and no state
- * of its own, and the browser tells assistive software whether it is open.
- * **What is open is decided by the caller, and a section holding a chosen value
- * is always open** — a condition in force that cannot be seen is a listing that
- * lies about itself.
+ * A `<details>`, so the markup carries what is open, the browser tells
+ * assistive software about it, and a page with no script folds as well as one
+ * with it.
+ *
+ * **`open` is a reason to be open, not the state of being open.** A section
+ * holding a chosen value has to be seen — a condition in force that cannot be
+ * seen is a listing that lies about itself — but when that reason goes away,
+ * the reader has not asked for the section to be put away. Handing `open`
+ * straight to the element makes the two the same thing, and lifting the last
+ * condition of a facet would close it under a reader who was reading it. So
+ * the reason opens it, and only the reader closes it.
  */
+/**
+ * Whether a fold is open, after the reason for it to be open changed.
+ *
+ * **A reason opens it, and only the reader closes it.** Written as `reason`
+ * alone, a facet whose last condition was lifted would fold up under a reader
+ * who was reading it: the reason went away, but nobody asked for the section to
+ * be put away.
+ */
+export function foldShown(shown: boolean, reason: boolean): boolean {
+  return reason || shown
+}
+
 export function Fold({ summary, note, open = false, children }: {
   summary: ReactNode
   /** What the section is worth glancing at while closed. */
   note?: ReactNode
+  /** Whether there is a reason for this to be open right now. */
   open?: boolean
   children: ReactNode
 }) {
+  const [shown, setShown] = useState(open)
+  const [reason, setReason] = useState(open)
+  if (open !== reason) {
+    setReason(open)
+    setShown(foldShown(shown, open))
+  }
   // No rule of its own: a column of these wants one between them, which the
   // column draws (`divide-y`), and a single one on a page wants none at all —
   // a lone rule under one fold reads as the bottom of something.
+  //
+  // **The padding is on the summary rather than on the `<details>`.** It draws
+  // the same distances either way, but only one of them is inside the thing
+  // that gets pressed: on the outside it left a 22.4px target — the line of
+  // words and nothing else — under 8px of margin nobody could press
+  // (`docs/ui.md` の「押せるものの大きさ」).
   return (
-    <details open={open} className="group py-2">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold text-sm marker:content-none">
+    <details
+      open={shown}
+      onToggle={(event) => { setShown(event.currentTarget.open) }}
+      className="group"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 font-semibold text-sm marker:content-none">
         <span className="flex items-center gap-1.5">
           <Icon name="chevron-right" className="text-ink-muted transition-transform group-open:rotate-90" />
           {summary}
         </span>
         {note !== undefined && <span className="text-ink-muted text-xs">{note}</span>}
       </summary>
-      <div className="mt-2 pl-5">{children}</div>
+      <div className="pb-2 pl-5">{children}</div>
     </details>
   )
 }
@@ -1179,7 +1380,7 @@ export const NOTE_KIND: Record<NoteKind, { icon: IconName | null, className: str
   done: { icon: "check", className: "border-line-strong text-ink-muted" },
 }
 
-export function Note({ kind = "info", live = false, children }: {
+export function Note({ kind = "info", live = false, action, children }: {
   kind?: NoteKind
   /**
    * Whether this appeared in answer to something the reader did. A save that
@@ -1187,13 +1388,81 @@ export function Note({ kind = "info", live = false, children }: {
    * corner of the screen.
    */
   live?: boolean
+  /** A control belonging to the note, such as the way to close it. */
+  action?: ReactNode
   children: ReactNode
 }) {
   const { icon, className } = NOTE_KIND[kind]
   return (
-    <Marked box={`bg-white ${className}`} icon={icon} live={live}>
+    <Marked box={`bg-white ${className}`} icon={icon} live={live} action={action}>
       {children}
     </Marked>
+  )
+}
+
+/**
+ * A note in the corner of the window, for an answer with nowhere to sit on the
+ * page.
+ *
+ * **The page does not move for it.** It is drawn over the corner rather than in
+ * the flow, so the row the reader just pressed stays where it is; a notice that
+ * pushed the page down would move whatever they were about to press next.
+ *
+ * **The spoken part is separate from the drawn part, and never leaves the
+ * page.** A live region is announced when its contents change — a region that
+ * arrives already holding its message may say nothing at all, which is what a
+ * box appearing and disappearing would be. So the region stands empty between
+ * notices and the box comes and goes beside it. Saying it twice is the other
+ * failure, so the box itself is not live.
+ *
+ * **It does not take focus**, since pulling focus out of a listing would lose
+ * the reader's place. That is also why the strip takes no pointer events while
+ * the box does: the page underneath stays reachable.
+ *
+ * **Over the top of what the reader is reading, not in a corner of the window.**
+ * A corner is the furthest point from where anybody is working, and a notice
+ * left there is missed however loud it is drawn. This sticks to the head of the
+ * page's own content, so it lands on the first rows of whatever listing raised
+ * it — and stays there as the reader scrolls, because the press could have come
+ * from any row.
+ *
+ * **It lies over the rows rather than pushing them down.** The strip itself has
+ * no height and the box is absolute inside it: a notice that moved the table
+ * would shift the next row the reader was about to press.
+ *
+ * **The two offsets answer two different questions and have to be set apart.**
+ *
+ * `top-14` is where the box sits before anything has been scrolled, and it is
+ * **the middle of the band a research page opens with**. Every screen begins
+ * the same way — the page's own padding (16), the trail (22), the gap under it
+ * (8) — so what names the page starts 46px below the top of `main`; the band is
+ * 71px tall, which puts its middle at 81.5 and the middle of a 56px notice at
+ * 53.5. 56 is the nearest step, and lands 2px under it. On a listing, where
+ * what names the page is a white card instead, the same 56 puts the notice a
+ * few pixels into its head.
+ *
+ * `-top-10` is where the strip comes to rest once the page moves under it, and
+ * it cancels all but 16px of the first — so a reader who has scrolled gets the
+ * notice a plain 16px from the top of the window.
+ */
+export function Toast({ label, announce, children }: {
+  label: string
+  /** What is said aloud. Empty between notices. */
+  announce: string
+  children?: ReactNode
+}) {
+  return (
+    <div
+      aria-label={label}
+      className="pointer-events-none sticky -top-10 z-30 flex h-0 justify-center"
+    >
+      <p role="status" className="sr-only">{announce}</p>
+      {children !== undefined && (
+        <div className="pointer-events-auto absolute top-14 w-fit max-w-2xl shadow-2xl motion-safe:animate-rise">
+          {children}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1206,11 +1475,23 @@ export function Note({ kind = "info", live = false, children }: {
  * be dismissed, moved around and given focus, and all it would add here is that
  * the reader can no longer see what they are about to act on.
  */
-export function Confirm({ label, warning, confirm, cancel, children }: {
+export function Confirm({ label, warning, confirm, cancel, intent, icon = "trash", children }: {
   label: string
   warning: string
   confirm: string
   cancel: string
+  /**
+   * What the form is being asked to do, put on the button rather than into a
+   * hidden field.
+   *
+   * **Where a form holds more than one of these, it has to be this and not a
+   * child.** A hidden field is submitted whichever button was pressed, so two
+   * open confirmations in one form would send two intents and the reader would
+   * get whichever came first in the markup.
+   */
+  intent?: string
+  /** The mark on the confirming button. Taking something away is the default. */
+  icon?: IconName
   /** The hidden fields naming what is being acted on. */
   children?: ReactNode
 }) {
@@ -1227,15 +1508,34 @@ export function Confirm({ label, warning, confirm, cancel, children }: {
     <span className="flex flex-wrap items-center gap-2">
       {children}
       <span className="text-danger text-sm">{warning}</span>
-      <Button type="submit" variant="danger" icon={<Icon name="trash" />}>{confirm}</Button>
+      <Button
+        type="submit"
+        variant="danger"
+        icon={<Icon name={icon} />}
+        {...(intent === undefined ? {} : { name: "intent", value: intent })}
+      >
+        {confirm}
+      </Button>
       <Button type="button" variant="ghost" onClick={() => { setAsking(false) }}>{cancel}</Button>
     </span>
   )
 }
 
-/** The panel a menu opens. */
+/**
+ * The panel a menu opens.
+ *
+ * **An 8px corner rather than the site's 4px.** It is a sheet lying over the
+ * page rather than a box set into one, and the shadow that says so thickens its
+ * outline enough to swallow a 4px arc — the same reading as the management
+ * area's drawer, which is the only other thing here drawn on top of a screen
+ * (`docs/ui.md` の「角丸」).
+ *
+ * The padding above and below is what keeps a line inside it off the curve, so
+ * nothing has to be clipped — and clipping would take the focus ring of the
+ * first and last lines with it.
+ */
 const MENU_PANEL
-  = "min-w-max flex-col items-stretch border border-line bg-white py-1 shadow-lg"
+  = "min-w-max flex-col items-stretch rounded-lg border border-line bg-white py-1 shadow-lg"
 
 /**
  * One line inside it. **Exported because the lines are the caller's** — the
@@ -1275,11 +1575,28 @@ const MENU_CORNER = { all: "rounded-full", left: "rounded-l-full" }
  * an entry does not reload the page**, so arriving somewhere has to close it
  * too, which is what the address is watched for.
  */
-export function Menu({ label, icon = "more", round = false, word = false, value, corner = "all", children }: {
+export function Menu({ label, icon = "more", glyph, round = false, filled = false, word = false, count, value, corner = "all", children }: {
   label: string
   icon?: IconName
+  /**
+   * What stands in the control in place of a glyph — the letter an account is
+   * drawn by, where a picture of a person would say less than their own name
+   * does. It replaces the icon rather than joining it: the control is 36px and
+   * holds one thing.
+   */
+  glyph?: ReactNode
   /** In the top bar, where the controls on either side of it are circles. */
   round?: boolean
+  /**
+   * Whether the circle is filled, which only a round one can be.
+   *
+   * **The fill is a state, not a rank.** In the top bar it says somebody is
+   * signed in — the outlined circles beside it are the same controls whoever is
+   * looking, and this one is not.
+   */
+  filled?: boolean
+  /** How many the panel holds, when that is worth saying before it opens. */
+  count?: number
   /**
    * Whether the name is drawn beside the glyph.
    *
@@ -1337,20 +1654,27 @@ export function Menu({ label, icon = "more", round = false, word = false, value,
       <summary
         aria-label={word ? undefined : label}
         title={word ? undefined : label}
-        className={`inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
+        className={`relative inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
           value !== undefined
             // A control naming a choice is a step shallower than a button, and a
             // step narrower on the side the caret is (`docs/ui.md`): the row it
             // shares already stands 36px squares in it, and a caret carries
             // whitespace of its own the way a letter does not.
             ? `whitespace-nowrap py-1 pr-2 pl-3 text-sm ${MENU_CORNER[corner]}`
-            : `min-h-tap text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`
+            // The filled circle is written out whole rather than added to the
+            // outlined one: they disagree about the colour of the word and the
+            // edge, and two classes setting one property are settled by the
+            // order the styles happen to be in.
+            : `min-h-tap ${filled
+              ? `size-tap rounded-full border border-transparent text-white hover:brightness-90 ${BAND_FILL.brand}`
+              : `text-ink-muted hover:text-ink ${word ? "whitespace-nowrap rounded px-2 font-medium text-ink text-sm" : round ? "size-tap rounded-full border border-line" : "size-tap rounded"}`}`
         }`}
       >
-        {value === undefined && <Icon name={icon} className="text-base" />}
+        {value === undefined && (glyph ?? <Icon name={icon} className="text-base" />)}
         {value}
         {word && label}
         {value !== undefined && <Icon name="chevron-down" aria-hidden="true" />}
+        <CountBadge count={count} />
       </summary>
       <div className={`absolute right-0 z-20 mt-2 flex ${MENU_PANEL}`}>
         {children}

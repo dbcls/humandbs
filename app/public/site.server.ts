@@ -22,6 +22,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm"
 import { getDb } from "~/db/client.server"
 import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { resolveBilingual } from "~/i18n/locale"
+import { pageRange } from "~/paging"
 import type { Locale } from "~/i18n/locale"
 
 import { leadingText, renderMarkdown } from "./markdown.server"
@@ -154,8 +155,7 @@ export async function newsList(
     page: at,
     pageCount,
     total,
-    rangeFrom: total === 0 ? 0 : (at - 1) * perPage + 1,
-    rangeTo: Math.min(at * perPage, total),
+    ...pageRange(at, perPage, total),
   }
 }
 
@@ -197,7 +197,20 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
  * per-locale row, because a banner is one announcement shown in whichever
  * language the reader is on.
  */
-export async function activeAlerts(locale: Locale): Promise<string[]> {
+export interface AlertView {
+  html: string
+  /**
+   * The reader's language had nothing, so what stands here is the other one.
+   *
+   * **Shown rather than hidden**: what the office is saying today reaches more
+   * readers in a language some of them cannot read than in none at all. The
+   * screen says which language it is, so that a reader who cannot read it knows
+   * that is why rather than wondering what they are looking at.
+   */
+  untranslated: boolean
+}
+
+export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
   const db = getDb()
   const rows = await db
     .select({ content: alert.content })
@@ -206,6 +219,9 @@ export async function activeAlerts(locale: Locale): Promise<string[]> {
     .orderBy(alert.createdAt)
 
   return rows
-    .map((row) => renderMarkdown(resolveBilingual(row.content.body, locale), locale))
-    .filter((html) => html !== "")
+    .map((row) => ({
+      html: renderMarkdown(resolveBilingual(row.content.body, locale), locale),
+      untranslated: row.content.body[locale] === "",
+    }))
+    .filter((one) => one.html !== "")
 }

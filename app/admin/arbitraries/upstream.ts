@@ -37,7 +37,7 @@ function key(seed: {
   id: string
   code: string
   scope: "dataset" | "experiment"
-  valueType: "text" | "vocabulary" | "number"
+  valueType: "text" | "vocabulary" | "number" | "disease"
   setId?: string
   multiple?: boolean
   unit?: string
@@ -66,7 +66,7 @@ export const catalogFixture: CatalogWithTerms = {
   keys: [
     key({ id: ACCESS_KEY, code: "access-criteria", scope: "dataset", valueType: "vocabulary", setId: ACCESS_SET }),
     key({ id: TYPE_KEY, code: "type-of-data", scope: "dataset", valueType: "text" }),
-    key({ id: DISEASE_KEY, code: "disease-icd10", scope: "experiment", valueType: "vocabulary", setId: DISEASE_SET, multiple: true }),
+    key({ id: DISEASE_KEY, code: "disease", scope: "experiment", valueType: "disease", setId: DISEASE_SET, multiple: true }),
     key({ id: METHOD_KEY, code: "experimental-method", scope: "experiment", valueType: "vocabulary", setId: METHOD_SET, multiple: true }),
     key({ id: PLATFORM_KEY, code: "platform", scope: "experiment", valueType: "vocabulary", setId: PLATFORM_SET, multiple: true }),
     key({ id: READ_TYPE_KEY, code: "read-type", scope: "experiment", valueType: "vocabulary", setId: READ_TYPE_SET }),
@@ -90,7 +90,9 @@ export const catalogFixture: CatalogWithTerms = {
 /** Half of these name a term of the fixture; the rest name nothing. */
 const STRATEGIES = ["WGS", "RNA-Seq", "WXS", "AMPLICON", ""]
 const MODELS = ["Illumina HiSeq 2500", "DNBSEQ-T7", "Illumina NovaSeq 6000"]
-const DISEASES = ["C34.9", "C34", "E11.0", "-", "dummy", "Z999", "c349"]
+// The last two exercise the rolling up: `E110A` is not a code the vocabulary
+// holds and `E110` is, while `Z9999` answers at no length at all.
+const DISEASES = ["C34.9", "C34", "E11.0", "-", "dummy", "Z999", "c349", "E110A", "Z9999"]
 
 const wording = fc.oneof(fc.constant(""), fc.string({ maxLength: 40 }))
 

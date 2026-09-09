@@ -34,22 +34,25 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 import { ICD10_SET_CODE, icd10Parent } from "~/icd10/codes"
+import { pageRange } from "~/paging"
 import { lookUpCode, searchDictionary } from "~/icd10/dictionary.server"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { codeProblem, moved, termCodeProblem } from "./catalog"
+import { codeProblem, moved, SETTLED_VOCABULARIES, termCodeProblem } from "./catalog"
 
 export interface CatalogKeyRow {
   id: string
   code: string
   scope: "dataset" | "experiment"
-  valueType: "text" | "single" | "accession" | "vocabulary" | "number"
+  valueType: "text" | "single" | "accession" | "vocabulary" | "number" | "disease"
   labelJa: string
   labelEn: string
   position: number
   vocabularySetCode: string | null
+  /** How many terms the field draws from, or null when it draws from none. */
+  terms: number | null
   categoryId: string | null
   showOnPublicPage: boolean
   canonicalUnit: string | null
@@ -73,10 +76,22 @@ export interface CategoryRow {
   position: number
 }
 
+/**
+ * The fields screen.
+ *
+ * **Only the fields an analysis method carries are here.** The two a dataset
+ * carries hold what the portal is rather than what the data brings, so the
+ * migration puts them in and nothing edits them afterwards
+ * (docs/data-model.md の「catalog と語彙」).
+ *
+ * **The vocabularies are not a list of their own.** Each belongs to exactly one
+ * field, so the field's row carries how many terms it draws from and the way to
+ * open them — a list called 「語彙」 beside the fields could only be read as a
+ * second, unrelated thing.
+ */
 export interface CatalogView {
   locale: Locale
   keys: CatalogKeyRow[]
-  vocabularies: VocabularyRow[]
   categories: CategoryRow[]
 }
 
@@ -101,10 +116,15 @@ export interface DictionaryRow {
 
 export interface VocabularyView {
   locale: Locale
+  /** The field the terms belong to. **Its label is what the screen is called.** */
+  field: { code: string, labelJa: string, labelEn: string }
   set: VocabularyRow
   terms: TermRow[]
   page: number
   pageCount: number
+  /** 1-based positions of the shown terms within what the box matched. */
+  rangeFrom: number
+  rangeTo: number
   find: string
   /**
    * Set on the ICD10 vocabulary: what was typed into the dictionary's box and
@@ -143,33 +163,26 @@ async function keyRows(db: Executor): Promise<CatalogKeyRow[]> {
       labelEn: contentKey.labelEn,
       position: contentKey.position,
       vocabularySetCode: vocabularySet.code,
+      // Null rather than zero on a field that draws from no vocabulary at all:
+      // "no terms yet" and "not that kind of field" are different answers.
+      terms: sql<number | null>`case when ${vocabularySet.id} is null then null
+        else count(${vocabularyTerm.id})::int end`,
       categoryId: contentKey.facetCategoryId,
       showOnPublicPage: contentKey.showOnPublicPage,
       canonicalUnit: contentKey.canonicalUnit,
     })
     .from(contentKey)
     .leftJoin(vocabularySet, eq(vocabularySet.id, contentKey.vocabularySetId))
+    .leftJoin(vocabularyTerm, eq(vocabularyTerm.setId, vocabularySet.id))
+    .groupBy(contentKey.id, vocabularySet.id, vocabularySet.code)
     .orderBy(asc(contentKey.scope), asc(contentKey.position), asc(contentKey.code))
 }
 
 export async function catalogPage(request: Request): Promise<CatalogView> {
   await requireCapability(request, "manage-catalog")
   const db = getDb()
-  const [keys, sets, categories] = await Promise.all([
+  const [keys, categories] = await Promise.all([
     keyRows(db),
-    db
-      .select({
-        id: vocabularySet.id,
-        code: vocabularySet.code,
-        labelJa: vocabularySet.labelJa,
-        labelEn: vocabularySet.labelEn,
-        hierarchical: vocabularySet.hierarchical,
-        terms: sql<number>`count(${vocabularyTerm.id})::int`,
-      })
-      .from(vocabularySet)
-      .leftJoin(vocabularyTerm, eq(vocabularyTerm.setId, vocabularySet.id))
-      .groupBy(vocabularySet.id)
-      .orderBy(asc(vocabularySet.code)),
     db
       .select({
         id: facetCategory.id,
@@ -183,15 +196,25 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
   ])
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
-    keys,
-    vocabularies: sets,
+    keys: keys.filter((key) => key.scope === "experiment"),
     categories,
   }
 }
 
-export async function vocabularyPage(
+/**
+ * The terms one field draws its values from.
+ *
+ * **It is addressed by the field, not by the vocabulary**, which is what lets
+ * the screen be titled with what the terms are the terms *of* (`admin/urls.ts`).
+ *
+ * **A settled vocabulary has no screen here at all.** What it may hold is fixed
+ * by what the portal is, so there would be nothing on it to do, and a screen
+ * that can only refuse is worse than no screen
+ * (`admin/catalog.ts` の `SETTLED_VOCABULARIES`).
+ */
+export async function fieldTermsPage(
   request: Request,
-  code: string,
+  keyCode: string,
 ): Promise<VocabularyView | null> {
   await requireCapability(request, "manage-catalog")
   const db = getDb()
@@ -200,18 +223,24 @@ export async function vocabularyPage(
   const lookUp = url.searchParams.get("dictionary") ?? ""
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
 
-  const [set] = await db
+  const [found] = await db
     .select({
+      keyCode: contentKey.code,
+      keyLabelJa: contentKey.labelJa,
+      keyLabelEn: contentKey.labelEn,
       id: vocabularySet.id,
       code: vocabularySet.code,
       labelJa: vocabularySet.labelJa,
       labelEn: vocabularySet.labelEn,
       hierarchical: vocabularySet.hierarchical,
     })
-    .from(vocabularySet)
-    .where(eq(vocabularySet.code, code))
+    .from(contentKey)
+    .innerJoin(vocabularySet, eq(vocabularySet.id, contentKey.vocabularySetId))
+    .where(and(eq(contentKey.code, keyCode), eq(contentKey.scope, "experiment")))
     .limit(1)
-  if (set === undefined) return null
+  if (found === undefined || SETTLED_VOCABULARIES.has(found.code)) return null
+  const { keyCode: fieldCode, keyLabelJa, keyLabelEn, ...set } = found
+  const field = { code: fieldCode, labelJa: keyLabelJa, labelEn: keyLabelEn }
 
   const parent = alias(vocabularyTerm, "parent")
   const matching = find === ""
@@ -246,10 +275,12 @@ export async function vocabularyPage(
   const used = await usageOfTerms(db, rows.map((row) => row.id))
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
+    field,
     set: { ...set, terms: total?.count ?? 0 },
     terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0 })),
     page: at,
     pageCount,
+    ...pageRange(at, TERMS_PER_PAGE, total?.count ?? 0),
     find,
     dictionary: set.code === ICD10_SET_CODE
       ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }
@@ -314,8 +345,18 @@ async function usageOfTerms(
   return new Map(rows.rows.map((row) => [row.term_id, row.n]))
 }
 
+/**
+ * **Two shapes hold identities.** A vocabulary value keeps them in its own slot;
+ * a disease keeps them inside each disease of its slot, so a path written for
+ * one reads nothing of the other and a term nothing but diseases name would
+ * look free to delete.
+ */
 async function termInUse(db: Executor, termId: string): Promise<boolean> {
-  const match = sql`jsonb_path_exists(content, '$.**.termIds.value[*] ? (@ == $id)', ${JSON.stringify({ id: termId })}::jsonb)`
+  const id = JSON.stringify({ id: termId })
+  const match = sql`(
+    jsonb_path_exists(content, '$.**.termIds.value[*] ? (@ == $id)', ${id}::jsonb)
+    OR jsonb_path_exists(content, '$.**.diseases.value[*].termIds[*] ? (@ == $id)', ${id}::jsonb)
+  )`
   const [published] = await db.select({ hit: sql<number>`1` }).from(datasetContent).where(match).limit(1)
   if (published !== undefined) return true
   const [drafted] = await db
@@ -369,16 +410,10 @@ async function apply(tx: Executor, intent: string, form: FormData): Promise<Cata
       return moveKey(tx, form, "down")
     case "delete-key":
       return deleteKey(tx, form)
-    case "create-category":
-      return createCategory(tx, form)
-    case "update-category":
-      return updateCategory(tx, form)
-    case "move-category-up":
-      return moveCategory(tx, form, "up")
-    case "move-category-down":
-      return moveCategory(tx, form, "down")
-    case "delete-category":
-      return deleteCategory(tx, form)
+    // The facet categories are not here. What the refinement panel groups its
+    // axes into is settled by what the portal is, so the migration puts the
+    // groups in and nothing edits them afterwards
+    // (docs/data-model.md の「catalog と語彙」).
     case "create-term":
       return createTerm(tx, form)
     case "update-term":
@@ -404,24 +439,42 @@ async function guardCode(db: Executor, code: string): Promise<CatalogProblem | n
   return held === undefined ? null : "duplicate-code"
 }
 
+/**
+ * Why a field cannot be changed here, or null when it can.
+ *
+ * **The two a dataset carries are refused as well as undrawn.** The screen does
+ * not offer them, but a form is reachable by anybody who can post one, and a
+ * screen is not a check (`admin/catalog.ts`).
+ */
+async function refusedKey(db: Executor, id: string): Promise<CatalogResult | null> {
+  const [key] = await db
+    .select({ scope: contentKey.scope })
+    .from(contentKey)
+    .where(eq(contentKey.id, id))
+    .limit(1)
+  if (key === undefined) return { status: "unknown-target" }
+  return key.scope === "dataset" ? { status: "not-editable" } : null
+}
+
 async function createKey(db: Executor, form: FormData): Promise<CatalogResult> {
   const code = text(form, "code")
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
-  const scope = text(form, "scope") === "dataset" ? "dataset" : "experiment"
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
   const problem = await guardCode(db, code)
   if (problem !== null) return { status: problem }
 
   await db.insert(contentKey).values({
     code,
-    scope,
+    // Always on the analysis method: what a dataset is described by is settled
+    // by what the portal is, so nothing adds to it.
+    scope: "experiment",
     // An administrator adds free text. A type is what makes a key a facet, and
     // that is a development change.
     valueType: "text",
     labelJa,
     labelEn,
-    position: await nextPosition(db, scope),
+    position: await nextPosition(db, "experiment"),
     showOnPublicPage: form.get("showOnPublicPage") !== null,
   })
   return { status: "ok" }
@@ -432,6 +485,8 @@ async function updateKey(db: Executor, form: FormData): Promise<CatalogResult> {
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
+  const refused = await refusedKey(db, id)
+  if (refused !== null) return refused
   const categoryId = text(form, "categoryId")
   const updated = await db
     .update(contentKey)
@@ -469,12 +524,9 @@ async function moveKey(
   direction: "up" | "down",
 ): Promise<CatalogResult> {
   const id = text(form, "keyId")
-  const [key] = await db
-    .select({ scope: contentKey.scope })
-    .from(contentKey)
-    .where(eq(contentKey.id, id))
-    .limit(1)
-  if (key === undefined) return { status: "unknown-target" }
+  const refused = await refusedKey(db, id)
+  if (refused !== null) return refused
+  const key = { scope: "experiment" } as const
 
   const siblings = await db
     .select({ id: contentKey.id })
@@ -487,6 +539,8 @@ async function moveKey(
 
 async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
   const id = text(form, "keyId")
+  const refused = await refusedKey(db, id)
+  if (refused !== null) return refused
   const [key] = await db
     .select({ valueType: contentKey.valueType })
     .from(contentKey)
@@ -499,81 +553,6 @@ async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
   if (await keyInUse(db, id)) return { status: "in-use" }
   await db.delete(contentKey).where(eq(contentKey.id, id))
   return { status: "ok" }
-}
-
-/**
- * The two labels of a facet category, or null for a category drawn without a
- * heading. **Both or neither**: a group headed in one language and silent in
- * the other would change shape when the reader switches
- * (`db/schema/catalog.ts`).
- */
-function categoryLabels(
-  form: FormData,
-): { labelJa: string, labelEn: string } | { labelJa: null, labelEn: null } | null {
-  const labelJa = text(form, "labelJa")
-  const labelEn = text(form, "labelEn")
-  if (labelJa === "" && labelEn === "") return { labelJa: null, labelEn: null }
-  if (labelJa === "" || labelEn === "") return null
-  return { labelJa, labelEn }
-}
-
-async function createCategory(db: Executor, form: FormData): Promise<CatalogResult> {
-  const code = text(form, "code")
-  const labels = categoryLabels(form)
-  if (labels === null) return { status: "missing-label" }
-  if (codeProblem(code) === "malformed") return { status: "malformed-code" }
-  const [held] = await db
-    .select({ id: facetCategory.id })
-    .from(facetCategory)
-    .where(eq(facetCategory.code, code))
-    .limit(1)
-  if (held !== undefined) return { status: "duplicate-code" }
-  const [last] = await db
-    .select({ at: sql<number>`coalesce(max(${facetCategory.position}), -1)::int` })
-    .from(facetCategory)
-  await db.insert(facetCategory).values({ code, ...labels, position: (last?.at ?? -1) + 1 })
-  return { status: "ok" }
-}
-
-async function updateCategory(db: Executor, form: FormData): Promise<CatalogResult> {
-  const id = text(form, "categoryId")
-  const labels = categoryLabels(form)
-  if (labels === null) return { status: "missing-label" }
-  const updated = await db
-    .update(facetCategory)
-    .set(labels)
-    .where(eq(facetCategory.id, id))
-    .returning({ id: facetCategory.id })
-  return updated.length === 0 ? { status: "unknown-target" } : { status: "ok" }
-}
-
-async function moveCategory(
-  db: Executor,
-  form: FormData,
-  direction: "up" | "down",
-): Promise<CatalogResult> {
-  const id = text(form, "categoryId")
-  const held = await db
-    .select({ id: facetCategory.id })
-    .from(facetCategory)
-    .orderBy(asc(facetCategory.position), asc(facetCategory.code))
-  return renumber(db, held, id, direction, (each, position) =>
-    db.update(facetCategory).set({ position }).where(eq(facetCategory.id, each)))
-}
-
-async function deleteCategory(db: Executor, form: FormData): Promise<CatalogResult> {
-  const id = text(form, "categoryId")
-  const [used] = await db
-    .select({ id: contentKey.id })
-    .from(contentKey)
-    .where(eq(contentKey.facetCategoryId, id))
-    .limit(1)
-  if (used !== undefined) return { status: "in-use" }
-  const removed = await db
-    .delete(facetCategory)
-    .where(eq(facetCategory.id, id))
-    .returning({ id: facetCategory.id })
-  return removed.length === 0 ? { status: "unknown-target" } : { status: "ok" }
 }
 
 async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> {
@@ -589,6 +568,7 @@ async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> 
     .where(eq(vocabularySet.id, setId))
     .limit(1)
   if (set === undefined) return { status: "unknown-target" }
+  if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
   const [held] = await db
     .select({ id: vocabularyTerm.id })
     .from(vocabularyTerm)
@@ -642,13 +622,22 @@ async function icd10Root(
   return made?.id ?? null
 }
 
-async function termFor(db: Executor, id: string) {
+/**
+ * Why a term cannot be changed here, or null when it can.
+ *
+ * **A term of a settled vocabulary is refused as well as unreachable.** The
+ * screen offers no way in, but a form is reachable by anybody who can post one
+ * (`admin/catalog.ts` の `SETTLED_VOCABULARIES`).
+ */
+async function refusedTerm(db: Executor, id: string): Promise<CatalogResult | null> {
   const [term] = await db
-    .select({ id: vocabularyTerm.id })
+    .select({ setCode: vocabularySet.code })
     .from(vocabularyTerm)
+    .innerJoin(vocabularySet, eq(vocabularySet.id, vocabularyTerm.setId))
     .where(eq(vocabularyTerm.id, id))
     .limit(1)
-  return term
+  if (term === undefined) return { status: "unknown-target" }
+  return SETTLED_VOCABULARIES.has(term.setCode) ? { status: "not-editable" } : null
 }
 
 async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> {
@@ -656,8 +645,8 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   const labelEn = text(form, "labelEn")
   const labelJa = text(form, "labelJa")
   if (labelEn === "") return { status: "missing-label" }
-  const term = await termFor(db, id)
-  if (term === undefined) return { status: "unknown-target" }
+  const refused = await refusedTerm(db, id)
+  if (refused !== null) return refused
   await db
     .update(vocabularyTerm)
     .set({ labelEn, labelJa: labelJa === "" ? null : labelJa })
@@ -667,8 +656,8 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
 
 async function setTermActive(db: Executor, form: FormData): Promise<CatalogResult> {
   const id = text(form, "termId")
-  const term = await termFor(db, id)
-  if (term === undefined) return { status: "unknown-target" }
+  const refused = await refusedTerm(db, id)
+  if (refused !== null) return refused
   await db
     .update(vocabularyTerm)
     .set({ active: text(form, "active") === "true" })
@@ -678,8 +667,8 @@ async function setTermActive(db: Executor, form: FormData): Promise<CatalogResul
 
 async function deleteTerm(db: Executor, form: FormData): Promise<CatalogResult> {
   const id = text(form, "termId")
-  const term = await termFor(db, id)
-  if (term === undefined) return { status: "unknown-target" }
+  const refused = await refusedTerm(db, id)
+  if (refused !== null) return refused
   if (await termInUse(db, id)) return { status: "in-use" }
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, id))
   return { status: "ok" }

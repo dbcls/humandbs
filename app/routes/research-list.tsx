@@ -1,7 +1,7 @@
 import { Link } from "react-router"
 
 import { Clamped, Excerpt } from "~/components/base"
-import { CartToggle } from "~/components/cart"
+import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Table, Td, TermLabel, Value } from "~/components/page"
@@ -9,7 +9,7 @@ import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { canonicalRedirect, researchListPage } from "~/public/lists.server"
-import { datasetPath, href, listPath, readLocale, researchPath, searchQuery } from "~/public/urls"
+import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 import type { TermView } from "~/public/view.server"
 
 import type { Route } from "./+types/research-list"
@@ -51,9 +51,8 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
   const messages = messagesFor(locale)
   const t = messages.research
   const short = t.listingSummary
-  const onThisPage = view.rows.flatMap((row) => row.datasetLabels)
   const headers = [
-    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
+    <CartColumnHead key="cart" locale={locale} />,
     t.researchId,
     t.datasets,
     t.title,
@@ -66,14 +65,6 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
     messages.dataset.datePublished,
     messages.dataset.dateModified,
   ]
-  const otherLink = view.otherCount === null
-    ? undefined
-    : (
-        <Link to={href(locale, listPath("dataset") + searchQuery({ q: view.query, sort: null, page: 1 }))}>
-          {messages.search.alsoInDataset(view.otherCount)}
-        </Link>
-      )
-
   return (
     <ListingScreen
       view={view}
@@ -88,14 +79,13 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
           panel={view.facets}
         />
       )}
-      other={otherLink}
       empty={view.rows.length === 0}
     >
-      <Table headers={headers} stuck={2}>
+      <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.humLabel}>
             <Td stuck={0} narrow><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
-            <Td stuck={1} nowrap>
+            <Td stuck={1} nowrap floor="min-w-26">
               <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
               <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
             </Td>

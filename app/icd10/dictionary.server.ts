@@ -71,16 +71,12 @@ export async function lookUpCode(db: Executor, code: string): Promise<Icd10Entry
   return row ?? null
 }
 
-/** The codes of these that the classification holds. */
-export async function knownCodes(
-  db: Executor,
-  codes: readonly string[],
-): Promise<Set<string>> {
-  if (codes.length === 0) return new Set()
-  const rows = await db
-    .select({ code: icd10Reference.code })
-    .from(icd10Reference)
-    .where(inArray(icd10Reference.code, [...codes]))
+/**
+ * Every code the classification holds. **Read whole**: the migration asks it
+ * once per code it meets, and the table is 15,217 rows.
+ */
+export async function knownCodes(db: Executor): Promise<Set<string>> {
+  const rows = await db.select({ code: icd10Reference.code }).from(icd10Reference)
   return new Set(rows.map((row) => row.code))
 }
 

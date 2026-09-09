@@ -1,7 +1,7 @@
 import { redirect } from "react-router"
 
 import { Heading, Stack } from "~/components/base"
-import { Card, Crumbs, Empty, Page, PageLinks } from "~/components/page"
+import { Card, Crumbs, Empty, Page, Paging } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
@@ -63,26 +63,21 @@ export default function News({ loaderData }: Route.ComponentProps) {
   }
 
   // How many there are and where in them this page is, in the words the two
-  // listings use. Twenty rows and a way forward say nothing about how much is
-  // behind them. The bounds come from the loader, the way the search results
-  // take theirs: how many rows fill a page is not something this module knows.
-  const counted = (
-    <p className="text-ink-muted text-sm">
-      {messages.search.range(rangeFrom, rangeTo, total)}
-    </p>
-  )
-
+  // listings use (`components/page.tsx` の `Paging`). Twenty rows and a way
+  // forward say nothing about how much is behind them.
+  //
   // Above the list as well as below it: twenty announcements are longer than
   // the window, and the reader who has read the top of a page and wants the
   // next one should not have to scroll past what they have just rejected.
-  const pageLinks = (
-    <PageLinks
-      label={messages.search.pagination}
+  const paging = (
+    <Paging
+      locale={locale}
+      total={total}
+      from={rangeFrom}
+      to={rangeTo}
       page={page}
       pageCount={pageCount}
       at={pageHref}
-      previous={messages.search.previousPage}
-      next={messages.search.nextPage}
     />
   )
 
@@ -110,7 +105,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
             is not something a reader can see. **It searches as the words are
             typed**, and clearing the box is what lifts the search.
           */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {/*
               Wide enough for the words somebody searches announcements with,
               and no wider: sharing the line with the count and the page links
@@ -129,12 +124,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
                 searchAsTyped
               />
             </div>
-            {items.length > 0 && (
-              <>
-                {counted}
-                {pageLinks}
-              </>
-            )}
+            {items.length > 0 && paging}
           </div>
 
           {items.length === 0
@@ -142,11 +132,8 @@ export default function News({ loaderData }: Route.ComponentProps) {
             : (
                 <Stack gap="normal">
                   <NewsList locale={locale} items={items} dateBeside />
-                  {/* The same two, at the end of the page they describe. */}
-                  <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3">
-                    {counted}
-                    {pageLinks}
-                  </div>
+                  {/* The same pair, at the end of the page it describes. */}
+                  <div className="flex justify-end">{paging}</div>
                 </Stack>
               )}
         </Stack>

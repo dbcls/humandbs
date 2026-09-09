@@ -190,6 +190,6 @@ describe("the order and the page", () => {
   })
 
   it("has one page even when there is nothing on it", () => {
-    expect(pageOf([], 1)).toEqual({ rows: [], total: 0, page: 1, pageCount: 1 })
+    expect(pageOf([], 1)).toEqual({ rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 })
   })
 })

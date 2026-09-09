@@ -21,7 +21,9 @@ import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Button, Menu, MENU_ITEM, Stack } from "./base"
+import { AdminBack } from "./admin"
+import { Button, Heading, Menu, MENU_ITEM, Stack } from "./base"
+import { Empty } from "./page"
 import type { Marks } from "./fields"
 
 /**
@@ -82,9 +84,7 @@ export function UndoMenu({ locale, entries, onPick, loading }: {
 }) {
   const t = messagesFor(locale).admin.draft
 
-  if (entries.length === 0) {
-    return <span className="text-ink-muted text-sm">{t.undoEmpty}</span>
-  }
+  if (entries.length === 0) return <Empty>{t.undoEmpty}</Empty>
 
   return (
     <Menu label={t.undo} icon="undo" word>
@@ -135,6 +135,7 @@ function stamp(iso: string): string {
 export function DraftBar({
   locale,
   heading,
+  back,
   links,
   note,
   dirty,
@@ -151,7 +152,9 @@ export function DraftBar({
   locale: Locale
   /** What this screen edits, as it is known: a research ID, a dataset label. */
   heading: string
-  /** Where this screen leads back out to, in the order it offers them. */
+  /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
+  back: { to: string, label: string }
+  /** The other faces of what is being edited, in the order it offers them. */
   links: { to: string, label: string }[]
   /** Anything else the screen has to say about what it is editing. */
   note?: ReactNode
@@ -175,18 +178,30 @@ export function DraftBar({
               than the links beside it, and a shared baseline drops the smaller
               of the two below the middle of the row (`docs/ui.md`). */}
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-bold text-lg">{heading}</h1>
+            <AdminBack to={back.to} label={back.label} />
+            <Heading level="h1" look="bar" rule="start" title={heading} />
             {links.map((link) => (
               <Link key={link.to} to={link.to} className="text-sm">{link.label}</Link>
             ))}
             {note}
           </div>
           <div className="flex items-center gap-3 text-sm">
-            {dirty && <span className="text-accent">{t.unsaved}</span>}
-            {!dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
+            {/*
+              **What the save is doing is said here and not on the button.** A
+              control that renames itself while it works is a control the reader
+              cannot find again, and the three things this says — there is
+              unsaved work, it is being written, it is written — are one piece
+              of news that assistive tech should hear as it changes
+              (`docs/ui.md` の「壊れるもの」).
+            */}
+            <span role="status">
+              {saving && <span className="text-ink-muted">{t.saving}</span>}
+              {!saving && dirty && <span className="text-accent">{t.unsaved}</span>}
+              {!saving && !dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
+            </span>
             <UndoMenu locale={locale} entries={undo} onPick={onUndo} loading={undoLoading} />
             <Button type="button" variant="primary" onClick={onSave} disabled={saving}>
-              {saving ? t.saving : t.save}
+              {t.save}
             </Button>
           </div>
         </div>
@@ -387,6 +402,7 @@ export function useDraftEditing<T>({
     const moved = upstream?.both.includes(path) ?? false
     const theirs = refused ? conflict?.theirs : moved ? upstream?.theirs : undefined
     return {
+      at: path,
       changed: refused || moved,
       onTake: theirs === undefined
         ? null

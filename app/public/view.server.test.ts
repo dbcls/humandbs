@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest"
 import type { CauUsage } from "~/content/public"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
-import type { DataProvider, DatasetContent, ResearchContent, Slot } from "~/content/types"
+import type {
+  DataProvider,
+  DatasetContent,
+  ListingProvider,
+  ResearchContent,
+  Slot,
+} from "~/content/types"
 
 import {
   ACCESS_TYPE_KEY,
@@ -71,7 +77,7 @@ function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauUs
     datasets: [],
     datasetLabelById: new Map(),
     cau,
-    files: { rows: [], total: 0, page: 1, pageCount: 1 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog)
 }
 
@@ -197,7 +203,7 @@ describe("what a research page carries", () => {
       datasets: [],
       datasetLabelById: new Map(),
       cau: [],
-      files: { rows: [], total: 0, page: 1, pageCount: 1 },
+      files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)).toMatchObject({ isLatest: false, versionLabel: "hum0001-v1" })
   })
 
@@ -219,7 +225,7 @@ describe("what a research page carries", () => {
       datasets: [],
       datasetLabelById: new Map([["known", "JGAD000001"]]),
       cau: [],
-      files: { rows: [], total: 0, page: 1, pageCount: 1 },
+      files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)
     expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
   })
@@ -432,5 +438,97 @@ describe("the several values one listing cell holds", () => {
     const labels = ["JGAD000363", "JGAD000290"]
     row({ datasetLabels: labels })
     expect(labels).toEqual(["JGAD000363", "JGAD000290"])
+  })
+})
+
+/**
+ * The column the listing owns and the section the research owns hold the same
+ * kind of thing, and almost always the same thing. What decides which is read
+ * is whether anybody wrote the first.
+ */
+describe("the provider column of the research listing", () => {
+  function named(id: string, ja: string, en: string): DataProvider {
+    return provider({ id, name: { ja: filled(ja), en: filled(en) } })
+  }
+
+  function listed(id: string, ja: string, en: string): ListingProvider {
+    return { id, name: { ja: filled(ja), en: filled(en) } }
+  }
+
+  function withListing(
+    dataProviders: DataProvider[],
+    listing: ListingProvider[],
+  ): ResearchContent {
+    const content = emptyResearchContent()
+    return {
+      ...content,
+      dataProviders,
+      listingSummary: { ...content.listingSummary, dataProviders: listing },
+    }
+  }
+
+  function column(content: ResearchContent, locale: "ja" | "en" = "en"): (string | null)[] {
+    return researchListRowView({
+      humLabel: "hum0001",
+      content,
+      datasetLabels: [],
+      accessTermIds: [],
+      platformTermIds: [],
+      datePublished: null,
+      dateModified: null,
+    }, locale, catalog).dataProviders.map((field) =>
+      field.state === "plain" ? field.text : null)
+  }
+
+  it("names the research's own providers while the listing names none", () => {
+    const content = withListing(
+      [named("p1", "森下 真一", "Shinichi Morishita"), named("p2", "井ノ上 逸朗", "Itsuro Inoue")],
+      [],
+    )
+    expect(column(content)).toEqual(["Shinichi Morishita", "Itsuro Inoue"])
+  })
+
+  /**
+   * The reason the column is held at all: a study naming two people is shown
+   * under one of them in the table.
+   */
+  it("names only what the listing holds once the listing holds anything", () => {
+    const content = withListing(
+      [named("p1", "森下 真一", "Shinichi Morishita"), named("p2", "井ノ上 逸朗", "Itsuro Inoue")],
+      [listed("l1", "森下 真一", "Shinichi Morishita")],
+    )
+    expect(column(content)).toEqual(["Shinichi Morishita"])
+  })
+
+  it("keeps the order the listing was written in", () => {
+    const content = withListing([named("p1", "甲", "A")], [
+      listed("l1", "丙", "C"),
+      listed("l2", "乙", "B"),
+    ])
+    expect(column(content)).toEqual(["C", "B"])
+  })
+
+  /**
+   * A name written in one language only is ordinary here — one of the studies
+   * in the archive has no English for its provider — so the cell falls back the
+   * way every other translated pair does rather than showing nothing.
+   */
+  it("falls back to the other language for a name written only once", () => {
+    const content = withListing([], [listed("l1", "森下 真一", "")])
+    expect(column(content, "en")).toEqual(["森下 真一"])
+  })
+
+  /**
+   * Emptying the listing is how a curator says "the section again", so the
+   * column has to go back rather than stay on the last thing typed into it.
+   */
+  it("goes back to the research's providers when the listing is emptied", () => {
+    const both = [named("p1", "甲", "A"), named("p2", "乙", "B")]
+    expect(column(withListing(both, [listed("l1", "甲", "A")]))).toEqual(["A"])
+    expect(column(withListing(both, []))).toEqual(["A", "B"])
+  })
+
+  it("shows an empty column for a research naming nobody at all", () => {
+    expect(column(withListing([], []))).toEqual([])
   })
 })

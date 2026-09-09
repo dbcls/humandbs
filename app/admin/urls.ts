@@ -88,6 +88,27 @@ export function draftCommentsPath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/comments`
 }
 
+/**
+ * Where the draft is drawn as its page, for the pane beside the form.
+ *
+ * The language it draws in rides on the address because the pane's language is
+ * the reader's choice: the route is registered once and answers with data, so
+ * it has no language of its own to take.
+ */
+export function draftPagePath(researchId: string, draftId: string, locale: string): string {
+  return `${adminDraftPath(researchId, draftId)}/page?lang=${locale}`
+}
+
+/** Where one dataset of a draft is drawn as its page, for the pane beside the form. */
+export function datasetPagePath(
+  researchId: string,
+  draftId: string,
+  datasetId: string,
+  locale: string,
+): string {
+  return `${adminDraftDatasetPath(researchId, draftId, datasetId)}/page?lang=${locale}`
+}
+
 /** Where datasets are added to a draft from what an archive already holds. */
 export function adminUpstreamDatasetPath(researchId: string, draftId: string): string {
   return `${adminDraftDatasetsPath(researchId, draftId)}/upstream`
@@ -152,15 +173,28 @@ export function listingQuery(query: ListingQuery): string {
 }
 
 /**
- * The catalog. It hangs off `/admin` rather than off a research: a key and a
- * vocabulary belong to the portal, not to one study.
+ * The fields an analysis method is described under. They hang off `/admin`
+ * rather than off a research: a field belongs to the portal, not to one study.
+ *
+ * **The two fields a dataset carries are not here.** What they may hold is
+ * settled by what the portal is rather than by what arrives in the data, so the
+ * migration puts them in and nothing edits them afterwards (docs/data-model.md
+ * の「catalog と語彙」).
  */
-export function adminCatalogPath(): string {
-  return "/admin/catalog"
+export function adminExperimentFieldsPath(): string {
+  return "/admin/experiment-fields"
 }
 
-export function adminVocabularyPath(code: string): string {
-  return `${adminCatalogPath()}/vocabulary/${encodeURIComponent(code)}`
+/**
+ * The terms one field draws its values from.
+ *
+ * **The address names the field rather than the vocabulary.** Every vocabulary
+ * belongs to exactly one field, so reaching the terms through the field is what
+ * lets the screen be titled with what they are the terms *of* — a screen called
+ * 「語彙」 can only ever be answered with "which vocabulary?".
+ */
+export function adminExperimentFieldPath(keyCode: string): string {
+  return `${adminExperimentFieldsPath()}/${encodeURIComponent(keyCode)}`
 }
 
 /**
@@ -214,15 +248,4 @@ export function termsPath(): string {
  */
 export function adminAssistantPath(): string {
   return `${adminPath()}/assistant`
-}
-
-/**
- * Where the assistant's own API answers, and **the only way in**. Everything
- * under it is handed on unchanged, so the portal does not have to be edited
- * when the service grows an endpoint.
- *
- * **No language prefix**: nothing it answers with is interface text.
- */
-export function assistantApiPath(rest = ""): string {
-  return `${adminAssistantPath()}/api/${rest}`
 }

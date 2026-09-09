@@ -2,29 +2,65 @@ import { describe, expect, it } from "vitest"
 
 import { LOCALES } from "~/i18n/locale"
 
-import { adminNavigation, isHere } from "./navigation"
+import { adminDestinations, type AdminDestination } from "./navigation"
+import { isHere } from "./navigation"
 import { adminPath } from "./urls"
+
+/** The tree flattened, which is what a reader of the front page can press. */
+function everyDestination(locale: "ja" | "en"): AdminDestination[] {
+  return adminDestinations(locale).flatMap((entry) => [entry, ...entry.under ?? []])
+}
 
 describe("管理のナビ", () => {
   it("どの言語でも同じ行き先を、その言語の語で出す", () => {
-    const paths = LOCALES.map((locale) => adminNavigation(locale).map((entry) => entry.path))
+    const paths = LOCALES.map((locale) => everyDestination(locale).map((entry) => entry.path))
     expect(new Set(paths.map((one) => one.join(",")))).toHaveLength(1)
     for (const locale of LOCALES) {
-      for (const entry of adminNavigation(locale)) {
+      for (const entry of everyDestination(locale)) {
         expect(entry.label).not.toBe("")
       }
     }
   })
 
   it("同じ行き先を二度出さない", () => {
-    const paths = adminNavigation("ja").map((entry) => entry.path)
+    const paths = everyDestination("ja").map((entry) => entry.path)
     expect(new Set(paths).size).toBe(paths.length)
   })
 
   it("すべての行き先が管理の下にある", () => {
-    for (const entry of adminNavigation("ja")) {
+    for (const entry of everyDestination("ja")) {
       expect(entry.path === adminPath() || entry.path.startsWith(`${adminPath()}/`)).toBe(true)
     }
+  })
+
+  /**
+   * 識別子を要らない管理画面は 8 つある (地図に並ぶのはこのうち 7 つで、残る
+   * 1 つは区画のトップ自身)。**地図がそれを全部持っていないと、区画のトップから
+   * 行けない画面が残る** — 残る 12 画面は研究・下書き・文書・項目を選んだ先に
+   * あるので、パンくずと合わせてそこから辿る。
+   */
+  it("識別子を要らない 8 画面すべてを持つ", () => {
+    expect(new Set(everyDestination("ja").map((entry) => entry.path))).toEqual(new Set([
+      "/admin",
+      "/admin/research",
+      "/admin/research/upstream",
+      "/admin/experiment-fields",
+      "/admin/contents",
+      "/admin/contents/news",
+      "/admin/contents/files",
+      "/admin/assistant",
+    ]))
+  })
+
+  /** つまみは区画を並べる。その中まで並べ始めたら、それは地図のほう。 */
+  it("つまみが並べるのは区画だけ", () => {
+    expect(adminDestinations("ja").map((entry) => entry.path)).toEqual([
+      "/admin",
+      "/admin/research",
+      "/admin/experiment-fields",
+      "/admin/contents",
+      "/admin/assistant",
+    ])
   })
 })
 
@@ -45,7 +81,7 @@ describe("現在地", () => {
   })
 
   it("よその区画にいるときは光らない", () => {
-    expect(isHere(research, "/admin/catalog")).toBe(false)
+    expect(isHere(research, "/admin/experiment-fields")).toBe(false)
     expect(isHere(research, "/research/hum0103")).toBe(false)
   })
 
@@ -57,6 +93,6 @@ describe("現在地", () => {
   it("管理トップは自分自身のときだけ光る", () => {
     expect(isHere(overview, "/admin")).toBe(true)
     expect(isHere(overview, "/admin/research")).toBe(false)
-    expect(isHere(overview, "/admin/catalog")).toBe(false)
+    expect(isHere(overview, "/admin/experiment-fields")).toBe(false)
   })
 })

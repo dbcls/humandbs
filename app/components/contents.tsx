@@ -15,7 +15,7 @@ import type { ContentsResult, LocaleEditor } from "~/admin/contents.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Badge } from "./base"
+import { Badge, Confirm } from "./base"
 import { Field, Result, Submit, TextArea } from "./form"
 import { Section } from "./page"
 
@@ -97,12 +97,35 @@ export function LocaleEditors({ editors, locale }: { editors: LocaleEditor[], lo
             </div>
           </Form>
 
+          {/*
+            **Both of these are asked about, and publishing above is not.**
+            Taking a page down removes an address readers hold, and discarding
+            throws away what somebody typed; publishing is undone by the button
+            next to it.
+          */}
           {(editor.published || editor.hasDraft) && (
             <Form method="post" className="flex flex-wrap gap-2">
               <input type="hidden" name="locale" value={editor.locale} />
               <input type="hidden" name="revision" value={editor.revision ?? ""} />
-              {editor.published && <Submit intent="unpublish">{t.unpublish}</Submit>}
-              {editor.hasDraft && <Submit intent="discard-draft">{t.discard}</Submit>}
+              {editor.published && (
+                <Confirm
+                  label={t.unpublish}
+                  warning={t.unpublishWarning}
+                  confirm={t.unpublishConfirm}
+                  cancel={t.cancel}
+                  intent="unpublish"
+                  icon="lock"
+                />
+              )}
+              {editor.hasDraft && (
+                <Confirm
+                  label={t.discard}
+                  warning={t.discardWarning}
+                  confirm={t.discardConfirm}
+                  cancel={t.cancel}
+                  intent="discard-draft"
+                />
+              )}
             </Form>
           )}
         </Section>

@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { Form, Link, useLocation } from "react-router"
 
-import { useCart } from "~/cart/store"
+import { CartMenu } from "~/components/cart"
 import {
   Announcement,
+  Badge,
   LanguagePills,
   Menu,
   MENU_ITEM,
@@ -22,7 +23,8 @@ import {
   navLabel,
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
-import { cartPath, href, normalizeQuery, readLocale } from "~/public/urls"
+import type { AlertView } from "~/public/site.server"
+import { href, normalizeQuery, readLocale } from "~/public/urls"
 
 /**
  * Whether an entry names the page being looked at.
@@ -61,9 +63,19 @@ function NavItemLink({ item, locale, here, className, whenHere }: {
   )
 }
 
-/** How an entry in the top bar is drawn. */
+/**
+ * How an entry in the top bar is drawn.
+ *
+ * **It stands `tap` tall rather than as tall as its own words.** Everything
+ * else in the row — the language pills, the cart, the account — is 36px, while
+ * a word on a 22.4px line with 8px above and below comes to 38.4 and was the
+ * tallest thing in the bar. The navigation is not drawn on a management screen,
+ * so the bar was 2.4px shorter there and the wordmark, its name and the
+ * controls all sat 1.2px higher: one header, two heights. The pressable area is
+ * the same 36px either way.
+ */
 const NAV_ITEM
-  = "block whitespace-nowrap px-2 py-2 font-medium text-ink text-sm no-underline hover:text-brand"
+  = "flex h-tap items-center whitespace-nowrap px-2 font-medium text-ink text-sm no-underline hover:text-brand"
 
 /**
  * The same entry when the reader is on it. Heavier and in the brand colour, so
@@ -72,12 +84,26 @@ const NAV_ITEM
  * property are settled by the order the styles happen to be in.
  */
 const NAV_ITEM_HERE
-  = "block whitespace-nowrap px-2 py-2 font-bold text-brand text-sm no-underline"
+  = "flex h-tap items-center whitespace-nowrap px-2 font-bold text-brand text-sm no-underline"
 
 /** What the header knows about the person asking. Never their capabilities. */
 export interface Account {
   name: string
   isAdmin: boolean
+}
+
+/**
+ * The letter a signed-in account is drawn by.
+ *
+ * The name is Keycloak's `preferred_username`, which is never empty — it falls
+ * back to the subject — so there is always a first character to take. It is
+ * upper-cased because a circle holding one glyph reads as a monogram, and a
+ * lower-case one reads as a typo.
+ */
+function initialOf(name: string): string {
+  // By code point, so that a name beginning outside the BMP is one letter here
+  // rather than half of one.
+  return Array.from(name.trim())[0]?.toUpperCase() ?? "?"
 }
 
 /**
@@ -88,9 +114,17 @@ export interface Account {
  * data instead of following it. Signing out is a POST, so that neither a link
  * nor an image somebody else placed can end a session.
  *
- * Once signed in the circle becomes a menu: a name, the way to the admin
- * screens, and the way out. Those three would take more room across the top bar
- * than they are worth, and none of them is wanted often.
+ * Once signed in the circle becomes a menu: who is signed in, the way to the
+ * management screens, and the way out. Those three would take more room across
+ * the top bar than they are worth, and none of them is wanted often.
+ *
+ * **Signed in, the circle is filled and holds the account's own initial.** It
+ * was a hamburger — the same glyph the navigation's overflow menu carries two
+ * controls away, drawn in the same outlined circle as the cart, so the one
+ * thing in the bar that is about the reader personally looked like a third way
+ * to reach a page. A letter cannot be mistaken for a set of destinations, and
+ * the fill is what says the state at a glance: nothing else in the bar is
+ * filled while nobody is signed in.
  */
 function AccountControl({ account, locale }: { account: Account | null, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -114,8 +148,21 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
   }
 
   return (
-    <Menu label={messages.account.menu} icon="menu" round>
-      <span className="border-line border-b px-4 py-2 text-ink-muted text-sm">{account.name}</span>
+    <Menu
+      // The name is in the control's own name as well as under it: the circle
+      // says a letter, and a letter is not who you are signed in as.
+      label={messages.account.menuAs(account.name)}
+      glyph={<span className="font-semibold text-sm">{initialOf(account.name)}</span>}
+      round
+      filled
+    >
+      {/* **Who, said in words at the head of the panel.** The circle says that
+          somebody is signed in; only this says which account, which is the
+          question anybody who shares a terminal is opening the menu to ask. */}
+      <span className="border-line border-b px-4 py-2 text-sm">
+        <span className="block text-ink-muted text-xs">{messages.account.signedInAs}</span>
+        {account.name}
+      </span>
       {account.isAdmin && (
         <Link
           to={href(locale, "/admin")}
@@ -146,14 +193,16 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
  *
  * They are stacked rather than folded into one: each is a separate thing the
  * office needs read, and there are two or three of them at a time. Closing one
- * is remembered for as long as the page is open (`Announcement`), which is why
- * this holds the state rather than the notice itself.
+ * is remembered for as long as the reader stays on the page they closed it on,
+ * which is why this holds the state rather than the notice itself. Reaching
+ * another page raises them all again: a notice nobody has read is worth more
+ * than the quiet of having dismissed it once.
  */
-export function Announcements({ alerts, locale }: { alerts: string[], locale: Locale }) {
+export function Announcements({ alerts, locale }: { alerts: AlertView[], locale: Locale }) {
   const messages = messagesFor(locale)
   const [dismissed, setDismissed] = useState<number[]>([])
   const showing = alerts
-    .map((html, index) => ({ html, index }))
+    .map((one, index) => ({ ...one, index }))
     .filter(({ index }) => !dismissed.includes(index))
 
   if (showing.length === 0) return null
@@ -167,12 +216,18 @@ export function Announcements({ alerts, locale }: { alerts: string[], locale: Lo
       className="w-full px-4 pt-4 sm:px-page-gutter"
     >
       <Stack gap="tight">
-        {showing.map(({ html, index }) => (
+        {showing.map(({ html, untranslated, index }) => (
           <Announcement
             key={index}
             dismiss={messages.dismissAnnouncement}
             onDismiss={() => { setDismissed((was) => [...was, index]) }}
           >
+            {/* Which language this is in, where it is not the reader's. It
+                stands above the words rather than after them: a reader who
+                cannot read them should not have to reach the end first. */}
+            {untranslated && (
+              <p className="mb-1"><Badge tone="muted">{messages.otherLanguageOnly}</Badge></p>
+            )}
             <Markdown html={html} />
           </Announcement>
         ))}
@@ -210,7 +265,6 @@ export function SiteHeader({ locale, account, managing = false }: {
   const messages = messagesFor(locale)
   const location = useLocation()
   const { path } = readLocale(location.pathname)
-  const cart = useCart()
 
   // No rule along the bottom of the bar: it is white and the page under it is
   // a tint, so where one stops is already drawn. A line there is a third edge
@@ -348,29 +402,11 @@ export function SiteHeader({ locale, account, managing = false }: {
             }))}
           />
           {/*
-            The address carries what the cart holds, so that following it lands
-            on the rows rather than on an empty cart that fills in a moment
-            later. The count is in the name as well as on the glyph: a label
-            replaces what is inside a link, so a number left in the markup alone
-            would be read by nobody who cannot see it.
-          */}
-          {/*
             **Not on a management screen.** The cart is a reader collecting
             datasets to ask for, which is not what somebody editing them is
             doing; it would sit there holding nothing on all eighteen of them.
           */}
-          {!managing && (
-            <RoundLink
-              to={cart.ids.length === 0
-                ? href(locale, cartPath())
-                : `${href(locale, cartPath())}?${new URLSearchParams({ ids: cart.ids.join(",") }).toString()}`}
-              name="cart"
-              label={cart.ids.length === 0
-                ? messages.cart.open
-                : messages.cart.openWithCount(cart.ids.length)}
-              count={cart.ids.length}
-            />
-          )}
+          {!managing && <CartMenu locale={locale} />}
           <AccountControl account={account} locale={locale} />
         </div>
       </div>

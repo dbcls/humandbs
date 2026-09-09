@@ -16,7 +16,7 @@ import {
 } from "./query.server"
 
 /**
- * These run against the development database, so they need `docker compose up`.
+ * These run against the test database, so they need `docker compose up`.
  */
 const db = getDb()
 

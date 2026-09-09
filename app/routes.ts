@@ -1,6 +1,12 @@
 import { type RouteConfig, index, layout, prefix, route } from "@react-router/dev/routes"
 
-import { API_ENDPOINTS, OPENAPI_FILE, OPENAPI_PATH } from "./api/endpoints"
+import {
+  API_ENDPOINTS,
+  DOCS_FILE,
+  DOCS_PATH,
+  OPENAPI_FILE,
+  OPENAPI_PATH,
+} from "./api/endpoints"
 
 /**
  * The same pages are registered twice, once without a prefix and once under
@@ -36,6 +42,7 @@ function pages(scope: string) {
     route("research/:humId/versions", "routes/research-versions.tsx", { id: `${scope}-versions` }),
     route("research/:humId/:version", "routes/research-version.tsx", { id: `${scope}-version` }),
     route("cart", "routes/cart.tsx", { id: `${scope}-cart` }),
+    route("cart/rows", "routes/cart-rows.ts", { id: `${scope}-cart-rows` }),
     route("dataset", "routes/dataset-list.tsx", { id: `${scope}-dataset-list` }),
     route("dataset/export", "routes/dataset-export.ts", { id: `${scope}-dataset-export` }),
     route("dataset/:datasetId", "routes/dataset.tsx", { id: `${scope}-dataset` }),
@@ -52,11 +59,15 @@ function pages(scope: string) {
      */
     layout("routes/admin-layout.tsx", { id: `${scope}-admin-layout` }, [
       route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
-      route("admin/catalog", "routes/admin-catalog.tsx", { id: `${scope}-admin-catalog` }),
       route(
-        "admin/catalog/vocabulary/:code",
-        "routes/admin-catalog-vocabulary.tsx",
-        { id: `${scope}-admin-catalog-vocabulary` },
+        "admin/experiment-fields",
+        "routes/admin-experiment-fields.tsx",
+        { id: `${scope}-admin-experiment-fields` },
+      ),
+      route(
+        "admin/experiment-fields/:key",
+        "routes/admin-experiment-field-terms.tsx",
+        { id: `${scope}-admin-experiment-field-terms` },
       ),
       route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
       route(
@@ -142,6 +153,11 @@ const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
+  route("admin/research/:researchId/draft/:draftId/page", "routes/admin-draft-page.ts"),
+  route(
+    "admin/research/:researchId/draft/:draftId/dataset/:datasetId/page",
+    "routes/admin-draft-dataset-page.ts",
+  ),
   route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
   route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),
@@ -165,7 +181,8 @@ const auth = [
 ]
 
 /**
- * The JSON API. **The addresses come from `app/api/endpoints.ts`**, which is the
+ * The JSON API, and the page that draws its document. **The addresses come from
+ * `app/api/endpoints.ts`**, which is the
  * same list the OpenAPI document is generated from, so a route and its entry in
  * the document cannot describe different addresses.
  *
@@ -174,6 +191,7 @@ const auth = [
 const api = [
   ...API_ENDPOINTS.map((endpoint) => route(endpoint.path, endpoint.file)),
   route(OPENAPI_PATH, OPENAPI_FILE),
+  route(DOCS_PATH, DOCS_FILE),
 ]
 
 /**

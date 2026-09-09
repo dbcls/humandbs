@@ -38,6 +38,13 @@ const STATES: readonly SlotState[] = ["value", "unknown", "not-applicable"]
  * node so that the field parts stay ignorant of both.
  */
 export interface Marks {
+  /**
+   * The path the field is written at. **It goes onto the markup** so that the
+   * pane beside the form can be told which place the caret is in without every
+   * field having to report it: one listener on the form finds the nearest
+   * element carrying it.
+   */
+  at: string
   changed: boolean
   onTake: (() => void) | null
   problems: FieldProblem[]
@@ -245,7 +252,7 @@ export function PairField({ label, value, multiline, marks, locale, onChange }: 
     marks.problems.filter((problem) => problem.path.endsWith(`.${language}`))
 
   return (
-    <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
       <FieldHead label={label} marks={marks} locale={locale} untranslated={isUntranslated(value)} />
       <div className="grid gap-4 md:grid-cols-2">
         {(["ja", "en"] as const).map((language) => (
@@ -273,7 +280,7 @@ export function SingleField({ label, value, marks, locale, onChange }: {
   onChange: (next: TextInput) => void
 }) {
   return (
-    <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
       <FieldHead label={label} marks={marks} locale={locale} />
       <div className="md:max-w-md">
         <SlotEditor

@@ -1,7 +1,7 @@
 import { Link } from "react-router"
 
 import { Badge, Clamped, Stack } from "~/components/base"
-import { CartToggle } from "~/components/cart"
+import { CartColumnHead, CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -197,19 +197,10 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             ? <Empty>{t.noDatasets}</Empty>
             : (
                 <Table headers={[
-                  ...(cart
-                    ? [
-                        <CartToggle
-                          key="cart"
-                          ids={view.datasets.map((row) => row.label)}
-                          locale={locale}
-                          whole
-                        />,
-                      ]
-                    : []),
+                  ...(cart ? [<CartColumnHead key="cart" locale={locale} />] : []),
                   messages.dataset.datasetId,
-                  messages.dataset.accessType,
                   messages.dataset.typeOfData,
+                  messages.dataset.accessType,
                   messages.dataset.datePublished,
                 ]}
                 >
@@ -226,10 +217,10 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                         <Td className="break-all">
                           {to === null ? name : <Link to={to}>{name}</Link>}
                         </Td>
-                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
                         <Td>
                           {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
                         </Td>
+                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
                         <Td>{row.datePublished}</Td>
                       </tr>
                     )
@@ -246,6 +237,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             humLabel={view.humLabel === "" ? null : view.humLabel}
             rows={view.files.rows}
             total={view.files.total}
+            rangeFrom={view.files.rangeFrom}
+            rangeTo={view.files.rangeTo}
             page={view.files.page}
             pageCount={view.files.pageCount}
             // Only the query string changes, so the same links work from the

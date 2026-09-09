@@ -1,7 +1,8 @@
+import { Fragment, type ReactNode } from "react"
 import { Link } from "react-router"
 
 import { Clamped } from "~/components/base"
-import { CartToggle } from "~/components/cart"
+import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Table, Td, Value } from "~/components/page"
@@ -9,11 +10,39 @@ import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
-import { datasetPath, href, listPath, readLocale, researchPath, searchQuery } from "~/public/urls"
+import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/dataset-list"
 
 const SHOWN_EXPERIMENTS = 3
+
+/**
+ * A dataset label, allowed to wrap only where it is already divided.
+ *
+ * **The column would otherwise be as wide as the longest label in the archive.**
+ * Three quarters of them are ten characters (`JGAD001067`), but the portal's own
+ * run to twenty-six (`hum0014.v2.jsnp.934ctrl.v1`) — a column held open for the
+ * one longest leaves ninety pixels unused on every page that does not hold it,
+ * and the column is frozen, so that width is taken from the table on every
+ * screen.
+ *
+ * **A label that wraps anywhere is a label read wrong**, so the breaks are put
+ * where the label already has them: after each dot, which is where its parts
+ * divide. Nothing else in the cell can break, so a label with no dots keeps the
+ * column open by itself — which is what the ten-character ones do.
+ */
+function wrappable(label: string): ReactNode {
+  const parts = label.split(".")
+  const last = parts.length - 1
+  // The dot stays with the part before it, so a label broken here reads as
+  // `hum0014.v2.` and not as a fragment beginning with punctuation.
+  return parts.map((part, index) => (
+    <Fragment key={index}>
+      {index === last ? part : `${part}.`}
+      {index !== last && <wbr />}
+    </Fragment>
+  ))
+}
 
 /**
  * What a dataset's experiments are called. **The line above the table in the
@@ -59,7 +88,6 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const d = messages.dataset
-  const onThisPage = view.rows.map((row) => row.label)
   // **The column is always the first one**, as it is on the research listing.
   // Most datasets are not applied for at all — the archives' own accessions are
   // open — so on many pages every cell in it is empty; a column that appeared
@@ -67,7 +95,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   // reader to press a mark that was nowhere on the screen, and moved every
   // other column sideways between one page of results and the next.
   const headers = [
-    <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
+    <CartColumnHead key="cart" locale={locale} />,
     d.datasetId,
     messages.research.researchId,
     d.typeOfData,
@@ -76,14 +104,6 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
     d.datePublished,
     d.dateModified,
   ]
-  const otherLink = view.otherCount === null
-    ? undefined
-    : (
-        <Link to={href(locale, listPath("research") + searchQuery({ q: view.query, sort: null, page: 1 }))}>
-          {messages.search.alsoInResearch(view.otherCount)}
-        </Link>
-      )
-
   return (
     <ListingScreen
       view={view}
@@ -98,16 +118,15 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
           panel={view.facets}
         />
       )}
-      other={otherLink}
       empty={view.rows.length === 0}
     >
-      <Table headers={headers}>
+      <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.label}>
-            <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
-            <Td nowrap>
+            <Td stuck={0} narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+            <Td stuck={1} floor="min-w-32">
               <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-              <Link to={href(locale, datasetPath(row.label))}>{row.label}</Link>
+              <Link to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</Link>
             </Td>
             <Td nowrap>
               <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />

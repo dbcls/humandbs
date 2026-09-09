@@ -5,7 +5,7 @@ import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/p
 import { adminDraftPath } from "~/admin/urls"
 import { href } from "~/public/urls"
 
-import { ButtonLink, Fold, Note, PaneHeading, Stack } from "./base"
+import { ButtonLink, Fold, Note, Stack } from "./base"
 import { Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
 import { Card, Empty, Page, PageHead, Section } from "./page"
 import { messagesFor } from "~/i18n/messages"
@@ -39,17 +39,9 @@ export function PublishConfirmation({ view, result }: {
 
   return (
     <Page>
-      <PageHead label={view.humLabel ?? messages.admin.detail.heading}>
-        <Link
-          to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-          className="text-white"
-        >
-          {t.backToDraft}
-        </Link>
-      </PageHead>
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
       <Card>
         <Stack gap="block">
-          <PaneHeading title={t.heading} />
 
           {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
           {actionData?.status === "gone" && <Result ok={false}>{t.gone}</Result>}

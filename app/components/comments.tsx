@@ -17,7 +17,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { useFetcher, useLocation } from "react-router"
 
-import { Badge, Button, Stack } from "~/components/base"
+import { Badge, Button, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { AnchorSubject } from "~/review/anchors"
@@ -173,7 +173,7 @@ export function CommentSpot({ context, at, threads }: {
           ))}
           <CommentForm context={context} at={at} fetcher={fetcher} intent="comment" />
           {answer?.status === "invalid" && (
-            <p className="text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
+            <Note kind="danger" live>{problemText(context.locale, answer.problem)}</Note>
           )}
         </Stack>
       </div>
@@ -307,10 +307,12 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
           aria-label={t.body}
           className={`${CONTROL} text-sm`}
         />
-        <div>
-          <Button type="submit" size="xs" disabled={busy}>
-            {busy ? t.posting : t.post}
-          </Button>
+        {/* **The button keeps its name while it works.** What it is doing is
+            said beside it, where assistive tech hears it as news rather than as
+            the control changing identity (`docs/ui.md` の「壊れるもの」). */}
+        <div className="flex items-center gap-2">
+          <Button type="submit" size="xs" disabled={busy}>{t.post}</Button>
+          <span role="status" className="text-ink-muted text-xs">{busy ? t.posting : ""}</span>
         </div>
       </Stack>
     </fetcher.Form>
