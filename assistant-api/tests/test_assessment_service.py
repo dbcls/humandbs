@@ -1,5 +1,47 @@
 from src.models import ApplicationVerificationData
+from src.services import assessment_service
 from src.services.assessment_service import assessment_data
+
+
+def _dataset_analysis(dataset_id: str = "JGAD000001") -> dict:
+    return {
+        "id": dataset_id,
+        "found_in_database": True,
+        "icd10_code_list": [],
+        "purpose_similarity_icd10": None,
+        "paper_similarity": "✗",
+        "paper_similarity_reason": "",
+        "paper_similarity_icd10": None,
+        "analysis_method_similarity": "✗",
+        "analysis_method_similarity_reason": "",
+        "analysis_method_list": [],
+        "url": "",
+        "dataset_api_retrieval_result": {
+            "study_id_list": [],
+            "hum_id": "hum0001",
+            "info_dict": {},
+        },
+    }
+
+
+def test_dataset_url_uses_public_web_origin(monkeypatch) -> None:
+    monkeypatch.setattr(assessment_service, "humandbs_web_base_url", "https://public.example")
+
+    result = assessment_service.template_parameters({"dataset_analysis_list": [_dataset_analysis()]})
+
+    assert result["dataset_analysis_list"][0].url == "https://public.example/hum0001#:~:text=JGAD000001"
+
+
+async def test_handout_uses_public_web_origin(monkeypatch) -> None:
+    monkeypatch.setattr(assessment_service, "humandbs_web_base_url", "https://public.example")
+    application_data = {
+        "dataset_info_list": [{"dataset_id": "JGAD000001", "purpose": "research"}],
+        "dataset_analysis_list": [_dataset_analysis()],
+    }
+
+    handout = await assessment_service.create_handout(application_data)
+
+    assert "https://public.example/hum0001" in handout
 
 
 def test_produced_application_preserves_populated_icd10_list_through_assessment_data() -> None:

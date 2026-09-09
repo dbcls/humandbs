@@ -32,7 +32,7 @@ def _html_to_markdown(html: str) -> str:
     return converter.handle(html)
 
 
-def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
+def resolve_runtime_path(path_value: str, default_relative: str) -> Path:
     raw_path = path_value.strip() if path_value else default_relative
     path = Path(raw_path)
     if not path.is_absolute():
@@ -40,16 +40,16 @@ def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
     return path
 
 
-WORK_DIR = _resolve_runtime_path(os.environ.get("WORK_DIR", "work"), "work")
+WORK_DIR = resolve_runtime_path(os.environ.get("WORK_DIR", "work"), "work")
 UPLOADS_DIR = WORK_DIR / "uploads"
 RESULTS_DIR = WORK_DIR / "results"
 LOGS_DIR = WORK_DIR / "logs"
 
-TEMPLATE_DIR = _resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
-DATA_DIR = _resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
+TEMPLATE_DIR = resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
+DATA_DIR = resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
 ICD10_MAPPING_PATH = DATA_DIR / "icd10_jp_mapping.json"
 
-_PLAYWRIGHT_CACHE_DIR = _resolve_runtime_path(
+_PLAYWRIGHT_CACHE_DIR = resolve_runtime_path(
     os.environ.get("PLAYWRIGHT_CACHE_DIR", str(WORK_DIR / ".cache" / "playwright")),
     str(WORK_DIR / ".cache" / "playwright"),
 )
@@ -96,7 +96,12 @@ def _load_icd10_descriptions() -> dict[str, str]:
         return {}
 
 
-humandbs_web_base_url = os.environ.get("HUMANDBS_API_ORIGIN", "https://humandbs.dbcls.jp/").rstrip("/")
+def get_humandbs_web_origin() -> str:
+    origin = os.environ.get("HUMANDBS_WEB_ORIGIN") or "https://humandbs.dbcls.jp/"
+    return origin.rstrip("/")
+
+
+humandbs_web_base_url = get_humandbs_web_origin()
 
 
 async def extract_text_from_pdf(file_path: str, task_id: str = None) -> str:

@@ -85,8 +85,9 @@ async def get_dataset_info(dataset_id: str) -> DatasetAPIRetrievalResult | None:
     # v2: research / v1: humId
     hum_id = str(api_data.get("research") or api_data.get("humId") or "")
     if not hum_id:
-        logger.warning(f"humId/research not found in HumandBS response for dataset ID {dataset_id}")
+        logger.warning(f"humId/research not found in HumanDBs response for dataset ID {dataset_id}")
     if not api_data:
+        logger.warning(f"No data found in HumanDBs response for dataset ID {dataset_id}")
         return None
 
     # Extract info_dict from v2 values[] (preferred) or v1 experiments.data (fallback).
@@ -202,6 +203,7 @@ async def analyze_dataset(
     dataset_info = await get_dataset_info(dataset_id)
 
     if not dataset_info:
+        logger.warning(f"Dataset information not found for dataset ID {dataset_id}")
         return DatasetAnalysisResult(
             id=dataset_id,
             found_in_database=False,

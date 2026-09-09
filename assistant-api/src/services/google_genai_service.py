@@ -228,8 +228,7 @@ async def request_google_genai_api_with_grounding(
 
     # キャッシュにない場合は、APIを呼び出す
     if response is None:
-        response = await asyncio.to_thread(
-            client.models.generate_content,
+        response = await client.aio.models.generate_content(
             model=model,
             contents=contents,
             config=generate_content_config,
@@ -295,8 +294,7 @@ async def query_genai(
 
     if response is None:
         client = _build_genai_client()
-        response = await asyncio.to_thread(
-            client.models.generate_content,
+        response = await client.aio.models.generate_content(
             model=model,
             contents=contents,
             config=config,
@@ -331,8 +329,7 @@ async def extract_structured_output(
         response = _get_cached_response(cache_key)
         if response is None:
             client = _build_genai_client()
-            response = await asyncio.to_thread(
-                client.models.generate_content,
+            response = await client.aio.models.generate_content(
                 model=model,
                 contents=contents,
                 config=config,

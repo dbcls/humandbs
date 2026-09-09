@@ -1572,24 +1572,14 @@ export function Datasets({
                     applicationMethod={applicationMethod}
                     paperMethods={paperMethods}
                     abstractIcd10={abstractIcd10}
+                    policyTexts={policyGroups
+                      .filter((policy) => policy.dataset_ids.includes(dataset.id))
+                      .map((policy) => policy.policy_text)}
                     words={words}
                   />
                 ))}
               </>
             )}
-        {policyGroups.length > 0 && (
-          <div>
-            <h3 className="mb-2 font-semibold text-sm">{words.policies}</h3>
-            {policyGroups.map((policy) => (
-              <Fold
-                key={`${policy.dataset_ids.join(",")}-${policy.policy_text}`}
-                summary={policy.dataset_ids.join(", ")}
-              >
-                <p className="whitespace-pre-wrap text-sm">{policy.policy_text}</p>
-              </Fold>
-            ))}
-          </div>
-        )}
       </Stack>
     </Section>
   )
@@ -2341,6 +2331,7 @@ function DatasetDetails({
   applicationMethod,
   paperMethods,
   abstractIcd10,
+  policyTexts,
   words,
 }: {
   dataset: DatasetAnalysis
@@ -2348,10 +2339,11 @@ function DatasetDetails({
   applicationMethod: string | null | undefined
   paperMethods: string[] | null | undefined
   abstractIcd10: string[] | null | undefined
+  policyTexts: string[]
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
 }) {
   return (
-    <Fold summary={`${words.datasetId}: ${dataset.id}`}>
+    <Fold summary={`${words.datasetId}: ${dataset.id}`} open>
       <Pairs>
         <KeyValue title={words.requestedPurpose}>
           {display(requestedPurpose, words)}
@@ -2381,6 +2373,15 @@ function DatasetDetails({
           {dataset.paper_similarity && ` — ${dataset.paper_similarity}`}
           {dataset.paper_similarity_reason
             && `: ${dataset.paper_similarity_reason}`}
+        </KeyValue>
+        <KeyValue title={words.policies}>
+          {policyTexts.length === 0
+            ? words.missing
+            : policyTexts.map((policyText, index) => (
+                <p key={`${policyText}-${index}`} className="whitespace-pre-wrap">
+                  {policyText}
+                </p>
+              ))}
         </KeyValue>
       </Pairs>
     </Fold>

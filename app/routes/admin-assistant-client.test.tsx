@@ -299,18 +299,20 @@ describe("アシスタントレポートのレイアウト", () => {
     expect(html).toContain("class=\"text-danger\">NG</span>")
   })
 
-  it("取得できた個別の制限事項はそのまま表示する", () => {
+  it("データセットごとの制限事項を詳細内で個別に表示する", () => {
     const html = renderReport({
       dataset_analysis_list: [
         { id: "JGAD000001", found_in_database: true },
+        { id: "JGAD000002", found_in_database: true },
       ],
-      dataset_policy_groups: [{
-        dataset_ids: ["JGAD000001"],
-        policy_text: "個別の利用条件",
-      }],
+      dataset_policy_groups: [
+        { dataset_ids: ["JGAD000001"], policy_text: "データセット 1 の制限" },
+        { dataset_ids: ["JGAD000002"], policy_text: "データセット 2 の制限" },
+      ],
     })
 
-    expect(html).toContain("個別の利用条件")
+    expect(html).toMatch(/データセット ID: JGAD000001.*データセット 1 の制限/)
+    expect(html).toMatch(/データセット ID: JGAD000002.*データセット 2 の制限/)
     expect(html).not.toContain("href=\"/policy-companylimitation\"")
   })
 })

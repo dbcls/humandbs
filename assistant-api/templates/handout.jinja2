@@ -22,8 +22,8 @@
 （データセット{{ ds.dataset_id }}の情報取得失敗）
 {% else %}
 ◆{{ ds.dataset_id }}
-{{ humandbs_web_base_url }}/{{ analysis.dataset_api_retrieval_result.hum_id }}
 {%- if analysis.dataset_api_retrieval_result.study_id_list and analysis.dataset_api_retrieval_result.study_id_list | length > 0 %}
+{{ humandbs_web_base_url }}/{{ analysis.dataset_api_retrieval_result.hum_id }}
 ・{{ analysis.dataset_api_retrieval_result.study_id_list | join(' / ') }}
 {%- else %}
 ・JGAS番号取得失敗

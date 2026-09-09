@@ -209,58 +209,6 @@ async def verify_email_domain_with_vertex_ai(
     return result.is_related, evidence_url, result.reason
 
 
-async def verify_email_domain_with_web_search(
-    email: str, organization_name_en: str, organization_name_jp: str, logger=None
-) -> tuple[bool, str | None, str]:
-    """
-    Args:
-        email (str): 検証するメールアドレス
-        organization_name_en (str): 研究者の所属機関の英語名
-        organization_name_jp (str): 研究者の所属機関の日本語名
-        logger: ログ記録用のロガーオブジェクト (省略可能)
-
-    Returns:
-        Tuple[bool, Optional[str], str]: (検証結果, 証拠URL, 詳細メッセージ)
-    """
-    if not logger:
-        logger = logging.getLogger("app")
-
-    # メールアドレスからドメイン部分を抽出
-    domain = email.split("@")[-1]
-    if not domain or "." not in domain:
-        return False, None, f"無効なメールドメインです: {domain}"
-
-    logger.info(f"Verifying email domain: {domain}")
-
-    query = organization_name_jp if organization_name_jp else organization_name_en
-
-    logger.info(f"Search query for organization: {query}")
-
-    search_result = get_search_response(query, num_results=5, preferred_domain=domain)
-    if search_result is None:
-        logger.error("Failed to fetch search results")
-        return False, None, "検索結果の取得に失敗しました"
-
-    logger.info(f"Search results for organization: {len(search_result)} results found")
-
-    found_domains = set()
-    for result in search_result:
-        if not result:
-            continue
-        url = result.get("link")
-        logger.info(f"Checking URL: {url}")
-        domain_in_url = re.search(r"https?://([^/]+)", url)
-        if domain_in_url:
-            domain_in_url = domain_in_url.group(1).lower()
-            if domain_in_url.startswith("www."):
-                domain_in_url = domain_in_url[4:]
-            if domain_matches(domain, domain_in_url):
-                return True, url, f"{domain} と一致するドメインが検索結果に見つかりました: {domain_in_url}"
-        found_domains.add(domain_in_url)
-    logger.warning(f"No official page found for domain {domain} in the search results")
-    return False, None, f"{domain} を含むWebページが見つかりませんでした。検索結果: {', '.join(found_domains)}"
-
-
 async def search_email_evidence(email: str, logger=None) -> tuple[bool, str | None, str]:
     """
     メールアドレスの証拠をウェブ検索で探します。
@@ -281,7 +229,7 @@ async def search_email_evidence(email: str, logger=None) -> tuple[bool, str | No
     email_domain = email.split("@")[1] if "@" in email else None
     preferred_domain = email_domain
 
-    search_result = get_search_response(f'"{email}"', num_results=5, preferred_domain=preferred_domain)
+    search_result = await get_search_response(f'"{email}"', num_results=5, preferred_domain=preferred_domain)
     email_local_part = email.split("@")[0]
 
     if search_result is None:
