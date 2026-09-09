@@ -1,5 +1,4 @@
 import logging
-import os
 
 from src.models import DatasetAnalysisResult, ResearchAbstractTranslation, ResearchInfo
 from src.utils import add_text_fragment_to_url, humandbs_web_base_url, icd10_display_text, jinja_env

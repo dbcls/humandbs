@@ -51,6 +51,7 @@ describe("the palette", () => {
       "accent-light",
       "accent-lighter",
       "brand",
+      "brand-dark",
       "brand-light",
       "brand-lighter",
       "danger",
@@ -63,6 +64,7 @@ describe("the palette", () => {
       "surface",
       "surface-hover",
       "surface-input",
+      "surface-light",
       "visited",
       "warning",
       "warning-surface",
@@ -72,6 +74,7 @@ describe("the palette", () => {
   describe("carries white text", () => {
     it.each([
       ["brand", TEXT],
+      ["brand-dark", TEXT],
       ["brand-light", TEXT],
       ["deep", TEXT],
       ["ink-muted", TEXT],

@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { data, Form, Link } from "react-router"
 
 import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.server"
@@ -9,7 +8,9 @@ import {
   adminUpstreamDatasetPath,
   draftPresencePath,
 } from "~/admin/urls"
+import { Confirm, Stack } from "~/components/base"
 import { PresenceLine } from "~/components/draft-tools"
+import { Submit } from "~/components/form"
 import { Card, Empty, Page, PageHead } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -62,58 +63,54 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
         </Link>
       </PageHead>
       <Card>
-        <PresenceLine
-          locale={locale}
-          path={draftPresencePath(view.researchId, view.draftId)}
-          initial={view.presence}
-        />
+        <Stack gap="normal">
+          <PresenceLine
+            locale={locale}
+            path={draftPresencePath(view.researchId, view.draftId)}
+            initial={view.presence}
+          />
 
-        {actionData?.status === "conflict" && (
-          <p className="mt-3 rounded border border-accent bg-surface px-4 py-2 text-sm">
-            {t.listConflict}
-          </p>
-        )}
-        {actionData?.status === "refused" && (
-          <p className="mt-3 rounded border border-danger bg-surface px-4 py-2 text-sm">
-            {t.deleteRefused}
-          </p>
-        )}
+          {actionData?.status === "conflict" && (
+            <p className="rounded border border-accent bg-surface px-4 py-2 text-sm">
+              {t.listConflict}
+            </p>
+          )}
+          {actionData?.status === "refused" && (
+            <p className="rounded border border-danger bg-surface px-4 py-2 text-sm">
+              {t.deleteRefused}
+            </p>
+          )}
 
-        {view.rows.length === 0
-          ? <Empty>{t.noDatasets}</Empty>
-          : (
-              <ul className="mt-4 flex flex-col gap-2">
-                {view.rows.map((row) => (
-                  <DatasetRow
-                    key={row.id}
-                    row={row}
-                    locale={locale}
-                    researchId={view.researchId}
-                    draftId={view.draftId}
-                    revision={view.revision}
-                  />
-                ))}
-              </ul>
-            )}
+          {view.rows.length === 0
+            ? <Empty>{t.noDatasets}</Empty>
+            : (
+                <Stack gap="normal" as="ul">
+                  {view.rows.map((row) => (
+                    <DatasetRow
+                      key={row.id}
+                      row={row}
+                      locale={locale}
+                      researchId={view.researchId}
+                      draftId={view.draftId}
+                      revision={view.revision}
+                    />
+                  ))}
+                </Stack>
+              )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <Form method="post">
-            <input type="hidden" name="intent" value="create-dataset" />
-            <input type="hidden" name="revision" value={view.revision} />
-            <button
-              type="submit"
-              className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
+          <div className="flex flex-wrap items-center gap-4">
+            <Form method="post">
+              <input type="hidden" name="revision" value={view.revision} />
+              <Submit intent="create-dataset">{t.createDataset}</Submit>
+            </Form>
+            <Link
+              to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
+              className="text-sm"
             >
-              {t.createDataset}
-            </button>
-          </Form>
-          <Link
-            to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
-            className="text-sm"
-          >
-            {messagesFor(locale).admin.templates.openDataset}
-          </Link>
-        </div>
+              {messagesFor(locale).admin.templates.openDataset}
+            </Link>
+          </div>
+        </Stack>
       </Card>
     </Page>
   )
@@ -127,7 +124,6 @@ function DatasetRow({ row, locale, researchId, draftId, revision }: {
   revision: number
 }) {
   const t = messagesFor(locale).admin.draft
-  const [confirming, setConfirming] = useState(false)
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded border border-line px-4 py-2 text-sm">
@@ -142,34 +138,18 @@ function DatasetRow({ row, locale, researchId, draftId, revision }: {
       {row.edited && <Mark>{t.edited}</Mark>}
       {row.isOwn && <Mark>{t.own}</Mark>}
       {row.isOwn && !row.published && (
-        confirming
-          ? (
-              <Form method="post" className="flex items-center gap-2">
-                <input type="hidden" name="intent" value="delete-dataset" />
-                <input type="hidden" name="datasetId" value={row.id} />
-                <input type="hidden" name="revision" value={revision} />
-                <span className="text-danger text-xs">{t.deleteWarning}</span>
-                <button type="submit" className="cursor-pointer text-danger text-xs underline">
-                  {t.deleteConfirm}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setConfirming(false) }}
-                  className="cursor-pointer text-ink-muted text-xs underline"
-                >
-                  {messagesFor(locale).admin.detail.cancel}
-                </button>
-              </Form>
-            )
-          : (
-              <button
-                type="button"
-                onClick={() => { setConfirming(true) }}
-                className="cursor-pointer text-ink-muted text-xs underline"
-              >
-                {t.deleteDataset}
-              </button>
-            )
+        <Form method="post">
+          <Confirm
+            label={t.deleteDataset}
+            warning={t.deleteWarning}
+            confirm={t.deleteConfirm}
+            cancel={messagesFor(locale).admin.detail.cancel}
+          >
+            <input type="hidden" name="intent" value="delete-dataset" />
+            <input type="hidden" name="datasetId" value={row.id} />
+            <input type="hidden" name="revision" value={revision} />
+          </Confirm>
+        </Form>
       )}
     </li>
   )

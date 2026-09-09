@@ -1,4 +1,5 @@
 import { requireActor } from "~/auth/actor.server"
+import { Badge, Stack } from "~/components/base"
 import { Card, Empty, KeyValue, Page, PageHead, Section, Table, Td } from "~/components/page"
 import { getDb } from "~/db/client.server"
 import { messagesFor } from "~/i18n/messages"
@@ -52,46 +53,43 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
     <Page>
       <PageHead label={messages.admin.heading} />
       <Card>
-        <dl>
-          <KeyValue title={messages.admin.signedInAs}>{name}</KeyValue>
-          <KeyValue title={messages.admin.subject}>
-            <code className="text-sm">{sub}</code>
-          </KeyValue>
-          <KeyValue title={messages.admin.capabilities}>
-            {capabilities.length === 0
-              ? <Empty>{messages.admin.notAdmin}</Empty>
-              : (
-                  <ul className="flex flex-wrap gap-2">
-                    {capabilities.map((capability) => (
-                      <li
-                        key={capability}
-                        className="rounded border border-line px-2 py-0.5 text-ink-muted text-xs"
-                      >
-                        {capability}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-          </KeyValue>
-        </dl>
+        <Stack gap="block">
+          <dl>
+            <KeyValue title={messages.admin.signedInAs}>{name}</KeyValue>
+            <KeyValue title={messages.admin.subject}>
+              <code className="text-sm">{sub}</code>
+            </KeyValue>
+            <KeyValue title={messages.admin.capabilities}>
+              {capabilities.length === 0
+                ? <Empty>{messages.admin.notAdmin}</Empty>
+                : (
+                    <ul className="flex flex-wrap gap-2">
+                      {capabilities.map((capability) => (
+                        <li key={capability}><Badge tone="muted">{capability}</Badge></li>
+                      ))}
+                    </ul>
+                  )}
+            </KeyValue>
+          </dl>
 
-        {upstream !== null && (
-          <Section title={words.heading}>
-            <Table headers={[words.source, words.lastSuccess, words.rows, words.state]}>
-              {upstream.map((row) => (
-                <tr key={row.source}>
-                  <Td>{words.sources[row.source]}</Td>
-                  <Td className="text-nowrap">{row.succeededAt?.slice(0, 10) ?? "—"}</Td>
-                  <Td className="text-nowrap">{row.rowCount ?? "—"}</Td>
-                  <Td>
-                    {row.failure ?? (row.succeededAt === null ? words.never : words.ok)}
-                  </Td>
-                </tr>
-              ))}
-            </Table>
-            <Empty>{words.note}</Empty>
-          </Section>
-        )}
+          {upstream !== null && (
+            <Section title={words.heading}>
+              <Table headers={[words.source, words.lastSuccess, words.rows, words.state]}>
+                {upstream.map((row) => (
+                  <tr key={row.source}>
+                    <Td>{words.sources[row.source]}</Td>
+                    <Td nowrap>{row.succeededAt?.slice(0, 10) ?? "—"}</Td>
+                    <Td nowrap>{row.rowCount ?? "—"}</Td>
+                    <Td>
+                      {row.failure ?? (row.succeededAt === null ? words.never : words.ok)}
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+              <Empty>{words.note}</Empty>
+            </Section>
+          )}
+        </Stack>
       </Card>
     </Page>
   )

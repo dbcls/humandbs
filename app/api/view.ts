@@ -141,10 +141,21 @@ function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null |
   return terms.length === 0 ? undefined : terms
 }
 
-function numberOf(slot: Slot<NumberValue>): ApiNumber | null | undefined {
+/**
+ * **A list, because a key holds a list** (`app/content/types.ts`). What each
+ * entry is about and what qualifies it travel with it: a client that only wants
+ * the number can read `value`, and one that wants to say which number it was
+ * has the label without parsing prose.
+ */
+function numberOf(slot: Slot<NumberValue[]>): ApiNumber[] | null | undefined {
   if (slot.state === "not-applicable") return null
   if (slot.state === "unknown") return undefined
-  return { value: slot.value.value, unit: slot.value.unit }
+  return slot.value.map((one) => ({
+    value: one.value,
+    unit: one.unit,
+    ...(one.label === null ? {} : { label: one.label }),
+    ...(one.note === null ? {} : { note: one.note }),
+  }))
 }
 
 function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
@@ -171,8 +182,8 @@ function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
       return terms === undefined ? undefined : { ...head, type: "vocabulary", terms }
     }
     case "number": {
-      const number = numberOf(value.value)
-      return number === undefined ? undefined : { ...head, type: "number", number }
+      const numbers = numberOf(value.values)
+      return numbers === undefined ? undefined : { ...head, type: "number", numbers }
     }
   }
 }
@@ -222,10 +233,10 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
       targets: richOf(input.content.summary.targets),
       url: linksOf(input.content.summary.url),
     },
-    summaryShort: {
-      methods: richOf(input.content.summaryShort.methods),
-      targets: richOf(input.content.summaryShort.targets),
-      typeOfData: richOf(input.content.summaryShort.typeOfData),
+    listingSummary: {
+      methods: richOf(input.content.listingSummary.methods),
+      targets: richOf(input.content.listingSummary.targets),
+      typeOfData: richOf(input.content.listingSummary.typeOfData),
     },
     releaseNote: richOf(input.content.releaseNote),
     dataProviders: input.content.dataProviders.map((provider) => ({

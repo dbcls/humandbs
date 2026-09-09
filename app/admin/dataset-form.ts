@@ -40,6 +40,21 @@ import type { SlotState, TextInput, TextPairInput } from "./form"
 /** The editable kinds. The catalog uses these three and nothing else yet. */
 export type ValueKind = "text" | "vocabulary" | "number"
 
+/**
+ * One number as it is typed: the value and unit as written, and the two words
+ * that say which number it is and what qualifies it.
+ *
+ * **A key holds a row per number** (`app/content/types.ts`), so the editor edits
+ * a list. The label and the note are empty strings rather than nulls because
+ * that is what a text box holds; they become nulls on the way in.
+ */
+export interface NumberRow {
+  label: string
+  value: string
+  unit: string | null
+  note: string
+}
+
 export type ValueBody
   = | { kind: "text", text: TextPairInput }
     | { kind: "vocabulary", state: SlotState, termIds: string[] }
@@ -51,7 +66,7 @@ export type ValueBody
      * because a number that is not there has no representation the way an empty
      * piece of prose does.
      */
-    | { kind: "number", state: SlotState, value: string, unit: string | null }
+    | { kind: "number", state: SlotState, rows: NumberRow[] }
 
 export interface ValueInput {
   keyId: string
@@ -109,14 +124,18 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
         ? { kind: "vocabulary", state: "value", termIds: [...value.termIds.value] }
         : { kind: "vocabulary", state: value.termIds.state, termIds: [] }
     case "number":
-      return value.value.state === "value"
+      return value.values.state === "value"
         ? {
             kind: "number",
             state: "value",
-            value: String(value.value.value.inputValue),
-            unit: value.value.value.inputUnit,
+            rows: value.values.value.map((one) => ({
+              label: one.label ?? "",
+              value: String(one.inputValue),
+              unit: one.inputUnit,
+              note: one.note ?? "",
+            })),
           }
-        : { kind: "number", state: value.value.state, value: "", unit: null }
+        : { kind: "number", state: value.values.state, rows: [] }
     default:
       throw new UneditableValueKind(keyId, value.kind)
   }
@@ -162,6 +181,13 @@ export function emptyValueInput(keyId: string, kind: ValueKind, unit?: string | 
     case "vocabulary":
       return { keyId, value: { kind: "vocabulary", state: "value", termIds: [] } }
     case "number":
-      return { keyId, value: { kind: "number", state: "value", value: "", unit: unit ?? null } }
+      return {
+        keyId,
+        value: { kind: "number", state: "value", rows: [emptyNumberRow(unit ?? null)] },
+      }
   }
+}
+
+export function emptyNumberRow(unit: string | null): NumberRow {
+  return { label: "", value: "", unit, note: "" }
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { pageWindow, Value } from "./page"
+import { pageWindow, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -143,5 +143,37 @@ describe("the pages a listing offers", () => {
     expect(pageWindow(0, 3)).toStrictEqual([1, 2, 3])
     expect(pageWindow(2, 1)).toStrictEqual([1])
     expect(pageWindow(1, 0)).toStrictEqual([])
+  })
+})
+
+function termLabel(label: string, maker: string | null): string {
+  return renderToStaticMarkup(<TermLabel term={{ label, maker }} />)
+}
+
+describe("a vocabulary value naming a product", () => {
+  it("sets the maker apart from the rest", () => {
+    const html = termLabel("Illumina NovaSeq 6000", "Illumina")
+    expect(html).toContain("text-brand")
+    expect(html).toContain("Illumina")
+    expect(html).toContain("NovaSeq 6000")
+  })
+
+  /**
+   * The gap is drawn, but what is copied out of a cell and what a screen reader
+   * says are the text. Without the space they read `IlluminaMiSeq`.
+   */
+  it("keeps a space between the two, not only the room for one", () => {
+    expect(termLabel("Illumina MiSeq", "Illumina")).toContain("Illumina</span> MiSeq")
+  })
+
+  it("draws a value with no maker whole", () => {
+    expect(termLabel("TaqMan SNP Genotyping Assays", null))
+      .toBe("TaqMan SNP Genotyping Assays")
+  })
+
+  it("keeps a multi-word maker together", () => {
+    const html = termLabel("10x Genomics Xenium", "10x Genomics")
+    expect(html).toContain(">10x Genomics</span>")
+    expect(html).toContain("Xenium")
   })
 })

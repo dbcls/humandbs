@@ -28,7 +28,7 @@ import type {
 } from "~/content/types"
 import { convert } from "~/content/units"
 
-import type { DatasetContentInput, ValueBody, ValueInput } from "./dataset-form"
+import type { DatasetContentInput, NumberRow, ValueBody, ValueInput } from "./dataset-form"
 import {
   prosePair,
   slotState,
@@ -48,8 +48,12 @@ const valueBodySchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("number"),
     state: slotState,
-    value: z.string(),
-    unit: z.string().nullable(),
+    rows: z.array(z.object({
+      label: z.string(),
+      value: z.string(),
+      unit: z.string().nullable(),
+      note: z.string(),
+    })),
   }),
 ])
 
@@ -106,15 +110,19 @@ export type DatasetContentResult
  * kept beside it. Null when there is nothing to store — an empty box, or a unit
  * the key cannot convert from, which the catalog has already refused.
  */
-function numberValue(
-  body: Extract<ValueBody, { kind: "number" }>,
-  canonical: string | null,
-): NumberValue | null {
-  const typed = Number(body.value.trim())
-  if (body.value.trim() === "" || !Number.isFinite(typed)) return null
-  const converted = convert(typed, body.unit, canonical)
+function numberValue(row: NumberRow, canonical: string | null): NumberValue | null {
+  const typed = Number(row.value.trim())
+  if (row.value.trim() === "" || !Number.isFinite(typed)) return null
+  const converted = convert(typed, row.unit, canonical)
   if (converted === null) return null
-  return { value: converted, unit: canonical, inputValue: typed, inputUnit: body.unit }
+  return {
+    label: row.label.trim() === "" ? null : row.label.trim(),
+    value: converted,
+    unit: canonical,
+    inputValue: typed,
+    inputUnit: row.unit,
+    note: row.note.trim() === "" ? null : row.note.trim(),
+  }
 }
 
 /** The unit a key stores its numbers in, for the keys that store numbers. */
@@ -136,11 +144,16 @@ function contentValue(
         : { state: body.state },
     }
   }
-  if (body.state !== "value") return { kind: "number", value: { state: body.state } }
-  const held = numberValue(body, units(keyId))
-  // An empty box is not a number. There is no "empty number" to store, so the
-  // slot goes rather than becoming a value nobody can read.
-  return held === null ? null : { kind: "number", value: { state: "value", value: held } }
+  if (body.state !== "value") return { kind: "number", values: { state: body.state } }
+  const canonical = units(keyId)
+  const held = body.rows.flatMap((row) => {
+    const one = numberValue(row, canonical)
+    return one === null ? [] : [one]
+  })
+  // An empty box is not a number. There is no "empty number" to store, so a row
+  // that holds nothing goes, and a key left with no rows at all loses its slot
+  // rather than becoming a value nobody can read.
+  return held.length === 0 ? null : { kind: "number", values: { state: "value", value: held } }
 }
 
 function valueSlot(

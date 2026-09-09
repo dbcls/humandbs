@@ -146,16 +146,20 @@ const CONTACT_US: NavLink = {
  * second way to reach two listings that are in the bar themselves, and a menu
  * that opens on hover is the one control a reader cannot use by looking at it.
  *
- * The order is what a reader comes for: the rules first, then the two listings
- * they search, then the arrangements around them, then help.
+ * **The order is also the order they are given up in**, since the bar keeps as
+ * many as fit from the front. It is v1's, with the two listings placed where v1
+ * folds them — under "data use" — rather than ahead of it.
  */
 export const NAVBAR: NavLink[] = [
   GUIDELINES,
+  DATA_SUBMISSION,
+  DATA_USE,
   RESEARCH_LIST,
   DATASET_LIST,
   DATA_PROCESSING,
   OFF_PREMISE_SERVER,
   DAC,
+  PUBLICATIONS,
   FAQ,
   CONTACT_US,
   VIOLATION,
@@ -171,35 +175,38 @@ export const NAVBAR: NavLink[] = [
  * assembled at runtime, and the two columns are complements — an entry is in
  * the bar exactly when it is not in the menu, so neither list can go missing.
  *
- * **The counts come from measuring the labels**, in both languages, against
- * the room left over once the wordmark, the menu and the controls have taken
- * theirs: 3 at 768, 5 at 1024, 7 at 1280, 8 at 1400, 9 at 1536, and all ten
- * past 1750. Two of the steps are widths Tailwind has no name for, which is
- * what the labels happen to need — the alternative is a bar that leaves 120px
- * of room unused so that the numbers can be round.
+ * **Nothing is behind the menu at every width.** A destination that is in the
+ * menu on a wide screen is one the reader is told to look for while the room
+ * to show it sits empty beside the button.
+ *
+ * **The counts come from measuring the labels**, in both languages, against the
+ * room left over once the wordmark, the menu and the controls have taken
+ * theirs. Some of the steps are widths Tailwind has no name for, which is what
+ * the labels happen to need — the alternative is a bar that leaves a hundred
+ * pixels of room unused so that the numbers can be round.
  */
 export const NAVBAR_STEP: { bar: string, menu: string }[] = [
-  { bar: "hidden md:block", menu: "md:hidden" },
-  { bar: "hidden md:block", menu: "md:hidden" },
+  { bar: "hidden sm:block", menu: "sm:hidden" },
   { bar: "hidden md:block", menu: "md:hidden" },
   { bar: "hidden lg:block", menu: "lg:hidden" },
   { bar: "hidden lg:block", menu: "lg:hidden" },
   { bar: "hidden xl:block", menu: "xl:hidden" },
   { bar: "hidden xl:block", menu: "xl:hidden" },
-  { bar: "hidden min-[1400px]:block", menu: "min-[1400px]:hidden" },
+  { bar: "hidden xl:block", menu: "xl:hidden" },
   { bar: "hidden 2xl:block", menu: "2xl:hidden" },
-  { bar: "hidden min-[1750px]:block", menu: "min-[1750px]:hidden" },
+  { bar: "hidden 2xl:block", menu: "2xl:hidden" },
+  { bar: "hidden min-[1584px]:block", menu: "min-[1584px]:hidden" },
+  { bar: "hidden min-[1680px]:block", menu: "min-[1680px]:hidden" },
+  { bar: "hidden min-[1840px]:block", menu: "min-[1840px]:hidden" },
+  { bar: "hidden min-[1840px]:block", menu: "min-[1840px]:hidden" },
 ]
 
 /**
- * What the menu holds whatever the width is.
- *
- * The two halves of the site have their own screens and the front page leads
- * to both with a button each; in the bar they would take the room two listings
- * need more. Publications is the least often wanted of the destinations. All
- * three are in the sitemap at the foot of every page as well.
+ * **The menu itself goes when the bar holds everything.** A button that opens
+ * on nothing tells the reader to look somewhere for a destination that is
+ * already in front of them, next to the room it would have taken.
  */
-export const NAVBAR_MORE: NavLink[] = [DATA_SUBMISSION, DATA_USE, PUBLICATIONS]
+export const NAVBAR_MENU_STEP = NAVBAR_STEP[NAVBAR_STEP.length - 1]?.menu ?? ""
 
 /**
  * The sitemap at the foot of every page. It repeats the bar and adds what the
@@ -221,7 +228,7 @@ export const FOOTER: NavEntry[] = [
 
 /** Every distinct destination the lists point at, for the reachability test. */
 export function navigationPaths(): string[] {
-  const entries: NavEntry[] = [...NAVBAR, ...NAVBAR_MORE, ...FOOTER]
+  const entries: NavEntry[] = [...NAVBAR, ...FOOTER]
   const paths = entries.flatMap(
     (entry) => [entry.path, ...(entry.children ?? []).map((child) => child.path)],
   )

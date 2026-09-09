@@ -30,7 +30,7 @@ import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
 import { href, readLocale } from "~/public/urls"
 
-import { today } from "./dates"
+import { today } from "~/dates"
 import {
   adminContentsPath,
   adminDocumentPath,
@@ -70,6 +70,7 @@ export type ContentsProblem
     | "reserved-slug"
     | "duplicate-slug"
     | "missing-title"
+    | "missing-translation"
     | "stale"
     | "in-use"
     | "not-a-revision"
@@ -137,7 +138,7 @@ export interface NewsListView {
   locale: Locale
   items: NewsSummary[]
   page: number
-  hasNext: boolean
+  pageCount: number
 }
 
 export interface NewsView {
@@ -353,6 +354,10 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
   const url = new URL(request.url)
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
 
+  const [total] = await db.select({ count: sql<number>`count(*)::int` }).from(news)
+  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / NEWS_PER_PAGE))
+  const at = Math.min(page, pageCount)
+
   // The page is taken from the items and their locales fetched after, rather
   // than from the join: a row per locale would make the page size depend on how
   // many languages each item happens to have.
@@ -361,10 +366,10 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
     .from(news)
     // Undated items are the ones being written, so they sit at the top.
     .orderBy(desc(news.publishedAt), desc(news.id))
-    .limit(NEWS_PER_PAGE + 1)
-    .offset((page - 1) * NEWS_PER_PAGE)
+    .limit(NEWS_PER_PAGE)
+    .offset((at - 1) * NEWS_PER_PAGE)
 
-  const items = new Map<string, NewsSummary>(rows.slice(0, NEWS_PER_PAGE).map((row) => [
+  const items = new Map<string, NewsSummary>(rows.map((row) => [
     row.id,
     { id: row.id, title: "", publishedAt: row.publishedAt, states: emptyStates() },
   ]))
@@ -392,8 +397,8 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
   return {
     locale: readLocale(url.pathname).locale,
     items: [...items.values()],
-    page,
-    hasNext: rows.length > NEWS_PER_PAGE,
+    page: at,
+    pageCount,
   }
 }
 
@@ -637,6 +642,13 @@ async function updateAlert(
     ...checkArticleBody(en).map((problem) => ({ locale: "en" as const, ...problem })),
   ]
   if (problems.length > 0) return { status: "body", problems }
+
+  // **A banner that is up has to be up in both languages.** It stands on every
+  // page of the site, so a reader on the language that is missing is handed a
+  // box they cannot read — and the announcement it holds is the kind that is
+  // worth a banner. Only switching one on is held to this: an announcement can
+  // be written a language at a time while it is off.
+  if (active && (ja === "" || en === "")) return { status: "missing-translation" }
 
   await tx
     .update(alert)

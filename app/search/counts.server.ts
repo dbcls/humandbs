@@ -31,6 +31,7 @@ export interface TermCount {
   code: string
   labelJa: string | null
   labelEn: string
+  maker: string | null
   count: number
 }
 
@@ -63,6 +64,7 @@ interface TermRow extends Record<string, unknown> {
   code: string
   label_ja: string | null
   label_en: string
+  maker: string | null
   n: number
 }
 
@@ -73,6 +75,7 @@ function termCount(row: TermRow): TermCount {
     code: row.code,
     labelJa: row.label_ja,
     labelEn: row.label_en,
+    maker: row.maker,
     count: row.n,
   }
 }
@@ -86,7 +89,7 @@ export async function countTerms(
   if (keyIds.length === 0) return []
   const result = await db.execute<TermRow>(sql`
     WITH ${hitsCte(query)}
-    SELECT f.key_id, root.id AS term_id, root.code, root.label_ja, root.label_en,
+    SELECT f.key_id, root.id AS term_id, root.code, root.label_ja, root.label_en, root.maker,
            count(DISTINCT f.doc_id)::int AS n
     FROM hits h
     JOIN search_facet_term f ON f.doc_id = h.doc_id
@@ -110,7 +113,7 @@ export async function countTermChildren(
   const result = await db.execute<TermRow & { root_id: string }>(sql`
     WITH ${hitsCte(query)}
     SELECT f.key_id, ${ROOT_ID} AS root_id, t.id AS term_id, t.code,
-           t.label_ja, t.label_en, count(DISTINCT f.doc_id)::int AS n
+           t.label_ja, t.label_en, t.maker, count(DISTINCT f.doc_id)::int AS n
     FROM hits h
     JOIN search_facet_term f ON f.doc_id = h.doc_id
     JOIN vocabulary_term t ON t.id = f.term_id
@@ -141,4 +144,42 @@ export async function numberBounds(
     GROUP BY f.key_id
   `)
   return result.rows.map((row) => ({ keyId: row.key_id, min: row.lo, max: row.hi }))
+}
+
+export interface DateBounds {
+  min: string
+  max: string
+}
+
+/**
+ * The first and last day present in the result, for each of the two dates the
+ * panel offers.
+ *
+ * These are columns of the search row rather than rows of a facet table, so the
+ * span comes from the hits themselves and no join is needed. A date the result
+ * never carries comes back null, and the panel then has nothing to suggest —
+ * which is the honest state while the modification dates are still arriving.
+ */
+export async function dateBounds(
+  db: Executor,
+  query: SearchQuery,
+): Promise<{ date_published: DateBounds | null, date_modified: DateBounds | null }> {
+  const result = await db.execute<{
+    pub_lo: string | null
+    pub_hi: string | null
+    mod_lo: string | null
+    mod_hi: string | null
+  }>(sql`
+    WITH ${hitsCte(query)}
+    SELECT min(h.date_published)::text AS pub_lo, max(h.date_published)::text AS pub_hi,
+           min(h.date_modified)::text AS mod_lo, max(h.date_modified)::text AS mod_hi
+    FROM hits h
+  `)
+  const [row] = result.rows
+  const span = (lo: string | null | undefined, hi: string | null | undefined): DateBounds | null =>
+    lo == null || hi == null ? null : { min: lo, max: hi }
+  return {
+    date_published: span(row?.pub_lo, row?.pub_hi),
+    date_modified: span(row?.mod_lo, row?.mod_hi),
+  }
 }

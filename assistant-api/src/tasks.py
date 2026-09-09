@@ -12,10 +12,8 @@ from weakref import WeakKeyDictionary
 import yaml  # Added PyYAML for YAML serialization
 
 from src.models import (
-    ApplicationData,
     ApplicationVerificationData,
     EmailDomainConsistencyResult,
-    EthicsDocumentInfo,
     PaperInfo,
     ResearchAbstractSentencePair,
     ResearchAbstractTranslation,

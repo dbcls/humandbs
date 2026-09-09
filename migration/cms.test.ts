@@ -131,14 +131,43 @@ describe("news の組み立て", () => {
 })
 
 describe("alert の組み立て", () => {
-  it("翻訳が対にまとまり、無い側は空になる", () => {
+  const half = (enabled: boolean) => [{
+    id: "1",
+    enabled,
+    translations: [{ locale: "ja", content: "<p>お知らせ</p>" }],
+  }]
+
+  it("翻訳が対にまとまる", () => {
     const [alert] = buildAlerts([{
       id: "1",
       enabled: true,
-      translations: [{ locale: "ja", content: "<p>お知らせ</p>" }],
+      translations: [
+        { locale: "ja", content: "<p>お知らせ</p>" },
+        { locale: "en", content: "<p>notice</p>" },
+      ],
     }])
-    expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "" })
+    expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "notice" })
     expect(alert?.active).toBe(true)
+  })
+
+  it("立っていないものは、片方だけでもそのまま入る", () => {
+    const [alert] = buildAlerts(half(false))
+    expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "" })
+    expect(alert?.active).toBe(false)
+  })
+
+  it("手で書いた訳が、空いている側を埋める", () => {
+    const [alert] = buildAlerts(half(true), [{ ja: "お知らせ", en: "notice", why: "" }])
+    expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "notice" })
+  })
+
+  it("引き当てるのは、持っている側の文そのもの", () => {
+    expect(() => buildAlerts(half(true), [{ ja: "別のお知らせ", en: "notice", why: "" }]))
+      .toThrow(/no en text/)
+  })
+
+  it("立っているのに訳が無ければ、移行が止まる", () => {
+    expect(() => buildAlerts(half(true))).toThrow(/no en text/)
   })
 
   it("enabled が NULL のものは無効として入る", () => {

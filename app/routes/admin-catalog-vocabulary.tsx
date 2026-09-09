@@ -2,9 +2,10 @@ import { Form, Link } from "react-router"
 
 import { catalogAction, vocabularyPage, type TermRow } from "~/admin/catalog.server"
 import { adminCatalogPath, adminVocabularyPath } from "~/admin/urls"
-import { Badge } from "~/components/base"
+import { Badge, Button, Fold, Stack } from "~/components/base"
 import { Field, Result, Submit } from "~/components/form"
-import { Card, Page, PageHead, PageLinks, Section } from "~/components/page"
+import { Card, Empty, Page, PageHead, PageLinks, Section } from "~/components/page"
+import { SearchBox } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -54,102 +55,99 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
         <Link to={href(locale, adminCatalogPath())} className="text-white">{t.heading}</Link>
       </PageHead>
       <Card>
-        {actionData !== undefined && (
-          <Result ok={actionData.status === "ok"}>
-            {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
-          </Result>
-        )}
-
-        <p className="mb-4 flex flex-wrap items-baseline gap-3 text-sm">
-          <code>{set.code}</code>
-          {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
-          <span className="text-ink-muted">{t.termCount(set.terms)}</span>
-        </p>
-
-        <form method="get" className="mb-4 flex gap-2">
-          <input
-            type="search"
-            name="find"
-            defaultValue={view.find}
-            aria-label={t.find}
-            placeholder={t.find}
-            className="w-72 rounded border border-line bg-surface-input px-2 py-1 text-sm"
-          />
-          <Submit>{t.find}</Submit>
-        </form>
-
-        <ul className="flex flex-col divide-y divide-line border-line border-y">
-          {view.terms.map((term) => (
-            <Term key={term.id} term={term} locale={locale} />
-          ))}
-        </ul>
-        <PageLinks
-          label={messages.search.pagination}
-          page={view.page}
-          pageCount={view.pageCount}
-          at={(to) => href(
-            locale,
-            `${adminVocabularyPath(set.code)}?${new URLSearchParams({
-              ...(view.find === "" ? {} : { find: view.find }),
-              page: String(to),
-            }).toString()}`,
+        <Stack gap="block">
+          {actionData !== undefined && (
+            <Result ok={actionData.status === "ok"}>
+              {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
+            </Result>
           )}
-          previous={messages.search.previousPage}
-          next={messages.search.nextPage}
-        />
 
-        {view.dictionary !== null && (
-          <Section title={t.dictionary}>
-            <p className="mb-2 text-ink-muted text-sm">{t.dictionaryNote}</p>
-            <form method="get" className="mb-3 flex gap-2">
-              {view.find !== "" && <input type="hidden" name="find" value={view.find} />}
-              <input
-                type="search"
-                name="dictionary"
-                defaultValue={view.dictionary.find}
-                aria-label={t.dictionaryFind}
-                placeholder={t.dictionaryFind}
-                className="w-72 rounded border border-line bg-surface-input px-2 py-1 text-sm"
-              />
-              <Submit>{t.dictionaryFind}</Submit>
-            </form>
-            {view.dictionary.find !== "" && view.dictionary.rows.length === 0 && (
-              <p className="text-ink-muted text-sm">{t.dictionaryEmpty}</p>
+          <p className="flex flex-wrap items-baseline gap-3 text-sm">
+            <code>{set.code}</code>
+            {set.hierarchical && <Badge>{t.hierarchical}</Badge>}
+            <span className="text-ink-muted">{t.termCount(set.terms)}</span>
+          </p>
+
+          <SearchBox
+            action={href(locale, adminVocabularyPath(set.code))}
+            name="find"
+            value={view.find}
+            label={t.find}
+            placeholder={t.find}
+            submit={t.find}
+          />
+
+          <ul className="flex flex-col divide-y divide-line border-line border-y">
+            {view.terms.map((term) => (
+              <Term key={term.id} term={term} locale={locale} />
+            ))}
+          </ul>
+          <PageLinks
+            label={messages.search.pagination}
+            page={view.page}
+            pageCount={view.pageCount}
+            at={(to) => href(
+              locale,
+              `${adminVocabularyPath(set.code)}?${new URLSearchParams({
+                ...(view.find === "" ? {} : { find: view.find }),
+                page: String(to),
+              }).toString()}`,
             )}
-            <ul className="flex flex-col divide-y divide-line">
-              {view.dictionary.rows.map((row) => (
-                <li key={row.code} className="py-2">
-                  <Form method="post" className="flex flex-wrap items-baseline gap-2 text-sm">
-                    <input type="hidden" name="intent" value="create-term" />
-                    <input type="hidden" name="setId" value={set.id} />
-                    <input type="hidden" name="code" value={row.code} />
-                    <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
-                    <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
-                    <code className="w-24 shrink-0">{row.code}</code>
-                    <span className="flex-1 min-w-0 break-words">
-                      {row.titleEn ?? "—"}
-                      {row.titleJa !== null && ` / ${row.titleJa}`}
-                    </span>
-                    {row.held
-                      ? <Badge>{t.dictionaryHeld}</Badge>
-                      : <Submit>{t.addTerm}</Submit>}
-                  </Form>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        )}
+            previous={messages.search.previousPage}
+            next={messages.search.nextPage}
+          />
 
-        <Section title={t.addTerm}>
-          <Form method="post" className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="intent" value="create-term" />
-            <input type="hidden" name="setId" value={set.id} />
-            <Field label={t.code} name="code" />
-            <Field label={t.labelEn} name="labelEn" />
-            <Field label={t.labelJa} name="labelJa" />
-            <Submit>{t.addTerm}</Submit>
-          </Form>
-        </Section>
+          {view.dictionary !== null && (
+            <Section title={t.dictionary}>
+              <p className="text-ink-muted text-sm">{t.dictionaryNote}</p>
+              <SearchBox
+                action={href(locale, adminVocabularyPath(set.code))}
+                name="dictionary"
+                value={view.dictionary.find}
+                label={t.dictionaryFind}
+                placeholder={t.dictionaryFind}
+                submit={t.dictionaryFind}
+              >
+                {view.find !== "" && <input type="hidden" name="find" value={view.find} />}
+              </SearchBox>
+              {view.dictionary.find !== "" && view.dictionary.rows.length === 0 && (
+                <Empty>{t.dictionaryEmpty}</Empty>
+              )}
+              <ul className="flex flex-col divide-y divide-line">
+                {view.dictionary.rows.map((row) => (
+                  <li key={row.code} className="py-2">
+                    <Form method="post" className="flex flex-wrap items-baseline gap-2 text-sm">
+                      <input type="hidden" name="intent" value="create-term" />
+                      <input type="hidden" name="setId" value={set.id} />
+                      <input type="hidden" name="code" value={row.code} />
+                      <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
+                      <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
+                      <code className="w-24 shrink-0">{row.code}</code>
+                      <span className="flex-1 min-w-0 break-words">
+                        {row.titleEn ?? "—"}
+                        {row.titleJa !== null && ` / ${row.titleJa}`}
+                      </span>
+                      {row.held
+                        ? <Badge>{t.dictionaryHeld}</Badge>
+                        : <Submit>{t.addTerm}</Submit>}
+                    </Form>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          <Section title={t.addTerm}>
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="intent" value="create-term" />
+              <input type="hidden" name="setId" value={set.id} />
+              <Field label={t.code} name="code" />
+              <Field label={t.labelEn} name="labelEn" />
+              <Field label={t.labelJa} name="labelJa" />
+              <Submit>{t.addTerm}</Submit>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )
@@ -157,31 +155,39 @@ export default function AdminVocabulary({ loaderData, actionData }: Route.Compon
 
 function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
   const t = messagesFor(locale).admin.catalog
+  const note = [
+    term.used === 0 ? t.unused : t.used(term.used),
+    term.parentCode === null ? undefined : `${t.parent}: ${term.parentCode}`,
+  ].filter((part): part is string => part !== undefined).join(" · ")
+
   return (
-    <li className="py-2">
-      <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
-        <input type="hidden" name="termId" value={term.id} />
-        <code className="w-40 shrink-0 self-center break-all">{term.code}</code>
-        {term.parentCode !== null && (
-          <span className="self-center text-ink-muted text-xs">
-            {t.parent}
-            {": "}
-            {term.parentCode}
-          </span>
+    <li>
+      <Fold
+        summary={(
+          <>
+            <code className="text-ink-muted text-xs">{term.code}</code>
+            {`${term.labelEn} / ${term.labelJa ?? "—"}`}
+          </>
         )}
-        <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
-        <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
-        <span className="self-center text-ink-muted">
-          {term.used === 0 ? t.unused : t.used(term.used)}
-        </span>
-        {!term.active && <Badge>{t.inactive}</Badge>}
-        <Submit intent="update-term">{t.save}</Submit>
-        <input type="hidden" name="active" value={term.active ? "false" : "true"} />
-        <Submit intent="set-term-active">
-          {term.active ? t.deactivate : t.activate}
-        </Submit>
-        {term.used === 0 && <Submit intent="delete-term">{t.remove}</Submit>}
-      </Form>
+        note={(
+          <>
+            {note}
+            {!term.active && <Badge>{t.inactive}</Badge>}
+          </>
+        )}
+      >
+        <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
+          <input type="hidden" name="termId" value={term.id} />
+          <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
+          <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
+          <Button size="xs" name="intent" value="update-term">{t.save}</Button>
+          <input type="hidden" name="active" value={term.active ? "false" : "true"} />
+          <Button size="xs" name="intent" value="set-term-active">
+            {term.active ? t.deactivate : t.activate}
+          </Button>
+          {term.used === 0 && <Button size="xs" name="intent" value="delete-term">{t.remove}</Button>}
+        </Form>
+      </Fold>
     </li>
   )
 }

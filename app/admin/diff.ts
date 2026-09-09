@@ -101,11 +101,11 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
   into.when(sameTextPair(a.summary.methods, b.summary.methods), "summary.methods")
   into.when(sameTextPair(a.summary.targets, b.summary.targets), "summary.targets")
   into.when(sameLinksPair(a.summary.url, b.summary.url), "summary.url")
-  into.when(sameTextPair(a.summaryShort.methods, b.summaryShort.methods), "summaryShort.methods")
-  into.when(sameTextPair(a.summaryShort.targets, b.summaryShort.targets), "summaryShort.targets")
+  into.when(sameTextPair(a.listingSummary.methods, b.listingSummary.methods), "listingSummary.methods")
+  into.when(sameTextPair(a.listingSummary.targets, b.listingSummary.targets), "listingSummary.targets")
   into.when(
-    sameTextPair(a.summaryShort.typeOfData, b.summaryShort.typeOfData),
-    "summaryShort.typeOfData",
+    sameTextPair(a.listingSummary.typeOfData, b.listingSummary.typeOfData),
+    "listingSummary.typeOfData",
   )
   into.when(sameTextPair(a.releaseNote, b.releaseNote), "releaseNote")
 

@@ -180,6 +180,7 @@ export async function datasetPage(
   return datasetView({
     label: row.label,
     humLabel: row.humLabel,
+    studyAccession: row.studyAccession,
     content: publicDatasetContent(
       row.content,
       { keys: catalog.keyById, files: listing ?? [] },

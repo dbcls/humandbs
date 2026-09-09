@@ -99,7 +99,7 @@ export interface ResearchContentInput {
     targets: TextPairInput
     url: LinksPairInput
   }
-  summaryShort: {
+  listingSummary: {
     methods: TextPairInput
     targets: TextPairInput
     typeOfData: TextPairInput
@@ -156,10 +156,10 @@ export function researchContentInput(content: ResearchContent): ResearchContentI
       targets: prosePair(content.summary.targets),
       url: linksPair(content.summary.url),
     },
-    summaryShort: {
-      methods: prosePair(content.summaryShort.methods),
-      targets: prosePair(content.summaryShort.targets),
-      typeOfData: prosePair(content.summaryShort.typeOfData),
+    listingSummary: {
+      methods: prosePair(content.listingSummary.methods),
+      targets: prosePair(content.listingSummary.targets),
+      typeOfData: prosePair(content.listingSummary.typeOfData),
     },
     releaseNote: prosePair(content.releaseNote),
     dataProviders: content.dataProviders.map((provider) => ({

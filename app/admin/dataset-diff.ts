@@ -47,7 +47,11 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
     if (a.state !== b.state) return false
     // What was typed and the unit it was typed in, for the same reason: neither
     // is on screen while the state says there is no value.
-    return a.state !== "value" || (a.value === b.value && a.unit === b.unit)
+    return a.state !== "value" || (a.rows.length === b.rows.length && a.rows.every((row, at) => {
+      const other = b.rows[at]
+      return row.label === other?.label && row.value === other.value
+        && row.unit === other.unit && row.note === other.note
+    }))
   }
   return false
 }

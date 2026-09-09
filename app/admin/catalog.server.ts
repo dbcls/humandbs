@@ -67,8 +67,9 @@ export interface VocabularyRow {
 export interface CategoryRow {
   id: string
   code: string
-  labelJa: string
-  labelEn: string
+  /** Null on a category the panel draws without a heading (`db/schema/catalog.ts`). */
+  labelJa: string | null
+  labelEn: string | null
   position: number
 }
 
@@ -500,11 +501,26 @@ async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
   return { status: "ok" }
 }
 
-async function createCategory(db: Executor, form: FormData): Promise<CatalogResult> {
-  const code = text(form, "code")
+/**
+ * The two labels of a facet category, or null for a category drawn without a
+ * heading. **Both or neither**: a group headed in one language and silent in
+ * the other would change shape when the reader switches
+ * (`db/schema/catalog.ts`).
+ */
+function categoryLabels(
+  form: FormData,
+): { labelJa: string, labelEn: string } | { labelJa: null, labelEn: null } | null {
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
-  if (labelJa === "" || labelEn === "") return { status: "missing-label" }
+  if (labelJa === "" && labelEn === "") return { labelJa: null, labelEn: null }
+  if (labelJa === "" || labelEn === "") return null
+  return { labelJa, labelEn }
+}
+
+async function createCategory(db: Executor, form: FormData): Promise<CatalogResult> {
+  const code = text(form, "code")
+  const labels = categoryLabels(form)
+  if (labels === null) return { status: "missing-label" }
   if (codeProblem(code) === "malformed") return { status: "malformed-code" }
   const [held] = await db
     .select({ id: facetCategory.id })
@@ -515,18 +531,17 @@ async function createCategory(db: Executor, form: FormData): Promise<CatalogResu
   const [last] = await db
     .select({ at: sql<number>`coalesce(max(${facetCategory.position}), -1)::int` })
     .from(facetCategory)
-  await db.insert(facetCategory).values({ code, labelJa, labelEn, position: (last?.at ?? -1) + 1 })
+  await db.insert(facetCategory).values({ code, ...labels, position: (last?.at ?? -1) + 1 })
   return { status: "ok" }
 }
 
 async function updateCategory(db: Executor, form: FormData): Promise<CatalogResult> {
   const id = text(form, "categoryId")
-  const labelJa = text(form, "labelJa")
-  const labelEn = text(form, "labelEn")
-  if (labelJa === "" || labelEn === "") return { status: "missing-label" }
+  const labels = categoryLabels(form)
+  if (labels === null) return { status: "missing-label" }
   const updated = await db
     .update(facetCategory)
-    .set({ labelJa, labelEn })
+    .set(labels)
     .where(eq(facetCategory.id, id))
     .returning({ id: facetCategory.id })
   return updated.length === 0 ? { status: "unknown-target" } : { status: "ok" }

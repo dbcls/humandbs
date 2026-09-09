@@ -2,9 +2,10 @@ import { Form, Link } from "react-router"
 
 import { newsAction, newsPage } from "~/admin/contents.server"
 import { adminNewsListPath } from "~/admin/urls"
+import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
-import { Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section } from "~/components/page"
+import { Field, Submit } from "~/components/form"
+import { Card, Page, PageHead, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
@@ -46,31 +47,36 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
         <Link to={href(locale, adminNewsListPath())} className="text-white">{t.news.backToList}</Link>
       </PageHead>
       <Card>
-        <ResultLine result={actionData} locale={locale} />
+        <Stack gap="block">
+          <ResultLine result={actionData} locale={locale} />
 
-        <Section title={t.news.publishedAt}>
-          <Form method="post" className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col text-sm">
-              {t.news.publishedAt}
-              <input
-                type="date"
+          <Section title={t.news.publishedAt}>
+            <Form method="post" className="flex flex-wrap items-end gap-2">
+              <Field
+                label={t.news.publishedAt}
                 name="publishedAt"
-                defaultValue={publishedAt ?? ""}
-                className="rounded border border-line bg-surface-input px-2 py-1"
+                type="date"
+                value={publishedAt ?? ""}
               />
-            </label>
-            <Submit intent="set-date">{t.save}</Submit>
-          </Form>
-        </Section>
+              <Submit intent="set-date">{t.save}</Submit>
+            </Form>
+          </Section>
 
-        <LocaleEditors editors={editors} locale={locale} />
+          <LocaleEditors editors={editors} locale={locale} />
 
-        <Section title={t.removeHeading}>
-          <Form method="post" className="flex flex-wrap items-center gap-3">
-            <Submit intent="delete-news">{t.news.remove}</Submit>
-            <Empty>{t.removeNote}</Empty>
-          </Form>
-        </Section>
+          <Section title={t.removeHeading}>
+            <Form method="post">
+              <Confirm
+                label={t.news.remove}
+                warning={t.removeNote}
+                confirm={t.news.removeConfirm}
+                cancel={t.cancel}
+              >
+                <input type="hidden" name="intent" value="delete-news" />
+              </Confirm>
+            </Form>
+          </Section>
+        </Stack>
       </Card>
     </Page>
   )

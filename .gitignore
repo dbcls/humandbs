@@ -6,3 +6,4 @@
 /migration/input/
 /.claude/
 /.playwright-cli/
+/compose.override.yml

@@ -39,6 +39,16 @@ export const vocabularySet = pgTable("vocabulary_set", {
  *
  * Renaming changes the label only. Data references the id, so nothing has to be
  * rewritten and no reference can break.
+ *
+ * **`maker` is the part of the label that names who made the thing**, where the
+ * value is a product — a sequencer, a kit. It is held apart because the same
+ * maker heads dozens of labels and a reader picking a machine out of a column
+ * is reading "whose" and "which" as two things; the label itself stays whole,
+ * so searching, exporting and matching a facet value never have to know.
+ *
+ * **It is not the parent of the term.** Counting rolls values up to the root of
+ * their tree (`app/search/counts.server.ts`), so a maker held as a parent would
+ * put makers in the refinement panel where the models belong.
  */
 export const vocabularyTerm = pgTable("vocabulary_term", {
   id: primaryId(),
@@ -46,6 +56,7 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   code: text().notNull(),
   labelJa: text(),
   labelEn: text().notNull(),
+  maker: text(),
   parentId: uuid().references((): AnyPgColumn => vocabularyTerm.id, { onDelete: "set null" }),
   /** Deactivated terms stay resolvable for data that already references them. */
   active: boolean().notNull().default(true),
@@ -80,12 +91,20 @@ export const icd10Reference = pgTable("icd10_reference", {
   titleJa: text(),
 })
 
-/** Display grouping for facets. Which group a facet sits in is an admin choice. */
+/**
+ * Display grouping for facets. Which group a facet sits in is an admin choice.
+ *
+ * **A group may have no label**, and then it is drawn without a heading. What
+ * the panel opens with is what the row itself is, and a heading over that would
+ * name the thing the reader came to the page already looking at. The label is
+ * both languages or neither: a group headed in one language and silent in the
+ * other would change shape when the reader switches.
+ */
 export const facetCategory = pgTable("facet_category", {
   id: primaryId(),
   code: text().notNull().unique(),
-  labelJa: text().notNull(),
-  labelEn: text().notNull(),
+  labelJa: text(),
+  labelEn: text(),
   position: integer().notNull().default(0),
 })
 

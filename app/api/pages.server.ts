@@ -36,12 +36,14 @@ import {
 } from "~/public/queries.server"
 import { findVersion, latestOf } from "~/public/versions"
 import { loadFacetDefinitions } from "~/search/catalog.server"
-import { hasFreeText, parseQuery, serializeQuery } from "~/search/dsl"
+import { parseQuery, serializeQuery } from "~/search/dsl"
 import { queryFields } from "~/search/fields"
 import {
+  defaultOrder,
   isSortKey,
   searchDocs,
-  sortOffer,
+  DEFAULT_SORT,
+  SORT_KEYS,
   type SearchTarget,
   type SortKey,
 } from "~/search/query.server"
@@ -250,18 +252,17 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   if (!parsed.ok) return problemResponse(invalidQuery(request, parsed.error))
   const ast = parsed.ast
 
-  // Only a full-text match carries a score, so a query made of field conditions
-  // alone has nothing to rank by. Asking for that ordering is reported rather
-  // than quietly answered in a different one.
-  const { offered, fallback } = sortOffer(hasFreeText(ast), target)
+  // An ordering nobody can be given is reported rather than quietly answered in
+  // a different one: a client that asked for something has to hear that it was
+  // not what it got.
   const asked = url.searchParams.get("sort")
   let sort: SortKey
   if (asked === null) {
-    sort = fallback
-  } else if (isSortKey(asked) && offered.includes(asked)) {
+    sort = DEFAULT_SORT
+  } else if (isSortKey(asked)) {
     sort = asked
   } else {
-    return problemResponse(invalidSort(request, asked, offered))
+    return problemResponse(invalidSort(request, asked, SORT_KEYS))
   }
 
   const page = Number(url.searchParams.get("page") ?? "1")
@@ -269,7 +270,12 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
     return problemResponse(invalidParameter(request, "page", "page must be a positive integer."))
   }
 
-  const result = await searchDocs(db, { target, ast, fields, sort, page })
+  // **The direction is the screen's; here only the key is on offer.** A client
+  // reading a page at a time gets to the other end of a list with `?page=`, and
+  // one spelling of an ordering is what keeps two clients on the same page.
+  const result = await searchDocs(db, {
+    target, ast, fields, sort, order: defaultOrder(sort), page,
+  })
   const context = await contextOf()
   const order = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")

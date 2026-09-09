@@ -18,7 +18,21 @@
  */
 
 import { group, OPEN_BOUND, type DslRange, type FieldNode, type QueryNode } from "./dsl"
-import type { QueryFields } from "./fields"
+import { isDateFacet, type QueryFields } from "./fields"
+
+/**
+ * Whether the panel has a control for this field, and so may take a condition
+ * on it apart and put it back.
+ *
+ * Almost always this is "the catalog types the key as a vocabulary or a
+ * number". The two dates are the exception the panel makes
+ * ([fields.ts](fields.ts)), and they are read here rather than at each call so
+ * that adding a value, taking one away and clearing a facet all agree about
+ * what the panel owns.
+ */
+export function onPanel(fields: QueryFields, field: string): boolean {
+  return fields.facet(field) !== undefined || isDateFacet(field)
+}
 
 export interface Selection {
   /** Facet key code to the term codes chosen under it, in the written order. */
@@ -59,14 +73,14 @@ function decompose(ast: QueryNode | null, fields: QueryFields): Decomposed {
   }
 
   for (const rule of conjuncts(ast)) {
-    if (rule.op === "field" && fields.facet(rule.field) !== undefined) {
+    if (rule.op === "field" && onPanel(fields, rule.field)) {
       take(rule.field, [rule])
       continue
     }
     if (rule.op === "OR") {
       const arms = rule.rules.filter(isField)
       const field = arms.length === rule.rules.length ? commonField(arms) : null
-      if (field !== null && fields.facet(field) !== undefined) {
+      if (field !== null && onPanel(fields, field)) {
         take(field, arms)
         continue
       }
@@ -171,9 +185,9 @@ export function withRange(
   field: string,
   range: DslRange,
 ): QueryNode | null {
-  // A field the catalog does not name has no control on the panel either, so a
+  // A field with no control on the panel cannot have been asked this, so a
   // request naming one is answered with the search it already was.
-  if (fields.facet(field) === undefined) return ast
+  if (!onPanel(fields, field)) return ast
   const parts = decompose(ast, fields)
   if (range.from === OPEN_BOUND && range.to === OPEN_BOUND) parts.facets.delete(field)
   else parts.facets.set(field, [{ op: "field", field, valueKind: "range", value: range }])

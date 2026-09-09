@@ -17,6 +17,7 @@ import { messagesFor } from "~/i18n/messages"
 
 import { Badge } from "./base"
 import { Field, Result, Submit, TextArea } from "./form"
+import { Section } from "./page"
 
 /**
  * What the last form did. A refused body says which language and which line,
@@ -66,19 +67,24 @@ export function LocaleEditors({ editors, locale }: { editors: LocaleEditor[], lo
   return (
     <>
       {editors.map((editor) => (
-        <section key={editor.locale} className="mt-8 first:mt-0">
-          <h2 className="mb-3 flex flex-wrap items-center gap-3 border-line border-b pb-1 font-semibold text-brand">
-            {t.languages[editor.locale]}
+        <Section key={editor.locale} title={t.languages[editor.locale]}>
+          {/*
+            The state and the publish date name the language section but are not
+            part of its heading — `Section`'s title is text only, with no slot
+            for a right-hand side, so what would sit beside the h2 sits on the
+            first line under it instead.
+          */}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge>{editor.published ? t.published : t.unpublished}</Badge>
             {editor.hasDraft && <Badge>{t.draft}</Badge>}
             {editor.publishedAt !== null && (
-              <span className="font-normal text-ink-muted text-xs">
+              <span className="text-ink-muted text-xs">
                 {t.publishedOn}
                 {" "}
                 {editor.publishedAt}
               </span>
             )}
-          </h2>
+          </div>
 
           <Form method="post" className="flex flex-col gap-3">
             <input type="hidden" name="locale" value={editor.locale} />
@@ -92,14 +98,14 @@ export function LocaleEditors({ editors, locale }: { editors: LocaleEditor[], lo
           </Form>
 
           {(editor.published || editor.hasDraft) && (
-            <Form method="post" className="mt-2 flex flex-wrap gap-2">
+            <Form method="post" className="flex flex-wrap gap-2">
               <input type="hidden" name="locale" value={editor.locale} />
               <input type="hidden" name="revision" value={editor.revision ?? ""} />
               {editor.published && <Submit intent="unpublish">{t.unpublish}</Submit>}
               {editor.hasDraft && <Submit intent="discard-draft">{t.discard}</Submit>}
             </Form>
           )}
-        </section>
+        </Section>
       ))}
     </>
   )

@@ -300,6 +300,9 @@ export async function previewDatasetPage(
   const anchored = anchoredDatasetView({
     label: row.label ?? "",
     humLabel: humLabel ?? "",
+    // A preview reads no upstream cache: what it is showing is a draft, and the
+    // cache holds published accessions only (docs/data-model.md の「外部キャッシュ」).
+    studyAccession: null,
     content: dataset.content,
     datePublished: dataset.dates.datePublished,
     dateModified: dataset.dates.dateModified,
@@ -318,6 +321,7 @@ export async function previewDatasetPage(
     : previousAt(changed, anchoredDatasetView({
         label: row.label ?? "",
         humLabel: humLabel ?? "",
+        studyAccession: null,
         content: publicDatasetContent(
           row.published,
           { keys: catalog.keyById, files: listing },

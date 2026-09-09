@@ -12,12 +12,26 @@
  * listings are drawn from, so a change that matters stops the build.
  */
 
-import type { FacetPanelView } from "~/public/facets.server"
+import type { FacetPanelView, FacetRangeView } from "~/public/facets.server"
 import type { NewsSummary } from "~/public/site.server"
 import type { ResearchListRowView } from "~/public/view.server"
 
 /** How many rows the search these came from actually matched. */
 export const TOTAL = 397
+
+/**
+ * The windows a date facet offers, with the days frozen like everything else
+ * here — read from the clock they would be a different address every morning.
+ */
+function windows(lit: "all" | "1y" | "5y" | "10y" | null): FacetRangeView["presets"] {
+  const at = (from: string) => `/research?q=date_published%3A%5B${from}+TO+*%5D`
+  return [
+    { label: "すべて", href: "/research", current: lit === "all" },
+    { label: "1 年", href: at("2025-09-03"), current: lit === "1y" },
+    { label: "5 年", href: at("2021-09-03"), current: lit === "5y" },
+    { label: "10 年", href: at("2016-09-03"), current: lit === "10y" },
+  ]
+}
 
 /** The three most recent announcements, as the front page lists them. */
 export const NEWS: NewsSummary[] = [
@@ -326,14 +340,150 @@ export const ROWS: ResearchListRowView[] = [
       ],
       untranslated: false,
     },
+    platforms: [
+      {
+        code: "illumina-hiseq-2500",
+        label: "Illumina HiSeq 2500",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-hiseq-x-ten",
+        label: "Illumina HiSeq X Ten",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-hiseq-2500-3000-novaseq-6000",
+        label: "Illumina HiSeq 2500/3000, NovaSeq 6000",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-novaseq-6000",
+        label: "Illumina NovaSeq 6000",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-hiseq-3000",
+        label: "Illumina HiSeq 3000",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-hiseq-x",
+        label: "Illumina HiSeq X",
+        maker: "Illumina",
+      },
+      {
+        code: "olink-olink-explore-3072",
+        label: "Olink Olink Explore 3072",
+        maker: "Olink",
+      },
+      {
+        code: "illumina-humanomniexpressexome",
+        label: "Illumina HumanOmniExpressExome",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanomniexpress",
+        label: "Illumina HumanOmniExpress",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanexome",
+        label: "Illumina HumanExome",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanomniexpress-beadchip",
+        label: "Illumina HumanOmniExpress BeadChip",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanomniexpressexome-beadchip",
+        label: "Illumina HumanOmniExpressExome BeadChip",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanexome-beadchip",
+        label: "Illumina HumanExome BeadChip",
+        maker: "Illumina",
+      },
+      {
+        code: "uk-biobank-applied-biosystems-uk-bileve-axiom-array",
+        label: "UK Biobank: Applied Biosystems UK BiLEVE Axiom Array",
+        maker: null,
+      },
+      {
+        code: "uk-biobank-applied-biosystems-uk-biobank-axiom-array",
+        label: "UK Biobank: Applied Biosystems UK Biobank Axiom Array",
+        maker: null,
+      },
+      {
+        code: "applied-biosystems-uk-bileve-axiom-array",
+        label: "Applied Biosystems UK BiLEVE Axiom Array",
+        maker: "Applied Biosystems",
+      },
+      {
+        code: "applied-biosystems-uk-biobank-axiom-array",
+        label: "Applied Biosystems UK Biobank Axiom Array",
+        maker: "Applied Biosystems",
+      },
+      {
+        code: "thermo-fisher-scientific-finngen1-thermofisher-array",
+        label: "Thermo Fisher Scientific FinnGen1 ThermoFisher Array",
+        maker: "Thermo Fisher Scientific",
+      },
+      {
+        code: "illumina-icogs-oncoarray",
+        label: "Illumina iCOGS OncoArray",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-infinium-asian-screening-array",
+        label: "Illumina Infinium Asian Screening Array",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-humanomniexpressexome-beadchip-humanomniexpress-beadchip-humanexome-beadchip",
+        label: "Illumina HumanOmniExpressExome BeadChip, HumanOmniExpress BeadChip, HumanExome BeadChip",
+        maker: "Illumina",
+      },
+      {
+        code: "illumina-novaseq-6000-hiseq-x-ten",
+        label: "Illumina NovaSeq 6000/HiSeq X Ten",
+        maker: "Illumina",
+      },
+      {
+        code: "thermo-fisher-scientific-axiom-japonica-array-v2",
+        label: "Thermo Fisher Scientific Axiom Japonica Array v2",
+        maker: "Thermo Fisher Scientific",
+      },
+      {
+        code: "illumina-novaseq-x-plus",
+        label: "Illumina NovaSeq X Plus",
+        maker: "Illumina",
+      },
+      {
+        code: "mgi-dnbseq-t7",
+        label: "MGI DNBSEQ-T7",
+        maker: "MGI",
+      },
+    ],
     accessTypes: [
       {
         code: "unrestricted-access",
         label: "非制限公開",
+        maker: null,
       },
       {
         code: "controlled-access-type-1",
         label: "制限公開（Type I）",
+        maker: null,
+      },
+    ],
+    dataProviders: [
+      {
+        state: "plain",
+        text: "岡田 随象",
+        untranslated: false,
       },
     ],
     datePublished: "2019-11-15",
@@ -393,10 +543,30 @@ export const ROWS: ResearchListRowView[] = [
       ],
       untranslated: false,
     },
+    platforms: [
+      {
+        code: "illumina-nextseq-500",
+        label: "Illumina NextSeq 500",
+        maker: "Illumina",
+      },
+      {
+        code: "mgi-dnbseq-g400",
+        label: "MGI DNBSEQ-G400",
+        maker: "MGI",
+      },
+    ],
     accessTypes: [
       {
         code: "controlled-access-type-1",
         label: "制限公開（Type I）",
+        maker: null,
+      },
+    ],
+    dataProviders: [
+      {
+        state: "plain",
+        text: "下田 和哉",
+        untranslated: false,
       },
     ],
     datePublished: "2020-04-06",
@@ -452,14 +622,30 @@ export const ROWS: ResearchListRowView[] = [
       ],
       untranslated: false,
     },
+    platforms: [
+      {
+        code: "mgi-tech-mgiseq-2000rs",
+        label: "MGI Tech MGISEQ-2000RS",
+        maker: "MGI",
+      },
+    ],
     accessTypes: [
       {
         code: "unrestricted-access",
         label: "非制限公開",
+        maker: null,
       },
       {
         code: "controlled-access-type-1",
         label: "制限公開（Type I）",
+        maker: null,
+      },
+    ],
+    dataProviders: [
+      {
+        state: "plain",
+        text: "橋本 浩介",
+        untranslated: false,
       },
     ],
     datePublished: "2026-07-30",
@@ -509,10 +695,30 @@ export const ROWS: ResearchListRowView[] = [
       ],
       untranslated: false,
     },
+    platforms: [
+      {
+        code: "illumina-novaseq-6000",
+        label: "Illumina NovaSeq 6000",
+        maker: "Illumina",
+      },
+    ],
     accessTypes: [
       {
         code: "controlled-access-type-1",
         label: "制限公開（Type I）",
+        maker: null,
+      },
+    ],
+    dataProviders: [
+      {
+        state: "plain",
+        text: "島田 能史",
+        untranslated: false,
+      },
+      {
+        state: "plain",
+        text: "市川 寛",
+        untranslated: false,
       },
     ],
     datePublished: "2026-07-24",
@@ -561,10 +767,25 @@ export const ROWS: ResearchListRowView[] = [
       ],
       untranslated: false,
     },
+    platforms: [
+      {
+        code: "mgi-tech-dnbseq-g400",
+        label: "MGI Tech DNBSEQ-G400",
+        maker: "MGI",
+      },
+    ],
     accessTypes: [
       {
         code: "controlled-access-type-1",
         label: "制限公開（Type I）",
+        maker: null,
+      },
+    ],
+    dataProviders: [
+      {
+        state: "plain",
+        text: "宮岡 佑一郎",
+        untranslated: false,
       },
     ],
     datePublished: "2026-07-19",
@@ -577,8 +798,44 @@ export const FACETS: FacetPanelView = {
   categories: [
     {
       code: "basic-info",
-      label: "基本情報",
+      label: null,
       facets: [
+        {
+          code: "date_published",
+          label: "公開日",
+          kind: "date",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            unit: null,
+            presets: windows("all"),
+          },
+          codeEntry: null,
+        },
+        {
+          code: "date_modified",
+          label: "更新日",
+          kind: "date",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "2024-01-01",
+            to: "",
+            unit: null,
+            presets: windows(null),
+          },
+          codeEntry: null,
+        },
         {
           code: "access-criteria",
           label: "アクセス制限",
@@ -586,10 +843,12 @@ export const FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "controlled-access-type-1",
               label: "制限公開（Type I）",
+              maker: null,
               count: 348,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-1",
@@ -598,6 +857,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "unrestricted-access",
               label: "非制限公開",
+              maker: null,
               count: 80,
               selected: false,
               href: "/research?q=access-criteria%3Aunrestricted-access",
@@ -606,6 +866,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "controlled-access-type-2",
               label: "制限公開（Type II）",
+              maker: null,
               count: 2,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-2",
@@ -619,8 +880,8 @@ export const FACETS: FacetPanelView = {
       ],
     },
     {
-      code: "experiment",
-      label: "実験",
+      code: "subjects",
+      label: "対象者",
       facets: [
         {
           code: "disease-icd10",
@@ -629,10 +890,12 @@ export const FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "C34",
               label: "Primary lung cancer",
+              maker: null,
               count: 33,
               selected: false,
               href: "/research?q=disease-icd10%3AC34",
@@ -641,6 +904,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "C18",
               label: "Colorectal cancer",
+              maker: null,
               count: 31,
               selected: false,
               href: "/research?q=disease-icd10%3AC18",
@@ -649,6 +913,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "C22",
               label: "Malignant neoplasm of liver and intrahepatic bile ducts",
+              maker: null,
               count: 23,
               selected: false,
               href: "/research?q=disease-icd10%3AC22",
@@ -657,6 +922,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "C16",
               label: "Gastric cancer",
+              maker: null,
               count: 20,
               selected: false,
               href: "/research?q=disease-icd10%3AC16",
@@ -665,6 +931,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "C50",
               label: "Breast cancer",
+              maker: null,
               count: 17,
               selected: false,
               href: "/research?q=disease-icd10%3AC50",
@@ -676,58 +943,29 @@ export const FACETS: FacetPanelView = {
           codeEntry: null,
         },
         {
-          code: "experimental-method",
-          label: "実験方法",
-          kind: "vocabulary",
+          code: "subject-count",
+          label: "対象者数",
+          kind: "number",
           expanded: false,
           find: "",
           closeHref: null,
-          values: [
-            {
-              code: "rna-seq",
-              label: "RNA-seq",
-              count: 143,
-              selected: false,
-              href: "/research?q=experimental-method%3Arna-seq",
-              children: [],
-            },
-            {
-              code: "wes",
-              label: "WES",
-              count: 120,
-              selected: false,
-              href: "/research?q=experimental-method%3Awes",
-              children: [],
-            },
-            {
-              code: "targeted-dna-sequencing",
-              label: "Targeted DNA sequencing",
-              count: 74,
-              selected: false,
-              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
-              children: [],
-            },
-            {
-              code: "wgs",
-              label: "WGS",
-              count: 70,
-              selected: false,
-              href: "/research?q=experimental-method%3Awgs",
-              children: [],
-            },
-            {
-              code: "scrna-seq",
-              label: "scRNA-seq",
-              count: 56,
-              selected: false,
-              href: "/research?q=experimental-method%3Ascrna-seq",
-              children: [],
-            },
-          ],
-          moreHref: "/research?facet=experimental-method",
-          range: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            unit: null,
+            presets: [],
+          },
           codeEntry: null,
         },
+      ],
+    },
+    {
+      code: "samples",
+      label: "検体",
+      facets: [
         {
           code: "tissue",
           label: "組織",
@@ -735,10 +973,12 @@ export const FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "peripheral-blood",
               label: "peripheral blood",
+              maker: null,
               count: 158,
               selected: false,
               href: "/research?q=tissue%3Aperipheral-blood",
@@ -747,6 +987,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "tumor-tissue",
               label: "tumor tissue",
+              maker: null,
               count: 114,
               selected: false,
               href: "/research?q=tissue%3Atumor-tissue",
@@ -755,6 +996,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "normal-tissue",
               label: "normal tissue",
+              maker: null,
               count: 55,
               selected: false,
               href: "/research?q=tissue%3Anormal-tissue",
@@ -763,6 +1005,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "pbmc",
               label: "PBMC",
+              maker: null,
               count: 25,
               selected: false,
               href: "/research?q=tissue%3Apbmc",
@@ -771,6 +1014,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "bone-marrow",
               label: "bone marrow",
+              maker: null,
               count: 19,
               selected: false,
               href: "/research?q=tissue%3Abone-marrow",
@@ -784,34 +1028,68 @@ export const FACETS: FacetPanelView = {
       ],
     },
     {
-      code: "subjects",
-      label: "対象者",
+      code: "experiment",
+      label: "実験",
       facets: [
         {
-          code: "subject-count",
-          label: "対象者数",
-          kind: "number",
+          code: "experimental-method",
+          label: "実験方法",
+          kind: "vocabulary",
           expanded: false,
           find: "",
           closeHref: null,
-          values: [],
-          moreHref: null,
-          range: {
-            from: "",
-            to: "",
-            min: 1,
-            max: 1872937,
-            unit: null,
-            clearHref: null,
-          },
+          clearHref: null,
+          values: [
+            {
+              code: "rna-seq",
+              label: "RNA-seq",
+              maker: null,
+              count: 143,
+              selected: false,
+              href: "/research?q=experimental-method%3Arna-seq",
+              children: [],
+            },
+            {
+              code: "wes",
+              label: "WES",
+              maker: null,
+              count: 120,
+              selected: false,
+              href: "/research?q=experimental-method%3Awes",
+              children: [],
+            },
+            {
+              code: "targeted-dna-sequencing",
+              label: "Targeted DNA sequencing",
+              maker: null,
+              count: 74,
+              selected: false,
+              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
+              children: [],
+            },
+            {
+              code: "wgs",
+              label: "WGS",
+              maker: null,
+              count: 70,
+              selected: false,
+              href: "/research?q=experimental-method%3Awgs",
+              children: [],
+            },
+            {
+              code: "scrna-seq",
+              label: "scRNA-seq",
+              maker: null,
+              count: 56,
+              selected: false,
+              href: "/research?q=experimental-method%3Ascrna-seq",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=experimental-method",
+          range: null,
           codeEntry: null,
         },
-      ],
-    },
-    {
-      code: "platform",
-      label: "手法とプラットフォーム",
-      facets: [
         {
           code: "platform",
           label: "プラットフォーム",
@@ -819,10 +1097,12 @@ export const FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "illumina-novaseq-6000",
               label: "Illumina NovaSeq 6000",
+              maker: "Illumina",
               count: 127,
               selected: false,
               href: "/research?q=platform%3Aillumina-novaseq-6000",
@@ -831,6 +1111,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-2500",
               label: "Illumina HiSeq 2500",
+              maker: "Illumina",
               count: 103,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2500",
@@ -839,6 +1120,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-2000",
               label: "Illumina HiSeq 2000",
+              maker: "Illumina",
               count: 61,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2000",
@@ -847,6 +1129,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "illumina-miseq",
               label: "Illumina MiSeq",
+              maker: "Illumina",
               count: 23,
               selected: false,
               href: "/research?q=platform%3Aillumina-miseq",
@@ -855,6 +1138,7 @@ export const FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-x-ten",
               label: "Illumina HiSeq X Ten",
+              maker: "Illumina",
               count: 21,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-x-ten",
@@ -868,7 +1152,6 @@ export const FACETS: FacetPanelView = {
       ],
     },
   ],
-  clearHref: null,
   target: "research",
 }
 
@@ -877,8 +1160,44 @@ export const REFINED_FACETS: FacetPanelView = {
   categories: [
     {
       code: "basic-info",
-      label: "基本情報",
+      label: null,
       facets: [
+        {
+          code: "date_published",
+          label: "公開日",
+          kind: "date",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            unit: null,
+            presets: windows("all"),
+          },
+          codeEntry: null,
+        },
+        {
+          code: "date_modified",
+          label: "更新日",
+          kind: "date",
+          expanded: false,
+          find: "",
+          closeHref: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "2024-01-01",
+            to: "",
+            unit: null,
+            presets: windows(null),
+          },
+          codeEntry: null,
+        },
         {
           code: "access-criteria",
           label: "アクセス制限",
@@ -886,10 +1205,12 @@ export const REFINED_FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: "/research",
           values: [
             {
               code: "controlled-access-type-1",
               label: "制限公開（Type I）",
+              maker: null,
               count: 348,
               selected: true,
               href: "/research",
@@ -898,6 +1219,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "unrestricted-access",
               label: "非制限公開",
+              maker: null,
               count: 80,
               selected: false,
               href: "/research?q=access-criteria%3Aunrestricted-access",
@@ -906,6 +1228,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "controlled-access-type-2",
               label: "制限公開（Type II）",
+              maker: null,
               count: 2,
               selected: false,
               href: "/research?q=access-criteria%3Acontrolled-access-type-2",
@@ -919,8 +1242,8 @@ export const REFINED_FACETS: FacetPanelView = {
       ],
     },
     {
-      code: "experiment",
-      label: "実験",
+      code: "subjects",
+      label: "対象者",
       facets: [
         {
           code: "disease-icd10",
@@ -929,10 +1252,12 @@ export const REFINED_FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "C34",
               label: "Primary lung cancer",
+              maker: null,
               count: 33,
               selected: false,
               href: "/research?q=disease-icd10%3AC34",
@@ -941,6 +1266,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "C18",
               label: "Colorectal cancer",
+              maker: null,
               count: 31,
               selected: false,
               href: "/research?q=disease-icd10%3AC18",
@@ -949,6 +1275,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "C22",
               label: "Malignant neoplasm of liver and intrahepatic bile ducts",
+              maker: null,
               count: 23,
               selected: false,
               href: "/research?q=disease-icd10%3AC22",
@@ -957,6 +1284,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "C16",
               label: "Gastric cancer",
+              maker: null,
               count: 20,
               selected: false,
               href: "/research?q=disease-icd10%3AC16",
@@ -965,6 +1293,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "C50",
               label: "Breast cancer",
+              maker: null,
               count: 17,
               selected: false,
               href: "/research?q=disease-icd10%3AC50",
@@ -976,58 +1305,29 @@ export const REFINED_FACETS: FacetPanelView = {
           codeEntry: null,
         },
         {
-          code: "experimental-method",
-          label: "実験方法",
-          kind: "vocabulary",
+          code: "subject-count",
+          label: "対象者数",
+          kind: "number",
           expanded: false,
           find: "",
           closeHref: null,
-          values: [
-            {
-              code: "rna-seq",
-              label: "RNA-seq",
-              count: 143,
-              selected: false,
-              href: "/research?q=experimental-method%3Arna-seq",
-              children: [],
-            },
-            {
-              code: "wes",
-              label: "WES",
-              count: 120,
-              selected: false,
-              href: "/research?q=experimental-method%3Awes",
-              children: [],
-            },
-            {
-              code: "targeted-dna-sequencing",
-              label: "Targeted DNA sequencing",
-              count: 74,
-              selected: false,
-              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
-              children: [],
-            },
-            {
-              code: "wgs",
-              label: "WGS",
-              count: 70,
-              selected: false,
-              href: "/research?q=experimental-method%3Awgs",
-              children: [],
-            },
-            {
-              code: "scrna-seq",
-              label: "scRNA-seq",
-              count: 56,
-              selected: false,
-              href: "/research?q=experimental-method%3Ascrna-seq",
-              children: [],
-            },
-          ],
-          moreHref: "/research?facet=experimental-method",
-          range: null,
+          clearHref: null,
+          values: [],
+          moreHref: null,
+          range: {
+            from: "",
+            to: "",
+            unit: null,
+            presets: [],
+          },
           codeEntry: null,
         },
+      ],
+    },
+    {
+      code: "samples",
+      label: "検体",
+      facets: [
         {
           code: "tissue",
           label: "組織",
@@ -1035,10 +1335,12 @@ export const REFINED_FACETS: FacetPanelView = {
           expanded: true,
           find: "",
           closeHref: "/research?q=access-criteria%3Acontrolled-access-type-1",
+          clearHref: null,
           values: [
             {
               code: "peripheral-blood",
               label: "peripheral blood",
+              maker: null,
               count: 158,
               selected: false,
               href: "/research?q=tissue%3Aperipheral-blood",
@@ -1047,6 +1349,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "tumor-tissue",
               label: "tumor tissue",
+              maker: null,
               count: 114,
               selected: false,
               href: "/research?q=tissue%3Atumor-tissue",
@@ -1055,6 +1358,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "normal-tissue",
               label: "normal tissue",
+              maker: null,
               count: 55,
               selected: false,
               href: "/research?q=tissue%3Anormal-tissue",
@@ -1063,6 +1367,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "pbmc",
               label: "PBMC",
+              maker: null,
               count: 25,
               selected: false,
               href: "/research?q=tissue%3Apbmc",
@@ -1071,6 +1376,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "bone-marrow",
               label: "bone marrow",
+              maker: null,
               count: 19,
               selected: false,
               href: "/research?q=tissue%3Abone-marrow",
@@ -1084,34 +1390,68 @@ export const REFINED_FACETS: FacetPanelView = {
       ],
     },
     {
-      code: "subjects",
-      label: "対象者",
+      code: "experiment",
+      label: "実験",
       facets: [
         {
-          code: "subject-count",
-          label: "対象者数",
-          kind: "number",
+          code: "experimental-method",
+          label: "実験方法",
+          kind: "vocabulary",
           expanded: false,
           find: "",
           closeHref: null,
-          values: [],
-          moreHref: null,
-          range: {
-            from: "",
-            to: "",
-            min: 1,
-            max: 1872937,
-            unit: null,
-            clearHref: null,
-          },
+          clearHref: null,
+          values: [
+            {
+              code: "rna-seq",
+              label: "RNA-seq",
+              maker: null,
+              count: 143,
+              selected: false,
+              href: "/research?q=experimental-method%3Arna-seq",
+              children: [],
+            },
+            {
+              code: "wes",
+              label: "WES",
+              maker: null,
+              count: 120,
+              selected: false,
+              href: "/research?q=experimental-method%3Awes",
+              children: [],
+            },
+            {
+              code: "targeted-dna-sequencing",
+              label: "Targeted DNA sequencing",
+              maker: null,
+              count: 74,
+              selected: false,
+              href: "/research?q=experimental-method%3Atargeted-dna-sequencing",
+              children: [],
+            },
+            {
+              code: "wgs",
+              label: "WGS",
+              maker: null,
+              count: 70,
+              selected: false,
+              href: "/research?q=experimental-method%3Awgs",
+              children: [],
+            },
+            {
+              code: "scrna-seq",
+              label: "scRNA-seq",
+              maker: null,
+              count: 56,
+              selected: false,
+              href: "/research?q=experimental-method%3Ascrna-seq",
+              children: [],
+            },
+          ],
+          moreHref: "/research?facet=experimental-method",
+          range: null,
           codeEntry: null,
         },
-      ],
-    },
-    {
-      code: "platform",
-      label: "手法とプラットフォーム",
-      facets: [
         {
           code: "platform",
           label: "プラットフォーム",
@@ -1119,10 +1459,12 @@ export const REFINED_FACETS: FacetPanelView = {
           expanded: false,
           find: "",
           closeHref: null,
+          clearHref: null,
           values: [
             {
               code: "illumina-novaseq-6000",
               label: "Illumina NovaSeq 6000",
+              maker: "Illumina",
               count: 127,
               selected: false,
               href: "/research?q=platform%3Aillumina-novaseq-6000",
@@ -1131,6 +1473,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-2500",
               label: "Illumina HiSeq 2500",
+              maker: "Illumina",
               count: 103,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2500",
@@ -1139,6 +1482,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-2000",
               label: "Illumina HiSeq 2000",
+              maker: "Illumina",
               count: 61,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-2000",
@@ -1147,6 +1491,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "illumina-miseq",
               label: "Illumina MiSeq",
+              maker: "Illumina",
               count: 23,
               selected: false,
               href: "/research?q=platform%3Aillumina-miseq",
@@ -1155,6 +1500,7 @@ export const REFINED_FACETS: FacetPanelView = {
             {
               code: "illumina-hiseq-x-ten",
               label: "Illumina HiSeq X Ten",
+              maker: "Illumina",
               count: 21,
               selected: false,
               href: "/research?q=platform%3Aillumina-hiseq-x-ten",
@@ -1168,6 +1514,5 @@ export const REFINED_FACETS: FacetPanelView = {
       ],
     },
   ],
-  clearHref: "/research",
   target: "research",
 }

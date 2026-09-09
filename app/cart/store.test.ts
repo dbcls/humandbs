@@ -4,6 +4,7 @@ import {
   addToCart,
   applicationPayload,
   CART_LIMIT,
+  cartPressGathers,
   isCartable,
   parseCart,
   removeFromCart,
@@ -118,5 +119,32 @@ describe("the application payload", () => {
 
   it("is still well-formed for an empty cart", () => {
     expect(JSON.parse(applicationPayload([]))).toEqual({ components: [] })
+  })
+})
+
+describe("pressing a mark that stands for many", () => {
+  it("gathers when the cart holds none of them", () => {
+    expect(cartPressGathers([], many(20))).toBe(true)
+  })
+
+  it("gathers the rest when the cart holds only some", () => {
+    expect(cartPressGathers(many(5), many(20))).toBe(true)
+  })
+
+  it("lets go once the cart holds every one of them", () => {
+    expect(cartPressGathers(many(20), many(20))).toBe(false)
+  })
+
+  it("lets go when the ceiling stops it reaching every one of them", () => {
+    const held = many(CART_LIMIT)
+    expect(cartPressGathers(held, many(CART_LIMIT + 20))).toBe(false)
+  })
+
+  it("counts the same dataset named twice as one, so a repeated id cannot block letting go", () => {
+    expect(cartPressGathers(["JGAD000001"], ["JGAD000001", "JGAD000001"])).toBe(false)
+  })
+
+  it("ignores what could never go in, so a row of archives lets go rather than gathering nothing", () => {
+    expect(cartPressGathers([], ["DRA014188", "hum0014-NHA001"])).toBe(false)
   })
 })

@@ -1,6 +1,7 @@
 import { data, Link } from "react-router"
 
 import { adminResearchFilesPath, adminResearchPath, fileUploadPath } from "~/admin/urls"
+import { Note, Stack } from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
 import { Card, Empty, Page, PageHead, PageLinks, Section } from "~/components/page"
 import { formatSize } from "~/files/box"
@@ -56,52 +57,48 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
         </Link>
       </PageHead>
       <Card>
-        {actionData?.status === "nothing-selected" && <Notice>{t.nothingSelected}</Notice>}
-        {actionData?.status === "no-box" && <Notice>{t.publishNeedsLabel}</Notice>}
-        {view.humLabel === null && <Notice>{t.noBox}</Notice>}
+        <Stack gap="block">
+          {actionData?.status === "nothing-selected" && <Note kind="danger" live>{t.nothingSelected}</Note>}
+          {actionData?.status === "no-box" && <Note kind="danger" live>{t.publishNeedsLabel}</Note>}
+          {view.humLabel === null && <Note kind="warning">{t.noBox}</Note>}
 
-        <Section title={t.upload}>
-          <UploadPanel
-            locale={locale}
-            endpoint={fileUploadPath(view.researchId)}
-            threshold={view.multipartThreshold}
-            partSize={view.partSize}
-          />
-        </Section>
+          <Section title={t.upload}>
+            <UploadPanel
+              locale={locale}
+              endpoint={fileUploadPath(view.researchId)}
+              threshold={view.multipartThreshold}
+              partSize={view.partSize}
+            />
+          </Section>
 
-        <Section title={t.heading}>
-          {view.rows === null
-            ? <Empty>{t.unavailable}</Empty>
-            : (
-                <>
-                  <p className="mb-3 text-ink-muted text-sm">
-                    {t.summary(view.total, formatSize(view.totalBytes))}
-                  </p>
-                  {view.switching > 0 && (
-                    <p className="mb-3 text-accent text-sm">{t.switching(view.switching)}</p>
-                  )}
-                  <BoxTable locale={locale} rows={view.rows} humLabel={view.humLabel} />
-                  <PageLinks
-                    label={messages.search.pagination}
-                    page={view.page}
-                    pageCount={view.pageCount}
-                    at={(to) => href(
-                      locale,
-                      `${adminResearchFilesPath(view.researchId)}?page=${to}`,
+          <Section title={t.heading}>
+            {view.rows === null
+              ? <Empty>{t.unavailable}</Empty>
+              : (
+                  <Stack gap="normal">
+                    <p className="text-ink-muted text-sm">
+                      {t.summary(view.total, formatSize(view.totalBytes))}
+                    </p>
+                    {view.switching > 0 && (
+                      <p className="text-accent text-sm">{t.switching(view.switching)}</p>
                     )}
-                    previous={messages.search.previousPage}
-                    next={messages.search.nextPage}
-                  />
-                </>
-              )}
-        </Section>
+                    <BoxTable locale={locale} rows={view.rows} humLabel={view.humLabel} />
+                    <PageLinks
+                      label={messages.search.pagination}
+                      page={view.page}
+                      pageCount={view.pageCount}
+                      at={(to) => href(
+                        locale,
+                        `${adminResearchFilesPath(view.researchId)}?page=${to}`,
+                      )}
+                      previous={messages.search.previousPage}
+                      next={messages.search.nextPage}
+                    />
+                  </Stack>
+                )}
+          </Section>
+        </Stack>
       </Card>
     </Page>
-  )
-}
-
-function Notice({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-4 rounded border border-accent bg-surface px-4 py-2 text-sm">{children}</p>
   )
 }

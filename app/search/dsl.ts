@@ -30,10 +30,7 @@
 
 import { operatorFor, type QueryFields, type ValueKind } from "./fields"
 
-/**
- * The two ends of a range. `*` is an end that is not there, which is how one
- * side of a numeric filter is left open; a date range has to name both.
- */
+/** The two ends of a range. `*` is an end that is not there. */
 export interface DslRange {
   from: string
   to: string
@@ -193,7 +190,8 @@ function tokenize(input: string): Token[] {
   return tokens
 }
 
-function isRealDate(value: string): boolean {
+/** A day the calendar has, written the one way the address writes days. */
+export function isRealDate(value: string): boolean {
   if (!DATE_TOKEN.test(value)) return false
   const date = new Date(`${value}T00:00:00Z`)
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
@@ -213,14 +211,15 @@ function isNumber(value: string): boolean {
   return value.trim() !== "" && Number.isFinite(Number(value))
 }
 
-/** One end of a range, checked against what the field's type admits. */
+/**
+ * One end of a range, checked against what the field's type admits.
+ *
+ * **Either end may be open, dates included.** "Published since 2020" is a
+ * question with no closing day, and asking the reader to write today's date
+ * would give the address a meaning that changes overnight.
+ */
 function checkBound(type: "date" | "number", value: string, column: number): void {
-  if (value === OPEN_BOUND) {
-    // A date range is a pair of days; leaving one end open would mean "before
-    // the data begins", which the rows have no way to answer.
-    if (type === "date") fail("invalid-date-format", column)
-    return
-  }
+  if (value === OPEN_BOUND) return
   if (type === "date" && !isRealDate(value)) fail("invalid-date-format", column)
   if (type === "number" && !isNumber(value)) fail("invalid-number-format", column)
 }
@@ -434,16 +433,4 @@ export function serializeQuery(node: QueryNode | null): string {
   // An AND of plain words is written the way it was typed.
   const separator = node.rules.every((rule) => rule.op === "free_text") ? " " : " AND "
   return node.rules.map((rule) => wrap(rule, 1)).join(separator)
-}
-
-/**
- * Whether anything in the query is matched against the full text. Only that
- * carries a score, so a query without it has nothing to rank by and relevance
- * is not offered as an ordering.
- */
-export function hasFreeText(node: QueryNode | null): boolean {
-  if (node === null) return false
-  if (node.op === "free_text") return true
-  if (node.op === "field") return false
-  return node.rules.some(hasFreeText)
 }

@@ -5,7 +5,7 @@ import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href, listPath, researchPath } from "~/public/urls"
+import { href, jgaStudyUrl, listPath, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
 import { Downloads } from "./files"
@@ -15,6 +15,7 @@ import {
   Card,
   Crumbs,
   Empty,
+  ExternalLink,
   KeyValue,
   Page,
   PageHead,
@@ -87,7 +88,30 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
     <Stack gap="block">
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
+      {/*
+        **The order is the reader's questions, and `Pairs` cuts it into two
+        columns from the top.** What the data is and whether it can be used are
+        what somebody opening this page came for, so they take the left column;
+        where it belongs and when it appeared follow on the right. Dates first
+        would spend the corner the eye lands on.
+      */}
       <Pairs>
+        {view.typeOfData !== null && (
+          <KeyValue title={t.typeOfData} at={typeOfDataAnchor ?? undefined}>
+            <Value field={view.typeOfData} locale={locale} />
+          </KeyValue>
+        )}
+        {view.accessType !== null && (
+          <KeyValue title={t.accessType} at={accessAnchor ?? undefined}>
+            <AccessTypeBadge term={view.accessType} />
+          </KeyValue>
+        )}
+        <KeyValue title={t.research}>
+          {/* The same mark the two listings put before a research id, so the
+              thing being pointed at is recognised before the label is read. */}
+          <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
+          <Link to={researchHref}>{view.humLabel}</Link>
+        </KeyValue>
         {/* A date the upstream archive has not given us is left out rather
             than drawn as an empty row: "there is no value" and "the label is
             here but the value is missing" read the same and only one is true. */}
@@ -97,17 +121,16 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         {view.dateModified !== null && (
           <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
         )}
-        <KeyValue title={t.research}>
-          <Link to={researchHref}>{view.humLabel}</Link>
-        </KeyValue>
-        {view.typeOfData !== null && (
-          <KeyValue title={t.typeOfData} at={typeOfDataAnchor ?? undefined}>
-            <Value field={view.typeOfData} locale={locale} />
-          </KeyValue>
-        )}
-        {view.accessType !== null && (
-          <KeyValue title={t.accessType} at={accessAnchor ?? undefined}>
-            <AccessTypeBadge term={view.accessType} />
+        {/*
+          **Last, because it is the one that may not be there.** Two datasets in
+          three have a study; a slot that comes and goes from the middle would
+          move everything under it as the reader moves between them.
+        */}
+        {view.studyAccession !== null && (
+          <KeyValue title={t.jgaStudy}>
+            <ExternalLink to={jgaStudyUrl(view.studyAccession)} locale={locale}>
+              {view.studyAccession}
+            </ExternalLink>
           </KeyValue>
         )}
       </Pairs>

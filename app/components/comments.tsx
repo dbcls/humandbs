@@ -14,10 +14,10 @@
  * previous one's name.
  */
 
-import { useSyncExternalStore } from "react"
-import { useFetcher } from "react-router"
+import { useEffect, useRef, useSyncExternalStore } from "react"
+import { useFetcher, useLocation } from "react-router"
 
-import { Badge, Button } from "~/components/base"
+import { Badge, Button, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { AnchorSubject } from "~/review/anchors"
@@ -78,9 +78,36 @@ export function rememberName(name: string): void {
 }
 
 /**
+ * The mark for a comment or an acknowledgement recorded through a DDBJ
+ * account.
+ *
+ * **Shared by every place that draws one**, so the accessible name cannot
+ * drift between them the way it had: an `aria-label` and a `title` say the
+ * same thing to a screen reader and to a pointer, where the glyph alone says
+ * neither.
+ */
+export function DdbjMark({ locale }: { locale: Locale }) {
+  const t = messagesFor(locale).comment
+  return (
+    <span aria-label={t.ddbjAccount} title={t.ddbjAccount} className="ml-1">
+      🅳
+    </span>
+  )
+}
+
+/**
  * The mark beside a place: how many people have said something about it, and
  * the way to say something yourself. Everything is inside a `details`, so
  * nothing about it needs JavaScript to open.
+ *
+ * **It closes on Escape, on a press anywhere else, and on going somewhere.** A
+ * research edit screen carries dozens of these open at once, and a panel that
+ * only closes by pressing its own control again stays open over the page while
+ * the reader carries on with something else. The two listeners are on the
+ * document because the press that should close it is by definition not on this
+ * element, and the address is watched because a client-side move does not
+ * reload the page — the same three ways every panel that hangs off a control
+ * closes (`docs/ui.md`).
  */
 export function CommentSpot({ context, at, threads }: {
   context: CommentContext
@@ -95,8 +122,40 @@ export function CommentSpot({ context, at, threads }: {
     : [...threads]
   const open = unresolvedCount(shown)
 
+  const box = useRef<HTMLDetailsElement>(null)
+  const { key } = useLocation()
+
+  useEffect(() => {
+    if (box.current !== null) box.current.open = false
+  }, [key])
+
+  useEffect(() => {
+    const element = box.current
+    if (element === null) return
+
+    const onPress = (event: PointerEvent) => {
+      if (!element.open) return
+      if (event.target instanceof Node && element.contains(event.target)) return
+      element.open = false
+    }
+    // Focus goes back to the control that opened it: closing a panel the
+    // reader is inside would otherwise leave focus on nothing.
+    const onKey = (event: KeyboardEvent) => {
+      if (!element.open || event.key !== "Escape") return
+      element.open = false
+      element.querySelector("summary")?.focus()
+    }
+
+    document.addEventListener("pointerdown", onPress)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", onPress)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [])
+
   return (
-    <details className="inline-block align-top text-sm" id={encodeURIComponent(at)}>
+    <details ref={box} className="inline-flex flex-col items-start gap-2 align-top text-sm" id={encodeURIComponent(at)}>
       <summary
         title={shown.length === 0 ? t.add : t.heading}
         className="inline-flex min-h-tap min-w-tap cursor-pointer list-none items-center justify-center gap-1 rounded border border-line-strong px-2 text-ink-muted text-xs marker:content-none hover:bg-surface-hover"
@@ -107,14 +166,16 @@ export function CommentSpot({ context, at, threads }: {
         {open > 0 && <span className="text-accent">{t.unresolved}</span>}
       </summary>
 
-      <div className="mt-2 w-full min-w-64 max-w-xl rounded border border-line bg-surface px-3 py-2">
-        {shown.map((thread) => (
-          <Thread key={thread.id} context={context} thread={thread} at={at} fetcher={fetcher} />
-        ))}
-        <CommentForm context={context} at={at} fetcher={fetcher} intent="comment" />
-        {answer?.status === "invalid" && (
-          <p className="mt-2 text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
-        )}
+      <div className="w-full min-w-64 max-w-xl rounded border border-line bg-surface px-3 py-2">
+        <Stack gap="normal">
+          {shown.map((thread) => (
+            <Thread key={thread.id} context={context} thread={thread} at={at} fetcher={fetcher} />
+          ))}
+          <CommentForm context={context} at={at} fetcher={fetcher} intent="comment" />
+          {answer?.status === "invalid" && (
+            <p className="text-danger text-xs">{problemText(context.locale, answer.problem)}</p>
+          )}
+        </Stack>
       </div>
     </details>
   )
@@ -141,49 +202,54 @@ export function Thread({ context, thread, at, fetcher }: {
   const post = fetcher ?? own
 
   return (
-    <div className="mb-4 border-line border-b pb-2 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        {thread.resolved
-          ? (
-              <Badge>
-                {thread.resolvedBy === null ? t.resolved : t.resolvedBy(thread.resolvedBy)}
-                {/* The date only: the hour a thread was closed answers nothing. */}
-                {thread.resolvedAt !== null && ` (${thread.resolvedAt.slice(0, 10)})`}
-              </Badge>
-            )
-          : <span className="text-accent">{t.unresolved}</span>}
-        {context.canResolve && (
-          <post.Form method="post" action={context.action} className="inline">
-            <input type="hidden" name="intent" value={thread.resolved ? "reopen" : "resolve"} />
-            <input type="hidden" name="threadId" value={thread.id} />
-            {at !== undefined && <input type="hidden" name="at" value={at} />}
-            <button type="submit" className="cursor-pointer text-xs underline">
-              {thread.resolved ? t.reopen : t.resolve}
-            </button>
-          </post.Form>
-        )}
-      </div>
+    // A rule above rather than below: the caller holds threads in a
+    // `Stack`, which already puts a gap between them, and a rule on both
+    // sides of that gap would draw it twice.
+    <div className="border-line border-t pt-2">
+      <Stack gap="normal">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {thread.resolved
+            ? (
+                <Badge>
+                  {thread.resolvedBy === null ? t.resolved : t.resolvedBy(thread.resolvedBy)}
+                  {/* The date only: the hour a thread was closed answers nothing. */}
+                  {thread.resolvedAt !== null && ` (${thread.resolvedAt.slice(0, 10)})`}
+                </Badge>
+              )
+            : <span className="text-accent">{t.unresolved}</span>}
+          {context.canResolve && (
+            <post.Form method="post" action={context.action} className="inline">
+              <input type="hidden" name="intent" value={thread.resolved ? "reopen" : "resolve"} />
+              <input type="hidden" name="threadId" value={thread.id} />
+              {at !== undefined && <input type="hidden" name="at" value={at} />}
+              <Button type="submit" variant="ghost" size="xs">
+                {thread.resolved ? t.reopen : t.resolve}
+              </Button>
+            </post.Form>
+          )}
+        </div>
 
-      <ul className="mt-2 flex flex-col gap-2">
-        {thread.comments.map((comment) => (
-          <li key={comment.id}>
-            <div className="flex flex-wrap items-baseline gap-2 text-ink-muted text-xs">
-              <span className="font-semibold">{comment.authorName}</span>
-              {comment.bySignedIn && <span title={t.ddbjAccount} aria-hidden="true">🅳</span>}
-              <span>{comment.createdAt.slice(0, 16).replace("T", " ")}</span>
-            </div>
-            <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
-          </li>
-        ))}
-      </ul>
+        <Stack as="ul" gap="normal">
+          {thread.comments.map((comment) => (
+            <li key={comment.id}>
+              <div className="flex flex-wrap items-baseline gap-2 text-ink-muted text-xs">
+                <span className="font-semibold">{comment.authorName}</span>
+                {comment.bySignedIn && <DdbjMark locale={context.locale} />}
+                <span>{comment.createdAt.slice(0, 16).replace("T", " ")}</span>
+              </div>
+              <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
+            </li>
+          ))}
+        </Stack>
 
-      <CommentForm
-        context={context}
-        at={at}
-        fetcher={post}
-        intent="reply"
-        threadId={thread.id}
-      />
+        <CommentForm
+          context={context}
+          at={at}
+          fetcher={post}
+          intent="reply"
+          threadId={thread.id}
+        />
+      </Stack>
     </div>
   )
 }
@@ -208,44 +274,45 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
     <fetcher.Form
       method="post"
       action={context.action}
-      className="mt-2 flex flex-col gap-2"
       onSubmit={(event) => {
         const typed = new FormData(event.currentTarget).get("name")
         if (typeof typed === "string" && typed.trim() !== "") rememberName(typed.trim())
       }}
     >
-      <input type="hidden" name="intent" value={intent} />
-      {threadId !== undefined && <input type="hidden" name="threadId" value={threadId} />}
-      {intent === "comment" && <input type="hidden" name="path" value={at ?? ""} />}
-      {intent === "comment" && <input type="hidden" name="subject" value={context.subject.kind} />}
-      {intent === "comment" && context.subject.kind === "dataset" && (
-        <input type="hidden" name="datasetId" value={context.subject.datasetId} />
-      )}
-      {at !== undefined && <input type="hidden" name="at" value={at} />}
+      <Stack gap="normal">
+        <input type="hidden" name="intent" value={intent} />
+        {threadId !== undefined && <input type="hidden" name="threadId" value={threadId} />}
+        {intent === "comment" && <input type="hidden" name="path" value={at ?? ""} />}
+        {intent === "comment" && <input type="hidden" name="subject" value={context.subject.kind} />}
+        {intent === "comment" && context.subject.kind === "dataset" && (
+          <input type="hidden" name="datasetId" value={context.subject.datasetId} />
+        )}
+        {at !== undefined && <input type="hidden" name="at" value={at} />}
 
-      {context.signedInName === null && (
-        <input
-          type="text"
-          name="name"
-          key={remembered}
-          defaultValue={remembered}
-          placeholder={messagesFor(context.locale).preview.whoPlaceholder}
-          aria-label={messagesFor(context.locale).preview.who}
+        {context.signedInName === null && (
+          <input
+            type="text"
+            name="name"
+            key={remembered}
+            defaultValue={remembered}
+            placeholder={messagesFor(context.locale).preview.whoPlaceholder}
+            aria-label={messagesFor(context.locale).preview.who}
+            className={`${CONTROL} text-sm`}
+          />
+        )}
+        <textarea
+          name="body"
+          rows={2}
+          placeholder={intent === "reply" ? t.reply : t.bodyPlaceholder}
+          aria-label={t.body}
           className={`${CONTROL} text-sm`}
         />
-      )}
-      <textarea
-        name="body"
-        rows={2}
-        placeholder={intent === "reply" ? t.reply : t.bodyPlaceholder}
-        aria-label={t.body}
-        className={`${CONTROL} text-sm`}
-      />
-      <div>
-        <Button type="submit" size="xs" disabled={busy}>
-          {busy ? t.posting : t.post}
-        </Button>
-      </div>
+        <div>
+          <Button type="submit" size="xs" disabled={busy}>
+            {busy ? t.posting : t.post}
+          </Button>
+        </div>
+      </Stack>
     </fetcher.Form>
   )
 }

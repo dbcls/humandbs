@@ -70,6 +70,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             */}
             <ActionRow>
               <ActionButton
+                locale={locale}
                 href={href(locale, "/data-submission")}
                 label={messages.submission.heading}
                 tone="accent"
@@ -77,6 +78,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 external={false}
               />
               <ActionButton
+                locale={locale}
                 href={href(locale, "/data-use")}
                 label={messages.use.heading}
                 tone="brand"

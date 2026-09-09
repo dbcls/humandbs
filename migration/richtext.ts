@@ -48,12 +48,20 @@ function collector(): Collector {
     current.push(span)
   }
 
-  /** Whitespace at either end of a line is layout, not content. */
+  /**
+   * Whitespace at either end of a line is layout, not content — **except a
+   * non-breaking space, which is a character somebody typed.** v1's editor had
+   * no way to indent, so a curator who needed one wrote `&nbsp;` runs, and in
+   * `Materials and Participants` those runs are what says which cell line the
+   * lines under it are about. Dropping them leaves the same two lines under two
+   * headings with nothing to tell them apart, which reads as the value being
+   * written twice.
+   */
   function trimmed(): Line {
     return current
       .map((span, index) => {
-        const start = index === 0 ? span.text.replace(/^\s+/, "") : span.text
-        const text = index === current.length - 1 ? start.replace(/\s+$/, "") : start
+        const start = index === 0 ? span.text.replace(/^[^\S\u00a0]+/, "") : span.text
+        const text = index === current.length - 1 ? start.replace(/[^\S\u00a0]+$/, "") : start
         return { ...span, text }
       })
       .filter((span) => span.text !== "")

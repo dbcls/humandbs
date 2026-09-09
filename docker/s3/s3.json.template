@@ -8,8 +8,8 @@
       "name": "app",
       "credentials": [
         {
-          "accessKey": "humandbs-dev",
-          "secretKey": "humandbs-dev-secret"
+          "accessKey": "@HUMANDBS_S3_ACCESS_KEY@",
+          "secretKey": "@HUMANDBS_S3_SECRET_KEY@"
         }
       ],
       "actions": ["Admin", "Read", "Write", "List", "Tagging"]

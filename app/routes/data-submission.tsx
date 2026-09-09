@@ -30,7 +30,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function DataSubmission({ loaderData }: Route.ComponentProps) {
-  const messages = messagesFor(loaderData.locale).submission
+  const { locale } = loaderData
+  const messages = messagesFor(locale).submission
 
   return (
     <Page width="reading">
@@ -40,6 +41,7 @@ export default function DataSubmission({ loaderData }: Route.ComponentProps) {
           <Heading title={messages.heading} />
           <ActionRow>
             <ActionButton
+              locale={locale}
               href="https://bsi.nig.ac.jp/submit"
               label={messages.navigator}
               note={messages.navigatorFor}
@@ -47,6 +49,7 @@ export default function DataSubmission({ loaderData }: Route.ComponentProps) {
               icon="upload"
             />
             <ActionButton
+              locale={locale}
               href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
               label={messages.apply}
               note={messages.applyFor}

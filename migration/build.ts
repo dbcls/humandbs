@@ -23,6 +23,7 @@
 
 import { isPortalIssuedId } from "~/admin/labels"
 import { isEmptyRichText } from "~/content/richtext"
+import { convert } from "~/content/units"
 import type {
   DataProvider,
   DatasetContent,
@@ -30,6 +31,7 @@ import type {
   Grant,
   Link,
   LocalizedLinks,
+  NumberValue,
   RelatedPublication,
   ResearchContent,
   ResearchProject,
@@ -49,7 +51,8 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
-import { facetValueSlots, RETYPED_CODES } from "./facets"
+import { facetValueSlots, MERGED_READERS, RETYPED_CODES, TEXT_NUMBERS } from "./facets"
+import { readCell, storedNumber, withHandReadings, type ReadNumber } from "./numbers"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
 function held<T>(value: T): Slot<T> {
@@ -108,12 +111,12 @@ export interface ResearchContentInput {
    * current and nowhere else — copying it onto older versions would state that
    * a past version said something it never said.
    */
-  summaryShort: EsSummaryShort | null
+  listingSummary: EsSummaryShort | null
   datasetIdByLabel: Map<string, string>
 }
 
 export function buildResearchContent(input: ResearchContentInput): ResearchContent {
-  const { version: rv, summaryShort, datasetIdByLabel } = input
+  const { version: rv, listingSummary, datasetIdByLabel } = input
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
@@ -154,10 +157,10 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       targets: prose(rv.summary?.targets),
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
-    summaryShort: {
-      methods: prose(summaryShort?.methods),
-      targets: prose(summaryShort?.targets),
-      typeOfData: prose(summaryShort?.typeOfData),
+    listingSummary: {
+      methods: prose(listingSummary?.methods),
+      targets: prose(listingSummary?.targets),
+      typeOfData: prose(listingSummary?.typeOfData),
     },
     releaseNote: prose(rv.releaseNote),
     dataProviders,
@@ -166,6 +169,86 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
     relatedPublications,
     datasetIds: datasetIdentities((rv.datasets ?? []).map((d) => d.datasetId), datasetIdByLabel),
   }
+}
+
+/**
+ * The lines of a cell that are about a different dataset.
+ *
+ * **A v1 cell is sometimes a table about several datasets at once.** Where a
+ * research holds five datasets, the same five-row table of data volumes is
+ * copied into all five, each row labelled with the accession it is about. The
+ * label is not "which part of this dataset" — it names another dataset
+ * entirely, and it is the only thing saying which row belongs to whom. Measured
+ * over the dump: 18,272 labelled lines, of which **94.9% name a sibling rather
+ * than the dataset whose cell they sit in**.
+ *
+ * Left as they are, every one of those values lives in as many places as the
+ * research has datasets, and an editor correcting one has to find the rest.
+ *
+ * **A line is dropped only where the dataset it names carries the same line
+ * itself.** That is what makes this lossless rather than a guess: 34,797 of the
+ * 34,842 borrowed lines are word-for-word present on the dataset they are
+ * about. The 45 that are not — 15 naming a dataset with no line of its own, 30
+ * disagreeing with what that dataset says — stay where they are. Something has
+ * to look at those, and quietly deleting them would be the one outcome that
+ * cannot be reviewed.
+ */
+const LANGUAGES = ["ja", "en"] as const
+type Language = (typeof LANGUAGES)[number]
+
+const LINE_PART = "\u0000"
+
+function lineMark(label: string, sourceKey: string, lang: Language, said: string): string {
+  return [label, sourceKey, lang, said].join(LINE_PART)
+}
+
+/** What a line says, and the datasets its label names, if any. */
+function readLine(line: string, labels: ReadonlySet<string>): {
+  said: string
+  about: string[]
+} {
+  const at = topLevelColon(line)
+  if (at === -1) return { said: line.trim(), about: [] }
+  const about = line.slice(0, at)
+    .split(/[、,/／・]|および/)
+    .map((part) => part.replace(/[（(][^)）]*[)）]/g, "").trim())
+    .filter((part) => labels.has(part))
+  return { said: line.slice(at + 1).trim(), about }
+}
+
+/**
+ * The first colon standing outside any bracket. A value carries colons of its
+ * own — `bam [ref: hg19]` — and splitting on the first one anywhere would read
+ * those as labels.
+ */
+function topLevelColon(line: string): number {
+  let depth = 0
+  for (let at = 0; at < line.length; at += 1) {
+    const ch = line[at] ?? ""
+    if ("([（［".includes(ch)) depth += 1
+    else if (")]）］".includes(ch)) depth = Math.max(0, depth - 1)
+    else if ((ch === ":" || ch === "：") && depth === 0) return at
+  }
+  return -1
+}
+
+/** Every line each dataset says about itself, which is what makes a copy a copy. */
+export function ownLines(datasets: readonly PublishedDataset[]): ReadonlySet<string> {
+  const labels = new Set(datasets.map((one) => one.label))
+  const marks = new Set<string>()
+  for (const one of datasets) {
+    for (const experiment of one.doc.experiments ?? []) {
+      for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
+        for (const lang of LANGUAGES) {
+          for (const line of (value[lang]?.text ?? "").split("\n")) {
+            const { said, about } = readLine(line, labels)
+            if (about.includes(one.label)) marks.add(lineMark(one.label, sourceKey, lang, said))
+          }
+        }
+      }
+    }
+  }
+  return marks
 }
 
 export interface DatasetContentInput {
@@ -178,11 +261,36 @@ export interface DatasetContentInput {
   termIdBySetAndCode: Map<string, string>
   accessCriteriaKeyCode: string
   typeOfDataKeyCode: string
+  /** Every dataset label in the dump, so a line's label can be recognised. */
+  datasetLabels: ReadonlySet<string>
+  /** What each dataset says about itself (`ownLines`). */
+  ownLines: ReadonlySet<string>
+  /**
+   * Where the lines no rule could read are collected. **They are not dropped
+   * quietly**: a cell that says something this cannot hold as a number is work
+   * for somebody, and the list is what that work is done from.
+   */
+  unread: { dataset: string, sourceKey: string, line: string }[]
+  /** The lines somebody read by hand (`numbers.ts` の `byHand`). */
+  byHand: ReadonlyMap<string, ReadNumber[]>
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode } = input
   const doc = dataset.doc
+
+  /** A cell with the lines about other datasets taken out (`ownLines`). */
+  const kept = (sourceKey: string, lang: Language, text: string): string => {
+    const lines = text.split("\n")
+    const staying = lines.filter((line) => {
+      const { said, about } = readLine(line, input.datasetLabels)
+      if (about.length === 0 || about.includes(dataset.label)) return true
+      // Only where every dataset it names says the same thing itself. Anything
+      // else is the one copy of that value, wherever it happens to sit.
+      return !about.every((label) => input.ownLines.has(lineMark(label, sourceKey, lang, said)))
+    })
+    return staying.length === lines.length ? text : staying.join("\n")
+  }
 
   const values: ValueSlot[] = []
 
@@ -210,26 +318,68 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     })
   }
 
-  const experiments: Experiment[] = (doc.experiments ?? []).map((e, i) => ({
-    id: `experiment-${i + 1}`,
-    label: single(e.header?.ja?.text, e.header?.en?.text),
-    values: [
-      ...Object.entries(e.data ?? {}).flatMap(([sourceKey, value]) => {
-        const code = codeBySourceKey.get(sourceKey)
-        if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
-        const keyId = keyIdByCode.get(code)
-        if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
-        // A key that is a facet now holds the typed value instead of the prose
-        // it was read out of; one key cannot carry both.
-        if (RETYPED_CODES.has(code)) return []
-        const ja = richTextFromMarkdown(value.ja?.text ?? "")
-        const en = richTextFromMarkdown(value.en?.text ?? "")
-        if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
-        return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
-      }),
-      ...facetValueSlots(e.searchable ?? {}, { keyIdByCode, termIdBySetAndCode }),
-    ],
-  }))
+  const experiments: Experiment[] = (doc.experiments ?? []).map((e, i) => {
+    // The numbers read out of the cells, gathered by the key they belong to:
+    // several v1 cells may be the same key (`facets.ts` の `MERGED_SOURCES`),
+    // and a key may appear once.
+    const numbers = new Map<string, NumberValue[]>()
+    for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
+      const rule = MERGED_READERS.get(sourceKey)
+        ?? TEXT_NUMBERS.find((one) => one.source === sourceKey)?.read
+      const code = codeBySourceKey.get(sourceKey)
+      if (rule === undefined || code === undefined) continue
+      const reader = withHandReadings(sourceKey, rule, input.byHand)
+      const canonical = TEXT_NUMBERS.find((one) => one.code === code)?.canonicalUnit ?? null
+      const { read, declined } = readCell(kept(sourceKey, "ja", value.ja?.text ?? ""), reader)
+      for (const line of declined) input.unread.push({ dataset: dataset.label, sourceKey, line })
+      // **A key with no canonical unit converts nothing.** Its unit is the kind
+      // of thing counted — SNVs, indels, fold coverage — not a scale, so the
+      // unit written is the unit stored. Running those through the converter
+      // asks it to turn `SNVs` into null, which it refuses, and the value would
+      // disappear without a word.
+      const stored = read.flatMap((raw) => {
+        // A row labelled with the dataset it is already filed under says
+        // nothing: the label existed to tell sibling rows apart, and those have
+        // gone to the datasets they were about (`ownLines`).
+        const one = raw.label === dataset.label ? { ...raw, label: null } : raw
+        if (canonical === null) return [storedNumber(one, one.value, one.unit)]
+        const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
+        return converted === null
+          ? (input.unread.push({ dataset: dataset.label, sourceKey, line: `単位が合わない: ${one.value} ${one.unit ?? ""}` }), [])
+          : [storedNumber(one, converted, canonical)]
+      })
+      numbers.set(code, [...(numbers.get(code) ?? []), ...stored])
+    }
+
+    return {
+      id: `experiment-${i + 1}`,
+      label: single(e.header?.ja?.text, e.header?.en?.text),
+      values: [
+        ...Object.entries(e.data ?? {}).flatMap(([sourceKey, value]) => {
+          const code = codeBySourceKey.get(sourceKey)
+          if (code === undefined) throw new Error(`no catalog key for ${JSON.stringify(sourceKey)}`)
+          const keyId = keyIdByCode.get(code)
+          if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
+          // A key that is a facet now holds the typed value instead of the prose
+          // it was read out of; one key cannot carry both.
+          if (RETYPED_CODES.has(code) || numbers.has(code)) return []
+          const ja = richTextFromMarkdown(kept(sourceKey, "ja", value.ja?.text ?? ""))
+          const en = richTextFromMarkdown(kept(sourceKey, "en", value.en?.text ?? ""))
+          if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
+          return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
+        }),
+        ...[...numbers].flatMap(([code, held]) => {
+          const keyId = keyIdByCode.get(code)
+          // A key with nothing read is a key with no slot: the cell said
+          // something, but not something this can hold as a number.
+          return keyId === undefined || held.length === 0
+            ? []
+            : [{ keyId, value: { kind: "number" as const, values: { state: "value" as const, value: held } } }]
+        }),
+        ...facetValueSlots(e.searchable ?? {}, { keyIdByCode, termIdBySetAndCode }),
+      ],
+    }
+  })
 
   return {
     releaseDate: isPortalIssuedId(dataset.label) ? dataset.firstListedOn : null,

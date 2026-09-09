@@ -17,9 +17,13 @@
  *
  * The way back is partial on purpose. A tree can hold conditions the box has no
  * way to show — a field, a negation, a mixture of both — so the reverse
- * separates what the box can carry from what has to be shown beside it. Nothing
- * is dropped: whatever the box cannot show is displayed as a condition the
- * reader can remove.
+ * separates what the box can *carry* from what cannot be typed into it.
+ *
+ * **This is not the split between what is listed and what is not.** Everything
+ * in force is listed, the typed words included (`app/public/lists.server.ts`
+ * の `inForce`); what this file decides is only which of it the box can hold,
+ * so that the reader can edit those words by typing rather than by lifting a
+ * condition and starting again.
  */
 
 import { group, type QueryNode } from "./dsl"

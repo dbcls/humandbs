@@ -21,11 +21,14 @@ export type IconName
   = | "book"
     | "database"
     | "lock"
+    | "lock-open"
     | "cart"
     | "home"
     | "search"
     | "filter"
     | "sort"
+    | "sort-asc"
+    | "sort-desc"
     | "chevron-right"
     | "chevron-left"
     | "chevron-down"
@@ -56,13 +59,20 @@ export type IconName
     | "spinner"
 
 const NODES: Record<IconName, ReactNode> = {
-  // Two books rather than one: the previous portal marked a research this way,
-  // and one book is what it marked a document with.
+  /*
+    Books standing on a shelf, one of them leaning: the previous portal marked a
+    research this way, and more than one book is what tells it from a document.
+
+    **Standing rather than stacked.** Books lying one on top of another are two
+    rounded rectangles offset from each other, which at the 14px this is drawn at
+    is the shape every interface uses for "copy". Upright spines have no other
+    reading.
+  */
   "book": (
     <>
-      <path d="M5 7a2 2 0 0 0-2 2v11" />
-      <path d="M5.803 18H5a2 2 0 0 0 0 4h9.5a.5.5 0 0 0 .5-.5V21" />
-      <path d="M9 15V4a2 2 0 0 1 2-2h9.5a.5.5 0 0 1 .5.5v14a.5.5 0 0 1-.5.5H11a2 2 0 0 1 0-4h10" />
+      <rect width="8" height="18" x="3" y="3" rx="1" />
+      <path d="M7 3v18" />
+      <path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z" />
     </>
   ),
   "database": (
@@ -76,6 +86,13 @@ const NODES: Record<IconName, ReactNode> = {
     <>
       <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </>
+  ),
+  /* The same body with the shackle swung open, so the two read as one pair. */
+  "lock-open": (
+    <>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
     </>
   ),
   "cart": (
@@ -108,6 +125,24 @@ const NODES: Record<IconName, ReactNode> = {
     <>
       <path d="m7 15 5 5 5-5" />
       <path d="m7 9 5-5 5 5" />
+    </>
+  ),
+  "sort-asc": (
+    <>
+      <path d="m3 8 4-4 4 4" />
+      <path d="M7 4v16" />
+      <path d="M11 12h4" />
+      <path d="M11 16h7" />
+      <path d="M11 20h10" />
+    </>
+  ),
+  "sort-desc": (
+    <>
+      <path d="m3 16 4 4 4-4" />
+      <path d="M7 20V4" />
+      <path d="M11 4h10" />
+      <path d="M11 8h7" />
+      <path d="M11 12h4" />
     </>
   ),
   "chevron-right": <path d="m9 18 6-6-6-6" />,

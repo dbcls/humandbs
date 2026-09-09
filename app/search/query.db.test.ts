@@ -6,7 +6,14 @@ import * as s from "~/db/schema"
 
 import { parseQuery, type QueryNode } from "./dsl"
 import { BUILT_IN_ONLY } from "./fields"
-import { countMatches, searchDocs, type SearchTarget, type SortKey } from "./query.server"
+import {
+  countMatches,
+  defaultOrder,
+  searchDocs,
+  type SearchTarget,
+  type SortKey,
+  type SortOrder,
+} from "./query.server"
 
 /**
  * These run against the development database, so they need `docker compose up`.
@@ -23,8 +30,11 @@ async function labels(
   input: string,
   target: SearchTarget = "research",
   sort: SortKey = "id",
+  order: SortOrder = defaultOrder(sort),
 ): Promise<string[]> {
-  const result = await searchDocs(db, { target, ast: ast(input), fields: BUILT_IN_ONLY, sort, page: 1 })
+  const result = await searchDocs(db, {
+    target, ast: ast(input), fields: BUILT_IN_ONLY, sort, order, page: 1,
+  })
   return result.hits.map((hit) => hit.datasetLabel ?? hit.humLabel)
 }
 
@@ -136,21 +146,41 @@ describe("running a query against the published set", () => {
 })
 
 describe("the order rows come back in", () => {
-  it("puts a row with no date after the ones that have one, in both directions", async () => {
+  it("puts a row with no date after the ones that have one, whichever date it is", async () => {
     expect(await labels("", "research", "datePublished"))
       .toEqual(["hum0002", "hum0001", "hum0003"])
     expect(await labels("", "research", "dateModified"))
       .toEqual(["hum0001", "hum0002", "hum0003"])
   })
 
+  it("turns the dates around when asked, and still ends on the undated row", async () => {
+    expect(await labels("", "research", "datePublished", "desc"))
+      .toEqual(["hum0002", "hum0001", "hum0003"])
+    expect(await labels("", "research", "datePublished", "asc"))
+      .toEqual(["hum0001", "hum0002", "hum0003"])
+  })
+
+  it("turns the labels around when asked", async () => {
+    expect(await labels("", "research", "id", "asc"))
+      .toEqual(["hum0001", "hum0002", "hum0003"])
+    expect(await labels("", "research", "id", "desc"))
+      .toEqual(["hum0003", "hum0002", "hum0001"])
+  })
+
   it("never leaves two rows to swap places, so paging cannot repeat or skip one", async () => {
-    const first = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "relevance", page: 1 })
-    const again = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "relevance", page: 1 })
+    const first = await searchDocs(db, {
+      target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "dateModified", order: "desc", page: 1,
+    })
+    const again = await searchDocs(db, {
+      target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "dateModified", order: "desc", page: 1,
+    })
     expect(again.hits.map((hit) => hit.humLabel)).toEqual(first.hits.map((hit) => hit.humLabel))
   })
 
   it("**a page past the end comes back empty**, so walking the pages ends", async () => {
-    const page = await searchDocs(db, { target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "id", page: 99 })
+    const page = await searchDocs(db, {
+      target: "research", ast: null, fields: BUILT_IN_ONLY, sort: "id", order: "asc", page: 99,
+    })
     expect(page.hits).toEqual([])
     expect(page.page).toBe(99)
     expect(page.total).toBe(3)

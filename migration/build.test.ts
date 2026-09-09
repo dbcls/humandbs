@@ -4,7 +4,7 @@ import { isPortalIssuedId } from "~/admin/labels"
 import { filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 
-import { buildCauRows, buildDatasetContent, buildResearchContent } from "./build"
+import { buildCauRows, buildDatasetContent, buildResearchContent, ownLines } from "./build"
 import type { EsDataset, EsResearchVersion, PublishedDataset } from "./es"
 
 function version(overrides: Partial<EsResearchVersion> = {}): EsResearchVersion {
@@ -18,7 +18,7 @@ function version(overrides: Partial<EsResearchVersion> = {}): EsResearchVersion 
 }
 
 function build(rv: EsResearchVersion, datasetIdByLabel = new Map<string, string>()) {
-  return buildResearchContent({ version: rv, summaryShort: null, datasetIdByLabel })
+  return buildResearchContent({ version: rv, listingSummary: null, datasetIdByLabel })
 }
 
 const KEY_IDS = new Map([
@@ -32,20 +32,34 @@ const TERM_IDS = new Map([
   ["access-criteria/controlled-access-type-1", "term-type-1"],
 ])
 
-function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: string | null = "2020-01-01") {
-  const published: PublishedDataset = {
+function dumpRow(doc: Partial<EsDataset>, label: string, firstListedOn: string | null): PublishedDataset {
+  return {
     label,
     humId: "hum0001",
     firstListedOn,
     doc: { datasetId: label, version: "v1", humId: "hum0001", ...doc },
   }
+}
+
+function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: string | null = "2020-01-01") {
+  return datasetOf([dumpRow(doc, label, firstListedOn)], label)
+}
+
+/** The whole set, since a cell may hold lines about the others. */
+function datasetOf(all: readonly PublishedDataset[], label: string) {
+  const one = all.find((row) => row.label === label)
+  if (one === undefined) throw new Error(`no dataset ${label}`)
   return buildDatasetContent({
-    dataset: published,
+    dataset: one,
     keyIdByCode: KEY_IDS,
     codeBySourceKey: CODE_BY_SOURCE,
     termIdBySetAndCode: TERM_IDS,
     accessCriteriaKeyCode: "access-criteria",
     typeOfDataKeyCode: "type-of-data",
+    datasetLabels: new Set(all.map((row) => row.label)),
+    ownLines: ownLines(all),
+    unread: [],
+    byHand: new Map(),
   })
 }
 
@@ -142,15 +156,15 @@ describe("buildResearchContent", () => {
   })
 
   it("puts the short summary on the version it was given and nowhere else", () => {
-    const summaryShort = { methods: { ja: { text: "配列決定" } } }
+    const listingSummary = { methods: { ja: { text: "配列決定" } } }
     const withIt = buildResearchContent({
       version: version(),
-      summaryShort,
+      listingSummary,
       datasetIdByLabel: new Map(),
     })
     const withoutIt = build(version())
-    expect(value(withIt.summaryShort.methods.ja)).toEqual([[{ text: "配列決定" }]])
-    expect(value(withoutIt.summaryShort.methods.ja)).toEqual([])
+    expect(value(withIt.listingSummary.methods.ja)).toEqual([[{ text: "配列決定" }]])
+    expect(value(withoutIt.listingSummary.methods.ja)).toEqual([])
   })
 })
 
@@ -217,5 +231,60 @@ describe("buildCauRows", () => {
     const [row] = buildCauRows("hum0001", [{ periodOfDataUse: { startDate: "", endDate: null } }])
     expect(row?.periodStart).toBeNull()
     expect(row?.periodEnd).toBeNull()
+  })
+})
+
+describe("a cell holding a table about several datasets", () => {
+  const volume = (text: string) => ({
+    experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }],
+  })
+  const siblings = [
+    dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
+    dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000002", null),
+  ]
+  const said = (content: ReturnType<typeof datasetOf>) =>
+    JSON.stringify(first(first(content.experiments).values).value)
+
+  it("keeps only the lines about the dataset whose cell it is", () => {
+    expect(said(datasetOf(siblings, "JGAD000001"))).toContain("88 GB")
+    expect(said(datasetOf(siblings, "JGAD000001"))).not.toContain("32 GB")
+    expect(said(datasetOf(siblings, "JGAD000002"))).toContain("32 GB")
+    expect(said(datasetOf(siblings, "JGAD000002"))).not.toContain("88 GB")
+  })
+
+  /**
+   * The whole point of dropping a line is that it is written down where it
+   * belongs. A line naming a dataset that never says it is the only copy there
+   * is, and it stays until somebody has looked at it.
+   */
+  it("keeps a line the dataset it names does not carry itself", () => {
+    const lonely = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000009: 32 GB"), "JGAD000001", null),
+      dumpRow(volume(""), "JGAD000009", null),
+    ]
+    expect(said(datasetOf(lonely, "JGAD000001"))).toContain("32 GB")
+  })
+
+  it("keeps a line the dataset it names disagrees with", () => {
+    const differing = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
+      dumpRow(volume("JGAD000002: 33 GB"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(differing, "JGAD000001"))).toContain("32 GB")
+  })
+
+  it("leaves a line whose label names no dataset at all", () => {
+    const plain = [dumpRow(volume("常染色体: 5,961,600\nX染色体: 147,353"), "JGAD000001", null)]
+    expect(said(datasetOf(plain, "JGAD000001"))).toContain("5,961,600")
+    expect(said(datasetOf(plain, "JGAD000001"))).toContain("147,353")
+  })
+
+  /** A value carries colons of its own, and those are not labels. */
+  it("does not read a colon inside brackets as a label", () => {
+    const bracketed = [
+      dumpRow(volume("JGAD000001: 1.32 TB(bam [ref: hg19])"), "JGAD000001", null),
+      dumpRow(volume("JGAD000002: 88 GB"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(bracketed, "JGAD000001"))).toContain("hg19")
   })
 })

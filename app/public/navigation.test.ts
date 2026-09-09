@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { FOOTER, NAVBAR, NAVBAR_MORE, NAVBAR_STEP, navigationPaths } from "./navigation"
+import { FOOTER, NAVBAR, NAVBAR_STEP, navigationPaths } from "./navigation"
 import { SCREEN_PATHS } from "./urls"
 
 /**
@@ -58,7 +58,7 @@ describe("グローバルナビとフッタ", () => {
   })
 
   it("バーに出ない行き先も、メニューか サイトマップにある", () => {
-    const inMenu = new Set([...NAVBAR_MORE, ...NAVBAR].map((item) => item.path))
+    const inMenu = new Set(NAVBAR.map((item) => item.path))
     for (const entry of FOOTER) expect(inMenu.has(entry.path) || entry.children !== undefined).toBe(true)
   })
 })

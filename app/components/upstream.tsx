@@ -6,6 +6,8 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
+import { PaneHeading, Stack } from "./base"
+import { Field, Submit } from "./form"
 import { Empty } from "./page"
 
 /**
@@ -29,21 +31,8 @@ export function UpstreamSearch({ locale, action, keyword }: {
   const t = messagesFor(locale).admin.templates
   return (
     <Form method="get" action={action} className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-ink-muted text-xs">{t.keyword}</span>
-        <input
-          type="search"
-          name="q"
-          defaultValue={keyword}
-          className="w-96 rounded border border-line px-2 py-1 text-sm"
-        />
-      </label>
-      <button
-        type="submit"
-        className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white"
-      >
-        {t.find}
-      </button>
+      <Field type="search" label={t.keyword} name="q" value={keyword} width="w-96" />
+      <Submit variant="primary">{t.find}</Submit>
     </Form>
   )
 }
@@ -69,10 +58,10 @@ export function UpstreamChoice({ locale, choice, submit }: {
   const free = choice.datasets.filter((entry) => entry.heldBy === null)
 
   return (
-    <div className="flex flex-col gap-5">
+    <Stack gap="block">
       {choice.fields.length > 0 && (
-        <div>
-          <h3 className="mb-2 font-bold text-sm">{t.fields}</h3>
+        <Stack gap="normal">
+          <PaneHeading title={t.fields} level="h3" rule="start" />
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             {choice.fields.map((field) => (
               <div key={field.field} className="contents">
@@ -81,11 +70,11 @@ export function UpstreamChoice({ locale, choice, submit }: {
               </div>
             ))}
           </dl>
-        </div>
+        </Stack>
       )}
 
-      <div>
-        <h3 className="mb-2 font-bold text-sm">{t.datasets}</h3>
+      <Stack gap="normal">
+        <PaneHeading title={t.datasets} level="h3" rule="start" />
         {choice.datasets.length === 0
           ? <Empty>{t.noDatasets}</Empty>
           : (
@@ -120,41 +109,39 @@ export function UpstreamChoice({ locale, choice, submit }: {
                 ))}
               </ul>
             )}
-      </div>
+      </Stack>
 
       {choice.unreachable.length > 0 && (
         <p className="text-ink-muted text-sm">{t.unreachable(choice.unreachable.length)}</p>
       )}
 
       {choice.dropped.length > 0 && (
-        <div>
-          <h3 className="mb-2 font-bold text-sm">{t.dropped}</h3>
-          <ul className="flex flex-col gap-1 text-sm">
-            {choice.dropped.map((value) => (
-              <li key={`${value.keyCode} ${value.value}`} className="flex flex-wrap gap-2">
-                <span className="text-ink-muted">{value.keyCode}</span>
-                <span>{value.value}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1 text-ink-muted text-xs">
-            {t.droppedHint}
-            {" "}
-            <Link to={href(locale, adminCatalogPath())}>{t.openCatalog}</Link>
-          </p>
-        </div>
+        <Stack gap="normal">
+          <PaneHeading title={t.dropped} level="h3" rule="start" />
+          <Stack gap="tight">
+            <ul className="flex flex-col gap-1 text-sm">
+              {choice.dropped.map((value) => (
+                <li key={`${value.keyCode} ${value.value}`} className="flex flex-wrap gap-2">
+                  <span className="text-ink-muted">{value.keyCode}</span>
+                  <span>{value.value}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-ink-muted text-xs">
+              {t.droppedHint}
+              {" "}
+              <Link to={href(locale, adminCatalogPath())}>{t.openCatalog}</Link>
+            </p>
+          </Stack>
+        </Stack>
       )}
 
       <div>
-        <button
-          type="submit"
-          disabled={free.length === 0 && choice.fields.length === 0}
-          className="cursor-pointer rounded bg-brand px-4 py-1.5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Submit variant="primary" disabled={free.length === 0 && choice.fields.length === 0}>
           {submit}
-        </button>
+        </Submit>
       </div>
-    </div>
+    </Stack>
   )
 }
 

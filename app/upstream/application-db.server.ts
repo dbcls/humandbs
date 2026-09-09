@@ -67,6 +67,8 @@ export interface HumAccessionUpstreamRow {
   accession: string
   humLabel: string
   kind: "jga-study" | "jga-dataset"
+  /** The study a dataset sits under, when upstream draws one and it is public. */
+  study: string | null
 }
 
 export interface AccessionDateUpstreamRow {
@@ -173,22 +175,37 @@ function humResolutionCte(schema: string): string {
  * that supplies the relation to DDBJ Search may not name an unpublished study,
  * and the publish gate compares a version's pins against what upstream says is
  * out (docs/public-api.md, docs/publishing.md).
+ *
+ * **The edge to a study is held to the same line.** The relation upstream draws
+ * covers everything registered, so a published dataset can point at a study
+ * that is not out yet; carrying that across would put an accession on a public
+ * page that nobody can open.
  */
 export async function fetchHumAccessions(
   pool: Pool,
   schema: string,
 ): Promise<HumAccessionUpstreamRow[]> {
-  const { rows } = await pool.query<{ accession: string, hum_label: string, p: string }>(`
+  const { rows } = await pool.query<{
+    accession: string
+    hum_label: string
+    p: string
+    study: string | null
+  }>(`
     WITH ${humResolutionCte(schema)}
-    SELECT ah.accession, ah.hum_label, ah.p
+    SELECT ah.accession, ah.hum_label, ah.p,
+           CASE WHEN sl.accession_id IS NOT NULL THEN jj.jgas END AS study
     FROM accession_hum ah
     JOIN acc a ON a.accession = ah.accession
     JOIN live l ON l.accession_id = a.accession_id
+    LEFT JOIN jgad_jgas jj ON jj.jgad = ah.accession
+    LEFT JOIN acc sa ON sa.accession = jj.jgas
+    LEFT JOIN live sl ON sl.accession_id = sa.accession_id
     ORDER BY ah.accession`)
   return rows.map((row) => ({
     accession: row.accession,
     humLabel: row.hum_label,
     kind: row.p === "JGAS" ? "jga-study" : "jga-dataset",
+    study: row.study,
   }))
 }
 

@@ -11,12 +11,23 @@
  * The marks beside a field are the whole of how a rejected save is answered.
  * Nothing is merged and nothing is reloaded; the field says somebody else moved
  * it and offers to take their value, one field at a time.
+ *
+ * **Nothing here draws a box, an edge or a control of its own.** The values are
+ * held in React state, so the inputs are controlled where `form.tsx` builds
+ * uncontrolled ones — but what they look like is the same `CONTROL`, the same
+ * `Button` and the same `Note` the rest of the site is drawn from, and the
+ * distances between them are `Stack`'s three (`docs/ui.md`).
  */
 
 import type { LinksPairInput, SlotState, TextInput, TextPairInput } from "~/admin/form"
 import type { FieldProblem } from "~/admin/form.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+
+import { Badge, Button, IconButton, Note, Stack } from "./base"
+import { CONTROL } from "./form"
+import { Icon } from "./icons"
+import { Section as PageSection } from "./page"
 
 const STATES: readonly SlotState[] = ["value", "unknown", "not-applicable"]
 
@@ -69,16 +80,29 @@ export function replacing<T extends { id: string }>(items: readonly T[], id: str
   return items.map((item) => item.id === id ? next : item)
 }
 
+/**
+ * A part of an editing screen, named and addressable.
+ *
+ * **The name is drawn by the part that names a section everywhere else**, so
+ * that a screen editing a research reads as the same site as the page showing
+ * one. The anchor is what a mark on a refused field points at, and it clears
+ * the bar standing at the top of the window.
+ *
+ * The fields inside are a list of things in one box, which is `Stack`'s middle
+ * distance: a section that spaced its own fields would be one more screen with
+ * a rhythm of its own.
+ */
 export function Section({ id, title, children }: {
   id: string
   title: string
   children: React.ReactNode
 }) {
   return (
-    <section id={id} className="mt-8 scroll-mt-32">
-      <h2 className="mb-3 border-line border-b pb-1 font-semibold text-brand">{title}</h2>
-      {children}
-    </section>
+    <div id={id} className="scroll-mt-32">
+      <PageSection title={title}>
+        <Stack>{children}</Stack>
+      </PageSection>
+    </div>
   )
 }
 
@@ -92,30 +116,26 @@ export function FieldHead({ label, marks, locale, untranslated = false }: {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="font-semibold text-ink-muted text-xs">{label}</span>
-      {untranslated && (
-        <span className="rounded border border-line px-1.5 py-0.5 text-ink-muted text-xs">
-          {t.untranslated}
-        </span>
-      )}
-      {marks.changed && (
-        <span className="rounded border border-accent px-1.5 py-0.5 text-accent text-xs">
-          {t.changed}
-        </span>
-      )}
+      {untranslated && <Badge>{t.untranslated}</Badge>}
+      {marks.changed && <Badge tone="accent">{t.changed}</Badge>}
       {marks.onTake !== null && (
-        <button
-          type="button"
-          onClick={marks.onTake}
-          className="cursor-pointer text-accent text-xs underline"
-        >
+        <Button type="button" variant="ghost" size="xs" onClick={marks.onTake}>
           {t.take}
-        </button>
+        </Button>
       )}
       {marks.extra}
     </div>
   )
 }
 
+/**
+ * Which of the three things a slot says: a value, that nobody knows yet, or
+ * that the question does not apply.
+ *
+ * **The names do not change with the state** — a control that renamed itself
+ * would announce as "mark unsettled, pressed" and say two opposite things at
+ * once (`docs/ui.md`). What changes is the fill.
+ */
 export function StateSwitch({ state, onChange, locale }: {
   state: SlotState
   onChange: (next: SlotState) => void
@@ -125,17 +145,16 @@ export function StateSwitch({ state, onChange, locale }: {
   return (
     <div className="flex gap-1">
       {STATES.map((candidate) => (
-        <button
+        <Button
           key={candidate}
           type="button"
+          size="xs"
+          variant={state === candidate ? "primary" : "ghost"}
           aria-pressed={state === candidate}
           onClick={() => { onChange(candidate) }}
-          className={`cursor-pointer rounded border px-1.5 py-0.5 text-xs ${
-            state === candidate ? "border-brand bg-brand text-white" : "border-line text-ink-muted"
-          }`}
         >
           {t.states[candidate]}
-        </button>
+        </Button>
       ))}
     </div>
   )
@@ -155,12 +174,12 @@ export function SlotEditor({ language, value, multiline, onChange, locale, probl
 }) {
   const t = messagesFor(locale).admin.editor
   const disabled = value.state !== "value"
-  const classes = `w-full rounded border px-2 py-1 text-sm ${
-    problems.length > 0 ? "border-danger" : "border-line"
-  } ${disabled ? "bg-surface text-ink-muted" : ""}`
+  const classes = `${CONTROL} w-full text-sm disabled:opacity-50 ${
+    problems.length > 0 ? "border-danger" : ""
+  }`
 
   return (
-    <div className="flex flex-col gap-1">
+    <Stack gap="tight">
       <div className="flex items-center justify-between gap-2">
         <span className="text-ink-muted text-xs" lang={language}>{language}</span>
         <StateSwitch
@@ -202,10 +221,18 @@ export function SlotEditor({ language, value, multiline, onChange, locale, probl
           ))}
         </ul>
       )}
-    </div>
+    </Stack>
   )
 }
 
+/**
+ * Both languages of one field.
+ *
+ * **Not `form.tsx`'s `BilingualField`**, which is a plain form's pair: one line
+ * each, uncontrolled, and with no state beside it. A draft is held in React
+ * state so that a refused save can be answered field by field, and half of
+ * these run to several lines.
+ */
 export function PairField({ label, value, multiline, marks, locale, onChange }: {
   label: string
   value: TextPairInput
@@ -218,9 +245,9 @@ export function PairField({ label, value, multiline, marks, locale, onChange }: 
     marks.problems.filter((problem) => problem.path.endsWith(`.${language}`))
 
   return (
-    <div className="mt-4 first:mt-0">
+    <Stack gap="tight">
       <FieldHead label={label} marks={marks} locale={locale} untranslated={isUntranslated(value)} />
-      <div className="mt-1 grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {(["ja", "en"] as const).map((language) => (
           <SlotEditor
             key={language}
@@ -233,7 +260,7 @@ export function PairField({ label, value, multiline, marks, locale, onChange }: 
           />
         ))}
       </div>
-    </div>
+    </Stack>
   )
 }
 
@@ -246,9 +273,9 @@ export function SingleField({ label, value, marks, locale, onChange }: {
   onChange: (next: TextInput) => void
 }) {
   return (
-    <div className="mt-4">
+    <Stack gap="tight">
       <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="mt-1 md:max-w-md">
+      <div className="md:max-w-md">
         <SlotEditor
           language={locale}
           value={value}
@@ -257,27 +284,31 @@ export function SingleField({ label, value, marks, locale, onChange }: {
           onChange={onChange}
         />
       </div>
-    </div>
+    </Stack>
   )
 }
 
+/** A control beside a row of a list, where the row rather than the control is the subject. */
 export function RowButton({ label, onClick, disabled = false }: {
   label: string
   onClick: () => void
   disabled?: boolean
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="cursor-pointer rounded border border-line px-2 py-0.5 text-ink-muted text-xs disabled:opacity-50"
-    >
+    <Button type="button" variant="ghost" size="xs" onClick={onClick} disabled={disabled}>
       {label}
-    </button>
+    </Button>
   )
 }
 
+/**
+ * One element of a repeated list: a provider, a project, a grant, a paper.
+ *
+ * **Moving and removing are glyphs**, because they are the same three controls
+ * on every card and a list of ten would otherwise carry thirty words that say
+ * nothing about the element they belong to. Each names itself for anybody not
+ * looking at it (`IconButton`).
+ */
 export function ElementCard({ index, count, locale, onMove, onRemove, children }: {
   index: number
   count: number
@@ -288,56 +319,81 @@ export function ElementCard({ index, count, locale, onMove, onRemove, children }
 }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mt-4 rounded border border-line px-4 py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-ink-muted text-xs">{index + 1}</span>
-        <div className="flex gap-1">
-          <RowButton label={t.moveUp} disabled={index === 0} onClick={() => { onMove(-1) }} />
-          <RowButton
-            label={t.moveDown}
-            disabled={index === count - 1}
-            onClick={() => { onMove(1) }}
-          />
-          <RowButton label={t.remove} onClick={onRemove} />
+    <div className="rounded border border-line px-4 py-3">
+      <Stack>
+        <div className="flex items-center justify-between">
+          <span className="text-ink-muted text-xs">{index + 1}</span>
+          <div className="flex items-center gap-1">
+            {/* A glyph carries no colour of its own to dim, so what says a move
+                is unavailable is put on the box around it. */}
+            <span className={index === 0 ? "opacity-50" : ""}>
+              <IconButton
+                name="chevron-up"
+                label={t.moveUp}
+                disabled={index === 0}
+                onClick={() => { onMove(-1) }}
+              />
+            </span>
+            <span className={index === count - 1 ? "opacity-50" : ""}>
+              <IconButton
+                name="chevron-down"
+                label={t.moveDown}
+                disabled={index === count - 1}
+                onClick={() => { onMove(1) }}
+              />
+            </span>
+            <IconButton name="close" label={t.remove} onClick={onRemove} />
+          </div>
         </div>
-      </div>
-      {children}
+        {children}
+      </Stack>
     </div>
   )
 }
 
+/** The way to add one more of whatever the section holds. */
 export function AddElement({ label, onClick }: { label: string, onClick: () => void }) {
   return (
-    <div className="mt-3">
-      <button
+    <div>
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
+        icon={<Icon name="plus" />}
         onClick={onClick}
-        className="cursor-pointer rounded border border-brand px-3 py-1 text-brand text-sm"
       >
         {label}
-      </button>
+      </Button>
     </div>
   )
 }
 
+/**
+ * A save somebody else got to first.
+ *
+ * Nothing was lost and nothing has to be dealt with in any order, but the form
+ * now holds a version of the draft that no longer exists — so it is a warning
+ * rather than a failure, and it lists the places rather than only counting
+ * them.
+ */
 export function ConflictBand({ locale, changed }: { locale: Locale, changed: string[] }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mb-4 rounded border border-accent bg-surface px-4 py-3 text-sm">
-      <p className="font-semibold">{t.conflictHeading}</p>
-      <p className="mt-1">
-        {changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}
-      </p>
-      {changed.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {changed.map((path) => (
-            <li key={path} className="rounded border border-line px-2 py-0.5 text-xs">
-              <a href={`#${path.split(".")[0] ?? path}`}>{path}</a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Note kind="warning" live>
+      <Stack gap="tight">
+        <p className="font-semibold">{t.conflictHeading}</p>
+        <p>{changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}</p>
+        {changed.length > 0 && (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            {changed.map((path) => (
+              <li key={path}>
+                <a href={`#${path.split(".")[0] ?? path}`} className="text-brand">{path}</a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Stack>
+    </Note>
   )
 }
 
@@ -358,40 +414,43 @@ export function UpstreamBand({ locale, only, both, onTakeAll }: {
 }) {
   const t = messagesFor(locale).admin.upstream
   return (
-    <div className="mb-4 rounded border border-accent bg-surface px-4 py-3 text-sm">
-      <p className="font-semibold">{t.heading}</p>
-      <p className="mt-1">{t.body(only.length + both.length)}</p>
-      {only.length > 0 && (
-        <button
-          type="button"
-          onClick={onTakeAll}
-          className="mt-2 cursor-pointer rounded border border-brand px-3 py-1 text-brand text-xs"
-        >
-          {t.takeAll(only.length)}
-        </button>
-      )}
-      {both.length > 0 && <p className="mt-2 text-ink-muted text-xs">{t.both(both.length)}</p>}
-    </div>
+    <Note kind="info">
+      <Stack gap="tight">
+        <p className="font-semibold">{t.heading}</p>
+        <p>{t.body(only.length + both.length)}</p>
+        {only.length > 0 && (
+          <div>
+            <Button type="button" variant="secondary" size="xs" onClick={onTakeAll}>
+              {t.takeAll(only.length)}
+            </Button>
+          </div>
+        )}
+        {both.length > 0 && <p className="text-ink-muted text-xs">{t.both(both.length)}</p>}
+      </Stack>
+    </Note>
   )
 }
 
+/** Markup the store cannot hold, said where the save was refused for it. */
 export function ProblemBand({ locale, problems }: { locale: Locale, problems: FieldProblem[] }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="mb-4 rounded border border-danger bg-surface px-4 py-3 text-sm">
-      <p className="font-semibold text-danger">{t.problemsHeading}</p>
-      <ul className="mt-2 flex flex-col gap-1 text-xs">
-        {problems.map((problem, at) => (
-          <li key={at}>
-            {problem.path}
-            {" — "}
-            {t.syntax[problem.syntax]}
-            {" ("}
-            {t.problemLine(problem.line)}
-            )
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Note kind="danger" live>
+      <Stack gap="tight">
+        <p className="font-semibold text-danger">{t.problemsHeading}</p>
+        <ul className="flex flex-col gap-1 text-xs">
+          {problems.map((problem, at) => (
+            <li key={at}>
+              {problem.path}
+              {" — "}
+              {t.syntax[problem.syntax]}
+              {" ("}
+              {t.problemLine(problem.line)}
+              )
+            </li>
+          ))}
+        </ul>
+      </Stack>
+    </Note>
   )
 }

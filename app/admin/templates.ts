@@ -109,7 +109,7 @@ export function researchContentFrom(branch: DsBranchDetail): ResearchContent {
       targets: prose(branch.targetsJa, branch.targetsEn),
       url: { ja: filled([]), en: filled([]) },
     },
-    summaryShort: {
+    listingSummary: {
       methods: prose("", ""),
       targets: prose("", ""),
       typeOfData: prose("", ""),
@@ -354,7 +354,7 @@ function number(catalog: CatalogWithTerms, code: string, value: number): Built {
   const unit = key.canonicalUnit
   const held: ContentValue = {
     kind: "number",
-    value: filled({ value, unit, inputValue: value, inputUnit: unit }),
+    values: filled([{ label: null, value, unit, inputValue: value, inputUnit: unit, note: null }]),
   }
   return { slot: { keyId: key.id, value: held }, dropped: [] }
 }

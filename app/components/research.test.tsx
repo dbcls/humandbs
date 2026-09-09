@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FileListView, LinksView, ResearchView } from "~/public/view.server"
+import type { CauView, FileListView, LinksView, ResearchView } from "~/public/view.server"
 
 import { ResearchBody, ResearchVersionPage } from "./research"
 
@@ -114,5 +114,99 @@ describe("the state a links value carries to the page", () => {
     const html = render(NOTHING, { state: "value", value: [], untranslated: false })
 
     expect(html).not.toContain("URL")
+  })
+})
+
+/** The same page with part of the view replaced. */
+function renderWith(over: Partial<ResearchView>): string {
+  const Stub = createRoutesStub([{
+    path: "/",
+    Component: () => <ResearchVersionPage view={{ ...view(NOTHING), ...over }} locale="ja" />,
+  }])
+  return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
+}
+
+function usage(datasetAccessions: string[]): CauView {
+  return {
+    principalInvestigator: "研究 太郎",
+    affiliation: "大学",
+    country: "Japan",
+    researchTitle: "題目",
+    periodStart: null,
+    periodEnd: null,
+    datasetAccessions,
+  }
+}
+
+function field(text: string) {
+  return { state: "plain" as const, text, untranslated: false }
+}
+
+/**
+ * What has happened to a research since it was published, as against what the
+ * research says about itself. The distinction decides whether a section is
+ * drawn at all when it holds nothing.
+ */
+describe("the record of who has used the controlled access data", () => {
+  it("keeps the section when nobody has used it yet, and says so", () => {
+    const html = renderWith({ cau: [] })
+
+    expect(html).toContain("制限公開データの利用者一覧")
+    expect(html).toContain("制限公開データの利用実績はまだありません")
+  })
+
+  it("addresses each dataset it names, so a row leads to what was used", () => {
+    const html = renderWith({ cau: [usage(["JGAD000001"])] })
+
+    expect(html).toContain("href=\"/dataset/JGAD000001\"")
+  })
+
+  it("cuts a long list to three and holds the rest behind their count", () => {
+    const html = renderWith({
+      cau: [usage(["JGAD000001", "JGAD000002", "JGAD000003", "JGAD000004", "JGAD000005"])],
+    })
+
+    expect(html).toContain("JGAD000003")
+    expect(html).not.toContain("JGAD000004")
+    expect(html).toContain("他 2 件")
+  })
+
+  it("keeps a section a research merely has none of out of the page", () => {
+    expect(renderWith({ grants: [] })).not.toContain("助成金情報")
+  })
+})
+
+/**
+ * A grant is read from the body that funded it inwards: the funder names the
+ * programme, the programme names the project, and the number identifies it.
+ */
+describe("what a grant says, in the order it says it", () => {
+  it("names the funder, then the project, then its number", () => {
+    const html = renderWith({
+      grants: [{
+        id: "g1",
+        title: field("研究課題"),
+        agency: field("科研費"),
+        grantIds: ["19H05656", "22K15385"],
+      }],
+    })
+
+    expect(html.indexOf("科研費・助成金名")).toBeLessThan(html.indexOf("研究課題名"))
+    expect(html.indexOf("研究課題名")).toBeLessThan(html.indexOf("研究課題番号"))
+  })
+
+  it("gives every number a line of its own rather than running them together", () => {
+    const html = renderWith({
+      grants: [{
+        id: "g1",
+        title: field("研究課題"),
+        agency: field("科研費"),
+        grantIds: ["19H05656", "22K15385"],
+      }],
+    })
+
+    expect(html).not.toContain("19H05656, 22K15385")
+    expect(html).toContain("19H05656")
+    expect(html).toContain("22K15385")
   })
 })

@@ -1,4 +1,4 @@
-import { CART_LIMIT, isCartable, useCart } from "~/cart/store"
+import { CART_LIMIT, cartPressGathers, isCartable, useCart } from "~/cart/store"
 import { Button, IconButton } from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -32,11 +32,20 @@ export function CartToggle({ ids, locale, whole = false }: {
   const cartable = [...new Set(ids.filter(isCartable))]
   const held = cartable.filter((id) => cart.ids.includes(id))
 
-  if (cartable.length === 0) return null
+  // **The column keeps its width where nothing in it can be pressed.** The
+  // dataset listing is mostly archive accessions, so whole pages of it carry no
+  // mark at all, and a column that shrank to its own padding there would move
+  // every other column 39px sideways as the reader turned the page. The header
+  // holds it open for them; the rows stay empty, because a mark that can never
+  // do anything is noise in every one of them.
+  if (cartable.length === 0) {
+    return whole ? <span className="block size-tap" aria-hidden="true" /> : null
+  }
   // **Partly in the cart is its own state.** A research with twenty datasets of
   // which nineteen are collected is not "not collected", and saying so would
   // make the control read as untouched.
   const state = held.length === 0 ? false : held.length === cartable.length ? true : "mixed"
+  const gathers = cartPressGathers(cart.ids, cartable)
   return (
     <IconButton
       name="cart"
@@ -44,8 +53,8 @@ export function CartToggle({ ids, locale, whole = false }: {
       onBand={whole}
       label={whole ? messages.cart.togglePage : messages.cart.toggleRow}
       onClick={() => {
-        if (state === true) cart.remove(cartable)
-        else cart.add(cartable)
+        if (gathers) cart.add(cartable)
+        else cart.remove(cartable)
       }}
     />
   )

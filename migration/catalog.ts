@@ -15,11 +15,14 @@
 
 import catalogDefaults from "./content-keys.json"
 import {
+  MERGED_SOURCES,
+  NEW_KEY_ORDER,
   NUMBER_FACETS,
   RETYPED_CODES,
   SHOWN_NEW_KEYS,
   slugify,
   takesMany,
+  TEXT_NUMBERS,
   VOCABULARY_FACETS,
 } from "./facets"
 
@@ -86,6 +89,13 @@ function freeText(seed: {
  * onto the catalog entries they belong to. Both label sets are distinct across
  * the catalog, so the lookup is unambiguous.
  *
+ * **The spelling a key is looked up by and the label it is shown under are two
+ * things.** The lookup is the dump's own wording and cannot move; the label is
+ * what a reader sees in the refinement panel and on the dataset page, and for
+ * every key that is a facet it comes from [facets.ts](facets.ts). v1 wrote
+ * `Reference Sequence` for the genome build and `試薬` for a library kit, and
+ * carrying those through would put v1's mistakes on a v2 screen.
+ *
  * The mapping is deliberately closed: a key seen in the data that matches
  * neither label is an error rather than something to register on the fly.
  * Accepting unknown keys silently is how the v1 catalog drifted from the data.
@@ -119,10 +129,40 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
     }),
   ]
 
+  const textNumberBySource = new Map(TEXT_NUMBERS.map((one) => [one.source, one]))
+
   defaults.forEach(([labelEn, labelJa], index) => {
+    // A cell that is the same key under another name registers its spelling and
+    // makes no key: its numbers join the one it names (`facets.ts`).
+    const merged = MERGED_SOURCES.get(labelEn)
+    if (merged !== undefined) {
+      codeBySourceKey.set(labelEn, merged)
+      codeBySourceKey.set(labelJa, merged)
+      return
+    }
     const code = slugify(labelEn)
     codeBySourceKey.set(labelEn, code)
     codeBySourceKey.set(labelJa, code)
+
+    // A cell that holds numbers keeps its place and changes type.
+    const asNumbers = textNumberBySource.get(labelEn)
+    if (asNumbers !== undefined) {
+      keys.push({
+        ...freeText({
+          code,
+          scope: "experiment",
+          labelJa: asNumbers.labelJa,
+          labelEn: asNumbers.labelEn,
+          position: index,
+          showOnPublicPage: true,
+        }),
+        valueType: "number",
+        facetCategoryCode: asNumbers.categoryCode,
+        canonicalUnit: asNumbers.canonicalUnit,
+        inputUnits: asNumbers.inputUnits,
+      })
+      return
+    }
     const base = freeText({
       code,
       scope: "experiment",
@@ -137,6 +177,8 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
     if (vocabulary !== undefined) {
       keys.push({
         ...base,
+        labelJa: vocabulary.labelJa,
+        labelEn: vocabulary.labelEn,
         valueType: "vocabulary",
         vocabularySetCode: vocabulary.setCode,
         facetCategoryCode: vocabulary.categoryCode,
@@ -148,6 +190,8 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
     if (number !== undefined) {
       keys.push({
         ...base,
+        labelJa: number.labelJa,
+        labelEn: number.labelEn,
         valueType: "number",
         facetCategoryCode: number.categoryCode,
         canonicalUnit: number.canonicalUnit,
@@ -191,9 +235,17 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
       inputUnits: facet.inputUnits,
     })),
   ]
-  newKeys.forEach((key, index) => {
-    keys.push({ ...key, position: defaults.length + index })
-  })
+  // In the order the panel reads them, which the arrays they were declared in
+  // do not give (`facets.ts` の `NEW_KEY_ORDER`).
+  const unplaced = newKeys.find((key) => !NEW_KEY_ORDER.includes(key.code))
+  if (unplaced !== undefined) {
+    throw new Error(`the new key ${unplaced.code} has no place in NEW_KEY_ORDER`)
+  }
+  newKeys
+    .toSorted((a, b) => NEW_KEY_ORDER.indexOf(a.code) - NEW_KEY_ORDER.indexOf(b.code))
+    .forEach((key, index) => {
+      keys.push({ ...key, position: defaults.length + index })
+    })
 
   return { keys, codeBySourceKey }
 }

@@ -255,7 +255,10 @@ describe("the dataset a DRA submission seeds", () => {
 
     expect(valueUnder(seed.content.experiments[0]?.values ?? [], READ_LENGTH_KEY)).toEqual({
       kind: "number",
-      value: { state: "value", value: { value: 150, unit: "bp", inputValue: 150, inputUnit: "bp" } },
+      values: {
+        state: "value",
+        value: [{ label: null, value: 150, unit: "bp", inputValue: 150, inputUnit: "bp", note: null }],
+      },
     })
   })
 

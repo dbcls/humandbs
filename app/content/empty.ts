@@ -26,7 +26,7 @@ export function emptyResearchContent(): ResearchContent {
       targets: emptyRich(),
       url: emptyLinks(),
     },
-    summaryShort: {
+    listingSummary: {
       methods: emptyRich(),
       targets: emptyRich(),
       typeOfData: emptyRich(),

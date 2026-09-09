@@ -417,6 +417,13 @@ document / news / alert は research とは別の流れで編集する。版も 
 | `/admin/contents/news/:newsId` | お知らせ 1 件。公開日と、locale ごとの本文と公開状態 |
 | `/admin/contents/files` | `common/` の箱 |
 
+**alert は両方の言語が揃うまで立てられない。** 保存はできる — 書きかけのあいだ片方ずつ進められる —
+が、`active` を on にする操作だけが両方を要求する。alert は全ページに出るので、片方しか無いものを
+立てると、その言語の読者に読めない箱を渡すことになる ([data-model.md](data-model.md) の
+「サイトコンテンツ」)。**移行も同じ約束を守る** — v1 の CMS は片方だけの告知を持てるので、立っている
+ものの空いた側は `migration/input/alert-translations.json` の手で書いた訳で埋め、**埋められなければ
+移行が止まる**。ポータルが告知を書くことはできないため。
+
 **木は slug の階層で畳む。** 版は `{slug}/version/{n}` なので親の下に並ぶ。並びは slug 順で、位置を
 持たせない — 順序を人が決める需要が無く、持たせると木と食い違う。
 

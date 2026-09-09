@@ -51,7 +51,9 @@ const KEYS = [
 const catalog: CatalogView = {
   keyById: new Map(KEYS.map((row) => [row.id, row])),
   keyByCode: new Map(KEYS.map((row) => [row.code, row])),
-  termById: new Map([["t-open", { code: "unrestricted-access", labelJa: "非制限", labelEn: "Open" }]]),
+  termById: new Map([["t-open", {
+    code: "unrestricted-access", labelJa: "非制限", labelEn: "Open", maker: null, position: 0,
+  }]]),
 }
 
 function drawnAnchors(body: (annotate: (at: string) => null) => React.ReactNode): Set<string> {
@@ -97,6 +99,7 @@ function datasetAnchors(content: DatasetContent) {
   const anchored = anchoredDatasetView({
     label: "JGAD000001",
     humLabel: "hum0001",
+    studyAccession: null,
     content,
     datePublished: null,
     dateModified: null,

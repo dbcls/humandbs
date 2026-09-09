@@ -39,6 +39,29 @@ export const BUILT_IN_FIELDS = new Map<string, FieldType>([
   ["date_modified", "date"],
 ])
 
+/**
+ * The built-in fields the refinement panel gives a control of its own, in the
+ * order it draws them.
+ *
+ * **The rest of the panel is made of catalog keys**, and the rule that a facet
+ * is a key typed as a vocabulary or a number is what keeps the panel and the
+ * query language from holding two lists that can disagree. These two are the
+ * exception, and they are named rather than derived so that a third built-in
+ * field does not join them by being added.
+ *
+ * A date is not a key and is not going to become one: it is a column of the
+ * search row, written when the object was published rather than entered under a
+ * key by a curator. But it is the first thing a reader narrows a listing by, so
+ * the panel reaches past the catalog for exactly these two.
+ */
+export const DATE_FACETS = ["date_published", "date_modified"] as const
+
+export type DateFacet = typeof DATE_FACETS[number]
+
+export function isDateFacet(name: string): name is DateFacet {
+  return (DATE_FACETS as readonly string[]).includes(name)
+}
+
 /** A catalog key a query may name, and what compiling one needs to know. */
 export interface FacetField {
   /** `content_key.code`, which is how the field is spelled in a query. */

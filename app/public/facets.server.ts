@@ -22,19 +22,23 @@ import { ICD10_SET_CODE } from "~/icd10/codes"
 import { resolveTypedCode } from "~/icd10/entry.server"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
+import { makerOf } from "~/public/view.server"
 import type { FacetDefinition } from "~/search/catalog.server"
 import { resolveTerms } from "~/search/catalog.server"
 import {
   countTermChildren,
   countTerms,
+  dateBounds,
   numberBounds,
   type ChildCount,
+  type DateBounds,
   type TermCount,
 } from "~/search/counts.server"
 import { OPEN_BOUND, serializeQuery, type DslRange, type QueryNode } from "~/search/dsl"
-import type { QueryFields } from "~/search/fields"
+import { DATE_FACETS, type DateFacet, type QueryFields } from "~/search/fields"
+import { messagesFor } from "~/i18n/messages"
 import type { SearchTarget } from "~/search/query.server"
-import { readSelection, toggleTerm, withoutFacet } from "~/search/selection"
+import { readSelection, toggleTerm, withoutFacet, withRange } from "~/search/selection"
 
 import { href, listPath, searchQuery } from "./urls"
 
@@ -44,6 +48,8 @@ export const PANEL_VALUES = 10
 export interface FacetValueView {
   code: string
   label: string
+  /** Who makes what this names, drawn apart from the rest (`TermLabel`). */
+  maker: string | null
   count: number
   selected: boolean
   /** The same search with this value toggled. */
@@ -66,22 +72,42 @@ export interface FacetCodeEntryView {
   problem: "unknown-code" | "no-data" | null
 }
 
+/**
+ * A window offered as one press, rather than as two dates to type.
+ *
+ * **What the address carries is the absolute day**, so a link that is shared or
+ * bookmarked keeps meaning what it meant when it was made. Which window is in
+ * force is worked back out from that day against today, so a bookmark read on
+ * another day matches none of them — it still holds the same rows.
+ */
+export interface RangePresetView {
+  label: string
+  /** The search with this window in force, or with the range lifted for "all". */
+  href: string
+  current: boolean
+}
+
 export interface FacetRangeView {
   /** What the inputs hold; empty when that end is open. */
   from: string
   to: string
-  /** The span present in the result, as a hint for the inputs. */
-  min: number | null
-  max: number | null
   unit: string | null
-  /** The search with this range lifted, or null when none is set. */
-  clearHref: string | null
+  /**
+   * The windows offered above the inputs. Empty on a facet that offers none:
+   * a number has no window everybody means the same thing by, the way the last
+   * year is one.
+   */
+  presets: readonly RangePresetView[]
 }
 
 export interface FacetView {
   code: string
   label: string
-  kind: "vocabulary" | "number"
+  /**
+   * A date takes the same pair of inputs as a number and a different keyboard,
+   * which is the whole of the difference to the screen.
+   */
+  kind: "vocabulary" | "number" | "date"
   values: FacetValueView[]
   /** The address that shows every value of this facet, or null when all are shown. */
   moreHref: string | null
@@ -89,6 +115,13 @@ export interface FacetView {
   expanded: boolean
   /** The address without this facet opened. Only on the expanded one. */
   closeHref: string | null
+  /**
+   * The address with this facet's own conditions dropped, or null when it has
+   * none. **How many values are chosen is not said** — the number beside a
+   * value is how many rows it leaves, and a second number in the same panel
+   * counting something else is read as one of those.
+   */
+  clearHref: string | null
   /** What the expanded facet's own box holds. */
   find: string
   range: FacetRangeView | null
@@ -104,8 +137,6 @@ export interface FacetCategoryView {
 
 export interface FacetPanelView {
   categories: FacetCategoryView[]
-  /** The search with every facet condition lifted; null when none is set. */
-  clearHref: string | null
   /** Which facet the range form writes into, if any is expanded. */
   target: SearchTarget
 }
@@ -118,12 +149,22 @@ export interface FacetPanelRequest {
   locale: Locale
   /** `?sort=`, kept as it arrived so that refining does not reorder the result. */
   sort: string | null
+  /** `?order=`, kept for the same reason. */
+  order: string | null
+  /** `?size=`, kept for the same reason. `null` is the default size. */
+  size: number | null
   /** `?facet=`: the key whose values are shown in full. */
   expanded: string | null
   /** `?find=`: what was typed into the expanded facet's box. */
   find: string
   /** `?code=`: an ICD10 code that did not become a condition. */
   code: string
+  /**
+   * The calendar day the relative windows are measured back from, `YYYY-MM-DD`.
+   * Passed in rather than read from the clock so that the panel a request gets
+   * is decided entirely by the request.
+   */
+  today: string
 }
 
 /** A value is looked for by its code and its label, in whichever language. */
@@ -145,7 +186,9 @@ export async function facetPanel(
     href(locale, listPath(target) + searchQuery({
       q: serializeQuery(query),
       sort: request.sort,
+      order: request.order,
       page: 1,
+      size: request.size,
       facet: opts?.facet === undefined ? request.expanded : opts.facet,
       find: opts?.find ?? (request.find === "" ? null : request.find),
     }))
@@ -171,24 +214,41 @@ export async function facetPanel(
     ? null
     : typed.status === "no-data" ? "no-data" as const : "unknown-code" as const
 
-  const [shared, perFacet, sharedBounds, perFacetBounds, children, picked] = await Promise.all([
-    countTerms(
-      db,
-      { target, ast, fields },
-      vocabularies.filter(untouched).map((one) => one.field.keyId),
-    ),
-    Promise.all(vocabularies.filter((one) => !untouched(one)).map((one) =>
-      countTerms(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
-    numberBounds(
-      db,
-      { target, ast, fields },
-      numbers.filter(untouched).map((one) => one.field.keyId),
-    ),
-    Promise.all(numbers.filter((one) => !untouched(one)).map((one) =>
-      numberBounds(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
-    expandedChildren(db, request, basisFor),
-    chosenChildren(db, request, basisFor, chosenTerms),
-  ])
+  // The dates are counted the same way everything else is: with their own
+  // condition lifted, so that a chosen span does not become the only span the
+  // inputs will suggest.
+  const datesChosen = DATE_FACETS.filter((field) =>
+    selection.terms.has(field) || selection.ranges.has(field))
+
+  const [shared, perFacet, sharedBounds, perFacetBounds, children, picked, dates]
+    = await Promise.all([
+      countTerms(
+        db,
+        { target, ast, fields },
+        vocabularies.filter(untouched).map((one) => one.field.keyId),
+      ),
+      Promise.all(vocabularies.filter((one) => !untouched(one)).map((one) =>
+        countTerms(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
+      numberBounds(
+        db,
+        { target, ast, fields },
+        numbers.filter(untouched).map((one) => one.field.keyId),
+      ),
+      Promise.all(numbers.filter((one) => !untouched(one)).map((one) =>
+        numberBounds(db, { target, ast: basisFor(one.field.code), fields }, [one.field.keyId]))),
+      expandedChildren(db, request, basisFor),
+      chosenChildren(db, request, basisFor, chosenTerms),
+      Promise.all([
+        dateBounds(db, { target, ast, fields }),
+        ...datesChosen.map((field) => dateBounds(db, { target, ast: basisFor(field), fields })),
+      ]),
+    ])
+
+  const [sharedDates, ...ownDates] = dates
+  const dateSpan = (field: DateFacet): DateBounds | null => {
+    const at = datesChosen.indexOf(field)
+    return at === -1 ? sharedDates[field] : ownDates[at]?.[field] ?? null
+  }
 
   const counts = new Map<string, TermCount[]>()
   for (const row of [...shared, ...perFacet.flat()]) {
@@ -229,6 +289,9 @@ export async function facetPanel(
       expanded,
       find,
       closeHref: expanded ? address(ast, { facet: null, find: "" }) : null,
+      clearHref: selection.terms.has(code) || selection.ranges.has(code)
+        ? address(withoutFacet(ast, fields, code))
+        : null,
     }
     const empty = { ...shell, values: [], moreHref: null, range: null, codeEntry: null }
     if (one.field.kind === "number") {
@@ -239,7 +302,7 @@ export async function facetPanel(
       if (span === undefined && chosenRange === undefined) return empty
       return {
         ...empty,
-        range: rangeView({ definition: one, chosen: chosenRange, span, ast, fields, address }),
+        range: rangeView({ definition: one, chosen: chosenRange, ast, fields, address }),
       }
     }
 
@@ -252,11 +315,12 @@ export async function facetPanel(
       selected: boolean,
     ): FacetValueView => {
       const term = resolved.get(`${one.field.setId ?? ""}/${termCode}`)
+      const known = row ?? term
+      const label = known === undefined ? termCode : catalogLabel(known, locale)
       return {
         code: termCode,
-        label: row !== undefined
-          ? catalogLabel(row, locale)
-          : term === undefined ? termCode : catalogLabel(term, locale),
+        label,
+        maker: known === undefined ? null : makerOf(known.maker, label),
         count: row?.count ?? 0,
         selected,
         href: address(toggleTerm(ast, fields, code, termCode)),
@@ -297,17 +361,127 @@ export async function facetPanel(
     }
   })
 
-  const anySelected = selection.terms.size > 0 || selection.ranges.size > 0
-  const cleared = definitions.reduce<QueryNode | null>(
-    (tree, one) => withoutFacet(tree, fields, one.field.code),
-    ast,
-  )
-
   return {
-    categories: categorise(views, definitions, locale),
-    clearHref: anySelected ? address(cleared, { facet: null, find: "" }) : null,
+    categories: withDates(
+      categorise(views, definitions, locale),
+      DATE_FACETS.flatMap((field) => {
+        const view = dateView({
+          field,
+          locale,
+          selection,
+          span: dateSpan(field),
+          today: request.today,
+          ast,
+          fields,
+          address,
+        })
+        return view === null ? [] : [view]
+      }),
+    ),
     target,
   }
+}
+
+/**
+ * A date as the panel offers it: the same pair of inputs a number takes, over a
+ * column of the search row rather than a facet table ([fields.ts](../search/fields.ts)).
+ *
+ * **A date the result never carries is not offered.** Two empty boxes over a
+ * span that does not exist are a control that cannot do anything, and the
+ * modification dates are exactly that until the application system is reachable
+ * ([development.md](../../docs/development.md) の「上流のキャッシュを更新する」).
+ */
+function dateView(input: {
+  field: DateFacet
+  locale: Locale
+  selection: { terms: ReadonlyMap<string, string[]>, ranges: ReadonlyMap<string, DslRange> }
+  span: DateBounds | null
+  today: string
+  ast: QueryNode | null
+  fields: QueryFields
+  address: (query: QueryNode | null) => string
+}): FacetView | null {
+  const { field, locale, selection, span, today, ast, fields, address } = input
+  // A single day written as a condition is a span of one day. The panel has no
+  // other way to draw it, and drawing nothing would leave it with no way off.
+  const [only] = selection.terms.get(field) ?? []
+  const chosen = selection.ranges.get(field)
+    ?? (only === undefined ? undefined : { from: only, to: only })
+  if (span === null && chosen === undefined) return null
+
+  const messages = messagesFor(locale).search.refine
+  const lifted = address(withoutFacet(ast, fields, field))
+  const presets: RangePresetView[] = [
+    { label: messages.presetAll, href: lifted, current: chosen === undefined },
+    ...DATE_PRESET_YEARS.map((years) => {
+      const from = datePresetFrom(today, years)
+      return {
+        label: messages.presetYears(years),
+        href: address(withRange(ast, fields, field, { from, to: OPEN_BOUND })),
+        // A window is in force when it is the whole of the condition: the same
+        // opening day, and nothing closing it. A reader who typed those two
+        // dates by hand gets the window lit, which is the same search.
+        current: chosen?.from === from && chosen.to === OPEN_BOUND,
+      }
+    }),
+  ]
+
+  return {
+    code: field,
+    label: messagesFor(locale).search.fields[field],
+    kind: "date",
+    values: [],
+    moreHref: null,
+    expanded: false,
+    closeHref: null,
+    clearHref: chosen === undefined ? null : lifted,
+    find: "",
+    codeEntry: null,
+    range: {
+      from: writtenBound(chosen?.from),
+      to: writtenBound(chosen?.to),
+      unit: null,
+      presets,
+    },
+  }
+}
+
+/** How far back the windows a date facet offers reach, in the order drawn. */
+export const DATE_PRESET_YEARS = [1, 5, 10] as const
+
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+/**
+ * The day a relative window opens on: the same calendar day, `years` earlier.
+ *
+ * **The 29th of February has no counterpart in a common year.** The day is
+ * pulled back to the end of the month rather than let roll into March, so the
+ * window a reader is offered never opens later than the one they asked for.
+ */
+export function datePresetFrom(today: string, years: number): string {
+  const [year = 0, month = 1, day = 1] = today.split("-").map(Number)
+  const opened = year - years
+  const leap = opened % 4 === 0 && (opened % 100 !== 0 || opened % 400 === 0)
+  const last = month === 2 && leap ? 29 : DAYS_IN_MONTH[month - 1] ?? 31
+  const pad = (value: number, width: number) => String(value).padStart(width, "0")
+  return `${pad(opened, 4)}-${pad(month, 2)}-${pad(Math.min(day, last), 2)}`
+}
+
+/**
+ * The dates at the head of the panel, in the box that holds what the row itself
+ * is — when it was published, when it changed, who may take it. They are put
+ * there rather than sorted there, because they are not catalog keys and have no
+ * place in the catalog's order.
+ */
+function withDates(
+  categories: FacetCategoryView[],
+  dates: readonly FacetView[],
+): FacetCategoryView[] {
+  if (dates.length === 0) return categories
+  const [first, ...rest] = categories
+  return first?.label === null
+    ? [{ ...first, facets: [...dates, ...first.facets] }, ...rest]
+    : [{ code: null, label: null, facets: [...dates] }, ...categories]
 }
 
 /**
@@ -365,6 +539,7 @@ function childrenOf(
     .map((child) => ({
       code: child.code,
       label: catalogLabel(child, locale),
+      maker: makerOf(child.maker, catalogLabel(child, locale)),
       count: child.count,
       selected: false,
       href: address(toggleTerm(ast, fields, definition.field.code, child.code)),
@@ -376,24 +551,22 @@ function childrenOf(
 function rangeView(input: {
   definition: FacetDefinition
   chosen: DslRange | undefined
-  span: { min: number, max: number } | undefined
   ast: QueryNode | null
   fields: QueryFields
   address: (query: QueryNode | null) => string
 }): FacetRangeView {
-  const { definition, chosen, span } = input
-  const written = (bound: string | undefined) =>
-    bound === undefined || bound === OPEN_BOUND ? "" : bound
+  const { definition, chosen } = input
   return {
-    from: written(chosen?.from),
-    to: written(chosen?.to),
-    min: span?.min ?? null,
-    max: span?.max ?? null,
+    from: writtenBound(chosen?.from),
+    to: writtenBound(chosen?.to),
     unit: definition.canonicalUnit,
-    clearHref: chosen === undefined
-      ? null
-      : input.address(withoutFacet(input.ast, input.fields, definition.field.code)),
+    presets: [],
   }
+}
+
+/** What an input holds for one end of a range: empty when that end is open. */
+function writtenBound(bound: string | undefined): string {
+  return bound === undefined || bound === OPEN_BOUND ? "" : bound
 }
 
 /** Facets grouped under their category heading, in the catalog's order. */
@@ -412,14 +585,14 @@ function categorise(
       last.facets.push(view)
       return
     }
+    const labelEn = definition.categoryLabelEn
     categories.push({
       code,
-      label: code === null
+      // A category with no label is drawn without a heading, and so is a key
+      // that was given no category at all.
+      label: code === null || labelEn === null
         ? null
-        : catalogLabel(
-            { labelJa: definition.categoryLabelJa, labelEn: definition.categoryLabelEn ?? code },
-            locale,
-          ),
+        : catalogLabel({ labelJa: definition.categoryLabelJa, labelEn }, locale),
       facets: [view],
     })
   })

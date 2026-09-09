@@ -46,10 +46,15 @@ export function catalogViewArb(termIds: readonly string[]): fc.Arbitrary<Catalog
     return {
       keyById: new Map(entries),
       keyByCode: new Map(entries.map(([, key]) => [key.code, key])),
+      // Numbered against the order they are handed over in, as the keys are:
+      // a catalog that agrees with the order it was read in would not catch a
+      // caller that forgot to put its values in catalog order.
       termById: new Map(known.map((id, at) => [id, {
         code: `term-${at}`,
         labelJa: at % 2 === 0 ? `語 ${at}` : null,
         labelEn: `Term ${at}`,
+        maker: null,
+        position: known.length - at,
       }])),
     }
   })

@@ -159,15 +159,36 @@ describe("publicDatasetContent", () => {
 describe("publicDataset", () => {
   const input = { keys: catalog(), files: [] }
 
-  it("shows the admin's release date when the dataset has one", () => {
+  it("gives an NHA dataset one day, written as both of its dates", () => {
+    // The portal does not version a dataset, so there is no later event that
+    // could be a modification: the day it was published is the day it changed.
+    const content = { ...emptyDatasetContent(), releaseDate: "2020-01-01" }
+
+    const out = publicDataset(content, { ...input, archive: null }, PUBLISHED)
+    expect(out.dates).toEqual({ datePublished: "2020-01-01", dateModified: "2020-01-01" })
+  })
+
+  it("does not let an archive answer for a dataset the portal is master of", () => {
+    // Only an NHA ID carries a date in the content, and no archive holds one —
+    // a row for both is a state the data should not reach. If it does, the
+    // portal's own answer is the one that stands, both halves of it.
     const content = { ...emptyDatasetContent(), releaseDate: "2020-01-01" }
     const archive = { datePublished: "2021-02-02", dateModified: "2022-03-03" }
 
     const out = publicDataset(content, { ...input, archive }, PUBLISHED)
-    expect(out.dates).toEqual({ datePublished: "2020-01-01", dateModified: "2022-03-03" })
+    expect(out.dates).toEqual({ datePublished: "2020-01-01", dateModified: "2020-01-01" })
   })
 
-  it("falls back to the archive's date when the dataset has none", () => {
+  it("takes both dates from the archive when the content carries none", () => {
+    const archive = { datePublished: "2021-02-02", dateModified: "2022-03-03" }
+
+    const out = publicDataset(emptyDatasetContent(), { ...input, archive }, PUBLISHED)
+    expect(out.dates).toEqual({ datePublished: "2021-02-02", dateModified: "2022-03-03" })
+  })
+
+  it("leaves the modification date alone when the archive has only a release", () => {
+    // A JGAD accession the application system does not hold as live, and a DDBJ
+    // Search entry that answers with one date. Neither gets one invented.
     const archive = { datePublished: "2021-02-02", dateModified: null }
 
     const out = publicDataset(emptyDatasetContent(), { ...input, archive }, PUBLISHED)

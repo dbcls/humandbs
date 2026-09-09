@@ -1,19 +1,21 @@
 import { Link } from "react-router"
 
-import { Clamped, MoreLink } from "~/components/base"
+import { Clamped, Excerpt } from "~/components/base"
 import { CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { Icon } from "~/components/icons"
-import { Table, Td, Value } from "~/components/page"
+import { AccessTypeBadge, Table, Td, TermLabel, Value } from "~/components/page"
 import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { canonicalRedirect, researchListPage } from "~/public/lists.server"
 import { datasetPath, href, listPath, readLocale, researchPath, searchQuery } from "~/public/urls"
+import type { TermView } from "~/public/view.server"
 
 import type { Route } from "./+types/research-list"
 
 const SHOWN_DATASETS = 3
+const SHOWN_PLATFORMS = 3
 
 /**
  * The research listing: the public search over the research rows.
@@ -23,10 +25,12 @@ const SHOWN_DATASETS = 3
  * the row shows is the latest published version, which is also what the row's
  * text was derived from.
  *
- * **The columns are the ones v1 shows**, which is as many as a table beside a
- * refinement panel can hold: what the study is called, what is under it, and
- * the two values a reader scans for. Everything else about a research is on its
- * own page, one click away.
+ * **The columns are the ones v1 shows**, which is more than a window holds: the
+ * table scrolls sideways and the two that say which row it is stay put
+ * (`components/page.tsx`). **Three of them hold what the datasets beneath a
+ * study carry** rather than anything the study says of itself — the analysis
+ * methods, the platforms and who took part — which is why they are named for
+ * the values and not for the sections of the research's own page.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
@@ -46,14 +50,21 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.research
+  const short = t.listingSummary
   const onThisPage = view.rows.flatMap((row) => row.datasetLabels)
   const headers = [
     <CartToggle key="cart" ids={onThisPage} locale={locale} whole />,
     t.researchId,
     t.datasets,
     t.title,
-    messages.dataset.typeOfData,
-    t.methods,
+    short.methods,
+    short.typeOfData,
+    t.platforms,
+    short.targets,
+    messages.dataset.accessType,
+    t.dataProvider,
+    messages.dataset.datePublished,
+    messages.dataset.dateModified,
   ]
   const otherLink = view.otherCount === null
     ? undefined
@@ -80,26 +91,48 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
       other={otherLink}
       empty={view.rows.length === 0}
     >
-      <Table headers={headers}>
+      <Table headers={headers} stuck={2}>
         {view.rows.map((row) => (
           <tr key={row.humLabel}>
-            <Td narrow><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
-            <Td nowrap>
+            <Td stuck={0} narrow><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
+            <Td stuck={1} nowrap>
               <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
               <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
             </Td>
-            <Td className="min-w-40">
-              <Datasets labels={row.datasetLabels} humLabel={row.humLabel} locale={locale} />
+            <Td floor="min-w-40">
+              <Datasets labels={row.datasetLabels} locale={locale} />
             </Td>
-            <Td className="min-w-56">
-              <ScrollCell><Value field={row.title} locale={locale} /></ScrollCell>
+            <Td floor="min-w-72">
+              <Prose messages={messages}><Value field={row.title} locale={locale} /></Prose>
             </Td>
-            <Td className="min-w-40">
-              <ScrollCell><Value field={row.typeOfData} locale={locale} /></ScrollCell>
+            <Td floor="min-w-40">
+              <Prose messages={messages}><Value field={row.methods} locale={locale} /></Prose>
             </Td>
-            <Td className="min-w-40">
-              <ScrollCell><Value field={row.methods} locale={locale} /></ScrollCell>
+            <Td floor="min-w-56">
+              <Prose messages={messages}><Value field={row.typeOfData} locale={locale} /></Prose>
             </Td>
+            <Td floor="min-w-40">
+              <Platforms terms={row.platforms} locale={locale} />
+            </Td>
+            <Td floor="min-w-56">
+              <Prose messages={messages}><Value field={row.targets} locale={locale} /></Prose>
+            </Td>
+            <Td>
+              <ul>
+                {row.accessTypes.map((term) => (
+                  <li key={term.code}><AccessTypeBadge term={term} /></li>
+                ))}
+              </ul>
+            </Td>
+            <Td>
+              <ul>
+                {row.dataProviders.map((provider, at) => (
+                  <li key={at}><Value field={provider} locale={locale} /></li>
+                ))}
+              </ul>
+            </Td>
+            <Td nowrap floor="min-w-24">{row.datePublished}</Td>
+            <Td nowrap floor="min-w-24">{row.dateModified}</Td>
           </tr>
         ))}
       </Table>
@@ -108,34 +141,51 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
 }
 
 /**
- * A long cell scrolls inside itself rather than making the row tall. Not
- * `Clamped` from `~/components/base`, which cuts a list of items short.
+ * A cell of prose, cut where the row would otherwise grow. The listing's own
+ * name for `Excerpt`, so that the four columns drawn this way name the part
+ * once and read the same. Not `Clamped`, which cuts a list of items short.
  */
-function ScrollCell({ children }: { children: React.ReactNode }) {
-  return <div className="max-h-24 overflow-y-auto">{children}</div>
+function Prose({ messages, children }: {
+  messages: ReturnType<typeof messagesFor>
+  children: React.ReactNode
+}) {
+  return (
+    <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
+      {children}
+    </Excerpt>
+  )
 }
 
-function Datasets({ labels, humLabel, locale }: {
-  labels: string[]
-  humLabel: string
-  locale: Locale
-}) {
+function Datasets({ labels, locale }: { labels: string[], locale: Locale }) {
+  const messages = messagesFor(locale)
   return (
     <Clamped
       shown={SHOWN_DATASETS}
-      more={(rest) => messagesFor(locale).search.andMore(rest)}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
       items={labels.map((label) => (
         <span key={label} className="whitespace-nowrap">
           <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
           <Link to={href(locale, datasetPath(label))}>{label}</Link>
         </span>
       ))}
-    >
-      {/* The same way out of a shortened box that the front page's News card
-          has, taken from the part rather than drawn again. */}
-      <MoreLink to={href(locale, researchPath(humLabel))}>
-        {messagesFor(locale).search.andMore(labels.length - SHOWN_DATASETS)}
-      </MoreLink>
-    </Clamped>
+    />
+  )
+}
+
+/**
+ * What the datasets beneath a study were run on. A study of any size collects
+ * these — one of them names twenty-five — so the cell counts the rest instead
+ * of opening with them.
+ */
+function Platforms({ terms, locale }: { terms: TermView[], locale: Locale }) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      shown={SHOWN_PLATFORMS}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={terms.map((term) => <TermLabel key={term.code} term={term} />)}
+    />
   )
 }

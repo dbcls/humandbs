@@ -132,7 +132,7 @@ function textOf(node: Element): string {
  * into view.
  */
 const ANCHOR = [
-  "absolute", "inset-y-0", "-left-6", "flex", "items-center",
+  "absolute", "inset-y-0", "-left-5", "flex", "items-center",
   "font-normal", "text-base", "text-ink-muted", "no-underline",
   "opacity-0", "hover:text-brand", "focus-visible:opacity-100", "group-hover:opacity-100",
 ]
@@ -249,7 +249,20 @@ function alertsFromQuotes() {
       // The note carries its own distance to the paragraphs around it. Left to a
       // `.markdown div` rule it would land on the body inside the box as well,
       // and one line of text would sit in a box three times its height.
-      node.properties = { className: [MARKED.box, "my-4 bg-white", NOTE_KIND[alert.kind].className] }
+      //
+      // **It gives that distance up at either end of the article**, as every
+      // other block does (`.markdown > :first-child` and `> :last-child` in
+      // `app.css`). Those two cannot reach a margin written as a utility —
+      // utilities are ordered after components whatever the selectors say — so
+      // the note has to give it up itself, or one opening or closing an article
+      // stands 16px further from the edge than a paragraph in its place.
+      node.properties = {
+        className: [
+          MARKED.box,
+          "my-4 first:mt-0 last:mb-0 bg-white",
+          NOTE_KIND[alert.kind].className,
+        ],
+      }
       node.children = [
         ...(glyph === undefined
           ? []

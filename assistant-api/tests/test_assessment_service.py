@@ -34,14 +34,21 @@ def test_dataset_url_uses_public_web_origin(monkeypatch) -> None:
 
 async def test_handout_uses_public_web_origin(monkeypatch) -> None:
     monkeypatch.setattr(assessment_service, "humandbs_web_base_url", "https://public.example")
+    dataset_analysis = _dataset_analysis()
+    monkeypatch.setitem(
+        dataset_analysis["dataset_api_retrieval_result"],
+        "study_id_list",
+        ["JGAS000001"],
+    )
     application_data = {
         "dataset_info_list": [{"dataset_id": "JGAD000001", "purpose": "research"}],
-        "dataset_analysis_list": [_dataset_analysis()],
+        "dataset_analysis_list": [dataset_analysis],
     }
 
     handout = await assessment_service.create_handout(application_data)
 
     assert "https://public.example/hum0001" in handout
+    assert len(dataset_analysis["dataset_api_retrieval_result"]["study_id_list"]) >= 0
 
 
 def test_produced_application_preserves_populated_icd10_list_through_assessment_data() -> None:

@@ -24,6 +24,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 | [docs/glossary.md](docs/glossary.md) | ドメインの語の ja/en 対。画面・API・facet・語彙が従う訳語 |
 | [docs/testing.md](docs/testing.md) | テストの 5 階層。何を test にするか、mock の境界、e2e のシナリオ |
 | [docs/development.md](docs/development.md) | 開発環境の手順。起動、lint と test、DB とファイルストアの触り方、上流のキャッシュの更新 |
+| [docs/deployment.md](docs/deployment.md) | 配信する手順。dev サーバーとの違い、`.env` が決めること、初回と更新 |
 
 ## 動かす
 

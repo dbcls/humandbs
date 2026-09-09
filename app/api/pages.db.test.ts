@@ -5,6 +5,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
+import { SORT_KEYS } from "~/search/sort"
 
 import {
   apiBulk,
@@ -275,21 +276,28 @@ describe("what apiSearch answers about its own parameters", () => {
     expect(answer.headers.get("content-type")).toBe("application/json; charset=utf-8")
   })
 
-  it("refuses sort=relevance when the query has no free-text word to score", async () => {
+  /**
+   * Relevance is not an ordering here. A score is only defined for a query
+   * carrying a full-text word, so an ordering built on it would come and go
+   * with the shape of the query — and a client that asks for one it cannot have
+   * hears so rather than being handed a different one.
+   */
+  it("refuses sort=relevance, whichever query it arrives with", async () => {
     await rebuildSearchDocs(db)
-    const answer = await apiSearch(
-      get("/api/research?q=date_published:2020-01-01&sort=relevance"),
-      "research",
-    )
-    const { status, type } = await problemType(answer)
-    expect(status).toBe(422)
-    expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-sort")
+    for (const q of ["date_published:2020-01-01", "cancer"]) {
+      const answer = await apiSearch(get(`/api/research?q=${q}&sort=relevance`), "research")
+      const { status, type } = await problemType(answer)
+      expect(status).toBe(422)
+      expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-sort")
+    }
   })
 
-  it("accepts sort=relevance once the query carries a free-text word", async () => {
+  it("takes every ordering it offers", async () => {
     await rebuildSearchDocs(db)
-    const answer = await apiSearch(get("/api/research?q=cancer&sort=relevance"), "research")
-    expect(answer.status).toBe(200)
+    for (const sort of SORT_KEYS) {
+      const answer = await apiSearch(get(`/api/research?q=cancer&sort=${sort}`), "research")
+      expect(answer.status).toBe(200)
+    }
   })
 
   it("refuses a negative page with 422", async () => {

@@ -27,7 +27,7 @@ import type {
 import { previewDatasetPath, previewPath } from "~/review/urls"
 
 import { Badge, Button, Stack } from "./base"
-import { CommentSpot, rememberName, useRememberedName, type CommentContext } from "./comments"
+import { CommentSpot, DdbjMark, rememberName, useRememberedName, type CommentContext } from "./comments"
 import { DatasetBody } from "./dataset"
 import { CONTROL } from "./form"
 import { AnnotationLayer, Card, Page, PageHead } from "./page"
@@ -217,7 +217,7 @@ function PreviewHead({ shell, label, threads, locale, children }: {
                 <ul className="flex flex-wrap gap-2">
                   {open.map(([path, held]) => (
                     <li key={path}>
-                      <a href={`#${encodeURIComponent(path)}`} className="no-underline">
+                      <a href={`#${encodeURIComponent(path)}`} className="flex no-underline">
                         <Badge tone="brand">{`${path} (${held.length})`}</Badge>
                       </a>
                     </li>
@@ -319,7 +319,7 @@ function Acknowledge({ shell, problem }: {
                 <li key={`${row.name}-${row.createdAt}`}>
                   <Badge>
                     {row.name}
-                    {row.bySignedIn && <span aria-hidden="true"> 🅳</span>}
+                    {row.bySignedIn && <DdbjMark locale={shell.locale} />}
                   </Badge>
                 </li>
               ))}

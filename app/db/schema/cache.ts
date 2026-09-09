@@ -71,11 +71,21 @@ export const accessionKind = pgEnum("accession_kind", ["jga-study", "jga-dataset
  * It is never used to block a publication. Upstream has typos and disagreements
  * of its own, and a portal that cannot publish while upstream is wrong is worse
  * than one that publishes and lists the discrepancy.
+ *
+ * **The row keeps the edge upstream draws, not the one folded onto hum.** A hum
+ * holding several studies is the ordinary case, so which study a dataset sits
+ * under cannot be recovered from the correspondence above — it is carried here
+ * instead, and the dataset page and the supply endpoint both read it.
  */
 export const humAccession = pgTable("hum_accession", {
   accession: text().primaryKey(),
   humLabel: text().notNull(),
   kind: accessionKind().notNull(),
+  /**
+   * The study a JGA dataset sits under. Null on a study's own row, and on a
+   * dataset that upstream's current entry draws no path to a study for.
+   */
+  study: text(),
 }, (t) => [
   index().on(t.humLabel),
 ])

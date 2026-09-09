@@ -171,8 +171,16 @@ describe("the fields the catalog adds", () => {
     expect(refused("read-length:[a TO 10]").code).toBe("invalid-number-format")
   })
 
-  it("refuses to leave a date range open, since the rows cannot answer it", () => {
-    expect(refused("date_published:[2020-01-01 TO *]").code).toBe("invalid-date-format")
+  it("holds a date range open at either end, and still refuses a day that is not one", () => {
+    expect(parseQuery("date_published:[2020-01-01 TO *]", withFacets).ok).toBe(true)
+    expect(parseQuery("date_published:[* TO 2020-01-01]", withFacets).ok).toBe(true)
+    expect(refused("date_published:[2020-02-30 TO *]").code).toBe("invalid-date-format")
+    expect(refused("date_published:[* TO tomorrow]").code).toBe("invalid-date-format")
+  })
+
+  it("writes an open date range back the way it was read", () => {
+    const parsed = parseQuery("date_published:[2020-01-01 TO *]", withFacets)
+    expect(parsed.ok && serializeQuery(parsed.ast)).toBe("date_published:[2020-01-01 TO *]")
   })
 
   it("refuses a range or a wildcard on a vocabulary, whose values are a closed set", () => {

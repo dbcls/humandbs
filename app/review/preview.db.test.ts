@@ -169,8 +169,8 @@ describe("what a preview marks", () => {
    * so neither can be a place the reader is told to look at.
    */
   it("marks only places the page draws", async () => {
-    const short = { ...emptyResearchContent().summaryShort, methods: { ja: filled([[{ text: "手法" }]]), en: filled([]) } }
-    const { researchId, token } = await sharedDraft({ ...titled("題目"), summaryShort: short })
+    const short = { ...emptyResearchContent().listingSummary, methods: { ja: filled([[{ text: "手法" }]]), en: filled([]) } }
+    const { researchId, token } = await sharedDraft({ ...titled("題目"), listingSummary: short })
     await publish(researchId, 1, titled("題目"))
 
     const view = await previewResearchPage(get(), "ja", token)

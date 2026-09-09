@@ -1,7 +1,9 @@
-import { Link } from "react-router"
+import type { ComponentProps } from "react"
+import { Form, Link } from "react-router"
 
-import { Button, Fold, Stack } from "~/components/base"
+import { Button, CLEAR, Fold, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
+import { TermLabel } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type {
@@ -22,6 +24,10 @@ import type { SearchTarget } from "~/search/query.server"
  * a numeric facet, whose two ends have to be typed — that is a GET form, and
  * the listing answers it with a redirect to the address it stands for.
  *
+ * **Choosing does not move the reader.** Everything the panel offers goes
+ * through `RefineLink` or a `Form`, which is what keeps that true of anything
+ * added to it later.
+ *
  * A value is shown with the number of rows it would leave, counted with this
  * facet's own condition lifted, so that a second value of the same facet is
  * still reachable after the first has been chosen.
@@ -31,6 +37,13 @@ import type { SearchTarget } from "~/search/query.server"
  * list first. What the box produces is the condition the value would have
  * produced, so nothing about the rollup or the counting changes with the way
  * in.
+ *
+ * **What names this pane is not here.** The heading, the box and the conditions
+ * in force stand above it as one block (`components/search.tsx` の
+ * `ListingScreen`), because a narrow window puts that block over the result and
+ * the dimensions below it — a reader with one screen of width wants the way to
+ * search before twenty ways of narrowing, and the way to undo what is already
+ * narrowing it.
  *
  * **Each facet folds, and the panel is a list of what can be refined by.** Open
  * at once, the twenty-odd facets run to several thousand pixels and the reader
@@ -54,12 +67,6 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   return (
     <nav aria-label={messages.heading} className="text-sm">
       <Stack gap="normal">
-        <div className="flex items-baseline justify-between border-line border-b pb-1">
-          <h2 className="font-bold">{messages.heading}</h2>
-          {panel.clearHref !== null && (
-            <Link to={panel.clearHref} className="text-brand">{messages.clear}</Link>
-          )}
-        </div>
         {panel.categories.map((category, index) => (
           <section key={category.code ?? "-"}>
             {category.label !== null && (
@@ -79,7 +86,7 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
                   // The first group is the one a reader who has chosen nothing
                   // is most likely to choose from, and a panel that opened
                   // nothing at all would read as having nothing to offer.
-                  open={index === 0 || chosen(facet) > 0 || facet.expanded}
+                  open={index === 0 || facet.clearHref !== null || facet.expanded}
                 />
               ))}
             </div>
@@ -91,11 +98,6 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
 }
 
 /** How many of a facet's values are in force, roll-ups included. */
-function chosen(facet: FacetView): number {
-  if (facet.range !== null) return facet.range.from === "" && facet.range.to === "" ? 0 : 1
-  return facet.values.filter((value) =>
-    value.selected || value.children.some((child) => child.selected)).length
-}
 
 function Facet({ locale, target, query, sort, facet, open }: {
   locale: Locale
@@ -106,24 +108,27 @@ function Facet({ locale, target, query, sort, facet, open }: {
   open: boolean
 }) {
   const messages = messagesFor(locale).search.refine
-  const count = chosen(facet)
   return (
     <Fold
       summary={facet.label}
       open={open}
-      note={count === 0
+      note={facet.clearHref === null
         ? undefined
-        : <span className="text-brand">{messages.count(count)}</span>}
+        : (
+            <RefineLink to={facet.clearHref} className={CLEAR}>
+              {messages.clearFacet}
+            </RefineLink>
+          )}
     >
       <Stack gap="tight">
         {facet.closeHref !== null && (
           <div className="flex justify-end">
-            <Link to={facet.closeHref} className="text-brand">{messages.close}</Link>
+            <RefineLink to={facet.closeHref} className="text-brand">{messages.close}</RefineLink>
           </div>
         )}
 
         {facet.expanded && facet.kind === "vocabulary" && (
-          <form method="get" action={href(locale, listPath(target))} className="flex gap-1">
+          <Form method="get" action={href(locale, listPath(target))} preventScrollReset className="flex gap-1">
             <Carried query={query} sort={sort} facet={facet.code} />
             <input
               type="search"
@@ -134,7 +139,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
               className={`min-w-0 flex-1 ${CONTROL}`}
             />
             <Button variant="secondary">{messages.apply}</Button>
-          </form>
+          </Form>
         )}
 
         {facet.codeEntry !== null && (
@@ -150,31 +155,82 @@ function Facet({ locale, target, query, sort, facet, open }: {
 
         {facet.range !== null
           ? (
-              <form method="get" action={href(locale, listPath(target))}>
-                <Stack gap="tight">
-                  <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
-                  <input type="hidden" name="rangeKey" value={facet.code} />
-                  <div className="flex items-center gap-1">
-                    <Bound name="rangeFrom" label={messages.from} value={facet.range.from} />
-                    <span aria-hidden="true">–</span>
-                    <Bound name="rangeTo" label={messages.to} value={facet.range.to} />
-                    {facet.range.unit !== null && (
-                      <span className="text-ink-muted text-xs">{facet.range.unit}</span>
-                    )}
-                    <Button variant="secondary" size="xs">{messages.apply}</Button>
+              <>
+                {facet.range.presets.length > 0 && (
+                  <div className="flex gap-1">
+                    {facet.range.presets.map((preset) => (
+                      <RefineLink
+                        key={preset.label}
+                        to={preset.href}
+                        aria-current={preset.current ? "true" : undefined}
+                        className={`flex-1 rounded border px-1 py-1 text-center text-xs no-underline ${
+                          preset.current
+                            ? "border-brand bg-surface-hover font-semibold text-ink"
+                            : "border-line text-brand hover:bg-surface-hover"
+                        }`}
+                      >
+                        {preset.label}
+                      </RefineLink>
+                    ))}
                   </div>
-                  <div className="flex items-baseline justify-between text-ink-muted text-xs">
-                    {facet.range.min !== null && facet.range.max !== null && (
-                      <span>{messages.span(String(facet.range.min), String(facet.range.max))}</span>
-                    )}
-                    {facet.range.clearHref !== null && (
-                      <Link to={facet.range.clearHref} className="text-brand text-sm">
-                        {messages.clear}
-                      </Link>
-                    )}
-                  </div>
-                </Stack>
-              </form>
+                )}
+                <Form method="get" action={href(locale, listPath(target))} preventScrollReset>
+                  <Stack gap="tight">
+                    <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
+                    <input type="hidden" name="rangeKey" value={facet.code} />
+                    {facet.kind === "date"
+                      ? (
+                          <>
+                            <Bound
+                              name="rangeFrom"
+                              label={messages.dateFrom}
+                              value={facet.range.from}
+                              kind={facet.kind}
+                            />
+                            <Bound
+                              name="rangeTo"
+                              label={messages.dateTo}
+                              value={facet.range.to}
+                              kind={facet.kind}
+                            />
+                            <div className="flex justify-end">
+                              <Button variant="secondary" size="xs">{messages.apply}</Button>
+                            </div>
+                          </>
+                        )
+                      : (
+                          <div className="flex items-center gap-1">
+                            <Bound
+                              name="rangeFrom"
+                              label={messages.from}
+                              value={facet.range.from}
+                              kind={facet.kind}
+                            />
+                            <span aria-hidden="true">–</span>
+                            <Bound
+                              name="rangeTo"
+                              label={messages.to}
+                              value={facet.range.to}
+                              kind={facet.kind}
+                            />
+                            {facet.range.unit !== null && (
+                              <span className="text-ink-muted text-xs">{facet.range.unit}</span>
+                            )}
+                            {/*
+                              **The gap that holds the pair together is not the
+                              one that separates them from the operation.** Both
+                              ends and the unit are one thing to read; pushing
+                              the button to the edge says so, and stands it on
+                              the same line as the one a date facet ends with.
+                            */}
+                            <Button variant="secondary" size="xs" className="ml-auto">
+                              {messages.apply}
+                            </Button>
+                          </div>
+                        )}
+                  </Stack>
+                </Form>
+              </>
             )
           : (
               <ul className="flex flex-col">
@@ -196,9 +252,9 @@ function Facet({ locale, target, query, sort, facet, open }: {
             )}
 
         {facet.moreHref !== null && (
-          <Link to={facet.moreHref} className="inline-block text-brand">
+          <RefineLink to={facet.moreHref} className="inline-block text-brand">
             {messages.seeAll}
-          </Link>
+          </RefineLink>
         )}
       </Stack>
     </Fold>
@@ -220,7 +276,7 @@ function CodeEntry({ locale, target, query, sort, facet, entry }: {
 }) {
   const messages = messagesFor(locale).search.refine
   return (
-    <form method="get" action={href(locale, listPath(target))}>
+    <Form method="get" action={href(locale, listPath(target))} preventScrollReset>
       <Stack gap="tight">
         <Carried query={query} sort={sort} facet={facet.expanded ? facet.code : null} />
         <div className="flex gap-1">
@@ -241,8 +297,24 @@ function CodeEntry({ locale, target, query, sort, facet, entry }: {
           </p>
         )}
       </Stack>
-    </form>
+    </Form>
   )
+}
+
+/**
+ * A link that narrows the listing beside it rather than going anywhere.
+ *
+ * **The reader is standing in the panel when they choose**, often well down it,
+ * and the panel is beside a result they are watching change. Landing at the top
+ * of the document — which is what a new address means by default — takes both
+ * the value just chosen and the rows it left out of sight, so the one thing the
+ * reader asked to see is the one thing they have to go looking for.
+ *
+ * The address still changes, so the choice is shared and stepping back still
+ * lifts it. What is held is only where the reader was standing.
+ */
+function RefineLink(props: ComponentProps<typeof Link>) {
+  return <Link {...props} preventScrollReset />
 }
 
 /**
@@ -263,32 +335,59 @@ function Carried({ query, sort, facet }: {
   )
 }
 
-function Bound({ name, label, value }: { name: string, label: string, value: string }) {
-  return (
+/**
+ * One end of a range. **A date gets the browser's own date control** — it is
+ * the one input where the reader would otherwise have to know the spelling the
+ * address uses, and every platform already has a picker for it. The two ends
+ * are still a GET form, so a browser without one falls back to a text box that
+ * takes the same `YYYY-MM-DD`.
+ *
+ * **A date names its end where a number does not.** `年/月/日` and a picker do
+ * not fit beside a second copy of themselves in the width of the pane, so the
+ * two dates stand one above the other, and a bound on its own line has room
+ * for the word that says which one it is. The numbers keep their pair around a
+ * dash, which is what says it there.
+ */
+function Bound({ name, label, value, kind }: {
+  name: string
+  label: string
+  value: string
+  kind: FacetView["kind"]
+}) {
+  const date = kind === "date"
+  const input = (
     <input
-      type="text"
-      inputMode="decimal"
+      type={date ? "date" : "text"}
+      inputMode={date ? undefined : "decimal"}
       name={name}
       defaultValue={value}
-      aria-label={label}
-      className={`w-16 ${CONTROL}`}
+      aria-label={date ? undefined : label}
+      className={`${date ? "w-full" : "w-16"} ${CONTROL}`}
     />
+  )
+  if (!date) return input
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-ink-muted text-xs">{label}</span>
+      {input}
+    </label>
   )
 }
 
 function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
   const messages = messagesFor(locale).search.refine
   return (
-    <Link
+    <RefineLink
       to={value.href}
       aria-current={value.selected ? "true" : undefined}
-      className={`flex items-baseline justify-between gap-2 py-1 no-underline hover:bg-surface-hover ${
-        value.selected ? "font-semibold text-ink" : "text-brand"
+      className={`flex items-baseline justify-between gap-2 rounded px-2 py-1 no-underline ${
+        value.selected
+          ? "bg-surface-hover font-semibold text-ink"
+          : "text-brand hover:bg-surface-hover"
       }`}
     >
       <span className="min-w-0 break-words">
-        {value.selected && <span aria-hidden="true">✓ </span>}
-        {value.label}
+        <TermLabel term={value} />
         {value.selected && (
           <span className="sr-only">
             {" "}
@@ -296,7 +395,12 @@ function Value({ locale, value }: { locale: Locale, value: FacetValueView }) {
           </span>
         )}
       </span>
-      <span className="shrink-0 text-ink-muted text-xs">{messages.count(value.count)}</span>
-    </Link>
+      {/*
+        **The number alone.** A word after it would be read as part of the
+        value's name, and the column of figures is what the eye compares — so
+        it is set in the one face whose digits are all the same width.
+      */}
+      <span className="shrink-0 font-mono text-ink-muted text-xs">{value.count}</span>
+    </RefineLink>
   )
 }
