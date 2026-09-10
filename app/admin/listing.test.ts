@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import { filled } from "~/content/empty"
 import type { TranslatedText } from "~/content/types"
+import { PAGE_SIZE } from "~/search/page-size"
 
 import {
-  ADMIN_PAGE_SIZE,
+  ADMIN_FLAG_KEYS,
   filterResearchRows,
   pageOf,
   sortResearchRows,
@@ -35,12 +36,13 @@ function row(overrides: Partial<AdminResearchRow> = {}): AdminResearchRow {
     draftCount: 0,
     flags: NOTHING,
     updatedAt: "2026-01-01T00:00:00.000Z",
+    publishedOn: "2026-01-01",
     ...overrides,
   }
 }
 
 function matching(keyword: string, rows: AdminResearchRow[] = [row()]): number {
-  return filterResearchRows(rows, { keyword, status: null, flags: [] }).length
+  return filterResearchRows(rows, { keyword, statuses: [], flags: [] }).length
 }
 
 describe("the direct lookup", () => {
@@ -91,7 +93,7 @@ describe("the direct lookup", () => {
 describe("the filters", () => {
   const rows = [
     row({ researchId: "a", status: "published" }),
-    row({ researchId: "b", status: "withdrawn" }),
+    row({ researchId: "b", status: "published" }),
     row({ researchId: "c", status: "unpublished", flags: { ...NOTHING, noHumLabel: true } }),
     row({
       researchId: "d",
@@ -101,55 +103,74 @@ describe("the filters", () => {
   ]
 
   it("narrows to one status", () => {
-    expect(filterResearchRows(rows, { keyword: "", status: "unpublished", flags: [] })
+    expect(filterResearchRows(rows, { keyword: "", statuses: ["unpublished"], flags: [] })
       .map((held) => held.researchId)).toEqual(["c", "d"])
   })
 
-  it("requires every shortcoming that was ticked, not any of them", () => {
-    expect(filterResearchRows(rows, { keyword: "", status: null, flags: ["noHumLabel"] })
-      .map((held) => held.researchId)).toEqual(["c", "d"])
+  it("takes a row in any of the ticked states, and every row when both are", () => {
     expect(filterResearchRows(rows, {
       keyword: "",
-      status: null,
+      statuses: ["published", "unpublished"],
+      flags: [],
+    }).map((held) => held.researchId)).toEqual(["a", "b", "c", "d"])
+  })
+
+  it("narrows nothing when neither state is ticked, as an untouched axis does", () => {
+    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: [] })
+      .map((held) => held.researchId))
+      .toEqual(filterResearchRows(rows, {
+        keyword: "",
+        statuses: ["published", "unpublished"],
+        flags: [],
+      }).map((held) => held.researchId))
+  })
+
+  it("takes a row that has any one of the ticked shortcomings", () => {
+    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: ["noHumLabel"] })
+      .map((held) => held.researchId)).toEqual(["c", "d"])
+    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: ["unsettled"] })
+      .map((held) => held.researchId)).toEqual(["d"])
+  })
+
+  it("widens as more are ticked, and never drops a row that one of them took", () => {
+    const one = filterResearchRows(rows, { keyword: "", statuses: [], flags: ["unsettled"] })
+    const two = filterResearchRows(rows, {
+      keyword: "",
+      statuses: [],
       flags: ["noHumLabel", "unsettled"],
-    }).map((held) => held.researchId)).toEqual(["d"])
+    })
+
+    expect(two.map((held) => held.researchId)).toEqual(["c", "d"])
+    for (const held of one) expect(two).toContain(held)
   })
 
-  it("ANDs all five shortcomings together, including the two pin-derived ones", () => {
-    const withAllFive = [
-      row({
-        researchId: "e",
-        flags: {
-          noHumLabel: true,
-          noDatasetLabel: true,
-          unsettled: true,
-          untranslated: true,
-          upstreamMismatch: true,
-        },
-      }),
-      row({
-        researchId: "f",
-        flags: { ...NOTHING, noHumLabel: true, noDatasetLabel: true, upstreamMismatch: true },
-      }),
-    ]
-
-    expect(filterResearchRows(withAllFive, {
-      keyword: "",
-      status: null,
-      flags: ["noHumLabel", "noDatasetLabel", "unsettled", "untranslated", "upstreamMismatch"],
-    }).map((held) => held.researchId)).toEqual(["e"])
-
-    expect(filterResearchRows(withAllFive, {
-      keyword: "",
-      status: null,
-      flags: ["noDatasetLabel", "upstreamMismatch"],
-    }).map((held) => held.researchId)).toEqual(["e", "f"])
+  it("narrows nothing when none of them is ticked", () => {
+    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: [] })
+      .map((held) => held.researchId)).toEqual(["a", "b", "c", "d"])
   })
 
-  it("combines the box, the status and the shortcomings", () => {
+  it("takes a row on any of the five, the two pin-derived ones included", () => {
+    const held = row({
+      researchId: "e",
+      flags: { ...NOTHING, upstreamMismatch: true },
+    })
+
+    for (const flag of ADMIN_FLAG_KEYS) {
+      const taken = filterResearchRows([held], { keyword: "", statuses: [], flags: [flag] })
+      expect(taken.length, flag).toBe(flag === "upstreamMismatch" ? 1 : 0)
+    }
+    expect(filterResearchRows([held], {
+      keyword: "",
+      statuses: [],
+      flags: ["noHumLabel", "upstreamMismatch"],
+    })).toHaveLength(1)
+  })
+
+  it("keeps the status and the shortcomings as separate axes, ANDed", () => {
+    // 「未確定あり」は d だけが持ち、その d は未公開。公開済みとは重ならない。
     expect(filterResearchRows(rows, {
       keyword: "糖尿病",
-      status: "published",
+      statuses: ["published"],
       flags: ["unsettled"],
     })).toEqual([])
   })
@@ -165,6 +186,43 @@ describe("the order and the page", () => {
     expect(sortResearchRows(rows).map((held) => held.researchId)).toEqual(["new", "old"])
   })
 
+  it("sinks a research that has never been out, whichever way the release date runs", () => {
+    const rows = [
+      row({ researchId: "never", publishedOn: null }),
+      row({ researchId: "old", publishedOn: "2024-01-01" }),
+      row({ researchId: "new", publishedOn: "2026-06-01" }),
+    ]
+
+    expect(sortResearchRows(rows, "datePublished", "desc").map((held) => held.researchId))
+      .toEqual(["new", "old", "never"])
+    expect(sortResearchRows(rows, "datePublished", "asc").map((held) => held.researchId))
+      .toEqual(["old", "new", "never"])
+  })
+
+  it("sinks an unpinned label the same way when the order is by identifier", () => {
+    const rows = [
+      row({ researchId: "unpinned", humLabel: null }),
+      row({ researchId: "b", humLabel: "hum0002" }),
+      row({ researchId: "a", humLabel: "hum0001" }),
+    ]
+
+    expect(sortResearchRows(rows, "id", "asc").map((held) => held.researchId))
+      .toEqual(["a", "b", "unpinned"])
+    expect(sortResearchRows(rows, "id", "desc").map((held) => held.researchId))
+      .toEqual(["b", "a", "unpinned"])
+  })
+
+  it("runs a key the way it reads when nobody says which way", () => {
+    const rows = [
+      row({ researchId: "a", humLabel: "hum0001", updatedAt: "2025-01-01T00:00:00.000Z" }),
+      row({ researchId: "b", humLabel: "hum0002", updatedAt: "2026-01-01T00:00:00.000Z" }),
+    ]
+
+    // A date opens on the newest, an identifier on the smallest.
+    expect(sortResearchRows(rows, "dateModified").map((held) => held.researchId)).toEqual(["b", "a"])
+    expect(sortResearchRows(rows, "id").map((held) => held.researchId)).toEqual(["a", "b"])
+  })
+
   it("breaks a tie by identity, so a page boundary does not move between requests", () => {
     const rows = [row({ researchId: "a" }), row({ researchId: "b" })]
 
@@ -172,11 +230,21 @@ describe("the order and the page", () => {
     expect(sortResearchRows([...rows].reverse()).map((held) => held.researchId)).toEqual(["b", "a"])
   })
 
+  it("holds a page to the size it was asked for", () => {
+    const rows = Array.from({ length: 51 }, (_, at) =>
+      row({ researchId: `r${String(at).padStart(3, "0")}` }))
+
+    expect(pageOf(rows, 1, 50).rows).toHaveLength(50)
+    expect(pageOf(rows, 2, 50).rows).toHaveLength(1)
+    expect(pageOf(rows, 2, 50).pageCount).toBe(2)
+    expect(pageOf(rows, 1, 100).pageCount).toBe(1)
+  })
+
   it("holds a page to its size and reports how many pages there are", () => {
-    const rows = Array.from({ length: ADMIN_PAGE_SIZE * 2 + 1 }, (_, at) =>
+    const rows = Array.from({ length: PAGE_SIZE * 2 + 1 }, (_, at) =>
       row({ researchId: String(at) }))
 
-    expect(pageOf(rows, 1).rows).toHaveLength(ADMIN_PAGE_SIZE)
+    expect(pageOf(rows, 1).rows).toHaveLength(PAGE_SIZE)
     expect(pageOf(rows, 3).rows).toHaveLength(1)
     expect(pageOf(rows, 3).pageCount).toBe(3)
   })

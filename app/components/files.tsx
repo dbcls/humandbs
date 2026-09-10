@@ -12,8 +12,8 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
-import { Badge, Button, Confirm, Fold, IconButton, Note, Progress, Stack } from "./base"
-import { CONTROL, SelectAll, Submit } from "./form"
+import { Badge, Button, Confirm, FILE_FACE, Fold, IconButton, Note, Progress, Stack } from "./base"
+import { CONTROL, SelectAll, SelectOne, Submit } from "./form"
 import { Empty, Paging, Table, Td } from "./page"
 
 /**
@@ -130,7 +130,7 @@ export function BoxTable({ locale, rows, humLabel }: {
           {rows.map((row) => (
             <tr key={row.name}>
               <Td>
-                <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
+                <SelectOne name="name" value={row.name} />
               </Td>
               <Td className="break-all">
                 {row.isPublic && humLabel !== null
@@ -278,7 +278,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
             disabled={busy}
             onChange={(event) => { void send([...event.target.files ?? []]) }}
             aria-label={t.upload}
-            className="text-sm file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand file:text-sm"
+            className={`text-sm ${FILE_FACE}`}
           />
           {busy && (
             <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>

@@ -62,13 +62,12 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
     <Page>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading} />
+          <Heading title={t.heading} note={t.note} />
           {actionData !== undefined && (
             <Result ok={actionData.status === "ok"}>
               {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
             </Result>
           )}
-          <p className="text-ink-muted text-sm">{t.note}</p>
 
           {view.keys.length === 0
             ? <Empty>{t.noKey}</Empty>

@@ -157,8 +157,8 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           : (
               <Stack gap="block">
                 {view.experiments.map((experiment) => (
-                  <section key={experiment.id} className="rounded border border-line">
-                    <Band className="rounded-t">
+                  <section key={experiment.id} className="overflow-hidden rounded border border-line">
+                    <Band>
                       <h3 className="font-semibold">
                         <Value field={experiment.label} locale={locale} />
                       </h3>

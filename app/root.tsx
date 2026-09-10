@@ -11,7 +11,6 @@ import {
 
 import { isAdminPath } from "~/admin/urls"
 import { readActor } from "~/auth/actor.server"
-import { AdminDrawer } from "~/components/admin"
 import { CartToast } from "~/components/cart"
 import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
@@ -132,7 +131,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           mean.
         */}
         {!managing && <Announcements key={path} alerts={data?.alerts ?? []} locale={locale} />}
-        {managing && <AdminDrawer locale={locale} path={path} />}
         <div className="flex-1">
           {/*
             What the cart says back when it is pressed. **It belongs to the

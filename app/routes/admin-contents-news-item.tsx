@@ -1,14 +1,11 @@
 import { Form } from "react-router"
 
 import { newsAction, newsPage } from "~/admin/contents.server"
-import { adminNewsListPath } from "~/admin/urls"
-import { AdminBack } from "~/components/admin"
 import { Confirm, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Field, Submit } from "~/components/form"
 import { Card, Page, PageHead, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
-import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-news-item"
 
@@ -57,9 +54,7 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead kicker={t.news.heading} label={title}>
-        <AdminBack onBand to={href(locale, adminNewsListPath())} label={t.news.backToList} />
-      </PageHead>
+      <PageHead kicker={title} label={t.news.itemHeading} />
       <Card>
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />

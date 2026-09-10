@@ -42,6 +42,7 @@ import { fetchDraSubmission } from "~/upstream/dra.server"
 
 import {
   addDatasetsFromUpstream,
+  applyUpstreamToDraft,
   createResearchFromUpstream,
   type SeededDataset,
 } from "./drafts.server"
@@ -53,11 +54,16 @@ import {
   type CatalogWithTerms,
 } from "./queries.server"
 import {
+  contentWithUpstream,
   draDatasetSeed,
   jgadDatasetSeed,
+  MERGE_FIELDS,
+  mergeRows,
   researchContentFrom,
+  upstreamProvider,
   type DatasetSeed,
   type DroppedValue,
+  type MergeRow,
 } from "./templates"
 import { adminDraftDatasetsPath, adminDraftPath } from "./urls"
 
@@ -501,6 +507,175 @@ export async function upstreamDatasetAction(
   if (outcome.status === "gone") notFound()
   if (outcome.status !== "added") return outcome
   return redirect(href(locale, adminDraftDatasetsPath(researchId, draftId)))
+}
+
+/** The provider an application states, as one line per language. */
+export interface UpstreamProviderView {
+  nameJa: string
+  nameEn: string
+  affiliationJa: string
+  affiliationEn: string
+}
+
+export interface UpstreamDraftView {
+  locale: Locale
+  connected: boolean
+  researchId: string
+  draftId: string
+  revision: number
+  humLabel: string | null
+  keyword: string
+  rows: UpstreamBranchView[]
+  /** The branch being taken in, when one has been chosen. */
+  branch: UpstreamBranchView | null
+  /** The draft and the application, field by field. Null until a branch is chosen. */
+  merge: MergeRow[] | null
+  /** Offered whole, and only when the draft does not already name this person. */
+  provider: UpstreamProviderView | null
+  datasets: DatasetChoiceView[]
+  dropped: DroppedValue[]
+  unreachable: string[]
+}
+
+/**
+ * Taking an application into a draft that exists.
+ *
+ * **The listing is the same one the create screen shows**, because the question
+ * ("which approval is this version?") is the same. What differs is the arrival:
+ * here the branch is put beside the draft rather than turned into a new one.
+ */
+export async function upstreamDraftPage(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<UpstreamDraftView> {
+  await requireSeeding(request)
+  const db = getDb()
+  const at = await draftAt(db, params)
+  const draft = await readDraft(db, at.draftId)
+  if (draft === null) notFound()
+
+  const url = new URL(request.url)
+  const keyword = url.searchParams.get("q") ?? ""
+  const applicationId = url.searchParams.get("application")
+
+  const rows = await withApplicationDb((connection) =>
+    searchDsBranches(connection.pool, connection.schema, keyword, BRANCH_LIMIT))
+  const listing = {
+    ...at,
+    locale,
+    connected: rows !== null,
+    keyword,
+    rows: rows === null ? [] : await branchViews(db, rows),
+  }
+  const nothing = {
+    ...listing,
+    branch: null,
+    merge: null,
+    provider: null,
+    datasets: [],
+    dropped: [],
+    unreachable: [],
+  }
+  if (applicationId === null) return nothing
+
+  const catalog = await loadCatalogWithTerms(db)
+  const read = await withApplicationDb(async (connection) => {
+    const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
+    if (branch === null) return null
+    return { branch, seeds: await jgadSeeds(connection, branch, catalog) }
+  })
+  if (read == null) return nothing
+
+  const choice = await choiceOf(db, {
+    applicationId,
+    branch: read.branch,
+    seeds: read.seeds,
+    unreachable: [],
+  })
+  const [view] = await branchViews(db, [read.branch])
+  return {
+    ...listing,
+    branch: view ?? null,
+    merge: mergeRows(draft.content, read.branch),
+    provider: providerView(read.branch),
+    datasets: choice.datasets,
+    dropped: choice.dropped,
+    unreachable: choice.unreachable,
+  }
+}
+
+/**
+ * Writing what the curator decided.
+ *
+ * **Nothing is merged here.** The boxes arrive holding the answer, so this puts
+ * them into the content and appends whichever datasets were ticked
+ * (`docs/editing.md` の「既存の下書きに取り込む」).
+ */
+export async function upstreamDraftAction(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<Response | UpstreamResult> {
+  const actor = await requireSeeding(request)
+  const db = getDb()
+  const { researchId, draftId } = await draftAt(db, params)
+  const draft = await readDraft(db, draftId)
+  if (draft === null) notFound()
+
+  const form = await request.formData()
+  const revision = Number(form.get("revision"))
+  if (!Number.isInteger(revision)) badRequest()
+  const applicationId = readString(form, "application")
+  if (applicationId === null) badRequest()
+
+  const written = new Map<string, string>()
+  for (const field of MERGE_FIELDS) {
+    for (const language of ["ja", "en"] as const) {
+      const at = `${field}.${language}`
+      written.set(at, readString(form, at) ?? "")
+    }
+  }
+  const wanted = accessionsIn(form)
+  const withProvider = form.get("provider") !== null
+
+  const catalog = await loadCatalogWithTerms(db)
+  const read = await withApplicationDb(async (connection) => {
+    const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
+    if (branch === null) return null
+    return { branch, seeds: await jgadSeeds(connection, branch, catalog) }
+  })
+  if (read == null) notFound()
+
+  const written_ = contentWithUpstream(draft.content, written)
+  const provider = withProvider ? upstreamProvider(read.branch) : null
+  const content = provider === null
+    ? written_
+    : { ...written_, dataProviders: [...written_.dataProviders, provider] }
+
+  const outcome = await applyUpstreamToDraft(
+    db,
+    { draftId, revision },
+    {
+      researchId,
+      content,
+      datasets: chosen(read.seeds, wanted),
+    },
+    actorOf(actor),
+  )
+  if (outcome.status === "gone") notFound()
+  if (outcome.status !== "added") return outcome
+  return redirect(href(locale, adminDraftPath(researchId, draftId)))
+}
+
+function providerView(branch: DsBranchDetail): UpstreamProviderView | null {
+  if (branch.piNameJa === "" && branch.piNameEn === "") return null
+  return {
+    nameJa: branch.piNameJa,
+    nameEn: branch.piNameEn,
+    affiliationJa: branch.affiliationJa,
+    affiliationEn: branch.affiliationEn,
+  }
 }
 
 // === shared ===

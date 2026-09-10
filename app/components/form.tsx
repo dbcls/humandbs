@@ -22,7 +22,7 @@
 
 import { useId, type ReactNode } from "react"
 
-import { Button, type ButtonVariant, Note } from "~/components/base"
+import { Button, type ButtonVariant, FILE_FACE, Note } from "~/components/base"
 import { Icon } from "~/components/icons"
 
 /**
@@ -59,21 +59,51 @@ export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1 focus-visible:-outline
  * The label is tied to the control by id rather than by wrapping it, because a
  * checkbox wants its label after it and everything else wants it before.
  */
-function Labelled({ id, label, hint, error, children, inline = false }: {
+function Labelled({ id, label, icon, hint, error, children, inline = false, hideLabel = false }: {
   id: string
   label: string
+  /**
+   * A glyph in front of the word, where the word is one of a set the reader is
+   * already being shown the glyph for somewhere else.
+   *
+   * **It rides inside the label** rather than beside it, so that pressing the
+   * glyph is pressing the control and a long name wraps under itself rather
+   * than around a picture.
+   */
+  icon?: ReactNode
   hint?: string
   error?: string
   children: ReactNode
   inline?: boolean
+  hideLabel?: boolean
 }) {
+  /**
+   * **A hidden name is still a name.** In a row where the control stands beside
+   * the button that acts on it, a label above the box makes the row two lines
+   * tall and nothing lines up with anything; the word is still read out, and
+   * still what clicking it focuses.
+   */
+  if (hideLabel) {
+    return (
+      <div className="text-sm">
+        <label htmlFor={id} className="sr-only">{label}</label>
+        {children}
+        {error !== undefined && (
+          <span id={`${id}-error`} className="sr-only">{error}</span>
+        )}
+      </div>
+    )
+  }
   return (
     <div className={inline ? "flex items-start gap-2 text-sm" : "flex flex-col gap-2 text-sm"}>
       {inline
         ? (
             <>
               {children}
-              <label htmlFor={id} className="text-ink">{label}</label>
+              <label htmlFor={id} className="text-ink">
+                {icon}
+                {label}
+              </label>
             </>
           )
         : (
@@ -112,21 +142,49 @@ function edge(error?: string) {
   return error === undefined ? "" : "border-danger"
 }
 
-export function Field({ label, name, value, hint, error, disabled, width = "w-48", type = "text" }: FieldLook & {
+export function Field({
+  label,
+  name,
+  value,
+  hint,
+  error,
+  disabled,
+  width = "w-48",
+  type = "text",
+  placeholder,
+  pattern,
+  hideLabel = false,
+}: FieldLook & {
   value?: string
   width?: string
   /** `text` unless the value has a shape the browser can help with. */
   type?: "text" | "email" | "url" | "number" | "date" | "search"
+  /**
+   * **The shape of the value, shown inside the empty box.** It is an example
+   * rather than help, so it belongs where what is typed will appear and not in
+   * a line under the box, where it reads as a rule about the value.
+   */
+  placeholder?: string
+  /**
+   * The shape the value has to have. **The server checks it too** — this only
+   * saves the round trip and says so before the box is left.
+   */
+  pattern?: string
+  /** For a row where a visible label would leave nothing lined up with it. */
+  hideLabel?: boolean
 }) {
   const id = useId()
   return (
-    <Labelled id={id} label={label} hint={hint} error={error}>
+    <Labelled id={id} label={label} hint={hint} error={error} hideLabel={hideLabel}>
       <input
         id={id}
         type={type}
         name={name}
         defaultValue={value}
         disabled={disabled}
+        placeholder={placeholder}
+        pattern={pattern}
+        title={pattern === undefined ? undefined : label}
         className={`${CONTROL} ${width} ${edge(error)} disabled:opacity-50`}
         {...invalid(id, error)}
       />
@@ -180,13 +238,15 @@ export function Select({ label, name, value, options, hint, error, disabled }: F
   )
 }
 
-export function Checkbox({ label, name, value, checked, hint, error, disabled }: FieldLook & {
+export function Checkbox({ label, icon, name, value, checked, hint, error, disabled }: FieldLook & {
   value?: string
   checked?: boolean
+  /** A glyph in front of the word — see `Labelled`. */
+  icon?: ReactNode
 }) {
   const id = useId()
   return (
-    <Labelled id={id} label={label} hint={hint} error={error} inline>
+    <Labelled id={id} label={label} icon={icon} hint={hint} error={error} inline>
       <input
         id={id}
         type="checkbox"
@@ -259,7 +319,7 @@ export function FileField({ label, name, hint, error, disabled, multiple = false
         name={name}
         multiple={multiple}
         disabled={disabled}
-        className="text-sm file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand file:text-sm"
+        className={`text-sm ${FILE_FACE}`}
         {...invalid(id, error)}
       />
     </Labelled>
@@ -300,6 +360,21 @@ export function BilingualField({ label, name, ja, en, hint, error, disabled }: F
 }
 
 /**
+ * A checkbox standing on its own in a table cell.
+ *
+ * **It takes one line's height and sits in the middle of it**, so that it lands
+ * where a word in the next column lands. A box is 13px against a line of 22.4px
+ * and, left inline, sits on the baseline of prose that is not there: 1.5px above
+ * the words beside it down the rows and 1.7px above them in the band, measured.
+ * Either reads as the table being out of true rather than as anything a reader
+ * can point at.
+ *
+ * **A line's height rather than a number**, because what it has to match is the
+ * height the cell beside it is already using.
+ */
+const MARK = "flex h-[1lh] items-center"
+
+/**
  * The checkbox at the head of a column of checkboxes.
  *
  * It works on the form's own elements rather than on state, because the boxes
@@ -309,33 +384,53 @@ export function BilingualField({ label, name, ja, en, hint, error, disabled }: F
  */
 export function SelectAll({ name, label }: { name: string, label: string }) {
   return (
-    <input
-      type="checkbox"
-      aria-label={label}
-      onChange={(event) => {
-        const form = event.currentTarget.form
-        if (form === null) return
-        const checked = event.currentTarget.checked
-        const boxes = form.querySelectorAll<HTMLInputElement>(
-          `input[type="checkbox"][name="${name}"]`,
-        )
-        for (const box of boxes) box.checked = checked
-      }}
-    />
+    <span className={MARK}>
+      <input
+        type="checkbox"
+        aria-label={label}
+        onChange={(event) => {
+          const form = event.currentTarget.form
+          if (form === null) return
+          const checked = event.currentTarget.checked
+          const boxes = form.querySelectorAll<HTMLInputElement>(
+            `input[type="checkbox"][name="${name}"]`,
+          )
+          for (const box of boxes) box.checked = checked
+        }}
+      />
+    </span>
   )
 }
 
-export function Submit({ children, intent, variant = "secondary", disabled }: {
+/**
+ * One line's own box, in a column headed by a `SelectAll`.
+ *
+ * **The value is the name it announces itself by.** A column of boxes all
+ * saying "select" tells a reader who cannot see the row which column they are
+ * in and nothing about which line they are on.
+ */
+export function SelectOne({ name, value }: { name: string, value: string }) {
+  return (
+    <span className={MARK}>
+      <input type="checkbox" name={name} value={value} aria-label={value} />
+    </span>
+  )
+}
+
+export function Submit({ children, intent, variant = "secondary", disabled, icon }: {
   children: ReactNode
   intent?: string
   variant?: ButtonVariant
   disabled?: boolean
+  /** Passed on to `Button`, for a row where the links beside it carry one. */
+  icon?: ReactNode
 }) {
   return (
     <Button
       type="submit"
       variant={variant}
       disabled={disabled}
+      icon={icon}
       name={intent === undefined ? undefined : "intent"}
       value={intent}
     >

@@ -26,6 +26,7 @@ import type {
   Experiment,
   ResearchContent,
   RichText,
+  Slot,
   TranslatedRichText,
   TranslatedText,
   ValueSlot,
@@ -394,6 +395,129 @@ function number(catalog: CatalogWithTerms, code: string, value: number): Built {
 
 function named(keyCode: string, values: readonly string[]): DroppedValue[] {
   return values.filter((value) => value !== "").map((value) => ({ keyCode, value }))
+}
+
+/**
+ * What the merge面 puts side by side, one line per field and language.
+ *
+ * **Only the four prose fields are compared this way.** A provider is a
+ * structure — a name, an organisation, a country — and reading it as one string
+ * would let a curator write something no structure can hold. It is offered
+ * whole instead (`upstreamProvider`).
+ */
+export type MergeField = "title" | "aims" | "methods" | "targets"
+
+export const MERGE_FIELDS: readonly MergeField[] = ["title", "aims", "methods", "targets"]
+
+export interface MergeRow {
+  field: MergeField
+  language: "ja" | "en"
+  /** What the draft says now. Read-only on the screen. */
+  current: string
+  /** What the application says. Read-only on the screen. */
+  incoming: string
+}
+
+/**
+ * The draft and the application, field by field.
+ *
+ * **A row is kept even where the two agree.** The screen folds those away, but
+ * it needs to know they exist to say how many there are, and the write path
+ * reads back every row it drew.
+ */
+export function mergeRows(current: ResearchContent, branch: DsBranchDetail): MergeRow[] {
+  const rows: MergeRow[] = []
+  for (const field of MERGE_FIELDS) {
+    for (const language of ["ja", "en"] as const) {
+      rows.push({
+        field,
+        language,
+        current: currentText(current, field, language),
+        incoming: incomingText(branch, field, language),
+      })
+    }
+  }
+  return rows
+}
+
+/** What a row starts out holding: the application, else the draft, else nothing. */
+export function mergeInitial(row: MergeRow): string {
+  return row.incoming !== "" ? row.incoming : row.current
+}
+
+/**
+ * The content to write, with the four fields replaced by what was typed.
+ *
+ * **Everything else is carried across untouched.** Seeding an existing draft is
+ * not the same operation as making one: the grants, the related publications and
+ * the dataset ids are the curator's work, and the application knows nothing
+ * about them.
+ *
+ * **An empty box becomes 未確定 rather than an empty string.** A value that is
+ * present and blank is a fourth state the rest of the model does not have.
+ */
+export function contentWithUpstream(
+  current: ResearchContent,
+  written: ReadonlyMap<string, string>,
+): ResearchContent {
+  const at = (field: MergeField, language: "ja" | "en"): Slot<string> => {
+    const value = (written.get(`${field}.${language}`) ?? "").trim()
+    return value === "" ? { state: "unknown" } : filled(value)
+  }
+  const asProse = (field: MergeField, language: "ja" | "en"): Slot<RichText> => {
+    const value = (written.get(`${field}.${language}`) ?? "").trim()
+    return value === "" ? { state: "unknown" } : filled(lines(value))
+  }
+  return {
+    ...current,
+    title: { ja: at("title", "ja"), en: at("title", "en") },
+    summary: {
+      ...current.summary,
+      aims: { ja: asProse("aims", "ja"), en: asProse("aims", "en") },
+      methods: { ja: asProse("methods", "ja"), en: asProse("methods", "en") },
+      targets: { ja: asProse("targets", "ja"), en: asProse("targets", "en") },
+    },
+  }
+}
+
+/** The provider the application states, offered whole or not at all. */
+export function upstreamProvider(branch: DsBranchDetail): ResearchContent["dataProviders"][number] | null {
+  if (!hasName(branch)) return null
+  return {
+    id: newId(),
+    name: pair(branch.piNameJa, branch.piNameEn),
+    organization: {
+      name: pair(branch.affiliationJa, branch.affiliationEn),
+      address: pair(branch.country, branch.country),
+    },
+    orcid: filled(""),
+    email: filled(""),
+  }
+}
+
+function currentText(content: ResearchContent, field: MergeField, language: "ja" | "en"): string {
+  if (field === "title") return slotText(content.title[language])
+  return proseText(content.summary[field][language])
+}
+
+function incomingText(branch: DsBranchDetail, field: MergeField, language: "ja" | "en"): string {
+  const at = {
+    title: [branch.titleJa, branch.titleEn],
+    aims: [branch.aimsJa, branch.aimsEn],
+    methods: [branch.methodsJa, branch.methodsEn],
+    targets: [branch.targetsJa, branch.targetsEn],
+  }[field]
+  return (language === "ja" ? at[0] : at[1]) ?? ""
+}
+
+function slotText(slot: Slot<string>): string {
+  return slot.state === "value" ? slot.value : ""
+}
+
+/** The inverse of `lines`: a line is a line, and a blank line stays blank. */
+function proseText(slot: Slot<RichText>): string {
+  if (slot.state !== "value") return ""
+  return slot.value.map((line) => line.map((span) => span.text).join("")).join("\n")
 }
 
 // === values ===

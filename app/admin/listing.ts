@@ -7,9 +7,11 @@
  * the full-text index would not help because it only holds what is published.
  * Several words all have to match, as they do in the public box.
  *
- * The filters are separate axes and combine as an AND: a status, and any number
- * of the shortcomings. Nothing here reaches the database, so a rule can be
- * checked against a row without one.
+ * **The status and the shortcomings are two axes and combine as an AND; within
+ * each axis the choices are an OR.** Ticking three shortcomings asks for the
+ * rows that need looking at, not for the rare row that manages all three at
+ * once, and an axis nothing is ticked on narrows nothing. Nothing here reaches
+ * the database, so a rule can be checked against a row without one.
  *
  * **The shortcomings are the ones a row can be built with**, which is a wider
  * line than "derived from the content": two of them come from the pin ledger and
@@ -20,14 +22,23 @@
 
 import type { TranslatedText } from "~/content/types"
 import { pageRange } from "~/paging"
+import { PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/search/sort"
 
 import type { ContentFlags } from "./flags"
 
-export const ADMIN_PAGE_SIZE = 20
+/**
+ * Whether anything of this research is out.
+ *
+ * **Taking a version back is not a third state.** It leaves the version in
+ * place with its number spent and its `published` false, so a research whose
+ * versions have all been taken back stands exactly where one that never had any
+ * stands: nothing of it is readable. Which versions exist and which of them are
+ * out is the research's own screen to say.
+ */
+export type AdminStatus = "published" | "unpublished"
 
-export type AdminStatus = "published" | "withdrawn" | "unpublished"
-
-export const ADMIN_STATUSES: readonly AdminStatus[] = ["published", "withdrawn", "unpublished"]
+export const ADMIN_STATUSES: readonly AdminStatus[] = ["published", "unpublished"]
 
 export interface AdminFlags extends ContentFlags {
   /** No hum label is pinned, which alone is enough to stop a version publishing. */
@@ -70,11 +81,14 @@ export interface AdminResearchRow {
   flags: AdminFlags
   /** The most recent change to the research, any of its versions or its drafts. */
   updatedAt: string
+  /** The release date of the latest version that is out, or `null` while none is. */
+  publishedOn: string | null
 }
 
 export interface ListingFilter {
   keyword: string
-  status: AdminStatus | null
+  /** Which states to keep. Empty is every state, the way no shortcoming is. */
+  statuses: readonly AdminStatus[]
   flags: readonly AdminFlagKey[]
 }
 
@@ -109,17 +123,48 @@ export function filterResearchRows(
 ): AdminResearchRow[] {
   return rows.filter((row) =>
     matchesKeyword(row, filter.keyword)
-    && (filter.status === null || row.status === filter.status)
-    && filter.flags.every((flag) => row.flags[flag]))
+    && (filter.statuses.length === 0 || filter.statuses.includes(row.status))
+    && (filter.flags.length === 0 || filter.flags.some((flag) => row.flags[flag])))
 }
 
 /**
- * Most recently touched first. The tie-break is the identity, which is
- * time-ordered, so a page boundary does not move rows around between requests.
+ * The rows in the order asked for, most recently touched first by default.
+ *
+ * **The keys are the ones the public listings offer** (`search/sort.ts`), so a
+ * curator moving between the two sides has one set of orderings to learn rather
+ * than two.
+ *
+ * **A row with nothing under the key sinks, whichever way the order runs.** An
+ * unpinned label and a research that has never been out have no place on a
+ * scale of labels or of dates, and sorting them as the empty string would put
+ * them at one end for `asc` and the other for `desc` — a reader turning the
+ * order around would see them cross the whole listing.
+ *
+ * The tie-break is the identity, which is time-ordered, so a page boundary does
+ * not move rows around between requests.
  */
-export function sortResearchRows(rows: readonly AdminResearchRow[]): AdminResearchRow[] {
-  return [...rows].sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt) || b.researchId.localeCompare(a.researchId))
+export function sortResearchRows(
+  rows: readonly AdminResearchRow[],
+  sort: SortKey = DEFAULT_SORT,
+  order: SortOrder = defaultOrder(sort),
+): AdminResearchRow[] {
+  const turn = order === "asc" ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const one = keyOf(a, sort)
+    const other = keyOf(b, sort)
+    if (one === null || other === null) {
+      if (one !== other) return one === null ? 1 : -1
+    } else if (one !== other) {
+      return one.localeCompare(other) * turn
+    }
+    return b.researchId.localeCompare(a.researchId)
+  })
+}
+
+function keyOf(row: AdminResearchRow, sort: SortKey): string | null {
+  if (sort === "id") return row.humLabel
+  if (sort === "datePublished") return row.publishedOn
+  return row.updatedAt
 }
 
 export interface ListingPage {
@@ -132,15 +177,19 @@ export interface ListingPage {
   rangeTo: number
 }
 
-export function pageOf(rows: readonly AdminResearchRow[], page: number): ListingPage {
-  const pageCount = Math.max(1, Math.ceil(rows.length / ADMIN_PAGE_SIZE))
+export function pageOf(
+  rows: readonly AdminResearchRow[],
+  page: number,
+  size: PageSize = PAGE_SIZE,
+): ListingPage {
+  const pageCount = Math.max(1, Math.ceil(rows.length / size))
   const wanted = Math.min(Math.max(page, 1), pageCount)
-  const from = (wanted - 1) * ADMIN_PAGE_SIZE
+  const from = (wanted - 1) * size
   return {
-    rows: rows.slice(from, from + ADMIN_PAGE_SIZE),
+    rows: rows.slice(from, from + size),
     total: rows.length,
     page: wanted,
     pageCount,
-    ...pageRange(wanted, ADMIN_PAGE_SIZE, rows.length),
+    ...pageRange(wanted, size, rows.length),
   }
 }

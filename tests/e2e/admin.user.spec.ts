@@ -18,12 +18,13 @@ import { SIGNED_IN } from "../../playwright.config"
 test.describe("P-ADMIN", () => {
   test.skip(SIGNED_IN === "", "HUMANDBS_E2E_SESSION が無い (npm run e2e:session)")
 
-  /** The addresses that need no identity: the map has to offer all of them. */
+  /** The addresses that need no identity: each is under one of the sections. */
   const STANDALONE = [
     "/admin/research",
     "/admin/research/upstream",
     "/admin/experiment-fields",
     "/admin/contents",
+    "/admin/contents/alert",
     "/admin/contents/news",
     "/admin/contents/files",
     "/admin/assistant",
@@ -31,23 +32,27 @@ test.describe("P-ADMIN", () => {
 
   test("S-ADMIN-01: 区画のトップから、識別子を要らない画面すべてに行ける", async ({ page }) => {
     await page.goto("/admin")
-    await expect(page.getByRole("heading", { level: 1, name: "管理" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "Admin トップ" })).toBeVisible()
 
-    // 窓の端のつまみではなく、ページの中の地図を見る。つまみは畳まれていて
-    // 同じ行き先を持つので、そちらを数えると地図が空でも通ってしまう。
-    const map = page.getByRole("main")
+    // ページの頭のバーではなく、ページの中身を見る。バーは同じ 8 つを持つので、
+    // そちらを数えるとトップが空でも通ってしまう。
+    const top = page.getByRole("main")
     for (const path of STANDALONE) {
-      await expect(map.locator(`a[href="${path}"]`).first(), path).toBeVisible()
+      await expect(top.locator(`a[href="${path}"]`).first(), path).toBeVisible()
     }
 
+    // 押せるものは行き先とは限らない。研究を始める 3 通りのうち 1 つは操作で、
+    // リンクだけを数えると 2 通りに見える。
+    await expect(top.getByRole("button", { name: "新しく作る" })).toBeVisible()
+
     // 行き先はリンクであって、説明の文ではない。1 つ押して、その先が開くことまで見る。
-    await map.locator("a[href=\"/admin/experiment-fields\"]").first().click()
+    await top.locator("a[href=\"/admin/experiment-fields\"]").first().click()
     await expect(page).toHaveURL(/\/admin\/experiment-fields$/)
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-02: つまみに親が無い画面だけが、その親への戻る道を持つ", async ({ page }) => {
-    // つまみが開ける画面は、区画の中の位置を自分では言わない。
+  test("S-ADMIN-02: バーに親が無い画面だけが、その親への戻る道を持つ", async ({ page }) => {
+    // バーが開ける画面は、区画の中の位置を自分では言わない。
     for (const path of [...STANDALONE, "/admin"]) {
       await page.goto(path)
       await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
@@ -93,7 +98,7 @@ test.describe("P-ADMIN", () => {
   test("S-ADMIN-05: 一覧から 1 件選んだ先の画面すべてに、リンクを辿って着ける", async ({ page }) => {
     const draft = await openADraft(page)
     // 研究 → 下書き → データセット一覧 → データセット 1 件。上流の 2 つは
-    // S-ADMIN-01 が地図から、公開とレビューはここで。
+    // S-ADMIN-01 が区画のトップから、公開とレビューはここで。
     for (const path of [draft, `${draft}/review`, `${draft}/publish`, `${draft}/dataset`]) {
       await page.goto(path)
       await expect(page.getByRole("heading", { level: 1 }), path).not.toBeEmpty()
@@ -109,7 +114,7 @@ test.describe("P-ADMIN", () => {
     await expect(page).toHaveURL(new RegExp(`${draft}/dataset/[0-9a-f-]{36}$`))
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
 
-    // 研究の箱、文書 1 件、お知らせ 1 件、語彙 1 つ。どれも一覧から辿る。
+    // 研究の箱、文書 1 件、お知らせ 1 件、key の値 1 つ。どれも一覧から辿る。
     const research = draft.replace(/\/draft\/.*$/, "")
     await page.goto(research)
     await page.locator(`a[href="${research}/files"]`).first().click()
@@ -125,8 +130,8 @@ test.describe("P-ADMIN", () => {
       await expect(page.getByRole("heading", { level: 1 }), listing).not.toBeEmpty()
     }
 
-    // 項目の語は、その項目を開いた先にある。行は `<details>` なので、たたまれた
-    // ままではリンクを押せない — 語彙を持つ行を 1 つ開いてから辿る。
+    // key の値は、その key を開いた先にある。行は `<details>` なので、たたまれた
+    // ままではリンクを押せない — 選択肢を持つ行を 1 つ開いてから辿る。
     await page.goto("/admin/experiment-fields")
     const withTerms = page
       .locator("details")

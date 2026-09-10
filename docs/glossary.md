@@ -17,7 +17,7 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 |---|---|---|
 | research | 研究 | Research |
 | hum ラベル | 研究 ID | Research ID |
-| research の版 | 版 | Version |
+| research の版 | バージョン | Version |
 | dataset | データセット | Dataset |
 | dataset id | データセット ID | Dataset ID |
 | experiment | 解析手法 | Analysis method |
@@ -75,7 +75,14 @@ curator が見る語。**未確定と該当なしと未翻訳は preview にも�
 | 未翻訳 | 未翻訳 | Untranslated |
 | 共有リンク | 共有リンク | Share link |
 | preview | プレビュー | Preview |
-| 語彙 | 語彙 | Vocabulary |
+| catalog のキー | key | Key |
+| 語彙値 | 値 | Value |
+| 語彙型 | 選択肢 | Choice |
+
+**`catalog` も `vocabulary` もモデル上の名前で、画面には出さない。** curator が口で言うのは「データセットが
+解析手法の表を持つ」「表の key と値」で、値の候補を決まった集合から取る型が「選択肢」になる。仕様の側は
+[data-model.md](data-model.md) の「catalog と語彙」がキー・語彙・語彙値と呼ぶ — **同じものの、読む人が
+違う 2 通りの呼び方**で、`experiment` と「解析手法」の関係と同じ。
 
 ## facet のラベル
 

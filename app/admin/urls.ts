@@ -65,6 +65,10 @@ export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
 
+export function adminDraftUpstreamPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/upstream`
+}
+
 export function adminDraftDatasetsPath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/dataset`
 }
@@ -153,9 +157,15 @@ export function draftUndoPath(researchId: string, draftId: string, undoId: strin
 
 export interface ListingQuery {
   keyword: string
-  status: string | null
+  statuses: readonly string[]
   flags: readonly string[]
   page: number
+  /** The ordering to keep, or `null` when it is the one the listing opens in. */
+  sort: string | null
+  /** The direction to keep, or `null` when it is the one the key runs by. */
+  order: string | null
+  /** The page size to keep, or `null` for the default. */
+  size: number | null
 }
 
 /**
@@ -165,8 +175,11 @@ export interface ListingQuery {
 export function listingQuery(query: ListingQuery): string {
   const search = new URLSearchParams()
   if (query.keyword !== "") search.set("q", query.keyword)
-  if (query.status !== null) search.set("status", query.status)
+  for (const status of query.statuses) search.append("status", status)
   for (const flag of query.flags) search.append("flag", flag)
+  if (query.sort !== null) search.set("sort", query.sort)
+  if (query.order !== null) search.set("order", query.order)
+  if (query.size !== null) search.set("size", String(query.size))
   if (query.page > 1) search.set("page", String(query.page))
   const written = search.toString()
   return written === "" ? "" : `?${written}`
@@ -208,6 +221,11 @@ export function adminContentsPath(): string {
 
 export function adminDocumentPath(documentId: string): string {
   return `${adminContentsPath()}/document/${documentId}`
+}
+
+/** The strip that stands above every public page. */
+export function adminAlertPath(): string {
+  return `${adminContentsPath()}/alert`
 }
 
 export function adminNewsListPath(): string {

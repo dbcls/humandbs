@@ -35,6 +35,7 @@ import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
+  adminDraftUpstreamPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchPath,
@@ -601,7 +602,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         */}
         <DraftBar
           locale={locale}
-          heading={view.humLabel ?? t.heading}
+          heading={view.humLabel === null ? t.heading : `${view.humLabel} ${t.heading}`}
           back={{
             to: href(locale, adminResearchPath(view.researchId)),
             label: t.backToResearch,
@@ -610,6 +611,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             {
               to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
               label: messagesFor(locale).admin.draft.datasets,
+            },
+            {
+              to: href(locale, adminDraftUpstreamPath(view.researchId, view.draftId)),
+              label: messagesFor(locale).admin.templates.headingDraft,
             },
             {
               to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),

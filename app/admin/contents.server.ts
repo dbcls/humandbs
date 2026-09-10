@@ -101,6 +101,10 @@ export interface ContentsView {
   tree: TreeEntry[]
   /** Version-less slugs whose current revision does not answer in some language. */
   unanswered: { slug: string, locales: Locale[] }[]
+}
+
+export interface AlertsView {
+  locale: Locale
   alerts: AlertRow[]
 }
 
@@ -258,10 +262,6 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
   const db = getDb()
   const documents = await documentRows(db)
   const series = await seriesRows(db, documents)
-  const alerts = await db
-    .select({ id: alert.id, active: alert.active, content: alert.content })
-    .from(alert)
-    .orderBy(asc(alert.createdAt))
 
   const tree = siteTree(documents, series)
   return {
@@ -272,6 +272,18 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
       const locales = unansweredLocales(entry.current, LOCALES)
       return locales.length === 0 ? [] : [{ slug: entry.series.slug, locales }]
     }),
+  }
+}
+
+export async function alertsPage(request: Request): Promise<AlertsView> {
+  await requireCapability(request, "manage-site-content")
+  const alerts = await getDb()
+    .select({ id: alert.id, active: alert.active, content: alert.content })
+    .from(alert)
+    .orderBy(asc(alert.createdAt))
+
+  return {
+    locale: readLocale(new URL(request.url).pathname).locale,
     alerts: alerts.map((row) => ({
       id: row.id,
       active: row.active,
@@ -497,6 +509,26 @@ export async function contentsAction(request: Request): Promise<ContentsResult> 
         return addVersion(tx, form)
       case "delete-series":
         return deleteSeries(tx, form, actor)
+      default:
+        return { status: "unknown-target" }
+    }
+  })
+  return settle(request, applied)
+}
+
+/**
+ * The banner is edited on a screen of its own, so its intents are answered
+ * apart from the tree's. Both screens still speak the one result type: what a
+ * refusal reads like belongs to site content as a whole rather than to the
+ * screen the refusal came from.
+ */
+export async function alertAction(request: Request): Promise<ContentsResult> {
+  const actor = await requireCapability(request, "manage-site-content")
+  const form = await request.formData()
+  const intent = text(form, "intent")
+
+  const applied = await getDb().transaction(async (tx): Promise<Applied> => {
+    switch (intent) {
       case "create-alert":
         return createAlert(tx)
       case "update-alert":

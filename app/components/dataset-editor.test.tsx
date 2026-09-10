@@ -223,7 +223,7 @@ describe("the dataset editing form", () => {
     // unchosen ones are reached by typing rather than by scrolling. The chosen
     // label contains the unchosen one, so it is counted rather than looked for.
     expect(html.split("制限公開").length - 1).toBe(1)
-    expect(html).toContain("語彙値をさがす")
+    expect(html).toContain("選択肢をさがす")
   })
 
   it("shows nothing chosen as an empty vocabulary item rather than as no item", () => {

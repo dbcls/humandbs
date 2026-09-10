@@ -13,6 +13,7 @@ import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
+import { useRefine } from "~/search-as-typed"
 
 import type { Route } from "./+types/admin-draft-dataset-upstream"
 
@@ -56,6 +57,7 @@ export default function AdminDraftDatasetUpstream({
   const messages = messagesFor(locale)
   const t = messages.admin.templates
   const here = adminUpstreamDatasetPath(view.researchId, view.draftId)
+  const refine = useRefine({ action: href(locale, here) })
 
   const at = (query: { applicationId?: string, accession?: string }) =>
     href(locale, here + upstreamQuery({ keyword: view.keyword, ...query }))
@@ -76,7 +78,12 @@ export default function AdminDraftDatasetUpstream({
           {view.unknown !== null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
 
           <Section title={t.byAccession}>
-            <Form method="get" action={href(locale, here)} className="flex flex-wrap items-end gap-3">
+            <Form
+              method="get"
+              action={href(locale, here)}
+              onSubmit={refine}
+              className="flex flex-wrap items-end gap-3"
+            >
               <input type="hidden" name="q" value={view.keyword} />
               <Field
                 label={t.accessionHint}

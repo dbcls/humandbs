@@ -88,14 +88,17 @@ install を先に済ませるのは、`app` の command が build から始ま�
 
 ```bash
 git pull
-podman-compose restart app proxy
+podman-compose restart app
+podman-compose restart proxy
 ```
 
 restart が build し直して serve し直すので、アプリだけの変更ならこれで終わり。
 
-**proxy も一緒に restart する。** restart した container には新しいアドレスが振られるのに、nginx は
-upstream の名前を読み込みのときに 1 度しか引かないので、`app` だけ入れ替えると proxy は消えたアドレスへ
-繋ぎ続け、サイト全体が 502 になる。
+**proxy は app の後に、別のコマンドで restart する。** restart した container には新しいアドレスが
+振られるのに、nginx は upstream の名前を読み込みのときに 1 度しか引かない。`app` だけ入れ替えれば proxy
+は消えたアドレスへ繋ぎ続けてサイト全体が 502 になり、**`restart app proxy` と 1 つに並べても
+podman-compose は引数の順に restart しないので同じことが起きる。** proxy が名前を引き直すのは、app が
+新しいアドレスを取り終えた後でなければならない。
 
 それ以外が絡むときは下記を足す。
 

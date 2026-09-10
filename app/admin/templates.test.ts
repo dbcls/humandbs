@@ -14,7 +14,15 @@ import {
   READ_TYPE_KEY,
   TYPE_KEY,
 } from "./arbitraries/upstream"
-import { draDatasetSeed, jgadDatasetSeed, researchContentFrom } from "./templates"
+import {
+  contentWithUpstream,
+  draDatasetSeed,
+  jgadDatasetSeed,
+  mergeInitial,
+  mergeRows,
+  researchContentFrom,
+  upstreamProvider,
+} from "./templates"
 
 const branch: DsBranchDetail = {
   applicationId: "J-DS000136-010",
@@ -280,3 +288,85 @@ describe("the dataset a DRA submission seeds", () => {
     expect(draDatasetSeed(submission, null, catalogFixture).content.releaseDate).toBeNull()
   })
 })
+
+describe("the draft and the application side by side", () => {
+  const drafted = () => {
+    const content = researchContentFrom({ ...branch, titleJa: "下書きの題目", aimsJa: "下書きの目的" })
+    return {
+      ...content,
+      grants: [{
+        id: "g1",
+        title: pairOf("助成金"),
+        agency: { name: pairOf("機関") },
+        grantIds: ["JP00000001"],
+      }],
+      datasetIds: ["kept-1", "kept-2"],
+    }
+  }
+
+  it("puts one row on every field and language, whether or not the two agree", () => {
+    const rows = mergeRows(drafted(), branch)
+    expect(rows).toHaveLength(8)
+    expect(new Set(rows.map((row) => row.field))).toEqual(
+      new Set(["title", "aims", "methods", "targets"]),
+    )
+  })
+
+  it("reads the draft and the application into the two columns", () => {
+    const rows = mergeRows(drafted(), branch)
+    const title = rows.find((row) => row.field === "title" && row.language === "ja")
+    expect(title?.current).toBe("下書きの題目")
+    expect(title?.incoming).toBe("ゲノム解析による疾患研究")
+  })
+
+  it("shows nothing in a column the side has left unsettled", () => {
+    const empty = researchContentFrom({ ...branch, aimsJa: "", aimsEn: "" })
+    const rows = mergeRows(empty, { ...branch, aimsJa: "" })
+    const aims = rows.find((row) => row.field === "aims" && row.language === "ja")
+    expect(aims?.current).toBe("")
+    expect(aims?.incoming).toBe("")
+  })
+
+  /** 取り込みの動機が「申請が更新された」なので、既定は申請の側になる。 */
+  it("starts a box at the application, falling back to the draft", () => {
+    const rows = mergeRows(drafted(), { ...branch, methodsJa: "" })
+    const initial = (field: string) => {
+      const row = rows.find((one) => one.field === field && one.language === "ja")
+      return row === undefined ? null : mergeInitial(row)
+    }
+    expect(initial("title")).toBe("ゲノム解析による疾患研究")
+    expect(initial("methods")).toBe("方法です")
+  })
+
+  it("keeps the line breaks a curator typed, in both directions", () => {
+    const written = new Map([["aims.ja", "一行目\n\n三行目"]])
+    const after = contentWithUpstream(drafted(), written)
+    const back = mergeRows(after, branch).find((row) => row.field === "aims" && row.language === "ja")
+    expect(back?.current).toBe("一行目\n\n三行目")
+  })
+
+  it("writes only the four fields and carries the rest of the draft across", () => {
+    const before = drafted()
+    const after = contentWithUpstream(before, new Map([["title.ja", "決めた題目"]]))
+    expect(after.title.ja).toEqual({ state: "value", value: "決めた題目" })
+    expect(after.datasetIds).toEqual(["kept-1", "kept-2"])
+    expect(after.grants).toEqual(before.grants)
+    expect(after.summary.url).toEqual(before.summary.url)
+  })
+
+  /** 空の箱は「値があって空」ではなく未確定。第 4 の状態を作らない。 */
+  it("turns an empty box into 未確定 rather than an empty value", () => {
+    const after = contentWithUpstream(drafted(), new Map([["title.ja", "   "], ["aims.ja", ""]]))
+    expect(after.title.ja).toEqual({ state: "unknown" })
+    expect(after.summary.aims.ja).toEqual({ state: "unknown" })
+  })
+
+  it("offers the provider whole, and not at all when the application names nobody", () => {
+    expect(upstreamProvider(branch)?.name.ja).toEqual({ state: "value", value: "田中 太郎" })
+    expect(upstreamProvider({ ...branch, piNameJa: "", piNameEn: "" })).toBeNull()
+  })
+})
+
+function pairOf(value: string) {
+  return { ja: { state: "value" as const, value }, en: { state: "value" as const, value } }
+}

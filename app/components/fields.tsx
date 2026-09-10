@@ -24,7 +24,7 @@ import type { FieldProblem } from "~/admin/form.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Badge, Button, IconButton, Note, Stack } from "./base"
+import { Badge, Button, Choice, IconButton, Note, Stack } from "./base"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
 import { Section as PageSection } from "./page"
@@ -139,9 +139,11 @@ export function FieldHead({ label, marks, locale, untranslated = false }: {
  * Which of the three things a slot says: a value, that nobody knows yet, or
  * that the question does not apply.
  *
- * **The names do not change with the state** — a control that renamed itself
- * would announce as "mark unsettled, pressed" and say two opposite things at
- * once (`docs/ui.md`). What changes is the fill.
+ * **It is the smallest of the choices the site makes** — one per field per
+ * language, so an editor holds dozens of them. That is the reason it takes the
+ * welded box rather than a row of buttons: what is chosen here is a state, and
+ * a state drawn as a filled button leaves the screen with no way to say what it
+ * is asking for.
  */
 export function StateSwitch({ state, onChange, locale }: {
   state: SlotState
@@ -150,20 +152,13 @@ export function StateSwitch({ state, onChange, locale }: {
 }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="flex gap-1">
-      {STATES.map((candidate) => (
-        <Button
-          key={candidate}
-          type="button"
-          size="xs"
-          variant={state === candidate ? "primary" : "ghost"}
-          aria-pressed={state === candidate}
-          onClick={() => { onChange(candidate) }}
-        >
-          {t.states[candidate]}
-        </Button>
-      ))}
-    </div>
+    <Choice
+      label={t.statesLabel}
+      value={state}
+      options={STATES.map((candidate) => ({ id: candidate, label: t.states[candidate] }))}
+      onChange={onChange}
+      size="xs"
+    />
   )
 }
 

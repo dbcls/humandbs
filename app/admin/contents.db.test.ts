@@ -10,6 +10,7 @@ import * as s from "~/db/schema"
 import { findDocument } from "~/public/site.server"
 
 import {
+  alertAction,
   contentsAction,
   contentsPage,
   documentAction,
@@ -20,7 +21,13 @@ import {
   newsPage,
 } from "./contents.server"
 import { today } from "~/dates"
-import { adminContentsPath, adminDocumentPath, adminNewsListPath, adminNewsPath } from "./urls"
+import {
+  adminAlertPath,
+  adminContentsPath,
+  adminDocumentPath,
+  adminNewsListPath,
+  adminNewsPath,
+} from "./urls"
 
 /**
  * The site-content screens with their guard on, against the development
@@ -557,13 +564,13 @@ describe("お知らせ", () => {
 describe("バナー", () => {
   it("表示の切り替えだけが証跡に残る", async () => {
     const token = await signIn(CURATOR, true)
-    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
-    await contentsAction(post(token, adminContentsPath(), {
+    await alertAction(post(token, adminAlertPath(), {
       intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "notice", active: "on",
     }))
-    await contentsAction(post(token, adminContentsPath(), {
+    await alertAction(post(token, adminAlertPath(), {
       intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed", active: "on",
     }))
 
@@ -574,10 +581,10 @@ describe("バナー", () => {
 
   it("片方の言語しか無いバナーは立てられない", async () => {
     const token = await signIn(CURATOR, true)
-    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
-    const result = await contentsAction(post(token, adminContentsPath(), {
+    const result = await alertAction(post(token, adminAlertPath(), {
       intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "", active: "on",
     }))
     expect(result.status).toBe("missing-translation")
@@ -586,10 +593,10 @@ describe("バナー", () => {
 
   it("立てないうちは、片方ずつ書いていける", async () => {
     const token = await signIn(CURATOR, true)
-    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
-    const result = await contentsAction(post(token, adminContentsPath(), {
+    const result = await alertAction(post(token, adminAlertPath(), {
       intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "",
     }))
     expect(result.status).toBe("ok")
@@ -598,14 +605,43 @@ describe("バナー", () => {
 
   it("バナーの本文も生 HTML を弾く", async () => {
     const token = await signIn(CURATOR, true)
-    await contentsAction(post(token, adminContentsPath(), { intent: "create-alert" }))
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
-    const result = await contentsAction(post(token, adminContentsPath(), {
+    const result = await alertAction(post(token, adminAlertPath(), {
       intent: "update-alert", alertId: alert.id, ja: "<div>だめ</div>", en: "",
     }))
     expect(result.status).toBe("body")
     expect(only(await db.select().from(s.alert)).content.body.ja).toBe("")
+  })
+
+  /**
+   * 立っていた帯を消すのは、読者から見れば取り下げと同じ。まだ立てていないものを
+   * 消しても誰も見ていないので、残す証跡が無い。
+   */
+  it("立っていた帯を消したときだけ証跡が残る", async () => {
+    const token = await signIn(CURATOR, true)
+    const alertsOf = () => db.select().from(s.alert)
+    const trail = () =>
+      db.select().from(s.event).where(eq(s.event.subjectType, "alert"))
+
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const draft = only(await alertsOf())
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "delete-alert", alertId: draft.id,
+    }))
+    expect(await alertsOf()).toEqual([])
+    expect(await trail()).toEqual([])
+
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const up = only(await alertsOf())
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "update-alert", alertId: up.id, ja: "お知らせ", en: "notice", active: "on",
+    }))
+    await alertAction(post(token, adminAlertPath(), { intent: "delete-alert", alertId: up.id }))
+    expect(await alertsOf()).toEqual([])
+    expect((await trail()).map((row) => row.action))
+      .toEqual(["publish-site-content", "unpublish-site-content"])
   })
 })
 

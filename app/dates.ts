@@ -13,3 +13,20 @@
 export function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date())
 }
+
+/** How far JST stands from UTC. A constant, since JST has no daylight saving. */
+export const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/**
+ * An instant as the minute it fell on in JST.
+ *
+ * **Instants are held in UTC and read by people working in JST**, so one
+ * printed as it stands puts a fetch that ran at nine this morning at midnight.
+ * The shape is the one the dates use with the minute after it
+ * (`YYYY-MM-DD HH:MM`); it carries no zone because every clock the reader is
+ * comparing it against is the same one.
+ */
+export function minuteInJst(instant: string): string {
+  const shifted = new Date(new Date(instant).getTime() + JST_OFFSET_MS)
+  return shifted.toISOString().slice(0, 16).replace("T", " ")
+}

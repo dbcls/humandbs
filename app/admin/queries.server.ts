@@ -53,9 +53,8 @@ function latest(dates: readonly Date[]): string {
   return new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString()
 }
 
-function statusOf(versions: number, published: number): AdminStatus {
-  if (published > 0) return "published"
-  return versions > 0 ? "withdrawn" : "unpublished"
+function statusOf(published: number): AdminStatus {
+  return published > 0 ? "published" : "unpublished"
 }
 
 /**
@@ -102,6 +101,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       .select({
         researchId: researchVersion.researchId,
         published: researchVersion.published,
+        releaseDate: researchVersion.releaseDate,
         updatedAt: researchVersion.updatedAt,
       })
       .from(researchVersion),
@@ -129,8 +129,8 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
   const upstreamHumLabelOf = new Map(upstreamRows.map((row) => [row.accession, row.humLabel]))
 
   const grouped = new Map(researches.map((row) => [row.id, {
-    versions: 0,
     published: 0,
+    publishedOn: null as string | null,
     datasets: 0,
     datasetLabels: [] as string[],
     drafts: [] as ResearchContent[],
@@ -143,8 +143,15 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
   for (const row of versions) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
-    held.versions += 1
-    if (row.published) held.published += 1
+    if (row.published) {
+      held.published += 1
+      // The listing says when this research was last out, which is the newest
+      // release date among the versions that still are — an older one that was
+      // never taken back does not become the answer when a newer one is added.
+      if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
+        held.publishedOn = row.releaseDate
+      }
+    }
     held.dates.push(row.updatedAt)
   }
   for (const row of drafts) {
@@ -159,7 +166,6 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
 
   return researches.map((row): AdminResearchRow => {
     const held = grouped.get(row.id)
-    const versionCount = held?.versions ?? 0
     const publishedCount = held?.published ?? 0
     const draftContents = held?.drafts ?? []
     const publishedContent = publishedContentOf.get(row.id) ?? null
@@ -173,7 +179,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       title: working?.title ?? EMPTY_TITLE,
       providerNames: (working?.dataProviders ?? []).map((provider) => provider.name),
       datasetLabels: labels.toSorted(),
-      status: statusOf(versionCount, publishedCount),
+      status: statusOf(publishedCount),
       publishedVersions: publishedCount,
       draftCount: draftContents.length,
       flags: {
@@ -183,6 +189,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
         ...flagsOf(draftContents, publishedContent),
       },
       updatedAt: latest(held?.dates ?? [row.createdAt]),
+      publishedOn: held?.publishedOn ?? null,
     }
   })
 }

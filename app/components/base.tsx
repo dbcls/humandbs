@@ -205,7 +205,7 @@ const HEADING_LOOK = {
  * puts their middles below its middle — measured at 5.7px for the count and
  * 2.8px for the controls, which reads as the title floating above its own row.
  */
-export function Heading({ level = "h1", look = level, rule = "edge", title, count, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", title, count, note, children }: {
   level?: "h1" | "h2"
   /**
    * How large it is drawn, when that is not what its level would give.
@@ -224,10 +224,19 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, coun
   rule?: keyof typeof PANE_RULE
   title: string
   count?: string
+  /**
+   * What the screen is for, in one line under its name.
+   *
+   * **The distance to it belongs to the heading rather than to the screen.** A
+   * screen that puts the line beside the heading as its own element hands it to
+   * whatever `Stack` it stands in, and the same sentence then sits 16px under
+   * one heading and 32px under the next.
+   */
+  note?: string
   children?: ReactNode
 }) {
   const Tag = level
-  return (
+  const head = (
     <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 ${rule === "edge" ? "-ml-6" : ""}`}>
       <div className={`flex items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
         <Tag className={`font-bold text-brand ${HEADING_LOOK[look]}`}>
@@ -239,6 +248,13 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, coun
         <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
       )}
     </div>
+  )
+  if (note === undefined) return head
+  return (
+    <Stack gap="tight">
+      {head}
+      <p className="text-ink-muted text-sm">{note}</p>
+    </Stack>
   )
 }
 
@@ -329,7 +345,13 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 text-nowrap border px-2 py-0.5 text-xs ${
+      // **The line is the height of the type, not of a line of prose.** A badge
+      // holds one short label and never wraps, so the 18px line `text-xs`
+      // carries leaves 2px of air above and below the word inside a box that
+      // already has padding for it — and beside a column of 14px words the
+      // label sits 2px below them. At the height of the type the box is 20px
+      // and the word starts where the words beside it do.
+      className={`inline-flex items-center gap-1 text-nowrap border px-2 py-0.5 text-xs leading-3.5 ${
         pill ? "rounded-full" : "rounded"
       } ${dashed ? "border-dashed" : ""} ${
         onBand ? "border-white/70 text-white" : `bg-white ${BADGE_TONE[tone]}`
@@ -627,6 +649,99 @@ export function IconButton({ name, label, pressed, onClick, type = "button", ...
     </button>
   )
 }
+
+/**
+ * Choosing between a few things, with all of them shown.
+ *
+ * **What is chosen is not what should be pressed.** A filled option says how
+ * things stand; the filled button elsewhere on the screen says what the screen
+ * is asking for. Drawn as the same thing they cannot both be read — an editor
+ * carrying a switch on every field had dozens of the first, and the one that
+ * saves was lost among them.
+ *
+ * **So the options are welded rather than spaced.** Sharing an edge they read
+ * as one control answering one question, and a fill inside that edge is no
+ * longer the fill of a button standing on its own.
+ *
+ * **The edge is drawn by the options, one pixel of it shared.** Two boxes a
+ * pixel apart draw a 2px line between them, so each option after the first is
+ * pulled back onto the one before. **The box itself carries no edge** — carrying
+ * one, it would take a pixel off the top and bottom of everything inside it,
+ * and what can be pressed is the option rather than the box (`docs/ui.md` の
+ * 「溶接された操作の押せる範囲」).
+ *
+ * **The corner is the box's**, and the options are clipped by it: an option
+ * rounding itself would be a pixel rounder than the corner it sits in.
+ *
+ * **The names do not change with what is chosen.** A control that renamed
+ * itself would announce as "mark unsettled, pressed" and say two opposite
+ * things at once.
+ *
+ * **Where the alternatives are many, or their words long, they are folded away
+ * instead** (`Chooser`). Shown, they cost a row of the screen each time.
+ */
+export function Choice<T extends string>({ label, value, options, onChange, size = "sm" }: {
+  /** What the options are answers to, said for anyone not looking at them. */
+  label: string
+  value: T
+  options: readonly { id: T, label: string }[]
+  onChange: (next: T) => void
+  size?: "xs" | "sm"
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      // `w-fit` because a flex parent blockifies `inline-flex`, and a box that
+      // took the row would round a corner the options are nowhere near.
+      className="inline-flex w-fit items-stretch overflow-hidden rounded"
+    >
+      {options.map((one, at) => (
+        <button
+          key={one.id}
+          type="button"
+          aria-pressed={value === one.id}
+          onClick={() => { onChange(one.id) }}
+          className={`cursor-pointer border border-brand font-medium transition-colors ${BUTTON_SIZE[size]} ${
+            at === 0 ? "" : "-ml-px"
+          } ${value === one.id ? "bg-brand text-white" : "bg-white text-brand hover:bg-surface-hover"}`}
+        >
+          {one.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The face of a `Button`, as a class, for the two elements that cannot be one:
+ * a `<summary>`, which opens what is behind it, and the pseudo-element a file
+ * input draws its own control with (`FILE_FACE`).
+ *
+ * **Nothing else takes it.** A `<div>` wearing this is a button the keyboard
+ * cannot reach, and the reason the rule is worth stating is that both places
+ * that needed it had drawn a face of their own instead — one of them an edge
+ * and a colour that appear nowhere else on the site.
+ */
+export function controlFace({
+  variant = "secondary",
+  size = "sm",
+  listing = false,
+  onBand = false,
+  className = "",
+}: Omit<ButtonLook, "icon"> = {}): string {
+  return buttonClass({ variant, size, listing, onBand, className })
+}
+
+/**
+ * The same face, spelled again for the control inside a file input.
+ *
+ * **It cannot borrow the class.** What is drawn is a pseudo-element, so every
+ * utility has to carry `file:` — a prefix no class written for an element can
+ * be given afterwards. Written out twice it drifted: the same button was a step
+ * apart in two screens.
+ */
+export const FILE_FACE = "file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand file:text-sm"
 
 /**
  * How a way out of a shortened box is drawn — whether it leads somewhere
@@ -1469,13 +1584,30 @@ export function Toast({ label, announce, children }: {
 /* --------------------------------------------------------- asking and busy */
 
 /**
- * Something that cannot be undone, asked about in place.
+ * Something that cannot be undone, asked about over the page.
  *
- * **The confirmation is the form**, not a layer over the page: a dialogue has to
- * be dismissed, moved around and given focus, and all it would add here is that
- * the reader can no longer see what they are about to act on.
+ * **The question does not open inside the row it was asked from.** These stand
+ * in lists and in table cells beside other things, and a warning is a whole
+ * sentence: unfolded in place it pushes its neighbours sideways, and a row that
+ * held two of them could ask twice at once. Over the page the row stays where
+ * it was, the panel cannot run off the edge of the window wherever the control
+ * happens to sit, and the keyboard comes with it — `Esc` closes, and focus
+ * starts on the way out rather than on the deed.
+ *
+ * **What is being acted on travels with the question.** The warning says what
+ * will happen, not which of the four things in the row it will happen to, so a
+ * screen with more than one of these passes `subject`.
  */
-export function Confirm({ label, warning, confirm, cancel, intent, icon = "trash", children }: {
+export function Confirm({
+  label,
+  warning,
+  confirm,
+  cancel,
+  intent,
+  icon = "trash",
+  subject,
+  children,
+}: {
   label: string
   warning: string
   confirm: string
@@ -1492,32 +1624,81 @@ export function Confirm({ label, warning, confirm, cancel, intent, icon = "trash
   intent?: string
   /** The mark on the confirming button. Taking something away is the default. */
   icon?: IconName
+  /** Which one of them this is about, said above the warning. */
+  subject?: string
   /** The hidden fields naming what is being acted on. */
   children?: ReactNode
 }) {
+  const box = useRef<HTMLDialogElement>(null)
   const [asking, setAsking] = useState(false)
 
-  if (!asking) {
-    return (
-      <Button type="button" variant="ghost" onClick={() => { setAsking(true) }}>
+  /**
+   * **Opened once it has something in it.** The browser gives focus at the
+   * moment the panel opens, and only to what is there — opening in the same
+   * breath as the press hands focus to the empty panel itself, and the reader
+   * has to tab into it before the way out is under their hands.
+   */
+  useEffect(() => {
+    if (asking) box.current?.showModal()
+  }, [asking])
+
+  return (
+    <>
+      {/* **The way in wears the face of what it leads to.** Taking something
+          away is what this control is for whichever screen it stands on, and
+          the panel it opens has said so in `danger` all along — the way in was
+          the one part of the sequence still drawn as an ordinary choice.
+
+          **Small, because it stands beside what it acts on.** At `sm` it was
+          36.4px next to a 20px badge carrying the same brand edge and the same
+          brand text, so the pair read as one size of the same thing; at `xs`
+          the two are 26 and 20px and what tells them apart is the colour. The
+          badge never answers a hover, which is the other half of the
+          difference. */}
+      <Button
+        type="button"
+        variant="danger"
+        size="xs"
+        onClick={() => { setAsking(true) }}
+      >
         {label}
       </Button>
-    )
-  }
-  return (
-    <span className="flex flex-wrap items-center gap-2">
-      {children}
-      <span className="text-danger text-sm">{warning}</span>
-      <Button
-        type="submit"
-        variant="danger"
-        icon={<Icon name={icon} />}
-        {...(intent === undefined ? {} : { name: "intent", value: intent })}
+      {/* **The panel is in the form it submits**, so the fields inside it are
+          the ones the browser sends; what the top layer moves is where it is
+          drawn, not where it belongs.
+
+          **Nothing is inside it until it is open.** A submit button left in a
+          closed panel is still the form's default button, so pressing Enter in
+          a box elsewhere in the same form would fire the deed nobody asked
+          for; and a form holding two of these would send both sets of
+          fields. */}
+      <dialog
+        ref={box}
+        onClose={() => { setAsking(false) }}
+        className="m-auto max-w-md rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40"
       >
-        {confirm}
-      </Button>
-      <Button type="button" variant="ghost" onClick={() => { setAsking(false) }}>{cancel}</Button>
-    </span>
+        {asking && (
+          <Stack gap="normal">
+            {subject !== undefined && <p className="font-semibold text-ink">{subject}</p>}
+            <p className="text-danger text-sm">{warning}</p>
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => { box.current?.close() }}>
+                {cancel}
+              </Button>
+              {children}
+              <Button
+                type="submit"
+                variant="danger"
+                icon={<Icon name={icon} />}
+                {...(intent === undefined ? {} : { name: "intent", value: intent })}
+              >
+                {confirm}
+              </Button>
+            </span>
+          </Stack>
+        )}
+      </dialog>
+    </>
   )
 }
 

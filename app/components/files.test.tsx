@@ -136,6 +136,20 @@ describe("the box", () => {
     expect(html).toContain("name=\"name\" value=\"b.zip\"")
   })
 
+  /**
+   * 13px の箱を素で置くと、無い散文の baseline に乗って隣の欄の語より上に出る。
+   * 1 行ぶんの高さを取って自分をその中心に置くと、語と同じところに来る。
+   */
+  it("mark は 1 行ぶんの高さの器に入っていて、その中心に立つ", () => {
+    const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
+
+    for (const box of html.matchAll(/<input type="checkbox"/g)) {
+      const before = html.slice(0, box.index)
+      expect(before.slice(before.lastIndexOf("<span"))).toMatch(/h-\[1lh\][^>]*items-center|items-center[^>]*h-\[1lh\]/)
+    }
+    expect([...html.matchAll(/<input type="checkbox"/g)]).toHaveLength(2)
+  })
+
   it("does not offer deletion until it has been asked for twice", () => {
     const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry()]} />)
 

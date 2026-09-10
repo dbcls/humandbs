@@ -45,7 +45,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead kicker={t.documents} label={slug} />
+      <PageHead kicker={slug} label={t.documentHeading} />
       <Card>
         <Stack gap="block">
           <ResultLine result={actionData} locale={locale} />

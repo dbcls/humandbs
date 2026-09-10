@@ -1,5 +1,6 @@
 import { data, Form, Link } from "react-router"
 
+import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
 import type { AdminDraftRow } from "~/admin/queries.server"
 import {
@@ -61,13 +62,23 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
   const messages = messagesFor(locale)
   const t = messages.admin.detail
 
+  /**
+   * **撥ねられた理由は、その ID を打った欄の下に立つ。** 画面はデータセットの
+   * 数だけ同じ形の欄を持つので、画面の頭にまとめて出すと、どの欄の話なのかを
+   * 読む人が数えることになる。
+   */
+  const pinTrouble = (subjectId: string): string | undefined => {
+    if (actionData === undefined || actionData.status === "conflict") return undefined
+    if (actionData.subjectId !== subjectId) return undefined
+    return actionData.status === "taken" ? t.pinTaken : t.pinMalformed
+  }
+
   return (
     <Page>
-      <PageHead kicker={messages.research.researchId} label={view.humLabel ?? t.heading} />
+      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
       <Card>
         <Stack gap="block">
           {actionData?.status === "conflict" && <Note kind="danger" live>{t.discardConflict}</Note>}
-          {actionData?.status === "taken" && <Note kind="danger" live>{t.pinTaken}</Note>}
 
           <Section title={t.labels}>
             <Stack gap="normal">
@@ -75,13 +86,16 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 ? <Empty>{t.unpinned}</Empty>
                 : (
                     <ul className="flex flex-wrap gap-3 text-sm">
+                      {/* **どちらの ID かは ID の前に立つ。** 読むのは ID の
+                          ほうで、primary か secondary かはその ID をどう読むかを
+                          先に言う印なので、後ろに置くと目を戻すことになる。 */}
                       {view.labels.map((label) => (
                         <li key={label.id} className="flex items-center gap-2">
-                          <span>{label.label}</span>
                           <Badge tone={label.isPrimary ? "brand" : "muted"}>
                             {label.isPrimary ? t.primary : t.secondary}
                           </Badge>
-                          <Unpin pinId={label.id} locale={locale} />
+                          <span>{label.label}</span>
+                          <Unpin pinId={label.id} subject={label.label} locale={locale} />
                         </li>
                       ))}
                     </ul>
@@ -90,6 +104,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 kind="hum"
                 placeholder={t.pinPlaceholder}
                 suggestion={null}
+                problem={pinTrouble(view.researchId)}
                 locale={locale}
               />
             </Stack>
@@ -97,7 +112,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
           <Section title={t.versions}>
             {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
-            <Table headers={[t.version, t.releaseDate, t.visibility, ""]} whenEmpty={t.noVersions}>
+            {/* 1 版 1 行で、いちばん高いものは取り下げのボタン — 中心で揃える
+                (`page.tsx` の `CellAlign`)。 */}
+            <Table
+              align="middle"
+              headers={[t.version, t.releaseDate, t.visibility, ""]}
+              whenEmpty={t.noVersions}
+            >
               {view.versions.map((version) => (
                 <tr key={version.id}>
                   <Td className="whitespace-nowrap">
@@ -114,6 +135,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   <Td>
                     <Visibility
                       versionId={version.id}
+                      number={version.number}
                       published={version.published}
                       locale={locale}
                     />
@@ -164,10 +186,17 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                                 datasetId={row.id}
                                 placeholder={t.pinDatasetPlaceholder}
                                 suggestion={view.datasetIdSuggestion}
+                                problem={pinTrouble(row.id)}
                                 locale={locale}
                               />
                             )
-                          : <Unpin pinId={row.pinId} locale={locale} />}
+                          : (
+                              <Unpin
+                                pinId={row.pinId}
+                                subject={row.label ?? messages.admin.editor.unpinnedDataset}
+                                locale={locale}
+                              />
+                            )}
                       </li>
                     ))}
                   </ul>
@@ -209,8 +238,9 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
   )
 }
 
-function Visibility({ versionId, published, locale }: {
+function Visibility({ versionId, number, published, locale }: {
   versionId: string
+  number: number
   published: boolean
   locale: Locale
 }) {
@@ -220,7 +250,7 @@ function Visibility({ versionId, published, locale }: {
     return (
       <Form method="post">
         <input type="hidden" name="versionId" value={versionId} />
-        <Submit intent="republish-version" variant="ghost">{t.republish}</Submit>
+        <Submit intent="republish-version">{t.republish}</Submit>
       </Form>
     )
   }
@@ -231,6 +261,7 @@ function Visibility({ versionId, published, locale }: {
         warning={t.withdrawWarning}
         confirm={t.withdrawConfirm}
         cancel={t.cancel}
+        subject={`v${number}`}
       >
         <input type="hidden" name="intent" value="withdraw-version" />
         <input type="hidden" name="versionId" value={versionId} />
@@ -239,11 +270,17 @@ function Visibility({ versionId, published, locale }: {
   )
 }
 
-function Unpin({ pinId, locale }: { pinId: string, locale: Locale }) {
+function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
   return (
     <Form method="post">
-      <Confirm label={t.unpin} warning={t.unpinWarning} confirm={t.unpinConfirm} cancel={t.cancel}>
+      <Confirm
+        label={t.unpin}
+        warning={t.unpinWarning}
+        confirm={t.unpinConfirm}
+        cancel={t.cancel}
+        subject={subject}
+      >
         <input type="hidden" name="intent" value="unpin" />
         <input type="hidden" name="pinId" value={pinId} />
       </Confirm>
@@ -257,28 +294,40 @@ function Unpin({ pinId, locale }: { pinId: string, locale: Locale }) {
  * hold is that no two identities carry the same one, and that is the ledger's
  * unique constraint rather than anything this form can check.
  */
-function PinForm({ kind, datasetId, placeholder, suggestion, locale }: {
+function PinForm({ kind, datasetId, placeholder, suggestion, problem, locale }: {
   kind: "hum" | "dataset"
   datasetId?: string
   placeholder: string
   suggestion: string | null
+  /** 直前の試みが撥ねられた理由。**この欄に打たれたものについてだけ**。 */
+  problem?: string
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.detail
 
   return (
-    <Form method="post" className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="kind" value={kind} />
-      {datasetId !== undefined && <input type="hidden" name="datasetId" value={datasetId} />}
-      <Field
-        label={t.pinLabel}
-        name="label"
-        value={kind === "dataset" ? suggestion ?? undefined : undefined}
-        hint={placeholder}
-      />
-      <Checkbox label={t.pinPrimary} name="isPrimary" checked />
-      <Submit intent="pin">{t.pinSubmit}</Submit>
-    </Form>
+    <Stack gap="tight">
+      {/* **1 行に並ぶものは、中心で揃える。** 名前を欄の上に置くと行が 2 段になり、
+          下端で揃えた欄・チェック・ボタンの中心が 24px 以上ばらける。名前は
+          読み上げのために残し、形の見本は欄の中の placeholder が言う。 */}
+      <Form method="post" className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="kind" value={kind} />
+        {datasetId !== undefined && <input type="hidden" name="datasetId" value={datasetId} />}
+        <Field
+          label={t.pinLabel}
+          name="label"
+          value={kind === "dataset" ? suggestion ?? undefined : undefined}
+          placeholder={placeholder}
+          // **研究 ID の形は 1 つしかない。** dataset の ID は JGAD にも NHA にも
+          // なるので、形を決めているのは hum のほうだけ。
+          pattern={kind === "hum" ? HUM_LABEL_PATTERN : undefined}
+          hideLabel
+        />
+        <Checkbox label={t.pinPrimary} name="isPrimary" checked />
+        <Submit intent="pin">{t.pinSubmit}</Submit>
+      </Form>
+      {problem !== undefined && <Note kind="danger" live>{problem}</Note>}
+    </Stack>
   )
 }
 

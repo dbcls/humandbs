@@ -17,6 +17,24 @@
 const WIDTH = 3
 
 /**
+ * The shape of a research ID: `hum` and four digits.
+ *
+ * **This one is specification**, unlike the rest of a dataset id below. It is
+ * the address a reader holds (`/research/hum0588`), it names the box the files
+ * are served from, and it is what the data submission applications carry — so a
+ * spelling outside it cannot be published and cannot be linked to.
+ *
+ * Written unanchored so that an input can take it as its `pattern`, which
+ * anchors it itself. **The box only saves the round trip**: what decides is the
+ * check on the way in.
+ */
+export const HUM_LABEL_PATTERN = "hum\\d{4}"
+
+export function isHumLabel(label: string): boolean {
+  return new RegExp(`^${HUM_LABEL_PATTERN}$`).test(label)
+}
+
+/**
  * Whether an id is one the portal issued.
  *
  * **Only the primary is asked**, and a dataset with none pinned yet answers no:

@@ -59,18 +59,22 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
   return (
     <Page>
       <Card under={false}>
-        <Stack gap="normal">
-          <Heading title={t.datasets}>
-            <AdminBack
-              to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-              label={t.backToDraft}
+        <Stack gap="block">
+          {/* Who else is in this draft belongs to its name rather than to the
+              listing under it. */}
+          <Stack gap="tight">
+            <Heading title={t.datasets}>
+              <AdminBack
+                to={href(locale, adminDraftPath(view.researchId, view.draftId))}
+                label={t.backToDraft}
+              />
+            </Heading>
+            <PresenceLine
+              locale={locale}
+              path={draftPresencePath(view.researchId, view.draftId)}
+              initial={view.presence}
             />
-          </Heading>
-          <PresenceLine
-            locale={locale}
-            path={draftPresencePath(view.researchId, view.draftId)}
-            initial={view.presence}
-          />
+          </Stack>
 
           {actionData?.status === "conflict" && <Note kind="warning" live>{t.listConflict}</Note>}
           {actionData?.status === "refused" && <Note kind="danger" live>{t.deleteRefused}</Note>}

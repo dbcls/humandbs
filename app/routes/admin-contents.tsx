@@ -1,11 +1,11 @@
 import { Form, Link } from "react-router"
 
 import { nextVersionNumber, type TreeEntry } from "~/admin/contents"
-import { contentsAction, contentsPage, type AlertRow } from "~/admin/contents.server"
-import { adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
+import { contentsAction, contentsPage } from "~/admin/contents.server"
+import { adminAlertPath, adminContentFilesPath, adminDocumentPath, adminNewsListPath } from "~/admin/urls"
 import { ResultLine, StateBadges } from "~/components/contents"
 import { Badge, Confirm, Fold, Heading, Stack } from "~/components/base"
-import { Checkbox, Field, Result, Select, Submit, TextArea } from "~/components/form"
+import { Field, Result, Select, Submit } from "~/components/form"
 import { Card, Empty, Page, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -14,8 +14,8 @@ import { href } from "~/public/urls"
 import type { Route } from "./+types/admin-contents"
 
 /**
- * Site content: the pages, the pointer each guideline's version-less address
- * holds, and the banner.
+ * The articles: the bodies readers hold addresses for, and the pointer each
+ * guideline's version-less address carries.
  *
  * **The listing is a tree drawn from the slugs.** Nothing stores a parent — a
  * slug with a path in it is below the slug it extends, and the revisions of a
@@ -46,19 +46,19 @@ export function meta({ loaderData }: Route.MetaArgs) {
 const INDENT = ["", "pl-6", "pl-12", "pl-16"]
 
 export default function AdminContents({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, tree, unanswered, alerts } = loaderData
+  const { locale, tree, unanswered } = loaderData
   const t = messagesFor(locale).admin.contents
 
   return (
     <Page>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading}>
+          <Heading title={t.heading} note={t.note}>
+            <Link to={href(locale, adminAlertPath())}>{t.alert.heading}</Link>
             <Link to={href(locale, adminNewsListPath())}>{t.news.heading}</Link>
             <Link to={href(locale, adminContentFilesPath())}>{t.files.heading}</Link>
           </Heading>
           <ResultLine result={actionData} locale={locale} />
-          <Empty>{t.note}</Empty>
 
           {unanswered.map((one) => (
             <Result key={one.slug} ok={false}>
@@ -66,37 +66,27 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
             </Result>
           ))}
 
-          <Section title={t.documents}>
-            {tree.length === 0 && <Empty>{t.noDocument}</Empty>}
-            <ul className="flex flex-col divide-y divide-line border-line border-y">
-              {tree.map((entry) => (
-                <Entry
-                  key={entry.kind === "series" ? entry.series.id : entry.document.id}
-                  entry={entry}
-                  locale={locale}
-                />
-              ))}
-            </ul>
-          </Section>
+          {/*
+            The tree stands under the h1 without a section of its own: the
+            screen holds one kind of thing, and a heading repeating the name of
+            the screen says nothing the h1 has not.
+          */}
+          {tree.length === 0 && <Empty>{t.noDocument}</Empty>}
+          <ul className="flex flex-col divide-y divide-line border-line border-y">
+            {tree.map((entry) => (
+              <Entry
+                key={entry.kind === "series" ? entry.series.id : entry.document.id}
+                entry={entry}
+                locale={locale}
+              />
+            ))}
+          </ul>
 
           <Section title={t.addDocument}>
             <Form method="post" className="flex flex-wrap items-end gap-2">
               <input type="hidden" name="intent" value="create-document" />
               <Field label={t.slug} name="slug" width="w-96" />
               <Submit>{t.addDocument}</Submit>
-            </Form>
-          </Section>
-
-          <Section title={t.alerts}>
-            {alerts.length === 0
-              ? <Empty>{t.noAlert}</Empty>
-              : (
-                  <Stack gap="normal">
-                    {alerts.map((row) => <AlertForm key={row.id} row={row} locale={locale} />)}
-                  </Stack>
-                )}
-            <Form method="post">
-              <Submit intent="create-alert">{t.addAlert}</Submit>
             </Form>
           </Section>
         </Stack>
@@ -183,38 +173,5 @@ function Entry({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
         </Fold>
       </Stack>
     </li>
-  )
-}
-
-function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
-  const t = messagesFor(locale).admin.contents
-  return (
-    <div className="flex flex-col gap-2 border-line border-b pb-4">
-      <Form method="post" className="flex flex-col gap-2">
-        <input type="hidden" name="alertId" value={row.id} />
-        <TextArea label={t.languages.ja} name="ja" value={row.ja} rows={2} />
-        <TextArea label={t.languages.en} name="en" value={row.en} rows={2} />
-        <div className="flex flex-wrap items-center gap-3">
-          <Checkbox label={t.alertActive} name="active" checked={row.active} />
-          <Submit intent="update-alert">{t.save}</Submit>
-        </div>
-      </Form>
-      {/*
-        Taking a banner away asks twice, the way every other removal on this
-        screen does — and in a form of its own, because an intent written as a
-        hidden field cannot share one with buttons that name their own.
-      */}
-      <Form method="post">
-        <input type="hidden" name="alertId" value={row.id} />
-        <Confirm
-          label={t.remove}
-          warning={t.removeAlertWarning}
-          confirm={t.removeAlertConfirm}
-          cancel={t.cancel}
-        >
-          <input type="hidden" name="intent" value="delete-alert" />
-        </Confirm>
-      </Form>
-    </div>
   )
 }

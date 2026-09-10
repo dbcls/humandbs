@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Form, Link } from "react-router"
 
+import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
 import { adminDraftPath } from "~/admin/urls"
 import { href } from "~/public/urls"
@@ -49,6 +50,9 @@ export function PublishConfirmation({ view, result }: {
             <Result ok={false}>{t.acknowledgeRequired}</Result>
           )}
           {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
+          {actionData?.status === "malformed" && (
+            <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
+          )}
           {view.staleAgainst !== null && <Note kind="warning">{t.stale(view.staleAgainst)}</Note>}
 
           {blocked && <Blocked view={view} />}
@@ -179,6 +183,7 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
         aria-label={detail.pinLabel}
         defaultValue={suggestion ?? ""}
         placeholder={kind === "hum" ? detail.pinPlaceholder : detail.pinDatasetPlaceholder}
+        pattern={kind === "hum" ? HUM_LABEL_PATTERN : undefined}
         className={`${CONTROL} text-sm`}
       />
       <Submit>{t.pin}</Submit>

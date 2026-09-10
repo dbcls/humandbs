@@ -1,6 +1,13 @@
 import { useState } from "react"
 import { Form, Link, useLocation } from "react-router"
 
+import {
+  ADMIN_NAVBAR_MENU_STEP,
+  ADMIN_NAVBAR_STEP,
+  adminNavbar,
+  isHere as isHereInAdmin,
+  type AdminDestination,
+} from "~/admin/navigation"
 import { CartMenu } from "~/components/cart"
 import {
   Announcement,
@@ -12,6 +19,7 @@ import {
   RoundLink,
   Stack,
 } from "~/components/base"
+import { Icon } from "~/components/icons"
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -68,11 +76,9 @@ function NavItemLink({ item, locale, here, className, whenHere }: {
  *
  * **It stands `tap` tall rather than as tall as its own words.** Everything
  * else in the row — the language pills, the cart, the account — is 36px, while
- * a word on a 22.4px line with 8px above and below comes to 38.4 and was the
- * tallest thing in the bar. The navigation is not drawn on a management screen,
- * so the bar was 2.4px shorter there and the wordmark, its name and the
- * controls all sat 1.2px higher: one header, two heights. The pressable area is
- * the same 36px either way.
+ * a word on a 22.4px line with 8px above and below comes to 38.4 and would be
+ * the tallest thing in the bar, making the row 2.4px deeper than the controls
+ * standing in it. The pressable area is the same 36px either way.
  */
 const NAV_ITEM
   = "flex h-tap items-center whitespace-nowrap px-2 font-medium text-ink text-sm no-underline hover:text-brand"
@@ -85,6 +91,65 @@ const NAV_ITEM
  */
 const NAV_ITEM_HERE
   = "flex h-tap items-center whitespace-nowrap px-2 font-bold text-brand text-sm no-underline"
+
+/**
+ * The management area's row of destinations.
+ *
+ * **The same row a public page keeps its own in**, so that the bar has one
+ * grammar: entries from the front until the row runs out, and the rest behind
+ * the menu at its end. What differs is the set (`admin/navigation.ts`), which
+ * the area's front page draws in the same order.
+ */
+function AdminNav({ locale, here }: { locale: Locale, here: string }) {
+  const messages = messagesFor(locale)
+  const entries = adminNavbar(locale)
+  return (
+    <nav
+      aria-label={messages.admin.navigation}
+      className="flex min-w-0 flex-1 items-center gap-1"
+    >
+      <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
+        {entries.map((entry, index) => (
+          <li key={entry.path} className={ADMIN_NAVBAR_STEP[index]?.bar ?? "hidden"}>
+            <AdminNavLink entry={entry} locale={locale} here={here} />
+          </li>
+        ))}
+      </ul>
+      <div className={ADMIN_NAVBAR_MENU_STEP}>
+        <Menu label={messages.moreNavigation} icon="menu" word>
+          {entries.map((entry, index) => (
+            <span key={entry.path} className={ADMIN_NAVBAR_STEP[index]?.menu ?? ""}>
+              <AdminNavLink entry={entry} locale={locale} here={here} inMenu />
+            </span>
+          ))}
+        </Menu>
+      </div>
+    </nav>
+  )
+}
+
+function AdminNavLink({ entry, locale, here, inMenu = false }: {
+  entry: AdminDestination
+  locale: Locale
+  /** The address being looked at, with the language prefix taken off. */
+  here: string
+  inMenu?: boolean
+}) {
+  // The area's own rule for what counts as being here: the front page matches
+  // only itself, and every other entry covers what lies under it.
+  const current = isHereInAdmin(entry, here)
+  const bar = current ? NAV_ITEM_HERE : NAV_ITEM
+  const menu = current ? MENU_ITEM_HERE : MENU_ITEM
+  return (
+    <Link
+      to={href(locale, entry.path)}
+      className={inMenu ? menu : bar}
+      aria-current={current ? "page" : undefined}
+    >
+      {entry.label}
+    </Link>
+  )
+}
 
 /** What the header knows about the person asking. Never their capabilities. */
 export interface Account {
@@ -114,9 +179,19 @@ function initialOf(name: string): string {
  * data instead of following it. Signing out is a POST, so that neither a link
  * nor an image somebody else placed can end a session.
  *
- * Once signed in the circle becomes a menu: who is signed in, the way to the
- * management screens, and the way out. Those three would take more room across
- * the top bar than they are worth, and none of them is wanted often.
+ * Once signed in the circle becomes a menu: who is signed in, the way across
+ * to the other side of the site, and the way out. Those three would take more
+ * room across the top bar than they are worth, and none of them is wanted often.
+ *
+ * **The crossing is one entry that turns around**, rather than a link into the
+ * management area beside a link out of it. Only one of the two is ever the way
+ * out of where the reader is standing, and a menu holding both would put the
+ * name of the side they are already on under their own account.
+ *
+ * **It carries the chevron the site gives to a way onward** (`MoreLink`, the
+ * cart's way to itself), because the entry beside it ends the session: a
+ * destination and an action drawn as the same line are told apart by pressing
+ * one of them.
  *
  * **Signed in, the circle is filled and holds the account's own initial.** It
  * was a hamburger — the same glyph the navigation's overflow menu carries two
@@ -126,7 +201,11 @@ function initialOf(name: string): string {
  * the fill is what says the state at a glance: nothing else in the bar is
  * filled while nobody is signed in.
  */
-function AccountControl({ account, locale }: { account: Account | null, locale: Locale }) {
+function AccountControl({ account, locale, managing }: {
+  account: Account | null
+  locale: Locale
+  managing: boolean
+}) {
   const messages = messagesFor(locale)
   const location = useLocation()
 
@@ -165,10 +244,11 @@ function AccountControl({ account, locale }: { account: Account | null, locale: 
       </span>
       {account.isAdmin && (
         <Link
-          to={href(locale, "/admin")}
-          className="px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+          to={href(locale, managing ? "/" : "/admin")}
+          className="flex items-center gap-0.5 whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
         >
-          {messages.account.admin}
+          {managing ? messages.account.public : messages.account.admin}
+          <Icon name="chevron-right" />
         </Link>
       )}
       <Form method="post" action="/auth/logout">
@@ -254,11 +334,11 @@ export function SiteHeader({ locale, account, managing = false }: {
   /**
    * Whether this is a management screen.
    *
-   * **The bar keeps the wordmark, the languages and the account, and drops
-   * everything else** — the row of destinations and the cart are addressed to
-   * readers. Where the management area is gone from is not here at all: it is
-   * against the left edge of the window (`components/admin.tsx`), so that the
-   * screens keep the whole of it. `root.tsx` decides this from the address.
+   * **The row of destinations is the area's own, and the cart goes.** Where a
+   * management screen is left for is the same row a public page keeps its
+   * destinations in — one bar with one grammar — but the destinations differ,
+   * and a cart is a reader collecting datasets to ask for rather than somebody
+   * editing them. `root.tsx` decides this from the address.
    */
   managing?: boolean
 }) {
@@ -313,9 +393,16 @@ export function SiteHeader({ locale, account, managing = false }: {
           exactly level with the navigation reads as sitting low in the bar. The
           shift is a transform rather than a margin, so it moves the name with
           the drawing and asks nothing of the row.
+
+          **It leads to the top of the area the reader is in**, which on a
+          management screen is that area's own front page rather than the
+          portal's. The bar around it holds the management destinations, so a
+          wordmark that left the area would be the one control in the row that
+          did — and the way across to the public side is the account menu, which
+          names where it lands.
         */}
         <Link
-          to={href(locale, "/")}
+          to={href(locale, managing ? "/admin" : "/")}
           className="-translate-y-1 relative flex shrink-0 items-center no-underline"
         >
           <img src="/humandb.svg" alt="" width={240} height={33} className="w-48" />
@@ -324,9 +411,11 @@ export function SiteHeader({ locale, account, managing = false }: {
           </span>
         </Link>
 
-        {!managing && (
-          <nav aria-label={messages.globalNavigation} className="flex min-w-0 flex-1 items-center gap-1">
-            {/*
+        {managing
+          ? <AdminNav locale={locale} here={path} />
+          : (
+              <nav aria-label={messages.globalNavigation} className="flex min-w-0 flex-1 items-center gap-1">
+                {/*
           **One row that never wraps.** A gap between the entries rather than
           none: two links whose rectangles touch send a press near the
           boundary to the wrong one. Each entry appears at the width its step
@@ -334,46 +423,46 @@ export function SiteHeader({ locale, account, managing = false }: {
           complements in `public/navigation.ts`, so nothing can fall out of
           both.
         */}
-            <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
-              {NAVBAR.map((item, index) => (
-                <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
-                  <NavItemLink
-                    item={item}
-                    locale={locale}
-                    here={path}
-                    className={NAV_ITEM}
-                    whenHere={NAV_ITEM_HERE}
-                  />
-                </li>
-              ))}
-            </ul>
-            {/*
+                <ul className="flex min-w-0 flex-nowrap items-center gap-x-1 overflow-hidden">
+                  {NAVBAR.map((item, index) => (
+                    <li key={item.path} className={NAVBAR_STEP[index]?.bar ?? "hidden"}>
+                      <NavItemLink
+                        item={item}
+                        locale={locale}
+                        here={path}
+                        className={NAV_ITEM}
+                        whenHere={NAV_ITEM_HERE}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {/*
           The menu sits at the end of the navigation because that is where the
           row runs out, and it holds destinations rather than actions — so it
           carries its name rather than a glyph on its own.
         */}
-            <div className={NAVBAR_MENU_STEP}>
-              <Menu label={messages.moreNavigation} icon="menu" word>
-                {/*
+                <div className={NAVBAR_MENU_STEP}>
+                  <Menu label={messages.moreNavigation} icon="menu" word>
+                    {/*
             **What did not fit today, and nothing else.** Which side a
             destination falls on is an accident of the window's width, so at a
             width where the bar holds everything the menu has nothing under it.
           */}
-                {NAVBAR.map((item, index) => (
-                  <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
-                    <NavItemLink
-                      item={item}
-                      locale={locale}
-                      here={path}
-                      className={MENU_ITEM}
-                      whenHere={MENU_ITEM_HERE}
-                    />
-                  </span>
-                ))}
-              </Menu>
-            </div>
-          </nav>
-        )}
+                    {NAVBAR.map((item, index) => (
+                      <span key={item.path} className={NAVBAR_STEP[index]?.menu ?? ""}>
+                        <NavItemLink
+                          item={item}
+                          locale={locale}
+                          here={path}
+                          className={MENU_ITEM}
+                          whenHere={MENU_ITEM_HERE}
+                        />
+                      </span>
+                    ))}
+                  </Menu>
+                </div>
+              </nav>
+            )}
 
         {/*
           **Hard against the right edge.** On a public page the navigation
@@ -407,7 +496,7 @@ export function SiteHeader({ locale, account, managing = false }: {
             doing; it would sit there holding nothing on all eighteen of them.
           */}
           {!managing && <CartMenu locale={locale} />}
-          <AccountControl account={account} locale={locale} />
+          <AccountControl account={account} locale={locale} managing={managing} />
         </div>
       </div>
     </header>

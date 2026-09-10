@@ -17,8 +17,15 @@ function render(element: React.ReactElement, at: string): string {
   return renderToStaticMarkup(<Stub initialEntries={[at]} />)
 }
 
-function header(locale: Locale, at: string, account: Account | null = null): string {
-  return render(<SiteHeader locale={locale} account={account} />, at)
+function header(locale: Locale, at: string, account: Account | null = null, managing = false): string {
+  return render(<SiteHeader locale={locale} account={account} managing={managing} />, at)
+}
+
+/** Where the site's own artwork leads, which is not the same on both sides. */
+function wordmark(html: string): string {
+  const found = /<a[^>]*href="([^"]*)"[^>]*><img[^>]*src="\/humandb\.svg"/.exec(html)
+  if (found === null) throw new Error("wordmark のリンクが無い")
+  return found[1] ?? ""
 }
 
 function announcements(locale: Locale, alerts: string[], untranslated = false): string {
@@ -159,6 +166,34 @@ describe("ヘッダのログイン導線", () => {
   it("admin には Admin への行き先を出し、英語では /en の下を指す", () => {
     expect(header("ja", "/", admin)).toContain("href=\"/admin\"")
     expect(header("en", "/en", admin)).toContain("href=\"/en/admin\"")
+  })
+
+  it("管理画面では、その行き先が公開側へ向き直って Public を名乗る", () => {
+    const html = header("ja", "/admin/research", admin, true)
+    expect(html).toContain("Public")
+    expect(html).not.toContain(">Admin<")
+    expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Public/)
+  })
+
+  it("公開側と管理画面で、区画をまたぐ行は 1 本しか出ない", () => {
+    expect(header("ja", "/", admin)).not.toContain("Public")
+    expect(header("ja", "/admin", admin, true)).not.toContain(">Admin<")
+  })
+
+  it("英語の管理画面でも、戻る先は /en の下の公開トップ", () => {
+    expect(header("en", "/en/admin", admin, true)).toMatch(/<a[^>]*href="\/en"[^>]*>Public/)
+  })
+
+  it("区画をまたぐ行は、押すと移ることを言う印を持つ。隣のログアウトは持たない", () => {
+    expect(header("ja", "/", admin)).toMatch(/<a[^>]*href="\/admin"[^>]*>Admin<svg/)
+    expect(header("ja", "/admin", admin, true)).toMatch(/<a[^>]*href="\/"[^>]*>Public<svg/)
+    expect(header("ja", "/", admin)).not.toMatch(/ログアウト<svg/)
+  })
+
+  it("wordmark はいまいる区画のトップを指す", () => {
+    expect(wordmark(header("ja", "/research", admin))).toBe("/")
+    expect(wordmark(header("ja", "/admin/research", admin, true))).toBe("/admin")
+    expect(wordmark(header("en", "/en/admin/research", admin, true))).toBe("/en/admin")
   })
 
   it("行き先の名前は「管理」ではない。申請管理システムと読み違えられる", () => {

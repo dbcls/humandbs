@@ -117,6 +117,27 @@ describe("縦の間隔", () => {
     }
     expect(offenders).toEqual([])
   })
+
+  /**
+   * カードの中でいちばん外側にある `Stack` は、h1 とその下に続くものの距離を
+   * 決めている。ここだけが `normal` の画面があると、同じ関係が 32px と 16px の
+   * 2 通りになり、画面を渡り歩く人には理由の無い差として残る。
+   *
+   * **絞り込み pane を持つ一覧だけが `normal`。** h1 の下に来るのが節ではなく
+   * pane の見出しで、見出しが 2 つ続く形に節と節の距離を空けると h1 だけが浮く。
+   * 公開側の一覧も同じ理由で `normal` で、両者は同じ形の 2 つの面になる。
+   */
+  it("管理画面のカードは block で始まる — 絞り込む一覧だけが normal", async () => {
+    const offenders: string[] = []
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      const wanted = /<RefinableList\b/.test(text) ? "normal" : "block"
+      for (const found of text.matchAll(/<Card\b[^>]*>\s*<Stack gap="(\w+)"/g)) {
+        if (found[1] !== wanted) offenders.push(`${file}: ${found[1]} (${wanted} を待つ)`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
 })
 
 /**
@@ -161,55 +182,6 @@ describe("管理画面の幅", () => {
 })
 
 /**
- * The drawer's card is fixed to the window and the screens under it are inset
- * by their page's gutter plus what the area adds for the tab, so where the two
- * start is written across three files and can only agree by saying the same sum
- * twice (`components/admin.tsx`). It drifted by 4px unnoticed, which is what
- * this holds.
- */
-describe("行き先のカードの左端", () => {
-  /** Tailwind's spacing unit; `app.css` does not redefine `--spacing`. */
-  const STEP = 4
-
-  async function card() {
-    const drawer = await readFile(path.join(ROOT, "components/admin.tsx"), "utf8")
-    const list = /id="admin-drawer"[\s\S]*?className={`([^`]*)`/.exec(drawer)?.[1]
-    expect(list).toBeDefined()
-    return { drawer, list: list ?? "" }
-  }
-
-  it("その下の画面が始まる線に立つ", async () => {
-    const { list } = await card()
-    const layout = await readFile(path.join(ROOT, "routes/admin-layout.tsx"), "utf8")
-    const page = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
-    const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
-
-    const inset = Number(/className="pl-(\d+)"/.exec(layout)?.[1]) * STEP
-    const narrowGutter = Number(/w-full px-(\d+) /.exec(page)?.[1]) * STEP
-    const wideGutter = Number(/--spacing-page-gutter:\s*(\d+)px/.exec(styles)?.[1])
-
-    const narrow = Number(/(?:^|\s)left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
-    const wide = Number(/(?:^|\s)sm:left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
-
-    expect(narrow).toBe(narrowGutter + inset)
-    expect(wide).toBe(wideGutter + inset)
-  })
-
-  it("畳んだとき、影ごと窓の外へ出る", async () => {
-    const { list } = await card()
-    const wide = Number(/(?:^|\s)sm:left-(\d+)(?:\s|$)/.exec(list)?.[1]) * STEP
-    const away = Number(/-translate-x-\[calc\(100%\+([\d.]+)rem\)\]/.exec(list)?.[1]) * 16
-
-    // A shadow reaches its offset plus half its blur past the edge it is cast
-    // from, and the near edge is the one that would show.
-    const [offset, , blur] = /shadow-\[(\d+)px_(\d+)_(\d+)px/.exec(list)?.slice(1) ?? []
-    const reach = Number(offset) + Number(blur) / 2
-
-    expect(wide - away + reach).toBeLessThan(0)
-  })
-})
-
-/**
  * The corners a box may have (`docs/ui.md`). `rounded` and `rounded-full` are
  * the two anything may take; `rounded-lg` belongs to what a 4px corner
  * disappears on — the ways in on the front page, and the listing tabs, which
@@ -248,6 +220,33 @@ describe("角丸", () => {
         if (hits.length > 0) offenders.push(`${name}: ${hits.join(" ")}`)
       }
     }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * The inner outline of a box that carries a line is rounded by the radius
+   * less the width of the line: 3px inside a 4px box drawn with 1px. A band
+   * given the same `rounded-t` is a pixel rounder than the corner it sits in,
+   * and the ground shows through the crescent between them. The box clips it
+   * instead, which is the one radius that cannot disagree with itself.
+   */
+  it("線を持つ箱に敷いた帯は、箱の側で切る", async () => {
+    const nested = /className="([^"]*\bborder\b[^"]*)"\s*>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<Band\b([^>]*)>/g
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const found: string[] = []
+    const offenders: string[] = []
+    for (const { name, text } of sources) {
+      let match = nested.exec(text)
+      while (match !== null) {
+        const box = match[1] ?? ""
+        const band = match[2] ?? ""
+        found.push(`${name}: ${box}`)
+        if (!box.split(/\s+/).includes("overflow-hidden")) offenders.push(`${name}: ${box}`)
+        if (/\brounded/.test(band)) offenders.push(`${name}: <Band${band}>`)
+        match = nested.exec(text)
+      }
+    }
+    expect(found.length).toBeGreaterThan(0)
     expect(offenders).toEqual([])
   })
 })
@@ -504,13 +503,31 @@ describe("ボタンの面と形", () => {
    * per screen because a part is drawn inside whichever screen imports it; the
    * catalogue is exempt, being a page of samples rather than a screen with an
    * errand.
+   *
+   * **A face chosen in an expression counts the same as one written out.** Read
+   * for the literal alone, a switch handing `primary` to whichever option is
+   * current passed as a single filled button and drew one per field.
    */
   it("塗りの面は 1 つのファイルに 1 つまで", async () => {
+    const filled = /variant=(?:"primary"|\{[^}]*"primary"[^}]*\})/g
     const twice = (await everySource())
       .filter(({ name }) => !name.includes("dev-ui"))
-      .map(({ name, text }) => ({ name, n: (text.match(/variant="primary"/g) ?? []).length }))
+      .map(({ name, text }) => ({ name, n: (text.match(filled) ?? []).length }))
       .filter(({ n }) => n > 1)
     expect(twice).toEqual([])
+  })
+
+  /**
+   * **What is chosen is not what should be pressed.** A state wearing a face
+   * spends the ranking the faces exist to carry, so the control that holds one
+   * is `Choice`, whose options divide a box rather than standing as buttons of
+   * their own.
+   */
+  it("選んだ状態を Button の面で言わない", async () => {
+    const wearing = (await everySource())
+      .filter(({ text }) => /<Button(?:Link)?\b[^>]*\saria-pressed\b/s.test(text))
+      .map(({ name }) => name)
+    expect(wearing).toEqual([])
   })
 
   /** The palette itself, so that a face nobody uses cannot quietly come back. */

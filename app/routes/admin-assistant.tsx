@@ -1,6 +1,6 @@
 import { requireCapability } from "~/auth/actor.server"
-import { Heading, Stack } from "~/components/base"
-import { Card, Empty, Page } from "~/components/page"
+import { Heading } from "~/components/base"
+import { Card, Page } from "~/components/page"
 import { loadConfig } from "~/config.server"
 import { messagesFor } from "~/i18n/messages"
 import { readLocale } from "~/public/urls"

@@ -423,7 +423,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             other face. */}
         <DraftBar
           locale={locale}
-          heading={view.datasetLabel ?? editor.unpinnedDataset}
+          heading={`${view.datasetLabel ?? editor.unpinnedDataset} ${t.heading}`}
           back={{
             to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
             label: t.backToList,
