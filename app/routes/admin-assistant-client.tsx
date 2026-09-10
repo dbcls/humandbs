@@ -805,6 +805,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   const [selected, setSelected] = useState<TaskDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [pollingFailed, setPollingFailed] = useState(false)
   const detailRequests = useRef(new LatestDetailRequests())
   const [notice, setNotice] = useState<{ ok: boolean, text: string } | null>(
     null,
@@ -825,6 +826,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
       return parsed
     })
     if (detail === undefined) return
+    setPollingFailed(false)
     setSelected(detail)
     setTasks((previous) =>
       previous.map((task) =>
@@ -868,10 +870,14 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   }, [loadTasks])
 
   useEffect(() => {
-    if (selected?.status !== "processing" && selected?.status !== "pending")
+    if (
+      pollingFailed
+      || (selected?.status !== "processing" && selected?.status !== "pending")
+    )
       return
     const timer = window.setInterval(() => {
       void loadDetail(selected.task_id).catch((error: unknown) => {
+        setPollingFailed(true)
         setNotice({
           ok: false,
           text: error instanceof Error ? error.message : words.loadFailed,
@@ -881,7 +887,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
     return () => {
       window.clearInterval(timer)
     }
-  }, [loadDetail, selected?.task_id, selected?.status, words.loadFailed])
+  }, [loadDetail, pollingFailed, selected?.task_id, selected?.status, words.loadFailed])
 
   const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()

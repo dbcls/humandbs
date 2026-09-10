@@ -19,6 +19,9 @@ from src.utils import humandbs_web_base_url, icd10_canonicalized_text
 
 logger = logging.getLogger("dataset_service")
 
+_MISSING = object()
+_JGAS_PATTERN = re.compile(r"\bJGAS\d+\b")
+
 
 def strip_html_tags(text: str) -> str:
     """Remove HTML tags from text and return clean text"""
@@ -26,6 +29,170 @@ def strip_html_tags(text: str) -> str:
         return text
     soup = BeautifulSoup(text, "html.parser")
     return soup.get_text(separator=" ", strip=True)
+
+
+def _localized_text(value: object) -> str | None:
+    if isinstance(value, str):
+        return strip_html_tags(value)
+    if not isinstance(value, dict):
+        return None
+
+    for language in ("ja", "en"):
+        text = value.get(language)
+        if isinstance(text, str) and text:
+            return strip_html_tags(text)
+    return None
+
+
+def _decode_terms(terms: object) -> list[str] | None | object:
+    if terms is None:
+        return None
+    if not isinstance(terms, list):
+        return _MISSING
+
+    decoded: list[str] = []
+    for term in terms:
+        if not isinstance(term, dict):
+            continue
+        label = _localized_text(term.get("label"))
+        code = term.get("code")
+        text = label or (code if isinstance(code, str) else None)
+        if text and text not in decoded:
+            decoded.append(text)
+    return decoded
+
+
+def _decode_numbers(numbers: object) -> list[dict[str, object]] | None | object:
+    if numbers is None:
+        return None
+    if not isinstance(numbers, list):
+        return _MISSING
+
+    decoded: list[dict[str, object]] = []
+    for number in numbers:
+        if not isinstance(number, dict) or not isinstance(number.get("value"), (int, float)):
+            continue
+        item: dict[str, object] = {
+            "value": number["value"],
+            "unit": number.get("unit"),
+        }
+        for field in ("label", "note"):
+            field_value = number.get(field)
+            if isinstance(field_value, str) and field_value:
+                item[field] = strip_html_tags(field_value)
+        decoded.append(item)
+    return decoded
+
+
+def _decode_diseases(diseases: object) -> list[dict[str, object]] | None | object:
+    if diseases is None:
+        return None
+    if not isinstance(diseases, list):
+        return _MISSING
+
+    decoded: list[dict[str, object]] = []
+    for disease in diseases:
+        if not isinstance(disease, dict):
+            continue
+
+        decoded_terms: list[dict[str, str]] = []
+        terms = disease.get("terms")
+        if isinstance(terms, list):
+            for term in terms:
+                if not isinstance(term, dict):
+                    continue
+                code = term.get("code")
+                label = _localized_text(term.get("label"))
+                decoded_term = {}
+                if isinstance(code, str) and code:
+                    decoded_term["code"] = code
+                if label:
+                    decoded_term["label"] = label
+                if decoded_term:
+                    decoded_terms.append(decoded_term)
+
+        decoded.append({
+            "name": _localized_text(disease.get("name")),
+            "terms": decoded_terms,
+        })
+    return decoded
+
+
+def _decode_value(value: dict[str, object]) -> object:
+    value_type = value.get("type")
+    if value_type == "text":
+        return _localized_text(value.get("text"))
+    if value_type in {"single", "accession"}:
+        scalar = value.get("value")
+        return strip_html_tags(scalar) if isinstance(scalar, str) else scalar
+    if value_type == "vocabulary":
+        return _decode_terms(value.get("terms"))
+    if value_type == "number":
+        return _decode_numbers(value.get("numbers"))
+    if value_type == "disease":
+        return _decode_diseases(value.get("diseases"))
+    return _MISSING
+
+
+def _is_useful(value: object) -> bool:
+    return value is not None and value != "" and value != [] and value != {}
+
+
+def _merge_decoded_value(existing: object, incoming: object) -> object:
+    if not _is_useful(existing):
+        return incoming
+    if not _is_useful(incoming) or existing == incoming:
+        return existing
+
+    existing_values = existing if isinstance(existing, list) else [existing]
+    incoming_values = incoming if isinstance(incoming, list) else [incoming]
+    merged = list(existing_values)
+    for value in incoming_values:
+        if value not in merged:
+            merged.append(value)
+    return merged
+
+
+def _add_values(
+    info_dict: dict[str, object],
+    values: object,
+    policy_value: object = _MISSING,
+) -> object:
+    if not isinstance(values, list):
+        return policy_value
+
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+
+        key = value.get("key")
+        label = _localized_text(value.get("label"))
+        display_key = label or (key if isinstance(key, str) else None)
+        if not display_key:
+            continue
+
+        decoded = _decode_value(value)
+        if decoded is _MISSING:
+            continue
+
+        if display_key in info_dict:
+            info_dict[display_key] = _merge_decoded_value(info_dict[display_key], decoded)
+        else:
+            info_dict[display_key] = decoded
+
+        if key == "access-criteria":
+            policy_value = (
+                decoded
+                if policy_value is _MISSING
+                else _merge_decoded_value(policy_value, decoded)
+            )
+
+    return policy_value
+
+
+def _policy_text(value: object) -> str:
+    values = value if isinstance(value, list) else [value]
+    return " / ".join(item for item in values if isinstance(item, str) and item.strip())
 
 
 async def get_jga_study_ids_from_ddbj(dataset_id: str) -> tuple[list[str], list[str]]:
@@ -80,106 +247,33 @@ async def get_dataset_info(dataset_id: str) -> DatasetAPIRetrievalResult | None:
     except Exception:
         logger.exception(f"Error fetching dataset info from API: {api_url}")
         api_data = {}
-    api_data = api_data.get("data", api_data)
-
-    # v2: research / v1: humId
-    hum_id = str(api_data.get("research") or api_data.get("humId") or "")
-    if not hum_id:
-        logger.warning(f"humId/research not found in HumanDBs response for dataset ID {dataset_id}")
-    if not api_data:
+    if not isinstance(api_data, dict) or not api_data:
         logger.warning(f"No data found in HumanDBs response for dataset ID {dataset_id}")
         return None
 
-    # Extract info_dict from v2 values[] (preferred) or v1 experiments.data (fallback).
-    info_dict = {}
+    hum_id = str(api_data.get("research") or "")
+    if not hum_id:
+        logger.warning(f"research not found in HumanDBs response for dataset ID {dataset_id}")
+
+    info_dict: dict[str, object] = {}
     study_id_list: list[str] = []
+    policy_value = _add_values(info_dict, api_data.get("values"))
 
-    values = api_data.get("values", [])
-    if isinstance(values, list) and values:
-        for value in values:
-            if not isinstance(value, dict):
-                continue
-
-            key = value.get("key")
-            label = value.get("label", {})
-            label_ja = label.get("ja") if isinstance(label, dict) else None
-            normalized_key = label_ja or key
-            if not normalized_key:
-                continue
-
-            if value.get("type") == "text":
-                text_data = value.get("text")
-                if isinstance(text_data, dict):
-                    info_dict[normalized_key] = strip_html_tags(text_data.get("ja") or text_data.get("en") or "")
-                elif isinstance(text_data, str):
-                    info_dict[normalized_key] = strip_html_tags(text_data)
-            elif value.get("type") == "vocabulary":
-                terms = value.get("terms", [])
-                term_labels = []
-                for term in terms if isinstance(terms, list) else []:
-                    if not isinstance(term, dict):
-                        continue
-                    term_label = term.get("label", {})
-                    if isinstance(term_label, dict):
-                        term_labels.append(term_label.get("ja") or term_label.get("en") or term.get("code", ""))
-                    elif isinstance(term_label, str):
-                        term_labels.append(term_label)
-                    else:
-                        term_labels.append(term.get("code", ""))
-                info_dict[normalized_key] = [strip_html_tags(label) for label in term_labels if label]
-            else:
-                info_dict[normalized_key] = value
-
-            # Keep legacy key expected by report template when available.
-            if key == "access-criteria" and "Policies" not in info_dict:
-                info_dict["Policies"] = {"ja": {"text": " / ".join(info_dict.get(normalized_key, []))}}
-
-    experiments = api_data.get("experiments", [])
-
-    if experiments:
-        header_text_list: list[str] = []
-
+    experiments = api_data.get("experiments")
+    if isinstance(experiments, list):
         for experiment in experiments:
-            header = experiment.get("header", {})
-
-            if isinstance(header, str):
-                header_text_list.append(header)
+            if not isinstance(experiment, dict):
                 continue
+            label = experiment.get("label")
+            if isinstance(label, str):
+                for study_id in _JGAS_PATTERN.findall(label):
+                    if study_id not in study_id_list:
+                        study_id_list.append(study_id)
+            policy_value = _add_values(info_dict, experiment.get("values"), policy_value)
 
-            if not isinstance(header, dict):
-                continue
-
-            ja_text = header.get("ja")
-            en_text = header.get("en")
-            header_text = header.get("text", {})
-            if isinstance(header_text, str):
-                header_text_list.append(header_text)
-                continue
-
-            if isinstance(ja_text, str):
-                header_text_list.append(ja_text)
-            elif isinstance(ja_text, dict):
-                header_text_list.append(ja_text.get("text", ""))
-            if isinstance(en_text, str):
-                header_text_list.append(en_text)
-            elif isinstance(en_text, dict):
-                header_text_list.append(en_text.get("text", ""))
-
-        jgas_pattern = re.compile(r"JGAS\d+")
-        all_header_text = "\n".join(header_text_list)
-        study_id_list = list(dict.fromkeys(jgas_pattern.findall(all_header_text)))
-
-        # v1 fallback: take the first experiment's data section.
-        experiment_data = experiments[0].get("data", {})
-
-        # Strip HTML tags from all fields
-        for key, value in experiment_data.items():
-            if isinstance(value, str):
-                if key not in info_dict:
-                    info_dict[key] = strip_html_tags(value)
-            else:
-                if key not in info_dict:
-                    info_dict[key] = value
+    policy = _policy_text(policy_value)
+    if policy:
+        info_dict["Policies"] = {"ja": {"text": policy}}
 
     study_id_list_from_ddbj, hum_id_list_from_ddbj = await get_jga_study_ids_from_ddbj(dataset_id)
 
