@@ -43,6 +43,15 @@ import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import {
+  DEFAULT_SORT,
+  defaultOrder,
+  isSortKey,
+  isSortOrder,
+  type SortKey,
+  type SortOrder,
+} from "~/search/sort"
 
 import {
   changedDatasetFromPublished,
@@ -72,7 +81,7 @@ import {
   type GateFinding,
   type GateFindingKind,
 } from "./gate"
-import { proposeDatasetId } from "./labels"
+import { isHumLabel, proposeDatasetId } from "./labels"
 import { pinLabel, unpinLabel } from "./labels.server"
 import { isEmptyThreeWay, threeWayDataset, threeWayResearch } from "./merge"
 import { publishDraft, publishPreview, republishVersion, withdrawVersion } from "./publish.server"
@@ -153,20 +162,26 @@ export interface AdminListRowView {
   researchId: string
   humLabel: string | null
   title: string
-  datasetCount: number
+  /** Every dataset the research holds, in the order the listing prints them. */
+  datasetLabels: string[]
   status: AdminStatus
   publishedVersions: number
   draftCount: number
   flags: AdminFlags
   /** The day of the most recent change; the hour is noise in a listing. */
   updatedOn: string
+  /** The day the latest version that is out was released, or `null`. */
+  publishedOn: string | null
 }
 
 export interface AdminListView {
   locale: Locale
   keyword: string
-  status: AdminStatus | null
+  statuses: AdminStatus[]
   flags: AdminFlagKey[]
+  sort: SortKey
+  order: SortOrder
+  size: PageSize
   rows: AdminListRowView[]
   total: number
   page: number
@@ -188,21 +203,37 @@ export async function researchListPage(
   await requireCapability(request, "view-unpublished")
 
   const url = new URL(request.url)
-  const status = url.searchParams.get("status")
   const filter = {
     keyword: url.searchParams.get("q") ?? "",
-    status: isAdminStatus(status) ? status : null,
+    statuses: url.searchParams.getAll("status").filter(isAdminStatus),
     flags: url.searchParams.getAll("flag").filter(isAdminFlagKey),
   }
 
+  // An ordering or a size that is not one of the offered ones is read as none
+  // asked for, the way the public listings read theirs: an address arriving
+  // from somewhere else should answer rather than refuse.
+  const askedSort = url.searchParams.get("sort")
+  const sort = isSortKey(askedSort) ? askedSort : DEFAULT_SORT
+  const askedOrder = url.searchParams.get("order")
+  const order = isSortOrder(askedOrder) ? askedOrder : defaultOrder(sort)
+  const askedSize = Number(url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+
   const all = await adminResearchIndex(getDb())
-  const page = pageOf(sortResearchRows(filterResearchRows(all, filter)), readPage(url.searchParams.get("page")))
+  const page = pageOf(
+    sortResearchRows(filterResearchRows(all, filter), sort, order),
+    readPage(url.searchParams.get("page")),
+    size,
+  )
 
   return {
     locale,
     keyword: filter.keyword,
-    status: filter.status,
+    statuses: filter.statuses,
     flags: filter.flags,
+    sort,
+    order,
+    size,
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
@@ -212,12 +243,13 @@ export async function researchListPage(
       researchId: row.researchId,
       humLabel: row.humLabel,
       title: resolved(row.title, locale),
-      datasetCount: row.datasetLabels.length,
+      datasetLabels: row.datasetLabels,
       status: row.status,
       publishedVersions: row.publishedVersions,
       draftCount: row.draftCount,
       flags: row.flags,
       updatedOn: row.updatedAt.slice(0, 10),
+      publishedOn: row.publishedOn,
     })),
   }
 }
@@ -810,7 +842,14 @@ export async function createResearchAction(request: Request, locale: Locale): Pr
 /** The answers the research screen has that are not a redirect. */
 export type ResearchDetailResult
   = | { status: "conflict" }
-    | { status: "taken" }
+    /**
+     * Which pin the answer is about. **The screen carries one of these forms
+     * per dataset as well as the research's own**, so an answer that did not
+     * name its subject would have to be said above all of them.
+     */
+    | { status: "taken", subjectId: string }
+    /** A research ID was typed in a shape no address could be made from. */
+    | { status: "malformed", subjectId: string }
 
 /**
  * Everything the research screen does: open a draft, throw one away, take a
@@ -855,13 +894,14 @@ export async function researchDetailAction(
     const label = form.get("label")
     if (typeof label !== "string") badRequest()
     const subjectId = kind === "hum" ? id : identity(readString(form, "datasetId"))
+    if (kind === "hum" && !isHumLabel(label.trim())) return { status: "malformed", subjectId }
     const outcome = await pinLabel(
       db,
       { kind, label, subjectId, isPrimary: form.get("isPrimary") === "on" },
       actorOf(actor),
     )
     if (outcome.status === "gone") notFound()
-    return outcome.status === "taken" ? { status: "taken" } : back
+    return outcome.status === "taken" ? { status: "taken", subjectId } : back
   }
 
   if (intent === "delete-research") {
@@ -1126,6 +1166,8 @@ export type PublishResult
     | { status: "gone" }
     /** A pin was refused because the label already names something. */
     | { status: "taken" }
+    /** A research ID was typed in a shape no address could be made from. */
+    | { status: "malformed" }
 
 /**
  * Publishing, and pinning the labels that stop it. The pin is here because the
@@ -1148,6 +1190,7 @@ export async function publishAction(
     if (kind !== "hum" && kind !== "dataset") badRequest()
     const label = form.get("label")
     if (typeof label !== "string") badRequest()
+    if (kind === "hum" && !isHumLabel(label.trim())) return { status: "malformed" }
     const subjectId = kind === "hum" ? researchId : identity(readString(form, "datasetId"))
 
     const outcome = await pinLabel(db, { kind, label, subjectId, isPrimary: true }, actorOf(actor))

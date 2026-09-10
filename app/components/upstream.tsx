@@ -5,6 +5,7 @@ import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+import { useRefine } from "~/search-as-typed"
 
 import { PaneHeading, Stack } from "./base"
 import { Field, Submit } from "./form"
@@ -29,8 +30,9 @@ export function UpstreamSearch({ locale, action, keyword }: {
   keyword: string
 }) {
   const t = messagesFor(locale).admin.templates
+  const refine = useRefine({ action })
   return (
-    <Form method="get" action={action} className="flex flex-wrap items-end gap-3">
+    <Form method="get" action={action} onSubmit={refine} className="flex flex-wrap items-end gap-3">
       <Field type="search" label={t.keyword} name="q" value={keyword} width="w-96" />
       {/*
         A tool rather than the errand: this screen is here to take a draft from

@@ -76,6 +76,11 @@ function pages(scope: string) {
         { id: `${scope}-admin-contents-document` },
       ),
       route(
+        "admin/contents/alert",
+        "routes/admin-contents-alert.tsx",
+        { id: `${scope}-admin-contents-alert` },
+      ),
+      route(
         "admin/contents/news",
         "routes/admin-contents-news.tsx",
         { id: `${scope}-admin-contents-news` },
@@ -108,6 +113,11 @@ function pages(scope: string) {
         "admin/research/:researchId/draft/:draftId",
         "routes/admin-draft.tsx",
         { id: `${scope}-admin-draft` },
+      ),
+      route(
+        "admin/research/:researchId/draft/:draftId/upstream",
+        "routes/admin-draft-upstream.tsx",
+        { id: `${scope}-admin-draft-upstream` },
       ),
       route(
         "admin/research/:researchId/draft/:draftId/publish",

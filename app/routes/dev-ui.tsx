@@ -20,7 +20,6 @@
 import { useState } from "react"
 import { Link } from "react-router"
 
-import { AdminDrawer } from "~/components/admin"
 import { AddToCartButton, CartToggle } from "~/components/cart"
 import { Markdown } from "~/components/markdown"
 import {
@@ -44,6 +43,7 @@ import {
   ButtonLink,
   type ButtonVariant,
   Chip,
+  Choice,
   Clamped,
   CLEAR,
   Excerpt,
@@ -200,6 +200,8 @@ const FIELD_TABS = [
 export default function DevUi({ loaderData }: Route.ComponentProps) {
   const [tab, setTab] = useState("title")
   const [listTab, setListTab] = useState<"research" | "dataset">("research")
+  const [pane, setPane] = useState<"both" | "left" | "right">("both")
+  const [slot, setSlot] = useState<"value" | "unknown">("value")
   const first = ROWS[0]
 
   return (
@@ -382,6 +384,33 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <Button type="button" icon={<Icon name="copy" />}>listing 無し — それ以外</Button>
               </div>
               <p className="text-ink-muted text-sm">
+                選ぶことは押すことではないので、面を借りない。選択肢は 1 つの器を分け合い、
+                選ばれた区画だけが塗られる — 溶接された形が、単独で立つ塗りと読み分けさせる。
+                選択肢が多いか語が長いときは、器を持たず畳む (下の Chooser)。
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Choice
+                  label="表示する面"
+                  value={pane}
+                  options={[
+                    { id: "both", label: "両方" },
+                    { id: "left", label: "左だけ" },
+                    { id: "right", label: "右だけ" },
+                  ]}
+                  onChange={setPane}
+                />
+                <Choice
+                  label="値の扱い"
+                  value={slot}
+                  options={[
+                    { id: "value", label: "値を入力する" },
+                    { id: "unknown", label: "未確定にする" },
+                  ]}
+                  onChange={setSlot}
+                  size="xs"
+                />
+              </div>
+              <p className="text-ink-muted text-sm">
                 帯の上では面が裏返る (onBand)。ページの色はどれも帯の暗い側で 3:1 を割るので、
                 残っているのは白だけになる。順位はそのままで、塗りが白に、枠が白い縁になる。
               </p>
@@ -536,24 +565,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   Admin
                 </Link>
               </Menu>
-            </div>
-          </Section>
-
-          <Section title="Admin の区画">
-            {/*
-              **The real one, drawn where it really is.** The tab is fixed to
-              the left of the window, so it appears at the edge of this page
-              rather than inside this box — which is the only way to look at
-              whether it is found without being looked for. The destinations are
-              the live list (`app/admin/navigation.ts`); following one leaves
-              the catalogue.
-            */}
-            <div id="admin-shell" className="flex flex-col gap-2 text-sm">
-              <p className="text-ink-muted">
-                Admin 画面から行ける先。窓の左端に出ていて、この箱の中には何も描かれない。
-                指すか、Tab で辿り着いて Enter を押すと開く。Escape と、外を押すことで閉じる。
-              </p>
-              <AdminDrawer locale={LOCALE} path="/admin/research" />
             </div>
           </Section>
 
@@ -933,8 +944,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   name="how"
                   value="new"
                   options={[
-                    { value: "new", label: "新しい版として" },
-                    { value: "fix", label: "この版を直す" },
+                    { value: "new", label: "新しいバージョンとして" },
+                    { value: "fix", label: "このバージョンを直す" },
                   ]}
                 />
                 <div className="flex flex-col gap-2">
@@ -958,7 +969,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div className="flex flex-wrap items-center gap-6">
                 <Confirm
                   label="この研究を削除する"
-                  warning="公開版も下書きも消えます"
+                  warning="公開バージョンも下書きも消えます"
                   confirm="削除する"
                   cancel="やめる"
                 />

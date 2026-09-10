@@ -54,6 +54,9 @@ describe("writing to a draft", () => {
       // Seeding datasets from upstream changes which ones the version lists,
       // which is a change to the draft's own content like any other.
       "addDatasetsFromUpstream",
+      // Taking an application into a draft that exists writes the content and
+      // appends the datasets in one go, so it is checked like a save.
+      "applyUpstreamToDraft",
       "saveDraftContent",
       "saveDatasetEntry",
       "createDatasetInDraft",

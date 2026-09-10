@@ -460,15 +460,23 @@ const FORM_KEYS = [
  * A JGA accession's alias names the registration that created it, and that
  * number is the registration's own id, so the two are joined without reading a
  * single relation.
+ *
+ * **Every step says `MATERIALIZED`.** Left to itself the planner folds these
+ * into the query that reads them, and with no statistics to go on it estimates
+ * one row where there are over a thousand — so the pivot below is re-run once
+ * per branch, and the form components are read eight hundred thousand times
+ * for a page that shows thirty rows. Computing each step once takes the search
+ * from 5.6s to 0.15s, and a search with a word in it from 11.4s to 0.11s. The
+ * answers are the same; only how often each step runs changes.
  */
 function branchCte(schema: string): string {
   return `
-    jga AS (
+    jga AS MATERIALIZED (
       SELECT accession, (regexp_match(alias, '^JSUB0*([0-9]+)'))[1]::bigint AS submission_id
       FROM ${schema}.accession
       WHERE (accession LIKE 'JGAS%' OR accession LIKE 'JGAD%') AND alias LIKE 'JSUB%'
     ),
-    branch AS (
+    branch AS MATERIALIZED (
       SELECT a.appl_id,
              a.ds_du_id || '-' || lpad(a.appl_version::text, 3, '0') AS application_id,
              nullif(btrim(a.hum_id), '') AS hum_label,
@@ -477,13 +485,13 @@ function branchCte(schema: string): string {
       JOIN ${schema}.current_nbdc_application_status st ON st.appl_id = a.appl_id
       WHERE st.appl_status_type = ${APPROVED} AND a.ds_du_id LIKE 'J-DS%'
     ),
-    submit AS (
+    submit AS MATERIALIZED (
       SELECT DISTINCT ON (b.appl_id) b.appl_id, s.appl_submit_id
       FROM branch b
       JOIN ${schema}.nbdc_application_submit s ON s.appl_id = b.appl_id
       ORDER BY b.appl_id, s.submit_date DESC NULLS LAST, s.appl_submit_id DESC
     ),
-    stated AS (
+    stated AS MATERIALIZED (
       SELECT sm.appl_id,
         ${FORM_KEYS.map((key) => `max(c.value) FILTER (WHERE c.key = '${key}') AS "${key}"`).join(",\n        ")}
       FROM submit sm
@@ -491,13 +499,13 @@ function branchCte(schema: string): string {
       WHERE c.t_order = -1 AND c.key IN (${FORM_KEYS.map((key) => `'${key}'`).join(", ")})
       GROUP BY sm.appl_id
     ),
-    approved AS (
+    approved AS MATERIALIZED (
       SELECT appl_id, max(history_date) AS approved_at
       FROM ${schema}.nbdc_application_status_history
       WHERE appl_status_type = ${APPROVED}
       GROUP BY appl_id
     ),
-    registered AS (
+    registered AS MATERIALIZED (
       SELECT sp.appl_id, array_agg(DISTINCT j.accession ORDER BY j.accession) AS accessions
       FROM ${schema}.submission_permission sp
       JOIN jga j ON j.submission_id = sp.submission_id

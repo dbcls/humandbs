@@ -328,6 +328,56 @@ export async function addDatasetsFromUpstream(
 }
 
 /**
+ * Taking an application into a draft that already exists.
+ *
+ * **One transaction, because the curator confirmed one thing.** The content and
+ * the datasets come from the same branch and were decided on the same screen;
+ * writing them separately would leave a draft holding one half of an approval
+ * if the second write lost the race.
+ *
+ * **The content arrives already decided.** What the application said and what
+ * the draft said were put side by side on the screen and the curator wrote the
+ * answer, so nothing is merged here (`docs/editing.md` の「既存の下書きに
+ * 取り込む」). The dataset ids are the exception: they are the draft's own, and
+ * the new ones are appended rather than replacing what is there.
+ */
+export async function applyUpstreamToDraft(
+  db: Database,
+  at: DraftAt,
+  seed: { researchId: string, content: ResearchContent, datasets: SeededDataset[] },
+  actor: EventActor,
+): Promise<AddDatasetsOutcome> {
+  return taken(() => db.transaction(async (tx): Promise<AddDatasetsOutcome> => {
+    const before = await currentDraft(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    const datasets = seed.datasets.map((entry) => ({ ...entry, id: randomUUID() }))
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: {
+          ...seed.content,
+          datasetIds: [...before.content.datasetIds, ...datasets.map((entry) => entry.id)],
+        },
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+    if (rows[0] === undefined) return { status: "conflict" }
+
+    // The draft as it stood goes on the undo stack, the same as a save: this
+    // writes content, and a curator who takes the wrong branch needs the way back.
+    await pushUndo(tx, at.draftId, snapshot("before-save", before))
+    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets)
+    const pinned = await pinLabelsIn(tx, pinRequests(null, seed.researchId, datasets), actor)
+    if (pinned.status === "taken") throw new LabelTaken(pinned.label)
+
+    return { status: "added", datasetIds: datasets.map((entry) => entry.id) }
+  }))
+}
+
+/**
  * The identity and the description of each seeded dataset.
  *
  * They belong to the draft until it is published, like any dataset made inside

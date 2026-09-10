@@ -17,7 +17,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { useFetcher, useLocation } from "react-router"
 
-import { Badge, Button, Note, Stack } from "~/components/base"
+import { Badge, Button, controlFace, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { AnchorSubject } from "~/review/anchors"
@@ -158,7 +158,7 @@ export function CommentSpot({ context, at, threads }: {
     <details ref={box} className="inline-flex flex-col items-start gap-2 align-top text-sm" id={encodeURIComponent(at)}>
       <summary
         title={shown.length === 0 ? t.add : t.heading}
-        className="inline-flex min-h-tap min-w-tap cursor-pointer list-none items-center justify-center gap-1 rounded border border-line-strong px-2 text-ink-muted text-xs marker:content-none hover:bg-surface-hover"
+        className={`${controlFace({ size: "xs" })} min-h-tap min-w-tap list-none marker:content-none`}
       >
         <Icon name="comment" aria-hidden="true" />
         <span className="sr-only">{shown.length === 0 ? t.add : t.heading}</span>

@@ -52,6 +52,10 @@ export type IconName
     | "link"
     | "comment"
     | "file"
+    | "newspaper"
+    | "bell"
+    | "megaphone"
+    | "clipboard"
     | "grip"
     | "more"
     | "menu"
@@ -267,6 +271,41 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M10 9H8" />
       <path d="M16 13H8" />
       <path d="M16 17H8" />
+    </>
+  ),
+  /*
+    A folded sheet with a headline block, which is what tells it from `file`:
+    both are paper with lines on it, and at 14px the fold and the block are the
+    only difference a reader can see.
+  */
+  "newspaper": (
+    <>
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
+      <path d="M18 14h-8" />
+      <path d="M15 18h-5" />
+      <rect width="8" height="4" x="10" y="6" rx="1" />
+    </>
+  ),
+  "bell": (
+    <>
+      <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+      <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
+    </>
+  ),
+  "megaphone": (
+    <>
+      <path d="m3 11 18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </>
+  ),
+  "clipboard": (
+    <>
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M12 11h4" />
+      <path d="M12 16h4" />
+      <path d="M8 11h.01" />
+      <path d="M8 16h.01" />
     </>
   ),
   "grip": (

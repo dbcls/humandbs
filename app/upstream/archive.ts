@@ -6,6 +6,8 @@
  * `ddbj-search.server.ts`, which is the boundary tests replace.
  */
 
+import { JST_OFFSET_MS } from "~/dates"
+
 /**
  * Which DDBJ Search resource answers for an accession.
  *
@@ -29,8 +31,6 @@ export function archiveResourceOf(accession: string): string | null {
 export function isArchiveAccession(accession: string): boolean {
   return archiveResourceOf(accession) !== null
 }
-
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 

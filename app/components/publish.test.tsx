@@ -47,14 +47,14 @@ describe("the publish screen", () => {
     const html = render(view())
 
     expect(html).toContain("v2 になります")
-    expect(html).not.toContain("いまの版を差し替える")
+    expect(html).not.toContain("今のバージョンを差し替える")
     expect(html).toContain("type=\"date\"")
   })
 
   it("offers the fix once the draft came from a version", () => {
     const html = render(view({ fixNumber: 5 }))
 
-    expect(html).toContain("いまの版を差し替える")
+    expect(html).toContain("今のバージョンを差し替える")
     expect(html).toContain("v5 のまま")
   })
 
@@ -65,7 +65,7 @@ describe("the publish screen", () => {
     }))
 
     expect(html).toContain("公開できないもの")
-    expect(html).toContain("研究 ID が pin されていません")
+    expect(html).toContain("研究 ID が割り当てられていません")
     expect(html).toContain("disabled=\"\"")
   })
 
@@ -127,7 +127,7 @@ describe("the publish screen", () => {
       }],
     }))
 
-    expect(html).toContain("5 件の公開版に効きます")
+    expect(html).toContain("5 件の公開バージョンに効きます")
   })
 
   it("says so when there is nothing to change at all", () => {
@@ -141,6 +141,6 @@ describe("the publish screen", () => {
   it("says why a publish came back rather than leaving the screen unchanged", () => {
     expect(render(view(), { status: "conflict" })).toContain("別の場所で編集されました")
     expect(render(view(), { status: "unacknowledged" })).toContain("確認のチェック")
-    expect(render(view(), { status: "taken" })).toContain("別の対象に pin されています")
+    expect(render(view(), { status: "taken" })).toContain("既に別のものに割り当てられています")
   })
 })

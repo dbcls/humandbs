@@ -313,7 +313,8 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date
 `archive-date` は認証が要らないので手元でも回る。
 
 **申請管理システム DB には手元から直接届かない。** 踏み台の内側からしか見えないので、`.env` は空のまま
-にして 3 つの取得元を skip させる。**この 3 つを実際に取らせて確かめるのは配信している環境**で、そこからは
+にして 3 つの取得元を skip させる (画面を手元で見たいときは下の「[申請管理システムの足場を手元に作る]
+(#申請管理システムの足場を手元に作る)」)。**この 3 つを実際に取らせて確かめるのは配信している環境**で、そこからは
 DB が直接見える ([deployment.md](deployment.md))。
 
 **接続は read-only を強制する** (`default_transaction_read_only`)。他プロジェクトの所管なので、設定の
@@ -321,6 +322,43 @@ DB が直接見える ([deployment.md](deployment.md))。
 
 同じ接続を「下書きを外から作る」経路 ([editing.md](editing.md)) も使う。こちらはキャッシュではなく画面からの
 直読みなので、**接続が無ければその画面が繋がっていないと言う**。
+
+## 申請管理システムの足場を手元に作る
+
+**「下書きを外から作る」画面 (`/admin/research/upstream`) は、キャッシュではなく申請管理システム DB を
+直に読む。** その DB は踏み台の内側にしか無いので、手元では画面が「繋がっていない」と言うだけになる。
+足場を入れると、承認済みの申請が実データで並ぶ。
+
+```bash
+scripts/seed-jga-dev.sh
+docker compose up -d --force-recreate app   # .env を読み直させる
+```
+
+**これは prod の複製ではない。** 画面を手元で見るためのもので、行の分布も、他プロジェクトが今後入れる
+変更も追わない。**手元で通った SQL が prod で通ることは保証しない** — それを見るのは配信している環境で
+回す integration test のほう ([testing.md](testing.md))。
+
+**schema を手で書かない。** テーブルの定義は prod から取った列定義の生ダンプを機械で変換したもので、
+view の定義は prod の `pg_views` そのまま。**だから乖離が生じるのは「prod の schema が変わってから、
+取り直すまで」のあいだだけ**になる。取り直しは `.claude/jga-db/dump.sh` が踏み台経由で行う (接続は
+読み取り専用を強制する)。
+
+**外に出る列は画面が読むものだけ。** 申請書の中身のうち手元に来るのは
+`app/upstream/application-db.server.ts` の `FORM_KEYS` が名指しした key と、公開ページに出る値だけで、
+住所・電話・所属長・共同研究者は取らない。
+
+`.env` の 2 つが接続先を決める。手元では**同じ DB の別 schema** を指す。
+
+| 変数 | 手元での値 |
+|---|---|
+| `HUMANDBS_JGA_DATABASE_URL` | `HUMANDBS_DATABASE_URL` と同じ |
+| `HUMANDBS_JGA_DB_SCHEMA` | `jgasys` |
+
+**`.env` を変えたら container を作り直す。** `docker compose restart` は環境変数を読み直さない。
+
+**上流のキャッシュ 3 つ (`cau` / `hum-accession` / `jgad-date`) はこの足場では埋まらない。** そちらは
+日次の取得が書くもので、手元では TSV と `.claude/plan/dataset-dates/` の手順が入れている。区画のトップの
+「外部データの取り込み状況」が「未取得」と出るのは、**行が無いのではなく取得を回した記録が無い**ため。
 
 ## ファイルストアを触る
 

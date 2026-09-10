@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { pageWindow, Table, Td, TermLabel, Value } from "./page"
+import { pageWindow, Paging, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -290,5 +290,70 @@ describe("where a cell sits in a row taller than it is", () => {
   it("centres the header whichever way the cells go", () => {
     expect(of()).toMatch(/<th[^>]*align-middle/)
     expect(of("middle")).toMatch(/<th[^>]*align-middle/)
+  })
+})
+
+describe("どれだけ出ていて、残りへどう行くか", () => {
+  function paging(pageCount: number): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => (
+        <Paging
+          locale="ja"
+          total={19}
+          from={1}
+          to={19}
+          page={1}
+          pageCount={pageCount}
+          at={(to) => `?page=${to}`}
+        />
+      ),
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/admin/research"]} />)
+  }
+
+  it("1 ページに収まる一覧にはページ送りを描かない", () => {
+    expect(paging(1)).not.toContain("<nav")
+    expect(paging(3)).toContain("<nav")
+  })
+
+  /*
+    描かないぶん行が縮むと、絞り込んで結果が 1 ページに収まった瞬間に表とその下の
+    全部が上へ動く。実測で行は 36 → 22.4px、表の頭は 204 → 199px 動いていた。
+  */
+  it("ページ送りが要らないときも、行は同じ高さを名乗る", () => {
+    expect(paging(1)).toMatch(/<div class="[^"]*min-h-tap/)
+    expect(paging(3)).toMatch(/<div class="[^"]*min-h-tap/)
+  })
+})
+
+describe("横に流れる表で残る列", () => {
+  /*
+    公開の一覧は印を先頭に 2 列残し、admin の研究一覧は名前の列を 1 つ残す。
+    固定の指定が幅まで決めると、名前が印の 60px に押し込まれる。
+  */
+  it("固定は幅を決めない。印の幅は印のセルが持つ", () => {
+    const named = renderToStaticMarkup(
+      <Table headers={["研究 ID"]} stuck={1}>
+        <tr><Td stuck={0} nowrap>hum0001</Td></tr>
+      </Table>,
+    )
+    expect(named).toMatch(/<td[^>]*sticky left-0/)
+    expect(named).not.toMatch(/<td[^>]*w-15/)
+    expect(named).not.toMatch(/<th[^>]*w-15/)
+  })
+
+  /* 2 列目の `left` は印の幅を書き出したものなので、1 列目が印でないと合わない。 */
+  it("印を先頭に 2 列残すときは、印が幅を名乗り 2 列目がその分ずれる", () => {
+    const marked = renderToStaticMarkup(
+      <Table headers={["", "研究 ID"]} stuck={2}>
+        <tr>
+          <Td stuck={0} narrow>x</Td>
+          <Td stuck={1} nowrap>hum0001</Td>
+        </tr>
+      </Table>,
+    )
+    expect(marked).toMatch(/<td[^>]*w-15[^>]*sticky left-0|<td[^>]*sticky left-0[^>]*w-15/)
+    expect(marked).toMatch(/<td[^>]*sticky left-15/)
   })
 })

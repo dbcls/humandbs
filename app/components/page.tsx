@@ -182,7 +182,10 @@ export function Section({ title, at, children }: {
     <Stack gap="tight" as="section">
       {/* A mark for the whole section sits beside its name rather than under
           it: on a line of its own it reads as belonging to the first value. */}
-      <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-brand text-lg">
+      {/* The name carries no colour: on a face made of fields and buttons, a
+          blue line is read as something to press before it is read as a name.
+          What says "this names what follows" is the rule beside it. */}
+      <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
         {title}
         {at !== undefined && <Annotation at={at} />}
       </h2>
@@ -281,12 +284,18 @@ const MARK_COLUMN = "w-15"
 /**
  * Where a frozen column stands — not how wide it is.
  *
- * **Only the first carries a width**, because the second reads it as its own
- * `left`. The second's width belongs to the listing (`Td` の `floor`): what it
- * holds differs between them, and nothing downstream reads its edge.
+ * **No width here at all.** What a listing freezes first is a mark on one side
+ * and a name on the other, and the two are nothing like the same width; the
+ * cells already say which they are (`Td` の `narrow` と `floor`). A width
+ * written here would reach both and squeeze the name into the mark's 60px.
+ *
+ * **A second column can only be frozen behind a mark.** Its `left` is the mark
+ * column's width written out, which is the one width this file knows — so a
+ * listing that freezes two has to lead with a mark, and one that leads with
+ * anything else freezes only the first.
  */
 const STUCK = [
-  `sticky left-0 z-10 ${MARK_COLUMN}`,
+  "sticky left-0 z-10",
   "sticky left-15 z-10",
 ]
 
@@ -787,8 +796,17 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
   // **The gap is a third of what separates the pair from the rest of the row.**
   // At one distance for everything, the count floats between two controls and
   // reads as belonging to neither.
+  //
+  // **The row keeps the height of the steps whether or not they are drawn.** A
+  // listing that fits on one page has nothing to page through, and the row fell
+  // from 36px to the 22.4px of the line saying how many there are — which moves
+  // the table above it and the whole page below it as a reader narrows a search
+  // (measured on the research listing: the tools row 36 → 32.4px, the table's
+  // head 204 → 199px, the run under it 36 → 22.4px). This is the rule the top
+  // bar keeps for the same reason (`docs/ui.md` の「押せるものの大きさ」): what
+  // stands in a row settles that row's height once, for every state it has.
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-h-tap flex-wrap items-center gap-2">
       <p className="text-ink-muted text-sm">
         {total === 0 ? messages.search.results(0) : messages.search.range(from, to, total)}
       </p>

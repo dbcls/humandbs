@@ -419,7 +419,7 @@ function paneOpenOnServer(): boolean {
  * it: a fold is part of what somebody is doing now rather than a setting they
  * carry between visits.
  */
-function usePaneOpen(): [boolean, () => void] {
+export function usePaneOpen(): [boolean, () => void] {
   const open = useSyncExternalStore(subscribePane, readPaneOpen, paneOpenOnServer)
   const toggle = useCallback(() => {
     writePaneOpen(!readPaneOpen())

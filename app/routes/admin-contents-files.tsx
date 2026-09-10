@@ -3,8 +3,8 @@ import { data, Form } from "react-router"
 import { adminContentFilesPath, contentFileUploadPath } from "~/admin/urls"
 import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { UploadPanel } from "~/components/files"
-import { Result, SelectAll } from "~/components/form"
-import { Card, Empty, Page, Paging, Section, Table, Td } from "~/components/page"
+import { Result, SelectAll, SelectOne } from "~/components/form"
+import { Card, Page, Paging, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { commonFilesAction, commonFilesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
@@ -51,15 +51,13 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
     <Page>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading} />
+          <Heading title={t.heading} note={t.note} />
           {/*
             The only reachable status here is "nothing-selected" — this box has
             no hum label and no publish step for "no-box" to answer to, unlike
             a research's box (`~/files/pages.server.ts`).
           */}
           {actionData !== undefined && <Result ok={false}>{t.nothingSelected}</Result>}
-
-          <Empty>{t.note}</Empty>
 
           <Section title={t.upload}>
             <UploadPanel
@@ -92,7 +90,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                         {view.rows.map((row) => (
                           <tr key={row.name}>
                             <Td>
-                              <input type="checkbox" name="name" value={row.name} aria-label={row.name} />
+                              <SelectOne name="name" value={row.name} />
                             </Td>
                             <Td>{row.name}</Td>
                             <Td className="text-nowrap">{formatSize(row.size)}</Td>

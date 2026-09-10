@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type SyntheticEvent } from "react"
 import { useSubmit } from "react-router"
 
 /**
@@ -64,6 +64,32 @@ export function useAsk(action: string, box: string | null = null): Ask {
     void runSearch(asked, { method: "get", action, replace: true, preventScrollReset: true })
   }
   return { form, ask }
+}
+
+/**
+ * Reading a GET form that is submitted by a press, and going to the address its
+ * conditions stand for.
+ *
+ * **The same dropping of empty fields as `useAsk`, and a pushed entry rather
+ * than a replaced one.** A press is a step of its own, so stepping back from a
+ * narrowed listing should reach the listing as it was before the press — where
+ * a listing that narrows itself as words are typed has no such step, only the
+ * prefixes of a word.
+ *
+ * The form keeps its own `action`: without script it is what the submission
+ * goes to, and it has to be named here too because the address the reader is
+ * standing on is not always the one the form posts to.
+ */
+export function useRefine({ action, box = null }: {
+  action?: string
+  /** The field whose empty value is a condition of its own, if there is one. */
+  box?: string | null
+} = {}): (event: SyntheticEvent<HTMLFormElement>) => void {
+  const go = useSubmit()
+  return (event) => {
+    event.preventDefault()
+    void go(conditions(new FormData(event.currentTarget), box), { method: "get", action })
+  }
 }
 
 export interface SearchAsTyped {
