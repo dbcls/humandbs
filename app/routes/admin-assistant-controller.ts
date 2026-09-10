@@ -143,6 +143,7 @@ export function useAssistantController(locale: Locale) {
 
   const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const formElement = event.currentTarget
     if (application === null) {
       setNotice({ ok: false, text: words.applicationRequired })
       return
@@ -162,6 +163,7 @@ export function useAssistantController(locale: Locale) {
       )
       const taskId = body === undefined ? undefined : field(body, "task_id")
       if (taskId === undefined) throw new Error(words.uploadFailed)
+      formElement.reset()
       setApplication(null)
       setEthics(null)
       setPlan(null)

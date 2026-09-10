@@ -4,17 +4,25 @@ from src.services import research_service
 
 async def test_search_paper_uses_authoritative_search_result_url(monkeypatch) -> None:
     source_url = "https://publisher.example/paper/123"
+    validated_url = "https://publisher.example/paper/123?validated=1"
 
     async def grounded_search(prompt, output_model, logger):
         assert "Paper title" in prompt
         assert logger is not None
-        return output_model(source_url=source_url), []
+        return output_model(source_url=source_url), [source_url]
+
+    async def validate(url, grounded_urls, _logger):
+        assert url == source_url
+        assert grounded_urls == [source_url]
+        return validated_url
 
     async def fetch(url, _use_browser, _task_id):
-        assert url == source_url
+        assert url == validated_url
         return "<html>paper</html>"
 
-    async def extract(_prompt, _model, _task_id):
+    async def extract(_prompt, _model, system_message=None, task_id=None):
+        assert system_message is None
+        assert task_id == "task"
         return PaperInfoExtractionResult(
             title="Paper title",
             authors=["Author"],
@@ -23,13 +31,14 @@ async def test_search_paper_uses_authoritative_search_result_url(monkeypatch) ->
         )
 
     monkeypatch.setattr(research_service, "extract_output_from_genai", grounded_search)
+    monkeypatch.setattr(research_service, "_resolve_safe_grounded_url", validate)
     monkeypatch.setattr(research_service, "fetch_with_playwright", fetch)
     monkeypatch.setattr(research_service, "extract_structured_output", extract)
 
     result = await research_service.search_paper_by_title("Paper title", "task")
 
     assert result is not None
-    assert result["url"] == source_url
+    assert result["url"] == validated_url
 
 
 async def test_search_paper_rejects_result_without_valid_link(monkeypatch) -> None:
@@ -49,19 +58,68 @@ async def test_search_paper_rejects_result_without_valid_link(monkeypatch) -> No
 async def test_search_paper_rejects_placeholder_extraction(monkeypatch) -> None:
     async def grounded_search(_prompt, output_model, logger):
         assert logger is not None
-        return output_model(source_url="https://pmc.ncbi.nlm.nih.gov/articles/PMC12844639/"), []
+        source_url = "https://pmc.ncbi.nlm.nih.gov/articles/PMC12844639/"
+        return output_model(source_url=source_url), [source_url]
+
+    async def validate(url, grounded_urls, _logger):
+        assert grounded_urls == [url]
+        return url
 
     async def fetch(*_args):
         return "<html>cached page</html>"
 
-    async def extract(*_args):
+    async def extract(*_args, **_kwargs):
         return PaperInfoExtractionResult(title="N/A", authors=[], abstract="N/A", url="N/A")
 
     monkeypatch.setattr(research_service, "extract_output_from_genai", grounded_search)
+    monkeypatch.setattr(research_service, "_resolve_safe_grounded_url", validate)
     monkeypatch.setattr(research_service, "fetch_with_playwright", fetch)
     monkeypatch.setattr(research_service, "extract_structured_output", extract)
 
     assert await research_service.search_paper_by_title("Paper title", "task") is None
+
+
+async def test_search_paper_rejects_url_not_present_in_grounding_metadata(monkeypatch) -> None:
+    async def grounded_search(_prompt, output_model, logger):
+        assert logger is not None
+        return output_model(source_url="https://publisher.example/paper/123"), [
+            "https://publisher.example/paper/456"
+        ]
+
+    async def unexpected_fetch(*_args):
+        raise AssertionError("fetch should not run for an ungrounded URL")
+
+    monkeypatch.setattr(research_service, "extract_output_from_genai", grounded_search)
+    monkeypatch.setattr(research_service, "fetch_with_playwright", unexpected_fetch)
+
+    assert await research_service.search_paper_by_title("Paper title", "task") is None
+
+
+class _FakeResponse:
+    def __init__(self, status: int, payload: dict) -> None:
+        self.status = status
+        self._payload = payload
+        self.headers: dict[str, str] = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self) -> dict:
+        return self._payload
+
+
+class _FakeSession:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
 
 
 async def test_get_paper_info_resolves_citation_through_crossref(monkeypatch) -> None:
@@ -75,7 +133,9 @@ async def test_get_paper_info_resolves_citation_through_crossref(monkeypatch) ->
         assert doi == "10.3390/metabo12070669"
         return {"title": "Resolved title", "authors": [], "abstract": "Abstract", "url": "https://doi.org/example"}
 
-    async def suggest(*_args):
+    async def suggest(_prompt, _model, system_message=None, task_id=None):
+        assert system_message is None
+        assert task_id == "task"
         return research_service.ResearchInfoSuggestionResult(
             summary_jp="要約",
             handles_human_data=False,
@@ -120,7 +180,9 @@ async def test_get_paper_info_resolves_structured_citation_through_pubmed(monkey
             "url": "https://pubmed.ncbi.nlm.nih.gov/37516314/",
         }
 
-    async def suggest(*_args):
+    async def suggest(_prompt, _model, system_message=None, task_id=None):
+        assert system_message is None
+        assert task_id == "task"
         return research_service.ResearchInfoSuggestionResult(
             summary_jp="要約",
             handles_human_data=False,
@@ -144,3 +206,68 @@ async def test_get_paper_info_resolves_structured_citation_through_pubmed(monkey
     assert result is not None
     assert result.paper_id == "PMID:37516314"
     assert result.url == "https://pubmed.ncbi.nlm.nih.gov/37516314/"
+
+
+async def test_find_doi_by_bibliographic_query_rejects_unmatched_crossref_candidate(monkeypatch) -> None:
+    payload = {
+        "message": {
+            "items": [{
+                "DOI": "10.1000/example",
+                "title": ["Different title"],
+                "author": [{"given": "John", "family": "Smith"}],
+                "issued": {"date-parts": [[2024]]},
+                "container-title": ["Other Journal"],
+            }]
+        }
+    }
+    captured = {}
+
+    class FakeRetryClient:
+        def __init__(self, client_session, retry_options) -> None:
+            pass
+
+        def get(self, url, params):
+            captured["url"] = url
+            captured["params"] = params
+            return _FakeResponse(200, payload)
+
+    monkeypatch.setattr(research_service.aiohttp, "ClientSession", _FakeSession)
+    monkeypatch.setattr(research_service, "RetryClient", FakeRetryClient)
+
+    result = await research_service.find_doi_by_bibliographic_query(
+        "Mineshita Y, et al. Metabolites. 2022;12:669."
+    )
+
+    assert result is None
+    assert captured["url"] == "https://api.crossref.org/works"
+    assert captured["params"]["select"] == (
+        "DOI,title,author,issued,published-print,published-online,container-title"
+    )
+
+
+async def test_find_doi_by_bibliographic_query_accepts_matching_crossref_title(monkeypatch) -> None:
+    payload = {
+        "message": {
+            "items": [{
+                "DOI": "10.1000/example",
+                "title": ["Resolved title"],
+                "author": [{"given": "Jane", "family": "Doe"}],
+                "issued": {"date-parts": [[2024]]},
+                "container-title": ["Example Journal"],
+            }]
+        }
+    }
+
+    class FakeRetryClient:
+        def __init__(self, client_session, retry_options) -> None:
+            pass
+
+        def get(self, _url, params):
+            return _FakeResponse(200, payload)
+
+    monkeypatch.setattr(research_service.aiohttp, "ClientSession", _FakeSession)
+    monkeypatch.setattr(research_service, "RetryClient", FakeRetryClient)
+
+    result = await research_service.find_doi_by_bibliographic_query("Resolved title")
+
+    assert result == "10.1000/example"

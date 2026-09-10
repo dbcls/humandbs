@@ -1,8 +1,12 @@
+import asyncio
+import ipaddress
 import json
 import logging
 import re
+import socket
 import xml.etree.ElementTree as ET
 from typing import Any, Literal
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
@@ -14,6 +18,11 @@ from src.services.google_genai_service import extract_output_from_genai, extract
 from src.utils import fetch_with_playwright, get_task_logger, icd10_canonicalized_text
 
 logger = logging.getLogger("research_service")
+
+_CITATION_PATTERN = re.compile(
+    r"\s*(?P<author>[^,]+),\s*et al\.\s*(?P<journal>.+?)\.\s*"
+    r"(?P<year>\d{4});(?P<volume>\d+):(?P<pagination>[\d-]+)\.\s*"
+)
 
 # Configure retry strategy with exponential backoff
 retry_options = ExponentialRetry(
@@ -32,7 +41,11 @@ def _has_paper_content(paper_info: dict[str, Any]) -> bool:
 async def find_doi_by_bibliographic_query(query: str) -> str | None:
     """Find the most relevant DOI for a citation or paper title using Crossref."""
     url = "https://api.crossref.org/works"
-    params = {"query.bibliographic": query, "rows": 1, "select": "DOI"}
+    params = {
+        "query.bibliographic": query,
+        "rows": 1,
+        "select": "DOI,title,author,issued,published-print,published-online,container-title",
+    }
     try:
         async with aiohttp.ClientSession() as session:
             retry_client = RetryClient(client_session=session, retry_options=retry_options)
@@ -43,6 +56,9 @@ async def find_doi_by_bibliographic_query(query: str) -> str | None:
                 items = (await resp.json()).get("message", {}).get("items", [])
                 if not items:
                     return None
+                if not _crossref_candidate_matches_query(query, items[0]):
+                    logger.warning("Crossref bibliographic candidate did not match query: %r", query)
+                    return None
                 doi = items[0].get("DOI")
                 return doi.strip() if isinstance(doi, str) and doi.strip() else None
     except (aiohttp.ClientError, json.JSONDecodeError):
@@ -52,11 +68,7 @@ async def find_doi_by_bibliographic_query(query: str) -> str | None:
 
 async def find_pmid_by_citation(citation: str) -> str | None:
     """Resolve an author-journal-year-volume-page citation to one PubMed record."""
-    match = re.fullmatch(
-        r"\s*(?P<author>[^,]+),\s*et al\.\s*(?P<journal>.+?)\.\s*"
-        r"(?P<year>\d{4});(?P<volume>\d+):(?P<pagination>[\d-]+)\.\s*",
-        citation,
-    )
+    match = _CITATION_PATTERN.fullmatch(citation)
     if not match:
         return None
 
@@ -81,18 +93,142 @@ async def find_pmid_by_citation(citation: str) -> str | None:
         return None
 
 
+def _normalized_text(value: str | None) -> str:
+    return re.sub(r"[^0-9a-z]+", "", value.casefold()) if isinstance(value, str) else ""
+
+
+def _crossref_year(item: dict[str, Any]) -> str | None:
+    for key in ("issued", "published-print", "published-online"):
+        date_parts = item.get(key, {}).get("date-parts")
+        if isinstance(date_parts, list) and date_parts and isinstance(date_parts[0], list) and date_parts[0]:
+            year = date_parts[0][0]
+            if isinstance(year, int):
+                return str(year)
+    return None
+
+
+def _crossref_candidate_matches_query(query: str, item: dict[str, Any]) -> bool:
+    doi = item.get("DOI")
+    if not isinstance(doi, str) or not doi.strip():
+        return False
+
+    title_values = item.get("title")
+    candidate_title = title_values[0] if isinstance(title_values, list) and title_values else ""
+    query_title = _normalized_text(query)
+    normalized_title = _normalized_text(candidate_title)
+
+    match = _CITATION_PATTERN.fullmatch(query)
+    if not match:
+        return bool(query_title and normalized_title and (
+            query_title in normalized_title or normalized_title in query_title
+        ))
+
+    parts = match.groupdict()
+    author = _normalized_text(parts["author"])
+    journal = _normalized_text(parts["journal"])
+    candidate_year = _crossref_year(item)
+    author_values = item.get("author", [])
+    authors = [
+        _normalized_text(" ".join(part for part in [value.get("given"), value.get("family")] if isinstance(part, str)))
+        for value in author_values
+        if isinstance(value, dict)
+    ]
+    journal_values = item.get("container-title", [])
+    journals = [
+        _normalized_text(value)
+        for value in journal_values
+        if isinstance(value, str)
+    ]
+    return (
+        candidate_year == parts["year"]
+        and any(author in value or value in author for value in authors if value)
+        and any(journal in value or value in journal for value in journals if value)
+    )
+
+
+def _normalized_http_url(url: str | None) -> str | None:
+    if not isinstance(url, str):
+        return None
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
+        return None
+    return parsed._replace(fragment="").geturl()
+
+
+async def _hostname_has_only_public_ips(hostname: str) -> bool:
+    try:
+        infos = await asyncio.to_thread(socket.getaddrinfo, hostname, None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
+
+    addresses = {
+        ipaddress.ip_address(info[4][0])
+        for info in infos
+        if isinstance(info, tuple) and len(info) > 4 and info[4]
+    }
+    return bool(addresses) and all(address.is_global for address in addresses)
+
+
+async def _is_safe_public_url(url: str) -> bool:
+    normalized_url = _normalized_http_url(url)
+    if normalized_url is None:
+        return False
+    hostname = urlparse(normalized_url).hostname
+    if not hostname or hostname.casefold() == "localhost":
+        return False
+    try:
+        return ipaddress.ip_address(hostname).is_global
+    except ValueError:
+        return await _hostname_has_only_public_ips(hostname)
+
+
+async def _resolve_safe_grounded_url(
+    source_url: str | None, grounded_urls: list[str], task_logger: logging.Logger
+) -> str | None:
+    normalized_source_url = _normalized_http_url(source_url)
+    grounded_candidates = {
+        normalized_url
+        for normalized_url in (_normalized_http_url(url) for url in grounded_urls)
+        if normalized_url is not None
+    }
+    if normalized_source_url is None or normalized_source_url not in grounded_candidates:
+        task_logger.error("Paper URL was not present in grounding metadata: %s", source_url)
+        return None
+
+    current_url = normalized_source_url
+    timeout = aiohttp.ClientTimeout(total=10)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for _ in range(5):
+            if not await _is_safe_public_url(current_url):
+                task_logger.error("Rejected unsafe paper URL: %s", current_url)
+                return None
+            async with session.get(current_url, allow_redirects=False) as response:
+                if 300 <= response.status < 400:
+                    redirect_url = _normalized_http_url(urljoin(current_url, response.headers.get("Location", "")))
+                    if redirect_url is None:
+                        task_logger.error("Rejected invalid redirect for paper URL: %s", current_url)
+                        return None
+                    current_url = redirect_url
+                    continue
+                return current_url
+
+    task_logger.error("Too many redirects while validating paper URL: %s", source_url)
+    return None
+
+
 async def search_paper_by_title(title: str, task_id: str | None = None) -> dict[str, Any] | None:
     task_logger = get_task_logger(task_id)
     class PaperSearchResult(BaseModel):
         source_url: str | None = Field(None, description="論文の公開ランディングページのURL")
 
-    search_result, _ = await extract_output_from_genai(
+    search_result, grounded_urls = await extract_output_from_genai(
         load_prompt("paper_url_search.txt", paper_reference=title),
         PaperSearchResult,
         logger=task_logger,
     )
     source_url = search_result.source_url if search_result else None
-    if not isinstance(source_url, str) or not source_url.startswith(("http://", "https://")):
+    source_url = await _resolve_safe_grounded_url(source_url, grounded_urls or [], task_logger)
+    if source_url is None:
         task_logger.error(f"No grounded paper URL found for title: {title}")
         return None
     task_logger.info(f"Grounded paper URL: {source_url}")
@@ -106,7 +242,7 @@ async def search_paper_by_title(title: str, task_id: str | None = None) -> dict[
     extraction_result = await extract_structured_output(
         load_prompt("paper_info_extraction_from_web.txt", html=html),
         PaperInfoExtractionResult,
-        task_id,
+        task_id=task_id,
     )
     task_logger.info(f"Extraction result: {extraction_result}")
 
@@ -162,7 +298,7 @@ async def get_paper_info(
     suggestion_result = await extract_structured_output(
         load_prompt("paper_info_suggestion.txt", title=title, abstract=abstract),
         ResearchInfoSuggestionResult,
-        task_id,
+        task_id=task_id,
     )
 
     if not suggestion_result:

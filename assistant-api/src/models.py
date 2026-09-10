@@ -310,6 +310,9 @@ class PhoneConsistencyResult(BaseModel):
         None,
         description="Whether the head of institution's phone number is the representative number of the organization",
     )
+    head_phone_difference_message: str | None = Field(
+        None, description="Explanation when the head of institution's phone number differs from the others"
+    )
 
 
 class ResearcherVerificationResult(BaseModel):

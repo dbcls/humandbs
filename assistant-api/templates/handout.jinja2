@@ -22,8 +22,10 @@
 （データセット{{ ds.dataset_id }}の情報取得失敗）
 {% else %}
 ◆{{ ds.dataset_id }}
-{%- if analysis.dataset_api_retrieval_result.study_id_list and analysis.dataset_api_retrieval_result.study_id_list | length > 0 %}
+{%- if analysis.dataset_api_retrieval_result.hum_id %}
 {{ humandbs_web_base_url }}/{{ analysis.dataset_api_retrieval_result.hum_id }}
+{%- endif %}
+{%- if analysis.dataset_api_retrieval_result.study_id_list and analysis.dataset_api_retrieval_result.study_id_list | length > 0 %}
 ・{{ analysis.dataset_api_retrieval_result.study_id_list | join(' / ') }}
 {%- else %}
 ・JGAS番号取得失敗
