@@ -372,6 +372,19 @@ describe("アシスタント API のセッション切れ", () => {
     ).rejects.toThrow(words.loadFailed)
     expect(signIn).toHaveBeenCalledOnce()
   })
+
+  it("assistant-api の502エラー応答ではログインへ遷移しない", async () => {
+    const signIn = vi.fn()
+    const response = new Response("Bad Gateway", {
+      status: 502,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    })
+
+    await expect(
+      assistantResponseJson(response, words.loadFailed, signIn),
+    ).rejects.toThrow(words.loadFailed)
+    expect(signIn).not.toHaveBeenCalled()
+  })
 })
 
 describe("アシスタント詳細の要求順", () => {

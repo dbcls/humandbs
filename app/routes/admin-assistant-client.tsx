@@ -696,6 +696,7 @@ function expiredSession(
   requireJson: boolean,
 ): boolean {
   if (response.redirected) return true
+  if (!response.ok) return false
   if (response.status === 204) return false
   return requireJson
     ? !jsonResponse(response)
@@ -807,13 +808,17 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   const [loading, setLoading] = useState(true)
   const [pollingFailed, setPollingFailed] = useState(false)
   const detailRequests = useRef(new LatestDetailRequests())
+  const pollingFailedTaskId = useRef<string | null>(null)
   const [notice, setNotice] = useState<{ ok: boolean, text: string } | null>(
     null,
   )
 
   const loadDetail = useCallback(async (taskId: string, select = false) => {
-    if (select)
+    if (select) {
+      pollingFailedTaskId.current = null
+      setPollingFailed(false)
       setSelected((current) => current?.task_id === taskId ? current : null)
+    }
     const detail = await detailRequests.current.run(taskId, select, async () => {
       const parsed = taskDetail(
         await assistantJson(
@@ -826,7 +831,6 @@ export function AssistantContents({ locale }: { locale: Locale }) {
       return parsed
     })
     if (detail === undefined) return
-    setPollingFailed(false)
     setSelected(detail)
     setTasks((previous) =>
       previous.map((task) =>
@@ -872,11 +876,14 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   useEffect(() => {
     if (
       pollingFailed
+      || pollingFailedTaskId.current === selected?.task_id
       || (selected?.status !== "processing" && selected?.status !== "pending")
     )
       return
     const timer = window.setInterval(() => {
       void loadDetail(selected.task_id).catch((error: unknown) => {
+        pollingFailedTaskId.current = selected.task_id
+        window.clearInterval(timer)
         setPollingFailed(true)
         setNotice({
           ok: false,
