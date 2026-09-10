@@ -122,6 +122,16 @@ class _FakeSession:
         return False
 
 
+class _FakeRedirectSession(_FakeSession):
+    def __init__(self, responses: list[_FakeResponse], *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._responses = responses
+
+    def get(self, _url, allow_redirects=False):
+        assert allow_redirects is False
+        return self._responses.pop(0)
+
+
 async def test_get_paper_info_resolves_citation_through_crossref(monkeypatch) -> None:
     citation = "Mineshita Y, et al. Metabolites. 2022;12:669."
 
@@ -271,3 +281,26 @@ async def test_find_doi_by_bibliographic_query_accepts_matching_crossref_title(m
     result = await research_service.find_doi_by_bibliographic_query("Resolved title")
 
     assert result == "10.1000/example"
+
+
+async def test_resolve_safe_grounded_url_rejects_redirect_outside_grounding(monkeypatch) -> None:
+    redirect = _FakeResponse(302, {})
+    redirect.headers["Location"] = "https://other.example/paper"
+
+    async def safe(_url):
+        return True
+
+    monkeypatch.setattr(research_service, "_is_safe_public_url", safe)
+    monkeypatch.setattr(
+        research_service.aiohttp,
+        "ClientSession",
+        lambda *args, **kwargs: _FakeRedirectSession([redirect], *args, **kwargs),
+    )
+
+    result = await research_service._resolve_safe_grounded_url(
+        "https://publisher.example/paper",
+        ["https://publisher.example/paper"],
+        research_service.logger,
+    )
+
+    assert result is None
