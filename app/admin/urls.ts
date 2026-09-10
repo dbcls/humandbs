@@ -254,6 +254,6 @@ export function adminAssistantPath(): string {
  * The assistant service is accessed through the portal's authorized proxy,
  * never through its private service address.
  */
-export function assistantApiPath(path: string): string {
-  return `${adminAssistantPath()}/api/${path}`
+export function assistantApiPath(rest: string): string {
+  return `${adminAssistantPath()}/api/${rest}`
 }

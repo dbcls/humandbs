@@ -7,7 +7,7 @@ import { Card, KeyValue, Pairs } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import type { Status, TaskDetail } from "./admin-assistant-client"
+import type { Status, TaskDetail } from "./admin-assistant-model"
 
 interface AdminAssistantTaskDetailProps {
   detail: TaskDetail

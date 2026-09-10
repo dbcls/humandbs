@@ -4,7 +4,7 @@ import { Card, Empty, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import type { Status, Task } from "./admin-assistant-client"
+import type { Status, Task } from "./admin-assistant-model"
 
 interface AdminAssistantTaskListProps {
   tasks: readonly Task[]

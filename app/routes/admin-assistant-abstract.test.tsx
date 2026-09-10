@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest"
 
 import { messagesFor } from "~/i18n/messages"
 
-import { Abstract, type AssessmentData } from "./admin-assistant-client"
+import { Abstract } from "./admin-assistant-abstract"
+import type { AssessmentData } from "./admin-assistant-model"
 
 const words = messagesFor("ja").admin.assistant
 

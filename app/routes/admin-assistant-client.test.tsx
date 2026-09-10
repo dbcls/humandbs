@@ -4,15 +4,14 @@ import { describe, expect, it, vi } from "vitest"
 import { messagesFor } from "~/i18n/messages"
 
 import {
-  AssistantReport,
   assistantLoginPath,
   assistantResponseJson,
-  datasetIds,
-  Datasets,
-  LatestDetailRequests,
-  PersonReport,
-  type AssessmentData,
-} from "./admin-assistant-client"
+} from "./admin-assistant-api-client"
+import { LatestDetailRequests } from "./admin-assistant-controller"
+import { datasetIds, Datasets } from "./admin-assistant-datasets"
+import type { AssessmentData } from "./admin-assistant-model"
+import { PersonReport } from "./admin-assistant-person-report"
+import { AssistantReport } from "./admin-assistant-report"
 
 const words = messagesFor("ja").admin.assistant
 
@@ -385,6 +384,20 @@ describe("アシスタント API のセッション切れ", () => {
     ).rejects.toThrow(words.loadFailed)
     expect(signIn).not.toHaveBeenCalled()
   })
+
+  it("リダイレクトされたエラー応答でもログインへ遷移しない", async () => {
+    const signIn = vi.fn()
+    const response = new Response("Bad Gateway", {
+      status: 502,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    })
+    Object.defineProperty(response, "redirected", { value: true })
+
+    await expect(
+      assistantResponseJson(response, words.loadFailed, signIn),
+    ).rejects.toThrow(words.loadFailed)
+    expect(signIn).not.toHaveBeenCalled()
+  })
 })
 
 describe("アシスタント詳細の要求順", () => {
@@ -461,5 +474,27 @@ describe("アシスタントのデータセット管理", () => {
     expect(html).not.toContain(words.addDatasets)
     expect(html).not.toContain(words.removeDataset)
     expect(html).toContain("JGAD000001")
+  })
+
+  it("詳細 URL が未取得でも一覧にデータセット ID を表示する", () => {
+    const html = renderToStaticMarkup(
+      <Datasets
+        datasets={[{ id: "JGAD000001", found_in_database: true }]}
+        requestedDatasets={[]}
+        policies={[]}
+        applicationMethod=""
+        paperMethods={[]}
+        abstractIcd10={[]}
+        paperIcd10={[]}
+        canManage={false}
+        busy={false}
+        onAddDatasets={() => Promise.resolve(true)}
+        onRemoveDataset={() => undefined}
+        words={words}
+      />,
+    )
+
+    expect(html).toContain("JGAD000001")
+    expect(html).toMatch(/<tbody><tr><td[^>]*>JGAD000001<\/td>/)
   })
 })
