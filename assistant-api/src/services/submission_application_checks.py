@@ -7,7 +7,7 @@ from src.models import (
     SubmissionApplicationFormData,
 )
 from src.prompts import load_prompt
-from src.services.llm_service import check_icd10_target_relevance, extract_output_from_openai
+from src.services.google_genai_service import check_icd10_target_relevance, extract_structured_output
 from src.utils import extract_text_from_pdf, get_icd10_description, get_task_logger
 
 
@@ -98,7 +98,7 @@ async def _extract_submission_application_form_data(
 
     prompt = load_prompt("submission_form_extraction.txt", form_text=form_text)
 
-    return await extract_output_from_openai(prompt, SubmissionApplicationFormData, task_id=task_id)
+    return await extract_structured_output(prompt, SubmissionApplicationFormData, task_id=task_id)
 
 
 async def run_submission_application_checks(

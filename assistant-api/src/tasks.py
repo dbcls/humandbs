@@ -4,23 +4,31 @@ import logging
 import os
 import re
 import traceback
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
+from weakref import WeakKeyDictionary
 
 import yaml  # Added PyYAML for YAML serialization
 
 from src.models import (
     ApplicationVerificationData,
     EmailDomainConsistencyResult,
+    PaperInfo,
     ResearchAbstractSentencePair,
     ResearchAbstractTranslation,
+    ResearchInfo,
 )
 from src.phone_validator import PhoneValidator
 from src.prompts import load_prompt
 from src.services.dataset_service import analyze_dataset
 from src.services.email_check import validate_email
 from src.services.ethics_document_validator import EthicsDocumentValidator
-from src.services.google_genai_service import investigate_researcher_history
-from src.services.llm_service import suggest_icd10_code_list, translate_research_abstract_sentences
+from src.services.google_genai_service import (
+    investigate_researcher_history,
+    suggest_icd10_code_list,
+    translate_research_abstract_sentences,
+)
 from src.services.research_plan_validator import ResearchPlanValidator
 from src.services.research_service import get_paper_info
 from src.services.submission_application_checks import run_submission_application_checks
@@ -33,6 +41,91 @@ from src.utils import (
     is_english_text,
     process_multiple_files,
 )
+
+_application_result_locks: WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]] = WeakKeyDictionary()
+
+
+def _get_application_result_lock(task_id: str) -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    locks = _application_result_locks.setdefault(loop, {})
+    return locks.setdefault(task_id, asyncio.Lock())
+
+
+def _load_application_data(yml_path: Path, task_id: str) -> dict[str, Any]:
+    if not yml_path.exists():
+        raise FileNotFoundError(f"Application {task_id} not found")
+    with open(yml_path, encoding="utf-8") as f:
+        application_data = yaml.safe_load(f) or {}
+    if not isinstance(application_data, dict):
+        raise ValueError(f"Application {task_id} has invalid result data")
+    return application_data
+
+
+def _atomic_write_yaml(yml_path: Path, data: dict[str, Any]) -> None:
+    temporary_path = yml_path.with_name(f".{yml_path.name}.{uuid4().hex}.tmp")
+    try:
+        with open(temporary_path, "x", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary_path, yml_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+async def mark_application_processing(task_id: str, processing_data: dict[str, Any]) -> None:
+    """Atomically mark an application as processing without discarding its current result."""
+    yml_path = get_task_result_path(task_id)
+    async with _get_application_result_lock(task_id):
+        existing_data = _load_application_data(yml_path, task_id) if yml_path.exists() else {}
+        merged_data = {**existing_data, **processing_data}
+        merged_data["created_at"] = existing_data.get("created_at", processing_data["created_at"])
+        _atomic_write_yaml(yml_path, merged_data)
+
+
+def _merge_reanalyzed_dataset_state(
+    latest_data: dict[str, Any],
+    result: dict[str, Any],
+) -> None:
+    """Keep the latest explicit dataset membership while refreshing matching analyses."""
+    if "dataset_analysis_list" not in latest_data and "dataset_info_list" not in latest_data:
+        return
+
+    latest_analyses = latest_data.get("dataset_analysis_list", [])
+    if not isinstance(latest_analyses, list):
+        latest_analyses = []
+    reanalyzed = result.get("dataset_analysis_list", [])
+    if not isinstance(reanalyzed, list):
+        reanalyzed = []
+    reanalyzed_by_id = {
+        dataset_id.strip(): analysis
+        for analysis in reanalyzed
+        if (
+            isinstance(analysis, dict)
+            and isinstance((dataset_id := analysis.get("id")), str)
+            and dataset_id.strip()
+        )
+    }
+    result["dataset_analysis_list"] = [
+        reanalyzed_by_id.get(dataset_id.strip(), analysis)
+        if isinstance(analysis, dict)
+        and isinstance((dataset_id := analysis.get("id")), str)
+        and dataset_id.strip()
+        else analysis
+        for analysis in latest_analyses
+    ]
+
+    latest_dataset_info = latest_data.get("dataset_info_list", [])
+    result["dataset_info_list"] = latest_dataset_info if isinstance(latest_dataset_info, list) else []
+
+
+async def _persist_application_result(task_id: str, result: dict[str, Any]) -> None:
+    yml_path = get_task_result_path(task_id)
+    async with _get_application_result_lock(task_id):
+        latest_data = _load_application_data(yml_path, task_id) if yml_path.exists() else {}
+        result["created_at"] = latest_data.get("created_at", result["created_at"])
+        _merge_reanalyzed_dataset_state(latest_data, result)
+        _atomic_write_yaml(yml_path, result)
 
 
 def _normalize_email(email: str | None) -> str | None:
@@ -173,6 +266,82 @@ def _split_english_abstract_into_sentences(research_abstract: str) -> list[str]:
     return merged_sentences if merged_sentences else [normalized]
 
 
+def _build_research_abstract_translation(
+    source_sentences: list[str],
+    translated_sentences: list[str],
+) -> ResearchAbstractTranslation | None:
+    translations = [sentence.strip() for sentence in translated_sentences if sentence and sentence.strip()]
+    if not translations:
+        return None
+
+    sentence_pairs = []
+    if len(source_sentences) == len(translated_sentences):
+        sentence_pairs = [
+            ResearchAbstractSentencePair(
+                pair_id=f"abstract-sentence-{index}",
+                source_sentence=source_sentence.strip(),
+                translated_sentence=translated_sentence.strip(),
+            )
+            for index, (source_sentence, translated_sentence) in enumerate(
+                zip(source_sentences, translated_sentences, strict=True),
+                start=1,
+            )
+            if source_sentence.strip() and translated_sentence.strip()
+        ]
+        if len(sentence_pairs) != len(source_sentences):
+            sentence_pairs = []
+
+    return ResearchAbstractTranslation(
+        translated_abstract="\n".join(translations),
+        sentence_pairs=sentence_pairs,
+    )
+
+
+def _complement_research_info(paper_info: PaperInfo) -> ResearchInfo:
+    paper_id = paper_info.doi or (f"PMID:{paper_info.pmid}" if paper_info.pmid else None)
+    title = paper_info.title or ""
+    return ResearchInfo(
+        title=title,
+        summary_jp=title or None,
+        paper_id=paper_id,
+        authors=[],
+        abstract="",
+        url=f"https://doi.org/{paper_info.doi}" if paper_info.doi else "",
+        icd10_code_list=[],
+        analysis_method_list=[],
+    )
+
+
+async def get_research_info_list(
+    related_paper_list: list[PaperInfo], task_id: str, logger: logging.Logger
+) -> list[ResearchInfo]:
+    retrieval_tasks: list[tuple[int, Any]] = []
+    research_info_list = [_complement_research_info(paper_info) for paper_info in related_paper_list]
+
+    for index, paper_info in enumerate(related_paper_list):
+        if paper_info.doi:
+            retrieval_task = get_paper_info(paper_info.doi, paper_info.title, "doi", task_id=task_id)
+        elif paper_info.pmid:
+            retrieval_task = get_paper_info(paper_info.pmid, paper_info.title, "pubmed", task_id=task_id)
+        elif paper_info.title:
+            retrieval_task = get_paper_info(None, paper_info.title, "title", task_id=task_id)
+        else:
+            logger.warning("Using best-effort paper information: %s", paper_info)
+            continue
+        retrieval_tasks.append((index, retrieval_task))
+
+    retrieval_results = await asyncio.gather(
+        *(task for _, task in retrieval_tasks), return_exceptions=True
+    )
+    for (index, _), research_info in zip(retrieval_tasks, retrieval_results):
+        if isinstance(research_info, BaseException) or research_info is None:
+            logger.warning("Using best-effort paper information: %s", related_paper_list[index])
+            continue
+        research_info_list[index] = research_info
+
+    return research_info_list
+
+
 async def analyze_datasets_for_application(
     dataset_id_list: list[str],
     abstract_icd10_list: list[str],
@@ -256,48 +425,25 @@ async def process_application_task(
                 task_id=task_id,
             )
 
-            if translated_sentences:
-                if len(translated_sentences) != len(source_sentences):
+            research_abstract_translation = _build_research_abstract_translation(
+                source_sentences,
+                translated_sentences,
+            )
+            if research_abstract_translation:
+                if research_abstract_translation.sentence_pairs:
+                    task_logger.info("Research abstract translated to Japanese with sentence alignment")
+                else:
                     task_logger.warning(
-                        "Research abstract translation sentence count mismatch: source=%s translated=%s",
+                        "Research abstract translated without sentence alignment: source=%s translated=%s",
                         len(source_sentences),
                         len(translated_sentences),
                     )
 
-                sentence_pairs = [
-                    ResearchAbstractSentencePair(
-                        pair_id=f"abstract-sentence-{index}",
-                        source_sentence=source_sentence,
-                        translated_sentence=translated_sentences[index - 1]
-                        if index - 1 < len(translated_sentences)
-                        else "",
-                    )
-                    for index, source_sentence in enumerate(source_sentences, start=1)
-                ]
-                research_abstract_translation = ResearchAbstractTranslation(
-                    translated_abstract="\n".join([sentence for sentence in translated_sentences if sentence.strip()]),
-                    sentence_pairs=sentence_pairs,
-                )
-            task_logger.info("Research abstract translated to Japanese with sentence alignment")
-
-        research_info_tasks = []
-        for related_paper_info in application_data.related_paper_list:
-            research_info = None
-            if related_paper_info.doi:
-                research_info = get_paper_info(related_paper_info.doi, related_paper_info.title, "doi", task_id=task_id)
-            elif related_paper_info.pmid:
-                research_info = get_paper_info(
-                    related_paper_info.pmid, related_paper_info.title, "pubmed", task_id=task_id
-                )
-            elif related_paper_info.title:
-                research_info = get_paper_info(None, related_paper_info.title, "title", task_id=task_id)
-            if not research_info:
-                task_logger.warning(f"Invalid paper info: {related_paper_info}")
-            else:
-                research_info_tasks.append(research_info)
-
-        research_info_results = await asyncio.gather(*research_info_tasks)
-        research_info_list = [ri for ri in research_info_results if ri]
+        research_info_list = await get_research_info_list(
+            application_data.related_paper_list,
+            task_id,
+            task_logger,
+        )
         task_logger.info(f"Research information retrieved: {research_info_list}")
 
         # Analyze datasets using the reusable function
@@ -328,6 +474,7 @@ async def process_application_task(
             provided_country_code=researcher_verification_result.address_validation_result.country_code
             if researcher_verification_result.address_validation_result
             else None,
+            validate_address=False,
         )
 
         email_address_is_different = _is_email_different_from_others(
@@ -427,6 +574,7 @@ async def process_application_task(
         application_verification_data = ApplicationVerificationData(
             **application_data.model_dump(),
             application_type=application_type,
+            abstract_icd10_list=abstract_icd10_list,
             research_abstract_translation=research_abstract_translation,
             researcher_verification_result=researcher_verification_result,
             submitter_verification_result=submitter_verification_result,
@@ -452,33 +600,20 @@ async def process_application_task(
             .strftime("%Y-%m-%d %H:%M:%S")
         )
 
-        if os.path.exists(output_path):
-            try:
-                with open(output_path, encoding="utf-8") as f:
-                    existing_data = yaml.safe_load(f)
-                created_at = existing_data["created_at"]
-            except (FileNotFoundError, KeyError):
-                created_at = updated_at
-        else:
-            created_at = updated_at
-
         # Store result - merge application data with verification data and additional metadata
         result = {
-            "created_at": created_at,
+            "created_at": updated_at,
             "updated_at": updated_at,
             "status": "completed",
             "filename": filename,
             # Include all application verification data (which includes application data)
             **application_verification_data.model_dump(),
             # Additional processing results
-            "abstract_icd10_list": abstract_icd10_list,
             "research_info_list": [info.model_dump() for info in research_info_list],
             "dataset_analysis_list": [dataset.model_dump() for dataset in dataset_analysis_result],
         }
 
-        # Save result to a file or database
-        with open(get_task_result_path(task_id), "w", encoding="utf-8") as f:
-            yaml.safe_dump(result, f, allow_unicode=True, sort_keys=False)
+        await _persist_application_result(task_id, result)
         task_logger.info("Result saved successfully.")
 
     except Exception:
@@ -490,6 +625,18 @@ async def process_application_task(
             task_logger.error(error_stacktrace)
         else:
             logging.getLogger("app").error(error_stacktrace)
+
+
+def _normalize_dataset_ids(values: object) -> list[str]:
+    if not isinstance(values, (list, tuple, set)):
+        return []
+    return list(
+        dict.fromkeys(
+            dataset_id.strip()
+            for dataset_id in values
+            if isinstance(dataset_id, str) and dataset_id.strip()
+        )
+    )
 
 
 async def add_datasets_to_application_task(task_id: str, new_dataset_ids: list[str]):
@@ -510,27 +657,43 @@ async def add_datasets_to_application_task(task_id: str, new_dataset_ids: list[s
         task_logger = get_task_logger(f"{task_id}_dataset_add")
         task_logger.info(f"Adding datasets {new_dataset_ids} to application {task_id}")
 
-        # Load existing application data from YML
         yml_path = get_task_result_path(task_id)
-        if not yml_path.exists():
-            raise FileNotFoundError(f"Application {task_id} not found")
+        normalized_dataset_ids = _normalize_dataset_ids(new_dataset_ids)
 
-        with open(yml_path, encoding="utf-8") as f:
-            existing_data = yaml.safe_load(f)
-
-        # Extract necessary data for analysis
-        abstract_icd10_list = existing_data.get("abstract_icd10_list", [])
-        research_info_list_data = existing_data.get("research_info_list", [])
-        analysis_method = existing_data.get("analysis_method", "")
+        async with _get_application_result_lock(task_id):
+            existing_data = _load_application_data(yml_path, task_id)
+            abstract_icd10_list = existing_data.get("abstract_icd10_list", [])
+            research_info_list_data = existing_data.get("research_info_list", [])
+            if not isinstance(research_info_list_data, list):
+                research_info_list_data = []
+            analysis_method = existing_data.get("analysis_method", "")
+            dataset_analysis_list = existing_data.get("dataset_analysis_list", [])
+            if not isinstance(dataset_analysis_list, list):
+                dataset_analysis_list = []
+            existing_dataset_ids = {
+                dataset_id.strip()
+                for ds in dataset_analysis_list
+                if (
+                    isinstance(ds, dict)
+                    and isinstance((dataset_id := ds.get("id")), str)
+                    and dataset_id.strip()
+                )
+            }
 
         # Convert research_info_list back to objects
         from src.models import ResearchInfo
 
-        research_info_list = [ResearchInfo(**info) for info in research_info_list_data]
+        research_info_list = []
+        for info in research_info_list_data:
+            if not isinstance(info, dict):
+                task_logger.warning("Ignoring malformed research information while adding datasets")
+                continue
+            try:
+                research_info_list.append(ResearchInfo(**info))
+            except (TypeError, ValueError):
+                task_logger.warning("Ignoring malformed research information while adding datasets")
 
-        # Filter out datasets that already exist
-        existing_dataset_ids = [ds["id"] for ds in existing_data.get("dataset_analysis_list", [])]
-        datasets_to_add = [ds_id for ds_id in new_dataset_ids if ds_id not in existing_dataset_ids]
+        datasets_to_add = [ds_id for ds_id in normalized_dataset_ids if ds_id not in existing_dataset_ids]
 
         status = "success"
 
@@ -540,7 +703,7 @@ async def add_datasets_to_application_task(task_id: str, new_dataset_ids: list[s
                 "status": status,
                 "message": "All specified datasets already exist in the application",
                 "added_count": 0,
-                "skipped_datasets": new_dataset_ids,
+                "skipped_datasets": normalized_dataset_ids,
             }
 
         task_logger.info(f"Analyzing {len(datasets_to_add)} new datasets: {datasets_to_add}")
@@ -554,37 +717,57 @@ async def add_datasets_to_application_task(task_id: str, new_dataset_ids: list[s
             logger=task_logger,
         )
 
-        added_dataset_ids = [ds.id for ds in dataset_analysis_result]
+        analyzed_dataset_ids = [ds.id for ds in dataset_analysis_result]
 
-        # Append new analysis results to existing dataset_analysis_list
-        if "dataset_analysis_list" not in existing_data:
-            existing_data["dataset_analysis_list"] = []
+        async with _get_application_result_lock(task_id):
+            existing_data = _load_application_data(yml_path, task_id)
+            dataset_analysis_list = existing_data.get("dataset_analysis_list", [])
+            if not isinstance(dataset_analysis_list, list):
+                dataset_analysis_list = []
+            existing_data["dataset_analysis_list"] = dataset_analysis_list
+            latest_dataset_ids = {
+                dataset_id.strip()
+                for ds in dataset_analysis_list
+                if (
+                    isinstance(ds, dict)
+                    and isinstance((dataset_id := ds.get("id")), str)
+                    and dataset_id.strip()
+                )
+            }
+            added_dataset_ids = []
+            for analysis in dataset_analysis_result:
+                if analysis.id not in latest_dataset_ids:
+                    dataset_analysis_list.append(analysis.model_dump())
+                    latest_dataset_ids.add(analysis.id)
+                    added_dataset_ids.append(analysis.id)
 
-        for analysis in dataset_analysis_result:
-            existing_data["dataset_analysis_list"].append(analysis.model_dump())
+            dataset_info_list = existing_data.get("dataset_info_list", [])
+            if not isinstance(dataset_info_list, list):
+                dataset_info_list = []
+            existing_data["dataset_info_list"] = dataset_info_list
+            existing_dataset_info_ids = {
+                dataset_id.strip()
+                for ds in dataset_info_list
+                if (
+                    isinstance(ds, dict)
+                    and isinstance((dataset_id := ds.get("dataset_id")), str)
+                    and dataset_id.strip()
+                )
+            }
+            for ds_id in added_dataset_ids:
+                if ds_id not in existing_dataset_info_ids:
+                    dataset_info_list.append({"dataset_id": ds_id, "purpose": ""})
 
-        # Update the dataset_info_list
-        if "dataset_info_list" not in existing_data:
-            existing_data["dataset_info_list"] = []
-        existing_dataset_id_set = {ds["dataset_id"] for ds in existing_data["dataset_info_list"]}
-        for ds_id in added_dataset_ids:
-            if ds_id not in existing_dataset_id_set:
-                existing_data["dataset_info_list"].append({"dataset_id": ds_id, "purpose": ""})
+            updated_at = (
+                datetime.datetime.now()
+                .astimezone(datetime.timezone(datetime.timedelta(hours=9)))
+                .strftime("%Y-%m-%d %H:%M:%S")
+            )
+            existing_data["updated_at"] = updated_at
+            _atomic_write_yaml(yml_path, existing_data)
 
-        # Update timestamp
-        updated_at = (
-            datetime.datetime.now()
-            .astimezone(datetime.timezone(datetime.timedelta(hours=9)))
-            .strftime("%Y-%m-%d %H:%M:%S")
-        )
-        existing_data["updated_at"] = updated_at
-
-        # Save updated data back to YML file
-        with open(yml_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(existing_data, f, allow_unicode=True, sort_keys=False)
-
-        skipped_ids = [ds_id for ds_id in datasets_to_add if ds_id not in added_dataset_ids and ds_id]
-        warning_ids = [ds_id for ds_id in skipped_ids if ds_id not in existing_dataset_ids]
+        skipped_ids = [ds_id for ds_id in normalized_dataset_ids if ds_id not in added_dataset_ids]
+        warning_ids = [ds_id for ds_id in datasets_to_add if ds_id not in analyzed_dataset_ids]
 
         if len(warning_ids) > 0:
             status = "warning"
@@ -633,52 +816,68 @@ async def remove_dataset_from_application_task(task_id: str, dataset_id: str):
         task_logger = get_task_logger(f"{task_id}_dataset_remove")
         task_logger.info(f"Removing dataset {dataset_id} from application {task_id}")
 
-        yml_path = get_task_result_path(task_id)
-        if not yml_path.exists():
-            raise FileNotFoundError(f"Application {task_id} not found")
-
-        with open(yml_path, encoding="utf-8") as f:
-            existing_data = yaml.safe_load(f)
-
-        dataset_analysis_list = existing_data.get("dataset_analysis_list", [])
-        dataset_info_list = existing_data.get("dataset_info_list", [])
-
-        updated_dataset_analysis_list = [ds for ds in dataset_analysis_list if ds.get("id") != dataset_id]
-        updated_dataset_info_list = [ds for ds in dataset_info_list if ds.get("dataset_id") != dataset_id]
-
-        removed_analysis_count = len(dataset_analysis_list) - len(updated_dataset_analysis_list)
-        removed_info_count = len(dataset_info_list) - len(updated_dataset_info_list)
-        removed_count = max(removed_analysis_count, removed_info_count)
-
-        if removed_count == 0:
-            task_logger.info(f"Dataset {dataset_id} was not found in application {task_id}")
+        normalized_dataset_ids = _normalize_dataset_ids([dataset_id])
+        normalized_dataset_id = normalized_dataset_ids[0] if normalized_dataset_ids else ""
+        if not normalized_dataset_id:
             return {
                 "status": "not_found",
-                "message": f"データセットID {dataset_id} は対象申請に存在しません",
+                "message": "データセットIDが指定されていません",
                 "removed_count": 0,
-                "dataset_id": dataset_id,
+                "dataset_id": normalized_dataset_id,
             }
 
-        existing_data["dataset_analysis_list"] = updated_dataset_analysis_list
-        existing_data["dataset_info_list"] = updated_dataset_info_list
-        updated_at = (
-            datetime.datetime.now()
-            .astimezone(datetime.timezone(datetime.timedelta(hours=9)))
-            .strftime("%Y-%m-%d %H:%M:%S")
-        )
-        existing_data["updated_at"] = updated_at
+        yml_path = get_task_result_path(task_id)
+        async with _get_application_result_lock(task_id):
+            existing_data = _load_application_data(yml_path, task_id)
+            dataset_analysis_list = existing_data.get("dataset_analysis_list", [])
+            dataset_info_list = existing_data.get("dataset_info_list", [])
+            if not isinstance(dataset_analysis_list, list):
+                dataset_analysis_list = []
+            if not isinstance(dataset_info_list, list):
+                dataset_info_list = []
 
-        with open(yml_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(existing_data, f, allow_unicode=True, sort_keys=False)
+            updated_dataset_analysis_list = [
+                ds
+                for ds in dataset_analysis_list
+                if not isinstance(ds, dict) or ds.get("id") != normalized_dataset_id
+            ]
+            updated_dataset_info_list = [
+                ds
+                for ds in dataset_info_list
+                if not isinstance(ds, dict) or ds.get("dataset_id") != normalized_dataset_id
+            ]
+
+            removed_analysis_count = len(dataset_analysis_list) - len(updated_dataset_analysis_list)
+            removed_info_count = len(dataset_info_list) - len(updated_dataset_info_list)
+            removed_count = max(removed_analysis_count, removed_info_count)
+
+            if removed_count == 0:
+                task_logger.info(f"Dataset {normalized_dataset_id} was not found in application {task_id}")
+                return {
+                    "status": "not_found",
+                    "message": f"データセットID {normalized_dataset_id} は対象申請に存在しません",
+                    "removed_count": 0,
+                    "dataset_id": normalized_dataset_id,
+                }
+
+            existing_data["dataset_analysis_list"] = updated_dataset_analysis_list
+            existing_data["dataset_info_list"] = updated_dataset_info_list
+            updated_at = (
+                datetime.datetime.now()
+                .astimezone(datetime.timezone(datetime.timedelta(hours=9)))
+                .strftime("%Y-%m-%d %H:%M:%S")
+            )
+            existing_data["updated_at"] = updated_at
+            _atomic_write_yaml(yml_path, existing_data)
 
         task_logger.info(
-            f"Removed dataset {dataset_id} from application {task_id} (analysis_list: {removed_analysis_count}, info_list: {removed_info_count})"
+            f"Removed dataset {normalized_dataset_id} from application {task_id} (analysis_list: {removed_analysis_count}, info_list: {removed_info_count})"
         )
 
         return {
             "status": "success",
-            "message": f"データセットID {dataset_id} を削除しました",
-            "dataset_id": dataset_id,
+            "message": f"データセットID {normalized_dataset_id} を削除しました",
+            "dataset_id": normalized_dataset_id,
             "updated_at": updated_at,
         }
     except Exception:

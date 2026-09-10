@@ -13,11 +13,10 @@ from pathlib import Path
 from urllib.parse import quote
 
 import fitz  # PyMuPDF
+import html2text
 import pymupdf4llm
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
-from langchain_community.document_transformers import Html2TextTransformer
-from langchain_core.documents import Document
 from playwright.async_api import async_playwright
 
 from src.models import ApplicationData, EthicsDocumentInfo
@@ -26,7 +25,14 @@ from src.prompts import load_prompt
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
+def _html_to_markdown(html: str) -> str:
+    converter = html2text.HTML2Text()
+    converter.ignore_links = True
+    converter.ignore_images = True
+    return converter.handle(html)
+
+
+def resolve_runtime_path(path_value: str, default_relative: str) -> Path:
     raw_path = path_value.strip() if path_value else default_relative
     path = Path(raw_path)
     if not path.is_absolute():
@@ -34,16 +40,16 @@ def _resolve_runtime_path(path_value: str, default_relative: str) -> Path:
     return path
 
 
-WORK_DIR = _resolve_runtime_path(os.environ.get("WORK_DIR", "work"), "work")
+WORK_DIR = resolve_runtime_path(os.environ.get("WORK_DIR", "work"), "work")
 UPLOADS_DIR = WORK_DIR / "uploads"
 RESULTS_DIR = WORK_DIR / "results"
 LOGS_DIR = WORK_DIR / "logs"
 
-TEMPLATE_DIR = _resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
-DATA_DIR = _resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
+TEMPLATE_DIR = resolve_runtime_path(os.environ.get("TEMPLATE_DIR", "templates"), "templates")
+DATA_DIR = resolve_runtime_path(os.environ.get("DATA_DIR", "data"), "data")
 ICD10_MAPPING_PATH = DATA_DIR / "icd10_jp_mapping.json"
 
-_PLAYWRIGHT_CACHE_DIR = _resolve_runtime_path(
+_PLAYWRIGHT_CACHE_DIR = resolve_runtime_path(
     os.environ.get("PLAYWRIGHT_CACHE_DIR", str(WORK_DIR / ".cache" / "playwright")),
     str(WORK_DIR / ".cache" / "playwright"),
 )
@@ -90,7 +96,12 @@ def _load_icd10_descriptions() -> dict[str, str]:
         return {}
 
 
-humandbs_web_base_url = os.environ.get("HUMANDBS_API_ORIGIN", "https://humandbs.dbcls.jp/").rstrip("/")
+def get_humandbs_web_origin() -> str:
+    origin = os.environ.get("HUMANDBS_WEB_ORIGIN") or "https://humandbs.dbcls.jp/"
+    return origin.rstrip("/")
+
+
+humandbs_web_base_url = get_humandbs_web_origin()
 
 
 async def extract_text_from_pdf(file_path: str, task_id: str = None) -> str:
@@ -171,7 +182,7 @@ async def extract_text_with_ocr(file_path: str, task_id: str = None) -> str:
 
 async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     """Extract application data from PDF file"""
-    from src.services.llm_service import extract_output_from_openai
+    from src.services.google_genai_service import extract_structured_output
 
     # Get application ID for logging
     task_id = None
@@ -179,10 +190,10 @@ async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     # Extract text using the unified function
     pdf_content = await extract_text_from_pdf(file_path, task_id)
 
-    # Extract data using OpenAI
+    # Extract data using Gemini
     prompt = load_prompt("application_form_extraction.txt", pdf_content=pdf_content)
 
-    result = await extract_output_from_openai(prompt, ApplicationData)
+    result = await extract_structured_output(prompt, ApplicationData)
     task_id = result.application_id if result.application_id else None
 
     # 所属機関の長に関しては、所属機関情報が申請書に書かれていないため研究代表者の情報をコピー
@@ -248,15 +259,15 @@ def extract_task_id_from_filename(filename: str) -> str:
 
 async def extract_ethics_document_info(file_path: str) -> EthicsDocumentInfo:
     """Extract ethics document information from PDF file"""
-    from src.services.llm_service import extract_output_from_openai
+    from src.services.google_genai_service import extract_structured_output
 
     # Extract text using the unified function
     pdf_content = await extract_text_from_pdf(file_path)
 
-    # Extract data using OpenAI
+    # Extract data using Gemini
     prompt = load_prompt("ethics_document_extraction.txt", pdf_content=pdf_content)
 
-    result = await extract_output_from_openai(prompt, EthicsDocumentInfo)
+    result = await extract_structured_output(prompt, EthicsDocumentInfo)
     return result
 
 
@@ -495,7 +506,7 @@ async def _fetch_with_playwright_impl(
             task_logger.info(f"Successfully navigated to {url}")
             if convert_to_markdown:
                 html = await page.content()
-                text = Html2TextTransformer().transform_documents([Document(page_content=html)])[0].page_content
+                text = _html_to_markdown(html)
             else:
                 # Get only the visible text content directly
                 text = await page.inner_text("body")

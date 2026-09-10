@@ -236,14 +236,14 @@ class SubmissionApplicationFormData(BaseModel):
     data_type_is_unrestricted: bool | None = Field(None, description="Type of dataが「非制限」を含むかどうか")
     projected_release_date: str | None = Field(None, description="データ公開予定日")
     type_of_study: str | None = Field(None, description="Type of studyの値")
-    target_region_is_limited: bool = Field(
+    target_region_is_limited: bool | None = Field(
         None,
         description="Type of studyがTarget CaptureやVisium解析など、解析対象の領域が限定されていると判断されるかどうか",
     )
     target_region: str | None = Field(None, description="対象領域（解析対象の領域が限定されている場合）")
-    file_format: str = Field(None, description="ファイル形式")
+    file_format: str | None = Field(None, description="ファイル形式")
     total_data_amount: str | None = Field(None, description="総データ量")
-    total_data_amount_is_valid: bool = Field(None, description="総データ量が数値＋単位で記載されているか")
+    total_data_amount_is_valid: bool | None = Field(None, description="総データ量が数値＋単位で記載されているか")
     guidelines_confirmation: str | None = Field(None, description="NBDCガイドライン確認状況")
     research_title_jp: str | None = Field(None, description="提供データを取得した研究題目（日本語）")
     research_title_en: str | None = Field(None, description="提供データを取得した研究題目（英語）")
@@ -309,6 +309,9 @@ class PhoneConsistencyResult(BaseModel):
     head_phone_is_representative_number: bool | None = Field(
         None,
         description="Whether the head of institution's phone number is the representative number of the organization",
+    )
+    head_phone_difference_message: str | None = Field(
+        None, description="Explanation when the head of institution's phone number differs from the others"
     )
 
 
@@ -423,6 +426,11 @@ class ApplicationData(BaseModel):
 
 class ApplicationVerificationData(ApplicationData):
     application_type: str = Field(..., description="Type of application (e.g., 利用申請, 提供申請)")
+
+    abstract_icd10_list: list[str] = Field(
+        ...,
+        description="ICD-10 codes suggested from the research abstract",
+    )
 
     research_abstract_translation: ResearchAbstractTranslation | None = Field(
         None,
@@ -577,7 +585,7 @@ class ICD10TargetRelevance(BaseModel):
 
 
 class ICD10Suggestion(BaseModel):
-    icd10_code_list: list[str] = Field(..., description="ICD-10 codes suggested by OpenAI")
+    icd10_code_list: list[str] = Field(..., description="ICD-10 codes")
 
 
 class ResearchInfoSuggestionResult(ICD10Suggestion):

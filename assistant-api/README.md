@@ -1,6 +1,6 @@
 # HumanDBs Assistant API
 
-開発用のサイドカーとして申請書 PDF を処理し、ポータルの proxy から呼ばれる API を提供する。構造化抽出には Azure OpenAI、確認には Google GenAI と Custom Search、OCR には Document AI、データセットのメタデータには公開 HumanDBs API を使う。
+開発用のサイドカーとして申請書 PDF を処理し、ポータルの proxy から呼ばれる API を提供する。構造化抽出と確認には Google GenAI、検索には Custom Search、OCR には Document AI、データセットのメタデータには公開 HumanDBs API を使う。
 
 ## テスト
 
@@ -18,7 +18,7 @@ docker compose exec assistant-api uv run --extra dev pytest
 
 | 確認する機能 | 到達する外部サービス | 必要な設定 |
 |---|---|---|
-| 申請書・倫理審査書の構造化抽出、内容の検証 | Azure OpenAI | `HUMANDBS_ASSISTANT_AZURE_OPENAI_API_KEY`、`HUMANDBS_ASSISTANT_AZURE_OPENAI_ENDPOINT`、モデルと API version |
+| 申請書・倫理審査書の構造化抽出、内容の検証 | Vertex AI の Google GenAI | `gcp-credentials.json`、`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID`、必要に応じて `HUMANDBS_ASSISTANT_GOOGLE_GENAI_MODEL` |
 | 研究者・所属・メールアドレス・電話番号・住所の確認 | Vertex AI の Google GenAI。Google Search または Google Maps grounding を使用する | `gcp-credentials.json`、`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID` |
 | PDF を OCR する処理 | Document AI | `gcp-credentials.json`、`HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID`、`HUMANDBS_ASSISTANT_DOCUMENT_AI_PROCESSOR_ID` |
 | データセット情報の取得 | 同一 compose 内のポータル (`http://app:5173`) の公開 HumanDBs API | `assistant-api` と `app` を起動する |

@@ -7,12 +7,18 @@ import uvicorn
 import yaml  # Added PyYAML for YAML serialization
 from docx import Document
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from src.services.assessment_service import create_assessment_report, create_handout
-from src.tasks import add_datasets_to_application_task, process_application_task, remove_dataset_from_application_task
+from src.services.assessment_service import assessment_data, create_handout
+from src.tasks import (
+    add_datasets_to_application_task,
+    mark_application_processing,
+    process_application_task,
+    remove_dataset_from_application_task,
+)
 from src.utils import (
     determine_application_type_from_filename,
     ensure_runtime_directories,
@@ -33,6 +39,18 @@ class AddDatasetsRequest(BaseModel):
 
 class RemoveDatasetRequest(BaseModel):
     dataset_id: str
+
+
+def _ensure_usage_application(task_id: str) -> None:
+    yaml_path = get_task_result_path(task_id)
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Application {task_id} not found")
+    with open(yaml_path, encoding="utf-8") as f:
+        application_data = yaml.safe_load(f) or {}
+    if not isinstance(application_data, dict):
+        raise ValueError(f"Application {task_id} has invalid result data")
+    if application_data.get("application_type") != "利用申請":
+        raise HTTPException(status_code=400, detail="データセットの追加・削除は利用申請でのみ実行できます")
 
 
 # Configure the root logger
@@ -109,7 +127,7 @@ async def submit_application(
 
 
 async def process_application(application_file_path: str, background_tasks: BackgroundTasks):
-    task_arguments = prepare_application_processing(application_file_path)
+    task_arguments = await prepare_application_processing(application_file_path)
     background_tasks.add_task(process_application_task, *task_arguments)
 
     return {
@@ -118,7 +136,9 @@ async def process_application(application_file_path: str, background_tasks: Back
     }
 
 
-def prepare_application_processing(application_file_path: str) -> tuple[str, str, str, str | None, str | None, str]:
+async def prepare_application_processing(
+    application_file_path: str,
+) -> tuple[str, str, str, str | None, str | None, str]:
     ensure_runtime_directories()
 
     # create str yyyy-mm-dd-hh-mm-ss with JST timezone
@@ -142,11 +162,6 @@ def prepare_application_processing(application_file_path: str) -> tuple[str, str
         task_id = extract_task_id_from_filename(filename)
         output_path = str(get_task_result_path(task_id))
 
-        if os.path.exists(output_path):
-            with open(output_path, encoding="utf-8") as f:
-                existing_data = yaml.safe_load(f)
-            created_at = existing_data["created_at"]
-
         application_type = determine_application_type_from_filename(filename)
 
         # Store result
@@ -160,9 +175,7 @@ def prepare_application_processing(application_file_path: str) -> tuple[str, str
             "application_type": application_type,
         }
 
-        # Save result to a file or database
-        with open(get_task_result_path(task_id), "w", encoding="utf-8") as f:
-            yaml.dump(result, f, allow_unicode=True, sort_keys=False)
+        await mark_application_processing(task_id, result)
 
         return task_id, filename, output_path, ethics_file_path, research_plan_file_path, application_type
 
@@ -185,9 +198,9 @@ async def get_application_status(task_id: str):
         with open(result_path, encoding="utf-8") as f:
             result = yaml.safe_load(f)
 
-        status = "completed" if result.get("assessment") else "processing"
-        assessment = await create_assessment_report(result)
-        return {**result, "status": status, "assessment": assessment}
+        status = result.get("status", "processing")
+        report = jsonable_encoder(assessment_data(result)) if status == "completed" else None
+        return {**result, "status": status, "assessment_data": report}
 
     # Still processing
     return {"status": "processing", "task_id": task_id}
@@ -298,7 +311,7 @@ async def batch_reanalyze_task(result_files):
                 failed_tasks.append({"task_id": task_id, "error": "PDF file not found"})
                 continue
 
-            task_arguments = prepare_application_processing(str(pdf_file_path))
+            task_arguments = await prepare_application_processing(str(pdf_file_path))
             await process_application_task(*task_arguments)
             reanalyzed_tasks.append(task_id)
             logger.info(f"Successfully processed task {task_id} for reanalysis")
@@ -328,10 +341,13 @@ async def add_datasets_to_application(task_id: str, request: AddDatasetsRequest,
         Result of the dataset addition operation
     """
     try:
+        _ensure_usage_application(task_id)
         result = await add_datasets_to_application_task(task_id, request.dataset_ids)
         return result
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding datasets: {str(e)}") from e
 
@@ -348,6 +364,7 @@ async def remove_dataset_from_application(task_id: str, request: RemoveDatasetRe
         Result of the dataset removal operation
     """
     try:
+        _ensure_usage_application(task_id)
         result = await remove_dataset_from_application_task(task_id, request.dataset_id)
         if result.get("status") == "not_found":
             raise HTTPException(status_code=404, detail=result.get("message"))
