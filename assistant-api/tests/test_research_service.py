@@ -324,3 +324,24 @@ async def test_resolve_safe_grounded_url_rejects_unsuccessful_status(monkeypatch
     )
 
     assert result is None
+
+
+async def test_resolve_safe_grounded_url_rejects_request_errors(monkeypatch) -> None:
+    class FailingSession(_FakeSession):
+        def get(self, _url, allow_redirects=False):
+            assert allow_redirects is False
+            raise research_service.aiohttp.ClientError("boom")
+
+    async def safe(_url):
+        return True
+
+    monkeypatch.setattr(research_service, "_is_safe_public_url", safe)
+    monkeypatch.setattr(research_service.aiohttp, "ClientSession", FailingSession)
+
+    result = await research_service._resolve_safe_grounded_url(
+        "https://publisher.example/paper",
+        ["https://publisher.example/paper"],
+        research_service.logger,
+    )
+
+    assert result is None

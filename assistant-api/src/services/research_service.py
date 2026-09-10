@@ -197,28 +197,32 @@ async def _resolve_safe_grounded_url(
 
     current_url = normalized_source_url
     timeout = aiohttp.ClientTimeout(total=10)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        for _ in range(5):
-            if not await _is_safe_public_url(current_url):
-                task_logger.error("Rejected unsafe paper URL: %s", current_url)
-                return None
-            async with session.get(current_url, allow_redirects=False) as response:
-                if 300 <= response.status < 400:
-                    redirect_url = _normalized_http_url(urljoin(current_url, response.headers.get("Location", "")))
-                    if redirect_url is None:
-                        task_logger.error("Rejected invalid redirect for paper URL: %s", current_url)
-                        return None
-                    if redirect_url not in grounded_candidates:
-                        task_logger.error("Rejected ungrounded redirect for paper URL: %s", redirect_url)
-                        return None
-                    current_url = redirect_url
-                    continue
-                if 200 <= response.status < 300:
-                    return current_url
-                task_logger.error(
-                    "Rejected paper URL %s due to unexpected status: %s", current_url, response.status
-                )
-                return None
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            for _ in range(5):
+                if not await _is_safe_public_url(current_url):
+                    task_logger.error("Rejected unsafe paper URL: %s", current_url)
+                    return None
+                async with session.get(current_url, allow_redirects=False) as response:
+                    if 300 <= response.status < 400:
+                        redirect_url = _normalized_http_url(urljoin(current_url, response.headers.get("Location", "")))
+                        if redirect_url is None:
+                            task_logger.error("Rejected invalid redirect for paper URL: %s", current_url)
+                            return None
+                        if redirect_url not in grounded_candidates:
+                            task_logger.error("Rejected ungrounded redirect for paper URL: %s", redirect_url)
+                            return None
+                        current_url = redirect_url
+                        continue
+                    if 200 <= response.status < 300:
+                        return current_url
+                    task_logger.error(
+                        "Rejected paper URL %s due to unexpected status: %s", current_url, response.status
+                    )
+                    return None
+    except (aiohttp.ClientError, TimeoutError):
+        task_logger.exception("Failed to validate grounded paper URL: %s", current_url)
+        return None
 
     task_logger.error("Too many redirects while validating paper URL: %s", source_url)
     return None
