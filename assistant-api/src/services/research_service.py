@@ -213,7 +213,12 @@ async def _resolve_safe_grounded_url(
                         return None
                     current_url = redirect_url
                     continue
-                return current_url
+                if 200 <= response.status < 300:
+                    return current_url
+                task_logger.error(
+                    "Rejected paper URL %s due to unexpected status: %s", current_url, response.status
+                )
+                return None
 
     task_logger.error("Too many redirects while validating paper URL: %s", source_url)
     return None
