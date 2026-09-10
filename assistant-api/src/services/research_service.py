@@ -191,7 +191,6 @@ async def _resolve_safe_grounded_url(
         for normalized_url in (_normalized_http_url(url) for url in grounded_urls)
         if normalized_url is not None
     }
-    grounded_hosts = {urlparse(url).hostname for url in grounded_candidates}
     if normalized_source_url is None or normalized_source_url not in grounded_candidates:
         task_logger.error("Paper URL was not present in grounding metadata: %s", source_url)
         return None
@@ -209,8 +208,7 @@ async def _resolve_safe_grounded_url(
                     if redirect_url is None:
                         task_logger.error("Rejected invalid redirect for paper URL: %s", current_url)
                         return None
-                    redirect_host = urlparse(redirect_url).hostname
-                    if redirect_url not in grounded_candidates and redirect_host not in grounded_hosts:
+                    if redirect_url not in grounded_candidates:
                         task_logger.error("Rejected ungrounded redirect for paper URL: %s", redirect_url)
                         return None
                     current_url = redirect_url
