@@ -1,12 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { messagesFor } from "~/i18n/messages"
 
 import {
   AssistantReport,
+  assistantLoginPath,
+  assistantResponseJson,
   datasetIds,
   Datasets,
+  LatestDetailRequests,
   PersonReport,
   type AssessmentData,
 } from "./admin-assistant-client"
@@ -269,15 +272,13 @@ describe("アシスタントレポートのレイアウト", () => {
       submitter_info: { ...person, email: "submitter@example.ac.jp" },
       head_of_institution_info: { ...person, email: "head@example.ac.jp" },
     })
+    const panel = (label: string) =>
+      html.indexOf(`role="group" aria-label="${label}"`)
 
-    expect(html.match(/border-l-4/g)).toHaveLength(3)
+    expect(panel(words.researcher)).toBeGreaterThanOrEqual(0)
+    expect(panel(words.submitter)).toBeGreaterThan(panel(words.researcher))
+    expect(panel(words.institutionHead)).toBeGreaterThan(panel(words.submitter))
     expect(html).not.toContain("lg:grid-cols-3")
-    expect(html.indexOf(words.researcher)).toBeLessThan(
-      html.indexOf(words.submitter),
-    )
-    expect(html.indexOf(words.submitter)).toBeLessThan(
-      html.indexOf(words.institutionHead),
-    )
   })
 
   it("整合性の肯定・否定判定を色分けする", () => {
@@ -338,6 +339,70 @@ describe("アシスタントレポートのレイアウト", () => {
 
     expect(html).toMatch(/解析手法.*データセット.*データセット手法.*申請された研究.*申請手法.*判定.*一致 理由.*発表済み論文.*論文手法.*判定.*不一致 論文の理由/)
     expect(html).toMatch(/ICD10.*データセット.*C03.*申請された研究.*A01.*判定.*一致.*発表済み論文.*B02.*判定.*不一致/)
+  })
+})
+
+describe("アシスタント API のセッション切れ", () => {
+  it("リダイレクト応答は安全なログイン経路へ倒す", async () => {
+    const response = new Response("{}", {
+      headers: { "content-type": "application/json" },
+    })
+    Object.defineProperty(response, "redirected", { value: true })
+    const signIn = vi.fn()
+
+    await expect(
+      assistantResponseJson(response, words.loadFailed, signIn),
+    ).rejects.toThrow(words.loadFailed)
+    expect(signIn).toHaveBeenCalledOnce()
+    expect(
+      assistantLoginPath("/en/admin/assistant", "?view=processing"),
+    ).toBe(
+      "/auth/login?redirect=%2Fen%2Fadmin%2Fassistant%3Fview%3Dprocessing",
+    )
+  })
+
+  it("JSON を期待する要求の非 JSON 応答もログインへ倒す", async () => {
+    const signIn = vi.fn()
+    const response = new Response("<!doctype html><title>Sign in</title>", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    })
+
+    await expect(
+      assistantResponseJson(response, words.loadFailed, signIn),
+    ).rejects.toThrow(words.loadFailed)
+    expect(signIn).toHaveBeenCalledOnce()
+  })
+})
+
+describe("アシスタント詳細の要求順", () => {
+  it("選択後に古い選択とそのポーリングが完了しても最新詳細を保つ", async () => {
+    const requests = new LatestDetailRequests()
+    let resolveFirst!: (value: string) => void
+    let resolveSecond!: (value: string) => void
+    let resolveFirstPoll!: (value: string) => void
+    const first = requests.run(
+      "first",
+      true,
+      () => new Promise<string>((resolve) => { resolveFirst = resolve }),
+    )
+    const second = requests.run(
+      "second",
+      true,
+      () => new Promise<string>((resolve) => { resolveSecond = resolve }),
+    )
+    const firstPoll = requests.run(
+      "first",
+      false,
+      () => new Promise<string>((resolve) => { resolveFirstPoll = resolve }),
+    )
+
+    resolveSecond("second detail")
+    await expect(second).resolves.toBe("second detail")
+    resolveFirstPoll("first poll detail")
+    resolveFirst("first detail")
+    await expect(firstPoll).resolves.toBeUndefined()
+    await expect(first).resolves.toBeUndefined()
+    expect(requests.selected()).toBe("second")
   })
 })
 

@@ -19,6 +19,7 @@ import {
 } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { normalizeQuery } from "~/public/urls"
 
 import { AdminAssistantTaskDetail } from "./admin-assistant-task-detail"
 import { AdminAssistantTaskList } from "./admin-assistant-task-list"
@@ -669,13 +670,126 @@ function assessment(value: unknown): AssessmentData | undefined {
   }
 }
 
-function errorMessage(response: Response, fallback: string): Promise<string> {
-  return response
-    .json()
-    .then((body: { detail?: unknown }) =>
-      typeof body.detail === "string" ? body.detail : fallback,
+type SignInRedirect = () => void
+
+export function assistantLoginPath(pathname: string, search: string): string {
+  const query = new URLSearchParams({
+    redirect: `${pathname}${normalizeQuery(search)}`,
+  })
+  return `/auth/login?${query.toString()}`
+}
+
+function redirectToSignIn(): void {
+  window.location.assign(
+    assistantLoginPath(window.location.pathname, window.location.search),
+  )
+}
+
+function jsonResponse(response: Response): boolean {
+  const contentType = response.headers.get("content-type")?.toLowerCase()
+  return contentType?.includes("/json") === true
+    || contentType?.includes("+json") === true
+}
+
+function expiredSession(
+  response: Response,
+  requireJson: boolean,
+): boolean {
+  if (response.redirected) return true
+  if (response.status === 204) return false
+  return requireJson
+    ? !jsonResponse(response)
+    : response.headers.get("content-type")?.toLowerCase().includes("text/html")
+      === true
+}
+
+async function responseError(
+  response: Response,
+  fallback: string,
+): Promise<Error> {
+  if (!jsonResponse(response)) return new Error(fallback)
+  try {
+    const body = record(await response.json())
+    return new Error(
+      body !== undefined && typeof body.detail === "string"
+        ? body.detail
+        : fallback,
     )
-    .catch(() => fallback)
+  } catch {
+    return new Error(fallback)
+  }
+}
+
+export async function assistantResponseJson(
+  response: Response,
+  fallback: string,
+  signIn: SignInRedirect = redirectToSignIn,
+): Promise<unknown> {
+  if (expiredSession(response, true)) {
+    signIn()
+    throw new Error(fallback)
+  }
+  if (!response.ok) throw await responseError(response, fallback)
+  try {
+    return await response.json()
+  } catch {
+    throw new Error(fallback)
+  }
+}
+
+async function assistantResponse(
+  response: Response,
+  fallback: string,
+  signIn: SignInRedirect = redirectToSignIn,
+): Promise<void> {
+  if (expiredSession(response, false)) {
+    signIn()
+    throw new Error(fallback)
+  }
+  if (!response.ok) throw await responseError(response, fallback)
+}
+
+async function assistantJson(
+  path: string,
+  fallback: string,
+  init?: RequestInit,
+): Promise<unknown> {
+  return assistantResponseJson(
+    await fetch(assistantApiPath(path), init),
+    fallback,
+  )
+}
+
+async function assistantRequest(
+  path: string,
+  fallback: string,
+  init?: RequestInit,
+): Promise<void> {
+  await assistantResponse(await fetch(assistantApiPath(path), init), fallback)
+}
+
+export class LatestDetailRequests {
+  private selectedTaskId: string | null = null
+  private readonly generations = new Map<string, number>()
+
+  selected(): string | null {
+    return this.selectedTaskId
+  }
+
+  async run<T>(
+    taskId: string,
+    select: boolean,
+    request: () => Promise<T>,
+  ): Promise<T | undefined> {
+    if (select) this.selectedTaskId = taskId
+    const generation = (this.generations.get(taskId) ?? 0) + 1
+    this.generations.set(taskId, generation)
+    const result = await request()
+    return this.selectedTaskId === taskId
+      && this.generations.get(taskId) === generation
+      ? result
+      : undefined
+  }
 }
 
 export function datasetIds(value: string): string[] {
@@ -691,20 +805,26 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   const [selected, setSelected] = useState<TaskDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
-  const selectedTaskId = useRef<string | null>(null)
+  const detailRequests = useRef(new LatestDetailRequests())
   const [notice, setNotice] = useState<{ ok: boolean, text: string } | null>(
     null,
   )
 
-  const loadDetail = useCallback(async (taskId: string) => {
-    const response = await fetch(
-      assistantApiPath(`applications/${encodeURIComponent(taskId)}`),
-    )
-    if (!response.ok)
-      throw new Error(await errorMessage(response, words.loadFailed))
-    const detail = taskDetail(await response.json(), taskId)
-    if (detail === undefined) throw new Error(words.loadFailed)
-    selectedTaskId.current = taskId
+  const loadDetail = useCallback(async (taskId: string, select = false) => {
+    if (select)
+      setSelected((current) => current?.task_id === taskId ? current : null)
+    const detail = await detailRequests.current.run(taskId, select, async () => {
+      const parsed = taskDetail(
+        await assistantJson(
+          `applications/${encodeURIComponent(taskId)}`,
+          words.loadFailed,
+        ),
+        taskId,
+      )
+      if (parsed === undefined) throw new Error(words.loadFailed)
+      return parsed
+    })
+    if (detail === undefined) return
     setSelected(detail)
     setTasks((previous) =>
       previous.map((task) =>
@@ -716,10 +836,9 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   const loadTasks = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch(assistantApiPath("applications"))
-      if (!response.ok)
-        throw new Error(await errorMessage(response, words.loadFailed))
-      const body = record(await response.json())
+      const body = record(
+        await assistantJson("applications", words.loadFailed),
+      )
       const next = Array.isArray(body?.tasks)
         ? body.tasks.flatMap((value) => {
             const parsed = task(value)
@@ -727,8 +846,8 @@ export function AssistantContents({ locale }: { locale: Locale }) {
           })
         : []
       setTasks(next)
-      if (selectedTaskId.current === null && next[0] !== undefined)
-        await loadDetail(next[0].task_id)
+      if (detailRequests.current.selected() === null && next[0] !== undefined)
+        await loadDetail(next[0].task_id, true)
     } catch (error) {
       setNotice({
         ok: false,
@@ -777,20 +896,19 @@ export function AssistantContents({ locale }: { locale: Locale }) {
       form.set("application_file", application)
       if (ethics !== null) form.set("ethics_file", ethics)
       if (plan !== null) form.set("research_plan_file", plan)
-      const response = await fetch(assistantApiPath("applications"), {
-        method: "POST",
-        body: form,
-      })
-      if (!response.ok)
-        throw new Error(await errorMessage(response, words.uploadFailed))
-      const body = record(await response.json())
+      const body = record(
+        await assistantJson("applications", words.uploadFailed, {
+          method: "POST",
+          body: form,
+        }),
+      )
       const taskId = body === undefined ? undefined : field(body, "task_id")
       if (taskId === undefined) throw new Error(words.uploadFailed)
       setApplication(null)
       setEthics(null)
       setPlan(null)
       await loadTasks()
-      await loadDetail(taskId)
+      await loadDetail(taskId, true)
       setNotice({ ok: true, text: words.queued(taskId) })
     } catch (error) {
       setNotice({
@@ -803,19 +921,17 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   }
 
   const reanalyze = async () => {
-    if (selected === null) return
+    const taskId = detailRequests.current.selected()
+    if (selected?.task_id !== taskId) return
     setBusy(true)
     setNotice(null)
     try {
-      const response = await fetch(
-        assistantApiPath(
-          `applications/${encodeURIComponent(selected.task_id)}/reanalyze`,
-        ),
+      await assistantRequest(
+        `applications/${encodeURIComponent(taskId)}/reanalyze`,
+        words.reanalyzeFailed,
         { method: "POST" },
       )
-      if (!response.ok)
-        throw new Error(await errorMessage(response, words.reanalyzeFailed))
-      await loadDetail(selected.task_id)
+      await loadDetail(taskId)
       await loadTasks()
       setNotice({ ok: true, text: words.reanalyzing })
     } catch (error) {
@@ -829,26 +945,25 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   }
 
   const addDatasets = async (ids: string[]) => {
-    if (selected === null) return false
+    const taskId = detailRequests.current.selected()
+    if (selected?.task_id !== taskId) return false
     setBusy(true)
     setNotice(null)
     try {
-      const response = await fetch(
-        assistantApiPath(
-          `applications/${encodeURIComponent(selected.task_id)}/add-datasets`,
+      const result = record(
+        await assistantJson(
+          `applications/${encodeURIComponent(taskId)}/add-datasets`,
+          words.addDatasetsFailed,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dataset_ids: ids }),
+          },
         ),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataset_ids: ids }),
-        },
       )
-      if (!response.ok)
-        throw new Error(await errorMessage(response, words.addDatasetsFailed))
-      const result = record(await response.json())
       const addedCount
         = typeof result?.added_count === "number" ? result.added_count : ids.length
-      await loadDetail(selected.task_id)
+      await loadDetail(taskId)
       setNotice({ ok: true, text: words.datasetsAdded(addedCount) })
       return true
     } catch (error) {
@@ -863,23 +978,21 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   }
 
   const removeDataset = async (datasetId: string) => {
-    if (selected === null) return
+    const taskId = detailRequests.current.selected()
+    if (selected?.task_id !== taskId) return
     setBusy(true)
     setNotice(null)
     try {
-      const response = await fetch(
-        assistantApiPath(
-          `applications/${encodeURIComponent(selected.task_id)}/remove-dataset`,
-        ),
+      await assistantRequest(
+        `applications/${encodeURIComponent(taskId)}/remove-dataset`,
+        words.removeDatasetFailed,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dataset_id: datasetId }),
         },
       )
-      if (!response.ok)
-        throw new Error(await errorMessage(response, words.removeDatasetFailed))
-      await loadDetail(selected.task_id)
+      await loadDetail(taskId)
       setNotice({ ok: true, text: words.datasetRemoved(datasetId) })
     } catch (error) {
       setNotice({
@@ -917,7 +1030,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
         words={words}
         onRefresh={() => { void loadTasks() }}
         onSelect={(taskId) => {
-          void loadDetail(taskId).catch((error: unknown) => {
+          void loadDetail(taskId, true).catch((error: unknown) => {
             setNotice({
               ok: false,
               text: error instanceof Error ? error.message : words.loadFailed,
@@ -1002,7 +1115,7 @@ export function AssistantReport({
           {sameEmail
             ? (
                 <Section title={words.submitter}>
-                  <PersonPanel>
+                  <PersonPanel label={words.submitter}>
                     <p className="text-sm">{words.sameAsResearcher}</p>
                   </PersonPanel>
                 </Section>
@@ -1214,7 +1327,7 @@ export function PersonReport({
   ].filter((warning): warning is string => warning !== null)
   return (
     <Section title={title}>
-      <PersonPanel>
+      <PersonPanel label={title}>
         <Stack gap="tight">
           <Pairs>
             <KeyValue title={words.name}>
@@ -1301,9 +1414,13 @@ export function PersonReport({
   )
 }
 
-function PersonPanel({ children }: { children: ReactNode }) {
+function PersonPanel({ label, children }: { label: string, children: ReactNode }) {
   return (
-    <div className="rounded-r border-brand border-l-4 bg-surface px-4 py-3 sm:px-5">
+    <div
+      role="group"
+      aria-label={label}
+      className="rounded-r border-brand border-l-4 bg-surface px-4 py-3 sm:px-5"
+    >
       {children}
     </div>
   )
@@ -1436,19 +1553,23 @@ function Papers({
               <ExternalLink url={paper.url} words={words} />
             </Td>
             <Td>
-              {paper.handles_human_data === true
-                ? words.handlesHumanData
-                : paper.handles_human_data === false
-                  ? words.doesNotHandleHumanData
-                  : words.undecided}
-              {paper.human_data_reason && (
-                <p className="mt-1 text-sm">{paper.human_data_reason}</p>
-              )}
-              {paper.human_data_evidence && (
-                <blockquote className="mt-1 border-line border-l-2 pl-2 text-ink-muted text-sm">
-                  {paper.human_data_evidence}
-                </blockquote>
-              )}
+              <Stack gap="tight">
+                <span>
+                  {paper.handles_human_data === true
+                    ? words.handlesHumanData
+                    : paper.handles_human_data === false
+                      ? words.doesNotHandleHumanData
+                      : words.undecided}
+                </span>
+                {paper.human_data_reason && (
+                  <p className="text-sm">{paper.human_data_reason}</p>
+                )}
+                {paper.human_data_evidence && (
+                  <blockquote className="border-line border-l-2 pl-2 text-ink-muted text-sm">
+                    {paper.human_data_evidence}
+                  </blockquote>
+                )}
+              </Stack>
             </Td>
           </tr>
         ))}
@@ -1508,27 +1629,29 @@ export function Datasets({
       <Stack>
         {canManage && (
           <form onSubmit={(event) => { void add(event) }} className="rounded border border-border p-4">
-            <label htmlFor="assistant-dataset-ids" className="mb-2 block font-semibold text-sm">
-              {words.addDatasets}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <input
-                id="assistant-dataset-ids"
-                value={newDatasetIds}
-                onChange={(event) => { setNewDatasetIds(event.target.value) }}
-                placeholder={words.datasetIdsPlaceholder}
-                disabled={busy}
-                className="min-w-64 flex-1 rounded border border-border px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                disabled={busy || datasetIds(newDatasetIds).length === 0}
-                className="cursor-pointer rounded border border-brand px-3 py-2 text-brand text-sm disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busy ? words.addingDatasets : words.add}
-              </button>
-            </div>
-            <p className="mt-2 text-ink-muted text-xs">{words.datasetIdsHint}</p>
+            <Stack gap="tight">
+              <label htmlFor="assistant-dataset-ids" className="block font-semibold text-sm">
+                {words.addDatasets}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  id="assistant-dataset-ids"
+                  value={newDatasetIds}
+                  onChange={(event) => { setNewDatasetIds(event.target.value) }}
+                  placeholder={words.datasetIdsPlaceholder}
+                  disabled={busy}
+                  className="min-w-64 flex-1 rounded border border-border px-3 py-2 text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={busy || datasetIds(newDatasetIds).length === 0}
+                  className="cursor-pointer rounded border border-brand px-3 py-2 text-brand text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {busy ? words.addingDatasets : words.add}
+                </button>
+              </div>
+              <p className="text-ink-muted text-xs">{words.datasetIdsHint}</p>
+            </Stack>
           </form>
         )}
         {datasets.length === 0
@@ -2033,8 +2156,8 @@ function ValidationChecklist({
   if (checks.every((check) => check.result === undefined && !check.message))
     return null
   return (
-    <div>
-      <h3 className="mb-2 font-semibold text-sm">{title}</h3>
+    <Stack gap="tight">
+      <h3 className="font-semibold text-sm">{title}</h3>
       <Table headers={[words.content, words.result, words.message]}>
         {checks.map((check) => (
           <tr key={check.description}>
@@ -2058,7 +2181,7 @@ function ValidationChecklist({
           </tr>
         ))}
       </Table>
-    </div>
+    </Stack>
   )
 }
 
@@ -2076,8 +2199,8 @@ function PlanNotes({
     [words.cloudUse, result.cloud_use_description],
   ] as const
   return (
-    <div>
-      <h3 className="mb-2 font-semibold text-sm">{words.researchPlanNotes}</h3>
+    <Stack gap="tight">
+      <h3 className="font-semibold text-sm">{words.researchPlanNotes}</h3>
       <Table headers={[words.content, words.present, words.content]}>
         {notes.map(([label, content]) => (
           <tr key={label}>
@@ -2098,7 +2221,7 @@ function PlanNotes({
           </tr>
         ))}
       </Table>
-    </div>
+    </Stack>
   )
 }
 
@@ -2202,27 +2325,29 @@ function AbstractPanel({
 }) {
   return (
     <div className="rounded border border-line bg-surface p-3">
-      <h3 className="mb-2 font-semibold text-sm">{title}</h3>
-      <p className="whitespace-pre-wrap text-sm">
-        {sentences?.map((sentence) => (
-          <span
-            key={sentence.id}
-            data-abstract-pair-id={sentence.id}
-            tabIndex={0}
-            className={`mr-1 rounded px-1 outline-none transition-colors ${
-              activePairId === sentence.id
-                ? "bg-blue-100 text-ink"
-                : "focus-visible:ring-2 focus-visible:ring-blue-500"
-            }`}
-            onMouseEnter={() => setActivePairId?.(sentence.id)}
-            onMouseLeave={() => setActivePairId?.(undefined)}
-            onFocus={() => setActivePairId?.(sentence.id)}
-            onBlur={() => setActivePairId?.(undefined)}
-          >
-            {display(sentence.text, words)}
-          </span>
-        )) ?? display(text, words)}
-      </p>
+      <Stack gap="tight">
+        <h3 className="font-semibold text-sm">{title}</h3>
+        <p className="whitespace-pre-wrap text-sm">
+          {sentences?.map((sentence) => (
+            <span
+              key={sentence.id}
+              data-abstract-pair-id={sentence.id}
+              tabIndex={0}
+              className={`mr-1 rounded px-1 outline-none transition-colors ${
+                activePairId === sentence.id
+                  ? "bg-blue-100 text-ink"
+                  : "focus-visible:ring-2 focus-visible:ring-blue-500"
+              }`}
+              onMouseEnter={() => setActivePairId?.(sentence.id)}
+              onMouseLeave={() => setActivePairId?.(undefined)}
+              onFocus={() => setActivePairId?.(sentence.id)}
+              onBlur={() => setActivePairId?.(undefined)}
+            >
+              {display(sentence.text, words)}
+            </span>
+          )) ?? display(text, words)}
+        </p>
+      </Stack>
     </div>
   )
 }
@@ -2412,7 +2537,7 @@ function DatasetComparison({
   const withReason = (result: string, reason?: string | null) =>
     reason?.trim() ? `${result} ${reason.trim()}` : result
   return (
-    <div className="space-y-3">
+    <Stack gap="tight">
       <p>
         <strong>{words.datasetMethod}</strong>
         ：
@@ -2442,7 +2567,7 @@ function DatasetComparison({
           {withReason(paperResult, paperReason)}
         </p>
       </div>
-    </div>
+    </Stack>
   )
 }
 
