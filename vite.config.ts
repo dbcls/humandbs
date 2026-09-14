@@ -16,6 +16,6 @@ export default defineConfig({
     // The proxy passes the Host it was asked with, so a request from another
     // container arrives naming the service rather than localhost. Only the dev
     // server checks this; what is deployed is a build and serves any host.
-    allowedHosts: ["localhost", "proxy"],
+    allowedHosts: ["localhost", "proxy", "app"],
   },
 })

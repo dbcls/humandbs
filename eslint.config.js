@@ -5,7 +5,7 @@ import reactHooks from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
 export default defineConfig([
-  globalIgnores(["build/", ".react-router/", "node_modules/", "public/swagger-ui/", ".claude/"]),
+  globalIgnores(["build/", ".react-router/", "node_modules/", "public/swagger-ui/", ".claude/", "assistant-api/"]),
   {
     files: ["**/*.{js,ts,tsx}"],
     extends: [

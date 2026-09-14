@@ -7,8 +7,8 @@ from src.models import (
     EthicsDocumentValidationResult,
 )
 from src.prompts import load_prompt
+from src.services.google_genai_service import extract_structured_output
 from src.services.institution_head_verification import verify_institution_head_position
-from src.services.llm_service import extract_output_from_openai
 from src.utils import get_task_logger
 
 
@@ -45,7 +45,7 @@ class EthicsDocumentValidator:
         )
 
         # LLMで研究題目の一致チェックを実行
-        validation_result = await extract_output_from_openai(prompt, EthicsDocumentLLMValidationResult)
+        validation_result = await extract_structured_output(prompt, EthicsDocumentLLMValidationResult)
 
         if not validation_result:
             self.task_logger.warning("LLMからの応答が不正です。空の結果を返します。")

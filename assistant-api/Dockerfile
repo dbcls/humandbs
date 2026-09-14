@@ -20,12 +20,13 @@ COPY pyproject.toml .
 # Install dependencies with uv
 RUN uv pip install --system --no-cache .
 
-COPY src ./src
 COPY templates ./templates
 
 # Install playwright browsers
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
+
+COPY src ./src
 
 ENV PYTHONUNBUFFERED=1
 

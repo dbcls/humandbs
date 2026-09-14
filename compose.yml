@@ -114,18 +114,16 @@ services:
       # Where it reads the portal's own data from. The public API needs no
       # credentials, so this is the one address it is given.
       HUMANDBS_API_ORIGIN: http://app:5173
+      # Public origin used in links that people open in a browser.
+      HUMANDBS_WEB_ORIGIN: ${HUMANDBS_WEB_ORIGIN:-https://humandbs.dbcls.jp/}
       WORK_DIR: /app/work
       TEMPLATE_DIR: /app/templates
       DATA_DIR: /app/data
-      LLM_CACHE_PATH: /app/work/langchain_cache.db
       GOOGLE_GENAI_CACHE_DIR: /app/work/.cache/genai
       PLAYWRIGHT_CACHE_DIR: /app/work/.cache/playwright
-      AZURE_OPENAI_MODEL: ${HUMANDBS_ASSISTANT_AZURE_OPENAI_MODEL:-gpt-5}
-      AZURE_OPENAI_API_KEY: ${HUMANDBS_ASSISTANT_AZURE_OPENAI_API_KEY:-}
-      AZURE_OPENAI_ENDPOINT: ${HUMANDBS_ASSISTANT_AZURE_OPENAI_ENDPOINT:-}
-      OPENAI_API_VERSION: ${HUMANDBS_ASSISTANT_AZURE_OPENAI_API_VERSION:-}
       GOOGLE_APPLICATION_CREDENTIALS: /app/gcp-credentials.json
       GOOGLE_CLOUD_PROJECT_ID: ${HUMANDBS_ASSISTANT_GOOGLE_CLOUD_PROJECT_ID:-}
+      GOOGLE_GENAI_MODEL: ${HUMANDBS_ASSISTANT_GOOGLE_GENAI_MODEL:-gemini-2.5-flash}
       GOOGLE_GENAI_LOCATION: ${HUMANDBS_ASSISTANT_GOOGLE_GENAI_LOCATION:-asia-northeast1}
       GOOGLE_CLOUD_API_KEY: ${HUMANDBS_ASSISTANT_GOOGLE_CLOUD_API_KEY:-}
       GOOGLE_CSE_ID: ${HUMANDBS_ASSISTANT_GOOGLE_CSE_ID:-}
