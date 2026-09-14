@@ -355,7 +355,7 @@ async def extract_output_from_genai(
     system_message: str = None,
     logger: logging.Logger = None,
     grounding_type: str = "web_search",  # "web_search" or "map"
-) -> tuple[BaseModel, list[str]]:
+) -> tuple[BaseModel | None, list[str] | None]:
     """Extract structured output from Google Generative AI
 
     Returns:
@@ -509,7 +509,7 @@ async def retrieve_original_url(vertexai_url: str) -> str:
 async def try_to_parse_response(
     response_text: str,
     output_model: type[BaseModel],
-) -> BaseModel:
+) -> BaseModel | None:
     json_pattern = r"(\[[\s\S]*\]|\{[\s\S]*\})"
     match = re.search(json_pattern, response_text)
 
@@ -543,7 +543,7 @@ async def investigate_researcher_history(
     researcher_name: str,
     institution_name: str,
     logger: logging.Logger = None,
-) -> tuple[str, list[str]]:
+) -> tuple[str | None, list[str] | None]:
     """研究者の研究履歴を調査する関数
 
     Args:

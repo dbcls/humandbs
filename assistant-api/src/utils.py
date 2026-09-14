@@ -194,6 +194,8 @@ async def extract_application_data_from_pdf(file_path: str) -> ApplicationData:
     prompt = load_prompt("application_form_extraction.txt", pdf_content=pdf_content)
 
     result = await extract_structured_output(prompt, ApplicationData)
+    if result is None:
+        raise ValueError(f"Failed to extract application data from {file_path}")
     task_id = result.application_id if result.application_id else None
 
     # 所属機関の長に関しては、所属機関情報が申請書に書かれていないため研究代表者の情報をコピー
@@ -268,6 +270,8 @@ async def extract_ethics_document_info(file_path: str) -> EthicsDocumentInfo:
     prompt = load_prompt("ethics_document_extraction.txt", pdf_content=pdf_content)
 
     result = await extract_structured_output(prompt, EthicsDocumentInfo)
+    if result is None:
+        raise ValueError(f"Failed to extract ethics document information from {file_path}")
     return result
 
 
