@@ -17,9 +17,9 @@ import type {
   DatasetContent,
   DraftSnapshot,
   ResearchContent,
+  VersionContent,
 } from "~/content/types"
 
-import { event } from "./audit"
 import { createdAt, primaryId, updatedAt } from "./common"
 
 /**
@@ -37,50 +37,36 @@ export const research = pgTable("research", {
 })
 
 /**
- * An immutable capture of research content. A published version points at one;
- * a fix publishes a new snapshot under the same version number.
+ * A published version: the whole research as it stood, with the description of
+ * every dataset it lists written into `content`.
  *
- * Rows appear here only on publish. That, together with dataset_content, is what
- * keeps unpublished text out of every read path that does not go through a
- * draft table.
- */
-export const contentSnapshot = pgTable("content_snapshot", {
-  id: primaryId(),
-  researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
-  content: jsonb().$type<ResearchContent>().notNull(),
-}, (t) => [
-  index().on(t.researchId),
-])
-
-/**
- * A published version. The number is assigned at publish time, so drafts that
- * were never published leave no gaps, and several drafts can be open at once
- * without colliding over a number.
+ * **The row is never rewritten.** Publishing always inserts; replacing a
+ * version is the old row being deleted in the same transaction as the new one
+ * appears under its number. So no reader ever sees a version's content change
+ * underneath them, and a version needs nothing outside itself to answer for its
+ * own moment.
  *
- * Withdrawing sets `published` to false and leaves everything else alone;
- * republishing sets it back. Visibility is decided by reading this flag, never
- * by comparing against a highest version number — the numbering has no
- * guarantee of being contiguous.
+ * **Being here is what "published" means.** There is no flag — withdrawing
+ * moves the row back into `research_draft` and takes the number with it, which
+ * makes the number free to be given again.
  */
 export const researchVersion = pgTable("research_version", {
   id: primaryId(),
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   number: integer().notNull(),
-  snapshotId: uuid().notNull().references(() => contentSnapshot.id),
+  content: jsonb().$type<VersionContent>().notNull(),
   /** Defaults to today at publish time; the admin can change it. */
   releaseDate: date().notNull(),
-  published: boolean().notNull().default(true),
   updatedAt: updatedAt(),
 }, (t) => [
   unique("research_version_number_unique").on(t.researchId, t.number),
-  index().on(t.researchId, t.published),
+  index().on(t.researchId),
 ])
 
 /**
- * The identity of a dataset. Belongs to exactly one research (composition), has
- * no versions and no history: the archived data does not change, only its
- * description does, so the current description is right for every version that
- * points at it.
+ * The identity of a dataset. Belongs to exactly one research (composition) and
+ * carries no description of its own — every description lives in the version
+ * that lists it, or in the draft entry being edited.
  *
  * A dataset added by a draft shares that draft's fate until it is published,
  * which is what `originDraftId` records. Publishing clears it.
@@ -95,42 +81,8 @@ export const dataset = pgTable("dataset", {
 ])
 
 /**
- * The published description of a dataset. **The presence of the row is what
- * "this dataset is published" means** — there is no status column, and a dataset
- * no version points at any more (an orphan) keeps its row so it can be restored
- * from the admin screen.
- */
-export const datasetContent = pgTable("dataset_content", {
-  datasetId: uuid().primaryKey().references(() => dataset.id, { onDelete: "cascade" }),
-  content: jsonb().$type<DatasetContent>().notNull(),
-})
-
-/**
- * The published description a publish operation wrote over.
- *
- * A dataset has no versions, so an overwritten description is recoverable from
- * nowhere: the undo stack shares the draft's fate and is gone the moment the
- * draft is published. This is part of the trail rather than a history — it
- * carries no number, no published version points at it, and no screen shows it.
- *
- * Whole values rather than diffs, because one is 8 KB on average and restoring
- * from diffs would mean replaying them in order. Unbounded, because what bounds
- * it is how often a dataset is part of a publish: the highest number of
- * published versions any dataset is referenced by is 37.
- */
-export const replacedDatasetContent = pgTable("replaced_dataset_content", {
-  id: primaryId(),
-  datasetId: uuid().notNull().references(() => dataset.id, { onDelete: "cascade" }),
-  content: jsonb().$type<DatasetContent>().notNull(),
-  /** The publish that replaced it, which is where the actor and the time are. */
-  eventId: uuid().notNull().references(() => event.id),
-}, (t) => [
-  index().on(t.datasetId),
-])
-
-/**
  * An unpublished working copy. Several per research are allowed, which is why
- * changed datasets are recorded per draft rather than on a shared row.
+ * edited datasets are recorded per draft rather than on a shared row.
  *
  * The share token lives here rather than in a table of links: one link per
  * draft, held by whoever it was sent to. Turning sharing off and on again gives
@@ -144,12 +96,14 @@ export const researchDraft = pgTable("research_draft", {
   /** Free text for admins only. It never reaches the preview. */
   note: text().notNull().default(""),
   /**
-   * The snapshot this draft was derived from. It points at a snapshot rather
-   * than a version because a fix replaces a snapshot without changing the
-   * version number, and a draft derived before the fix must still be detected
-   * as stale.
+   * The version number this draft was copied from, when it was copied from one.
+   *
+   * **A hint for one default and nothing more.** It picks out which version the
+   * publish screen offers to replace; it does not decide what publishing does,
+   * and no check consults it. A number naming a version that is gone simply
+   * stops being offered.
    */
-  parentSnapshotId: uuid().references(() => contentSnapshot.id, { onDelete: "set null" }),
+  copiedFromNumber: integer(),
   revision: integer().notNull().default(1),
   shareToken: text().notNull().unique(),
   shareEnabled: boolean().notNull().default(false),
@@ -161,11 +115,13 @@ export const researchDraft = pgTable("research_draft", {
 ])
 
 /**
- * A dataset touched by a draft (copy-on-write): only edited datasets get a row.
+ * The description of one dataset, as this draft has it.
  *
- * `baseContent` is the published content as it stood when editing began, which
- * makes the conflict diff three-way — "what they changed" and "what I changed"
- * stay separable. It is null for a dataset the draft itself introduced.
+ * **One row per dataset the draft lists**, rather than the whole set inside the
+ * draft's content. Saving runs every time an editor touches a single dataset,
+ * and a research can list over 200 of them — writing the set each time would
+ * put a version-sized value through every keystroke's worth of work. It also
+ * keeps one dataset's conflict from becoming every dataset's conflict.
  *
  * Experiments live inside `content`, so editing one is checked against this
  * row's revision.
@@ -175,7 +131,6 @@ export const draftDatasetEntry = pgTable("draft_dataset_entry", {
   draftId: uuid().notNull().references(() => researchDraft.id, { onDelete: "cascade" }),
   datasetId: uuid().notNull().references(() => dataset.id, { onDelete: "cascade" }),
   content: jsonb().$type<DatasetContent>().notNull(),
-  baseContent: jsonb().$type<DatasetContent>(),
   revision: integer().notNull().default(1),
 }, (t) => [
   unique("draft_dataset_entry_unique").on(t.draftId, t.datasetId),

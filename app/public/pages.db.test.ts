@@ -1,10 +1,12 @@
-import { eq, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
+import { emptyDatasetContent } from "~/content/empty"
+import type { DatasetContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedDataset, seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { clearPrefix, putTestObject } from "~/files/_store"
@@ -21,6 +23,7 @@ const db = getDb()
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
+  descriptions.clear()
 })
 
 afterAll(async () => {
@@ -39,29 +42,25 @@ async function createResearch(humLabel: string): Promise<string> {
   return id
 }
 
-async function createDataset(researchId: string, label: string): Promise<string> {
-  const { id } = only(await db.insert(s.dataset).values({ researchId })
-    .returning({ id: s.dataset.id }))
-  await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId: id, isPrimary: true })
-  await db.insert(s.datasetContent).values({ datasetId: id, content: emptyDatasetContent() })
-  return id
-}
+const createDataset = (researchId: string, label: string) => seedDataset(db, researchId, label)
+
+/** What each dataset will read as in the next version published. */
+const descriptions = new Map<string, DatasetContent>()
 
 async function publish(
   researchId: string,
   number: number,
   datasetIds: string[],
-  options: { published?: boolean, releaseDate?: string } = {},
+  options: { releaseDate?: string } = {},
 ): Promise<void> {
-  const { id: snapshotId } = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: { ...emptyResearchContent(), datasetIds } })
-    .returning({ id: s.contentSnapshot.id }))
-  await db.insert(s.researchVersion).values({
+  await seedVersion(db, {
     researchId,
     number,
-    snapshotId,
-    releaseDate: options.releaseDate ?? "2020-01-01",
-    published: options.published ?? true,
+    releaseDate: options.releaseDate,
+    datasets: datasetIds.map((datasetId) => ({
+      datasetId,
+      content: descriptions.get(datasetId),
+    })),
   })
 }
 
@@ -94,7 +93,9 @@ describe("a research page", () => {
   it("does not open a withdrawn version, and does not treat it as the latest", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [])
-    await publish(researchId, 2, [], { published: false })
+    await publish(researchId, 2, [])
+    // Withdrawing takes the row away; the number stays free until it is used.
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.number, 2))
     await rebuildSearchDocs(db)
 
     expect((await researchPage({ ...ja, humId: "hum0001", wanted: "latest" })).versionNumber).toBe(1)
@@ -103,7 +104,9 @@ describe("a research page", () => {
 
   it("does not open a research whose every version is withdrawn", async () => {
     const researchId = await createResearch("hum0001")
-    await publish(researchId, 1, [], { published: false })
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    await db.delete(s.researchVersion)
     await rebuildSearchDocs(db)
 
     expect((await caught(() => researchPage({ ...ja, humId: "hum0001", wanted: "latest" }))).status)
@@ -155,8 +158,9 @@ describe("a research page", () => {
     const orphan = await createDataset(researchId, "JGAD000002")
     await publish(researchId, 1, [listed, orphan])
     await rebuildSearchDocs(db)
-    // Losing its published content is what takes a dataset off the public side.
-    await db.execute(sql`DELETE FROM dataset_content WHERE dataset_id = ${orphan}`)
+    // No version listing it any more is what takes a dataset off the public side.
+    await db.delete(s.researchVersion)
+    await publish(researchId, 1, [listed])
     await rebuildSearchDocs(db)
 
     const view = await researchPage({ ...ja, humId: "hum0001", wanted: "latest" })
@@ -183,8 +187,9 @@ describe("a release list", () => {
     const first = await createDataset(researchId, "JGAD000001")
     const second = await createDataset(researchId, "JGAD000002")
     await publish(researchId, 1, [first])
-    await publish(researchId, 2, [first, second], { published: false })
+    await publish(researchId, 2, [first, second])
     await publish(researchId, 3, [first, second])
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.number, 2))
     await rebuildSearchDocs(db)
 
     const view = await releaseListPage({ ...ja, humId: "hum0001" })
@@ -194,8 +199,7 @@ describe("a release list", () => {
   })
 
   it("is not reachable for a research with no published version", async () => {
-    const researchId = await createResearch("hum0001")
-    await publish(researchId, 1, [], { published: false })
+    await createResearch("hum0001")
     await rebuildSearchDocs(db)
 
     expect((await caught(() => releaseListPage({ ...ja, humId: "hum0001" }))).status).toBe(404)
@@ -206,7 +210,8 @@ describe("a dataset page", () => {
   it("does not open a dataset that no published version lists", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await publish(researchId, 1, [datasetId], { published: false })
+    await publish(researchId, 1, [datasetId])
+    await db.delete(s.researchVersion)
     await rebuildSearchDocs(db)
 
     expect((await caught(() => datasetPage({ ...ja, datasetId: "JGAD000001" }))).status).toBe(404)
@@ -246,8 +251,7 @@ describe("a dataset page", () => {
   it("prefers the date in the content for an id the portal issued itself", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "hum0001-NHA001")
-    await db.update(s.datasetContent)
-      .set({ content: { ...emptyDatasetContent(), releaseDate: "2021-06-30" } })
+    descriptions.set(datasetId, { ...emptyDatasetContent(), releaseDate: "2021-06-30" })
     await publish(researchId, 1, [datasetId])
     await db.insert(s.accessionDate).values({
       accession: "hum0001-NHA001",
@@ -306,9 +310,7 @@ describe("the download list", () => {
   it("keeps only the dataset selections the box holds", async () => {
     const researchId = await createResearch(HUM)
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await db.update(s.datasetContent)
-      .set({ content: { ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] } })
-      .where(eq(s.datasetContent.datasetId, datasetId))
+    descriptions.set(datasetId, { ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] })
     await publish(researchId, 1, [datasetId])
     await rebuildSearchDocs(db)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`, "1")

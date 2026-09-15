@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { grantAdmin } from "~/auth/admins.server"
@@ -7,6 +8,7 @@ import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/emp
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedVersion } from "~/db/seed"
 
 import { createResearchWithDraft, saveDraftContent } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
@@ -356,8 +358,6 @@ describe("saving a draft", () => {
     const other = await createResearchWithDraft(db)
     const stranger = only(await db.insert(s.dataset).values({ researchId: other.researchId })
       .returning({ id: s.dataset.id }))
-    await db.insert(s.datasetContent)
-      .values({ datasetId: stranger.id, content: emptyDatasetContent() })
     const input = draftInput()
     input.content.datasetIds = [stranger.id]
 
@@ -527,9 +527,13 @@ describe("the dataset screens of a draft", () => {
     const row = only(await db.insert(s.dataset).values({ researchId })
       .returning({ id: s.dataset.id }))
     if (published) {
-      await db.insert(s.datasetContent).values({
-        datasetId: row.id,
-        content: { ...emptyDatasetContent(), releaseDate: "2024-03-01" },
+      await seedVersion(db, {
+        researchId,
+        number: 1,
+        datasets: [{
+          datasetId: row.id,
+          content: { ...emptyDatasetContent(), releaseDate: "2024-03-01" },
+        }],
       })
     }
     return row.id
@@ -738,7 +742,9 @@ describe("the dataset screens of a draft", () => {
     expect(view.rows[0]?.isOwn).toBe(true)
 
     const datasetId = view.rows[0]?.id ?? ""
-    await db.insert(s.datasetContent).values({ datasetId, content: emptyDatasetContent() })
+    // Publishing is what clears `originDraftId`; after that the draft that made
+    // it may no longer destroy it.
+    await db.update(s.dataset).set({ originDraftId: null }).where(eq(s.dataset.id, datasetId))
     expect(await draftDatasetListAction(
       postForm(token, "/x", { intent: "delete-dataset", datasetId, revision: String(view.revision) }),
       "ja",

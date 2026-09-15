@@ -16,7 +16,6 @@
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
 import { datasetProblems, researchProblems, type Language } from "./flags"
-import { isEmptyThreeWay, type ThreeWay } from "./merge"
 
 /** Only the accessions the application system is the authority for. */
 export const CHECKED_ACCESSION = /^JGA[DS]\d+$/
@@ -34,8 +33,6 @@ export type GateFinding
     | { kind: "untranslated", subject: GateSubject, path: string, missing: Language }
     | { kind: "empty-dataset", datasetId: string }
     | { kind: "dropped-dataset", datasetId: string }
-    /** Somebody published over this dataset after the draft started editing it. */
-    | { kind: "upstream-edited", datasetId: string, theirs: number, both: number }
     | { kind: "pin-unknown-upstream", datasetId: string, label: string }
     | { kind: "pin-disagrees-upstream", datasetId: string, label: string, upstreamHumLabel: string }
     /** A file this dataset selects is in the private bucket, so a reader would not get it. */
@@ -48,7 +45,6 @@ export const GATE_FINDING_KINDS: readonly GateFindingKind[] = [
   "untranslated",
   "empty-dataset",
   "dropped-dataset",
-  "upstream-edited",
   "pin-unknown-upstream",
   "pin-disagrees-upstream",
   "private-file",
@@ -60,8 +56,6 @@ export interface GateDataset {
   label: string | null
   /** What publishing would leave as the description. Null means there is none. */
   content: DatasetContent | null
-  /** Set when the draft edited it and the published description moved since. */
-  upstream: ThreeWay | null
 }
 
 export interface GateInput {
@@ -141,17 +135,6 @@ function findingsOf(input: GateInput): GateFinding[] {
     .filter((datasetId) => !listed.has(datasetId))
     .map((datasetId) => ({ kind: "dropped-dataset", datasetId }))
 
-  const edited: GateFinding[] = input.datasets.flatMap((dataset) => {
-    const upstream = dataset.upstream
-    if (upstream === null || isEmptyThreeWay(upstream)) return []
-    return [{
-      kind: "upstream-edited" as const,
-      datasetId: dataset.datasetId,
-      theirs: upstream.theirs.length,
-      both: upstream.both.length,
-    }]
-  })
-
   const privateFiles: GateFinding[] = input.datasets.flatMap((dataset) =>
     (dataset.content?.fileSelection ?? [])
       .filter((fileName) => input.privateFiles.has(fileName))
@@ -166,7 +149,6 @@ function findingsOf(input: GateInput): GateFinding[] {
     ...untranslated,
     ...empty,
     ...dropped,
-    ...edited,
     ...pinFindings(input),
     ...privateFiles,
   ]

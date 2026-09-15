@@ -31,18 +31,22 @@
  * back — so the two cannot drift.
  */
 
-import { and, eq, inArray } from "drizzle-orm"
+import { inArray } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
 import { publicDataset, publicResearchContent, PUBLISHED, type CatalogKey } from "~/content/public"
-import type { DatasetContent, ResearchContent, Slot, TranslatedText, ValueSlot } from "~/content/types"
+import type {
+  DatasetContent,
+  Slot,
+  TranslatedText,
+  ValueSlot,
+  VersionContent,
+} from "~/content/types"
+import { descriptionOf, draftContentOf } from "~/content/version"
 import type { Executor } from "~/db/client.server"
 import {
   accessionDate,
   contentKey,
-  contentSnapshot,
-  dataset,
-  datasetContent,
   labelPin,
   research,
   researchVersion,
@@ -95,6 +99,20 @@ function earliest(dates: string[]): string | null {
 
 function latest(dates: string[]): string | null {
   return dates.length === 0 ? null : dates.reduce((a, b) => (a > b ? a : b))
+}
+
+/** The highest-numbered version of each research among the rows given. */
+function newestPerResearch<T extends { researchId: string, number: number }>(
+  versions: readonly T[],
+): T[] {
+  const newest = new Map<string, T>()
+  for (const version of versions) {
+    const held = newest.get(version.researchId)
+    if (held === undefined || version.number > held.number) {
+      newest.set(version.researchId, version)
+    }
+  }
+  return [...newest.values()]
 }
 
 /** Every value slot a dataset carries, its own and its experiments'. */
@@ -241,21 +259,23 @@ export async function rebuildSearchDocs(
       researchId: researchVersion.researchId,
       number: researchVersion.number,
       releaseDate: researchVersion.releaseDate,
-      content: contentSnapshot.content,
+      content: researchVersion.content,
     })
     .from(researchVersion)
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-    .where(and(eq(researchVersion.published, true), within(researchVersion.researchId)))
+    .where(within(researchVersion.researchId))
 
-  const datasets = await db
-    .select({
-      id: dataset.id,
-      researchId: dataset.researchId,
-      content: datasetContent.content,
-    })
-    .from(datasetContent)
-    .innerJoin(dataset, eq(dataset.id, datasetContent.datasetId))
-    .where(within(dataset.researchId))
+  // **The newest version is what describes a dataset here.** Every version
+  // carries the descriptions it published, but a dataset has one row and one
+  // address — so the row takes the description a reader arriving without a
+  // version number gets. Older versions keep theirs; nothing reads them back
+  // out except the version's own page, which lists identities rather than
+  // descriptions.
+  const datasets = newestPerResearch(versions).flatMap((version) =>
+    version.content.datasets.map((row) => ({
+      id: row.datasetId,
+      researchId: version.researchId,
+      content: descriptionOf(row),
+    })))
 
   // The archive owns the dates of an accession it issued; the content carries
   // one only for an id the portal issued itself. Which of the two applies is
@@ -302,7 +322,7 @@ export async function rebuildSearchDocs(
     const held = versionsByResearch.get(version.researchId) ?? []
     held.push(version)
     versionsByResearch.set(version.researchId, held)
-    for (const id of (version.content).datasetIds) listedDatasetIds.add(id)
+    for (const row of version.content.datasets) listedDatasetIds.add(row.datasetId)
   }
 
   // Datasets first: a research row carries the text and the facets of the ones
@@ -312,6 +332,12 @@ export async function rebuildSearchDocs(
     id: string
     researchId: string
     label: string
+    /**
+     * What the version says about it, unprojected. **The published row carries
+     * the content rather than the public representation**: what the catalog
+     * hides is still content, and the screens asking "is this key still in use"
+     * would find nothing if the row had already dropped it.
+     */
     content: DatasetContent
     /** As the projection resolved them, which is the only place they are decided. */
     dates: { datePublished: string | null, dateModified: string | null }
@@ -350,10 +376,10 @@ export async function rebuildSearchDocs(
     held.push(text)
     datasetTextByResearch.set(row.researchId, held)
   }
-  const datasetLabelsOfVersion = (content: ResearchContent): string[] =>
-    content.datasetIds.flatMap((id) => {
-      const label = datasetLabelOf.get(id)
-      return label !== undefined && listedDatasetIds.has(id) ? [label] : []
+  const datasetLabelsOfVersion = (content: VersionContent): string[] =>
+    content.datasets.flatMap((row) => {
+      const label = datasetLabelOf.get(row.datasetId)
+      return label === undefined ? [] : [label]
     })
 
   type DocRow = typeof searchDoc.$inferInsert
@@ -368,7 +394,8 @@ export async function rebuildSearchDocs(
     const humLabel = humLabelOf.get(row.id)
     if (!held || held.length === 0 || !humLabel) continue
     const current = held.reduce((a, b) => (a.number > b.number ? a : b))
-    const content = publicResearchContent(current.content, PUBLISHED)
+    const body = draftContentOf(current.content)
+    const content = publicResearchContent(body, PUBLISHED)
     const title = titleOf(content.title)
     titleOfResearch.set(row.id, title)
     const dates = held.map((v) => v.releaseDate)
@@ -378,6 +405,7 @@ export async function rebuildSearchDocs(
       targetId: row.id,
       researchId: row.id,
       humLabel,
+      content: body,
       title,
       datePublished: earliest(dates),
       dateModified: latest(dates),
@@ -401,6 +429,7 @@ export async function rebuildSearchDocs(
       researchId: version.researchId,
       humLabel,
       versionNumber: version.number,
+      content: draftContentOf(version.content),
       title: titleOfResearch.get(version.researchId) ?? "",
       datePublished: version.releaseDate,
       dateModified: version.releaseDate,
@@ -422,6 +451,7 @@ export async function rebuildSearchDocs(
       researchId: row.researchId,
       humLabel,
       datasetLabel: row.label,
+      content: row.content,
       title: titleOfResearch.get(row.researchId) ?? "",
       datePublished: row.dates.datePublished,
       dateModified: row.dates.dateModified,

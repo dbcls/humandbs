@@ -16,7 +16,7 @@
  * a secondary label to its primary one.
  */
 
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 
 import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
@@ -24,8 +24,6 @@ import type { Executor } from "~/db/client.server"
 import {
   cauEntry,
   contentKey,
-  contentSnapshot,
-  datasetContent,
   humAccession,
   labelPin,
   researchVersion,
@@ -97,11 +95,12 @@ export async function publishedVersions(
       versionId: researchVersion.id,
       number: researchVersion.number,
       releaseDate: researchVersion.releaseDate,
-      content: contentSnapshot.content,
+      // The row is filtered to `research-version`, which is what says the
+      // column holds a body rather than a description.
+      content: sql<ResearchContent>`${searchDoc.content}`,
     })
     .from(searchDoc)
     .innerJoin(researchVersion, eq(researchVersion.id, searchDoc.targetId))
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
     .where(and(
       eq(searchDoc.targetType, "research-version"),
       eq(searchDoc.researchId, researchId),
@@ -132,10 +131,9 @@ export async function publishedDatasets(
       datasetId: searchDoc.targetId,
       label: searchDoc.datasetLabel,
       datePublished: searchDoc.datePublished,
-      content: datasetContent.content,
+      content: sql<DatasetContent>`${searchDoc.content}`,
     })
     .from(searchDoc)
-    .innerJoin(datasetContent, eq(datasetContent.datasetId, searchDoc.targetId))
     .where(and(
       eq(searchDoc.targetType, "dataset"),
       inArray(searchDoc.targetId, [...datasetIds]),
@@ -172,11 +170,10 @@ export async function publishedDataset(
       humLabel: searchDoc.humLabel,
       datePublished: searchDoc.datePublished,
       dateModified: searchDoc.dateModified,
-      content: datasetContent.content,
+      content: sql<DatasetContent>`${searchDoc.content}`,
       studyAccession: humAccession.study,
     })
     .from(searchDoc)
-    .innerJoin(datasetContent, eq(datasetContent.datasetId, searchDoc.targetId))
     // The cache is keyed by the accession, which is what the label is for a
     // dataset registered in JGA; for anything else the join simply finds nothing.
     .leftJoin(humAccession, eq(humAccession.accession, searchDoc.datasetLabel))

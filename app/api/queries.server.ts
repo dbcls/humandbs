@@ -11,15 +11,13 @@
  * follow and the reason a draft cannot reach an answer.
  */
 
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 
 import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import {
   cauEntry,
-  contentSnapshot,
-  datasetContent,
   humAccession,
   labelPin,
   researchVersion,
@@ -82,11 +80,10 @@ export async function researchBundles(
       researchId: searchDoc.researchId,
       number: researchVersion.number,
       releaseDate: researchVersion.releaseDate,
-      content: contentSnapshot.content,
+      content: sql<ResearchContent>`${searchDoc.content}`,
     })
     .from(searchDoc)
     .innerJoin(researchVersion, eq(researchVersion.id, searchDoc.targetId))
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
     .where(and(
       eq(searchDoc.targetType, "research-version"),
       inArray(searchDoc.researchId, ids),
@@ -125,10 +122,9 @@ export async function datasetBundles(
       humLabel: searchDoc.humLabel,
       datePublished: searchDoc.datePublished,
       dateModified: searchDoc.dateModified,
-      content: datasetContent.content,
+      content: sql<DatasetContent>`${searchDoc.content}`,
     })
     .from(searchDoc)
-    .innerJoin(datasetContent, eq(datasetContent.datasetId, searchDoc.targetId))
     .where(datasetIds === null
       ? eq(searchDoc.targetType, "dataset")
       : and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.targetId, [...datasetIds])))

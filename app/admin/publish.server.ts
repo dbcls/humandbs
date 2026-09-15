@@ -1,53 +1,53 @@
 /**
  * Publishing a draft, and taking a version back.
  *
- * One transaction does the lot: the gate is checked, the descriptions are
- * written, the version is pinned, the trail is written, the draft is consumed
- * and the search rows are derived again. **There is no moment at which
- * something is published but not yet findable** — the rows the public side
- * reads are built here, so "not propagated yet" is not a state that exists.
+ * One transaction does the lot: the gate is checked, the draft is folded into a
+ * single version row, the trail is written, the draft is consumed and the
+ * search rows are derived again. **There is no moment at which something is
+ * published but not yet findable** — the rows the public side reads are built
+ * here, so "not propagated yet" is not a state that exists.
+ *
+ * **A version row is never rewritten.** Publishing always inserts; taking a
+ * number that is already in use deletes the row holding it in the same
+ * transaction. A reader sees either the old version or the new one and never a
+ * row changing underneath them, which leaves the screen free to call it
+ * "updating v2".
  *
  * The draft is consumed rather than kept. A version that also survived as a
  * draft would be the same content in two places with nothing to say which is
- * the real one; continuing means taking a new draft from the version that was
- * just published.
+ * the real one; continuing means copying a version into a new draft.
  *
- * **What a publish writes over, it keeps.** A dataset has no versions, so the
- * description it replaces would otherwise be recoverable from nowhere — the
- * undo stack goes with the draft. The old value is written to the trail beside
- * the event that replaced it.
- *
- * Publishing writes the draft as it stands and merges nothing, even where
- * somebody else has published over the same dataset in the meantime. A draft
- * carries a share link, and the preview a data provider approved has to be what
- * goes out; the gate lists what would be written over so the author can take it
- * into the draft first.
+ * Publishing writes the draft as it stands and merges nothing. A draft carries
+ * a share link, and the preview a data provider approved has to be what goes
+ * out; taking somebody else's work in is an edit, made before publishing.
  */
 
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyDatasetContent } from "~/content/empty"
-import type { DatasetContent, ResearchContent } from "~/content/types"
+import type {
+  DatasetContent,
+  PublishedDataset,
+  ResearchContent,
+  VersionContent,
+} from "~/content/types"
+import { describedBy, draftContentOf } from "~/content/version"
 import type { Database, Transaction } from "~/db/client.server"
 import {
-  contentSnapshot,
   dataset,
-  datasetContent,
   draftDatasetEntry,
   humAccession,
   labelPin,
-  replacedDatasetContent,
   researchDraft,
   researchVersion,
 } from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { diffDatasetInput } from "./dataset-diff"
-import { isPortalIssuedId } from "./labels"
 import { datasetContentInput } from "./dataset-form"
 import { diffDraftInput } from "./diff"
-import { consumeDraft, type DraftAt } from "./drafts.server"
+import { consumeDraft, draftFromVersion, type DraftAt } from "./drafts.server"
 import { researchContentInput } from "./form"
 import {
   countFindings,
@@ -57,17 +57,17 @@ import {
   type GateFinding,
   type PublishGate,
 } from "./gate"
-import { threeWayDataset, type ThreeWay } from "./merge"
-
-export type PublishMode
-  /** A new version. Its number is decided here, which is why drafts leave no gaps. */
-  = | { kind: "version", releaseDate: string }
-    /** The same number, a different snapshot behind it. */
-    | { kind: "fix" }
+import { isPortalIssuedId } from "./labels"
 
 export interface PublishRequest {
   at: DraftAt
-  mode: PublishMode
+  /**
+   * The number this version will carry. One that a version holds now replaces
+   * that version; the next unused one starts a new version.
+   */
+  number: number
+  /** The day the version says it went out. */
+  releaseDate: string
   /** The administrator has seen the listed findings and passed them. */
   acknowledged: boolean
   /**
@@ -80,43 +80,37 @@ export interface PublishRequest {
 }
 
 export type PublishOutcome
-  = | { status: "published", versionNumber: number }
+  = | { status: "published", versionNumber: number, replaced: boolean }
     | { status: "blocked", blocks: GateBlock[] }
     | { status: "unacknowledged", findings: GateFinding[] }
     | { status: "conflict" }
     | { status: "gone" }
-    /** A fix replaces the version the draft came from, and this one came from none. */
-    | { status: "no-parent" }
+    /** A number no version holds, that nothing issued, and that is not next. */
+    | { status: "number-unavailable" }
 
-export type VisibilityOutcome
-  = | { status: "changed" }
-    /** Already the way it was asked to be, so nothing was written or recorded. */
-    | { status: "unchanged" }
+export type WithdrawOutcome
+  = | { status: "withdrawn", draftId: string }
     | { status: "gone" }
 
 interface DraftRow {
   id: string
   researchId: string
   content: ResearchContent
-  parentSnapshotId: string | null
+  copiedFromNumber: number | null
   revision: number
 }
 
 interface VersionRow {
   id: string
   number: number
-  published: boolean
-  /** The day it went out. A fix keeps it, which is why it is read here. */
+  /** The day it went out. Replacing it offers this back, so it is read here. */
   releaseDate: string
-  snapshotId: string
-  content: ResearchContent
-  datasetIds: string[]
+  content: VersionContent
 }
 
 interface DatasetRow {
   id: string
   label: string | null
-  published: DatasetContent | null
   originDraftId: string | null
 }
 
@@ -134,7 +128,8 @@ interface Ground {
   draft: DraftRow
   humLabel: string | null
   datasets: Map<string, DatasetRow>
-  entries: Map<string, { content: DatasetContent, baseContent: DatasetContent | null }>
+  entries: Map<string, DatasetContent>
+  /** Newest number first. */
   versions: VersionRow[]
   upstreamHumLabelOf: Map<string, string>
 }
@@ -149,7 +144,7 @@ async function readGround(
       id: researchDraft.id,
       researchId: researchDraft.researchId,
       content: researchDraft.content,
-      parentSnapshotId: researchDraft.parentSnapshotId,
+      copiedFromNumber: researchDraft.copiedFromNumber,
       revision: researchDraft.revision,
     })
     .from(researchDraft)
@@ -175,7 +170,6 @@ async function readGround(
       id: dataset.id,
       originDraftId: dataset.originDraftId,
       label: labelPin.label,
-      published: datasetContent.content,
     })
     .from(dataset)
     .leftJoin(labelPin, and(
@@ -183,13 +177,11 @@ async function readGround(
       eq(labelPin.kind, "dataset"),
       eq(labelPin.isPrimary, true),
     ))
-    .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
     .where(eq(dataset.researchId, draft.researchId))
   const entryRows = await tx
     .select({
       datasetId: draftDatasetEntry.datasetId,
       content: draftDatasetEntry.content,
-      baseContent: draftDatasetEntry.baseContent,
     })
     .from(draftDatasetEntry)
     .where(eq(draftDatasetEntry.draftId, draftId))
@@ -197,13 +189,10 @@ async function readGround(
     .select({
       id: researchVersion.id,
       number: researchVersion.number,
-      published: researchVersion.published,
       releaseDate: researchVersion.releaseDate,
-      snapshotId: researchVersion.snapshotId,
-      content: contentSnapshot.content,
+      content: researchVersion.content,
     })
     .from(researchVersion)
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
     .where(eq(researchVersion.researchId, draft.researchId))
     .orderBy(desc(researchVersion.number))
   const upstreamRows = await tx
@@ -213,25 +202,9 @@ async function readGround(
   return {
     draft,
     humLabel: humLabels[0]?.label ?? null,
-    datasets: new Map(datasetRows.map((row) => [row.id, {
-      id: row.id,
-      label: row.label,
-      published: row.published,
-      originDraftId: row.originDraftId,
-    }])),
-    entries: new Map(entryRows.map((row) => [row.datasetId, {
-      content: row.content,
-      baseContent: row.baseContent,
-    }])),
-    versions: versionRows.map((row) => ({
-      id: row.id,
-      number: row.number,
-      published: row.published,
-      releaseDate: row.releaseDate,
-      snapshotId: row.snapshotId,
-      content: row.content,
-      datasetIds: row.content.datasetIds,
-    })),
+    datasets: new Map(datasetRows.map((row) => [row.id, row])),
+    entries: new Map(entryRows.map((row) => [row.datasetId, row.content])),
+    versions: versionRows,
     upstreamHumLabelOf: new Map(upstreamRows.map((row) => [row.accession, row.humLabel])),
   }
 }
@@ -239,72 +212,74 @@ async function readGround(
 /**
  * What each listed dataset would end up with. `null` content is a dataset the
  * version lists and nobody has described — the gate lists it, and passing means
- * publishing it empty rather than leaving the version pointing at nothing.
+ * publishing it empty rather than leaving the version listing nothing.
  */
 function gateDatasets(ground: Ground): GateDataset[] {
   return ground.draft.content.datasetIds.flatMap((datasetId) => {
     const row = ground.datasets.get(datasetId)
     if (row === undefined) return []
-    const entry = ground.entries.get(datasetId)
     return [{
       datasetId,
       label: row.label,
-      content: entry?.content ?? row.published,
-      upstream: upstreamEdit(entry, row.published),
+      content: ground.entries.get(datasetId) ?? null,
     }]
   })
 }
 
-/**
- * Whether the published description moved while the draft was holding its own
- * copy. Without a base there is nothing to compare against — the draft made the
- * dataset, or made its entry before anything was published.
- */
-function upstreamEdit(
-  entry: { content: DatasetContent, baseContent: DatasetContent | null } | undefined,
-  published: DatasetContent | null,
-): ThreeWay | null {
-  if (entry?.baseContent === undefined || entry.baseContent === null) return null
-  if (published === null) return null
-  return threeWayDataset(
-    datasetContentInput(entry.baseContent),
-    datasetContentInput(published),
-    datasetContentInput(entry.content),
-  )
-}
-
-/** The next number is one past the highest ever issued, withdrawn ones included. */
+/** The next number is one past the highest a version holds. */
 function nextNumber(versions: readonly VersionRow[]): number {
   return versions.reduce((highest, version) => Math.max(highest, version.number), 0) + 1
 }
 
 /**
- * Which of the two things a publish is, resolved before anything is written. A
- * fix replaces the version the draft was taken from, so a draft with no parent
- * — a research with nothing published yet — has nothing it could be a fix to.
+ * The numbers this draft is allowed to publish under: the ones versions hold
+ * now, the next unused one, and the one this draft was copied from.
+ *
+ * **The third is what lets a withdrawn version come back under its own
+ * number.** Withdrawing deletes the row, so nothing else remembers that the
+ * number was ever issued — the draft that came out of it does. Anything beyond
+ * these would put a version under a number that nothing ever carried, which is
+ * a hole a reader cannot tell from a withdrawal.
  */
-type Plan
-  = | { kind: "cut", releaseDate: string }
-    | { kind: "replace", version: VersionRow }
+function availableNumbers(ground: Ground): Set<number> {
+  const numbers = new Set(ground.versions.map((version) => version.number))
+  numbers.add(nextNumber(ground.versions))
+  if (ground.draft.copiedFromNumber !== null) numbers.add(ground.draft.copiedFromNumber)
+  return numbers
+}
 
-function planOf(mode: PublishMode, ground: Ground): Plan | null {
-  if (mode.kind === "version") return { kind: "cut", releaseDate: mode.releaseDate }
-  const version = ground.versions.find((held) => held.snapshotId === ground.draft.parentSnapshotId)
-  return version === undefined ? null : { kind: "replace", version }
+/**
+ * The draft, folded into what a version holds: the body with the description of
+ * every dataset it lists written in beside it.
+ *
+ * This is the one place the two shapes meet. Everything upstream of it edits
+ * rows, everything downstream reads one value.
+ */
+function versionContentOf(
+  draft: ResearchContent,
+  datasets: readonly GateDataset[],
+  releaseDate: string,
+): VersionContent {
+  const { datasetIds, ...body } = draft
+  void datasetIds
+  return {
+    ...body,
+    datasets: datasets.map((row) => ({
+      datasetId: row.datasetId,
+      ...withReleaseDate(row.label, row.content ?? emptyDatasetContent(), releaseDate),
+    })),
+  }
+}
+
+function datasetIdsOf(version: VersionRow): string[] {
+  return version.content.datasets.map((row) => row.datasetId)
 }
 
 export interface DatasetChange {
   datasetId: string
   /** How many fields of its description this publish would rewrite. */
   fields: number
-  /** How many published versions carry that description once a version is cut. */
-  affects: number
-  /**
-   * The same count for a fix, which replaces a version's listing instead of
-   * adding one. Null when this draft has no version it could be a fix to.
-   */
-  affectsIfFix: number | null
-  /** It has never been published, so nothing is being written over. */
+  /** The version this one stands in front of does not list it. */
   isNew: boolean
 }
 
@@ -322,12 +297,15 @@ export interface PublishPreview {
   revision: number
   /** The number a new version would take. */
   nextNumber: number
-  /** The version a fix would replace. Null means there is nothing to fix. */
-  fixes: { versionId: string, number: number } | null
-  /** What this draft was taken from is no longer what is published. */
-  stale: { number: number } | null
+  /**
+   * The other numbers this draft may take, newest first. `releaseDate` is set
+   * when a version holds the number now, which is what taking it replaces.
+   */
+  choices: { number: number, releaseDate: string | null }[]
+  /** Which choice the screen offers first: where this draft was copied from. */
+  suggestedNumber: number | null
   gate: PublishGate
-  /** Fields of the research that differ from the latest published version. */
+  /** Fields of the research that differ from what this publish stands in front of. */
   researchFields: number | null
   datasetChanges: DatasetChange[]
   listingAdded: string[]
@@ -346,40 +324,39 @@ export async function publishPreview(
     if (ground === null) return null
 
     const datasets = gateDatasets(ground)
-    const fixes = ground.versions.find((held) => held.snapshotId === ground.draft.parentSnapshotId)
-    // What this publish would stand in front of, read as a new version — the
-    // choice between the two is made on the screen, and a fix only differs when
-    // it is a fix to something other than the latest.
-    const previous = ground.versions.find((held) => held.published)
+    const previous = standingInFrontOf(ground, ground.draft.copiedFromNumber)
 
     const gate = publishGate({
       humLabel: ground.humLabel,
       content: ground.draft.content,
       datasets,
-      previousDatasetIds: previous?.datasetIds ?? [],
+      previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
       upstream: ground.upstreamHumLabelOf,
       privateFiles,
     })
 
     const listedIds = datasets.map((row) => row.datasetId)
-    const before = new Set(previous?.datasetIds ?? [])
-    const affects = affectedVersionsOf(ground, null, listedIds)
-    const affectsIfFix = fixes === undefined
-      ? null
-      : affectedVersionsOf(ground, fixes.id, listedIds)
+    const before = new Set(previous === undefined ? [] : datasetIdsOf(previous))
+    const next = nextNumber(ground.versions)
 
     return {
       researchId: ground.draft.researchId,
       humLabel: ground.humLabel,
       revision: ground.draft.revision,
-      nextNumber: nextNumber(ground.versions),
-      fixes: fixes === undefined ? null : { versionId: fixes.id, number: fixes.number },
-      stale: staleAgainst(ground, fixes, previous),
+      nextNumber: next,
+      choices: [...availableNumbers(ground)]
+        .filter((number) => number !== next)
+        .sort((a, b) => b - a)
+        .map((number) => ({
+          number,
+          releaseDate: ground.versions.find((held) => held.number === number)?.releaseDate ?? null,
+        })),
+      suggestedNumber: ground.draft.copiedFromNumber,
       gate,
       researchFields: previous === undefined
         ? null
         : researchFieldsChanged(previous.content, ground.draft.content),
-      datasetChanges: changesOf(ground, datasets, affects, affectsIfFix),
+      datasetChanges: changesOf(previous, datasets),
       listingAdded: listedIds.filter((id) => !before.has(id)),
       listingRemoved: [...before].filter((id) => !listedIds.includes(id)),
       datasetLabels: [...ground.datasets.values()].map((row) => ({
@@ -391,20 +368,15 @@ export async function publishPreview(
 }
 
 /**
- * Whether what this draft was taken from is still what is out there. Both a fix
- * to that version and a newer version published beside it mean the draft is
- * working from an older picture than the one it will replace.
+ * The version a publish under this number would stand in front of: the one
+ * holding the number, or the newest when the number is free. What "changed"
+ * means on the confirmation screen is measured against it.
  */
-function staleAgainst(
-  ground: Ground,
-  fixes: VersionRow | undefined,
-  latestPublished: VersionRow | undefined,
-): { number: number } | null {
-  if (ground.draft.parentSnapshotId === null) return null
-  if (fixes === undefined) return { number: latestPublished?.number ?? 0 }
-  return latestPublished === undefined || latestPublished.id === fixes.id
-    ? null
-    : { number: latestPublished.number }
+function standingInFrontOf(ground: Ground, number: number | null): VersionRow | undefined {
+  const held = number === null
+    ? undefined
+    : ground.versions.find((version) => version.number === number)
+  return held ?? ground.versions[0]
 }
 
 /**
@@ -412,33 +384,26 @@ function staleAgainst(
  * of the count because it is reported on its own line — what went on and what
  * came off is more use than "one field changed".
  */
-function researchFieldsChanged(previous: ResearchContent, mine: ResearchContent): number {
+function researchFieldsChanged(previous: VersionContent, mine: ResearchContent): number {
   return diffDraftInput(
-    { note: "", content: researchContentInput(previous) },
+    { note: "", content: researchContentInput(draftContentOf(previous)) },
     { note: "", content: researchContentInput(mine) },
   ).filter((path) => path !== "datasetIds").length
 }
 
 function changesOf(
-  ground: Ground,
+  previous: VersionRow | undefined,
   datasets: readonly GateDataset[],
-  affects: (datasetId: string) => number,
-  affectsIfFix: ((datasetId: string) => number) | null,
 ): DatasetChange[] {
+  const before = describedBy(previous?.content)
   return datasets.flatMap((row) => {
-    const published = ground.datasets.get(row.datasetId)?.published ?? null
+    const published = before.get(row.datasetId)
     const next = row.content ?? emptyDatasetContent()
-    const fields = published === null
+    const fields = published === undefined
       ? 0
       : diffDatasetInput(datasetContentInput(published), datasetContentInput(next)).length
-    if (published !== null && fields === 0) return []
-    return [{
-      datasetId: row.datasetId,
-      fields,
-      affects: affects(row.datasetId),
-      affectsIfFix: affectsIfFix === null ? null : affectsIfFix(row.datasetId),
-      isNew: published === null,
-    }]
+    if (published !== undefined && fields === 0) return []
+    return [{ datasetId: row.datasetId, fields, isNew: published === undefined }]
   })
 }
 
@@ -453,21 +418,16 @@ export async function publishDraft(
     // Checked here rather than left to the delete at the end: everything below
     // writes, and a refusal has to come before the first of them.
     if (ground.draft.revision !== request.at.revision) return { status: "conflict" }
+    if (!availableNumbers(ground).has(request.number)) return { status: "number-unavailable" }
 
-    const plan = planOf(request.mode, ground)
-    if (plan === null) return { status: "no-parent" }
-
+    const replacing = ground.versions.find((held) => held.number === request.number)
     const datasets = gateDatasets(ground)
-    // What is standing where this publish is about to stand: the version a fix
-    // replaces, or the latest published one a new version follows.
-    const previous = plan.kind === "replace"
-      ? plan.version
-      : ground.versions.find((version) => version.published)
+    const previous = standingInFrontOf(ground, request.number)
     const gate = publishGate({
       humLabel: ground.humLabel,
       content: ground.draft.content,
       datasets,
-      previousDatasetIds: previous?.datasetIds ?? [],
+      previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
       upstream: ground.upstreamHumLabelOf,
       privateFiles: request.privateFiles,
     })
@@ -494,35 +454,40 @@ export async function publishDraft(
       throw new Error("the locked draft changed under a publish")
     }
 
-    const [snapshot] = await tx
-      .insert(contentSnapshot)
-      .values({ researchId: ground.draft.researchId, content: ground.draft.content })
-      .returning({ id: contentSnapshot.id })
-    if (snapshot === undefined) throw new Error("the snapshot insert returned no row")
+    // The old row leaves before the new one arrives: the number is unique
+    // within a research, so the two cannot hold it at once.
+    if (replacing !== undefined) {
+      await tx.delete(researchVersion).where(eq(researchVersion.id, replacing.id))
+    }
 
-    const version = plan.kind === "cut"
-      ? await cutVersion(tx, ground, snapshot.id, plan.releaseDate)
-      : await replaceSnapshot(tx, plan.version, snapshot.id)
-    const releaseDate = plan.kind === "cut" ? plan.releaseDate : plan.version.releaseDate
+    const content = versionContentOf(ground.draft.content, datasets, request.releaseDate)
+    const [row] = await tx
+      .insert(researchVersion)
+      .values({
+        researchId: ground.draft.researchId,
+        number: request.number,
+        content,
+        releaseDate: request.releaseDate,
+      })
+      .returning({ id: researchVersion.id })
+    if (row === undefined) throw new Error("the version insert returned no row")
 
-    const eventId = await recordEvent(tx, {
+    await recordEvent(tx, {
       actor,
-      action: plan.kind === "cut" ? "publish-version" : "publish-fix",
+      action: replacing === undefined ? "publish-version" : "replace-version",
       subjectType: "research-version",
-      subjectId: version.id,
+      subjectId: row.id,
       detail: {
         researchId: ground.draft.researchId,
         draftId: request.at.draftId,
-        versionNumber: version.number,
+        versionNumber: request.number,
         datasetCount: listedIds.length,
       },
     })
 
-    await writeDatasets(tx, ground, datasets, releaseDate, {
+    await recordDatasetChanges(tx, replacing, content.datasets, {
       actor,
-      eventId,
-      versionNumber: version.number,
-      affectedVersionsOf: affectedVersionsOf(ground, version.id, listedIds),
+      versionNumber: request.number,
     })
 
     if (gate.findings.length > 0) {
@@ -530,64 +495,50 @@ export async function publishDraft(
         actor,
         action: "pass-publish-gate",
         subjectType: "research-version",
-        subjectId: version.id,
+        subjectId: row.id,
         detail: { passed: countFindings(gate.findings) },
       })
     }
 
     await rebuildSearchDocs(tx, { researchIds: [ground.draft.researchId] })
-    return { status: "published", versionNumber: version.number }
+    return {
+      status: "published",
+      versionNumber: request.number,
+      replaced: replacing !== undefined,
+    }
   })
 }
 
-async function cutVersion(
-  tx: Transaction,
-  ground: Ground,
-  snapshotId: string,
-  releaseDate: string,
-): Promise<{ id: string, number: number }> {
-  const number = nextNumber(ground.versions)
-  const [row] = await tx
-    .insert(researchVersion)
-    .values({ researchId: ground.draft.researchId, number, snapshotId, releaseDate, published: true })
-    .returning({ id: researchVersion.id })
-  if (row === undefined) throw new Error("the version insert returned no row")
-  return { id: row.id, number }
-}
-
 /**
- * A fix keeps the number and the release date and points the version at a new
- * snapshot. The one it pointed at before stays in the table and stops being
- * reachable, which is what "not externally referenceable" means here.
+ * One event per dataset this publish describes differently from the version it
+ * replaces.
+ *
+ * **Recorded against the dataset rather than read out of the version's own
+ * event**, because the identity outlives the versions: "when did this
+ * description last move, and by what" is a question about the dataset, and
+ * answering it from the versions would mean diffing every one of them.
  */
-async function replaceSnapshot(
+async function recordDatasetChanges(
   tx: Transaction,
-  fixing: VersionRow,
-  snapshotId: string,
-): Promise<{ id: string, number: number }> {
-  await tx
-    .update(researchVersion)
-    .set({ snapshotId, updatedAt: sql`now()` })
-    .where(eq(researchVersion.id, fixing.id))
-  return { id: fixing.id, number: fixing.number }
-}
-
-/**
- * How many published versions each dataset's description reaches once this
- * publish is in. A fix to a dataset is felt by every one of them, which is what
- * the confirmation screen has to say out loud.
- */
-function affectedVersionsOf(
-  ground: Ground,
-  excluding: string | null,
-  listedIds: readonly string[],
-): (datasetId: string) => number {
-  const listings = ground.versions
-    .filter((held) => held.published && held.id !== excluding)
-    .map((held) => held.datasetIds)
-  return (datasetId) =>
-    listings.filter((ids) => ids.includes(datasetId)).length
-    + (listedIds.includes(datasetId) ? 1 : 0)
+  replacing: VersionRow | undefined,
+  datasets: readonly PublishedDataset[],
+  into: { actor: EventActor, versionNumber: number },
+): Promise<void> {
+  const before = describedBy(replacing?.content)
+  for (const row of datasets) {
+    const published = before.get(row.datasetId)
+    if (published !== undefined && unchanged(published, row)) continue
+    await recordEvent(tx, {
+      actor: into.actor,
+      action: "publish-dataset",
+      subjectType: "dataset",
+      subjectId: row.datasetId,
+      detail: {
+        versionNumber: into.versionNumber,
+        replaced: published !== undefined,
+      },
+    })
+  }
 }
 
 /**
@@ -600,21 +551,16 @@ function unchanged(published: DatasetContent, next: DatasetContent): boolean {
 }
 
 /**
- * The descriptions this publish leaves behind. Only the ones that actually
- * change are written and recorded — a publish that touched nothing about a
- * dataset says nothing about it.
- */
-/**
  * The day an NHA dataset carries, for one that has not been given one.
  *
- * **Only the portal can answer for an NHA ID** — no archive holds it — and the
- * only day this publish knows is the one the version is going out on. Writing
- * it here rather than leaving the field empty is what makes the date a value
- * somebody can then correct: an admin who disagrees edits it, and every later
- * publish leaves it alone because it is no longer missing.
+ * **Only the portal can answer for an NHA ID** — no archive holds it — and
+ * writing it here rather than leaving the field empty is what makes the date a
+ * value somebody can then correct: an admin who disagrees edits it, and every
+ * later publish leaves it alone because it is no longer missing.
  *
  * **The date is written once, by the version that first releases the dataset.**
- * A dataset carried forward into v4 was not published on v4's day.
+ * A description carried into v4 by the draft it was copied into already has its
+ * day, so v4 does not stamp its own over it.
  */
 function withReleaseDate(
   label: string | null,
@@ -625,104 +571,49 @@ function withReleaseDate(
   return { ...content, releaseDate }
 }
 
-async function writeDatasets(
-  tx: Transaction,
-  ground: Ground,
-  datasets: readonly GateDataset[],
-  /** The day the version being published carries. */
-  releaseDate: string,
-  into: {
-    actor: EventActor
-    eventId: string
-    versionNumber: number
-    affectedVersionsOf: (datasetId: string) => number
-  },
-): Promise<void> {
-  for (const row of datasets) {
-    const published = ground.datasets.get(row.datasetId)?.published ?? null
-    const next = withReleaseDate(row.label, row.content ?? emptyDatasetContent(), releaseDate)
-    if (published !== null && unchanged(published, next)) continue
-
-    if (published !== null) {
-      await tx.insert(replacedDatasetContent).values({
-        datasetId: row.datasetId,
-        content: published,
-        eventId: into.eventId,
-      })
-    }
-    await tx
-      .insert(datasetContent)
-      .values({ datasetId: row.datasetId, content: next })
-      .onConflictDoUpdate({
-        target: datasetContent.datasetId,
-        set: { content: next },
-      })
-    await recordEvent(tx, {
-      actor: into.actor,
-      action: "publish-fix",
-      subjectType: "dataset",
-      subjectId: row.datasetId,
-      detail: {
-        versionNumber: into.versionNumber,
-        affectedVersions: into.affectedVersionsOf(row.datasetId),
-        replaced: published !== null,
-      },
-    })
-  }
-}
-
 /**
- * Taking a version out of sight, and putting it back. Both are the same switch
- * on the same pin, which is why neither needs a state of its own — and why the
- * search rows, derived again here, are the only place visibility is decided.
+ * Taking a version back: the row becomes a draft and the number comes free.
+ *
+ * **The row is deleted rather than flagged.** Being in the table is what
+ * published means, so there is no state to set — and the content has to land
+ * somewhere it can be edited, which is what a draft is. The number travels with
+ * it, so the draft can be published back under it
+ * (`availableNumbers`).
  */
-export function withdrawVersion(
+export async function withdrawVersion(
   db: Database,
   versionId: string,
   actor: EventActor,
-): Promise<VisibilityOutcome> {
-  return setVisibility(db, versionId, false, actor)
-}
+): Promise<WithdrawOutcome> {
+  return db.transaction(async (tx): Promise<WithdrawOutcome> => {
+    const [version] = await tx
+      .select({
+        id: researchVersion.id,
+        researchId: researchVersion.researchId,
+        number: researchVersion.number,
+        content: researchVersion.content,
+      })
+      .from(researchVersion)
+      .where(eq(researchVersion.id, versionId))
+      .limit(1)
+      .for("update")
+    if (version === undefined) return { status: "gone" }
 
-export function republishVersion(
-  db: Database,
-  versionId: string,
-  actor: EventActor,
-): Promise<VisibilityOutcome> {
-  return setVisibility(db, versionId, true, actor)
-}
-
-async function setVisibility(
-  db: Database,
-  versionId: string,
-  published: boolean,
-  actor: EventActor,
-): Promise<VisibilityOutcome> {
-  return db.transaction(async (tx): Promise<VisibilityOutcome> => {
-    const rows = await tx
-      .update(researchVersion)
-      .set({ published, updatedAt: sql`now()` })
-      .where(and(eq(researchVersion.id, versionId), eq(researchVersion.published, !published)))
-      .returning({ researchId: researchVersion.researchId, number: researchVersion.number })
-
-    const row = rows[0]
-    if (row === undefined) {
-      const [found] = await tx
-        .select({ id: researchVersion.id })
-        .from(researchVersion)
-        .where(eq(researchVersion.id, versionId))
-        .limit(1)
-      return { status: found === undefined ? "gone" : "unchanged" }
-    }
+    await tx.delete(researchVersion).where(eq(researchVersion.id, versionId))
+    const draftId = await draftFromVersion(tx, version)
 
     await recordEvent(tx, {
       actor,
-      action: published ? "republish-version" : "withdraw-version",
+      action: "withdraw-version",
       subjectType: "research-version",
       subjectId: versionId,
-      detail: { researchId: row.researchId, versionNumber: row.number },
+      detail: {
+        researchId: version.researchId,
+        versionNumber: version.number,
+        draftId,
+      },
     })
-    await rebuildSearchDocs(tx, { researchIds: [row.researchId] })
-    return { status: "changed" }
+    await rebuildSearchDocs(tx, { researchIds: [version.researchId] })
+    return { status: "withdrawn", draftId }
   })
 }

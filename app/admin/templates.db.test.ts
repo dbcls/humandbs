@@ -107,7 +107,6 @@ describe("starting a research from an application", () => {
     const [datasetId] = (await db.select({ id: s.dataset.id }).from(s.dataset)).map((row) => row.id)
     const entry = await readDatasetEntry(db, outcome.draftId, datasetId ?? "")
     expect(entry?.content).toEqual(described("JGAD000891"))
-    expect(entry?.baseContent).toBeNull()
   })
 
   it("leaves the datasets in the draft's hands, so discarding takes them with it", async () => {

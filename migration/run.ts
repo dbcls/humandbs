@@ -21,16 +21,14 @@ import { join } from "node:path"
 
 import { sql } from "drizzle-orm"
 
-import type { DatasetContent, ResearchContent } from "~/content/types"
+import type { DatasetContent, ResearchContent, VersionContent } from "~/content/types"
 import { closePools, getOwnerDb, type Executor } from "~/db/client.server"
 import {
   accessionDate,
   alert,
   cauEntry,
   contentKey,
-  contentSnapshot,
   dataset,
-  datasetContent,
   document,
   documentContent,
   documentSeries,
@@ -390,9 +388,13 @@ async function load() {
     const unread: { dataset: string, sourceKey: string, line: string }[] = []
     const hand = byHand(readByHand())
 
-    await insertChunked(datasets, (chunk) => tx.insert(datasetContent).values(chunk.map((d) => ({
-      datasetId: identityOf(datasetIdByLabel, d.label, "dataset"),
-      content: buildDatasetContent({
+    // **Built once, folded into every version that lists it.** The dump gives a
+    // dataset one description, and each version that published it carries a
+    // copy of that description from here on — so the migration writes the same
+    // value into every version, and later corrections part company there.
+    const descriptionOfDataset = new Map(datasets.map((d) => [
+      identityOf(datasetIdByLabel, d.label, "dataset"),
+      buildDatasetContent({
         dataset: d,
         keyIdByCode,
         codeBySourceKey,
@@ -405,37 +407,34 @@ async function load() {
         unread,
         byHand: hand,
       }) satisfies DatasetContent,
-    }))))
+    ]))
 
     const versions = dump.publishedVersions.filter((v) => researchIdByHum.has(v.humId))
-    const snapshotIds = await insertReturning(
-      versions.map((rv) => ({
-        researchId: identityOf(researchIdByHum, rv.humId, "research"),
-        content: buildResearchContent({
-          version: rv,
-          listingSummary: dump.latestVersion.get(rv.humId) === rv
-            ? dump.research.get(rv.humId)?.summaryShort ?? null
-            : null,
-          datasetIdByLabel,
-        }) satisfies ResearchContent,
-      })),
-      (_, index) => index,
-      (chunk) => tx.insert(contentSnapshot).values(chunk).returning({ id: contentSnapshot.id }),
-    )
-
     await insertChunked(
-      versions.map((rv, index) => {
+      versions.map((rv) => {
         // Every published version in the dump has one; a version without a date
         // would be a defect in the input rather than something to fill in.
         if (!rv.versionReleaseDate) throw new Error(`${rv.humVersionId} has no release date`)
         const number = versionNumber(rv.version)
         if (number === null) throw new Error(`${rv.humVersionId} has no version number`)
+        const { datasetIds, ...body } = buildResearchContent({
+          version: rv,
+          listingSummary: dump.latestVersion.get(rv.humId) === rv
+            ? dump.research.get(rv.humId)?.summaryShort ?? null
+            : null,
+          datasetIdByLabel,
+        }) satisfies ResearchContent
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          snapshotId: identityOf(snapshotIds, index, "snapshot"),
+          content: {
+            ...body,
+            datasets: datasetIds.flatMap((datasetId) => {
+              const content = descriptionOfDataset.get(datasetId)
+              return content === undefined ? [] : [{ datasetId, ...content }]
+            }),
+          } satisfies VersionContent,
           releaseDate: rv.versionReleaseDate,
-          published: true,
         }
       }),
       (chunk) => tx.insert(researchVersion).values(chunk),

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
-import type { ContentValue } from "~/content/types"
+import type { ContentValue, DatasetContent, VersionContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -16,6 +16,7 @@ const db = getDb()
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
+  descriptions.clear()
 })
 
 afterAll(async () => {
@@ -34,12 +35,36 @@ async function createResearch(humLabel: string): Promise<string> {
   return id
 }
 
+/**
+ * What the next version will say about each dataset.
+ *
+ * A description belongs to the version that lists it, so seeding one is not a
+ * write of its own — it is held here until a publish folds it in.
+ */
+const descriptions = new Map<string, DatasetContent>()
+
 async function createDataset(researchId: string, label: string): Promise<string> {
   const { id } = only(await db.insert(s.dataset).values({ researchId })
     .returning({ id: s.dataset.id }))
   await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId: id, isPrimary: true })
-  await db.insert(s.datasetContent).values({ datasetId: id, content: emptyDatasetContent() })
+  descriptions.set(id, emptyDatasetContent())
   return id
+}
+
+function describeDataset(datasetId: string, content: DatasetContent): void {
+  descriptions.set(datasetId, content)
+}
+
+function versionContent(datasetIds: string[]): VersionContent {
+  const { datasetIds: listed, ...body } = emptyResearchContent()
+  void listed
+  return {
+    ...body,
+    datasets: datasetIds.map((datasetId) => ({
+      datasetId,
+      ...(descriptions.get(datasetId) ?? emptyDatasetContent()),
+    })),
+  }
 }
 
 async function publish(
@@ -48,11 +73,8 @@ async function publish(
   datasetIds: string[],
   releaseDate = "2020-01-01",
 ): Promise<string> {
-  const { id: snapshotId } = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: { ...emptyResearchContent(), datasetIds } })
-    .returning({ id: s.contentSnapshot.id }))
   const { id } = only(await db.insert(s.researchVersion)
-    .values({ researchId, number, snapshotId, releaseDate })
+    .values({ researchId, number, releaseDate, content: versionContent(datasetIds) })
     .returning({ id: s.researchVersion.id }))
   return id
 }
@@ -93,11 +115,12 @@ describe("rebuildSearchDocs", () => {
     expect(row.dateModified).toBe("2021-09-30")
   })
 
+  /** Withdrawing takes the row away, so the rebuild simply finds one fewer. */
   it("stops listing a version that has been withdrawn", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [])
     const withdrawn = await publish(researchId, 2, [])
-    await db.update(s.researchVersion).set({ published: false }).where(eq(s.researchVersion.id, withdrawn))
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.id, withdrawn))
 
     await rebuildSearchDocs(db)
 
@@ -113,7 +136,7 @@ describe("rebuildSearchDocs", () => {
     expect(await docs()).toEqual([])
   })
 
-  it("stops listing an orphaned dataset but keeps its content", async () => {
+  it("stops listing an orphaned dataset but keeps its identity", async () => {
     const researchId = await createResearch("hum0001")
     await createDataset(researchId, "JGAD000001")
     await publish(researchId, 1, [])
@@ -121,7 +144,8 @@ describe("rebuildSearchDocs", () => {
     await rebuildSearchDocs(db)
 
     expect((await docs()).filter((d) => d.targetType === "dataset")).toEqual([])
-    expect(await db.select().from(s.datasetContent)).toHaveLength(1)
+    // The identity stays, so the accession pinned to it cannot be given away.
+    expect(await db.select().from(s.dataset)).toHaveLength(1)
   })
 
   it("carries the ancestors of a term so a broad code matches a narrow one", async () => {
@@ -140,16 +164,14 @@ describe("rebuildSearchDocs", () => {
       .returning({ id: s.contentKey.id }))
 
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await db.update(s.datasetContent).set({
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [{
-          id: "experiment-1",
-          label: filled("WES"),
-          values: [{ keyId, value: { kind: "vocabulary", termIds: filled([childId]) } }],
-        }],
-      },
-    }).where(eq(s.datasetContent.datasetId, datasetId))
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "experiment-1",
+        label: filled("WES"),
+        values: [{ keyId, value: { kind: "vocabulary", termIds: filled([childId]) } }],
+      }],
+    })
     await publish(researchId, 1, [datasetId])
 
     const counts = await rebuildSearchDocs(db)
@@ -184,19 +206,17 @@ describe("rebuildSearchDocs", () => {
       .returning({ id: s.contentKey.id }))
 
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await db.update(s.datasetContent).set({
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [{
-          id: "experiment-1",
-          label: filled("WES"),
-          values: [
-            { keyId: shown.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
-            { keyId: hidden.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
-          ],
-        }],
-      },
-    }).where(eq(s.datasetContent.datasetId, datasetId))
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "experiment-1",
+        label: filled("WES"),
+        values: [
+          { keyId: shown.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
+          { keyId: hidden.id, value: { kind: "vocabulary", termIds: filled([termId]) } },
+        ],
+      }],
+    })
     await publish(researchId, 1, [datasetId])
 
     await rebuildSearchDocs(db)
@@ -236,16 +256,14 @@ describe("rebuildSearchDocs", () => {
 
     const withValue = async (label: string, termIds: string[]) => {
       const datasetId = await createDataset(researchId, label)
-      await db.update(s.datasetContent).set({
-        content: {
-          ...emptyDatasetContent(),
-          experiments: [{
-            id: "experiment-1",
-            label: filled(label),
-            values: [{ keyId, value: { kind: "vocabulary", termIds: filled(termIds) } }],
-          }],
-        },
-      }).where(eq(s.datasetContent.datasetId, datasetId))
+      describeDataset(datasetId, {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled(label),
+          values: [{ keyId, value: { kind: "vocabulary", termIds: filled(termIds) } }],
+        }],
+      })
       return datasetId
     }
     // The same term twice below one research is one fact about the research.
@@ -266,12 +284,10 @@ describe("rebuildSearchDocs", () => {
   it("carries the text of a dataset into the row of the research it belongs to", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await db.update(s.datasetContent).set({
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [{ id: "experiment-1", label: filled("ATAC-seq"), values: [] }],
-      },
-    }).where(eq(s.datasetContent.datasetId, datasetId))
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{ id: "experiment-1", label: filled("ATAC-seq"), values: [] }],
+    })
     await publish(researchId, 1, [datasetId])
 
     await rebuildSearchDocs(db)
@@ -302,25 +318,23 @@ describe("rebuildSearchDocs", () => {
       .returning({ id: s.contentKey.id }))
 
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await db.update(s.datasetContent).set({
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [{
-          id: "experiment-1",
-          label: filled("WES"),
-          values: [
-            { keyId: hiddenTerms, value: { kind: "vocabulary", termIds: filled([termId]) } },
-            {
-              keyId: hiddenProse,
-              value: {
-                kind: "text",
-                text: { ja: filled([[{ text: "内部メモ" }]]), en: filled([]) },
-              },
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "experiment-1",
+        label: filled("WES"),
+        values: [
+          { keyId: hiddenTerms, value: { kind: "vocabulary", termIds: filled([termId]) } },
+          {
+            keyId: hiddenProse,
+            value: {
+              kind: "text",
+              text: { ja: filled([[{ text: "内部メモ" }]]), en: filled([]) },
             },
-          ],
-        }],
-      },
-    }).where(eq(s.datasetContent.datasetId, datasetId))
+          },
+        ],
+      }],
+    })
     await publish(researchId, 1, [datasetId])
 
     const counts = await rebuildSearchDocs(db)
@@ -382,16 +396,14 @@ describe("rebuildSearchDocs", () => {
       experiments: { id: string, keyId: string, value: ContentValue }[],
     ) => {
       const datasetId = await createDataset(researchId, label)
-      await db.update(s.datasetContent).set({
-        content: {
-          ...emptyDatasetContent(),
-          experiments: experiments.map((e) => ({
-            id: e.id,
-            label: filled(e.id),
-            values: [{ keyId: e.keyId, value: e.value }],
-          })),
-        },
-      }).where(eq(s.datasetContent.datasetId, datasetId))
+      describeDataset(datasetId, {
+        ...emptyDatasetContent(),
+        experiments: experiments.map((e) => ({
+          id: e.id,
+          label: filled(e.id),
+          values: [{ keyId: e.keyId, value: e.value }],
+        })),
+      })
       return datasetId
     }
 
@@ -405,18 +417,15 @@ describe("rebuildSearchDocs", () => {
     const datasetB = await withExperiments(research1, "JGAD000002", [
       { id: "experiment-1", keyId: assayKeyId, value: { kind: "vocabulary", termIds: filled([rnaSeqTermId]) } },
     ])
-    const { id: snapshot1Id } = only(await db.insert(s.contentSnapshot)
-      .values({
-        researchId: research1,
-        content: {
-          ...emptyResearchContent(),
-          title: { ja: filled("癌ゲノム研究"), en: filled("Cancer Genome Study") },
-          datasetIds: [datasetA, datasetB],
-        },
-      })
-      .returning({ id: s.contentSnapshot.id }))
-    await db.insert(s.researchVersion)
-      .values({ researchId: research1, number: 1, snapshotId: snapshot1Id, releaseDate: "2020-01-01" })
+    await db.insert(s.researchVersion).values({
+      researchId: research1,
+      number: 1,
+      releaseDate: "2020-01-01",
+      content: {
+        ...versionContent([datasetA, datasetB]),
+        title: { ja: filled("癌ゲノム研究"), en: filled("Cancer Genome Study") },
+      },
+    })
 
     // research 2: a second research, with its own dataset and its own values
     // under the same keys, so nothing about research 1 can leak into it.
@@ -425,18 +434,15 @@ describe("rebuildSearchDocs", () => {
       { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
       { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ label: null, value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB", note: null }]) } },
     ])
-    const { id: snapshot2Id } = only(await db.insert(s.contentSnapshot)
-      .values({
-        researchId: research2,
-        content: {
-          ...emptyResearchContent(),
-          title: { ja: filled("希少疾患コホート"), en: filled("Rare Disease Cohort") },
-          datasetIds: [datasetC],
-        },
-      })
-      .returning({ id: s.contentSnapshot.id }))
-    await db.insert(s.researchVersion)
-      .values({ researchId: research2, number: 1, snapshotId: snapshot2Id, releaseDate: "2021-06-15" })
+    await db.insert(s.researchVersion).values({
+      researchId: research2,
+      number: 1,
+      releaseDate: "2021-06-15",
+      content: {
+        ...versionContent([datasetC]),
+        title: { ja: filled("希少疾患コホート"), en: filled("Rare Disease Cohort") },
+      },
+    })
 
     const orderedDocs = () => db
       .select({
@@ -537,7 +543,7 @@ describe("rebuilding one research", () => {
     await publish(researchId, 1, [await createDataset(researchId, "JGAD000001")])
     await rebuildSearchDocs(db)
 
-    await db.update(s.researchVersion).set({ published: false })
+    await db.delete(s.researchVersion)
     await rebuildSearchDocs(db, { researchIds: [researchId] })
 
     expect(await docs()).toEqual([])

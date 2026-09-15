@@ -1,9 +1,10 @@
+import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedDataset, seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 import { SORT_KEYS } from "~/search/sort"
 
@@ -46,30 +47,19 @@ async function createResearch(humLabel: string): Promise<string> {
   return id
 }
 
-async function createDataset(researchId: string, label: string): Promise<string> {
-  const { id } = only(await db.insert(s.dataset).values({ researchId })
-    .returning({ id: s.dataset.id }))
-  await db.insert(s.labelPin)
-    .values({ kind: "dataset", label, datasetId: id, isPrimary: true })
-  await db.insert(s.datasetContent).values({ datasetId: id, content: emptyDatasetContent() })
-  return id
-}
+const createDataset = (researchId: string, label: string) => seedDataset(db, researchId, label)
 
 async function publish(
   researchId: string,
   number: number,
   datasetIds: string[],
-  options: { published?: boolean, releaseDate?: string } = {},
+  options: { releaseDate?: string } = {},
 ): Promise<void> {
-  const { id: snapshotId } = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: { ...emptyResearchContent(), datasetIds } })
-    .returning({ id: s.contentSnapshot.id }))
-  await db.insert(s.researchVersion).values({
+  await seedVersion(db, {
     researchId,
     number,
-    snapshotId,
-    releaseDate: options.releaseDate ?? "2020-01-01",
-    published: options.published ?? true,
+    releaseDate: options.releaseDate,
+    datasets: datasetIds.map((datasetId) => ({ datasetId })),
   })
 }
 
@@ -117,7 +107,9 @@ describe("what the JSON API is allowed to answer with", () => {
   it("does not answer for a version that was withdrawn", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [])
-    await publish(researchId, 2, [], { published: false })
+    await publish(researchId, 2, [])
+    // Withdrawing takes the row away, which is what the 404 follows from.
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.number, 2))
     await rebuildSearchDocs(db)
 
     expect((await researchVersionEntry(get("/x"), "hum0001", "v1")).status).toBe(200)
@@ -142,7 +134,8 @@ describe("what the JSON API is allowed to answer with", () => {
   it("does not list a dataset whose research has no published version", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")
-    await publish(researchId, 1, [datasetId], { published: false })
+    await publish(researchId, 1, [datasetId])
+    await db.delete(s.researchVersion)
     await rebuildSearchDocs(db)
 
     expect((await datasetEntry(get("/x"), "JGAD000001")).status).toBe(404)

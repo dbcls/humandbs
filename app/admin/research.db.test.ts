@@ -23,7 +23,7 @@ import { deleteResearch } from "./research.server"
 const db = getDb()
 
 const CURATOR = { sub: "0f3a-1b2c", name: "curator" }
-const AS_VERSION = { kind: "version", releaseDate: "2026-08-10" } as const
+const AS_VERSION = { number: 1, releaseDate: "2026-08-10" } as const
 const NO_PRIVATE_FILES: ReadonlySet<string> = new Set()
 
 beforeEach(async () => {
@@ -79,7 +79,7 @@ async function ready(label: string) {
 async function publish(ground: Awaited<ReturnType<typeof ready>>): Promise<void> {
   const outcome = await publishDraft(
     db,
-    { at: { draftId: ground.draftId, revision: ground.revision }, mode: AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+    { at: { draftId: ground.draftId, revision: ground.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
     CURATOR,
   )
   if (outcome.status !== "published") throw new Error(outcome.status)
@@ -104,8 +104,7 @@ describe("deleting a research", () => {
     await deleteResearch(db, ground.researchId, CURATOR)
 
     expect(await db.select().from(s.researchVersion)).toHaveLength(0)
-    expect(await db.select().from(s.contentSnapshot)).toHaveLength(0)
-    expect(await db.select().from(s.datasetContent)).toHaveLength(0)
+    expect(await db.select().from(s.dataset)).toHaveLength(0)
   })
 
   it("frees both the hum label and the dataset id to be pinned again", async () => {

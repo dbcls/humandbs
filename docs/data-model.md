@@ -28,9 +28,14 @@ file を持たず、`npm run db:push` が定義をそのまま DB に反映す�
 
 ## content と行
 
-**content はすべて JSONB で持つ。** research content も、dataset content (experiment の列と値スロットを
-含む) も、draft の変更エントリも、その派生元のスナップショットも。**published と draft で表現を変えない**
-ので、公開は値のコピー、3-way 差分は同じ型どうしの比較で済む。
+**content はすべて JSONB で持つ。** 版の content も、draft の content も、draft が持つ dataset の
+エントリ (experiment の列と値スロットを含む) も。
+
+**値の型は編集と公開で変えない。器の割り方だけが違う。** draft は本文と dataset を別の行に割り、版は
+1 つの content に畳む。型が同じなので公開は値のコピーで済む。割り方が違うのは書き込みの頻度が違うから
+で、編集中の保存は dataset 1 つを直すたびに走るのに対し、公開は年に数えるほどしかない。**読み取りは
+畳んだ content から引かない** — JSONB は TOAST に落ちると部分読み出しができないので、dataset 1 件を
+取るのに版まるごとの展開になる。公開分の読み取りは検索用の行が本文ごと持つ (「検索用の行」)。
 
 値スロットを列に割らないのは、**どの列が有効かが catalog の型に依存する**ため。翻訳対は ja/en、数値は
 正準単位の値と入力単位、語彙は語彙値の id を持ち、どれが埋まるかはキーの型で決まる。列に割ると NULL
@@ -97,34 +102,29 @@ draft が新規に追加した dataset は identity ごと draft と運命を共
 ```
 Research (identity)                    <- hum label pinned in the ledger
 |
-+-- ResearchVersion (number)  --> ContentSnapshot (immutable)
-|     published versions only            body + ordered list of dataset identities
++-- ResearchVersion (number)           <- a published version; the number is a label
+|     content (JSONB)                     body + the description of every dataset it lists
 |
 +-- ResearchDraft (mutable)            <- unpublished working copy; several allowed
-|     +-- content
+|     +-- content (JSONB)                 the body
 |     +-- note                            admin only; never reaches preview
-|     +-- parent (ContentSnapshot)        detects "derived from a stale snapshot"
-|     +-- change entries                  copy-on-write for touched datasets
+|     +-- dataset entries                 one row per dataset; the unit of saving
 |     +-- new dataset identities          enter the ledger on publish
 |
 +-- Dataset (identity)                 <- dataset id pinned in the ledger
-      +-- content (JSONB)              <- experiments live in here, ordered
+      +-- Experiment (identity)        <- ordered; part of the dataset's description
 ```
 
-**dataset は versioning しない。履歴も持たない。** identity と、公開されている content を 1 つ持つ。
+**dataset も experiment も独立した版を持たない。** identity だけを持ち、記述は版の content の中にある。
 dataset の実体 (アーカイブに登録されたデータ) は不変で、変わるのは記述の訂正・充実・表記統一なので、
-最新が正しい。
+**訂正は最新の版を取り下げて直して出し直す** — 過去の版は当時の姿のまま凍る
+([publishing.md](publishing.md))。
 
-**ただし公開が置き換えた dataset content は証跡の側に丸ごと残す** (`replaced_dataset_content`)。履歴では
-ないので番号を持たず、公開版から辿れず、画面にも出ない — 残す理由は、上書きされた記述を復元できる先が
-他に無いことだけ (draft の undo は公開した時点で draft ごと消える)。差分ではなく丸ごとにするのは 1 件が
-平均 8 KB と小さいためで、深さの上限は持たない (積まれる回数はその dataset を含む公開の回数)。
+**版は配下 dataset の記述ごと畳んで持ち、draft は 1 dataset 1 行に割って持つ。** したがって版を開くと、
+dataset の一覧も各 dataset の記述も experiment も当時のものになり、**版は「その時点の研究の姿」を単独で
+答えられる**。版を公開した後にその dataset へ追加された experiment は、その版から辿っても出ない。
 
-**ContentSnapshot が持つのは dataset identity の順序つき列だけで、experiment の集合も順序も持たない。**
-したがって過去版を開くと、dataset の一覧は当時のもの、各 dataset の記述と experiment の一覧は最新になる。
-版を公開した後にその dataset へ追加された experiment も、過去版から辿った dataset のページに出る。
-
-**experiment は dataset content の中にあり、関係は 1 dataset : n experiment。** dataset ごとに違う値は
+**experiment は dataset の記述の中にあり、関係は 1 dataset : n experiment。** dataset ごとに違う値は
 experiment の値スロットが持つので、どの dataset の experiment かは従属関係そのものが表す。experiment に
 版は持たせない。
 
@@ -134,21 +134,21 @@ experiment の値スロットが持つので、どの dataset の experiment か
 
 | 判定 | 根拠 |
 |---|---|
-| dataset が公開されているか | `dataset_content` に行があるか |
-| research の過去版から辿れるか | その版の ContentSnapshot が持つ dataset identity の列に入っているか |
-| experiment が公開画面に出るか | 属する dataset が出ているか |
-| 検索用の行に載るか | 公開版が参照しているもの |
+| dataset が公開されているか | どれかの版の content に載っているか |
+| research のある版から辿れるか | その版の content に載っているか |
+| experiment が公開画面に出るか | 属する dataset がその版に出ているか |
+| 検索用の行に載るか | 最新の版が載せているもの。記述もその版のもの |
 
-**どの公開版からも参照されなくなった dataset (孤児) は削除しない。** identity の行は残り、公開 content の
-行だけが消えるので、公開ページには出ず管理画面から復旧できる。research 自体を削除したときだけ、
-composition に従って配下の dataset も消える。
+**どの版にも載らなくなった dataset (孤児) は削除しない。** identity の行が残るので、同じ accession に
+別の identity が生まれることはない。記述は最後に載せていた版の content の中にあるので、その版を開けば
+読める。research 自体を削除したときだけ、composition に従って配下の dataset も消える。
 
 **research 版のページには experiment を出さない。** dataset の一覧を出し、experiment は dataset のページで
 見る。
 
 ## 言語
 
-**公開の単位は research の版であって言語ではない。** ContentSnapshot は ja/en を一体で持つ。版は
+**公開の単位は research の版であって言語ではない。** 版の content は ja/en を一体で持つ。版は
 「その時点の研究の姿」であり、翻訳は同じ姿の別表現なので、言語で割れると版の意味が壊れる。
 
 **片言語が未翻訳のまま公開できる。** 英語版がそもそも存在しない研究が実在するので禁止は採れない。
@@ -481,12 +481,16 @@ CAU・ダウンロード一覧・日付は content に無いので、公開表�
 公開検索と facet が読む行を Postgres の中に持つ。**編集用の content から導出したもので、公開分しか
 持たない。**
 
-**何が公開されているかの判定をここ 1 つに閉じる。** 公開画面・public API・公開検索は、対象の集合をこの
-行からしか引かない。本文そのものは ContentSnapshot と `dataset_content` から取るが、これらは**公開時に
-しか行が生まれない**テーブルで、編集中の値は draft 配下の変更エントリに入る。編集用と公開用が同じ DB に
-同居する以上、担保は物理的な分離ではなくこの 2 点で作る。
+**何が公開されているかの判定をここ 1 つに閉じる。** 公開画面・public API・公開検索は、対象の集合も本文も
+この行からしか引かない。**行は公開操作でしか生まれない**ので、編集中の値がここに現れる経路が無い。
+編集用と公開用が同じ DB に同居する以上、担保は物理的な分離ではなくこの 1 点で作る。
 
-持つのは 3 種類。全文検索の列を持つ行 (`search_doc`)、語彙 facet の行、数値 facet の行。
+**本文もここが持つ。** 版の content は本文と全 dataset を畳んだ 1 つの JSONB なので、そこから dataset
+1 件を引くと版まるごとの展開になる (「content と行」)。dataset の行は自分の記述を、research の行は
+最新版の本文を持つ。**入っているのは content であって公開表現ではない** — 落とすのは描く側の仕事で、
+catalog が隠したキーも「まだ使われているか」を admin が問う対象として残っている必要がある。
+
+持つのは 4 種類。content、全文検索の列を持つ行 (`search_doc`)、語彙 facet の行、数値 facet の行。
 
 - **公開操作と同じトランザクションで更新する。** 「反映されていない」という状態が存在しない
 - **外部キャッシュの更新も同じ扱い。** 日次バッチがキャッシュを書き換えたら、影響する行を同じ
@@ -630,8 +634,8 @@ source なので (「catalog と語彙」)、公開表現を通してから集�
 
 ## 日付
 
-**日付は admin が設定するものとして持つ。** 版を変えずに fix するので、操作の記録をそのまま日付にすると
-公開の実態を表せない。
+**日付は admin が設定するものとして持つ。** 取り下げて直して同じ番号で出し直すことがあるので、操作の
+記録をそのまま日付にすると公開の実態を表せない。
 
 | 日付 | 決め方 |
 |---|---|
@@ -665,14 +669,14 @@ content にも置くと、同じ事実の出所が 2 つになる。
 
 ## サイトコンテンツ
 
-**document と news は版も pin も持たない。draft と公開状態だけを持つ。** research の版・pin 台帳・fix は
+**document と news は版も pin も持たない。draft と公開状態だけを持つ。** research の版と pin 台帳は
 適用せず、公開表現の純関数の対象にも公開検索の対象にもならない。
 
 - **locale ごとに content と公開状態を持つ。** 版を持たないので「公開の単位は版であって言語ではない」が
   当てはまらない。公開されていない言語は**もう一方に倒れず 404 になる**
 - **draft は locale ごとに 1 つで、公開中の本文の隣に置く。** 公開はその写しを本文へ移すことになる。
-  research の draft が持つ道具 (undo・presence・共有リンク・3-way) は持たない — 版が無いので比べる相手が
-  無く、並行して同じ document を書いた実績も無い
+  research の draft が持つ道具 (undo・presence・共有リンク・他の版との比較) は持たない — 版が無いので
+  比べる相手が無く、並行して同じ document を書いた実績も無い
 - **news は document と別のエンティティ。** identity + locale ごとの content + 公開日 + draft。公開日は
   identity の側に 1 つで、一覧の並びそのものになる
 - **本文は markdown 文字列。** 生 HTML は持たない (「値と文」)

@@ -11,19 +11,14 @@
  * can be shared, and none of it needs JavaScript — the box is a GET form.
  */
 
-import { and, desc, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { redirect } from "react-router"
 
 import { publicDatasetContent, publicResearchContent, PUBLISHED } from "~/content/public"
+import type { DatasetContent, ResearchContent } from "~/content/types"
 import { today } from "~/dates"
 import { getDb, type Executor } from "~/db/client.server"
-import {
-  contentSnapshot,
-  datasetContent,
-  researchVersion,
-  searchDoc,
-  searchFacetTerm,
-} from "~/db/schema"
+import { searchDoc, searchFacetTerm } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor, type Messages } from "~/i18n/messages"
 import { loadFacetDefinitions } from "~/search/catalog.server"
@@ -457,14 +452,12 @@ async function researchRowsOf(
   const ids = hits.map((hit) => hit.targetId)
   const [snapshots, datasetRows, facetRows] = await Promise.all([
     db
-      .selectDistinctOn([researchVersion.researchId], {
-        researchId: researchVersion.researchId,
-        content: contentSnapshot.content,
+      .select({
+        researchId: searchDoc.researchId,
+        content: sql<ResearchContent>`${searchDoc.content}`,
       })
-      .from(researchVersion)
-      .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-      .where(and(eq(researchVersion.published, true), inArray(researchVersion.researchId, ids)))
-      .orderBy(researchVersion.researchId, desc(researchVersion.number)),
+      .from(searchDoc)
+      .where(and(eq(searchDoc.targetType, "research"), inArray(searchDoc.researchId, ids))),
     db
       .select({
         researchId: searchDoc.researchId,
@@ -560,9 +553,12 @@ async function datasetRowsOf(
 ): Promise<DatasetListRowView[]> {
   const ids = hits.map((hit) => hit.targetId)
   const contents = await getDb()
-    .select({ datasetId: datasetContent.datasetId, content: datasetContent.content })
-    .from(datasetContent)
-    .where(inArray(datasetContent.datasetId, ids))
+    .select({
+      datasetId: searchDoc.targetId,
+      content: sql<DatasetContent>`${searchDoc.content}`,
+    })
+    .from(searchDoc)
+    .where(and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.targetId, ids)))
   const contentOf = new Map(contents.map((row) => [row.datasetId, row.content]))
 
   return hits.flatMap((hit) => {

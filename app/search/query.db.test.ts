@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
+import { emptyResearchContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -74,6 +75,7 @@ beforeAll(async () => {
         targetType,
         targetId: crypto.randomUUID(),
         researchId: research.id,
+        content: emptyResearchContent(),
         humLabel: row.humLabel,
         datasetLabel: targetType === "dataset" ? row.datasetLabel : null,
         title: row.title,

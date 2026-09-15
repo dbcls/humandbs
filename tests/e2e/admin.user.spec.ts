@@ -32,7 +32,7 @@ test.describe("P-ADMIN", () => {
 
   test("S-ADMIN-01: 区画のトップから、識別子を要らない画面すべてに行ける", async ({ page }) => {
     await page.goto("/admin")
-    await expect(page.getByRole("heading", { level: 1, name: "Admin トップ" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "トップ" })).toBeVisible()
 
     // ページの頭のバーではなく、ページの中身を見る。バーは同じ 8 つを持つので、
     // そちらを数えるとトップが空でも通ってしまう。

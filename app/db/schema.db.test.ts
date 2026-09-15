@@ -1,7 +1,8 @@
-import { and, eq, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
+import type { VersionContent } from "~/content/types"
 
 import { closePools, getDb, getOwnerDb, type Database } from "./client.server"
 import { emptyDatabase } from "./empty.server"
@@ -51,14 +52,21 @@ async function createDataset(researchId: string, originDraftId?: string): Promis
   return row.id
 }
 
-async function publishVersion(researchId: string, number: number): Promise<string> {
-  const snapshot = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: emptyResearchContent() })
-    .returning({ id: s.contentSnapshot.id }))
+function versionContent(datasetIds: string[] = []): VersionContent {
+  const { datasetIds: listed, ...body } = emptyResearchContent()
+  void listed
+  return { ...body, datasets: datasetIds.map((datasetId) => ({ datasetId, ...emptyDatasetContent() })) }
+}
+
+async function publishVersion(
+  researchId: string,
+  number: number,
+  datasetIds: string[] = [],
+): Promise<string> {
   const version = only(await db.insert(s.researchVersion).values({
     researchId,
     number,
-    snapshotId: snapshot.id,
+    content: versionContent(datasetIds),
     releaseDate: "2026-08-05",
   }).returning({ id: s.researchVersion.id }))
   return version.id
@@ -154,38 +162,33 @@ describe("research_version", () => {
     await expect(publishVersion(b, 1)).resolves.toBeTypeOf("string")
   })
 
-  it("leaves a withdrawn version and its numbering in place", async () => {
+  it("leaves a gap where a version was withdrawn", async () => {
     const researchId = await createResearch()
     await publishVersion(researchId, 1)
     const withdrawn = await publishVersion(researchId, 2)
     await publishVersion(researchId, 3)
 
-    await db.update(s.researchVersion).set({ published: false }).where(eq(s.researchVersion.id, withdrawn))
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.id, withdrawn))
 
-    const visible = await db.select().from(s.researchVersion)
-      .where(and(eq(s.researchVersion.researchId, researchId), eq(s.researchVersion.published, true)))
-    expect(visible.map((v) => v.number).sort()).toEqual([1, 3])
+    const held = await db.select().from(s.researchVersion)
+      .where(eq(s.researchVersion.researchId, researchId))
+    expect(held.map((v) => v.number).sort()).toEqual([1, 3])
     // The gap is why visibility can never be decided by comparing against a
     // highest number: v1..latest would let the withdrawn v2 back through.
-    const all = await db.select().from(s.researchVersion)
-    expect(all).toHaveLength(3)
   })
 
-  it("keeps the snapshot a fix replaces out of the version's reach", async () => {
+  /**
+   * The number is what a version is addressed by, so it may be given again once
+   * the version holding it is gone — and only then.
+   */
+  it("frees a number once the version holding it is gone", async () => {
     const researchId = await createResearch()
-    const versionId = await publishVersion(researchId, 1)
-    const replacement = only(await db.insert(s.contentSnapshot)
-      .values({ researchId, content: emptyResearchContent() })
-      .returning({ id: s.contentSnapshot.id }))
+    const first = await publishVersion(researchId, 1)
 
-    await db.update(s.researchVersion).set({ snapshotId: replacement.id })
-      .where(eq(s.researchVersion.id, versionId))
+    await expect(publishVersion(researchId, 1)).rejects.toThrow()
 
-    const version = only(await db.select().from(s.researchVersion).where(eq(s.researchVersion.id, versionId)))
-    expect(version.snapshotId).toBe(replacement.id)
-    expect(version.number).toBe(1)
-    // Both snapshots survive, but only one is reachable from the version.
-    expect(await db.select().from(s.contentSnapshot)).toHaveLength(2)
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.id, first))
+    await expect(publishVersion(researchId, 1)).resolves.toBeTypeOf("string")
   })
 })
 
@@ -198,8 +201,8 @@ describe("draft_dataset_entry", () => {
 
     const base = emptyDatasetContent()
     await db.insert(s.draftDatasetEntry).values([
-      { draftId: first, datasetId, content: { ...base, releaseDate: "2026-01-01" }, baseContent: base },
-      { draftId: second, datasetId, content: { ...base, releaseDate: "2026-02-02" }, baseContent: base },
+      { draftId: first, datasetId, content: { ...base, releaseDate: "2026-01-01" } },
+      { draftId: second, datasetId, content: { ...base, releaseDate: "2026-02-02" } },
     ])
 
     const rows = await db.select().from(s.draftDatasetEntry).where(eq(s.draftDatasetEntry.datasetId, datasetId))
@@ -251,19 +254,19 @@ describe("discarding a draft", () => {
     const draftId = await createDraft(researchId, "token-a")
     const existing = await createDataset(researchId)
     await createDataset(researchId, draftId)
-    await db.insert(s.datasetContent).values({ datasetId: existing, content: emptyDatasetContent() })
+    await publishVersion(researchId, 1, [existing])
     await db.insert(s.draftDatasetEntry).values({
       draftId,
       datasetId: existing,
       content: emptyDatasetContent(),
-      baseContent: emptyDatasetContent(),
     })
 
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, draftId))
 
     const remaining = await db.select().from(s.dataset)
     expect(remaining.map((d) => d.id)).toEqual([existing])
-    expect(await db.select().from(s.datasetContent)).toHaveLength(1)
+    // The version still describes it: what the draft held was a copy.
+    expect(only(await db.select().from(s.researchVersion)).content.datasets).toHaveLength(1)
   })
 
   it("keeps one presence row per session", async () => {
@@ -300,8 +303,7 @@ describe("deleting a research", () => {
   it("takes its datasets, versions and pins with it", async () => {
     const researchId = await createResearch()
     const datasetId = await createDataset(researchId)
-    await db.insert(s.datasetContent).values({ datasetId, content: emptyDatasetContent() })
-    await publishVersion(researchId, 1)
+    await publishVersion(researchId, 1, [datasetId])
     await db.insert(s.labelPin).values([
       { kind: "hum", label: "hum0001", researchId, isPrimary: true },
       { kind: "dataset", label: "JGAD000001", datasetId, isPrimary: true },
@@ -310,7 +312,6 @@ describe("deleting a research", () => {
     await db.delete(s.research).where(eq(s.research.id, researchId))
 
     expect(await db.select().from(s.dataset)).toHaveLength(0)
-    expect(await db.select().from(s.datasetContent)).toHaveLength(0)
     expect(await db.select().from(s.researchVersion)).toHaveLength(0)
     expect(await db.select().from(s.labelPin)).toHaveLength(0)
   })
@@ -333,15 +334,16 @@ describe("deleting a research", () => {
   })
 })
 
-describe("dataset_content", () => {
-  it("keeps the identity when the published content is taken away", async () => {
+describe("dataset", () => {
+  it("keeps its identity when the version describing it is withdrawn", async () => {
     const researchId = await createResearch()
     const datasetId = await createDataset(researchId)
-    await db.insert(s.datasetContent).values({ datasetId, content: emptyDatasetContent() })
+    await publishVersion(researchId, 1, [datasetId])
 
-    await db.delete(s.datasetContent).where(eq(s.datasetContent.datasetId, datasetId))
+    await db.delete(s.researchVersion)
 
-    // An orphan: not published, still restorable from the admin screen.
+    // An orphan: no version lists it, and the accession pinned to it is still
+    // held, so nothing else can be given that accession.
     expect(await db.select().from(s.dataset)).toHaveLength(1)
   })
 })
@@ -354,6 +356,7 @@ describe("search_doc", () => {
       targetId: researchId,
       researchId,
       humLabel: "hum0001",
+      content: emptyResearchContent(),
       title: "",
       textJa,
       textEn,
@@ -434,6 +437,7 @@ describe("search_facet_term", () => {
       targetId: researchId,
       researchId,
       humLabel: "hum0001",
+      content: emptyDatasetContent(),
       title: "",
       textJa: "",
       textEn: "",
@@ -468,7 +472,7 @@ describe("search_facet_term", () => {
     const researchId = await createResearch()
     const doc = only(await db.insert(s.searchDoc).values({
       targetType: "dataset", targetId: researchId, researchId,
-      humLabel: "hum0001", title: "", textJa: "", textEn: "",
+      humLabel: "hum0001", content: emptyDatasetContent(), title: "", textJa: "", textEn: "",
     }).returning({ id: s.searchDoc.id }))
     await db.insert(s.searchFacetTerm).values({ docId: doc.id, keyId: key.id, termId: term.id })
 

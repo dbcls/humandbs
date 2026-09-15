@@ -37,7 +37,6 @@ function dataset(over: Partial<GateDataset> = {}): GateDataset {
     datasetId: "d1",
     label: "hum0001-NHA001",
     content: emptyDatasetContent(),
-    upstream: null,
     ...over,
   }
 }
@@ -119,18 +118,13 @@ describe("what is listed and passed", () => {
     expect(findings).toEqual([{ kind: "dropped-dataset", datasetId: "gone" }])
   })
 
-  it("names a dataset another publish changed while this draft held it", () => {
-    const findings = gate({
-      datasets: [dataset({ upstream: { theirs: ["values.k1", "values.k2"], both: ["releaseDate"] } })],
-    }).findings
-
-    expect(findings).toEqual([
-      { kind: "upstream-edited", datasetId: "d1", theirs: 2, both: 1 },
-    ])
-  })
-
-  it("says nothing when the three-way found no difference", () => {
-    const findings = gate({ datasets: [dataset({ upstream: { theirs: [], both: [] } })] }).findings
+  /**
+   * Publishing writes a version of its own, so no other publish can have moved
+   * what this draft holds. The gate has nothing to warn about here, and a draft
+   * that wants to see another version compares against it in the editor.
+   */
+  it("says nothing about what other publishes did", () => {
+    const findings = gate({ datasets: [dataset()] }).findings
 
     expect(findings).toEqual([])
   })

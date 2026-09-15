@@ -4,9 +4,16 @@ import { createdAt, primaryId } from "./common"
 
 export const eventAction = pgEnum("event_action", [
   "publish-version",
-  "publish-fix",
+  /** A publish that took a number already in use, so the version under it went. */
+  "replace-version",
+  /** A dataset whose description this publish wrote differently. */
+  "publish-dataset",
+  /**
+   * A version turned back into a draft. Recorded because it is the only trace
+   * left: the row moves rather than gaining a flag, so nothing else can say
+   * that the number was ever out.
+   */
   "withdraw-version",
-  "republish-version",
   "delete-research",
   "discard-draft",
   "pin-label",

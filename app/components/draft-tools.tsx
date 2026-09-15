@@ -382,34 +382,34 @@ export function useDraftEditing<T>({
     void fetcher.submit(payload, { method: "post", encType: "application/json" })
   }
 
-  /**
-   * What both sides touched is left where it is: each of those is a choice, and
-   * the mark beside the field is where it is made.
-   */
+  /** Every difference at once. Each is equally a choice, so none is held back. */
   function takeUpstream(): void {
     if (upstream === null) return
-    edit(takeAll(take, value, upstream.theirs, upstream.only))
-    setUpstream({ ...upstream, only: [] })
+    edit(takeAll(take, value, upstream.theirs, upstream.differing))
+    setUpstream({ ...upstream, differing: [] })
   }
 
   /**
    * A field can be marked from two directions — a save somebody refused, and a
-   * publish that moved what this draft started from. The refusal wins when both
-   * apply: it is the more recent of the two.
+   * difference from the version being compared against. The refusal wins when
+   * both apply: it is the more recent of the two.
    */
   function marksFor(path: string): Marks {
     const refused = conflict?.changed.includes(path) ?? false
-    const moved = upstream?.both.includes(path) ?? false
-    const theirs = refused ? conflict?.theirs : moved ? upstream?.theirs : undefined
+    const differs = upstream?.differing.includes(path) ?? false
+    const theirs = refused ? conflict?.theirs : differs ? upstream?.theirs : undefined
     return {
       at: path,
-      changed: refused || moved,
+      changed: refused || differs,
       onTake: theirs === undefined
         ? null
         : () => {
             edit(take(value, theirs, path))
             if (!refused && upstream !== null) {
-              setUpstream({ ...upstream, both: upstream.both.filter((held) => held !== path) })
+              setUpstream({
+                ...upstream,
+                differing: upstream.differing.filter((held) => held !== path),
+              })
             }
           },
       problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),

@@ -26,11 +26,10 @@ import type {
   UndoReason,
 } from "~/content/types"
 import type { Executor } from "~/db/client.server"
+import { descriptionOf, draftContentOf } from "~/content/version"
 import {
   contentKey,
-  contentSnapshot,
   dataset,
-  datasetContent,
   draftDatasetEntry,
   draftPresence,
   draftUndo,
@@ -39,6 +38,7 @@ import {
   research,
   researchDraft,
   researchVersion,
+  searchDoc,
   vocabularyTerm,
 } from "~/db/schema"
 import { icd10Code } from "~/icd10/codes"
@@ -100,7 +100,6 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     db
       .select({
         researchId: researchVersion.researchId,
-        published: researchVersion.published,
         releaseDate: researchVersion.releaseDate,
         updatedAt: researchVersion.updatedAt,
       })
@@ -108,11 +107,9 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     db
       .selectDistinctOn([researchVersion.researchId], {
         researchId: researchVersion.researchId,
-        content: contentSnapshot.content,
+        content: researchVersion.content,
       })
       .from(researchVersion)
-      .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-      .where(eq(researchVersion.published, true))
       .orderBy(researchVersion.researchId, desc(researchVersion.number)),
     db
       .select({
@@ -125,7 +122,9 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
 
   const humLabelOf = new Map(humLabels.flatMap((row) =>
     row.researchId === null ? [] : [[row.researchId, row.label] as const]))
-  const publishedContentOf = new Map(snapshots.map((row) => [row.researchId, row.content]))
+  const publishedContentOf = new Map(
+    snapshots.map((row) => [row.researchId, draftContentOf(row.content)]),
+  )
   const upstreamHumLabelOf = new Map(upstreamRows.map((row) => [row.accession, row.humLabel]))
 
   const grouped = new Map(researches.map((row) => [row.id, {
@@ -143,14 +142,12 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
   for (const row of versions) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
-    if (row.published) {
-      held.published += 1
-      // The listing says when this research was last out, which is the newest
-      // release date among the versions that still are — an older one that was
-      // never taken back does not become the answer when a newer one is added.
-      if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
-        held.publishedOn = row.releaseDate
-      }
+    held.published += 1
+    // The listing says when this research was last out, which is the newest
+    // release date among the versions it still has — withdrawing one takes its
+    // row away, so a version that is here is a version that is out.
+    if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
+      held.publishedOn = row.releaseDate
     }
     held.dates.push(row.updatedAt)
   }
@@ -244,7 +241,9 @@ export async function researchDatasets(
       id: dataset.id,
       label: labelPin.label,
       pinId: labelPin.id,
-      published: sql<boolean>`${datasetContent.datasetId} IS NOT NULL`,
+      // Having a published row is what being published means; a dataset no
+      // version lists any more has none (`search.ts`).
+      published: sql<boolean>`${searchDoc.id} IS NOT NULL`,
     })
     .from(dataset)
     .leftJoin(labelPin, and(
@@ -252,7 +251,10 @@ export async function researchDatasets(
       eq(labelPin.kind, "dataset"),
       eq(labelPin.isPrimary, true),
     ))
-    .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
+    .leftJoin(searchDoc, and(
+      eq(searchDoc.targetType, "dataset"),
+      eq(searchDoc.targetId, dataset.id),
+    ))
     .where(eq(dataset.researchId, researchId))
     .orderBy(sql`${labelPin.label} NULLS LAST`, dataset.id)
   return rows.map((row) => ({ ...row, portalIssued: isPortalIssuedId(row.label) }))
@@ -262,16 +264,14 @@ export interface AdminVersionRow {
   id: string
   number: number
   releaseDate: string
-  published: boolean
-  snapshotId: string
 }
 
 export interface AdminDraftRow {
   id: string
   revision: number
   note: string
-  /** The published version the draft was taken from, if that snapshot is still one. */
-  parentVersionNumber: number | null
+  /** The version number this draft was copied from, if it was copied from one. */
+  copiedFromNumber: number | null
   flags: ContentFlags
   createdAt: string
   updatedAt: string
@@ -307,8 +307,6 @@ export async function adminResearch(
         id: researchVersion.id,
         number: researchVersion.number,
         releaseDate: researchVersion.releaseDate,
-        published: researchVersion.published,
-        snapshotId: researchVersion.snapshotId,
       })
       .from(researchVersion)
       .where(eq(researchVersion.researchId, researchId))
@@ -319,7 +317,7 @@ export async function adminResearch(
         revision: researchDraft.revision,
         note: researchDraft.note,
         content: researchDraft.content,
-        parentSnapshotId: researchDraft.parentSnapshotId,
+        copiedFromNumber: researchDraft.copiedFromNumber,
         createdAt: researchDraft.createdAt,
         updatedAt: researchDraft.updatedAt,
       })
@@ -329,8 +327,6 @@ export async function adminResearch(
     researchDatasets(db, researchId),
   ])
 
-  const versionOfSnapshot = new Map(versions.map((row) => [row.snapshotId, row.number]))
-
   return {
     researchId,
     labels,
@@ -339,9 +335,7 @@ export async function adminResearch(
       id: row.id,
       revision: row.revision,
       note: row.note,
-      parentVersionNumber: row.parentSnapshotId === null
-        ? null
-        : versionOfSnapshot.get(row.parentSnapshotId) ?? null,
+      copiedFromNumber: row.copiedFromNumber,
       flags: contentFlags(row.content),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
@@ -356,7 +350,7 @@ export interface DraftRecord {
   revision: number
   note: string
   content: ResearchContent
-  parentSnapshotId: string | null
+  copiedFromNumber: number | null
 }
 
 export async function readDraft(db: Executor, draftId: string): Promise<DraftRecord | null> {
@@ -367,7 +361,7 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
       revision: researchDraft.revision,
       note: researchDraft.note,
       content: researchDraft.content,
-      parentSnapshotId: researchDraft.parentSnapshotId,
+      copiedFromNumber: researchDraft.copiedFromNumber,
     })
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
@@ -376,41 +370,33 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
 }
 
 /**
- * What the draft started from and what is published now, when the two have come
- * apart. Null means nothing moved — either the draft was written from nothing,
- * or the version it came from is still the one that is out there.
+ * The version a draft is shown against, for the screen that says what differs.
+ *
+ * **Two shapes rather than three.** A draft carries no ancestor, so there is
+ * nothing to divide "what they changed" from "what I changed" with — the
+ * comparison lists the differences and leaves the choosing to the reader.
+ * Asking for no number gets the newest version, which is the default the editor
+ * opens with.
  */
-export async function upstreamResearch(
+export async function comparableVersion(
   db: Executor,
   researchId: string,
-  parentSnapshotId: string | null,
-): Promise<{ base: ResearchContent, theirs: ResearchContent } | null> {
-  if (parentSnapshotId === null) return null
-
-  const [base] = await db
-    .select({ content: contentSnapshot.content })
-    .from(contentSnapshot)
-    .where(eq(contentSnapshot.id, parentSnapshotId))
-    .limit(1)
-  if (base === undefined) return null
-
-  const [latest] = await db
-    .select({ snapshotId: researchVersion.snapshotId, content: contentSnapshot.content })
+  number: number | null,
+): Promise<{ number: number, content: ResearchContent } | null> {
+  const [row] = await db
+    .select({ number: researchVersion.number, content: researchVersion.content })
     .from(researchVersion)
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-    .where(and(eq(researchVersion.researchId, researchId), eq(researchVersion.published, true)))
+    .where(number === null
+      ? eq(researchVersion.researchId, researchId)
+      : and(eq(researchVersion.researchId, researchId), eq(researchVersion.number, number)))
     .orderBy(desc(researchVersion.number))
     .limit(1)
-  if (latest === undefined || latest.snapshotId === parentSnapshotId) return null
-
-  return { base: base.content, theirs: latest.content }
+  return row === undefined ? null : { number: row.number, content: draftContentOf(row.content) }
 }
 
 export interface DatasetEntryRecord {
   revision: number
   content: DatasetContent
-  /** The published description when editing began; null for a dataset the draft made. */
-  baseContent: DatasetContent | null
 }
 
 /**
@@ -427,7 +413,6 @@ export async function readDatasetEntry(
     .select({
       revision: draftDatasetEntry.revision,
       content: draftDatasetEntry.content,
-      baseContent: draftDatasetEntry.baseContent,
     })
     .from(draftDatasetEntry)
     .where(and(
@@ -438,17 +423,25 @@ export async function readDatasetEntry(
   return row ?? null
 }
 
-/** The published description of a dataset, which is what a draft starts from. */
+/**
+ * How the newest version describes a dataset, which is what the editor compares
+ * against. Null means no version lists it — the draft introduced it, or every
+ * version that carried it has been withdrawn.
+ */
 export async function readPublishedDataset(
   db: Executor,
+  researchId: string,
   datasetId: string,
-): Promise<DatasetContent | null> {
+): Promise<{ number: number, content: DatasetContent } | null> {
   const [row] = await db
-    .select({ content: datasetContent.content })
-    .from(datasetContent)
-    .where(eq(datasetContent.datasetId, datasetId))
+    .select({ number: researchVersion.number, content: researchVersion.content })
+    .from(researchVersion)
+    .where(eq(researchVersion.researchId, researchId))
+    .orderBy(desc(researchVersion.number))
     .limit(1)
-  return row?.content ?? null
+  if (row === undefined) return null
+  const found = row.content.datasets.find((one) => one.datasetId === datasetId)
+  return found === undefined ? null : { number: row.number, content: descriptionOf(found) }
 }
 
 export interface DraftDatasetRow extends ResearchDatasetRow {

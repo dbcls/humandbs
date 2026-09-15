@@ -4,11 +4,13 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest"
 import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
-import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import { emptyDatasetContent, filled } from "~/content/empty"
 import type { ContentValue } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedVersion } from "~/db/seed"
+import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { catalogAction, catalogPage, fieldTermsPage } from "./catalog.server"
 
@@ -126,29 +128,31 @@ async function publishedValue(
     .returning({ id: s.research.id }))
   const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
     .returning({ id: s.dataset.id }))
-  await db.insert(s.datasetContent).values({
-    datasetId,
-    content: {
-      ...emptyDatasetContent(),
-      experiments: [{
-        id: "experiment-1",
-        label: filled("WGS"),
-        values: [{
-          keyId: value.keyId,
-          value: diseaseOrTerm(value),
+  await seedVersion(db, {
+    researchId,
+    number: 1,
+    datasets: [{
+      datasetId,
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("WGS"),
+          values: [{
+            keyId: value.keyId,
+            value: diseaseOrTerm(value),
+          }],
         }],
-      }],
-    },
+      },
+    }],
   })
-  const { id: snapshotId } = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: { ...emptyResearchContent(), datasetIds: [datasetId] } })
-    .returning({ id: s.contentSnapshot.id }))
-  await db.insert(s.researchVersion)
-    .values({ researchId, number: 1, snapshotId, releaseDate: "2020-01-01" })
   await db.insert(s.labelPin)
     .values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
   await db.insert(s.labelPin)
     .values({ kind: "dataset", label: "JGAD000001", datasetId, isPrimary: true })
+  // "In use" is asked of the published rows, which is where a publish would
+  // have put this value.
+  await rebuildSearchDocs(db)
 }
 
 describe("who may read the catalog", () => {
@@ -307,7 +311,7 @@ describe("the terms of a vocabulary", () => {
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
     await publishedValue({ keyId, termId })
-    const before = only(await db.select().from(s.datasetContent)).content
+    const before = only(await db.select().from(s.researchVersion)).content
 
     expect(await catalogAction(post(token, {
       intent: "update-term",
@@ -316,7 +320,7 @@ describe("the terms of a vocabulary", () => {
       labelJa: "全ゲノムシークエンス",
     }))).toEqual({ status: "ok" })
 
-    expect(only(await db.select().from(s.datasetContent)).content).toEqual(before)
+    expect(only(await db.select().from(s.researchVersion)).content).toEqual(before)
     expect(only(await db.select().from(s.vocabularyTerm)).labelEn).toBe("Whole genome sequencing")
   })
 

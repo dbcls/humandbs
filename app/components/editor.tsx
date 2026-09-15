@@ -235,11 +235,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             <ConflictBand locale={locale} changed={editing.conflict.changed} />
           </div>
         )}
-        {upstream !== null && (upstream.only.length > 0 || upstream.both.length > 0) && (
+        {upstream !== null && upstream.differing.length > 0 && (
           <UpstreamBand
             locale={locale}
-            only={upstream.only}
-            both={upstream.both}
+            differing={upstream.differing}
+            number={upstream.number}
             onTakeAll={editing.takeUpstream}
           />
         )}

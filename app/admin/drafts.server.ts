@@ -28,7 +28,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNull, notInArray, sql } from "drizzle-orm"
+import { and, desc, eq, notInArray, sql } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
@@ -37,12 +37,12 @@ import type {
   DraftSnapshot,
   ResearchContent,
   UndoReason,
+  VersionContent,
 } from "~/content/types"
+import { descriptionOf, draftContentOf } from "~/content/version"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import {
-  contentSnapshot,
   dataset,
-  datasetContent,
   draftDatasetEntry,
   draftPresence,
   draftUndo,
@@ -381,8 +381,7 @@ export async function applyUpstreamToDraft(
  * The identity and the description of each seeded dataset.
  *
  * They belong to the draft until it is published, like any dataset made inside
- * one, and their entries carry no base: there is no published description for a
- * three-way diff to have started from.
+ * one.
  */
 async function writeSeededDatasets(
   tx: Transaction,
@@ -399,44 +398,73 @@ async function writeSeededDatasets(
       draftId,
       datasetId: entry.id,
       content: entry.content,
-      baseContent: null,
     })),
   )
 }
 
 /**
- * A new draft of an existing research, starting from its latest published
- * version. The snapshot it came from is remembered rather than the version
- * number, because a fix replaces a snapshot without changing the number and a
- * draft taken before that fix still has to be seen as stale.
+ * A new draft of an existing research, copied from its newest version.
  *
- * A research with nothing published yet starts from empty content and no
- * parent.
+ * A research with nothing published yet starts from empty content.
  */
 export async function createDraft(db: Database, researchId: string): Promise<string> {
   return db.transaction(async (tx) => {
     const [latest] = await tx
-      .select({ snapshotId: contentSnapshot.id, content: contentSnapshot.content })
+      .select({ number: researchVersion.number, content: researchVersion.content })
       .from(researchVersion)
-      .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-      .where(and(
-        eq(researchVersion.researchId, researchId),
-        eq(researchVersion.published, true),
-      ))
+      .where(eq(researchVersion.researchId, researchId))
       .orderBy(desc(researchVersion.number))
       .limit(1)
+    if (latest !== undefined) {
+      return draftFromVersion(tx, { researchId, number: latest.number, content: latest.content })
+    }
 
     const draft = one(await tx
       .insert(researchDraft)
       .values({
         researchId,
-        content: latest?.content ?? emptyResearchContent(),
-        parentSnapshotId: latest?.snapshotId ?? null,
+        content: emptyResearchContent(),
         shareToken: newShareToken(),
       })
       .returning({ id: researchDraft.id }))
     return draft.id
   })
+}
+
+/**
+ * A draft holding what a version holds, unfolded: the body in the draft's own
+ * row, each description in one of its own.
+ *
+ * **The copy is made once and in full**, rather than filled in as datasets are
+ * touched. A draft that reached back to the version it came from would break
+ * the moment that version was replaced or withdrawn — and the number it
+ * remembers is a default for the publish screen, not a link: nothing checks it,
+ * and a number naming a version that is gone simply stops being offered.
+ *
+ * This is also what withdrawing does with the row it takes out of the table.
+ */
+export async function draftFromVersion(
+  tx: Transaction,
+  version: { researchId: string, number: number, content: VersionContent },
+): Promise<string> {
+  const draft = one(await tx
+    .insert(researchDraft)
+    .values({
+      researchId: version.researchId,
+      content: draftContentOf(version.content),
+      copiedFromNumber: version.number,
+      shareToken: newShareToken(),
+    })
+    .returning({ id: researchDraft.id }))
+
+  if (version.content.datasets.length > 0) {
+    await tx.insert(draftDatasetEntry).values(version.content.datasets.map((row) => ({
+      draftId: draft.id,
+      datasetId: row.datasetId,
+      content: descriptionOf(row),
+    })))
+  }
+  return draft.id
 }
 
 /**
@@ -487,11 +515,9 @@ export async function saveDraftContent(
  * dataset is its own identity, and a research with two hundred of them is not
  * one screenful.
  *
- * The first save is the one that creates the entry, and it carries the
- * published description alongside as `baseContent` — the three-way diff at
- * publish time needs to know what was there when editing began, and after the
- * first save nothing can recover it. An entry the draft itself introduced has
- * no published description, so it has no base.
+ * A draft that was copied from a version already holds an entry for every
+ * dataset that version listed, so the null revision — "there is no entry yet" —
+ * belongs to datasets added since.
  */
 export async function saveDatasetEntry(
   db: Database,
@@ -504,19 +530,12 @@ export async function saveDatasetEntry(
 
     const revision = at.revision
     if (revision === null) {
-      const [published] = await tx
-        .select({ content: datasetContent.content })
-        .from(datasetContent)
-        .where(eq(datasetContent.datasetId, at.datasetId))
-        .limit(1)
-
       const inserted = await tx
         .insert(draftDatasetEntry)
         .values({
           draftId: at.draftId,
           datasetId: at.datasetId,
           content,
-          baseContent: published?.content ?? null,
         })
         .onConflictDoNothing()
         .returning({ revision: draftDatasetEntry.revision })
@@ -630,15 +649,13 @@ export async function deleteDraftDataset(
     const before = await currentDraft(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
+    // **Belonging to this draft is what makes it deletable.** Publishing clears
+    // `originDraftId`, so a row that still names a draft has never been in a
+    // version and taking it away changes nothing anybody has seen.
     const [target] = await tx
       .select({ id: dataset.id })
       .from(dataset)
-      .leftJoin(datasetContent, eq(datasetContent.datasetId, dataset.id))
-      .where(and(
-        eq(dataset.id, datasetId),
-        eq(dataset.originDraftId, at.draftId),
-        isNull(datasetContent.datasetId),
-      ))
+      .where(and(eq(dataset.id, datasetId), eq(dataset.originDraftId, at.draftId)))
       .limit(1)
     if (target === undefined) return { status: "refused" }
 

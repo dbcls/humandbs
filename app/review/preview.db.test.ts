@@ -16,6 +16,7 @@ import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "~/fi
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedVersion } from "~/db/seed"
 
 import {
   PREVIEW_HEADERS,
@@ -83,16 +84,13 @@ async function sharedDraft(content: ResearchContent = titled("題目")): Promise
 }
 
 async function publish(researchId: string, number: number, content: ResearchContent): Promise<void> {
-  const [snapshot] = await db
-    .insert(s.contentSnapshot)
-    .values({ researchId, content })
-    .returning({ id: s.contentSnapshot.id })
-  if (snapshot === undefined) throw new Error("no snapshot")
-  await db.insert(s.researchVersion).values({
+  const { datasetIds, ...body } = content
+  await seedVersion(db, {
     researchId,
     number,
-    snapshotId: snapshot.id,
     releaseDate: "2026-01-01",
+    body,
+    datasets: datasetIds.map((datasetId) => ({ datasetId })),
   })
 }
 

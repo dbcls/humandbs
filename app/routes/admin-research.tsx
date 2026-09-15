@@ -112,17 +112,17 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
           <Section title={t.versions}>
             {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
-            {/* 1 版 1 行で、いちばん高いものは取り下げのボタン — 中心で揃える
-                (`page.tsx` の `CellAlign`)。 */}
+            {/* **状態の列を持たない。** 並んでいることが公開されていることなので、
+                行が言えるのは「出ている」だけになる。 */}
             <Table
               align="middle"
-              headers={[t.version, t.releaseDate, t.visibility, ""]}
+              headers={[t.version, t.releaseDate, ""]}
               whenEmpty={t.noVersions}
             >
               {view.versions.map((version) => (
                 <tr key={version.id}>
                   <Td className="whitespace-nowrap">
-                    {view.humLabel === null || !version.published
+                    {view.humLabel === null
                       ? `v${version.number}`
                       : (
                           <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
@@ -131,14 +131,8 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                         )}
                   </Td>
                   <Td className="whitespace-nowrap">{version.releaseDate}</Td>
-                  <Td>{version.published ? t.published : t.withdrawn}</Td>
                   <Td>
-                    <Visibility
-                      versionId={version.id}
-                      number={version.number}
-                      published={version.published}
-                      locale={locale}
-                    />
+                    <Withdraw versionId={version.id} number={version.number} locale={locale} />
                   </Td>
                 </tr>
               ))}
@@ -238,22 +232,17 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
   )
 }
 
-function Visibility({ versionId, number, published, locale }: {
+/**
+ * Taking a version back. Nothing beside it puts it back, because what comes out
+ * is a draft: the way back is to edit it and publish it under the number it
+ * left free.
+ */
+function Withdraw({ versionId, number, locale }: {
   versionId: string
   number: number
-  published: boolean
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.detail
-
-  if (!published) {
-    return (
-      <Form method="post">
-        <input type="hidden" name="versionId" value={versionId} />
-        <Submit intent="republish-version">{t.republish}</Submit>
-      </Form>
-    )
-  }
   return (
     <Form method="post">
       <Confirm
@@ -368,7 +357,9 @@ function DraftRow({ draft, review, researchId, locale }: {
               {`${t.updatedAt}: ${draft.updatedAt.slice(0, 10)}`}
             </span>
             <span className="text-ink-muted text-xs">
-              {`${t.parent}: ${draft.parentVersionNumber === null ? t.parentNone : `v${draft.parentVersionNumber}`}`}
+              {draft.copiedFromNumber === null
+                ? t.copiedFromNone
+                : t.copiedFrom(draft.copiedFromNumber)}
             </span>
             {draft.flags.unsettled && <Badge tone="accent">{flags.unsettled}</Badge>}
             {draft.flags.untranslated && <Badge tone="accent">{flags.untranslated}</Badge>}

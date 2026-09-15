@@ -415,7 +415,7 @@ export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost"
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: "border-transparent bg-brand text-white hover:brightness-90",
   secondary: "border-brand bg-white text-brand hover:bg-surface-hover",
-  danger: "border-danger bg-white text-danger hover:bg-danger hover:text-white",
+  danger: "border-danger bg-white text-danger hover:bg-danger/10",
   ghost: "border-transparent bg-transparent text-brand hover:bg-surface-hover",
 }
 
@@ -1649,16 +1649,15 @@ export function Confirm({
           the panel it opens has said so in `danger` all along — the way in was
           the one part of the sequence still drawn as an ordinary choice.
 
-          **Small, because it stands beside what it acts on.** At `sm` it was
-          36.4px next to a 20px badge carrying the same brand edge and the same
-          brand text, so the pair read as one size of the same thing; at `xs`
-          the two are 26 and 20px and what tells them apart is the colour. The
-          badge never answers a hover, which is the other half of the
-          difference. */}
+          **It stands at the height of the controls it stands among.** Rows
+          pair it with an ordinary submit — a version with the way to take it
+          out of sight, a dataset id with the way to attach one — and a control
+          8.4px shorter than its neighbour moves the row's height with
+          whichever of the two the state calls for. What tells it apart from
+          that neighbour is the colour, which it keeps at any size. */}
       <Button
         type="button"
         variant="danger"
-        size="xs"
         onClick={() => { setAsking(true) }}
       >
         {label}

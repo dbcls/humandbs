@@ -6,7 +6,7 @@ import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/p
 import { adminDraftPath } from "~/admin/urls"
 import { href } from "~/public/urls"
 
-import { ButtonLink, Fold, Note, Stack } from "./base"
+import { ButtonLink, Fold, Stack } from "./base"
 import { Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
 import { Card, Empty, Page, PageHead, Section } from "./page"
 import { messagesFor } from "~/i18n/messages"
@@ -35,7 +35,11 @@ export function PublishConfirmation({ view, result }: {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.publish
-  const [asFix, setAsFix] = useState(false)
+  // **The number is the whole of the choice.** Taking one a version holds
+  // replaces it; taking the next one starts a new version. The draft's origin
+  // decides which is offered first and nothing else.
+  const [number, setNumber] = useState(view.suggestedNumber ?? view.nextNumber)
+  const chosen = view.choices.find((one) => one.number === number)
   const blocked = view.blocks.length > 0
 
   return (
@@ -53,8 +57,6 @@ export function PublishConfirmation({ view, result }: {
           {actionData?.status === "malformed" && (
             <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
           )}
-          {view.staleAgainst !== null && <Note kind="warning">{t.stale(view.staleAgainst)}</Note>}
-
           {blocked && <Blocked view={view} />}
           <PrivateFiles view={view} />
 
@@ -71,27 +73,37 @@ export function PublishConfirmation({ view, result }: {
                   <div
                     onChange={(event) => {
                       const target = event.target as HTMLInputElement
-                      if (target.name === "mode") setAsFix(target.value === "fix")
+                      if (target.name === "number") setNumber(Number(target.value))
                     }}
                   >
                     <RadioGroup
                       label={t.what}
-                      name="mode"
-                      value={asFix ? "fix" : "version"}
+                      name="number"
+                      value={String(number)}
                       options={[
-                        { value: "version", label: `${t.cut} — ${t.cutHint(view.nextNumber)}` },
-                        ...(view.fixNumber === null
-                          ? []
-                          : [{ value: "fix", label: `${t.fix} — ${t.fixHint(view.fixNumber)}` }]),
+                        {
+                          value: String(view.nextNumber),
+                          label: `${t.cut} — ${t.cutHint(view.nextNumber)}`,
+                        },
+                        ...view.choices.map((one) => ({
+                          value: String(one.number),
+                          label: one.releaseDate === null
+                            ? `${t.reissue(one.number)} — ${t.reissueHint}`
+                            : `${t.replace(one.number)} — ${t.replaceHint}`,
+                        })),
                       ]}
                     />
                   </div>
-                  {view.fixNumber === null && (
-                    <p className="text-ink-muted text-xs">{t.fixUnavailable}</p>
-                  )}
-                  {!asFix && (
-                    <Field label={t.releaseDate} name="releaseDate" type="date" value={view.today} />
-                  )}
+                  {/* **Remounted when the choice moves**, so the day it offers
+                      is the one that belongs to what is now selected: a version
+                      being updated keeps its own, and a new one starts today. */}
+                  <Field
+                    key={number}
+                    label={t.releaseDate}
+                    name="releaseDate"
+                    type="date"
+                    value={chosen?.releaseDate ?? view.today}
+                  />
                 </Stack>
               </Section>
 
@@ -108,7 +120,7 @@ export function PublishConfirmation({ view, result }: {
                 </Section>
               )}
 
-              <Changes view={view} asFix={asFix} />
+              <Changes view={view} />
 
               <div className="flex items-center gap-4">
                 <Submit variant="primary" disabled={blocked}>{t.submit}</Submit>
@@ -238,7 +250,7 @@ function FindingGroup({ group, locale }: { group: PublishGroupView, locale: Publ
   )
 }
 
-function Changes({ view, asFix }: { view: PublishPageView, asFix: boolean }) {
+function Changes({ view }: { view: PublishPageView }) {
   const t = messagesFor(view.locale).admin.publish
   const nothing = view.researchFields === 0
     && view.datasetChanges.length === 0
@@ -263,13 +275,9 @@ function Changes({ view, asFix }: { view: PublishPageView, asFix: boolean }) {
                         {view.datasetChanges.map((change) => (
                           <li key={change.datasetId} className="flex flex-wrap items-center gap-2">
                             <Link to={change.href}>{change.label ?? change.datasetId}</Link>
-                            <span className="text-ink-muted text-xs">
-                              {change.isNew
-                                ? t.newDataset
-                                : t.affects(asFix && change.affectsIfFix !== null
-                                    ? change.affectsIfFix
-                                    : change.affects)}
-                            </span>
+                            {change.isNew && (
+                              <span className="text-ink-muted text-xs">{t.newDataset}</span>
+                            )}
                           </li>
                         ))}
                       </Stack>

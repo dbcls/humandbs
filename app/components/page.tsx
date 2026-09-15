@@ -171,6 +171,11 @@ export function Card({ under = true, children }: {
  * The distance to whatever is above is the `Stack` these sit in rather than a
  * margin of their own: two rules for one gap is how a page ends up with an
  * uneven one.
+ *
+ * **The name stands at `normal` above what it names.** `tight` is the distance
+ * between a label and its value, and the name of a part is not a label: under
+ * the 32px that separates one part from the next, 8px leaves the page a single
+ * rhythm, and the name crowds the first thing in the block.
  */
 export function Section({ title, at, children }: {
   title: string
@@ -179,7 +184,7 @@ export function Section({ title, at, children }: {
   children: ReactNode
 }) {
   return (
-    <Stack gap="tight" as="section">
+    <Stack gap="normal" as="section">
       {/* A mark for the whole section sits beside its name rather than under
           it: on a line of its own it reads as belonging to the first value. */}
       {/* The name carries no colour: on a face made of fields and buttons, a

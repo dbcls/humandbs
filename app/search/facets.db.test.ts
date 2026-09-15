@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
+import { emptyDatasetContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -88,6 +89,7 @@ async function doc(input: {
     targetType: "dataset",
     targetId: crypto.randomUUID(),
     researchId,
+    content: emptyDatasetContent(),
     humLabel: "hum0001",
     datasetLabel: input.label,
     title: "",

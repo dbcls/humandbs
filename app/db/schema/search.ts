@@ -3,6 +3,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -10,6 +11,8 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core"
+
+import type { DatasetContent, ResearchContent } from "~/content/types"
 
 import { contentKey, vocabularyTerm } from "./catalog"
 import { primaryId } from "./common"
@@ -45,6 +48,24 @@ export const searchDoc = pgTable("search_doc", {
   datasetLabel: text(),
   datePublished: date(),
   dateModified: date(),
+  /**
+   * What this row stands for: the body for a research or a version, the
+   * description for a dataset. Which of the two shapes it holds follows
+   * `targetType`.
+   *
+   * **Every read of published content comes from here.** A version keeps its
+   * whole content — body and every description — in one JSONB, and a compressed
+   * JSONB cannot be read in part, so reaching into it for a single dataset
+   * expands the version whole (measured at 224 ms against 0.047 ms here).
+   * Writing each subject its own row is what keeps a listing of twenty datasets
+   * from being twenty version-sized expansions.
+   *
+   * **It is the content, not the public representation.** The projection drops
+   * what the catalog hides, and an administrator asking whether a key is still
+   * in use is asking about what was published rather than about what a reader
+   * sees. Projecting is left to whoever is drawing a page.
+   */
+  content: jsonb().$type<ResearchContent | DatasetContent>().notNull(),
   /**
    * The title of the research the row belongs to, both languages, so a query
    * can be scoped to it. Not indexed: the column is short, the corpus is a few

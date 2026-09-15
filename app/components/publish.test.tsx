@@ -20,8 +20,8 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     humLabel: "hum0001",
     revision: 3,
     nextNumber: 2,
-    fixNumber: null,
-    staleAgainst: null,
+    choices: [],
+    suggestedNumber: null,
     today: "2026-08-10",
     blocks: [],
     groups: [],
@@ -43,19 +43,33 @@ function render(page: PublishPageView, result: PublishResult | null = null): str
 }
 
 describe("the publish screen", () => {
-  it("offers a new version, and no fix while there is no version to replace", () => {
+  it("offers a new version, and nothing to replace while no version exists", () => {
     const html = render(view())
 
     expect(html).toContain("v2 になります")
-    expect(html).not.toContain("今のバージョンを差し替える")
+    expect(html).not.toContain("を更新する")
     expect(html).toContain("type=\"date\"")
   })
 
-  it("offers the fix once the draft came from a version", () => {
-    const html = render(view({ fixNumber: 5 }))
+  it("offers to update a version that holds one of the numbers", () => {
+    const html = render(view({
+      choices: [{ number: 1, releaseDate: "2025-04-01" }],
+      suggestedNumber: 1,
+    }))
 
-    expect(html).toContain("今のバージョンを差し替える")
-    expect(html).toContain("v5 のまま")
+    expect(html).toContain("v1 を更新する")
+    expect(html).toContain("2025-04-01")
+  })
+
+  /**
+   * A number a withdrawal left free has no version behind it, so nothing is
+   * being replaced — and the day it offers is today rather than one it lost.
+   */
+  it("offers a free number as a plain publish", () => {
+    const html = render(view({ choices: [{ number: 3, releaseDate: null }] }))
+
+    expect(html).toContain("v3 として公開する")
+    expect(html).not.toContain("v3 を更新する")
   })
 
   it("will not let the publish be pressed while something structural is missing", () => {
@@ -93,49 +107,48 @@ describe("the publish screen", () => {
           places: [{ label: "研究の記述", href: "/admin/research/x/draft/y", count: 12, note: null }],
         },
         {
-          kind: "upstream-edited",
+          kind: "empty-dataset",
           count: 1,
           fileNames: [],
           places: [{
             label: "JGAD000001",
             href: "/admin/research/x/draft/y/dataset/z",
             count: 1,
-            note: "相手の変更 2 項目が戻り、1 項目は手元の値が勝ちます",
+            note: null,
           }],
         },
       ],
     }))
 
     expect(html).toContain("未確定の値 12")
-    expect(html).toContain("相手の変更 2 項目が戻り")
+    expect(html).toContain("JGAD000001")
     expect(html).toContain("上の 13 件を確認しました")
     expect(html).toContain("type=\"checkbox\"")
     // Nothing structural is missing, so the button is live.
     expect(html).not.toContain("disabled=\"\"")
   })
 
-  it("says how many published versions a dataset's description reaches", () => {
+  /**
+   * A description belongs to the version being written, so the screen names the
+   * dataset and stops there — there is no count of other versions to give.
+   */
+  it("names a dataset whose description this publish changes", () => {
     const html = render(view({
       datasetChanges: [{
         datasetId: "d1",
         label: "JGAD000001",
         fields: 3,
-        affects: 5,
-        affectsIfFix: 4,
         isNew: false,
         href: "/admin/research/x/draft/y/dataset/d1",
       }],
     }))
 
-    expect(html).toContain("5 件の公開バージョンに効きます")
+    expect(html).toContain("JGAD000001")
+    expect(html).not.toContain("公開バージョンに効きます")
   })
 
   it("says so when there is nothing to change at all", () => {
     expect(render(view())).toContain("記述の変更はありません")
-  })
-
-  it("warns when the version this draft came from has moved on", () => {
-    expect(render(view({ staleAgainst: 7 }))).toContain("v7")
   })
 
   it("says why a publish came back rather than leaving the screen unchanged", () => {

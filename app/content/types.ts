@@ -207,7 +207,7 @@ export interface ValueSlot {
   value: ContentValue
 }
 
-/** What a ContentSnapshot holds, and what a draft edits. */
+/** What a draft edits: the body of a research, without the descriptions. */
 export interface ResearchContent {
   title: TranslatedText
   summary: {
@@ -241,11 +241,33 @@ export interface ResearchContent {
   grants: Grant[]
   relatedPublications: RelatedPublication[]
   /**
-   * Dataset identities, ordered. This is the whole of what a version pins:
-   * opening an old version lists the datasets of that time, each described as
-   * it is described now.
+   * Dataset identities, ordered. A draft names the datasets it lists and keeps
+   * each description in a row of its own; publishing writes them in here beside
+   * the body, as `VersionContent`.
    */
   datasetIds: string[]
+}
+
+/**
+ * What a published version holds: the body, with the description of every
+ * dataset it lists written out inside it.
+ *
+ * **A version answers for its own moment without asking anything else.**
+ * Opening an old one shows the datasets of that time described as they were
+ * described then, so a later correction does not reach backwards.
+ *
+ * **Nothing reads a single dataset out of this.** The value is one JSONB that
+ * reaches 890 KB, and a compressed JSONB cannot be read in part — pulling one
+ * dataset out of it expands the whole version. Public reads go through the
+ * published rows, which hold each description separately (`search.ts`).
+ */
+export interface VersionContent extends Omit<ResearchContent, "datasetIds"> {
+  datasets: PublishedDataset[]
+}
+
+/** A dataset as a version carries it: which one it is, and how it read then. */
+export interface PublishedDataset extends DatasetContent {
+  datasetId: string
 }
 
 /**
@@ -297,9 +319,10 @@ export interface RelatedPublication {
 }
 
 /**
- * What a dataset holds. There is no version and no history — the archived data
- * itself does not change, only its description does, so the current description
- * is the right one for every version that points at the dataset.
+ * What a dataset holds. The identity carries no version of its own: a
+ * description belongs to the research version that lists it, so two versions
+ * can describe the same dataset differently and each stays right for its own
+ * moment.
  */
 export interface DatasetContent {
   /**

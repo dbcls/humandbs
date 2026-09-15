@@ -7,6 +7,7 @@ import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedVersion } from "~/db/seed"
 
 import { PRESENCE_WINDOW_SECONDS } from "./presence"
 import {
@@ -82,19 +83,11 @@ async function publish(
   researchId: string,
   number: number,
   content: ResearchContent,
-  options: { published?: boolean } = {},
+  datasets: readonly { datasetId: string, content?: DatasetContent }[] = [],
 ): Promise<string> {
-  const snapshot = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content })
-    .returning({ id: s.contentSnapshot.id }))
-  await db.insert(s.researchVersion).values({
-    researchId,
-    number,
-    snapshotId: snapshot.id,
-    releaseDate: "2020-01-01",
-    published: options.published ?? true,
-  })
-  return snapshot.id
+  const { datasetIds, ...body } = content
+  void datasetIds
+  return seedVersion(db, { researchId, number, body, datasets })
 }
 
 describe("starting a research", () => {
@@ -119,45 +112,57 @@ describe("starting a research", () => {
 })
 
 describe("starting a draft of an existing research", () => {
-  it("copies the latest published version and remembers the snapshot it came from", async () => {
+  it("copies the newest version and remembers the number it came from", async () => {
     const researchId = await createResearch()
     await publish(researchId, 1, titled("first"))
-    const latest = await publish(researchId, 4, titled("fourth"))
+    await publish(researchId, 4, titled("fourth"))
 
     const draftId = await createDraft(db, researchId)
 
     const draft = await readDraft(db, draftId)
     expect(draft?.content.title.ja).toEqual(filled("fourth"))
-    const rows = await db
-      .select({ parent: s.researchDraft.parentSnapshotId })
-      .from(s.researchDraft)
-      .where(eq(s.researchDraft.id, draftId))
-    expect(only(rows).parent).toBe(latest)
+    expect(draft?.copiedFromNumber).toBe(4)
   })
 
   it("does not start from a version that has been withdrawn", async () => {
     const researchId = await createResearch()
     await publish(researchId, 1, titled("published"))
-    await publish(researchId, 2, titled("withdrawn"), { published: false })
+    await publish(researchId, 2, titled("withdrawn"))
+    // Withdrawing takes the row away, so the newest one left is v1.
+    await db.delete(s.researchVersion).where(eq(s.researchVersion.number, 2))
 
     const draft = await readDraft(db, await createDraft(db, researchId))
 
     expect(draft?.content.title.ja).toEqual(filled("published"))
   })
 
-  it("starts empty, with no parent, when nothing has ever been published", async () => {
+  it("starts empty, remembering no number, when nothing has ever been published", async () => {
     const researchId = await createResearch()
-    await publish(researchId, 1, titled("withdrawn"), { published: false })
 
     const draftId = await createDraft(db, researchId)
 
     const draft = await readDraft(db, draftId)
     expect(draft?.content).toEqual(emptyResearchContent())
-    const rows = await db
-      .select({ parent: s.researchDraft.parentSnapshotId })
-      .from(s.researchDraft)
-      .where(eq(s.researchDraft.id, draftId))
-    expect(only(rows).parent).toBeNull()
+    expect(draft?.copiedFromNumber).toBeNull()
+  })
+
+  /**
+   * A draft copied from a version holds an entry for every dataset that version
+   * listed: the copy is made once and in full, so editing one never has to
+   * reach back to a version that may be gone by then.
+   */
+  it("brings the descriptions of the version it copies", async () => {
+    const researchId = await createResearch()
+    const datasetId = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id })).id
+    await publish(researchId, 1, { ...titled("v1"), datasetIds: [datasetId] }, [
+      { datasetId, content: described("as published") },
+    ])
+
+    const draftId = await createDraft(db, researchId)
+
+    const entry = await readDatasetEntry(db, draftId, datasetId)
+    expect(entry?.content).toEqual(described("as published"))
   })
 })
 
@@ -293,33 +298,35 @@ describe("writing a dataset of a draft", () => {
     const row = only(await db.insert(s.dataset).values({ researchId })
       .returning({ id: s.dataset.id }))
     if (published !== null) {
-      await db.insert(s.datasetContent).values({ datasetId: row.id, content: published })
+      await publish(researchId, 1, titled("v1"), [{ datasetId: row.id, content: published }])
     }
     return row.id
   }
 
-  it("creates the entry on the first save, with the published description as its base", async () => {
+  it("creates the entry on the first save", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
-    const published = described("as published")
-    const datasetId = await makeDataset(researchId, published)
+    const datasetId = await makeDataset(researchId, described("as published"))
 
     const outcome = await saveDatasetEntry(db, { draftId, datasetId, revision: null }, described("as edited"))
 
     expect(outcome).toEqual({ status: "saved", revision: 1 })
     const entry = await readDatasetEntry(db, draftId, datasetId)
     expect(entry?.content).toEqual(described("as edited"))
-    const rows = await db.select({ base: s.draftDatasetEntry.baseContent }).from(s.draftDatasetEntry)
-    expect(only(rows).base).toEqual(published)
   })
 
-  it("has no base when the dataset has never been published", async () => {
+  /**
+   * Nothing records what the entry started from: a draft is a copy, and what it
+   * is compared against is chosen when somebody asks for a comparison.
+   */
+  it("keeps nothing beside the content it was saved with", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
-    const datasetId = await makeDataset(researchId, null)
+    const datasetId = await makeDataset(researchId, described("as published"))
 
     await saveDatasetEntry(db, { draftId, datasetId, revision: null }, described("first"))
 
-    const rows = await db.select({ base: s.draftDatasetEntry.baseContent }).from(s.draftDatasetEntry)
-    expect(only(rows).base).toBeNull()
+    const row = only(await db.select().from(s.draftDatasetEntry))
+    expect(Object.keys(row).toSorted())
+      .toEqual(["content", "datasetId", "draftId", "id", "revision"])
   })
 
   it("refuses a first save that is not the one which created the entry", async () => {
@@ -509,8 +516,10 @@ describe("a dataset a draft adds", () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const created = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
-    await db.insert(s.datasetContent)
-      .values({ datasetId: created.datasetId, content: described("published") })
+    // Publishing is what clears `originDraftId`, and that is what takes the
+    // dataset out of this draft's reach.
+    await db.update(s.dataset).set({ originDraftId: null })
+      .where(eq(s.dataset.id, created.datasetId))
 
     expect(await deleteDraftDataset(db, { draftId, revision: 2 }, created.datasetId))
       .toEqual({ status: "refused" })

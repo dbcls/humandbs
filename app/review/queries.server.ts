@@ -14,21 +14,21 @@
  * same function.
  */
 
-import { and, count, desc, eq, inArray } from "drizzle-orm"
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { emptyDatasetContent } from "~/content/empty"
 import type { ArchiveDates } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
+import { draftContentOf } from "~/content/version"
 import {
   accessionDate,
   commentThread,
-  contentSnapshot,
-  datasetContent,
   draftDatasetEntry,
   labelPin,
   researchDraft,
   researchVersion,
+  searchDoc,
 } from "~/db/schema"
 
 import { pathExists, type AnchorSubject } from "./anchors"
@@ -63,9 +63,12 @@ export async function previewDatasets(
       .from(draftDatasetEntry)
       .where(eq(draftDatasetEntry.draftId, draftId)),
     db
-      .select({ datasetId: datasetContent.datasetId, content: datasetContent.content })
-      .from(datasetContent)
-      .where(inArray(datasetContent.datasetId, ids)),
+      .select({
+        datasetId: searchDoc.targetId,
+        content: sql<DatasetContent>`${searchDoc.content}`,
+      })
+      .from(searchDoc)
+      .where(and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.targetId, ids))),
     db
       .select({ datasetId: labelPin.datasetId, label: labelPin.label })
       .from(labelPin)
@@ -204,11 +207,12 @@ export async function latestPublishedVersion(
   researchId: string,
 ): Promise<PublishedVersion | null> {
   const [row] = await db
-    .select({ number: researchVersion.number, content: contentSnapshot.content })
+    .select({ number: researchVersion.number, content: researchVersion.content })
     .from(researchVersion)
-    .innerJoin(contentSnapshot, eq(contentSnapshot.id, researchVersion.snapshotId))
-    .where(and(eq(researchVersion.researchId, researchId), eq(researchVersion.published, true)))
+    .where(eq(researchVersion.researchId, researchId))
     .orderBy(desc(researchVersion.number))
     .limit(1)
-  return row ?? null
+  return row === undefined
+    ? null
+    : { number: row.number, content: draftContentOf(row.content) }
 }

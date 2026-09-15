@@ -3,85 +3,69 @@ import { describe, expect, it } from "vitest"
 
 import { datasetContentInputArb } from "./arbitraries/draft"
 import { diffDatasetInput, takeDatasetField } from "./dataset-diff"
-import { isEmptyThreeWay, takeAll, threeWayDataset } from "./merge"
+import { compareDataset, isEmptyComparison, takeAll } from "./merge"
 
 /**
- * Splitting two sets of edits over one starting point.
+ * Comparing a draft with the version it is shown against.
  *
- * The three-way is what the publish gate warns from and what the editor offers
- * to take, and the two have to mean the same thing: **taking everything only
- * they changed must leave nothing of theirs to lose, and must not disturb
- * anything this side changed.** That is what these laws are.
+ * The comparison is what the editor offers to take, so the list and the taking
+ * have to agree: **taking everything listed must leave the two saying the same
+ * thing, and must touch nothing outside the list.** That is what these laws are.
  */
-describe("the three-way over a dataset", () => {
-  it("puts no path in both answers at once", () => {
-    fc.assert(fc.property(
-      datasetContentInputArb,
-      datasetContentInputArb,
-      datasetContentInputArb,
-      (base, theirs, mine) => {
-        const compared = threeWayDataset(base, theirs, mine)
-        const overlap = compared.theirs.filter((path) => compared.both.includes(path))
-
-        expect(overlap).toEqual([])
-      },
-    ))
-  })
-
-  it("finds nothing when nobody moved away from the same starting point", () => {
-    fc.assert(fc.property(datasetContentInputArb, (base) => {
-      expect(isEmptyThreeWay(threeWayDataset(base, base, base))).toBe(true)
+describe("comparing a dataset against a version", () => {
+  it("finds nothing between a description and itself", () => {
+    fc.assert(fc.property(datasetContentInputArb, (content) => {
+      expect(isEmptyComparison(compareDataset(content, content))).toBe(true)
     }))
   })
 
-  it("finds nothing when both sides arrived at the same place", () => {
-    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (base, same) => {
-      expect(isEmptyThreeWay(threeWayDataset(base, same, same))).toBe(true)
+  it("lists exactly the paths the diff reports", () => {
+    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (theirs, mine) => {
+      expect(compareDataset(theirs, mine).differing).toEqual(diffDatasetInput(mine, theirs))
     }))
   })
 
-  it("calls everything they changed takeable when this side changed nothing", () => {
-    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (base, theirs) => {
-      const compared = threeWayDataset(base, theirs, base)
+  it("answers the same whichever side is called mine", () => {
+    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (theirs, mine) => {
+      const forwards = compareDataset(theirs, mine).differing
+      const backwards = compareDataset(mine, theirs).differing
 
-      expect(compared.both).toEqual([])
-      expect(compared.theirs).toEqual(diffDatasetInput(base, theirs))
+      expect(forwards.toSorted()).toEqual(backwards.toSorted())
     }))
   })
 
-  it("leaves nothing of theirs behind once the takeable paths are taken", () => {
-    fc.assert(fc.property(
-      datasetContentInputArb,
-      datasetContentInputArb,
-      datasetContentInputArb,
-      (base, theirs, mine) => {
-        const compared = threeWayDataset(base, theirs, mine)
-        const taken = takeAll(takeDatasetField, mine, theirs, compared.theirs)
-        const left = diffDatasetInput(taken, theirs)
+  it("leaves the two agreeing once every listed path is taken", () => {
+    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (theirs, mine) => {
+      const compared = compareDataset(theirs, mine)
+      const taken = takeAll(takeDatasetField, mine, theirs, compared.differing)
 
-        for (const path of compared.theirs) expect(left).not.toContain(path)
-      },
-    ))
+      expect(diffDatasetInput(taken, theirs)).toEqual([])
+    }))
   })
 
-  it("costs nothing this side changed to take everything only they changed", () => {
-    fc.assert(fc.property(
-      datasetContentInputArb,
-      datasetContentInputArb,
-      datasetContentInputArb,
-      (base, theirs, mine) => {
-        const compared = threeWayDataset(base, theirs, mine)
-        const taken = takeAll(takeDatasetField, mine, theirs, compared.theirs)
+  it("touches nothing the two already agreed on", () => {
+    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (theirs, mine) => {
+      const compared = compareDataset(theirs, mine)
+      const taken = takeAll(takeDatasetField, mine, theirs, compared.differing)
 
-        // Everything this side moved away from the starting point is still
-        // moved away from it, and to the same place.
-        expect(diffDatasetInput(base, taken)).toEqual(
-          expect.arrayContaining(diffDatasetInput(base, mine)),
-        )
-        for (const path of diffDatasetInput(base, mine)) {
-          expect(diffDatasetInput(taken, mine)).not.toContain(path)
-        }
-      },
-    ))
+      // A path outside the list held the same value on both sides, so taking
+      // the listed ones cannot have moved it.
+      for (const path of diffDatasetInput(mine, taken)) {
+        expect(compared.differing).toContain(path)
+      }
+    }))
+  })
+
+  it("reaches the same place taking one path at a time as taking them together", () => {
+    fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (theirs, mine) => {
+      const compared = compareDataset(theirs, mine)
+      const together = takeAll(takeDatasetField, mine, theirs, compared.differing)
+      const oneByOne = compared.differing.reduce(
+        (held, path) => takeDatasetField(held, theirs, path),
+        mine,
+      )
+
+      expect(diffDatasetInput(together, oneByOne)).toEqual([])
+    }))
   })
 })

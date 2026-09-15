@@ -45,7 +45,7 @@ export async function deleteResearch(
       .from(labelPin)
       .where(eq(labelPin.researchId, researchId))
     const versions = await tx
-      .select({ number: researchVersion.number, published: researchVersion.published })
+      .select({ number: researchVersion.number })
       .from(researchVersion)
       .where(eq(researchVersion.researchId, researchId))
 
@@ -56,8 +56,7 @@ export async function deleteResearch(
       subjectId: researchId,
       detail: {
         humLabels: pins.map((pin) => pin.label),
-        publishedVersions: versions.filter((version) => version.published).map((v) => v.number),
-        withdrawnVersions: versions.filter((version) => !version.published).map((v) => v.number),
+        publishedVersions: versions.map((version) => version.number),
       },
     })
 

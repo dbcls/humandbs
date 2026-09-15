@@ -77,7 +77,7 @@ describe("writing to a draft", () => {
     const exported = [...source.matchAll(/export async function (\w+)/g)]
       .map((match) => match[1] ?? "")
 
-    // Three of these create a row, which has no earlier version of itself to
+    // Four of these create a row, which has no earlier version of itself to
     // disagree with. The rest are not content: presence, which nobody reads for
     // correctness and where a lost write costs one heartbeat, and the two share
     // settings, where the last press winning is the answer and a check would
@@ -87,6 +87,7 @@ describe("writing to a draft", () => {
         "createResearchWithDraft",
         "createResearchFromUpstream",
         "createDraft",
+        "draftFromVersion",
         "touchPresence",
         "setDraftSharing",
         "reissueShareToken",

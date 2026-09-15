@@ -400,34 +400,32 @@ export function ConflictBand({ locale, changed }: { locale: Locale, changed: str
 }
 
 /**
- * The published description has moved since this draft copied it.
+ * Where this draft differs from the version it is shown against.
  *
  * Not the same thing as a refused save, and said differently: nobody's save was
- * rejected and nothing has to be dealt with before carrying on. What it warns
- * about is publishing over somebody else's correction — so the fields only they
- * touched can be taken in one go, and the ones both sides touched are marked
- * where they are, to be chosen one at a time.
+ * rejected and nothing has to be dealt with before carrying on. **It does not
+ * say who changed what** — a draft is a copy and keeps no ancestor, so every
+ * difference is the author's to decide. They can be taken in one go, or one at
+ * a time from the mark beside each field.
  */
-export function UpstreamBand({ locale, only, both, onTakeAll }: {
+export function UpstreamBand({ locale, differing, number, onTakeAll }: {
   locale: Locale
-  only: string[]
-  both: string[]
+  differing: string[]
+  /** The version being compared against, so the band can name it. */
+  number: number
   onTakeAll: () => void
 }) {
   const t = messagesFor(locale).admin.upstream
   return (
     <Note kind="info">
       <Stack gap="tight">
-        <p className="font-semibold">{t.heading}</p>
-        <p>{t.body(only.length + both.length)}</p>
-        {only.length > 0 && (
-          <div>
-            <Button type="button" variant="secondary" size="xs" onClick={onTakeAll}>
-              {t.takeAll(only.length)}
-            </Button>
-          </div>
-        )}
-        {both.length > 0 && <p className="text-ink-muted text-xs">{t.both(both.length)}</p>}
+        <p className="font-semibold">{t.heading(number)}</p>
+        <p>{t.body(differing.length)}</p>
+        <div>
+          <Button type="button" variant="secondary" size="xs" onClick={onTakeAll}>
+            {t.takeAll(differing.length)}
+          </Button>
+        </div>
       </Stack>
     </Note>
   )

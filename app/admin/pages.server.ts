@@ -83,8 +83,8 @@ import {
 } from "./gate"
 import { isHumLabel, proposeDatasetId } from "./labels"
 import { pinLabel, unpinLabel } from "./labels.server"
-import { isEmptyThreeWay, threeWayDataset, threeWayResearch } from "./merge"
-import { publishDraft, publishPreview, republishVersion, withdrawVersion } from "./publish.server"
+import { compareDataset, compareResearch, isEmptyComparison } from "./merge"
+import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
 import {
   activePresence,
   adminResearch,
@@ -99,7 +99,7 @@ import {
   readUndoSnapshot,
   readUndoStack,
   researchDatasets,
-  upstreamResearch,
+  comparableVersion,
   type AdminDraftRow,
   type AdminVersionRow,
   type DraftDatasetRow,
@@ -314,11 +314,12 @@ export async function researchDetailPage(
  * does not merge, because the draft is what a share link shows.
  */
 export interface UpstreamView<T> {
+  /** What the version being compared against holds. */
   theirs: T
-  /** Only they changed these, so taking them costs nothing held here. */
-  only: string[]
-  /** Both sides changed these; taking one replaces the value held here. */
-  both: string[]
+  /** Where the two disagree. Taking one replaces the value held here. */
+  differing: string[]
+  /** The number of the version compared against, for the screen to name it. */
+  number: number
 }
 
 /**
@@ -403,7 +404,7 @@ export async function draftEditorPage(
     researchDatasets(db, researchId),
     activePresence(db, draftId),
     readUndoStack(db, draftId),
-    upstreamResearch(db, researchId, draft.parentSnapshotId),
+    comparableVersion(db, researchId, null),
     readThreads(db, draftId),
     latestPublishedVersion(db, researchId),
     drawDraft(request, locale, { researchId, draftId, content: draft.content }),
@@ -437,15 +438,18 @@ export async function draftEditorPage(
 }
 
 function researchUpstream(
-  moved: { base: ResearchContent, theirs: ResearchContent },
+  against: { number: number, content: ResearchContent },
   mine: DraftInput,
 ): UpstreamView<DraftInput> | null {
-  const base = researchContentInput(moved.base)
-  const theirs = researchContentInput(moved.theirs)
-  const compared = threeWayResearch(base, theirs, mine.content)
-  if (isEmptyThreeWay(compared)) return null
-  // The memo is the draft's own and is never what upstream holds.
-  return { theirs: { note: mine.note, content: theirs }, only: compared.theirs, both: compared.both }
+  const theirs = researchContentInput(against.content)
+  const compared = compareResearch(theirs, mine.content)
+  if (isEmptyComparison(compared)) return null
+  // The memo is the draft's own and is never what the version holds.
+  return {
+    theirs: { note: mine.note, content: theirs },
+    differing: compared.differing,
+    number: against.number,
+  }
 }
 
 export interface DraftDatasetListView {
@@ -593,7 +597,7 @@ export async function datasetEditorPage(
 
   const [entry, published, humLabel, catalog, presence, undo, threads] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
-    readPublishedDataset(db, datasetId),
+    readPublishedDataset(db, researchId, datasetId),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
     activePresence(db, draftId),
@@ -602,14 +606,16 @@ export async function datasetEditorPage(
   ])
   const box = await adminBox(db, researchId, humLabel)
 
-  const content = entry?.content ?? published ?? emptyDatasetContent()
+  const content = entry?.content ?? published?.content ?? emptyDatasetContent()
   const input = datasetContentInput(content)
-  const changed = published === null ? [] : changedDatasetFromPublished(published, content)
+  const changed = published === null
+    ? []
+    : changedDatasetFromPublished(published.content, content)
   // What is published is resolved too: the review marks show the value a field
   // held before, and a term dropped from the draft still has to be named there.
   const terms = await termsByIds(db, [
     ...namedTerms(content),
-    ...(published === null ? [] : namedTerms(published)),
+    ...(published === null ? [] : namedTerms(published.content)),
   ])
   const page = await drawDatasetDraft(request, locale, { researchId, draftId }, datasetId)
 
@@ -628,14 +634,12 @@ export async function datasetEditorPage(
     terms,
     presence: presenceView(presence, actor.sessionId),
     undo,
-    upstream: datasetUpstream(entry?.baseContent ?? null, published, input),
+    upstream: datasetUpstream(published, input),
     review: {
       changed,
-      previous: published === null ? {} : describedDataset(published, changed),
+      previous: published === null ? {} : describedDataset(published.content, changed),
       threads,
-      // A dataset has no versions, so what it is compared against is simply
-      // what is published for it now.
-      publishedNumber: null,
+      publishedNumber: published?.number ?? null,
       signedInName: actor.name,
     },
     box,
@@ -644,21 +648,19 @@ export async function datasetEditorPage(
 }
 
 /**
- * Where the published description has moved since this draft copied it. A draft
- * that has not written anything yet is showing the published description, so
- * there is nothing to have moved away from.
+ * Where this draft's description of a dataset differs from the one the newest
+ * version gives it. A dataset no version lists has nothing to compare against.
  */
 function datasetUpstream(
-  base: DatasetContent | null,
-  published: DatasetContent | null,
+  against: { number: number, content: DatasetContent } | null,
   mine: DatasetContentInput,
 ): UpstreamView<DatasetContentInput> | null {
-  if (base === null || published === null) return null
-  const theirs = datasetContentInput(published)
-  const compared = threeWayDataset(datasetContentInput(base), theirs, mine)
-  return isEmptyThreeWay(compared)
+  if (against === null) return null
+  const theirs = datasetContentInput(against.content)
+  const compared = compareDataset(theirs, mine)
+  return isEmptyComparison(compared)
     ? null
-    : { theirs, only: compared.theirs, both: compared.both }
+    : { theirs, differing: compared.differing, number: against.number }
 }
 
 export type SaveDatasetResult
@@ -872,12 +874,13 @@ export async function researchDetailAction(
   const intent = form.get("intent")
   const back = redirect(href(locale, adminResearchPath(id)))
 
-  if (intent === "withdraw-version" || intent === "republish-version") {
+  if (intent === "withdraw-version") {
     const actor = await requireCapability(request, "withdraw")
-    const versionId = identity(readString(form, "versionId"))
-    const outcome = intent === "withdraw-version"
-      ? await withdrawVersion(db, versionId, actorOf(actor))
-      : await republishVersion(db, versionId, actorOf(actor))
+    const outcome = await withdrawVersion(
+      db,
+      identity(readString(form, "versionId")),
+      actorOf(actor),
+    )
     if (outcome.status === "gone") notFound()
     return back
   }
@@ -968,8 +971,6 @@ export interface PublishDatasetChangeView {
   datasetId: string
   label: string | null
   fields: number
-  affects: number
-  affectsIfFix: number | null
   isNew: boolean
   href: string
 }
@@ -981,10 +982,14 @@ export interface PublishPageView {
   humLabel: string | null
   revision: number
   nextNumber: number
-  /** The version a fix would replace. Null hides the choice. */
-  fixNumber: number | null
-  /** The version that is out there now, when it is not what this draft came from. */
-  staleAgainst: number | null
+  /**
+   * The numbers this draft may take instead of a new one, newest first.
+   * `releaseDate` is set when a version holds it now, which is what the screen
+   * calls updating that version.
+   */
+  choices: { number: number, releaseDate: string | null }[]
+  /** The choice offered first: the version this draft was copied from. */
+  suggestedNumber: number | null
   today: string
   blocks: PublishBlockView[]
   groups: PublishGroupView[]
@@ -1027,8 +1032,8 @@ export async function publishPage(
     humLabel: preview.humLabel,
     revision: preview.revision,
     nextNumber: preview.nextNumber,
-    fixNumber: preview.fixes?.number ?? null,
-    staleAgainst: preview.stale?.number ?? null,
+    choices: preview.choices,
+    suggestedNumber: preview.suggestedNumber,
     today: today(),
     blocks: preview.gate.blocks.map((block) => ({
       kind: block.kind,
@@ -1094,15 +1099,6 @@ function groupFindings(
       }))
       continue
     }
-    if (finding.kind === "upstream-edited") {
-      place(finding.kind, finding.datasetId, () => ({
-        label: into.naming(finding.datasetId),
-        href: into.datasetHref(finding.datasetId),
-        count: 1,
-        note: t.overwrites(finding.theirs, finding.both),
-      }))
-      continue
-    }
     if (finding.kind === "pin-disagrees-upstream") {
       place(finding.kind, finding.datasetId, () => ({
         label: finding.label,
@@ -1156,7 +1152,8 @@ export type PublishResult
   = | { status: "blocked" }
     | { status: "unacknowledged" }
     | { status: "conflict" }
-    | { status: "no-parent" }
+    /** The number was taken from a screen drawn before a version moved. */
+    | { status: "number-unavailable" }
     /**
      * The draft is not there any more — somebody discarded it, or published it
      * from another screen. Answered on the page rather than as a 404: the
@@ -1217,13 +1214,15 @@ export async function publishAction(
 
   const revision = Number(form.get("revision"))
   if (!Number.isInteger(revision)) badRequest()
-  const asFix = form.get("mode") === "fix"
+  const number = Number(form.get("number"))
+  if (!Number.isInteger(number) || number < 1) badRequest()
   const releaseDate = readString(form, "releaseDate") ?? ""
-  if (!asFix && !RELEASE_DATE.test(releaseDate)) badRequest()
+  if (!RELEASE_DATE.test(releaseDate)) badRequest()
 
   const outcome = await publishDraft(db, {
     at: { draftId, revision },
-    mode: asFix ? { kind: "fix" } : { kind: "version", releaseDate },
+    number,
+    releaseDate,
     acknowledged: form.get("acknowledged") === "on",
     privateFiles: await privateNames(researchId),
   }, actorOf(actor))

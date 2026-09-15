@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { seedVersion } from "~/db/seed"
 import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
@@ -47,16 +47,15 @@ async function createResearch(): Promise<string> {
 async function createDataset(researchId: string): Promise<string> {
   const { id } = only(await db.insert(s.dataset).values({ researchId })
     .returning({ id: s.dataset.id }))
-  await db.insert(s.datasetContent).values({ datasetId: id, content: emptyDatasetContent() })
   return id
 }
 
 async function publish(researchId: string, datasetIds: string[]): Promise<void> {
-  const { id: snapshotId } = only(await db.insert(s.contentSnapshot)
-    .values({ researchId, content: { ...emptyResearchContent(), datasetIds } })
-    .returning({ id: s.contentSnapshot.id }))
-  await db.insert(s.researchVersion)
-    .values({ researchId, number: 1, snapshotId, releaseDate: "2020-01-01" })
+  await seedVersion(db, {
+    researchId,
+    number: 1,
+    datasets: datasetIds.map((datasetId) => ({ datasetId })),
+  })
 }
 
 async function pins() {
@@ -174,16 +173,16 @@ describe("taking a label away", () => {
       CURATOR,
     )
     expect(await db.select().from(s.searchDoc)).toHaveLength(3)
-    const snapshot = only(await db.select().from(s.contentSnapshot))
+    const version = only(await db.select().from(s.researchVersion))
 
     const pin = only(await db.select().from(s.labelPin).where(eq(s.labelPin.kind, "dataset")))
     expect(await unpinLabel(db, pin.id, CURATOR)).toEqual({ status: "unpinned" })
 
     const left = await db.select({ type: s.searchDoc.targetType }).from(s.searchDoc)
     expect(left.map((row) => row.type).toSorted()).toEqual(["research", "research-version"])
-    expect(only(await db.select().from(s.contentSnapshot)).content).toEqual(snapshot.content)
-    // The description stays, so the dataset can be pinned again and come back.
-    expect(await db.select().from(s.datasetContent)).toHaveLength(1)
+    // What the version listed is a fact about that version, so unpinning the
+    // label does not rewrite it: the dataset can be pinned again and come back.
+    expect(only(await db.select().from(s.researchVersion)).content).toEqual(version.content)
   })
 
   it("frees the label to be used again", async () => {

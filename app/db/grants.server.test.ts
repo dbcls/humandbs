@@ -110,10 +110,10 @@ describe("grantStatements", () => {
     expect(eventRevoke).not.toMatch(/INSERT/)
   })
 
-  it("also revokes UPDATE, DELETE and TRUNCATE on replaced_dataset_content", () => {
-    const statements = grantStatements(APP, OWNER)
-    const revoke = statements.find((s) => s.includes("ON replaced_dataset_content"))
-    expect(revoke).toMatch(/REVOKE UPDATE, DELETE, TRUNCATE ON replaced_dataset_content/)
+  it("revokes from nothing else: the trail is the one append-only table", () => {
+    const revokes = grantStatements(APP, OWNER).filter((s) => s.startsWith("REVOKE"))
+
+    expect(revokes).toHaveLength(1)
   })
 
   it("quotes the app user identifier consistently everywhere the role is named", () => {

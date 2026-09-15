@@ -27,9 +27,9 @@ import { requireCapability } from "~/auth/actor.server"
 import { getDb, type Executor } from "~/db/client.server"
 import {
   contentKey,
-  datasetContent,
   draftDatasetEntry,
   facetCategory,
+  searchDoc,
   vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
@@ -316,10 +316,12 @@ async function dictionaryRows(
  */
 async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
   const match = sql`jsonb_path_exists(content, '$.**.keyId ? (@ == $id)', ${JSON.stringify({ id: keyId })}::jsonb)`
+  // Every published description is in the rows the public side reads, which is
+  // one place to ask rather than one version row per version.
   const [published] = await db
     .select({ hit: sql<number>`1` })
-    .from(datasetContent)
-    .where(match)
+    .from(searchDoc)
+    .where(and(eq(searchDoc.targetType, "dataset"), match))
     .limit(1)
   if (published !== undefined) return true
   const [drafted] = await db
@@ -357,7 +359,11 @@ async function termInUse(db: Executor, termId: string): Promise<boolean> {
     jsonb_path_exists(content, '$.**.termIds.value[*] ? (@ == $id)', ${id}::jsonb)
     OR jsonb_path_exists(content, '$.**.diseases.value[*].termIds[*] ? (@ == $id)', ${id}::jsonb)
   )`
-  const [published] = await db.select({ hit: sql<number>`1` }).from(datasetContent).where(match).limit(1)
+  const [published] = await db
+    .select({ hit: sql<number>`1` })
+    .from(searchDoc)
+    .where(and(eq(searchDoc.targetType, "dataset"), match))
+    .limit(1)
   if (published !== undefined) return true
   const [drafted] = await db
     .select({ hit: sql<number>`1` })

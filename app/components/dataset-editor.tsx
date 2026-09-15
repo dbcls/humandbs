@@ -250,12 +250,11 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             <ConflictBand locale={locale} changed={editing.conflict.changed} />
           </div>
         )}
-        {editing.upstream !== null
-          && (editing.upstream.only.length > 0 || editing.upstream.both.length > 0) && (
+        {editing.upstream !== null && editing.upstream.differing.length > 0 && (
           <UpstreamBand
             locale={locale}
-            only={editing.upstream.only}
-            both={editing.upstream.both}
+            differing={editing.upstream.differing}
+            number={editing.upstream.number}
             onTakeAll={editing.takeUpstream}
           />
         )}
@@ -464,8 +463,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 function markedPaths(editing: DraftEditing<DatasetContentInput>): string[] {
   return [
     ...editing.conflict?.changed ?? [],
-    ...editing.upstream?.only ?? [],
-    ...editing.upstream?.both ?? [],
+    ...editing.upstream?.differing ?? [],
     ...editing.problems.map((problem) => problem.path),
   ]
 }
