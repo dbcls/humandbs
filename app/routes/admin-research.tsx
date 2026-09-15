@@ -80,7 +80,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
         <Stack gap="block">
           {actionData?.status === "conflict" && <Note kind="danger" live>{t.discardConflict}</Note>}
 
-          <Section title={t.labels}>
+          <Section title={t.labels} note={t.labelsNote}>
             <Stack gap="normal">
               {view.labels.length === 0
                 ? <Empty>{t.unpinned}</Empty>
@@ -110,7 +110,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             </Stack>
           </Section>
 
-          <Section title={t.versions}>
+          <Section title={t.versions} note={t.versionsNote}>
             {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
             {/* **状態の列を持たない。** 並んでいることが公開されていることなので、
                 行が言えるのは「出ている」だけになる。 */}
@@ -139,7 +139,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             </Table>
           </Section>
 
-          <Section title={t.drafts}>
+          <Section title={t.drafts} note={t.draftsNote}>
             <Stack gap="normal">
               <Form method="post">
                 <Submit intent="create-draft">{t.createDraft}</Submit>

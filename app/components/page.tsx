@@ -177,23 +177,38 @@ export function Card({ under = true, children }: {
  * the 32px that separates one part from the next, 8px leaves the page a single
  * rhythm, and the name crowds the first thing in the block.
  */
-export function Section({ title, at, children }: {
+export function Section({ title, note, at, children }: {
   title: string
+  /**
+   * What the part is for, for the parts whose name does not say it.
+   *
+   * **Only those.** A line under every name is a page of sentences nobody
+   * reads, and the names stop being read along with them — so this says what a
+   * reader could not have worked out from "公開バージョン", and nothing that
+   * repeats it.
+   */
+  note?: string
   /** The anchor of the whole section, when it draws one field. */
   at?: string
   children: ReactNode
 }) {
   return (
     <Stack gap="normal" as="section">
-      {/* A mark for the whole section sits beside its name rather than under
-          it: on a line of its own it reads as belonging to the first value. */}
-      {/* The name carries no colour: on a face made of fields and buttons, a
-          blue line is read as something to press before it is read as a name.
-          What says "this names what follows" is the rule beside it. */}
-      <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
-        {title}
-        {at !== undefined && <Annotation at={at} />}
-      </h2>
+      {/* **The line belongs to the name, not to what follows.** At `tight` it
+          sits under the heading as part of it; at the section's own `normal` it
+          would float between the two, belonging to neither. */}
+      <Stack gap="tight">
+        {/* A mark for the whole section sits beside its name rather than under
+            it: on a line of its own it reads as belonging to the first value. */}
+        {/* The name carries no colour: on a face made of fields and buttons, a
+            blue line is read as something to press before it is read as a name.
+            What says "this names what follows" is the rule beside it. */}
+        <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
+          {title}
+          {at !== undefined && <Annotation at={at} />}
+        </h2>
+        {note !== undefined && <p className="text-ink-muted text-sm">{note}</p>}
+      </Stack>
       {children}
     </Stack>
   )

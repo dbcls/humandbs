@@ -215,6 +215,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                           <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
                         )}
                         <Td className="break-all">
+                          <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
                           {to === null ? name : <Link to={to}>{name}</Link>}
                         </Td>
                         <Td>
@@ -304,9 +305,9 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 <Td>
                   {/* A line each, because a grant carrying several numbers runs
                       them into one long code on a single line. */}
-                  <ul>
+                  <ul className="flex flex-col items-start gap-1">
                     {grant.grantIds.map((grantId) => (
-                      <li key={grantId}>{grantId}</li>
+                      <li key={grantId}><Badge pill>{grantId}</Badge></li>
                     ))}
                   </ul>
                   <Annotation at={`grants.${grant.id}.grantIds`} />
@@ -426,6 +427,7 @@ function DatasetList({ labels, linkTo, messages }: {
         const to = linkTo({ id: null, label })
         return (
           <span key={label} className="break-all">
+            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
             {to === null ? label : <Link to={to}>{label}</Link>}
           </span>
         )

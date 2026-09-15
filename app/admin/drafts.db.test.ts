@@ -17,6 +17,7 @@ import {
   createResearchWithDraft,
   deleteDraftDataset,
   discardDraft,
+  draftToTakeInto,
   saveDatasetEntry,
   saveDraftContent,
   touchPresence,
@@ -144,6 +145,40 @@ describe("starting a draft of an existing research", () => {
     const draft = await readDraft(db, draftId)
     expect(draft?.content).toEqual(emptyResearchContent())
     expect(draft?.copiedFromNumber).toBeNull()
+  })
+
+  /**
+   * Which number a draft remembers is the whole of the difference between
+   * taking an upstream update into what is published and taking it into a
+   * version that is yet to be — it is what the publish screen offers first.
+   */
+  it("remembers the number when the draft is to replace what is published", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 3, titled("third"))
+
+    const draftId = await draftToTakeInto(db, researchId, "replacement")
+
+    const draft = await readDraft(db, draftId ?? "")
+    expect(draft?.content.title.ja).toEqual(filled("third"))
+    expect(draft?.copiedFromNumber).toBe(3)
+  })
+
+  it("remembers no number when the draft is to become the next version", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 3, titled("third"))
+
+    const draftId = await draftToTakeInto(db, researchId, "next-version")
+
+    const draft = await readDraft(db, draftId ?? "")
+    expect(draft?.content.title.ja).toEqual(filled("third"))
+    expect(draft?.copiedFromNumber).toBeNull()
+  })
+
+  it("answers with nothing where there is no version to copy", async () => {
+    const researchId = await createResearch()
+
+    expect(await draftToTakeInto(db, researchId, "replacement")).toBeNull()
+    expect(await db.select().from(s.researchDraft)).toEqual([])
   })
 
   /**

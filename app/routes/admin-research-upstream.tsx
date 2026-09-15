@@ -1,36 +1,31 @@
-import { data, Form, Link } from "react-router"
+import { Link } from "react-router"
 
-import { upstreamResearchAction, upstreamResearchPage } from "~/admin/templates.server"
-import { adminResearchPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
-import { Heading, Note, Stack } from "~/components/base"
+import { upstreamResearchPage } from "~/admin/templates.server"
+import { adminResearchPath, adminUpstreamBranchPath, adminUpstreamResearchPath } from "~/admin/urls"
+import { Heading, Stack } from "~/components/base"
 import { Card, Page, Section, Table, Td } from "~/components/page"
-import { UpstreamChoice, UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
+import { UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-research-upstream"
 
 /**
- * Starting a research from an approved application.
+ * Finding the approved application a draft is to be written from.
  *
  * The application system already holds the study's title, its aims, its methods,
  * the people it is about and the accessions it registered, so a research begins
  * from those rather than from an empty form
  * (docs/editing.md の「下書きを外から作る」).
  *
- * **A branch whose hum label already names a research offers no button.** The
- * ledger would refuse the pin, and the answer the curator wants is the research
- * that exists, which is what the row links to instead.
+ * **This screen only finds the branch.** What taking it in would bring, and
+ * which draft it goes into, are answered one screen on — that answer depends on
+ * what the portal already holds for the hum, and reading it for every row would
+ * be reading it for rows nobody opens.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
   return upstreamResearchPage(request, locale)
-}
-
-export async function action({ request }: Route.ActionArgs) {
-  const locale = readLocale(new URL(request.url).pathname).locale
-  const result = await upstreamResearchAction(request, locale)
-  return result instanceof Response ? result : data(result, { status: 409 })
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -41,24 +36,17 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
-export default function AdminResearchUpstream({ loaderData, actionData }: Route.ComponentProps) {
+export default function AdminResearchUpstream({ loaderData }: Route.ComponentProps) {
   const view = loaderData
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.templates
-
-  const at = (applicationId: string) =>
-    href(locale, adminUpstreamResearchPath() + upstreamQuery({
-      keyword: view.keyword,
-      applicationId,
-    }))
 
   return (
     <Page>
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} />
-          {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
 
           {!view.connected
             ? <UpstreamNotConnected locale={locale} dra={false} />
@@ -85,7 +73,9 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
                       {view.rows.map((row) => (
                         <tr key={row.applicationId}>
                           <Td className="whitespace-nowrap">
-                            <Link to={at(row.applicationId)}>{row.applicationId}</Link>
+                            <Link to={href(locale, adminUpstreamBranchPath(row.applicationId))}>
+                              {row.applicationId}
+                            </Link>
                           </Td>
                           <Td className="whitespace-nowrap">
                             {row.humLabel === null
@@ -106,35 +96,6 @@ export default function AdminResearchUpstream({ loaderData, actionData }: Route.
                       ))}
                     </Table>
                   </Section>
-
-                  {view.branch !== null && view.chosen !== null && (
-                    <Section title={view.branch.applicationId}>
-                      {view.branch.heldBy === null
-                        ? (
-                            <Form method="post">
-                              <input
-                                type="hidden"
-                                name="application"
-                                value={view.branch.applicationId}
-                              />
-                              <UpstreamChoice
-                                locale={locale}
-                                choice={view.chosen}
-                                submit={t.create}
-                              />
-                            </Form>
-                          )
-                        : (
-                            <Note kind="info">
-                              {t.heldBy}
-                              {" "}
-                              <Link to={href(locale, adminResearchPath(view.branch.heldBy))}>
-                                {t.openHolder}
-                              </Link>
-                            </Note>
-                          )}
-                    </Section>
-                  )}
                 </>
               )}
         </Stack>

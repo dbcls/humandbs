@@ -579,14 +579,19 @@ const ja = {
     detail: {
       heading: "研究の編集",
       labels: "研究 ID",
+      labelsNote: "primary が公開ページのアドレスになります。古い ID も secondary として残しておけば、"
+        + "外部からのリンクは解決し続けます。",
       primary: "primary",
       secondary: "secondary",
       unpinned: "研究 ID がまだ割り当てられていません。",
       versions: "公開バージョン",
+      versionsNote: "いま公開されているものです。取り下げると下書きに戻り、その番号は空きます。",
       noVersions: "公開バージョンはありません。",
       version: "バージョン",
       releaseDate: "公開日",
       drafts: "下書き",
+      draftsNote: "次に出す中身です。公開するときに、新しい番号を取るか、いまあるバージョンを"
+        + "更新するかを選びます。",
       noDrafts: "下書きはありません。",
       createDraft: "下書きを作る",
       edit: "編集",
@@ -860,6 +865,23 @@ const ja = {
       unknown: (accession: string) => `${accession} は登録先に見つかりません。`,
       takenLabel: "その ID は既に別のものに割り当てられています。",
       conflict: "この下書きは別の場所で編集されました。画面を開き直してからやり直してください。",
+      backToApplications: "承認済みの申請へ",
+      destination: "どこに入れるか",
+      intoNew: "新しい研究を作る",
+      intoNewHint: "この研究 ID を持つ研究はまだありません。",
+      intoPublic: (number: number) => `公開中の内容に反映する（v${number}）`,
+      intoPublicHint: "公開したときに、その版の内容が入れ替わります。番号と公開日はそのままです。",
+      intoNext: (number: number) => `新しいバージョンを作る（v${number} になります）`,
+      intoNextHint: "公開中の版はそのまま残ります。",
+      intoDraft: "いまある下書きに入れる",
+      draftUpdatedAt: (at: string) => `更新 ${at}`,
+      takenBranches: (count: number) => `取り込み済みの申請 ${count} 件`,
+      takenAgain: "この申請は取り込み済みです。登録された accession は後から増えるので、取り込み直せます。",
+      go: "この申請を取り込む",
+      humLabelMissing: "この申請にはまだ研究 ID が書かれていません。",
+      humLabelMissingHint:
+        "研究 ID は後から割り当てられます。割り当てたら、申請管理システムにも記入してください。"
+        + "研究 ID と申請の対応を持っているのは申請管理システムで、ポータルからは書けません。",
     },
     publish: {
       heading: "公開の確認",
@@ -1597,14 +1619,20 @@ const en: Messages = {
     detail: {
       heading: "Editing a research",
       labels: "Research ID",
+      labelsNote: "The primary one is the address of the public page. Keeping an older ID as a "
+        + "secondary one is what makes links from outside keep resolving.",
       primary: "primary",
       secondary: "secondary",
       unpinned: "No Research ID has been assigned yet.",
       versions: "Published versions",
+      versionsNote: "What is out now. Withdrawing one turns it back into a draft and frees its "
+        + "number.",
       noVersions: "Nothing has been published yet.",
       version: "Version",
       releaseDate: "Date published",
       drafts: "Drafts",
+      draftsNote: "What goes out next. Publishing one takes either a new number or the number of "
+        + "a version it replaces.",
       noDrafts: "There is no draft.",
       createDraft: "Start a draft",
       edit: "Edit",
@@ -1879,6 +1907,26 @@ const en: Messages = {
       unknown: (accession: string) => `${accession} was not found where it is registered.`,
       takenLabel: "That ID is already assigned to something else.",
       conflict: "This draft was edited somewhere else. Open the screen again and retry.",
+      backToApplications: "Back to the approved applications",
+      destination: "Where it goes",
+      intoNew: "Start a new research",
+      intoNewHint: "No research holds this research ID yet.",
+      intoPublic: (number: number) => `Apply to what is published (v${number})`,
+      intoPublicHint: "Publishing swaps that version's content. Its number and release date stay.",
+      intoNext: (number: number) => `Make a new version (it becomes v${number})`,
+      intoNextHint: "The published version stays as it is.",
+      intoDraft: "Take it into a draft that is open",
+      draftUpdatedAt: (at: string) => `updated ${at}`,
+      takenBranches: (count: number) => `${count} applications taken in`,
+      takenAgain:
+        "This application has been taken in already. Accessions are registered afterwards, "
+        + "so taking it again is how they arrive.",
+      go: "Take this application in",
+      humLabelMissing: "This application does not state a research ID yet.",
+      humLabelMissingHint:
+        "A research ID can be assigned later. Once it is, write it into the application system too: "
+        + "the correspondence between a research ID and an application is held there, and the "
+        + "portal cannot write to it.",
     },
     publish: {
       heading: "Publish",

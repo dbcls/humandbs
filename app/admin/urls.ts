@@ -39,6 +39,11 @@ export function adminUpstreamResearchPath(): string {
   return "/admin/research/upstream"
 }
 
+/** One approval branch: what it brings, and the drafts it can be brought into. */
+export function adminUpstreamBranchPath(applicationId: string): string {
+  return `${adminUpstreamResearchPath()}/${encodeURIComponent(applicationId)}`
+}
+
 export function adminResearchPath(researchId: string): string {
   return `/admin/research/${researchId}`
 }

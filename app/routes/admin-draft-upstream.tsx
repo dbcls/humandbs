@@ -1,12 +1,12 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import { upstreamDraftAction, upstreamDraftPage } from "~/admin/templates.server"
-import { adminDraftPath, adminDraftUpstreamPath, adminResearchPath, upstreamQuery } from "~/admin/urls"
+import { adminDraftPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
-import { Card, Page, Section, Table, Td } from "~/components/page"
+import { Card, Page, Section } from "~/components/page"
 import { UpstreamMerge } from "~/components/upstream-merge"
-import { UpstreamNotConnected, UpstreamSearch } from "~/components/upstream"
+import { UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { href, readLocale } from "~/public/urls"
 
@@ -51,12 +51,6 @@ export default function AdminDraftUpstream({ loaderData, actionData }: Route.Com
   const messages = messagesFor(locale)
   const t = messages.admin.templates
 
-  const at = (applicationId: string) =>
-    href(locale, adminDraftUpstreamPath(view.researchId, view.draftId) + upstreamQuery({
-      keyword: view.keyword,
-      applicationId,
-    }))
-
   return (
     <Page>
       <Card under={false}>
@@ -70,55 +64,16 @@ export default function AdminDraftUpstream({ loaderData, actionData }: Route.Com
           {actionData?.status === "conflict" && <Note kind="warning" live>{t.conflict}</Note>}
           {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
 
-          {!view.connected
+          {!view.connected || view.branch === null || view.merge === null
             ? <UpstreamNotConnected locale={locale} dra={false} />
             : (
-                <>
-                  <UpstreamSearch
-                    locale={locale}
-                    action={href(locale, adminDraftUpstreamPath(view.researchId, view.draftId))}
-                    keyword={view.keyword}
-                  />
-                  <Section title={t.applications}>
-                    <Table
-                      headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
-                      whenEmpty={t.none}
-                    >
-                      {view.rows.map((row) => (
-                        <tr key={row.applicationId}>
-                          <Td className="whitespace-nowrap">
-                            <Link to={at(row.applicationId)}>{row.applicationId}</Link>
-                          </Td>
-                          <Td className="whitespace-nowrap">
-                            {row.humLabel === null
-                              ? <span className="text-ink-muted">{t.noHumLabel}</span>
-                              : row.heldBy === null
-                                ? row.humLabel
-                                : (
-                                    <Link to={href(locale, adminResearchPath(row.heldBy))}>
-                                      {row.humLabel}
-                                    </Link>
-                                  )}
-                          </Td>
-                          <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                          <Td floor="min-w-64">{row.titleJa === "" ? row.titleEn : row.titleJa}</Td>
-                          <Td className="whitespace-nowrap">{row.piName}</Td>
-                          <Td className="text-xs">{row.accessions.join(", ")}</Td>
-                        </tr>
-                      ))}
-                    </Table>
-                  </Section>
-
-                  {view.branch !== null && view.merge !== null && (
-                    <Section title={view.branch.applicationId}>
-                      <Form method="post">
-                        <input type="hidden" name="revision" value={view.revision} />
-                        <input type="hidden" name="application" value={view.branch.applicationId} />
-                        <UpstreamMerge locale={locale} view={view} />
-                      </Form>
-                    </Section>
-                  )}
-                </>
+                <Section title={view.branch.applicationId}>
+                  <Form method="post">
+                    <input type="hidden" name="revision" value={view.revision} />
+                    <input type="hidden" name="application" value={view.branch.applicationId} />
+                    <UpstreamMerge locale={locale} view={view} />
+                  </Form>
+                </Section>
               )}
         </Stack>
       </Card>

@@ -55,11 +55,15 @@ export function UpstreamNotConnected({ locale, dra }: { locale: Locale, dra: boo
  * Every dataset is checked to begin with and one already held is not offered:
  * the ledger is unique across every label, so pinning it again would refuse the
  * whole seeding rather than that one row.
+ *
+ * **Without a word for the button it is a reading of the branch, not a form.**
+ * The datasets are ticked where they arrive, and that is the screen the draft
+ * already exists on.
  */
-export function UpstreamChoice({ locale, choice, submit }: {
+export function UpstreamChoice({ locale, choice, submit = null }: {
   locale: Locale
   choice: UpstreamChoiceView
-  submit: string
+  submit?: string | null
 }) {
   const t = messagesFor(locale).admin.templates
   const free = choice.datasets.filter((entry) => entry.heldBy === null)
@@ -88,16 +92,20 @@ export function UpstreamChoice({ locale, choice, submit }: {
               <ul className="flex flex-col gap-2 text-sm">
                 {choice.datasets.map((entry) => (
                   <li key={entry.accession} className="flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        name="accession"
-                        value={entry.accession}
-                        defaultChecked={entry.heldBy === null}
-                        disabled={entry.heldBy !== null}
-                      />
-                      <span className="font-mono">{entry.accession}</span>
-                    </label>
+                    {submit === null
+                      ? <span className="font-mono">{entry.accession}</span>
+                      : (
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              name="accession"
+                              value={entry.accession}
+                              defaultChecked={entry.heldBy === null}
+                              disabled={entry.heldBy !== null}
+                            />
+                            <span className="font-mono">{entry.accession}</span>
+                          </label>
+                        )}
                     {entry.description !== "" && (
                       <span className="text-ink-muted">{entry.description}</span>
                     )}
@@ -143,11 +151,13 @@ export function UpstreamChoice({ locale, choice, submit }: {
         </Stack>
       )}
 
-      <div>
-        <Submit variant="primary" disabled={free.length === 0 && choice.fields.length === 0}>
-          {submit}
-        </Submit>
-      </div>
+      {submit !== null && (
+        <div>
+          <Submit variant="primary" disabled={free.length === 0 && choice.fields.length === 0}>
+            {submit}
+          </Submit>
+        </div>
+      )}
     </Stack>
   )
 }

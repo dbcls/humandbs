@@ -104,6 +104,17 @@ export const researchDraft = pgTable("research_draft", {
    * stops being offered.
    */
   copiedFromNumber: integer(),
+  /**
+   * The approval branches of the application system this draft has taken values
+   * from, oldest first.
+   *
+   * **A record, not a constraint.** Nothing consults it to decide what may be
+   * taken: a branch is approved before its data is registered, so the same one
+   * is taken twice — once for the description and again once the accessions
+   * exist. Several branches reach one draft as well, because approvals arrive
+   * one at a time while a draft stays open.
+   */
+  takenBranches: text().array().notNull().default([]),
   revision: integer().notNull().default(1),
   shareToken: text().notNull().unique(),
   shareEnabled: boolean().notNull().default(false),

@@ -18,7 +18,7 @@ import { Empty } from "./page"
  * **The two columns are read-only and the box under them is not.** What goes in
  * is often neither of them — a curator rewrites a title the application states
  * awkwardly — so a control that only chose between the two would leave nowhere
- * to write (`docs/editing.md` の「既存の下書きに取り込む」).
+ * to write (`docs/editing.md` の「下書きを外から作る」).
  *
  * **Fields where the two agree are folded away.** A version bump changes a few
  * of them, and sixteen boxes with nothing to decide bury the ones that matter.

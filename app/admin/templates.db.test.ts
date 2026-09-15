@@ -30,12 +30,13 @@ import {
 
 import {
   addDatasetsFromUpstream,
+  applyUpstreamToDraft,
   createResearchFromUpstream,
   createResearchWithDraft,
   saveDraftContent,
 } from "./drafts.server"
 import { readDatasetEntry, readDraft } from "./queries.server"
-import { upstreamResearchAction, upstreamResearchPage } from "./templates.server"
+import { upstreamBranchAction, upstreamBranchPage, upstreamResearchPage } from "./templates.server"
 
 /**
  * Writing a seeded draft, against the development database.
@@ -48,6 +49,9 @@ import { upstreamResearchAction, upstreamResearchPage } from "./templates.server
 const db = getDb()
 
 const CURATOR = { sub: "0f3a-1b2c", name: "curator" }
+
+/** The approval branch every test here reads. */
+const BRANCH = "J-DS000136-010"
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
@@ -66,6 +70,7 @@ function described(text: string): DatasetContent {
 
 const seed = (humLabel: string | null, accessions: string[]) => ({
   humLabel,
+  applicationId: BRANCH,
   content: emptyResearchContent(),
   datasets: accessions.map((label) => ({ label, content: described(label) })),
 })
@@ -271,7 +276,7 @@ describe("the screen that starts a research from an application", () => {
   const SIGNED_IN = { sub: "0f3a-1b2c", name: "curator", idToken: "an-id-token" }
 
   const branch: DsBranchDetail = {
-    applicationId: "J-DS000136-010",
+    applicationId: BRANCH,
     humLabel: "hum0522",
     approvedOn: "2024-05-18",
     titleJa: "ゲノム解析",
@@ -324,12 +329,14 @@ describe("the screen that starts a research from an application", () => {
     })
     const body = new URLSearchParams()
     for (const [name, value] of fields) body.append(name, value)
-    return new Request("http://localhost:8080/admin/research/upstream", {
+    return new Request(`http://localhost:8080/admin/research/upstream/${BRANCH}`, {
       method: "POST",
       headers,
       body: body.toString(),
     })
   }
+
+  const at = { applicationId: BRANCH }
 
   it("says it cannot reach the application system rather than answering as if it were empty", async () => {
     delete process.env.HUMANDBS_JGA_DATABASE_URL
@@ -346,10 +353,22 @@ describe("the screen that starts a research from an application", () => {
     const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
     if (held.status !== "created") throw new Error(held.status)
 
-    const view = await upstreamResearchPage(get(token, "?application=J-DS000136-010"), "ja")
+    const view = await upstreamBranchPage(get(token, ""), "ja", at)
+    const listing = await upstreamResearchPage(get(token, ""), "ja")
 
-    expect(view.branch?.heldBy).toBe(held.researchId)
-    expect(view.rows[0]?.heldBy).toBe(held.researchId)
+    expect(view.holder?.researchId).toBe(held.researchId)
+    expect(listing.rows[0]?.heldBy).toBe(held.researchId)
+  })
+
+  it("offers every draft of that research, and the version it could replace", async () => {
+    const token = await signIn()
+    const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
+    if (held.status !== "created") throw new Error(held.status)
+
+    const view = await upstreamBranchPage(get(token, ""), "ja", at)
+
+    expect(view.holder?.latestNumber).toBeNull()
+    expect(view.holder?.drafts.map((draft) => draft.draftId)).toEqual([held.draftId])
   })
 
   it("names the research an accession already belongs to, so it is not offered twice", async () => {
@@ -357,7 +376,7 @@ describe("the screen that starts a research from an application", () => {
     const held = await createResearchFromUpstream(db, seed(null, ["JGAD000891"]), CURATOR)
     if (held.status !== "created") throw new Error(held.status)
 
-    const view = await upstreamResearchPage(get(token, "?application=J-DS000136-010"), "ja")
+    const view = await upstreamBranchPage(get(token, ""), "ja", at)
 
     expect(view.chosen?.datasets).toEqual([
       expect.objectContaining({ accession: "JGAD000891", heldBy: held.researchId }),
@@ -367,26 +386,54 @@ describe("the screen that starts a research from an application", () => {
   it("creates only the datasets the application registered, whatever the form asked for", async () => {
     const token = await signIn()
 
-    const answer = await upstreamResearchAction(
+    const answer = await upstreamBranchAction(
       post(token, [
-        ["application", "J-DS000136-010"],
+        ["into", "new"],
         ["accession", "JGAD000891"],
         ["accession", "JGAD999999"],
       ]),
       "ja",
+      at,
     )
 
     expect(answer).toBeInstanceOf(Response)
     expect(await pinnedLabels("dataset")).toEqual(["JGAD000891"])
   })
 
+  it("writes down the branch the draft was made from", async () => {
+    const token = await signIn()
+
+    await upstreamBranchAction(post(token, [["into", "new"], ["accession", "JGAD000891"]]), "ja", at)
+
+    const [draft] = await db.select({ taken: s.researchDraft.takenBranches }).from(s.researchDraft)
+    expect(draft?.taken).toEqual([BRANCH])
+  })
+
+  it("takes the same branch again, because its accessions are registered afterwards", async () => {
+    const made = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
+    if (made.status !== "created") throw new Error(made.status)
+
+    await applyUpstreamToDraft(
+      db,
+      { draftId: made.draftId, revision: 1 },
+      {
+        researchId: made.researchId,
+        applicationId: BRANCH,
+        content: emptyResearchContent(),
+        datasets: [{ label: "JGAD000891", content: described("JGAD000891") }],
+      },
+      CURATOR,
+    )
+
+    const [draft] = await db.select({ taken: s.researchDraft.takenBranches }).from(s.researchDraft)
+    expect(draft?.taken).toEqual([BRANCH])
+    expect(await pinnedLabels("dataset")).toEqual(["JGAD000891"])
+  })
+
   it("writes the study's own words, and no email for the investigator", async () => {
     const token = await signIn()
 
-    await upstreamResearchAction(
-      post(token, [["application", "J-DS000136-010"], ["accession", "JGAD000891"]]),
-      "ja",
-    )
+    await upstreamBranchAction(post(token, [["into", "new"], ["accession", "JGAD000891"]]), "ja", at)
 
     const [draftId] = (await db.select({ id: s.researchDraft.id }).from(s.researchDraft))
       .map((row) => row.id)

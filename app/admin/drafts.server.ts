@@ -264,7 +264,12 @@ function pinRequests(
  */
 export async function createResearchFromUpstream(
   db: Database,
-  seed: { humLabel: string | null, content: ResearchContent, datasets: SeededDataset[] },
+  seed: {
+    humLabel: string | null
+    applicationId: string
+    content: ResearchContent
+    datasets: SeededDataset[]
+  },
   actor: EventActor,
 ): Promise<SeedOutcome> {
   return taken(() => db.transaction(async (tx): Promise<SeedOutcome> => {
@@ -276,6 +281,7 @@ export async function createResearchFromUpstream(
       .values({
         researchId: created.id,
         content: { ...seed.content, datasetIds: datasets.map((entry) => entry.id) },
+        takenBranches: [seed.applicationId],
         shareToken: newShareToken(),
       })
       .returning({ id: researchDraft.id }))
@@ -344,7 +350,12 @@ export async function addDatasetsFromUpstream(
 export async function applyUpstreamToDraft(
   db: Database,
   at: DraftAt,
-  seed: { researchId: string, content: ResearchContent, datasets: SeededDataset[] },
+  seed: {
+    researchId: string
+    applicationId: string
+    content: ResearchContent
+    datasets: SeededDataset[]
+  },
   actor: EventActor,
 ): Promise<AddDatasetsOutcome> {
   return taken(() => db.transaction(async (tx): Promise<AddDatasetsOutcome> => {
@@ -359,6 +370,9 @@ export async function applyUpstreamToDraft(
           ...seed.content,
           datasetIds: [...before.content.datasetIds, ...datasets.map((entry) => entry.id)],
         },
+        takenBranches: sql`case when ${seed.applicationId}::text = any(${researchDraft.takenBranches})
+          then ${researchDraft.takenBranches}
+          else ${researchDraft.takenBranches} || ${seed.applicationId}::text end`,
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
       })
@@ -432,6 +446,39 @@ export async function createDraft(db: Database, researchId: string): Promise<str
 }
 
 /**
+ * A draft for an application to be taken into, copied from the newest version.
+ *
+ * **Whether it remembers the number is the whole of the difference** between
+ * taking an update into what is published and taking it into a version that is
+ * yet to be: the number is what the publish screen offers first, so a draft
+ * that carries it replaces the version it came from and one that does not
+ * becomes the next.
+ *
+ * Nothing is answered for a research with no version, which is a research the
+ * new-research choice covers instead.
+ */
+export async function draftToTakeInto(
+  db: Database,
+  researchId: string,
+  as: "replacement" | "next-version",
+): Promise<string | null> {
+  return db.transaction(async (tx) => {
+    const [latest] = await tx
+      .select({ number: researchVersion.number, content: researchVersion.content })
+      .from(researchVersion)
+      .where(eq(researchVersion.researchId, researchId))
+      .orderBy(desc(researchVersion.number))
+      .limit(1)
+    if (latest === undefined) return null
+    return draftFromVersion(
+      tx,
+      { researchId, number: latest.number, content: latest.content },
+      as === "replacement" ? latest.number : null,
+    )
+  })
+}
+
+/**
  * A draft holding what a version holds, unfolded: the body in the draft's own
  * row, each description in one of its own.
  *
@@ -446,13 +493,14 @@ export async function createDraft(db: Database, researchId: string): Promise<str
 export async function draftFromVersion(
   tx: Transaction,
   version: { researchId: string, number: number, content: VersionContent },
+  copiedFromNumber: number | null = version.number,
 ): Promise<string> {
   const draft = one(await tx
     .insert(researchDraft)
     .values({
       researchId: version.researchId,
       content: draftContentOf(version.content),
-      copiedFromNumber: version.number,
+      copiedFromNumber,
       shareToken: newShareToken(),
     })
     .returning({ id: researchDraft.id }))

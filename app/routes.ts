@@ -103,6 +103,11 @@ function pages(scope: string) {
         "routes/admin-research-upstream.tsx",
         { id: `${scope}-admin-research-upstream` },
       ),
+      route(
+        "admin/research/upstream/:applicationId",
+        "routes/admin-upstream-branch.tsx",
+        { id: `${scope}-admin-upstream-branch` },
+      ),
       route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
       route(
         "admin/research/:researchId/files",
