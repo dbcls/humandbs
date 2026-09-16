@@ -1,6 +1,6 @@
 import { Button, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { Card, Empty, Table, Td } from "~/components/page"
+import { Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -26,63 +26,61 @@ export function AdminAssistantTaskList({
   onSelect,
 }: AdminAssistantTaskListProps) {
   return (
-    <Card under={false}>
-      <Stack>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-brand text-lg">
-            {words.listHeading}
-          </h2>
+    <Section title={words.listHeading}>
+      <Stack gap="normal">
+        {/* **The way to ask again stands inside the part it reloads**, the way
+            every other management screen puts an act under the name of what it
+            acts on. */}
+        <div>
           <Button
             type="button"
-            icon={<Icon name="undo" />}
+            icon={<Icon name="refresh" />}
             disabled={loading}
             onClick={onRefresh}
           >
             {words.refresh}
           </Button>
         </div>
-        {loading && tasks.length === 0
-          ? <Empty>{words.loading}</Empty>
-          : tasks.length === 0
-            ? <Empty>{words.none}</Empty>
-            : (
-                <Table
-                  headers={[
-                    words.taskId,
-                    words.applicationType,
-                    words.status,
-                    words.updated,
-                  ]}
+        {/* **The table stays when there is nothing in it**: the column names
+            say what would have been here (`docs/ui.md` の「壊れるもの」). */}
+        <Table
+          headers={[
+            words.taskId,
+            words.applicationType,
+            words.status,
+            words.updated,
+          ]}
+          whenEmpty={loading ? words.loading : words.none}
+        >
+          {tasks.map((task) => (
+            <tr
+              key={task.task_id}
+              className={
+                selectedTaskId === task.task_id ? "bg-surface-hover" : ""
+              }
+            >
+              <Td nowrap>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => { onSelect(task.task_id) }}
                 >
-                  {tasks.map((task) => (
-                    <tr
-                      key={task.task_id}
-                      className={
-                        selectedTaskId === task.task_id ? "bg-surface-hover" : ""
-                      }
-                    >
-                      <Td nowrap>
-                        <button
-                          type="button"
-                          onClick={() => { onSelect(task.task_id) }}
-                          className="cursor-pointer text-left font-mono text-brand underline"
-                        >
-                          {task.task_id}
-                        </button>
-                      </Td>
-                      <Td>{task.application_type ?? "-"}</Td>
-                      <Td>
-                        <span className={statusClass(task.status)}>
-                          {words.statuses[task.status]}
-                        </span>
-                      </Td>
-                      <Td>{formatTime(task.updated_at ?? task.created_at, locale)}</Td>
-                    </tr>
-                  ))}
-                </Table>
-              )}
+                  {task.task_id}
+                </Button>
+              </Td>
+              <Td>{task.application_type ?? "-"}</Td>
+              <Td>
+                <span className={statusClass(task.status)}>
+                  {words.statuses[task.status]}
+                </span>
+              </Td>
+              <Td>{formatTime(task.updated_at ?? task.created_at, locale)}</Td>
+            </tr>
+          ))}
+        </Table>
       </Stack>
-    </Card>
+    </Section>
   )
 }
 
@@ -94,9 +92,13 @@ function formatTime(value: string | undefined, locale: Locale): string {
     : date.toLocaleString(locale === "ja" ? "ja-JP" : "en-GB")
 }
 
+/**
+ * **Only a state worth acting on carries a colour.** A finished task is the
+ * ordinary outcome, so it is drawn in the ordinary way; what is still running
+ * is quiet, and what stopped is the one thing to look at.
+ */
 function statusClass(status: Status): string {
-  if (status === "completed") return "text-ink-muted"
   if (status === "error") return "text-danger"
-  if (status === "pending") return "text-warning"
-  return "text-brand"
+  if (status === "pending" || status === "processing") return "text-ink-muted"
+  return ""
 }

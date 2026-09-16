@@ -2,12 +2,14 @@ import { Form } from "react-router"
 
 import { catalogAction, fieldTermsPage, type TermRow } from "~/admin/catalog.server"
 import { adminExperimentFieldPath } from "~/admin/urls"
-import { Badge, Button, Confirm, Fold, Stack } from "~/components/base"
-import { Field, Result, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Paging, Section } from "~/components/page"
+import { Badge, Button, Confirm, Fold, Heading, Stack } from "~/components/base"
+import { Answered, Editing, Field, Result, Submit, Unsaved } from "~/components/form"
+import { Icon } from "~/components/icons"
+import { Card, Empty, Page, Paging, Section } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-experiment-field-terms"
@@ -41,9 +43,14 @@ export async function action({ request }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const title = messages.admin.catalog.termsOf(catalogLabel(loaderData.field, loaderData.locale))
   return [
-    { title: `${title} - ${messages.siteName}` },
+    {
+      title: pageTitle(
+        messages,
+        messages.admin.catalog.termsHeading,
+        catalogLabel(loaderData.field, loaderData.locale),
+      ),
+    },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -55,18 +62,22 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
   const t = messages.admin.catalog
   const set = view.set
   const here = adminExperimentFieldPath(view.field.code)
-  const title = t.termsOf(catalogLabel(view.field, locale))
 
   return (
     <Page>
-      <PageHead label={title} />
-      <Card>
+      <Answered answer={actionData} locale={locale}>
+        {actionData !== undefined && (
+          <Result ok={actionData.status === "ok"}>
+            {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
+          </Result>
+        )}
+      </Answered>
+      <Card under={false}>
         <Stack gap="block">
-          {actionData !== undefined && (
-            <Result ok={actionData.status === "ok"}>
-              {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
-            </Result>
-          )}
+          {/* **The name says what these are, and the field stands beside it.**
+              Every vocabulary belongs to exactly one field, so the field is
+              which one rather than part of what the screen does. */}
+          <Heading title={t.termsHeading} aside={catalogLabel(view.field, locale)} />
 
           {set.hierarchical && (
             <p className="text-sm"><Badge>{t.hierarchical}</Badge></p>
@@ -142,7 +153,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                       </span>
                       {row.held
                         ? <Badge>{t.dictionaryHeld}</Badge>
-                        : <Submit>{t.addTerm}</Submit>}
+                        : <Submit icon={<Icon name="plus" />}>{t.addTerm}</Submit>}
                     </Form>
                   </li>
                 ))}
@@ -157,7 +168,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
               <Field label={t.code} name="code" />
               <Field label={t.labelEn} name="labelEn" />
               <Field label={t.labelJa} name="labelJa" />
-              <Submit>{t.addTerm}</Submit>
+              <Submit icon={<Icon name="plus" />}>{t.addTerm}</Submit>
             </Form>
           </Section>
         </Stack>
@@ -189,16 +200,17 @@ function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
           </>
         )}
       >
-        <Form method="post" className="flex flex-wrap items-end gap-2 text-sm">
+        <Editing method="post" className="flex flex-wrap items-end gap-2 text-sm">
           <input type="hidden" name="termId" value={term.id} />
           <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
           <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
-          <Button size="xs" name="intent" value="update-term">{t.save}</Button>
+          <Submit size="xs" intent="update-term" icon={<Icon name="save" />} saves>{t.save}</Submit>
+          <Unsaved locale={locale} />
           <input type="hidden" name="active" value={term.active ? "false" : "true"} />
           <Button size="xs" name="intent" value="set-term-active">
             {term.active ? t.deactivate : t.activate}
           </Button>
-        </Form>
+        </Editing>
         {/* Nothing names this term, so it can go — and going is what cannot be
             undone, unlike deactivating it. */}
         {term.used === 0 && (
@@ -206,6 +218,7 @@ function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
             <input type="hidden" name="termId" value={term.id} />
             <Confirm
               label={t.remove}
+              title={t.removeTitle(term.code)}
               warning={t.removeWarning}
               confirm={t.removeConfirm}
               cancel={t.cancel}

@@ -9,12 +9,14 @@ import {
   draftPresencePath,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Confirm, Heading, Note, Stack } from "~/components/base"
+import { Confirm, Heading, Stack } from "~/components/base"
 import { PresenceLine } from "~/components/draft-tools"
-import { Submit } from "~/components/form"
+import { Answered, Result, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-datasets"
@@ -44,9 +46,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.draft.datasets
   return [
-    { title: `${messages.admin.draft.datasets} - ${label} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.draft.datasets, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -58,15 +59,22 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
+      {/* Only a refusal is answered: what worked comes back as the listing it
+          changed. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "conflict" && <Result ok={false}>{t.listConflict}</Result>}
+        {actionData?.status === "refused" && <Result ok={false}>{t.deleteRefused}</Result>}
+      </Answered>
       <Card under={false}>
         <Stack gap="block">
           {/* Who else is in this draft belongs to its name rather than to the
               listing under it. */}
           <Stack gap="tight">
-            <Heading title={t.datasets}>
+            <Heading title={t.datasets} aside={view.humLabel ?? undefined}>
               <AdminBack
                 to={href(locale, adminDraftPath(view.researchId, view.draftId))}
                 label={t.backToDraft}
+                icon="chevron-left"
               />
             </Heading>
             <PresenceLine
@@ -75,9 +83,6 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
               initial={view.presence}
             />
           </Stack>
-
-          {actionData?.status === "conflict" && <Note kind="warning" live>{t.listConflict}</Note>}
-          {actionData?.status === "refused" && <Note kind="danger" live>{t.deleteRefused}</Note>}
 
           {view.rows.length === 0
             ? <Empty>{t.noDatasets}</Empty>
@@ -99,7 +104,7 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           <div className="flex flex-wrap items-center gap-4">
             <Form method="post">
               <input type="hidden" name="revision" value={view.revision} />
-              <Submit intent="create-dataset">{t.createDataset}</Submit>
+              <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
             </Form>
             <Link
               to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
@@ -139,6 +144,7 @@ function DatasetRow({ row, locale, researchId, draftId, revision }: {
         <Form method="post">
           <Confirm
             label={t.deleteDataset}
+            title={t.deleteDatasetTitle(row.label ?? messagesFor(locale).admin.editor.unpinnedDataset)}
             warning={t.deleteWarning}
             confirm={t.deleteConfirm}
             cancel={messagesFor(locale).admin.detail.cancel}

@@ -1,5 +1,6 @@
 import { Fold, Stack } from "~/components/base"
 import { KeyValue, Pairs, Section } from "~/components/page"
+import type { Locale } from "~/i18n/locale"
 
 import { Abstract } from "./admin-assistant-abstract"
 import { Datasets } from "./admin-assistant-datasets"
@@ -22,6 +23,7 @@ import {
 
 export function AssistantReport({
   report,
+  locale,
   words,
   applicationType,
   busy,
@@ -29,6 +31,13 @@ export function AssistantReport({
   onRemoveDataset,
 }: {
   report: AssessmentData
+  /**
+   * **The area's own words reach this subtree, not just the assistant's.** What
+   * it draws is built from `words` — the slice the service's screen owns — but a
+   * table's parts are the management area's, and those are named where every
+   * other table names them (`admin.actions`).
+   */
+  locale: Locale
   words: AssistantWords
   applicationType: string | undefined
   busy: boolean
@@ -245,6 +254,7 @@ export function AssistantReport({
           busy={busy}
           onAddDatasets={onAddDatasets}
           onRemoveDataset={onRemoveDataset}
+          locale={locale}
           words={words}
         />
       </Stack>

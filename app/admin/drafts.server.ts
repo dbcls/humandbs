@@ -28,15 +28,13 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, desc, eq, notInArray, sql } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
 import type {
   DatasetContent,
-  DraftSnapshot,
   ResearchContent,
-  UndoReason,
   VersionContent,
 } from "~/content/types"
 import { descriptionOf, draftContentOf } from "~/content/version"
@@ -45,7 +43,6 @@ import {
   dataset,
   draftDatasetEntry,
   draftPresence,
-  draftUndo,
   research,
   researchDraft,
   researchVersion,
@@ -54,9 +51,6 @@ import {
 import { pinLabelsIn, type PinRequest } from "./labels.server"
 
 const SHARE_TOKEN_BYTES = 32
-
-/** The eleventh push drops the oldest. */
-export const UNDO_DEPTH = 10
 
 /** Which draft, and which version of it the caller was looking at. */
 export interface DraftAt {
@@ -121,57 +115,14 @@ async function draftExists(executor: Executor, draftId: string): Promise<boolean
   return rows.length > 0
 }
 
-/** The whole of a draft as it stands, which is what one undo entry holds. */
-type DraftState = Omit<DraftSnapshot, "reason">
-
-async function currentDraft(tx: Transaction, draftId: string): Promise<DraftState | null> {
+/** What a draft holds now, for the writes that add to it before they save it. */
+async function currentContent(tx: Transaction, draftId: string): Promise<ResearchContent | null> {
   const [draft] = await tx
-    .select({ note: researchDraft.note, content: researchDraft.content })
+    .select({ content: researchDraft.content })
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
     .limit(1)
-  if (draft === undefined) return null
-
-  const entries = await tx
-    .select({ datasetId: draftDatasetEntry.datasetId, content: draftDatasetEntry.content })
-    .from(draftDatasetEntry)
-    .where(eq(draftDatasetEntry.draftId, draftId))
-    .orderBy(draftDatasetEntry.datasetId)
-
-  return { note: draft.note, content: draft.content, datasetEntries: entries }
-}
-
-/**
- * One more snapshot on the stack, and the oldest off the end of it.
- *
- * Snapshots are rows rather than one JSON value so that a save appends instead
- * of rewriting the whole stack. The depth is bounded rather than the age,
- * because drafts stay open for months and a stalled one must not accumulate.
- */
-async function pushUndo(
-  tx: Transaction,
-  draftId: string,
-  snapshot: DraftSnapshot,
-): Promise<void> {
-  await tx.insert(draftUndo).values({ draftId, snapshot })
-
-  const kept = await tx
-    .select({ id: draftUndo.id })
-    .from(draftUndo)
-    .where(eq(draftUndo.draftId, draftId))
-    .orderBy(desc(draftUndo.createdAt), desc(draftUndo.id))
-    .limit(UNDO_DEPTH)
-
-  await tx
-    .delete(draftUndo)
-    .where(and(
-      eq(draftUndo.draftId, draftId),
-      notInArray(draftUndo.id, kept.map((row) => row.id)),
-    ))
-}
-
-function snapshot(reason: UndoReason, state: DraftState): DraftSnapshot {
-  return { reason, ...state }
+  return draft?.content ?? null
 }
 
 /**
@@ -307,7 +258,7 @@ export async function addDatasetsFromUpstream(
   actor: EventActor,
 ): Promise<AddDatasetsOutcome> {
   return taken(() => db.transaction(async (tx): Promise<AddDatasetsOutcome> => {
-    const before = await currentDraft(tx, at.draftId)
+    const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
     const datasets = seed.datasets.map((entry) => ({ ...entry, id: randomUUID() }))
@@ -315,8 +266,8 @@ export async function addDatasetsFromUpstream(
       .update(researchDraft)
       .set({
         content: {
-          ...before.content,
-          datasetIds: [...before.content.datasetIds, ...datasets.map((entry) => entry.id)],
+          ...before,
+          datasetIds: [...before.datasetIds, ...datasets.map((entry) => entry.id)],
         },
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
@@ -359,7 +310,7 @@ export async function applyUpstreamToDraft(
   actor: EventActor,
 ): Promise<AddDatasetsOutcome> {
   return taken(() => db.transaction(async (tx): Promise<AddDatasetsOutcome> => {
-    const before = await currentDraft(tx, at.draftId)
+    const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
     const datasets = seed.datasets.map((entry) => ({ ...entry, id: randomUUID() }))
@@ -368,7 +319,7 @@ export async function applyUpstreamToDraft(
       .set({
         content: {
           ...seed.content,
-          datasetIds: [...before.content.datasetIds, ...datasets.map((entry) => entry.id)],
+          datasetIds: [...before.datasetIds, ...datasets.map((entry) => entry.id)],
         },
         takenBranches: sql`case when ${seed.applicationId}::text = any(${researchDraft.takenBranches})
           then ${researchDraft.takenBranches}
@@ -380,9 +331,6 @@ export async function applyUpstreamToDraft(
       .returning({ revision: researchDraft.revision })
     if (rows[0] === undefined) return { status: "conflict" }
 
-    // The draft as it stood goes on the undo stack, the same as a save: this
-    // writes content, and a curator who takes the wrong branch needs the way back.
-    await pushUndo(tx, at.draftId, snapshot("before-save", before))
     await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets)
     const pinned = await pinLabelsIn(tx, pinRequests(null, seed.researchId, datasets), actor)
     if (pinned.status === "taken") throw new LabelTaken(pinned.label)
@@ -518,25 +466,19 @@ export async function draftFromVersion(
 /**
  * Writing the editor's work back. The revision moves by one, which is what the
  * next save will be checked against.
- *
- * The state as it stood goes onto the undo stack first; a save the revision
- * refuses puts the refused form there instead, because that form exists nowhere
- * else once the screen is closed.
  */
 export async function saveDraftContent(
   db: Database,
   at: DraftAt,
-  fields: { note: string, content: ResearchContent },
+  fields: { content: ResearchContent },
 ): Promise<SaveOutcome> {
   return db.transaction(async (tx) => {
-    const before = await currentDraft(tx, at.draftId)
-    if (before === null) return { status: "gone" }
+    if (!await draftExists(tx, at.draftId)) return { status: "gone" }
 
     const rows = await tx
       .update(researchDraft)
       .set({
         content: fields.content,
-        note: fields.note,
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
       })
@@ -544,16 +486,8 @@ export async function saveDraftContent(
       .returning({ revision: researchDraft.revision })
 
     const row = rows[0]
-    if (row === undefined) {
-      await pushUndo(tx, at.draftId, snapshot("rejected", {
-        note: fields.note,
-        content: fields.content,
-        datasetEntries: before.datasetEntries,
-      }))
-      return { status: "conflict" }
-    }
+    if (row === undefined) return { status: "conflict" }
 
-    await pushUndo(tx, at.draftId, snapshot("before-save", before))
     return { status: "saved", revision: row.revision }
   })
 }
@@ -573,8 +507,7 @@ export async function saveDatasetEntry(
   content: DatasetContent,
 ): Promise<SaveOutcome> {
   return db.transaction(async (tx) => {
-    const before = await currentDraft(tx, at.draftId)
-    if (before === null) return { status: "gone" }
+    if (!await draftExists(tx, at.draftId)) return { status: "gone" }
 
     const revision = at.revision
     if (revision === null) {
@@ -589,11 +522,7 @@ export async function saveDatasetEntry(
         .returning({ revision: draftDatasetEntry.revision })
 
       const created = inserted[0]
-      if (created === undefined) {
-        await pushUndo(tx, at.draftId, rejectedDataset(before, at.datasetId, content))
-        return { status: "conflict" }
-      }
-      await pushUndo(tx, at.draftId, snapshot("before-save", before))
+      if (created === undefined) return { status: "conflict" }
       return { status: "saved", revision: created.revision }
     }
 
@@ -611,10 +540,7 @@ export async function saveDatasetEntry(
       .returning({ revision: draftDatasetEntry.revision })
 
     const row = rows[0]
-    if (row !== undefined) {
-      await pushUndo(tx, at.draftId, snapshot("before-save", before))
-      return { status: "saved", revision: row.revision }
-    }
+    if (row !== undefined) return { status: "saved", revision: row.revision }
 
     // The entry is gone in two different ways: somebody deleted the dataset, or
     // somebody saved it first. Only the second is worth showing a diff for.
@@ -625,22 +551,7 @@ export async function saveDatasetEntry(
       .limit(1)
     if (still === undefined) return { status: "gone" }
 
-    await pushUndo(tx, at.draftId, rejectedDataset(before, at.datasetId, content))
     return { status: "conflict" }
-  })
-}
-
-/** The draft as the author meant it: their dataset over what the draft holds. */
-function rejectedDataset(
-  before: DraftState,
-  datasetId: string,
-  content: DatasetContent,
-): DraftSnapshot {
-  const others = before.datasetEntries.filter((entry) => entry.datasetId !== datasetId)
-  return snapshot("rejected", {
-    ...before,
-    datasetEntries: [...others, { datasetId, content }]
-      .sort((a, b) => a.datasetId.localeCompare(b.datasetId)),
   })
 }
 
@@ -660,14 +571,14 @@ export async function createDatasetInDraft(
   researchId: string,
 ): Promise<CreateDatasetOutcome> {
   return db.transaction(async (tx) => {
-    const before = await currentDraft(tx, at.draftId)
+    const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
     const datasetId = randomUUID()
     const rows = await tx
       .update(researchDraft)
       .set({
-        content: { ...before.content, datasetIds: [...before.content.datasetIds, datasetId] },
+        content: { ...before, datasetIds: [...before.datasetIds, datasetId] },
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
       })
@@ -694,7 +605,7 @@ export async function deleteDraftDataset(
   datasetId: string,
 ): Promise<DeleteDatasetOutcome> {
   return db.transaction(async (tx) => {
-    const before = await currentDraft(tx, at.draftId)
+    const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
     // **Belonging to this draft is what makes it deletable.** Publishing clears
@@ -711,8 +622,8 @@ export async function deleteDraftDataset(
       .update(researchDraft)
       .set({
         content: {
-          ...before.content,
-          datasetIds: before.content.datasetIds.filter((id) => id !== datasetId),
+          ...before,
+          datasetIds: before.datasetIds.filter((id) => id !== datasetId),
         },
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
@@ -804,9 +715,8 @@ export type ConsumeOutcome
 
 /**
  * Taking the draft away, with everything that hung off it — the changed dataset
- * entries, the undo stack, the presence rows, the comments, the share link, and
- * any dataset identity the draft introduced and nothing has adopted, all by
- * cascade. A draft is not history, so there is nowhere for any of it to go.
+ * entries, the presence rows, the comments, the share link, and any dataset
+ * identity the draft introduced and nothing has adopted, all by cascade. A draft is not history, so there is nowhere for any of it to go.
  *
  * **Both discarding and publishing end here**, which is why it takes a
  * transaction rather than opening one: publishing has a good deal to write

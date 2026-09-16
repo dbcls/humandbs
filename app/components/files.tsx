@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef, useState, type DragEvent } from "react"
 import { Form } from "react-router"
 
 import { mapConcurrently } from "~/concurrency"
@@ -12,8 +12,19 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
-import { Badge, Button, Confirm, FILE_FACE, Fold, IconButton, Note, Progress, Stack } from "./base"
+import {
+  Badge,
+  Button,
+  Confirm,
+  Fold,
+  IconButton,
+  Note,
+  Progress,
+  Stack,
+  TOAST_MS,
+} from "./base"
 import { CONTROL, SelectAll, SelectOne, Submit } from "./form"
+import { Icon } from "./icons"
 import { Empty, Paging, Table, Td } from "./page"
 
 /**
@@ -154,9 +165,10 @@ export function BoxTable({ locale, rows, humLabel }: {
                 is.** Readers hold the addresses of what is out, so withdrawing
                 is what somebody notices; putting a file out is undone by the
                 button beside it. */}
-            <Submit intent="publish" variant="secondary">{t.publish}</Submit>
+            <Submit intent="publish" variant="secondary" icon={<Icon name="upload" />}>{t.publish}</Submit>
             <Confirm
               label={t.unpublish}
+              title={t.unpublishTitle}
               warning={t.unpublishWarning}
               confirm={t.unpublishConfirm}
               cancel={t.cancel}
@@ -165,6 +177,7 @@ export function BoxTable({ locale, rows, humLabel }: {
             />
             <Confirm
               label={t.delete}
+              title={t.deleteTitle}
               warning={t.deleteWarning}
               confirm={t.deleteConfirm}
               cancel={t.cancel}
@@ -219,19 +232,36 @@ interface UploadProgress {
  * `FileField`'s uncontrolled shape to attach to — the change handler has to run
  * on selection, and the sending state has to disable the input while it runs.
  */
-export function UploadPanel({ locale, endpoint, threshold, partSize }: {
+export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
   locale: Locale
   /** Where the signatures are asked for. The box is whatever answers there. */
   endpoint: string
   threshold: number
   partSize: number
+  /**
+   * What becomes of a file put here, where the screen has not already said it.
+   * The article assets say nothing: that box is public, which is what the whole
+   * screen is about.
+   */
+  hint?: string
 }) {
   const t = messagesFor(locale).admin.files
   const [progress, setProgress] = useState<UploadProgress[]>([])
   const [done, setDone] = useState(false)
   const [badName, setBadName] = useState(false)
+  const [folder, setFolder] = useState(false)
+  const [over, setOver] = useState(false)
   const aborter = useRef<AbortController | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  /**
+   * How deep inside the panel the pointer is.
+   *
+   * **`dragenter` and `dragleave` fire again for every descendant it crosses**,
+   * so whether it is still inside is a count of the two rather than the last
+   * event seen. A ref rather than state: the pair arrives in one gesture and
+   * two updates batched together would cancel out.
+   */
+  const depth = useRef(0)
 
   const send = async (files: File[]) => {
     setDone(false)
@@ -267,26 +297,109 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
 
   const busy = progress.length > 0
 
+  /** Whether what is being dragged is files at all, rather than a selection. */
+  const holdsFiles = (event: DragEvent<HTMLDivElement>): boolean =>
+    [...event.dataTransfer.types].includes("Files")
+
+  // **Both `dragenter` and `dragover` have to refuse the default**, or the drop
+  // never fires: not refusing it is how the page says it does not take files.
+  const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!holdsFiles(event)) return
+    event.preventDefault()
+    depth.current += 1
+    if (!busy) setOver(true)
+  }
+
+  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!holdsFiles(event)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = busy ? "none" : "copy"
+  }
+
+  const onDragLeave = () => {
+    depth.current = Math.max(0, depth.current - 1)
+    if (depth.current === 0) setOver(false)
+  }
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    depth.current = 0
+    setOver(false)
+    if (busy) return
+    /*
+      **A folder arrives as an entry with nothing to send behind it.** A box is
+      flat and nothing here walks into one, so what a folder gets is the reason
+      rather than silence — dropped files and a dropped folder both leave the
+      same empty panel otherwise.
+
+      The entries are read now, in the drop itself: what the transfer holds is
+      only guaranteed for the length of this event.
+    */
+    const items = [...event.dataTransfer.items]
+    const entries = items.map((item) => item.webkitGetAsEntry())
+    setFolder(entries.some((entry) => entry?.isDirectory === true))
+    const dropped = entries.some((entry) => entry !== null)
+      ? items.flatMap((item, at) => {
+          if (entries[at]?.isFile !== true) return []
+          const file = item.getAsFile()
+          return file === null ? [] : [file]
+        })
+      : [...event.dataTransfer.files]
+    if (dropped.length > 0) void send(dropped)
+  }
+
   return (
-    <div className="rounded border border-line px-4 py-3">
+    <div
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      /* **The edge says it is a target, and says it without moving anything.**
+         A border that thickened under the pointer would shift every line inside
+         the panel by a pixel at the moment the reader is aiming at it. */
+      className={`rounded border px-4 py-3 ${over ? "border-brand border-dashed bg-surface-hover" : "border-line"}`}
+    >
       <Stack gap="normal">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
+        {/*
+          **The panel says what it is, rather than letting the browser say it.**
+          A bare file input draws its own control and its own words — a button
+          reading "Choose Files" beside "No file chosen" — and the second of
+          those is the panel's whole message at rest: that nothing has happened
+          yet, which the reader can already see. The input is still the thing
+          that opens the picker; it is only kept out of sight, and the button
+          presses it.
+        */}
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
+          <Icon name="upload" className="size-6 text-ink-muted" aria-hidden="true" />
+          <p className="font-semibold text-ink text-sm">{t.uploadDrop}</p>
+          {hint !== undefined && <p className="text-ink-muted text-xs">{hint}</p>}
           <input
             ref={input}
             type="file"
             multiple
-            disabled={busy}
-            onChange={(event) => { void send([...event.target.files ?? []]) }}
-            aria-label={t.upload}
-            className={`text-sm ${FILE_FACE}`}
+            hidden
+            onChange={(event) => {
+              setFolder(false)
+              void send([...event.target.files ?? []])
+            }}
           />
-          {busy && (
-            <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>
-              {t.uploadCancel}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button
+              type="button"
+              icon={<Icon name="upload" />}
+              disabled={busy}
+              onClick={() => { input.current?.click() }}
+            >
+              {t.chooseFiles}
             </Button>
-          )}
+            {busy && (
+              <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>
+                {t.uploadCancel}
+              </Button>
+            )}
+          </div>
         </div>
-        <p className="text-ink-muted text-xs">{t.uploadHint}</p>
+        {folder && <Note kind="danger">{t.uploadFolder}</Note>}
         {badName && <Note kind="danger">{t.uploadBadName}</Note>}
         {done && <Note kind="done">{t.uploadDone}</Note>}
         {progress.map((row) => (
@@ -296,6 +409,50 @@ export function UploadPanel({ locale, endpoint, threshold, partSize }: {
         ))}
       </Stack>
     </div>
+  )
+}
+
+/**
+ * The way to take the address a file answers at.
+ *
+ * **What is copied is the path rather than the whole URL.** It is written into
+ * a body, and a body carrying the host it was written on stops working as soon
+ * as the same content is read anywhere else.
+ *
+ * **The answer is a word, not only a glyph.** Copying leaves no trace on the
+ * screen — the clipboard is somewhere else — so the press has nothing to show
+ * for itself but what the control says afterwards, and a glyph that turns from
+ * two squares into a tick is a difference nobody catches out of the corner of
+ * an eye. It goes back to offering itself again after the same wait a toast
+ * keeps (`TOAST_MS`).
+ *
+ * **The two faces are one control, so it does not change size when it answers.**
+ * The word is held to the width of the longer of the two: a button that grew by
+ * a few pixels on being pressed would shift whatever is beside it in the row at
+ * the moment the reader is still looking there.
+ */
+export function CopyAddress({ address, locale }: { address: string, locale: Locale }) {
+  const t = messagesFor(locale).admin.files
+  const [copied, setCopied] = useState(false)
+
+  return (
+    <Button
+      type="button"
+      size="row"
+      icon={<Icon name={copied ? "check" : "copy"} />}
+      title={address}
+      className={`justify-center transition-colors duration-200 ${copied ? "border-line-strong text-ink-muted" : ""}`}
+      onClick={() => {
+        void navigator.clipboard.writeText(address).then(() => {
+          setCopied(true)
+          window.setTimeout(() => {
+            setCopied(false)
+          }, TOAST_MS)
+        })
+      }}
+    >
+      {copied ? t.copied : t.copyAddress}
+    </Button>
   )
 }
 

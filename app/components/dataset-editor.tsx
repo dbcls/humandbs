@@ -31,12 +31,11 @@
  * itself.
  */
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import {
-  datasetContentInput,
   emptyDiseaseRow,
   emptyNumberRow,
   emptyValueInput,
@@ -57,10 +56,10 @@ import {
   datasetPagePath,
   draftCommentsPath,
   draftPresencePath,
-  draftUndoPath,
   termsPath,
 } from "~/admin/urls"
 import {
+  Badge,
   Button,
   Fold,
   IconButton,
@@ -69,7 +68,7 @@ import {
 } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { AnnotationLayer, Empty, Page } from "~/components/page"
+import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -78,7 +77,7 @@ import { threadsByPath } from "~/review/comments"
 import type { DrawnDataset } from "~/review/preview.server"
 
 import { PaneSpot, usePanes } from "./admin"
-import { DraftBar, useDraftEditing, type DraftEditing } from "./draft-tools"
+import { DraftBar, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
 import { FileSelection } from "./files"
@@ -108,8 +107,6 @@ import {
 const PICKER_RESULTS = 20
 
 /** How long the keys have to be still before the pane beside the form is redrawn. */
-const DRAW_AFTER = 300
-
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
@@ -138,7 +135,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const review: FieldReviewData = {
     context: {
       locale,
-      action: href(locale, draftCommentsPath(researchId, draftId)),
+      action: draftCommentsPath(researchId, draftId),
       subject,
       canResolve: true,
       signedInName: view.review.signedInName,
@@ -157,15 +154,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     diff: diffDatasetInput,
     take: takeDatasetField,
     body: (value) => ({ content: value }),
-    // A snapshot holds the whole draft; this screen takes the part of it that
-    // is this dataset. One taken before the draft had touched the dataset has
-    // no part to take, which is worth saying rather than silently doing
-    // nothing.
-    fromSnapshot: (snapshot) => {
-      const entry = snapshot.datasetEntries.find((row) => row.datasetId === view.datasetId)
-      return entry === undefined ? null : datasetContentInput(entry.content)
-    },
-    undoPath: (undoId) => draftUndoPath(researchId, draftId, undoId),
   })
 
   /**
@@ -175,19 +163,17 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
    * (`editor.tsx`): a pause rather than a keystroke, and a place rather than a
    * box — the ja and en sides of one value are one place.
    */
-  const drawing = useFetcher<DrawnDataset | null>()
-  const submit = drawing.submit
-  const drawAt = href(locale, datasetPagePath(researchId, draftId, view.datasetId, locale))
   const drawBody = JSON.stringify({ revision: view.revision, content: editing.value })
-  useEffect(() => {
-    const waiting = setTimeout(() => {
-      void submit(drawBody, { method: "post", action: drawAt, encType: "application/json" })
-    }, DRAW_AFTER)
-    return () => {
-      clearTimeout(waiting)
-    }
-  }, [drawBody, drawAt, submit])
-  const page = drawing.data ?? view.page
+  const pageJa = useDrawn<DrawnDataset>(
+    datasetPagePath(researchId, draftId, view.datasetId, "ja"),
+    drawBody,
+    locale === "ja" ? view.page : null,
+  )
+  const pageEn = useDrawn<DrawnDataset>(
+    datasetPagePath(researchId, draftId, view.datasetId, "en"),
+    drawBody,
+    locale === "en" ? view.page : null,
+  )
 
   const [at, setAt] = useState<string | null>(null)
   function onFormFocus(event: React.FocusEvent): void {
@@ -241,135 +227,136 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   const formBody = (
     <div onFocusCapture={onFormFocus}>
-      <Stack>
-        {view.review.changed.length > 0 && (
-          <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
-        )}
-        {editing.conflict !== null && (
-          <div onClick={onBandJump}>
-            <ConflictBand locale={locale} changed={editing.conflict.changed} />
-          </div>
-        )}
-        {editing.upstream !== null && editing.upstream.differing.length > 0 && (
-          <UpstreamBand
-            locale={locale}
-            differing={editing.upstream.differing}
-            number={editing.upstream.number}
-            onTakeAll={editing.takeUpstream}
-          />
-        )}
-        {editing.problems.length > 0 && (
-          <ProblemBand locale={locale} problems={editing.problems} />
-        )}
-        {editing.undoMissing && <Note kind="plain">{t.undoWithoutEntry}</Note>}
-
-        <Section id={BASICS} title={t.basics}>
-          <Stack gap="tight">
-            <FieldHead
-              label={t.releaseDate}
-              marks={editing.marksFor("releaseDate")}
-              locale={locale}
-            />
-            <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
-            <div>
-              <input
-                type="date"
-                className={`${CONTROL} text-sm`}
-                value={input.releaseDate}
-                onChange={(event) => {
-                  editing.edit({ ...input, releaseDate: event.target.value })
-                }}
-              />
+      <Card under={false}>
+        <Stack>
+          {view.review.changed.length > 0 && (
+            <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
+          )}
+          {editing.conflict !== null && (
+            <div onClick={onBandJump}>
+              <ConflictBand locale={locale} changed={editing.conflict.changed} />
             </div>
-          </Stack>
-          <Values
-            locale={locale}
-            catalog={view.catalog}
-            terms={view.terms}
-            scope="dataset"
-            path="values"
-            values={input.values}
-            marksFor={editing.marksFor}
-            onChange={(values) => { editing.edit({ ...input, values }) }}
-          />
-        </Section>
-
-        {view.portalIssued && (
-          <Section id={FILES} title={t.files}>
-            <FieldHead
-              label={t.files}
-              marks={editing.marksFor("fileSelection")}
+          )}
+          {editing.upstream !== null && editing.upstream.differing.length > 0 && (
+            <UpstreamBand
               locale={locale}
+              differing={editing.upstream.differing}
+              number={editing.upstream.number}
+              onTakeAll={editing.takeUpstream}
             />
-            <FileSelection
-              locale={locale}
-              listing={view.box}
-              selected={input.fileSelection}
-              onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
-            />
-          </Section>
-        )}
+          )}
+          {editing.problems.length > 0 && (
+            <ProblemBand locale={locale} problems={editing.problems} />
+          )}
 
-        <Section id={EXPERIMENTS} title={t.experiments}>
-          <FieldHead
-            label={t.experiments}
-            marks={editing.marksFor("experiments")}
-            locale={locale}
-          />
-          {input.experiments.map((experiment, at) => (
-            <ElementCard
-              key={experiment.id}
-              index={at}
-              count={input.experiments.length}
-              locale={locale}
-              onMove={(by) => {
-                editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
-              }}
-              onRemove={() => {
-                editing.edit({
-                  ...input,
-                  experiments: input.experiments.filter((row) => row.id !== experiment.id),
-                })
-              }}
-            >
-              <Fold
-                summary={experiment.label.text === ""
-                  ? t.unnamedExperiment
-                  : experiment.label.text}
-                note={experimentNote(experiment)}
-                open={experiment.label.text === ""
-                  || markedUnder(`experiments.${experiment.id}`) > 0}
-              >
-                <Experiment
-                  locale={locale}
-                  catalog={view.catalog}
-                  terms={view.terms}
-                  experiment={experiment}
-                  marksFor={editing.marksFor}
-                  onChange={(next) => {
-                    editing.edit({
-                      ...input,
-                      experiments: replacing(input.experiments, experiment.id, next),
-                    })
+          <Section id={BASICS} title={t.basics}>
+            <Stack gap="tight">
+              <FieldHead
+                label={t.releaseDate}
+                marks={editing.marksFor("releaseDate")}
+                locale={locale}
+              />
+              <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
+              <div>
+                <input
+                  type="date"
+                  className={`${CONTROL} text-sm`}
+                  value={input.releaseDate}
+                  onChange={(event) => {
+                    editing.edit({ ...input, releaseDate: event.target.value })
                   }}
                 />
-              </Fold>
-            </ElementCard>
-          ))}
-          <AddElement
-            label={t.addExperiment}
-            onClick={() => {
-              editing.edit({
-                ...input,
-                experiments: [
-                  ...input.experiments,
-                  { id: newId(), label: emptySlot(), values: [] },
-                ],
-              })
-            }}
-          />
-        </Section>
-      </Stack>
+              </div>
+            </Stack>
+            <Values
+              locale={locale}
+              catalog={view.catalog}
+              terms={view.terms}
+              scope="dataset"
+              path="values"
+              values={input.values}
+              marksFor={editing.marksFor}
+              onChange={(values) => { editing.edit({ ...input, values }) }}
+            />
+          </Section>
+
+          {view.portalIssued && (
+            <Section id={FILES} title={t.files}>
+              <FieldHead
+                label={t.files}
+                marks={editing.marksFor("fileSelection")}
+                locale={locale}
+              />
+              <FileSelection
+                locale={locale}
+                listing={view.box}
+                selected={input.fileSelection}
+                onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
+              />
+            </Section>
+          )}
+
+          <Section id={EXPERIMENTS} title={t.experiments}>
+            <FieldHead
+              label={t.experiments}
+              marks={editing.marksFor("experiments")}
+              locale={locale}
+            />
+            {input.experiments.map((experiment, at) => (
+              <ElementCard
+                key={experiment.id}
+                index={at}
+                count={input.experiments.length}
+                locale={locale}
+                onMove={(by) => {
+                  editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
+                }}
+                onRemove={() => {
+                  editing.edit({
+                    ...input,
+                    experiments: input.experiments.filter((row) => row.id !== experiment.id),
+                  })
+                }}
+              >
+                <Fold
+                  summary={experiment.label.text === ""
+                    ? t.unnamedExperiment
+                    : experiment.label.text}
+                  note={experimentNote(experiment)}
+                  open={experiment.label.text === ""
+                    || markedUnder(`experiments.${experiment.id}`) > 0}
+                >
+                  <Experiment
+                    locale={locale}
+                    catalog={view.catalog}
+                    terms={view.terms}
+                    experiment={experiment}
+                    marksFor={editing.marksFor}
+                    onChange={(next) => {
+                      editing.edit({
+                        ...input,
+                        experiments: replacing(input.experiments, experiment.id, next),
+                      })
+                    }}
+                  />
+                </Fold>
+              </ElementCard>
+            ))}
+            <AddElement
+              label={t.addExperiment}
+              onClick={() => {
+                editing.edit({
+                  ...input,
+                  experiments: [
+                    ...input.experiments,
+                    { id: newId(), label: emptySlot(), values: [] },
+                  ],
+                })
+              }}
+            />
+          </Section>
+        </Stack>
+      </Card>
     </div>
   )
   const panes = usePanes({
@@ -377,41 +364,61 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     remember: `${view.draftId}:${view.datasetId}`,
     contents: [
       { id: "form", label: editor.paneForm, body: formBody },
-      {
-        id: "page",
-        label: editor.panePage,
-        body: (
-          <AnnotationLayer
-            annotate={(anchor) => (
-              <>
-                {/*
+      ...([["page", editor.panePageJa, "ja", pageJa], ["page-en", editor.panePageEn, "en", pageEn]] as const).map(
+        ([id, label, language, drawn]) => ({
+          id,
+          label,
+          body: (
+            <AnnotationLayer
+              annotate={(anchor) => (
+                <>
+                  {/*
                   The difference from what is published and the comments belong
                   to the place a reader looks at; what a save refused and what
                   somebody else moved belong to the hands typing, and stay in
                   the form.
                 */}
-                <FieldReview review={review} at={anchor} />
-                <PaneSpot
-                  here={anchor === at}
-                  label={editor.goToField}
-                  onGo={() => { goTo(anchor) }}
-                />
-              </>
-            )}
-          >
-            <DatasetBody
-              view={page.view}
-              locale={locale}
-              // The way a reader goes back to the research. The label may not be
-              // pinned yet, in which case the page it names does not exist —
-              // the same as it is under a share link.
-              researchHref={href(locale, researchPath(page.humLabel ?? ""))}
-              accessAnchor={page.accessAnchor}
-              typeOfDataAnchor={page.typeOfDataAnchor}
-            />
-          </AnnotationLayer>
-        ),
-      },
+                  <FieldReview review={review} at={anchor} />
+                  <PaneSpot
+                    here={anchor === at}
+                    label={editor.goToField}
+                    onGo={() => { goTo(anchor) }}
+                  />
+                </>
+              )}
+            >
+              <PageHead
+                level="p"
+                kicker={messagesFor(locale).dataset.datasetId}
+                label={(
+                  <>
+                    <Icon name="database" aria-hidden="true" />
+                    {view.datasetLabel ?? editor.unpinnedDataset}
+                  </>
+                )}
+              >
+                <Badge onBand>{editor.draftBadge}</Badge>
+              </PageHead>
+              <Card>
+                {/* **Nothing is drawn until this language has been drawn.** The
+                  other language's page would be the wrong words under the right
+                  tab, and the first drawing arrives a keystroke's pause later. */}
+                {drawn !== null && (
+                  <DatasetBody
+                    view={drawn.view}
+                    locale={language}
+                    // The way a reader goes back to the research. The label may not
+                    // be pinned yet, in which case the page it names does not exist
+                    // — the same as it is under a share link.
+                    researchHref={href(language, researchPath(drawn.humLabel ?? ""))}
+                    accessAnchor={drawn.accessAnchor}
+                    typeOfDataAnchor={drawn.typeOfDataAnchor}
+                  />
+                )}
+              </Card>
+            </AnnotationLayer>
+          ),
+        })),
     ],
   })
 
@@ -422,13 +429,18 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             other face. */}
         <DraftBar
           locale={locale}
-          heading={`${view.datasetLabel ?? editor.unpinnedDataset} ${t.heading}`}
+          heading={view.datasetLabel === null ? t.heading : editor.headingOf(view.datasetLabel)}
           back={{
             to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
             label: t.backToList,
+            icon: "chevron-left",
           }}
           links={[
-            { to: href(locale, adminDraftReviewPath(researchId, draftId)), label: editor.review },
+            {
+              to: href(locale, adminDraftReviewPath(researchId, draftId)),
+              label: editor.reviewNext,
+              icon: "comment",
+            },
           ]}
           note={!view.published && (
             <span className="text-ink-muted text-xs">
@@ -439,9 +451,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           saved={editing.saved}
           saving={editing.saving}
           onSave={editing.save}
-          undo={view.undo}
-          onUndo={editing.undo}
-          undoLoading={editing.undoLoading}
           presencePath={draftPresencePath(researchId, draftId)}
           presence={view.presence}
         >

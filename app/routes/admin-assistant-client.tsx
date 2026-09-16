@@ -1,4 +1,5 @@
-import { Note, Stack } from "~/components/base"
+import { Stack } from "~/components/base"
+import { Answered, Result } from "~/components/form"
 import type { Locale } from "~/i18n/locale"
 
 import { useAssistantController } from "./admin-assistant-controller"
@@ -11,15 +12,17 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   const controller = useAssistantController(locale)
   return (
     <Stack gap="block">
-      {controller.notice !== null && (
-        <Note kind={controller.notice.ok ? "done" : "danger"} live>
-          {controller.notice.text}
-        </Note>
-      )}
+      {/* What the last request did, over the screen rather than in it: written
+          into the page it would push the listing down by its own height
+          (`docs/ui.md` の「管理画面の枠」). */}
+      <Answered answer={controller.notice} locale={locale}>
+        {controller.notice !== null && (
+          <Result ok={controller.notice.ok}>{controller.notice.text}</Result>
+        )}
+      </Answered>
       <AdminAssistantUploadForm
+        locale={locale}
         application={controller.application}
-        ethics={controller.ethics}
-        plan={controller.plan}
         busy={controller.busy}
         words={controller.words}
         onSubmit={(event) => { void controller.submit(event) }}
@@ -47,6 +50,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
             && controller.selected.assessment_data !== undefined && (
             <AssistantReport
               report={controller.selected.assessment_data}
+              locale={locale}
               words={controller.words}
               applicationType={controller.selected.application_type}
               busy={controller.busy}

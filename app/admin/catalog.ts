@@ -95,3 +95,94 @@ export function moved<T extends { id: string }>(
   next[to] = moving
   return next
 }
+
+// === the fields listing ===
+
+/**
+ * What a field of an analysis method holds.
+ *
+ * **Only the four an experiment field can be typed as are here.** `single` and
+ * `accession` belong to the two fields a dataset carries, which this screen
+ * does not show (`catalog.server.ts`) — an axis offering them would hold values
+ * that can never leave anything.
+ */
+export type KeyValueType = "text" | "vocabulary" | "number" | "disease"
+
+export const KEY_VALUE_TYPES: readonly KeyValueType[] = ["text", "vocabulary", "number", "disease"]
+
+export function isKeyValueType(value: string): value is KeyValueType {
+  return (KEY_VALUE_TYPES as readonly string[]).includes(value)
+}
+
+/** Whether a field is drawn on the public analysis-method table. */
+export type KeyShowing = "shown" | "hidden"
+
+export const KEY_SHOWINGS: readonly KeyShowing[] = ["shown", "hidden"]
+
+export function isKeyShowing(value: string): value is KeyShowing {
+  return (KEY_SHOWINGS as readonly string[]).includes(value)
+}
+
+/**
+ * The value the box axis carries for a field standing in none.
+ *
+ * **It is a value of the axis rather than the absence of one**, because most
+ * fields are in no box at all — an axis that could only say which box a field
+ * is in would leave the larger half of the listing unreachable.
+ */
+export const NO_BOX = "none"
+
+/** What the listing reads off a field. The screen's row carries more. */
+export interface KeyFilterRow {
+  code: string
+  labelJa: string
+  labelEn: string
+  valueType: string
+  /** The code of the box this field stands in, or null when it stands in none. */
+  categoryCode: string | null
+  showOnPublicPage: boolean
+}
+
+export function keyBox(row: KeyFilterRow): string {
+  return row.categoryCode ?? NO_BOX
+}
+
+export function keyShowing(row: KeyFilterRow): KeyShowing {
+  return row.showOnPublicPage ? "shown" : "hidden"
+}
+
+export interface KeyFilter {
+  keyword: string
+  /** Which to keep. Empty is every one, as an untouched axis is. */
+  types: readonly string[]
+  boxes: readonly string[]
+  showing: readonly string[]
+}
+
+/**
+ * The fields a filter leaves, in the order they were handed over — which is the
+ * order of the public table, and the thing this screen edits.
+ *
+ * **What is typed is looked for in the code and in both labels**, each read on
+ * its own: a field is reached by its code as often as by its name, and the two
+ * languages are what an administrator is comparing when they come here.
+ *
+ * The box and the three axes combine as an AND; within an axis the choices are
+ * an OR — the rule the other listings run on (`app/admin/listing.ts`).
+ */
+export function filterKeyRows<Row extends KeyFilterRow>(
+  rows: readonly Row[],
+  filter: KeyFilter,
+): Row[] {
+  const needle = filter.keyword.trim().toLowerCase()
+  return rows.filter((row) => {
+    if (needle !== "") {
+      const held = [row.code, row.labelJa, row.labelEn]
+      if (!held.some((one) => one.toLowerCase().includes(needle))) return false
+    }
+    if (filter.types.length > 0 && !filter.types.includes(row.valueType)) return false
+    if (filter.boxes.length > 0 && !filter.boxes.includes(keyBox(row))) return false
+    if (filter.showing.length > 0 && !filter.showing.includes(keyShowing(row))) return false
+    return true
+  })
+}

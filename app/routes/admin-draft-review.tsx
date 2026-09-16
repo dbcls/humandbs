@@ -1,5 +1,6 @@
 import { ReviewScreen } from "~/components/review"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 import { reviewAction, reviewPage } from "~/review/review.server"
 
@@ -23,9 +24,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.review.heading
   return [
-    { title: `${label} - ${messages.admin.review.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.review.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

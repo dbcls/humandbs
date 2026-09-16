@@ -120,7 +120,6 @@ const researchContentInputSchema = z.object({
 /** What one save carries. The revision is what the update is checked against. */
 export const saveDraftSchema = z.object({
   revision: z.number().int().nonnegative(),
-  note: z.string(),
   content: researchContentInputSchema,
 })
 

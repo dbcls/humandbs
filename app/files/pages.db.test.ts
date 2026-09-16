@@ -7,8 +7,15 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { MULTIPART_THRESHOLD, PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "./box"
-import { filesAction, filesPage, fileUploadAction } from "./pages.server"
+import {
+  commonPrefix,
+  MULTIPART_THRESHOLD,
+  PRIVATE_BUCKET,
+  PUBLIC_BUCKET,
+  privatePrefix,
+  publicPrefix,
+} from "./box"
+import { commonFilesAction, filesAction, filesPage, fileUploadAction } from "./pages.server"
 import { clearPrefix, keysUnder, putThroughProxy, putTestObject } from "./_store"
 
 /**
@@ -387,5 +394,128 @@ describe("an upload", () => {
     const events = (await db.select().from(s.event))
       .filter((row) => row.subjectType === "file")
     expect(events).toHaveLength(0)
+  })
+})
+
+/**
+ * The `common/` box, which every test in this file shares with the development
+ * data — it belongs to no research, so there is no identity to scope it by.
+ *
+ * **Everything here works under a prefix of its own** and clears only that,
+ * because clearing the box would take the article assets somebody is looking at
+ * in the next tab with it.
+ */
+describe("the article assets", () => {
+  const MINE = "zz-test-"
+  const mine = (slug: string): string => `${MINE}${counter}/${slug}`
+  const at = (slug: string): string => commonPrefix() + slug
+
+  afterEach(async () => {
+    await clearPrefix(PUBLIC_BUCKET, commonPrefix() + MINE)
+  })
+
+  function postCommon(token: string, fields: [string, string][]): Request {
+    const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
+    headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
+    return new Request("http://localhost:8080/admin/contents/files", {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(fields).toString(),
+    })
+  }
+
+  async function held(): Promise<string[]> {
+    return keysUnder(PUBLIC_BUCKET, commonPrefix() + MINE)
+  }
+
+  it("moves a file to the slug it was given and leaves nothing at the old one", async () => {
+    const token = await signIn(CURATOR, true)
+    const from = mine("a.png")
+    const to = mine("images/a.png")
+    await putTestObject(PUBLIC_BUCKET, at(from))
+
+    const answer = await commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", from], ["to", to]]),
+      JA,
+    )
+
+    expect(answer).toBeInstanceOf(Response)
+    expect(await held()).toEqual([at(to)])
+  })
+
+  it("writes the move down as the address that starts answering and the one that stops", async () => {
+    const token = await signIn(CURATOR, true)
+    const from = mine("a.png")
+    const to = mine("b.png")
+    await putTestObject(PUBLIC_BUCKET, at(from))
+
+    await commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", from], ["to", to]]),
+      JA,
+    )
+
+    // Signing a curator in grants them the capability, which is written down
+    // too; what this is about is the pair the move leaves on the files.
+    const events = (await db.select().from(s.event))
+      .filter((one) => one.subjectType === "file")
+    expect(events.map((one) => [one.action, one.subjectId]).toSorted())
+      .toEqual([["delete-file", at(from)], ["publish-file", at(to)]].toSorted())
+  })
+
+  it("refuses a slug another file already answers at, rather than overwriting it", async () => {
+    const token = await signIn(CURATOR, true)
+    const from = mine("a.png")
+    const taken = mine("b.png")
+    await putTestObject(PUBLIC_BUCKET, at(from), "one")
+    await putTestObject(PUBLIC_BUCKET, at(taken), "another")
+
+    const answer = await commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", from], ["to", taken]]),
+      JA,
+    )
+
+    expect(answer).toEqual({ status: "slug-taken" })
+    expect((await held()).toSorted()).toEqual([at(from), at(taken)].toSorted())
+  })
+
+  it("refuses a slug that would name something else than it reads as", async () => {
+    const token = await signIn(CURATOR, true)
+    const from = mine("a.png")
+    await putTestObject(PUBLIC_BUCKET, at(from))
+
+    for (const to of ["", "a//b.png", "../escaped.png", "images/./a.png"]) {
+      const answer = await commonFilesAction(
+        postCommon(token, [["intent", "rename"], ["from", from], ["to", to]]),
+        JA,
+      )
+      expect(answer, to).toEqual({ status: "malformed-slug" })
+    }
+    expect(await held()).toEqual([at(from)])
+  })
+
+  it("takes the file named by the row away, and only that one", async () => {
+    const token = await signIn(CURATOR, true)
+    const going = mine("a.png")
+    const staying = mine("b.png")
+    await putTestObject(PUBLIC_BUCKET, at(going))
+    await putTestObject(PUBLIC_BUCKET, at(staying))
+
+    const answer = await commonFilesAction(
+      postCommon(token, [["intent", "delete"], ["name", going]]),
+      JA,
+    )
+
+    expect(answer).toBeInstanceOf(Response)
+    expect(await held()).toEqual([at(staying)])
+  })
+
+  it("is refused to somebody signed in without the capability to manage site content", async () => {
+    const token = await signIn(READER, false)
+
+    const refusal = await thrown(() => commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", "a.png"], ["to", "b.png"]]),
+      JA,
+    ))
+    expect(refusal.status).toBe(403)
   })
 })

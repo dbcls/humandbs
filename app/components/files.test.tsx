@@ -94,8 +94,8 @@ describe("the box", () => {
       />,
     )
 
-    expect(html).toContain("公開")
-    expect(html).toContain("非公開")
+    expect(html).toContain("公開中")
+    expect(html).toContain("未公開")
   })
 
   it("says a switch is running rather than saying where the file is", () => {
@@ -107,7 +107,7 @@ describe("the box", () => {
       />,
     )
 
-    expect(html).toContain("公開に切り替え中")
+    expect(html).toContain("公開へ切り替え中")
   })
 
   it("says a switch failed rather than that it is still running", () => {
@@ -120,7 +120,7 @@ describe("the box", () => {
     )
 
     expect(html).toContain("切り替えに失敗しました")
-    expect(html).not.toContain("非公開に切り替え中")
+    expect(html).not.toContain("未公開へ切り替え中")
   })
 
   it("names every file as a checkbox, because the operations take a selection", () => {

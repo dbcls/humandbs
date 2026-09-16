@@ -58,6 +58,18 @@ describe("parseRichText", () => {
       .toEqual([[{ text: "see https://ddbj.nig.ac.jp/ first" }]])
   })
 
+  it("leaves a bare address alone even where the serialiser escaped its first character", () => {
+    // What `toMarkdown` writes for a value beginning with `-` or `_`, so that
+    // the line is not read as a bullet. GFM recognises the address across the
+    // escape, and the link it hands back carries no position — which is what
+    // tells it apart from one somebody wrote.
+    expect(parsed("\\-@0.A")).toEqual([[{ text: "-@0.A" }]])
+    expect(parsed("\\_a@b.co")).toEqual([[{ text: "_a@b.co" }]])
+    expect(parsed("\\-x@y.z and [t](https://e.g)")).toEqual([
+      [{ text: "-x@y.z and " }, { text: "t", href: "https://e.g" }],
+    ])
+  })
+
   it("keeps a destination the page will refuse, because refusing is the renderer's job", () => {
     expect(parsed("[x](javascript:alert(1))"))
       .toEqual([[{ text: "x", href: "javascript:alert(1)" }]])

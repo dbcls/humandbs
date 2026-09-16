@@ -6,12 +6,14 @@ import {
   fileUploadPath,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Note, Stack } from "~/components/base"
+import { Heading, Note, Stack } from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
-import { Card, Page, PageHead, Paging, Section } from "~/components/page"
+import { Answered, Result } from "~/components/form"
+import { Card, Page, Paging, Section } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { filesAction, filesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-research-files"
@@ -41,9 +43,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.detail.heading
   return [
-    { title: `${messages.admin.files.heading} - ${label} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.files.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -56,17 +57,24 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
-        <AdminBack
-          onBand
-          to={href(locale, adminResearchPath(view.researchId))}
-          label={t.backToResearch}
-        />
-      </PageHead>
-      <Card>
+      {/* Only a refusal is answered: publishing, taking down and deleting all
+          come back as the box they changed. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "nothing-selected" && <Result ok={false}>{t.nothingSelected}</Result>}
+        {actionData?.status === "no-box" && <Result ok={false}>{t.publishNeedsLabel}</Result>}
+      </Answered>
+      <Card under={false}>
         <Stack gap="block">
-          {actionData?.status === "nothing-selected" && <Note kind="danger" live>{t.nothingSelected}</Note>}
-          {actionData?.status === "no-box" && <Note kind="danger" live>{t.publishNeedsLabel}</Note>}
+          <Heading title={t.heading} aside={view.humLabel ?? undefined}>
+            <AdminBack
+              to={href(locale, adminResearchPath(view.researchId))}
+              label={t.backToResearch}
+              icon="chevron-left"
+            />
+          </Heading>
+
+          {/* Not an answer but a standing fact about this research: it stays on
+              the screen (`docs/ui.md` の「管理画面の枠」). */}
           {view.humLabel === null && <Note kind="warning">{t.noBox}</Note>}
 
           <Section title={t.upload}>
@@ -75,6 +83,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
               endpoint={fileUploadPath(view.researchId)}
               threshold={view.multipartThreshold}
               partSize={view.partSize}
+              hint={t.uploadHint}
             />
           </Section>
 

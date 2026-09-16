@@ -84,7 +84,7 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
       <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.humLabel}>
-            <Td stuck={0} narrow><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
+            <Td stuck={0} holds="mark"><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
             <Td stuck={1} nowrap floor="min-w-26">
               <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
               <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>

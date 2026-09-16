@@ -25,9 +25,8 @@ import {
   researchListPage,
   saveDatasetAction,
   saveDraftAction,
-  undoSnapshotLoader,
 } from "./pages.server"
-import { readDraft, readUndoStack } from "./queries.server"
+import { readDraft } from "./queries.server"
 
 /**
  * The management screens with their guards on, against the development
@@ -102,11 +101,10 @@ async function thrown(work: () => Promise<unknown>): Promise<Response> {
 }
 
 function payloadOf(revision: number, input: DraftInput) {
-  return { revision, note: input.note, content: input.content }
+  return { revision, content: input.content }
 }
 
 const draftInput = (): DraftInput => ({
-  note: "",
   content: researchContentInput(emptyResearchContent()),
 })
 
@@ -160,7 +158,6 @@ describe("the listing", () => {
     const token = await signIn(CURATOR, true)
     const { draftId } = await createResearchWithDraft(db)
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: { ...emptyResearchContent(), title: { ja: filled("題目"), en: filled("") } },
     })
 
@@ -175,7 +172,6 @@ describe("the listing", () => {
     const { draftId } = await createResearchWithDraft(db)
     await createResearchWithDraft(db)
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: { ...emptyResearchContent(), title: { ja: filled("糖尿病"), en: filled("") } },
     })
 
@@ -183,6 +179,30 @@ describe("the listing", () => {
       .toHaveLength(1)
     expect((await researchListPage(get(token, "/admin/research?q=肝臓"), "ja")).rows)
       .toHaveLength(0)
+  })
+
+  it("counts an axis with that axis's own condition lifted, and the others still on", async () => {
+    const token = await signIn(CURATOR, true)
+    const { draftId } = await createResearchWithDraft(db)
+    await createResearchWithDraft(db)
+    await saveDraftContent(db, { draftId, revision: 1 }, {
+      content: { ...emptyResearchContent(), title: { ja: filled("糖尿病"), en: filled("") } },
+    })
+
+    // Nothing here is published, so narrowing to what is leaves no rows — and
+    // the status axis still has to say what the other value would give.
+    const view = await researchListPage(get(token, "/admin/research?status=published"), "ja")
+
+    expect(view.rows).toHaveLength(0)
+    expect(view.counts.statuses).toEqual({ published: 0, unpublished: 2 })
+    // The other axis is counted inside what the status left, which is nothing.
+    expect(view.counts.flags.noHumLabel).toBe(0)
+
+    // With the word in force and no status, the flags are counted within it.
+    const narrowed = await researchListPage(get(token, "/admin/research?q=糖尿病"), "ja")
+
+    expect(narrowed.counts.flags.untranslated).toBe(1)
+    expect(narrowed.counts.statuses).toEqual({ published: 0, unpublished: 1 })
   })
 
   async function pinHum(researchId: string, label: string): Promise<void> {
@@ -428,7 +448,6 @@ describe("the research screen's forms", () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: emptyResearchContent(),
     })
 
@@ -760,23 +779,6 @@ describe("the dataset screens of a draft", () => {
 
     expect(answer.present).toEqual([{ name: "curator", isSelf: true }])
     expect(await db.select().from(s.draftPresence)).toHaveLength(1)
-  })
-
-  it("hands over an undo entry without writing anything back", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId, draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "before",
-      content: emptyResearchContent(),
-    })
-    const stack = await readUndoStack(db, draftId)
-    const undoId = stack[0]?.id ?? ""
-
-    const snapshot = await undoSnapshotLoader(get(token, "/x"), { researchId, draftId, undoId })
-
-    expect(snapshot.reason).toBe("before-save")
-    expect((await readDraft(db, draftId))?.note).toBe("before")
-    expect(await readUndoStack(db, draftId)).toHaveLength(1)
   })
 })
 

@@ -25,8 +25,8 @@ export function changedFromPublished(
   draft: ResearchContent,
 ): string[] {
   return diffDraftInput(
-    { note: "", content: researchContentInput(published) },
-    { note: "", content: researchContentInput(draft) },
+    { content: researchContentInput(published) },
+    { content: researchContentInput(draft) },
   )
 }
 

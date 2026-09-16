@@ -15,7 +15,6 @@ import {
 
 import type {
   DatasetContent,
-  DraftSnapshot,
   ResearchContent,
   VersionContent,
 } from "~/content/types"
@@ -94,7 +93,6 @@ export const researchDraft = pgTable("research_draft", {
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   content: jsonb().$type<ResearchContent>().notNull(),
   /** Free text for admins only. It never reaches the preview. */
-  note: text().notNull().default(""),
   /**
    * The version number this draft was copied from, when it was copied from one.
    *
@@ -145,23 +143,6 @@ export const draftDatasetEntry = pgTable("draft_dataset_entry", {
   revision: integer().notNull().default(1),
 }, (t) => [
   unique("draft_dataset_entry_unique").on(t.draftId, t.datasetId),
-])
-
-/**
- * The undo stack of a draft. Snapshots are rows, not one JSONB value, so a save
- * appends instead of rewriting the whole stack.
- *
- * Depth is capped at 10 (the eleventh push drops the oldest) and there is no
- * time limit: drafts stay open for a median of 46 days and sometimes years, and
- * a bounded depth means a stalled draft does not accumulate.
- */
-export const draftUndo = pgTable("draft_undo", {
-  id: primaryId(),
-  draftId: uuid().notNull().references(() => researchDraft.id, { onDelete: "cascade" }),
-  snapshot: jsonb().$type<DraftSnapshot>().notNull(),
-  createdAt: createdAt(),
-}, (t) => [
-  index().on(t.draftId, t.createdAt),
 ])
 
 /**

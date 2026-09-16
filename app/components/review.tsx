@@ -19,10 +19,11 @@ import { RESEARCH } from "~/review/anchors"
 import type { ReviewPageView } from "~/review/review.server"
 
 import { AdminBack } from "./admin"
-import { Badge, Confirm, Stack } from "./base"
+import { Badge, Confirm, Heading, Stack } from "./base"
 import { DdbjMark, Thread, type CommentContext } from "./comments"
-import { Checkbox, Field, Submit } from "./form"
-import { Card, Empty, ExternalLink, Page, PageHead, Section } from "./page"
+import { Checkbox, Editing, Field, Submit, Unsaved } from "./form"
+import { Icon } from "./icons"
+import { Card, Empty, ExternalLink, Page, Section } from "./page"
 
 export function ReviewScreen({ view }: { view: ReviewPageView }) {
   const locale = view.locale
@@ -38,16 +39,16 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
 
   return (
     <Page>
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading}>
-        <AdminBack
-          onBand
-          to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-          label={t.backToDraft}
-        />
-      </PageHead>
-
-      <Card>
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading} aside={view.humLabel ?? undefined}>
+            <AdminBack
+              to={href(locale, adminDraftPath(view.researchId, view.draftId))}
+              label={t.backToDraft}
+              icon="chevron-left"
+            />
+          </Heading>
+
           <Share view={view} />
 
           <Section
@@ -70,7 +71,10 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
                           <Stack gap="tight">
                             <p className="flex flex-wrap items-center gap-2 text-xs">
                               <span className="font-semibold">{row.subject}</span>
-                              <code className="text-ink-muted">{row.thread.anchor.path}</code>
+                              {/* The memo names no place, so it has nothing to
+                                  print here. */}
+                              {row.path !== null
+                                && <code className="text-ink-muted">{row.path}</code>}
                               <Link to={row.href}>{t.openEditor}</Link>
                             </p>
                             <Thread context={context} thread={row.thread} />
@@ -138,19 +142,21 @@ function Share({ view }: { view: ReviewPageView }) {
           )}
         </Stack>
 
-        <Form method="post" className="flex flex-wrap items-center gap-3 text-sm">
+        <Editing method="post" className="flex flex-wrap items-center gap-3 text-sm">
           <input type="hidden" name="intent" value="share" />
           <Checkbox label={t.enable} name="enabled" checked={share.enabled} />
           <Field label={t.expiryDate} name="expiresOn" type="date" value={share.expiresOn ?? ""} />
           <span className="text-ink-muted text-xs">
             {share.expiresOn === null ? t.expiryNone : ""}
           </span>
-          <Submit>{t.setExpiry}</Submit>
-        </Form>
+          <Submit icon={<Icon name="save" />} saves>{t.setExpiry}</Submit>
+          <Unsaved locale={locale} />
+        </Editing>
 
         <Form method="post">
           <Confirm
             label={t.reissue}
+            title={t.reissueTitle}
             warning={t.reissueWarning}
             confirm={t.reissueConfirm}
             cancel={detail.cancel}

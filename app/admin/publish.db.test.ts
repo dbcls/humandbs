@@ -72,7 +72,6 @@ async function ready(options: { describe?: boolean } = {}) {
   const created = await createResearchWithDraft(db)
   await pinHum(created.researchId, "hum0001")
   await saveDraftContent(db, { draftId: created.draftId, revision: 1 }, {
-    note: "",
     content: titled("研究"),
   })
   const made = await createDatasetInDraft(db, { draftId: created.draftId, revision: 2 }, created.researchId)
@@ -167,7 +166,6 @@ describe("publishing a draft", () => {
     // Taking it off the listing leaves the identity behind, still the draft's.
     const draft = await readDraft(db, ground.draftId)
     await saveDraftContent(db, { draftId: ground.draftId, revision: draft?.revision ?? 0 }, {
-      note: "",
       content: { ...titled("研究"), datasetIds: [ground.datasetId] },
     })
 
@@ -308,7 +306,6 @@ describe("publishing under a number a version already holds", () => {
 
     const draftId = await createDraft(db, ground.researchId)
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: { ...titled("直した"), datasetIds: [ground.datasetId] },
     })
     const outcome = await publish({ draftId, revision: 2 }, 1, first.releaseDate)
@@ -347,7 +344,6 @@ describe("publishing under a number a version already holds", () => {
     const draftId = await createDraft(db, ground.researchId)
     const draft = await readDraft(db, draftId)
     await saveDraftContent(db, { draftId, revision: draft?.revision ?? 0 }, {
-      note: "",
       content: { ...titled("題目だけ直した"), datasetIds: [ground.datasetId] },
     })
     const after = await readDraft(db, draftId)
@@ -511,7 +507,6 @@ describe("looking a publish over first", () => {
     const other = await createDraft(db, ground.researchId)
     const otherDraft = await readDraft(db, other)
     await saveDraftContent(db, { draftId: other, revision: otherDraft?.revision ?? 0 }, {
-      note: "",
       content: { ...titled("先に直した"), datasetIds: [ground.datasetId] },
     })
     const ready2 = await readDraft(db, other)

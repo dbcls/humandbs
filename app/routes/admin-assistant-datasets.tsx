@@ -1,7 +1,11 @@
 import { useState, type SyntheticEvent } from "react"
 
-import { Fold, Stack } from "~/components/base"
+import { Button, Confirm, Fold, Stack } from "~/components/base"
+import { CONTROL } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Empty, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
+import type { Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
 
 import type {
   AssessmentData,
@@ -13,6 +17,36 @@ import {
   ExternalLink,
   joined,
 } from "./admin-assistant-report-primitives"
+
+/**
+ * Taking a dataset off an application.
+ *
+ * **It asks first, in the site's own panel.** What goes with it is the analysis
+ * the service ran for that dataset, so it is not a press to make by accident —
+ * and the browser's own dialog is neither in the reader's language nor in any
+ * of the site's faces (`docs/ui.md` の「押せるもの」).
+ */
+function RemoveDataset({ datasetId, busy, onRemove, words }: {
+  datasetId: string
+  busy: boolean
+  onRemove: () => void
+  words: AssistantWords
+}) {
+  // **The cell keeps its control while a request is out.** Taking it away
+  // empties the cell and the row changes height under the reader's hands; what
+  // the request needs is that the deed does not fire twice.
+  return (
+    <Confirm
+      label={words.removeDataset}
+      title={words.removeDatasetTitle(datasetId)}
+      warning={words.removeDatasetWarning}
+      confirm={words.removeDatasetConfirm}
+      cancel={words.cancel}
+      size="row"
+      onConfirm={() => { if (!busy) onRemove() }}
+    />
+  )
+}
 
 export function datasetIds(value: string): string[] {
   return [...new Set(value.split(/[\s,]+/u).map((id) => id.trim()).filter(Boolean))]
@@ -30,6 +64,7 @@ export function Datasets({
   busy,
   onAddDatasets,
   onRemoveDataset,
+  locale,
   words,
 }: {
   datasets: AssessmentData["dataset_analysis_list"]
@@ -43,6 +78,7 @@ export function Datasets({
   busy: boolean
   onAddDatasets: (ids: string[]) => Promise<boolean>
   onRemoveDataset: (datasetId: string) => void
+  locale: Locale
   words: AssistantWords
 }) {
   const [newDatasetIds, setNewDatasetIds] = useState("")
@@ -68,27 +104,37 @@ export function Datasets({
     <Section title={words.datasets}>
       <Stack>
         {canManage && (
-          <form onSubmit={(event) => { void add(event) }} className="rounded border border-border p-4">
+          <form onSubmit={(event) => { void add(event) }} className="rounded border border-line p-4">
             <Stack gap="tight">
               <label htmlFor="assistant-dataset-ids" className="block font-semibold text-sm">
                 {words.addDatasets}
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* **The box and the button beside it take the site's one
+                    face** (`form.tsx` の `CONTROL`): the edge of something that
+                    can be typed into has to carry 3:1, and a face written out
+                    here would be the one that stopped matching
+                    (`docs/ui.md` の「壊れるもの」). */}
                 <input
                   id="assistant-dataset-ids"
                   value={newDatasetIds}
                   onChange={(event) => { setNewDatasetIds(event.target.value) }}
                   placeholder={words.datasetIdsPlaceholder}
                   disabled={busy}
-                  className="min-w-64 flex-1 rounded border border-border px-3 py-2 text-sm"
+                  className={`${CONTROL} min-w-64 flex-1 disabled:opacity-50`}
                 />
-                <button
+                <Button
                   type="submit"
+                  variant="secondary"
+                  icon={<Icon name="plus" />}
                   disabled={busy || datasetIds(newDatasetIds).length === 0}
-                  className="cursor-pointer rounded border border-brand px-3 py-2 text-brand text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {busy ? words.addingDatasets : words.add}
-                </button>
+                  {words.add}
+                </Button>
+                {/* The name of a control does not change while it works. */}
+                <span role="status" className="text-ink-muted text-sm">
+                  {busy ? words.addingDatasets : ""}
+                </span>
               </div>
               <p className="text-ink-muted text-xs">{words.datasetIdsHint}</p>
             </Stack>
@@ -109,7 +155,12 @@ export function Datasets({
                     words.researchIcd10,
                     words.paperIcd10,
                     words.analysis,
-                    ...(canManage ? [""] : []),
+                    // **操作の列は語を持たないが、名前は持つ。**見えるところに
+                    // 語を置くと列の幅が語なりになり、行を耳で読む人には
+                    // 名前が要る (`docs/ui.md` の「押せるものの大きさ」)。
+                    ...(canManage
+                      ? [<span key="remove" className="sr-only">{messagesFor(locale).admin.actions}</span>]
+                      : []),
                   ]}
                 >
                   {datasets.map((dataset) => (
@@ -118,10 +169,7 @@ export function Datasets({
                       dataset={dataset}
                       canManage={canManage}
                       busy={busy}
-                      onRemove={() => {
-                        if (window.confirm(words.removeDatasetConfirm(dataset.id)))
-                          onRemoveDataset(dataset.id)
-                      }}
+                      onRemove={() => { onRemoveDataset(dataset.id) }}
                       words={words}
                     />
                   ))}
@@ -172,9 +220,12 @@ function DatasetRow({
         <Td colSpan={6}>{words.notRegistered}</Td>
         {canManage && (
           <Td>
-            <button type="button" disabled={busy} onClick={onRemove} className="cursor-pointer text-danger text-xs underline">
-              {words.removeDataset}
-            </button>
+            <RemoveDataset
+              datasetId={dataset.id}
+              busy={busy}
+              onRemove={onRemove}
+              words={words}
+            />
           </Td>
         )}
       </tr>
@@ -206,9 +257,12 @@ function DatasetRow({
       <Td>{display(dataset.analysis_method_similarity, words)}</Td>
       {canManage && (
         <Td>
-          <button type="button" disabled={busy} onClick={onRemove} className="cursor-pointer text-danger text-xs underline">
-            {words.removeDataset}
-          </button>
+          <RemoveDataset
+            datasetId={dataset.id}
+            busy={busy}
+            onRemove={onRemove}
+            words={words}
+          />
         </Td>
       )}
     </tr>

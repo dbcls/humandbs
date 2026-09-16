@@ -3,6 +3,7 @@ import { data } from "react-router"
 import { publishAction, publishPage } from "~/admin/pages.server"
 import { PublishConfirmation } from "~/components/publish"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-publish"
@@ -21,9 +22,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.detail.heading
   return [
-    { title: `${messages.admin.publish.heading} - ${label} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.publish.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

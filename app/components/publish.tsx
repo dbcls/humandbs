@@ -6,9 +6,11 @@ import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/p
 import { adminDraftPath } from "~/admin/urls"
 import { href } from "~/public/urls"
 
-import { ButtonLink, Fold, Stack } from "./base"
-import { Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
-import { Card, Empty, Page, PageHead, Section } from "./page"
+import { AdminBack } from "./admin"
+import { Fold, Heading, Stack } from "./base"
+import { Answered, Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
+import { Icon } from "./icons"
+import { Card, Empty, Page, Section } from "./page"
 import { messagesFor } from "~/i18n/messages"
 
 /**
@@ -44,19 +46,23 @@ export function PublishConfirmation({ view, result }: {
 
   return (
     <Page>
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
-      <Card>
+      {/* Only a refusal is answered here: a publish that worked leaves this
+          screen for the research it published. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
+        {actionData?.status === "gone" && <Result ok={false}>{t.gone}</Result>}
+        {actionData?.status === "unacknowledged" && (
+          <Result ok={false}>{t.acknowledgeRequired}</Result>
+        )}
+        {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
+        {actionData?.status === "malformed" && (
+          <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
+        )}
+      </Answered>
+      <Card under={false}>
         <Stack gap="block">
+          <Heading title={t.heading} aside={view.humLabel ?? undefined} />
 
-          {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
-          {actionData?.status === "gone" && <Result ok={false}>{t.gone}</Result>}
-          {actionData?.status === "unacknowledged" && (
-            <Result ok={false}>{t.acknowledgeRequired}</Result>
-          )}
-          {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
-          {actionData?.status === "malformed" && (
-            <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
-          )}
           {blocked && <Blocked view={view} />}
           <PrivateFiles view={view} />
 
@@ -123,13 +129,15 @@ export function PublishConfirmation({ view, result }: {
               <Changes view={view} />
 
               <div className="flex items-center gap-4">
-                <Submit variant="primary" disabled={blocked}>{t.submit}</Submit>
-                <ButtonLink
+                <Submit variant="primary" icon={<Icon name="upload" />} disabled={blocked}>{t.submit}</Submit>
+                {/* **The way out of this screen**, which is also what giving
+                    up on publishing is: the two are one act, so there is no
+                    second link back (`components/admin.tsx` の `AdminBack`). */}
+                <AdminBack
                   to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-                  variant="ghost"
-                >
-                  {t.cancel}
-                </ButtonLink>
+                  label={t.cancel}
+                  icon="chevron-left"
+                />
               </div>
             </Stack>
           </Form>
@@ -198,7 +206,7 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
         pattern={kind === "hum" ? HUM_LABEL_PATTERN : undefined}
         className={`${CONTROL} text-sm`}
       />
-      <Submit>{t.pin}</Submit>
+      <Submit icon={<Icon name="link" />}>{t.pin}</Submit>
     </Form>
   )
 }
@@ -223,7 +231,7 @@ function PrivateFiles({ view }: { view: PublishPageView }) {
         <input key={name} type="hidden" name="fileName" value={name} />
       ))}
       <span className="text-sm">{t.privateFileNote}</span>
-      <Submit>{`${t.publishFiles} (${group.fileNames.length})`}</Submit>
+      <Submit icon={<Icon name="upload" />}>{`${t.publishFiles} (${group.fileNames.length})`}</Submit>
     </Form>
   )
 }

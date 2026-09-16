@@ -167,8 +167,8 @@ function keyOf(row: AdminResearchRow, sort: SortKey): string | null {
   return row.updatedAt
 }
 
-export interface ListingPage {
-  rows: AdminResearchRow[]
+export interface ListingPage<Row> {
+  rows: Row[]
   total: number
   page: number
   pageCount: number
@@ -177,11 +177,12 @@ export interface ListingPage {
   rangeTo: number
 }
 
-export function pageOf(
-  rows: readonly AdminResearchRow[],
+/** Cutting a page out of a result, whatever the rows of it are. */
+export function pageOf<Row>(
+  rows: readonly Row[],
   page: number,
   size: PageSize = PAGE_SIZE,
-): ListingPage {
+): ListingPage<Row> {
   const pageCount = Math.max(1, Math.ceil(rows.length / size))
   const wanted = Math.min(Math.max(page, 1), pageCount)
   const from = (wanted - 1) * size
@@ -192,4 +193,161 @@ export function pageOf(
     pageCount,
     ...pageRange(wanted, size, rows.length),
   }
+}
+
+/**
+ * How many rows each choice of one axis would leave.
+ *
+ * **Counted with that axis's own condition lifted**, which is the rule the
+ * public panel runs on (`components/facets.tsx`). Counted inside the narrowed
+ * result instead, every value a reader has not chosen reads 0, and an axis that
+ * has already been used cannot be told from one that leads nowhere — so the
+ * second value of an axis would look unreachable the moment the first is
+ * ticked. **The other axes stay on**, so a number says what the pane is about
+ * to do rather than what the whole table holds.
+ *
+ * Which rows those are is the listing's own business, so the caller hands in
+ * the ones that survive everything *but* this axis.
+ */
+export function axisCounts<Row, Value extends string>(
+  rows: readonly Row[],
+  values: readonly Value[],
+  holds: (row: Row, value: Value) => boolean,
+): Record<Value, number> {
+  const counts = Object.fromEntries(values.map((value) => [value, 0])) as Record<Value, number>
+  for (const row of rows) {
+    for (const value of values) {
+      if (holds(row, value)) counts[value] += 1
+    }
+  }
+  return counts
+}
+
+// === the branches of approved applications ===
+
+/**
+ * Where an approval branch stands with the portal, which is what decides what
+ * taking it in can do.
+ *
+ * **Most branches land on a research that already exists** — four in five, the
+ * portal holding the hum label the application was approved under — so a
+ * listing that cannot tell the three apart is mostly rows a curator has to open
+ * to find out. A branch with no hum label at all is its own standing rather
+ * than one of the other two: the number is issued upstream, and until it is
+ * there is nothing to match a research by.
+ */
+export type BranchStanding = "held" | "absent" | "unlabelled"
+
+export const BRANCH_STANDINGS: readonly BranchStanding[] = ["held", "absent", "unlabelled"]
+
+/**
+ * Whether the branch registered anything yet.
+ *
+ * An approval comes before the registration it approves, so a third of the
+ * branches hold no accession at the moment they are approved and grow one
+ * later. Taking one in writes the research and leaves the datasets for the
+ * second visit, which is a different errand from taking in a branch that has
+ * its datasets.
+ */
+export type BranchRegistration = "some" | "none"
+
+export const BRANCH_REGISTRATIONS: readonly BranchRegistration[] = ["some", "none"]
+
+/**
+ * The orderings this listing offers.
+ *
+ * **Not the ones the other listings offer** (`app/search/sort.ts`): a branch is
+ * not a research, it is never modified and it is never published, so the two
+ * date keys have nothing to read. What it has is the day it was approved and
+ * the number it was approved under.
+ */
+export const BRANCH_SORT_KEYS = ["approved", "application"] as const
+
+export type BranchSortKey = typeof BRANCH_SORT_KEYS[number]
+
+/** A listing opens on the newest approval: that is what a curator was told about. */
+export const BRANCH_SORT: BranchSortKey = "approved"
+
+/** A date runs from the newest and a number from the smallest, as elsewhere. */
+export function branchOrder(sort: BranchSortKey): SortOrder {
+  return sort === "application" ? "asc" : "desc"
+}
+
+export function isBranchStanding(value: string): value is BranchStanding {
+  return (BRANCH_STANDINGS as readonly string[]).includes(value)
+}
+
+export function isBranchRegistration(value: string): value is BranchRegistration {
+  return (BRANCH_REGISTRATIONS as readonly string[]).includes(value)
+}
+
+export function isBranchSortKey(value: string | null): value is BranchSortKey {
+  return value !== null && (BRANCH_SORT_KEYS as readonly string[]).includes(value)
+}
+
+/** What narrowing and ordering read of a branch. The row shows more. */
+export interface BranchRow {
+  applicationId: string
+  humLabel: string | null
+  approvedOn: string | null
+  /** The datasets the branch has registered, which is what it can seed. */
+  datasets: readonly string[]
+  /** The research whose hum label this already is, when there is one. */
+  heldBy: string | null
+}
+
+export function branchStanding(row: BranchRow): BranchStanding {
+  if (row.heldBy !== null) return "held"
+  return row.humLabel === null ? "unlabelled" : "absent"
+}
+
+export interface BranchFilter {
+  standings: readonly BranchStanding[]
+  registrations: readonly BranchRegistration[]
+}
+
+/**
+ * The branches a curator asked to see.
+ *
+ * **The word is not matched here.** It is matched by the application system,
+ * which is where the titles and the names are; what these two axes read is the
+ * portal's own answer about the branch, which upstream cannot know.
+ *
+ * The axes combine as an AND and an empty axis narrows nothing, as on the
+ * research listing.
+ */
+export function filterBranchRows<Row extends BranchRow>(
+  rows: readonly Row[],
+  filter: BranchFilter,
+): Row[] {
+  return rows.filter((row) =>
+    (filter.standings.length === 0 || filter.standings.includes(branchStanding(row)))
+    && (filter.registrations.length === 0
+      || filter.registrations.includes(row.datasets.length === 0 ? "none" : "some")))
+}
+
+/**
+ * The branches in the order asked for, newest approval first by default.
+ *
+ * A branch with no approval date sinks whichever way the order runs, for the
+ * reason the research listing sinks a research that has never been out. The
+ * tie-break is the application number, which is unique, so a row cannot move
+ * between pages from one request to the next.
+ */
+export function sortBranchRows<Row extends BranchRow>(
+  rows: readonly Row[],
+  sort: BranchSortKey = BRANCH_SORT,
+  order: SortOrder = branchOrder(sort),
+): Row[] {
+  const turn = order === "asc" ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const one = sort === "application" ? a.applicationId : a.approvedOn
+    const other = sort === "application" ? b.applicationId : b.approvedOn
+    if (one === null || other === null) {
+      if (one !== other) return one === null ? 1 : -1
+    } else if (one !== other) {
+      return one.localeCompare(other) * turn
+    }
+    return a.applicationId.localeCompare(b.applicationId)
+  })
 }

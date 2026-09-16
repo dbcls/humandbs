@@ -40,7 +40,24 @@ import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { codeProblem, moved, SETTLED_VOCABULARIES, termCodeProblem } from "./catalog"
+import {
+  codeProblem,
+  filterKeyRows,
+  isKeyShowing,
+  isKeyValueType,
+  KEY_SHOWINGS,
+  KEY_VALUE_TYPES,
+  keyBox,
+  keyShowing,
+  moved,
+  NO_BOX,
+  SETTLED_VOCABULARIES,
+  termCodeProblem,
+  type KeyFilter,
+  type KeyShowing,
+  type KeyValueType,
+} from "./catalog"
+import { axisCounts } from "./listing"
 
 export interface CatalogKeyRow {
   id: string
@@ -54,6 +71,8 @@ export interface CatalogKeyRow {
   /** How many terms the field draws from, or null when it draws from none. */
   terms: number | null
   categoryId: string | null
+  /** The code of that box, which is what the listing narrows by. */
+  categoryCode: string | null
   showOnPublicPage: boolean
   canonicalUnit: string | null
 }
@@ -91,8 +110,26 @@ export interface CategoryRow {
  */
 export interface CatalogView {
   locale: Locale
+  /** The fields the conditions leave, in the order the public table has them. */
   keys: CatalogKeyRow[]
+  /** Every field there is, which is what the name of the screen counts. */
+  total: number
   categories: CategoryRow[]
+  /** The conditions in force, as the address carries them. */
+  keyword: string
+  types: KeyValueType[]
+  boxes: string[]
+  showing: KeyShowing[]
+  /**
+   * How many fields each choice of the pane would leave, counted the way the
+   * other listings count (`app/admin/listing.ts` の `axisCounts`).
+   */
+  counts: {
+    types: Record<KeyValueType, number>
+    /** By the box's code, with `NO_BOX` for the fields standing in none. */
+    boxes: Record<string, number>
+    showing: Record<KeyShowing, number>
+  }
 }
 
 export interface TermRow {
@@ -168,19 +205,22 @@ async function keyRows(db: Executor): Promise<CatalogKeyRow[]> {
       terms: sql<number | null>`case when ${vocabularySet.id} is null then null
         else count(${vocabularyTerm.id})::int end`,
       categoryId: contentKey.facetCategoryId,
+      categoryCode: facetCategory.code,
       showOnPublicPage: contentKey.showOnPublicPage,
       canonicalUnit: contentKey.canonicalUnit,
     })
     .from(contentKey)
     .leftJoin(vocabularySet, eq(vocabularySet.id, contentKey.vocabularySetId))
     .leftJoin(vocabularyTerm, eq(vocabularyTerm.setId, vocabularySet.id))
-    .groupBy(contentKey.id, vocabularySet.id, vocabularySet.code)
+    .leftJoin(facetCategory, eq(facetCategory.id, contentKey.facetCategoryId))
+    .groupBy(contentKey.id, vocabularySet.id, vocabularySet.code, facetCategory.code)
     .orderBy(asc(contentKey.scope), asc(contentKey.position), asc(contentKey.code))
 }
 
 export async function catalogPage(request: Request): Promise<CatalogView> {
   await requireCapability(request, "manage-catalog")
   const db = getDb()
+  const url = new URL(request.url)
   const [keys, categories] = await Promise.all([
     keyRows(db),
     db
@@ -194,10 +234,53 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
       .from(facetCategory)
       .orderBy(asc(facetCategory.position), asc(facetCategory.code)),
   ])
+  const fields = keys.filter((key) => key.scope === "experiment")
+
+  // **The boxes are read from the categories rather than from the fields**, so
+  // that an empty box is still somewhere a field can be put — and a value the
+  // address carries that names no box is dropped, the way the other listings
+  // drop a condition they do not know.
+  const boxCodes = [...categories.map((one) => one.code), NO_BOX]
+  const types = url.searchParams.getAll("type").filter(isKeyValueType)
+  const boxes = url.searchParams.getAll("box").filter((one) => boxCodes.includes(one))
+  const showing = url.searchParams.getAll("shown").filter(isKeyShowing)
+  const filter: KeyFilter = {
+    keyword: url.searchParams.get("q") ?? "",
+    types,
+    boxes,
+    showing,
+  }
+
+  // Each axis is counted over the fields the *other* conditions leave, so that
+  // a second value of an axis is still reachable after the first is ticked.
+  const counts = {
+    types: axisCounts(
+      filterKeyRows(fields, { ...filter, types: [] }),
+      KEY_VALUE_TYPES,
+      (row, value) => row.valueType === value,
+    ),
+    boxes: axisCounts(
+      filterKeyRows(fields, { ...filter, boxes: [] }),
+      boxCodes,
+      (row, value) => keyBox(row) === value,
+    ),
+    showing: axisCounts(
+      filterKeyRows(fields, { ...filter, showing: [] }),
+      KEY_SHOWINGS,
+      (row, value) => keyShowing(row) === value,
+    ),
+  }
+
   return {
-    locale: readLocale(new URL(request.url).pathname).locale,
-    keys: keys.filter((key) => key.scope === "experiment"),
+    locale: readLocale(url.pathname).locale,
+    keys: filterKeyRows(fields, filter),
+    total: fields.length,
     categories,
+    keyword: filter.keyword,
+    types,
+    boxes,
+    showing,
+    counts,
   }
 }
 

@@ -1,4 +1,4 @@
-import { Stack } from "~/components/base"
+import { PaneHeading, Stack } from "~/components/base"
 import { KeyValue, Pairs, Section, Table, Td } from "~/components/page"
 
 import type {
@@ -176,7 +176,7 @@ export function PlanNotes({
   ] as const
   return (
     <Stack gap="tight">
-      <h3 className="font-semibold text-sm">{words.researchPlanNotes}</h3>
+      <PaneHeading title={words.researchPlanNotes} level="h3" rule="start" />
       <Table headers={[words.content, words.present, words.content]}>
         {notes.map(([label, content]) => (
           <tr key={label}>

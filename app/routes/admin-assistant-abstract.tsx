@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { Stack } from "~/components/base"
+import { PaneHeading, Stack } from "~/components/base"
 import { Section } from "~/components/page"
 
 import type { AssessmentData, AssistantWords } from "./admin-assistant-model"
@@ -107,17 +107,18 @@ function AbstractPanel({
   return (
     <div className="rounded border border-line bg-surface p-3">
       <Stack gap="tight">
-        <h3 className="font-semibold text-sm">{title}</h3>
+        <PaneHeading title={title} level="h3" rule="start" />
         <p className="whitespace-pre-wrap text-sm">
           {sentences?.map((sentence) => (
             <span
               key={sentence.id}
               data-abstract-pair-id={sentence.id}
               tabIndex={0}
-              className={`mr-1 rounded px-1 outline-none transition-colors ${
-                activePairId === sentence.id
-                  ? "bg-blue-100 text-ink"
-                  : "focus-visible:ring-2 focus-visible:ring-blue-500"
+              // **選ばれている 1 文だけが面を持つ。**焦点の輪郭は `app.css` の
+              // `:focus-visible` が site に 1 つ持っているので、ここで消して
+              // 引き直さない (`docs/ui.md` の「壊れるもの」)。
+              className={`mr-1 rounded px-1 transition-colors ${
+                activePairId === sentence.id ? "bg-surface-hover text-ink" : ""
               }`}
               onMouseEnter={() => setActivePairId?.(sentence.id)}
               onMouseLeave={() => setActivePairId?.(undefined)}

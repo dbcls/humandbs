@@ -222,15 +222,11 @@ describe("draft_dataset_entry", () => {
 })
 
 describe("discarding a draft", () => {
-  it("takes the entries, undo stack, comments and presence with it", async () => {
+  it("takes the entries, comments and presence with it", async () => {
     const researchId = await createResearch()
     const datasetId = await createDataset(researchId)
     const draftId = await createDraft(researchId, "token-a")
     await db.insert(s.draftDatasetEntry).values({ draftId, datasetId, content: emptyDatasetContent() })
-    await db.insert(s.draftUndo).values({
-      draftId,
-      snapshot: { reason: "before-save", note: "", content: emptyResearchContent(), datasetEntries: [] },
-    })
     await db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" })
     const thread = only(await db.insert(s.commentThread).values({
       draftId,
@@ -242,7 +238,6 @@ describe("discarding a draft", () => {
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, draftId))
 
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
-    expect(await db.select().from(s.draftUndo)).toHaveLength(0)
     expect(await db.select().from(s.draftPresence)).toHaveLength(0)
     expect(await db.select().from(s.commentThread)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)

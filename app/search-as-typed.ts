@@ -37,10 +37,13 @@ export interface Ask {
  * easier to read and to share without the parts of it that say nothing, and a
  * range with both ends empty is a facet nobody asked about.
  *
- * **The box the listing searches by is the exception.** Emptying it is how a
- * reader lifts the word they searched for, and a submission that leaves the
- * field out altogether says something else — that this is not a search about
- * words — which holds the word in force and hands it back to the box.
+ * **A field the server folds into another one is the exception**, and `box`
+ * names it. The public listings send what was typed as `k` and the server folds
+ * it into the query it is one condition of (`public/lists.server.ts` の
+ * `canonicalRedirect`): an empty `k` is how that one condition is lifted out,
+ * and a submission leaving the field out says something else — that this is not
+ * a search about words — which holds the word in force. Where the box writes
+ * the address's own field, an empty one is dropped like any other.
  */
 export function conditions(fields: FormData, box: string | null): FormData {
   const asked = new FormData()
@@ -80,15 +83,20 @@ export function useAsk(action: string, box: string | null = null): Ask {
  * goes to, and it has to be named here too because the address the reader is
  * standing on is not always the one the form posts to.
  */
-export function useRefine({ action, box = null }: {
+export function useRefine({ action, box = null, preventScrollReset = false }: {
   action?: string
   /** The field whose empty value is a condition of its own, if there is one. */
   box?: string | null
+  /** Whether the reader stays where they are standing, as the `Form` prop. */
+  preventScrollReset?: boolean
 } = {}): (event: SyntheticEvent<HTMLFormElement>) => void {
   const go = useSubmit()
   return (event) => {
     event.preventDefault()
-    void go(conditions(new FormData(event.currentTarget), box), { method: "get", action })
+    void go(
+      conditions(new FormData(event.currentTarget), box),
+      { method: "get", action, preventScrollReset },
+    )
   }
 }
 
@@ -102,8 +110,13 @@ export interface SearchAsTyped {
    * timer is dropped rather than left to fire. Left standing it asks after the
    * reader has gone somewhere else, and because it replaces the history entry
    * it takes them back to this listing from wherever they had reached.
+   *
+   * **The press goes the same way the timer does**, through the conditions
+   * rather than as the form stands: a box pressed while it is empty would
+   * otherwise write a field that says nothing into the address, and the same
+   * search would have two addresses depending on how it was asked for.
    */
-  onSubmit: () => void
+  onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
   /** Spread onto the one field the form is driven by. */
   field: {
     onChange: () => void
@@ -126,7 +139,7 @@ export interface SearchAsTyped {
  * answer — so a result on the way is the answer coming closer. Digits do not
  * (`facets.tsx` の `Bound`).
  */
-export function useSearchAsTyped({ action, name, enabled = true }: {
+export function useSearchAsTyped({ action, name, enabled = true, keepEmpty = false }: {
   /** Where the form goes, which the submission has to name for itself. */
   action: string
   /** What the typed words are called in the address. */
@@ -137,8 +150,14 @@ export function useSearchAsTyped({ action, name, enabled = true }: {
    * of a word.
    */
   enabled?: boolean
+  /** Whether an empty box is a condition of its own (`conditions` の `box`). */
+  keepEmpty?: boolean
 }): SearchAsTyped {
-  const { form, ask } = useAsk(action, name)
+  const box = keepEmpty ? name : null
+  const { form, ask } = useAsk(action, box)
+  // A press stands where it is and pushes an entry, which is what `useRefine`
+  // does for a pane; what differs is only that the timer is dropped with it.
+  const press = useRefine({ action, box, preventScrollReset: enabled })
   const waiting = useRef<number | undefined>(undefined)
   const composing = useRef(false)
 
@@ -161,8 +180,9 @@ export function useSearchAsTyped({ action, name, enabled = true }: {
 
   return {
     form,
-    onSubmit: () => {
+    onSubmit: (event) => {
       window.clearTimeout(waiting.current)
+      press(event)
     },
     field: {
       onChange: soon,

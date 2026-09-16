@@ -207,7 +207,7 @@ describe("アシスタントの人物検証表示", () => {
     expect(html.match(/ml-4 border-line border-l pl-3/g)).toHaveLength(4)
   })
 
-  it("肯定判定を緑、否定判定を赤で表示する", () => {
+  it("通らなかった判定だけに色を付け、通った判定は本文の色のままにする", () => {
     const html = renderToStaticMarkup(
       <PersonReport
         title={words.researcher}
@@ -226,7 +226,7 @@ describe("アシスタントの人物検証表示", () => {
       />,
     )
 
-    expect(html).toContain("class=\"text-green-700\">確認済み</span>")
+    expect(html).toContain("<span>確認済み</span>")
     expect(html).toContain("class=\"text-danger\">未確認</span>")
     expect(html).toContain("class=\"text-danger\">不一致</span>")
   })
@@ -254,6 +254,7 @@ describe("アシスタントの人物検証表示", () => {
 function renderReport(report: AssessmentData) {
   return renderToStaticMarkup(
     <AssistantReport
+      locale="ja"
       report={report}
       words={words}
       applicationType="利用申請"
@@ -280,7 +281,7 @@ describe("アシスタントレポートのレイアウト", () => {
     expect(html).not.toContain("lg:grid-cols-3")
   })
 
-  it("整合性の肯定・否定判定を色分けする", () => {
+  it("整合性の否定判定だけを色で立てる", () => {
     const html = renderReport({
       phone_consistency_result: {
         all_match: false,
@@ -293,10 +294,11 @@ describe("アシスタントレポートのレイアウト", () => {
       },
     })
 
-    expect(html).toContain("class=\"text-green-700\">完全一致</span>")
-    expect(html).toContain("class=\"text-green-700\">市外局番一致（03）</span>")
+    expect(html).toContain("<span>完全一致</span>")
+    expect(html).toContain("<span>市外局番一致（03）</span>")
     expect(html).toContain("class=\"text-danger\">不一致</span>")
     expect(html).toContain("class=\"text-danger\">NG</span>")
+    expect(html).not.toContain("text-green")
   })
 
   it("データセットごとの制限事項を詳細内で個別に表示する", () => {
@@ -435,6 +437,7 @@ describe("アシスタント詳細の要求順", () => {
 function renderDatasets(canManage: boolean): string {
   return renderToStaticMarkup(
     <Datasets
+      locale="ja"
       datasets={[{ id: "JGAD000001", found_in_database: false }]}
       requestedDatasets={[]}
       policies={[]}
@@ -479,6 +482,7 @@ describe("アシスタントのデータセット管理", () => {
   it("詳細 URL が未取得でも一覧にデータセット ID を表示する", () => {
     const html = renderToStaticMarkup(
       <Datasets
+        locale="ja"
         datasets={[{ id: "JGAD000001", found_in_database: true }]}
         requestedDatasets={[]}
         policies={[]}

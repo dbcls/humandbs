@@ -78,7 +78,7 @@ async function sharedDraft(content: ResearchContent = titled("題目")): Promise
   token: string
 }> {
   const created = await createResearchWithDraft(db)
-  await saveDraftContent(db, { draftId: created.draftId, revision: 1 }, { note: "", content })
+  await saveDraftContent(db, { draftId: created.draftId, revision: 1 }, { content })
   await setDraftSharing(db, created.draftId, { enabled: true, expiresAt: null })
   return { ...created, token: await tokenOf(created.draftId) }
 }
@@ -270,7 +270,7 @@ describe("the threads a preview shows", () => {
     const saved = await saveDraftContent(
       db,
       { draftId, revision: 4 },
-      { note: "", content: { ...titled("題目"), datasetIds: [listed.datasetId] } },
+      { content: { ...titled("題目"), datasetIds: [listed.datasetId] } },
     )
     if (saved.status !== "saved") throw new Error("expected the version's dataset list to save")
     return { draftId, token, listedId: listed.datasetId, unlistedId: unlisted.datasetId }

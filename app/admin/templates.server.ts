@@ -28,6 +28,8 @@ import { getDb, type Executor } from "~/db/client.server"
 import { dataset, labelPin, researchDraft, researchVersion } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { isSortOrder, type SortOrder } from "~/search/sort"
 import {
   fetchAccessionBranchId,
   fetchDsBranch,
@@ -47,7 +49,24 @@ import {
   draftToTakeInto,
   type SeededDataset,
 } from "./drafts.server"
-import { actorOf, badRequest, identity, notFound } from "./pages.server"
+import {
+  axisCounts,
+  BRANCH_REGISTRATIONS,
+  BRANCH_SORT,
+  BRANCH_STANDINGS,
+  branchOrder,
+  branchStanding,
+  filterBranchRows,
+  isBranchRegistration,
+  isBranchSortKey,
+  isBranchStanding,
+  pageOf,
+  sortBranchRows,
+  type BranchRegistration,
+  type BranchSortKey,
+  type BranchStanding,
+} from "./listing"
+import { actorOf, badRequest, identity, notFound, readPage } from "./pages.server"
 import {
   humLabelOf,
   loadCatalogWithTerms,
@@ -74,7 +93,10 @@ import {
   upstreamQuery,
 } from "./urls"
 
-/** How many branches a search answers with. */
+/**
+ * How many branches the accession screen's search answers with. The listing of
+ * branches takes every match instead, because it counts them and pages them.
+ */
 const BRANCH_LIMIT = 30
 
 /** The two archives a dataset is seeded from. */
@@ -88,8 +110,15 @@ export interface UpstreamBranchView {
   titleJa: string
   titleEn: string
   piName: string
-  /** The studies and datasets registered under the branch. */
-  accessions: string[]
+  /**
+   * The datasets registered under the branch.
+   *
+   * **The study accession is not among them.** A branch that registered one has
+   * always registered datasets under it as well, so nothing about the branch is
+   * read from it, and the portal seeds a dataset from each JGAD and nothing
+   * from the study.
+   */
+  datasets: string[]
   /** The research whose hum label this already is, when there is one. */
   heldBy: string | null
 }
@@ -129,7 +158,26 @@ export interface UpstreamResearchView {
   /** False where this deployment cannot reach the application system at all. */
   connected: boolean
   keyword: string
+  standings: BranchStanding[]
+  registrations: BranchRegistration[]
+  /**
+   * How many branches each choice of the pane would leave, counted the way the
+   * public panel counts (`app/admin/listing.ts` の `axisCounts`).
+   */
+  counts: {
+    standings: Record<BranchStanding, number>
+    registrations: Record<BranchRegistration, number>
+  }
+  sort: BranchSortKey
+  order: SortOrder
+  size: PageSize
   rows: UpstreamBranchView[]
+  total: number
+  page: number
+  pageCount: number
+  /** 1-based positions of the shown rows within the whole result. */
+  rangeFrom: number
+  rangeTo: number
 }
 
 /** The research a branch's hum label already names, and what it holds. */
@@ -140,7 +188,6 @@ export interface UpstreamHolderView {
   latestNumber: number | null
   drafts: {
     draftId: string
-    note: string
     copiedFromNumber: number | null
     takenBranches: string[]
     updatedAt: string
@@ -249,7 +296,7 @@ async function branchViews(
     titleJa: row.titleJa,
     titleEn: row.titleEn,
     piName: row.piNameJa === "" ? row.piNameEn : row.piNameJa,
-    accessions: row.accessions,
+    datasets: row.accessions.filter((accession) => JGAD.test(accession)),
     heldBy: row.humLabel === null ? null : held.get(row.humLabel) ?? null,
   }))
 }
@@ -322,19 +369,91 @@ function dedupe(dropped: readonly DroppedValue[]): DroppedValue[] {
 
 // === starting a research ===
 
-/** The applications a draft can be taken from, newest approval first. */
+/**
+ * The applications a draft can be taken from, newest approval first.
+ *
+ * **Every branch the word matched is read, and the page is cut here rather than
+ * upstream.** Two of the three things a curator narrows by — whether the portal
+ * already holds the hum label, and whether anything has been registered — are
+ * the portal's own answer about the branch, which the application system has no
+ * way to know. Reading all of them costs what reading thirty costs
+ * (`upstream/application-db.server.ts`).
+ *
+ * An ordering or a size that is not one of the offered ones is read as none
+ * asked for, the way every other listing reads its address.
+ */
 export async function upstreamResearchPage(
   request: Request,
   locale: Locale,
 ): Promise<UpstreamResearchView> {
   await requireSeeding(request)
   const db = getDb()
-  const keyword = new URL(request.url).searchParams.get("q") ?? ""
+  const url = new URL(request.url)
+  const keyword = url.searchParams.get("q") ?? ""
+  const filter = {
+    standings: url.searchParams.getAll("standing").filter(isBranchStanding),
+    registrations: url.searchParams.getAll("registered").filter(isBranchRegistration),
+  }
+  const askedSort = url.searchParams.get("sort")
+  const sort = isBranchSortKey(askedSort) ? askedSort : BRANCH_SORT
+  const askedOrder = url.searchParams.get("order")
+  const order = isSortOrder(askedOrder) ? askedOrder : branchOrder(sort)
+  const askedSize = Number(url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const presented = { ...filter, keyword, sort, order, size }
 
   const rows = await withApplicationDb((at) =>
-    searchDsBranches(at.pool, at.schema, keyword, BRANCH_LIMIT))
-  if (rows === null) return { locale, connected: false, keyword, rows: [] }
-  return { locale, connected: true, keyword, rows: await branchViews(db, rows) }
+    searchDsBranches(at.pool, at.schema, keyword, null))
+  if (rows === null) {
+    return {
+      locale,
+      connected: false,
+      ...presented,
+      counts: {
+        standings: axisCounts([], BRANCH_STANDINGS, () => false),
+        registrations: axisCounts([], BRANCH_REGISTRATIONS, () => false),
+      },
+      rows: [],
+      total: 0,
+      page: 1,
+      pageCount: 1,
+      rangeFrom: 0,
+      rangeTo: 0,
+    }
+  }
+
+  const found = await branchViews(db, rows)
+  const page = pageOf(
+    sortBranchRows(filterBranchRows(found, filter), sort, order),
+    readPage(url.searchParams.get("page")),
+    size,
+  )
+  // Each axis is counted over the branches the *other* axis leaves, so that a
+  // second standing is still reachable after the first has been ticked.
+  const counts = {
+    standings: axisCounts(
+      filterBranchRows(found, { ...filter, standings: [] }),
+      BRANCH_STANDINGS,
+      (row, standing) => branchStanding(row) === standing,
+    ),
+    registrations: axisCounts(
+      filterBranchRows(found, { ...filter, registrations: [] }),
+      BRANCH_REGISTRATIONS,
+      (row, registration) => (row.datasets.length === 0 ? "none" : "some") === registration,
+    ),
+  }
+  return {
+    locale,
+    connected: true,
+    ...presented,
+    counts,
+    rows: page.rows,
+    total: page.total,
+    page: page.page,
+    pageCount: page.pageCount,
+    rangeFrom: page.rangeFrom,
+    rangeTo: page.rangeTo,
+  }
 }
 
 /**
@@ -463,7 +582,6 @@ async function holderView(
     db
       .select({
         draftId: researchDraft.id,
-        note: researchDraft.note,
         copiedFromNumber: researchDraft.copiedFromNumber,
         takenBranches: researchDraft.takenBranches,
         updatedAt: researchDraft.updatedAt,

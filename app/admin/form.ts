@@ -119,9 +119,8 @@ export interface ResearchContentInput {
   datasetIds: string[]
 }
 
-/** What one save carries: the draft's memo and the content being edited. */
+/** What one save carries: the content being edited. */
 export interface DraftInput {
-  note: string
   content: ResearchContentInput
 }
 

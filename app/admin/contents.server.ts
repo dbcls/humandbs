@@ -28,10 +28,12 @@ import { getDb, type Executor } from "~/db/client.server"
 import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
-import { pageRange } from "~/paging"
 import { href, readLocale } from "~/public/urls"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
 import { today } from "~/dates"
+import { axisCounts, pageOf, type ListingPage } from "./listing"
+import { readPage } from "./pages.server"
 import {
   adminContentsPath,
   adminDocumentPath,
@@ -39,16 +41,34 @@ import {
   adminNewsPath,
 } from "./urls"
 import {
+  datingOf,
+  emptyStates,
+  filterEntries,
+  filterNewsRows,
+  isNewsDating,
+  isPublishState,
+  isVersioning,
+  NEWS_DATINGS,
   parseVersionNumber,
+  publishStateIn,
+  publishStateOf,
+  PUBLISH_STATES,
   siteTree,
   slugProblem,
   unansweredLocales,
+  versioningOf,
+  VERSIONINGS,
   versionNumberIn,
   versionSlug,
+  type ContentsFilter,
   type DocumentRow,
-  type LocaleStates,
+  type NewsDating,
+  type NewsFilter,
+  type NewsRow,
+  type PublishState,
   type SeriesRow,
   type TreeEntry,
+  type Versioning,
 } from "./contents"
 
 /**
@@ -96,11 +116,40 @@ export interface AlertRow {
   en: string
 }
 
-export interface ContentsView {
+export interface ContentsView extends ListingPage<TreeEntry> {
   locale: Locale
-  tree: TreeEntry[]
-  /** Version-less slugs whose current revision does not answer in some language. */
+  /** The conditions in force, as the address carries them. */
+  keyword: string
+  versioning: Versioning[]
+  ja: PublishState[]
+  en: PublishState[]
+  /**
+   * How many articles each choice of the pane would leave, counted the way the
+   * public panel counts (`app/admin/listing.ts` の `axisCounts`).
+   */
+  counts: {
+    versioning: Record<Versioning, number>
+    ja: Record<PublishState, number>
+    en: Record<PublishState, number>
+  }
+  size: PageSize
+  /**
+   * Version-less slugs whose current revision does not answer in some language.
+   *
+   * **Read from every series, not from the page.** It is a report of what is
+   * broken rather than a part of the listing, and one that came and went as the
+   * reader narrowed would be read as "narrowing fixed it".
+   */
   unanswered: { slug: string, locales: Locale[] }[]
+}
+
+export interface SeriesView {
+  locale: Locale
+  series: SeriesRow
+  /** The revision the pointer names, or null if it names nothing readable. */
+  current: DocumentRow | null
+  /** Languages the version-less slug does not answer in. */
+  unanswered: Locale[]
 }
 
 export interface AlertsView {
@@ -132,23 +181,23 @@ export interface DocumentView {
   editors: LocaleEditor[]
 }
 
-export interface NewsSummary {
-  id: string
-  title: string
-  publishedAt: string | null
-  states: LocaleStates
-}
-
-export interface NewsListView {
+export interface NewsListView extends ListingPage<NewsRow> {
   locale: Locale
-  items: NewsSummary[]
-  page: number
-  pageCount: number
-  /** Every announcement there is, not the page being looked at. */
-  total: number
-  /** 1-based positions of the shown items within that total. */
-  rangeFrom: number
-  rangeTo: number
+  /** The conditions in force, as the address carries them. */
+  keyword: string
+  dating: NewsDating[]
+  ja: PublishState[]
+  en: PublishState[]
+  /**
+   * How many announcements each choice of the pane would leave, counted the way
+   * the articles are (`app/admin/listing.ts` の `axisCounts`).
+   */
+  counts: {
+    dating: Record<NewsDating, number>
+    ja: Record<PublishState, number>
+    en: Record<PublishState, number>
+  }
+  size: PageSize
 }
 
 export interface NewsView {
@@ -157,8 +206,6 @@ export interface NewsView {
   publishedAt: string | null
   editors: LocaleEditor[]
 }
-
-const NEWS_PER_PAGE = 20
 
 function text(form: FormData, name: string): string {
   const value = form.get(name)
@@ -184,13 +231,6 @@ function revisionOf(form: FormData): number | null {
 function localeOf(form: FormData): Locale | null {
   const value = text(form, "locale")
   return isLocale(value) ? value : null
-}
-
-function emptyStates(): LocaleStates {
-  return {
-    ja: { published: false, hasDraft: false },
-    en: { published: false, hasDraft: false },
-  }
 }
 
 /** The article a form is proposing, or everything about it a page cannot hold. */
@@ -243,10 +283,15 @@ async function documentRows(db: Executor): Promise<DocumentRow[]> {
   return [...byId.values()]
 }
 
-async function seriesRows(db: Executor, documents: readonly DocumentRow[]): Promise<SeriesRow[]> {
+async function seriesRows(
+  db: Executor,
+  documents: readonly DocumentRow[],
+  onlyId?: string,
+): Promise<SeriesRow[]> {
   const rows = await db
     .select({ id: documentSeries.id, slug: documentSeries.slug, currentId: documentSeries.currentId })
     .from(documentSeries)
+    .where(onlyId === undefined ? undefined : idIs(documentSeries.id, onlyId))
     .orderBy(asc(documentSeries.slug))
 
   return rows.map((row) => ({
@@ -257,16 +302,64 @@ async function seriesRows(db: Executor, documents: readonly DocumentRow[]): Prom
   }))
 }
 
+/**
+ * The listing: one row per article, narrowed by what was typed and cut into
+ * pages.
+ *
+ * **The whole tree is built before it is narrowed**, because a row's depth and
+ * a series' revisions are read from the set of articles rather than from the
+ * rows on screen (`app/admin/contents.ts`). There are tens of articles, not
+ * thousands, so the cut is made here rather than asked of the database.
+ */
 export async function contentsPage(request: Request): Promise<ContentsView> {
   await requireCapability(request, "manage-site-content")
   const db = getDb()
+  const url = new URL(request.url)
+  const filter: ContentsFilter = {
+    keyword: url.searchParams.get("q") ?? "",
+    versioning: url.searchParams.getAll("versioning").filter(isVersioning),
+    ja: url.searchParams.getAll("ja").filter(isPublishState),
+    en: url.searchParams.getAll("en").filter(isPublishState),
+  }
+  // A size that is not one of the offered ones is read as none asked for, the
+  // way the other listings read theirs: an address arriving from somewhere else
+  // should answer rather than refuse.
+  const askedSize = Number(url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+
   const documents = await documentRows(db)
   const series = await seriesRows(db, documents)
-
   const tree = siteTree(documents, series)
+
+  // Each axis is counted over the articles the *other* conditions leave, so
+  // that a second value of an axis is still reachable after the first is ticked.
+  const counts = {
+    versioning: axisCounts(
+      filterEntries(tree, { ...filter, versioning: [] }),
+      VERSIONINGS,
+      (entry, value) => versioningOf(entry) === value,
+    ),
+    ja: axisCounts(
+      filterEntries(tree, { ...filter, ja: [] }),
+      PUBLISH_STATES,
+      (entry, value) => publishStateOf(entry, "ja") === value,
+    ),
+    en: axisCounts(
+      filterEntries(tree, { ...filter, en: [] }),
+      PUBLISH_STATES,
+      (entry, value) => publishStateOf(entry, "en") === value,
+    ),
+  }
+
   return {
-    locale: readLocale(new URL(request.url).pathname).locale,
-    tree,
+    locale: readLocale(url.pathname).locale,
+    keyword: filter.keyword,
+    versioning: [...filter.versioning],
+    ja: [...filter.ja],
+    en: [...filter.en],
+    counts,
+    size,
+    ...pageOf(filterEntries(tree, filter), readPage(url.searchParams.get("page")), size),
     unanswered: tree.flatMap((entry) => {
       if (entry.kind !== "series") return []
       const locales = unansweredLocales(entry.current, LOCALES)
@@ -275,12 +368,41 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
   }
 }
 
+/**
+ * One versioned article: the pointer, and the revisions under it.
+ *
+ * Everything that acts on a series as a whole is here rather than in the
+ * listing — moving the pointer, adding a revision, retiring the lot. A listing
+ * carrying them holds a row that is a form, which is a row that cannot be
+ * scanned beside its neighbours.
+ */
+export async function seriesPage(request: Request, seriesId: string): Promise<SeriesView | null> {
+  await requireCapability(request, "manage-site-content")
+  const db = getDb()
+  const documents = await documentRows(db)
+  const [series] = await seriesRows(db, documents, seriesId)
+  if (series === undefined) return null
+
+  const current = series.revisions.find((one) => one.id === series.currentId) ?? null
+  return {
+    locale: readLocale(new URL(request.url).pathname).locale,
+    series,
+    current,
+    unanswered: unansweredLocales(current, LOCALES),
+  }
+}
+
 export async function alertsPage(request: Request): Promise<AlertsView> {
   await requireCapability(request, "manage-site-content")
   const alerts = await getDb()
     .select({ id: alert.id, active: alert.active, content: alert.content })
     .from(alert)
-    .orderBy(asc(alert.createdAt))
+    // **Two alerts made in the same moment still have an order.** Rows written
+    // in one statement share a timestamp, and ordering by the time alone hands
+    // them back in whatever order they happen to lie in — which moves as soon as
+    // one of them is saved. The id is a v7, so it carries the order they were
+    // made in.
+    .orderBy(asc(alert.createdAt), asc(alert.id))
 
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
@@ -366,33 +488,32 @@ export async function documentPage(
   }
 }
 
-export async function newsListPage(request: Request): Promise<NewsListView> {
-  await requireCapability(request, "manage-site-content")
-  const db = getDb()
-  const url = new URL(request.url)
-  const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
-
-  const [total] = await db.select({ count: sql<number>`count(*)::int` }).from(news)
-  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / NEWS_PER_PAGE))
-  const at = Math.min(page, pageCount)
-
-  // The page is taken from the items and their locales fetched after, rather
-  // than from the join: a row per locale would make the page size depend on how
-  // many languages each item happens to have.
+/**
+ * Every announcement there is, newest first, with what each of its languages is
+ * up to.
+ *
+ * **The two statements are the same two whatever the reader has asked for.**
+ * The pane says how many rows each of its values would leave, which is a count
+ * over the announcements the other conditions leave rather than over the page —
+ * so the cut is made here, as it is for the articles.
+ *
+ * The locales are fetched after the items rather than joined to them: a row per
+ * locale would make what is read depend on how many languages each item happens
+ * to have.
+ */
+async function newsRows(db: Executor): Promise<NewsRow[]> {
   const rows = await db
     .select({ id: news.id, publishedAt: news.publishedAt })
     .from(news)
     // Undated items are the ones being written, so they sit at the top.
     .orderBy(desc(news.publishedAt), desc(news.id))
-    .limit(NEWS_PER_PAGE)
-    .offset((at - 1) * NEWS_PER_PAGE)
 
-  const items = new Map<string, NewsSummary>(rows.map((row) => [
+  const byId = new Map<string, NewsRow>(rows.map((row) => [
     row.id,
     { id: row.id, title: "", publishedAt: row.publishedAt, states: emptyStates() },
   ]))
 
-  const contents = items.size === 0
+  const contents = byId.size === 0
     ? []
     : await db
         .select({
@@ -403,22 +524,71 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
           title: sql<string>`coalesce(${newsContent.draftContent}, ${newsContent.content})->>'title'`,
         })
         .from(newsContent)
-        .where(inArray(newsContent.newsId, [...items.keys()]))
 
   for (const row of contents) {
-    const found = items.get(row.id)
+    const found = byId.get(row.id)
     if (found === undefined) continue
     found.states[row.locale] = { published: row.published, hasDraft: row.hasDraft }
+    // Japanese names the item; English does when there is no Japanese side.
     if (found.title === "" || row.locale === "ja") found.title = row.title
+  }
+  return [...byId.values()]
+}
+
+/**
+ * The listing: one row per announcement, narrowed by what was typed and cut
+ * into pages.
+ *
+ * **Undated items sort to the top.** The date is the announcement's own — it is
+ * what the public listing orders by — so an item without one is a draft that
+ * has not been given its day yet.
+ */
+export async function newsListPage(request: Request): Promise<NewsListView> {
+  await requireCapability(request, "manage-site-content")
+  const db = getDb()
+  const url = new URL(request.url)
+  const filter: NewsFilter = {
+    keyword: url.searchParams.get("q") ?? "",
+    dating: url.searchParams.getAll("dating").filter(isNewsDating),
+    ja: url.searchParams.getAll("ja").filter(isPublishState),
+    en: url.searchParams.getAll("en").filter(isPublishState),
+  }
+  // A size that is not one of the offered ones is read as none asked for, the
+  // way the other listings read theirs.
+  const askedSize = Number(url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+
+  const rows = await newsRows(db)
+
+  // Each axis is counted over the announcements the *other* conditions leave, so
+  // that a second value of an axis is still reachable after the first is ticked.
+  const counts = {
+    dating: axisCounts(
+      filterNewsRows(rows, { ...filter, dating: [] }),
+      NEWS_DATINGS,
+      (row, value) => datingOf(row) === value,
+    ),
+    ja: axisCounts(
+      filterNewsRows(rows, { ...filter, ja: [] }),
+      PUBLISH_STATES,
+      (row, value) => publishStateIn(row.states, "ja") === value,
+    ),
+    en: axisCounts(
+      filterNewsRows(rows, { ...filter, en: [] }),
+      PUBLISH_STATES,
+      (row, value) => publishStateIn(row.states, "en") === value,
+    ),
   }
 
   return {
     locale: readLocale(url.pathname).locale,
-    items: [...items.values()],
-    page: at,
-    pageCount,
-    total: total?.count ?? 0,
-    ...pageRange(at, NEWS_PER_PAGE, total?.count ?? 0),
+    keyword: filter.keyword,
+    dating: [...filter.dating],
+    ja: [...filter.ja],
+    en: [...filter.en],
+    counts,
+    size,
+    ...pageOf(filterNewsRows(rows, filter), readPage(url.searchParams.get("page")), size),
   }
 }
 
@@ -495,7 +665,7 @@ function settle(request: Request, applied: Applied): ContentsResult {
 }
 
 export async function contentsAction(request: Request): Promise<ContentsResult> {
-  const actor = await requireCapability(request, "manage-site-content")
+  await requireCapability(request, "manage-site-content")
   const form = await request.formData()
   const intent = text(form, "intent")
 
@@ -503,12 +673,6 @@ export async function contentsAction(request: Request): Promise<ContentsResult> 
     switch (intent) {
       case "create-document":
         return createDocument(tx, form)
-      case "repoint-series":
-        return repointSeries(tx, form)
-      case "add-version":
-        return addVersion(tx, form)
-      case "delete-series":
-        return deleteSeries(tx, form, actor)
       default:
         return { status: "unknown-target" }
     }
@@ -517,7 +681,35 @@ export async function contentsAction(request: Request): Promise<ContentsResult> 
 }
 
 /**
- * The banner is edited on a screen of its own, so its intents are answered
+ * What the screen for one series does: move the pointer, add a revision, retire
+ * the whole thing.
+ *
+ * **The series is named by the address rather than by a hidden field.** The
+ * screen is about one of them, so a field saying which would be the second
+ * place that is written down — and the one a form could get wrong.
+ */
+export async function seriesAction(request: Request, seriesId: string): Promise<ContentsResult> {
+  const actor = await requireCapability(request, "manage-site-content")
+  const form = await request.formData()
+  const intent = text(form, "intent")
+
+  const applied = await getDb().transaction(async (tx): Promise<Applied> => {
+    switch (intent) {
+      case "repoint-series":
+        return repointSeries(tx, seriesId, form)
+      case "add-version":
+        return addVersion(tx, seriesId, form)
+      case "delete-series":
+        return deleteSeries(tx, seriesId, actor)
+      default:
+        return { status: "unknown-target" }
+    }
+  })
+  return settle(request, applied)
+}
+
+/**
+ * The alert is edited on a screen of its own, so its intents are answered
  * apart from the tree's. Both screens still speak the one result type: what a
  * refusal reads like belongs to site content as a whole rather than to the
  * screen the refusal came from.
@@ -532,7 +724,14 @@ export async function alertAction(request: Request): Promise<ContentsResult> {
       case "create-alert":
         return createAlert(tx)
       case "update-alert":
-        return updateAlert(tx, form, actor)
+        return updateAlert(tx, form, actor, null)
+      // **Putting an alert up and writing it are one request.** What is on the
+      // screen is what goes up, so an alert cannot be shown in a wording nobody
+      // has read.
+      case "show-alert":
+        return updateAlert(tx, form, actor, true)
+      case "hide-alert":
+        return updateAlert(tx, form, actor, false)
       case "delete-alert":
         return deleteAlert(tx, form, actor)
       default:
@@ -551,8 +750,11 @@ async function createDocument(tx: Executor, form: FormData): Promise<Applied> {
   return { status: "ok", goTo: adminDocumentPath(created.id) }
 }
 
-async function repointSeries(tx: Executor, form: FormData): Promise<ContentsResult> {
-  const seriesId = text(form, "seriesId")
+async function repointSeries(
+  tx: Executor,
+  seriesId: string,
+  form: FormData,
+): Promise<ContentsResult> {
   const documentId = text(form, "documentId")
   const [series] = await tx
     .select({ id: documentSeries.id, slug: documentSeries.slug })
@@ -582,8 +784,7 @@ async function repointSeries(tx: Executor, form: FormData): Promise<ContentsResu
  * The next revision, empty, ready to be written and then pointed at. The number
  * comes from the form; the screen only fills the box with the one that follows.
  */
-async function addVersion(tx: Executor, form: FormData): Promise<Applied> {
-  const seriesId = text(form, "seriesId")
+async function addVersion(tx: Executor, seriesId: string, form: FormData): Promise<Applied> {
   const [series] = await tx
     .select({ slug: documentSeries.slug })
     .from(documentSeries)
@@ -613,8 +814,7 @@ async function addVersion(tx: Executor, form: FormData): Promise<Applied> {
  * names cannot be deleted on its own, so it would be the one thing left with
  * nothing left to point at it.
  */
-async function deleteSeries(tx: Executor, form: FormData, actor: Actor): Promise<Applied> {
-  const seriesId = text(form, "seriesId")
+async function deleteSeries(tx: Executor, seriesId: string, actor: Actor): Promise<Applied> {
   const [series] = await tx
     .select({ id: documentSeries.id, slug: documentSeries.slug })
     .from(documentSeries)
@@ -665,15 +865,17 @@ async function updateAlert(
   tx: Executor,
   form: FormData,
   actor: Actor,
+  /** Whether the alert is to stand or come down; `null` leaves it as it was. */
+  showing: boolean | null,
 ): Promise<ContentsResult> {
   const id = text(form, "alertId")
-  const active = form.get("active") !== null
   const [before] = await tx
     .select({ id: alert.id, active: alert.active })
     .from(alert)
     .where(idIs(alert.id, id))
     .limit(1)
   if (before === undefined) return { status: "unknown-target" }
+  const active = showing ?? before.active
 
   const ja = body(form, "ja")
   const en = body(form, "en")
@@ -683,10 +885,10 @@ async function updateAlert(
   ]
   if (problems.length > 0) return { status: "body", problems }
 
-  // **A banner that is up has to be up in both languages.** It stands on every
+  // **An alert that is up has to be up in both languages.** It stands on every
   // page of the site, so a reader on the language that is missing is handed a
   // box they cannot read — and the announcement it holds is the kind that is
-  // worth a banner. Only switching one on is held to this: an announcement can
+  // worth an alert. Only switching one on is held to this: an announcement can
   // be written a language at a time while it is off.
   if (active && (ja === "" || en === "")) return { status: "missing-translation" }
 

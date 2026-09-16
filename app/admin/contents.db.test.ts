@@ -11,6 +11,7 @@ import { findDocument } from "~/public/site.server"
 
 import {
   alertAction,
+  alertsPage,
   contentsAction,
   contentsPage,
   documentAction,
@@ -19,6 +20,8 @@ import {
   newsListAction,
   newsListPage,
   newsPage,
+  seriesAction,
+  seriesPage,
 } from "./contents.server"
 import { today } from "~/dates"
 import {
@@ -27,6 +30,7 @@ import {
   adminDocumentPath,
   adminNewsListPath,
   adminNewsPath,
+  adminSeriesPath,
 } from "./urls"
 
 /**
@@ -364,8 +368,9 @@ describe("版", () => {
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "9" }), id)
     const series = only(await db.select().from(s.documentSeries))
 
-    const redirected = await thrown(() => contentsAction(
-      post(token, adminContentsPath(), { intent: "add-version", seriesId: series.id, number: "10" }),
+    const redirected = await thrown(() => seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "add-version", number: "10" }),
+      series.id,
     ))
     expect(redirected.status).toBe(302)
 
@@ -379,8 +384,9 @@ describe("版", () => {
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "3" }), id)
     const series = only(await db.select().from(s.documentSeries))
 
-    const result = await contentsAction(
-      post(token, adminContentsPath(), { intent: "add-version", seriesId: series.id, number: "3" }),
+    const result = await seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "add-version", number: "3" }),
+      series.id,
     )
     expect(result.status).toBe("duplicate-slug")
     expect(await db.select().from(s.document)).toHaveLength(1)
@@ -405,11 +411,10 @@ describe("版", () => {
     const series = only(await db.select().from(s.documentSeries))
     const stranger = await makeDocument("faq")
 
-    const result = await contentsAction(post(token, adminContentsPath(), {
-      intent: "repoint-series",
-      seriesId: series.id,
-      documentId: stranger,
-    }))
+    const result = await seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "repoint-series", documentId: stranger }),
+      series.id,
+    )
     expect(result.status).toBe("not-a-revision")
   })
 
@@ -422,11 +427,10 @@ describe("版", () => {
 
     const second = await makeDocument("x/version/2")
     await publishSide(second, "ja", "二つ目")
-    await contentsAction(post(token, adminContentsPath(), {
-      intent: "repoint-series",
-      seriesId: series.id,
-      documentId: second,
-    }))
+    await seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "repoint-series", documentId: second }),
+      series.id,
+    )
 
     expect((await findDocument("x", "ja"))?.html).toContain("二つ目")
   })
@@ -466,8 +470,9 @@ describe("版", () => {
     const second = await makeDocument("x/version/2")
     await publishSide(second, "ja", "二つ目")
 
-    await thrown(() => contentsAction(
-      post(token, adminContentsPath(), { intent: "delete-series", seriesId: series.id }),
+    await thrown(() => seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "delete-series" }),
+      series.id,
     ))
 
     expect(await db.select().from(s.documentSeries)).toHaveLength(0)
@@ -485,8 +490,9 @@ describe("版", () => {
     const series = only(await db.select().from(s.documentSeries))
     await makeDocument("x/version/2")
 
-    await thrown(() => contentsAction(
-      post(token, adminContentsPath(), { intent: "delete-series", seriesId: series.id }),
+    await thrown(() => seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "delete-series" }),
+      series.id,
     ))
 
     const events = await db.select().from(s.event)
@@ -556,42 +562,104 @@ describe("お知らせ", () => {
     })
 
     const view = await newsListPage(get(token, adminNewsListPath()))
-    expect(view.items.map((item) => item.title)).toEqual(["下書き"])
-    expect(view.items[0]?.states.ja.published).toBe(false)
+    expect(view.rows.map((row) => row.title)).toEqual(["下書き"])
+    expect(view.rows[0]?.states.ja.published).toBe(false)
+  })
+
+  it("アドレスの条件で絞られ、軸の件数はその軸の条件だけ外して数える", async () => {
+    const token = await signIn(CURATOR, true)
+    const dated = async (publishedAt: string | null, published: boolean | null) => {
+      const id = only(await db.insert(s.news).values({ publishedAt })
+        .returning({ id: s.news.id })).id
+      if (published !== null) {
+        await db.insert(s.newsContent).values({
+          newsId: id,
+          locale: "ja",
+          content: { title: publishedAt ?? "日付なし", body: "" },
+          published,
+        })
+      }
+      return id
+    }
+    const out = await dated("2026-01-01", true)
+    await dated("2026-02-02", false)
+    await dated(null, null)
+
+    const view = await newsListPage(get(token, `${adminNewsListPath()}?ja=published`))
+    expect(view.rows.map((row) => row.id)).toEqual([out])
+    expect(view.total).toBe(1)
+    // 日本語の軸は自分の条件を外して数えるので、母集団は 3 件のまま。
+    expect(view.counts.ja).toEqual({ published: 1, unpublished: 2 })
+    // 公開日の軸は日本語の条件が効いた 1 件の中で数える。
+    expect(view.counts.dating).toEqual({ dated: 1, undated: 0 })
+  })
+
+  it("窓は公開日にも当たる", async () => {
+    const token = await signIn(CURATOR, true)
+    await db.insert(s.news).values([
+      { publishedAt: "2026-01-01" },
+      { publishedAt: "2026-02-02" },
+    ])
+
+    const view = await newsListPage(get(token, `${adminNewsListPath()}?q=2026-02`))
+    expect(view.rows.map((row) => row.publishedAt)).toEqual(["2026-02-02"])
   })
 })
 
-describe("バナー", () => {
-  it("表示の切り替えだけが証跡に残る", async () => {
+describe("アラート", () => {
+  it("表示の切り替えだけが証跡に残り、本文の保存では表示が動かない", async () => {
     const token = await signIn(CURATOR, true)
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
     await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "notice", active: "on",
+      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
     }))
     await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed", active: "on",
+      intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed",
     }))
 
     const events = await db.select().from(s.event).where(eq(s.event.subjectType, "alert"))
     expect(events.map((row) => row.action)).toEqual(["publish-site-content"])
-    expect(only(await db.select().from(s.alert)).content.body.ja).toBe("直した")
+    const after = only(await db.select().from(s.alert))
+    expect(after.content.body.ja).toBe("直した")
+    expect(after.active).toBe(true)
   })
 
-  it("片方の言語しか無いバナーは立てられない", async () => {
+  it("非表示にしたアラートは、本文を保存しても非表示のまま", async () => {
+    const token = await signIn(CURATOR, true)
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
+    }))
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "hide-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
+    }))
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed",
+    }))
+
+    const events = await db.select().from(s.event).where(eq(s.event.subjectType, "alert"))
+    expect(events.map((row) => row.action))
+      .toEqual(["publish-site-content", "unpublish-site-content"])
+    expect(only(await db.select().from(s.alert)).active).toBe(false)
+  })
+
+  it("片方の言語しか無いアラートは表示できない", async () => {
     const token = await signIn(CURATOR, true)
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
 
     const result = await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "", active: "on",
+      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "",
     }))
     expect(result.status).toBe("missing-translation")
     expect(only(await db.select().from(s.alert)).active).toBe(false)
   })
 
-  it("立てないうちは、片方ずつ書いていける", async () => {
+  it("表示しないうちは、片方ずつ書いていける", async () => {
     const token = await signIn(CURATOR, true)
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
@@ -603,7 +671,7 @@ describe("バナー", () => {
     expect(only(await db.select().from(s.alert)).content.body.ja).toBe("お知らせ")
   })
 
-  it("バナーの本文も生 HTML を弾く", async () => {
+  it("アラートの本文も生 HTML を弾く", async () => {
     const token = await signIn(CURATOR, true)
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
@@ -616,10 +684,40 @@ describe("バナー", () => {
   })
 
   /**
-   * 立っていた帯を消すのは、読者から見れば取り下げと同じ。まだ立てていないものを
-   * 消しても誰も見ていないので、残す証跡が無い。
+   * 1 つの文で入れた行は createdAt が同値になる。時刻だけで並べると、行を書き換えた
+   * ときに物理順が動いて並びが入れ替わる。
    */
-  it("立っていた帯を消したときだけ証跡が残る", async () => {
+  it("同じ時刻に作ったアラートも、作った順に並ぶ", async () => {
+    const token = await signIn(CURATOR, true)
+    const createdAt = new Date("2026-01-01T00:00:00Z")
+    const made = await db
+      .insert(s.alert)
+      .values([
+        { content: { body: { ja: "1", en: "one" } }, createdAt },
+        { content: { body: { ja: "2", en: "two" } }, createdAt },
+        { content: { body: { ja: "3", en: "three" } }, createdAt },
+      ])
+      .returning({ id: s.alert.id })
+    // id は v7 なので、作った順は id の昇順と同じ。
+    const order = made.map((row) => row.id).sort()
+    const first = order[0] ?? ""
+
+    expect((await alertsPage(get(token, adminAlertPath()))).alerts.map((row) => row.id))
+      .toEqual(order)
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "update-alert", alertId: first, ja: "直した", en: "fixed",
+    }))
+
+    expect((await alertsPage(get(token, adminAlertPath()))).alerts.map((row) => row.id))
+      .toEqual(order)
+  })
+
+  /**
+   * 表示中のアラートを消すのは、読者から見れば取り下げと同じ。まだ表示していない
+   * ものを消しても誰も見ていないので、残す証跡が無い。
+   */
+  it("表示中のアラートを消したときだけ証跡が残る", async () => {
     const token = await signIn(CURATOR, true)
     const alertsOf = () => db.select().from(s.alert)
     const trail = () =>
@@ -636,7 +734,7 @@ describe("バナー", () => {
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const up = only(await alertsOf())
     await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: up.id, ja: "お知らせ", en: "notice", active: "on",
+      intent: "show-alert", alertId: up.id, ja: "お知らせ", en: "notice",
     }))
     await alertAction(post(token, adminAlertPath(), { intent: "delete-alert", alertId: up.id }))
     expect(await alertsOf()).toEqual([])
@@ -658,6 +756,90 @@ describe("画面", () => {
   it("uuid でない id は 404 ではなく null で返る", async () => {
     const token = await signIn(CURATOR, true)
     expect(await documentPage(get(token, adminDocumentPath("not-a-uuid")), "not-a-uuid")).toBeNull()
+    expect(await seriesPage(get(token, adminSeriesPath("not-a-uuid")), "not-a-uuid")).toBeNull()
+  })
+
+  it("系列の画面は、その系列の版だけを新しい順に持つ", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+    await makeDocument("x/version/3")
+    await makeDocument("faq")
+
+    const view = await seriesPage(get(token, adminSeriesPath(series.id)), series.id)
+    expect(view?.series.revisions.map((one) => one.slug)).toEqual(["x/version/3", "x/version/1"])
+    expect(view?.current?.slug).toBe("x/version/1")
+  })
+
+  it("**一覧は打った語で絞られ、件数もその語のもの**", async () => {
+    const token = await signIn(CURATOR, true)
+    await makeDocument("faq")
+    await makeDocument("nbdc-policy")
+    await makeDocument("policy-japan")
+
+    const view = await contentsPage(get(token, `${adminContentsPath()}?q=POLICY`))
+    expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual([
+      "nbdc-policy",
+      "policy-japan",
+    ])
+    expect(view.total).toBe(2)
+    expect(view.pageCount).toBe(1)
+  })
+
+  it("**言語の 2 軸は AND で効く**", async () => {
+    const token = await signIn(CURATOR, true)
+    const both = await makeDocument("faq")
+    await publishSide(both, "ja")
+    await publishSide(both, "en")
+    const jaOnly = await makeDocument("aim")
+    await publishSide(jaOnly, "ja")
+
+    const view = await contentsPage(
+      get(token, `${adminContentsPath()}?ja=published&en=unpublished`),
+    )
+    expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual(["aim"])
+  })
+
+  it("バージョンの軸は、版を持つ記事だけを残す", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    await makeDocument("faq")
+
+    const view = await contentsPage(get(token, `${adminContentsPath()}?versioning=versioned`))
+    expect(view.rows.map((row) => row.kind === "series" ? row.series.slug : "")).toEqual(["x"])
+  })
+
+  it("**軸の件数は、その軸の条件だけ外した集合で数える**", async () => {
+    const token = await signIn(CURATOR, true)
+    const both = await makeDocument("faq")
+    await publishSide(both, "ja")
+    await publishSide(both, "en")
+    const jaOnly = await makeDocument("aim")
+    await publishSide(jaOnly, "ja")
+    await makeDocument("neither")
+
+    const view = await contentsPage(get(token, `${adminContentsPath()}?ja=published`))
+
+    expect(view.rows).toHaveLength(2)
+    // 自分の軸は外して数えるので、日本語を絞っても両方の値が件数を持つ。
+    expect(view.counts.ja).toEqual({ published: 2, unpublished: 1 })
+    // 他の軸は日本語の条件が効いた 2 件の中で数える。
+    expect(view.counts.en).toEqual({ published: 1, unpublished: 1 })
+    expect(view.counts.versioning).toEqual({ versioned: 0, plain: 2 })
+  })
+
+  it("窓で絞った語も、軸の件数に効く", async () => {
+    const token = await signIn(CURATOR, true)
+    const faq = await makeDocument("faq")
+    await publishSide(faq, "ja")
+    const policy = await makeDocument("nbdc-policy")
+    await publishSide(policy, "ja")
+    await makeDocument("policy-japan")
+
+    const view = await contentsPage(get(token, `${adminContentsPath()}?q=policy`))
+    expect(view.counts.ja).toEqual({ published: 1, unpublished: 1 })
   })
 
   it("フォームには下書きが入り、公開されている本文も併せて返る", async () => {

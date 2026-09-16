@@ -15,6 +15,7 @@ import { RESEARCH, anchorOf } from "./anchors"
 import {
   acknowledgeDraft,
   readAcknowledgements,
+  postDraftNote,
   readThreads,
   replyToThread,
   setThreadResolved,
@@ -78,6 +79,20 @@ describe("a thread", () => {
     ])
   })
 
+  it("is started on the draft itself for the memo, with no place to check", async () => {
+    const { draftId } = await draft()
+    const outcome = await postDraftNote(db, {
+      draftId,
+      author: { sub: CURATOR_SUB, name: "curator" },
+      body: "提供者に電話した",
+    })
+
+    expect(outcome.status).toBe("posted")
+    const [thread] = await readThreads(db, draftId)
+    expect(thread?.anchor).toEqual({ kind: "draft" })
+    expect(thread?.comments.map((row) => row.body)).toEqual(["提供者に電話した"])
+  })
+
   it("cannot be answered or closed through another draft's address", async () => {
     const mine = await draft()
     const other = await draft()
@@ -120,7 +135,6 @@ describe("a thread", () => {
     await startedOn(draftId, "title")
 
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: { ...emptyResearchContent(), title: { ja: filled("答え"), en: filled("") } },
     })
 

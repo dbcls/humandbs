@@ -30,7 +30,7 @@ function drawn(): DrawnDraft {
 }
 
 function view(produce: (input: DraftInput) => void = () => undefined): AdminDraftPageView {
-  const input: DraftInput = { note: "", content: researchContentInput(emptyResearchContent()) }
+  const input: DraftInput = { content: researchContentInput(emptyResearchContent()) }
   produce(input)
   return {
     locale: "ja",
@@ -41,7 +41,6 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
     input,
     datasets: [],
     presence: [],
-    undo: [],
     upstream: null,
     review: {
       changed: [],
@@ -100,14 +99,5 @@ describe("the editing form", () => {
 
   it("offers no dataset to list when the research has none", () => {
     expect(render(view())).toContain("この研究にはまだデータセットがありません。")
-  })
-
-  it("shows the memo, which is saved with the content and never reaches the preview", () => {
-    const html = render(view((input) => {
-      input.note = "2026 年公開分の下書き"
-    }))
-
-    expect(html).toContain("2026 年公開分の下書き")
-    expect(html).toContain("プレビューには出ません")
   })
 })

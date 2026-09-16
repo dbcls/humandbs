@@ -43,7 +43,7 @@ test.describe("P-ADMIN", () => {
 
     // 押せるものは行き先とは限らない。研究を始める 3 通りのうち 1 つは操作で、
     // リンクだけを数えると 2 通りに見える。
-    await expect(top.getByRole("button", { name: "新しく作る" })).toBeVisible()
+    await expect(top.getByRole("button", { name: "研究を作る" })).toBeVisible()
 
     // 行き先はリンクであって、説明の文ではない。1 つ押して、その先が開くことまで見る。
     await top.locator("a[href=\"/admin/experiment-fields\"]").first().click()
@@ -66,7 +66,7 @@ test.describe("P-ADMIN", () => {
     await page.getByRole("link", { name: "下書きの編集へ" }).click()
     await expect(page).toHaveURL(draft)
 
-    await page.getByRole("link", { name: "研究の画面へ" }).click()
+    await page.getByRole("link", { name: "研究へ戻る" }).click()
     await expect(page).toHaveURL(research)
   })
 
@@ -105,12 +105,14 @@ test.describe("P-ADMIN", () => {
     }
 
     await page.goto(`${draft}/dataset`)
-    const dataset = page.locator(`a[href^="${draft}/dataset/"]`)
-      .filter({ hasNotText: "上流" }).first()
-    if (await dataset.count() === 0) {
+    // 外部アクセッションからの取り込みは同じ前置きのアドレスを持つので、それだけ外す。
+    const datasets = page.locator(`a[href^="${draft}/dataset/"]:not([href$="/upstream"])`)
+    if (await datasets.count() === 0) {
+      // 作ると、そのデータセットの編集画面にそのまま着く。
       await page.getByRole("button", { name: "新しいデータセットを作る" }).click()
+    } else {
+      await datasets.first().click()
     }
-    await page.locator(`a[href^="${draft}/dataset/"]`).first().click()
     await expect(page).toHaveURL(new RegExp(`${draft}/dataset/[0-9a-f-]{36}$`))
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
 
@@ -122,6 +124,7 @@ test.describe("P-ADMIN", () => {
 
     for (const [listing, prefix] of [
       ["/admin/contents", "/admin/contents/document/"],
+      ["/admin/contents", "/admin/contents/series/"],
       ["/admin/contents/news", "/admin/contents/news/"],
     ] as const) {
       await page.goto(listing)
@@ -130,15 +133,14 @@ test.describe("P-ADMIN", () => {
       await expect(page.getByRole("heading", { level: 1 }), listing).not.toBeEmpty()
     }
 
-    // key の値は、その key を開いた先にある。行は `<details>` なので、たたまれた
-    // ままではリンクを押せない — 選択肢を持つ行を 1 つ開いてから辿る。
+    // key の値は、その key を開いた先にある。値を持つ key の行がその件数を
+    // リンクにしているので、表の中からそのまま辿れる。
     await page.goto("/admin/experiment-fields")
-    const withTerms = page
-      .locator("details")
-      .filter({ has: page.locator("a[href^=\"/admin/experiment-fields/\"]") })
+    await page
+      .getByRole("table")
+      .locator("a[href^=\"/admin/experiment-fields/\"]")
       .first()
-    await withTerms.locator("summary").click()
-    await withTerms.locator("a[href^=\"/admin/experiment-fields/\"]").click()
+      .click()
     await expect(page).toHaveURL(/\/admin\/experiment-fields\/[^/]+$/)
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })

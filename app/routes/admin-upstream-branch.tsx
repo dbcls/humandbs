@@ -2,10 +2,12 @@ import { data, Form } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
 import { Heading, Note, Stack } from "~/components/base"
-import { RadioGroup, Submit } from "~/components/form"
+import { Answered, RadioGroup, Result, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-upstream-branch"
@@ -36,10 +38,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    {
-      title: `${loaderData.applicationId} - ${messages.admin.templates.heading}`
-        + ` - ${messages.siteName}`,
-    },
+    { title: pageTitle(messages, messages.admin.templates.branchHeading, loaderData.applicationId) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -54,11 +53,18 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
 
   return (
     <Page>
+      {/* Only a refusal is answered here: taking the branch in leaves this
+          screen for the draft it wrote into. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "taken" && <Result ok={false}>{t.takenLabel}</Result>}
+        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
+      </Answered>
       <Card under={false}>
         <Stack gap="block">
-          {/* No way back of its own: the screen it came from is on the bar. */}
-          <Heading title={view.applicationId} />
-          {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
+          {/* No way back of its own: the screen it came from is on the bar.
+              The name says what is done here and the branch stands beside it —
+              an application ID on its own would not say which screen this is. */}
+          <Heading title={t.branchHeading} aside={view.applicationId} />
 
           {!view.connected || view.branch === null || view.chosen === null
             ? <UpstreamNotConnected locale={locale} dra={false} />
@@ -101,7 +107,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                             options={destinations(messages, holder)}
                           />
                           <div>
-                            <Submit variant="primary">{t.go}</Submit>
+                            <Submit variant="primary" icon={<Icon name="download" />}>{t.go}</Submit>
                           </div>
                         </Stack>
                       </Form>
@@ -133,15 +139,13 @@ function destinations(
           { value: "replacement", label: `${t.intoPublic(latest)} — ${t.intoPublicHint}` },
           { value: "next-version", label: `${t.intoNext(latest + 1)} — ${t.intoNextHint}` },
         ]),
-    // A draft is told from its siblings by the note it carries, and by where it
-    // was copied from when it carries none.
+    // A draft is told from its siblings by where it was copied from, and by
+    // when it was last written to.
     ...holder.drafts.map((draft) => ({
       value: `draft:${draft.draftId}`,
-      label: `${t.intoDraft} — ${draft.note === ""
-        ? draft.copiedFromNumber === null
-          ? detail.copiedFromNone
-          : detail.copiedFrom(draft.copiedFromNumber)
-        : draft.note} ${t.draftUpdatedAt(draft.updatedAt.slice(0, 10))}`,
+      label: `${t.intoDraft} — ${draft.copiedFromNumber === null
+        ? detail.copiedFromNone
+        : detail.copiedFrom(draft.copiedFromNumber)} ${t.draftUpdatedAt(draft.updatedAt.slice(0, 10))}`,
     })),
   ]
 }

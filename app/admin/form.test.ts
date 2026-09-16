@@ -127,7 +127,6 @@ describe("what the editor sends back", () => {
 describe("the payload a save has to be", () => {
   const valid = {
     revision: 1,
-    note: "",
     content: researchContentInput(emptyResearchContent()),
   }
 

@@ -306,7 +306,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </Band>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。帯を使わない。</p>
-                <Heading title="研究一覧" count={`全 ${String(TOTAL)} 件`}>
+                <Heading title="研究一覧" aside={`全 ${String(TOTAL)} 件`}>
                   <Button type="button" listing icon={<Icon name="copy" />}>コピー</Button>
                   <Button type="button" listing icon={<Icon name="download" />}>TSV</Button>
                   <Button type="button" listing icon={<Icon name="filter" />}>絞り込み</Button>
@@ -638,7 +638,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     {/* `narrow`: a cell holding a mark keeps no room above and
                         below, so the 36px control rides inside the row that the
                         words set rather than making it taller. */}
-                    <Td narrow>
+                    <Td holds="mark">
                       <IconButton name="cart" label={`${row.humLabel} をカートに入れる`} />
                     </Td>
                     <Td nowrap>
@@ -690,7 +690,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     <Td nowrap>
                       {row.accessTypes[0] !== undefined && <AccessTypeBadge term={row.accessTypes[0]} />}
                     </Td>
-                    <Td narrow>
+                    <Td holds="mark">
                       <IconButton name="close" label={`${row.humLabel} をカートから外す`} />
                     </Td>
                   </tr>
@@ -953,13 +953,13 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <Checkbox label="公開しない" name="hide" />
                   <Checkbox label="上流から取れない" name="upstream" disabled />
                 </div>
-                <FileField label="ファイル" name="file" hint="64 MiB を超えると分割して送る" multiple />
+                <FileField locale="ja" label="ファイル" name="file" hint="64 MiB を超えると分割して送る" multiple />
               </div>
-              <TextArea label="本文 (markdown)" name="body" rows={4} value={"## 見出し\n\n本文。"} />
+              <TextArea label="本文" accepts="markdown" name="body" rows={4} value={"## 見出し\n\n本文。"} />
               <div className="flex flex-wrap items-center gap-3">
-                <Submit variant="primary">保存</Submit>
-                <Submit>取り消す</Submit>
-                <Submit variant="primary" disabled>変更がありません</Submit>
+                <Submit variant="primary" icon={<Icon name="save" />}>保存</Submit>
+                <Submit icon={<Icon name="undo" />}>取り消す</Submit>
+                <Submit variant="primary" icon={<Icon name="save" />} disabled>変更がありません</Submit>
               </div>
             </div>
           </Section>
@@ -969,9 +969,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div className="flex flex-wrap items-center gap-6">
                 <Confirm
                   label="この研究を削除する"
+                  title="hum0001 の削除"
                   warning="公開バージョンも下書きも消えます"
                   confirm="削除する"
-                  cancel="やめる"
+                  cancel="キャンセル"
                 />
                 <Menu label="ほかの操作">
                   <Link to="/dev/ui" className="px-4 py-2 text-sm no-underline hover:bg-surface-hover">

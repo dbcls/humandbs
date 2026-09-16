@@ -92,6 +92,8 @@ export function adminDraftReviewPath(researchId: string, draftId: string): strin
  * Where the editing screens post a comment. It answers with the thread rather
  * than with a redirect, because the editor holds unsaved work and must not
  * navigate; the review screen and the preview post to their own pages instead.
+ *
+ * **No language prefix** (`routes.ts` の `editing`).
  */
 export function draftCommentsPath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/comments`
@@ -102,13 +104,18 @@ export function draftCommentsPath(researchId: string, draftId: string): string {
  *
  * The language it draws in rides on the address because the pane's language is
  * the reader's choice: the route is registered once and answers with data, so
- * it has no language of its own to take.
+ * it has no language of its own to take. **Putting a prefix in front of one of
+ * these finds no route at all** — the router answers 405 without a request
+ * leaving the browser, and the open editor is replaced by the error page.
  */
 export function draftPagePath(researchId: string, draftId: string, locale: string): string {
   return `${adminDraftPath(researchId, draftId)}/page?lang=${locale}`
 }
 
-/** Where one dataset of a draft is drawn as its page, for the pane beside the form. */
+/**
+ * Where one dataset of a draft is drawn as its page, for the pane beside the
+ * form. **No language prefix**, as above.
+ */
 export function datasetPagePath(
   researchId: string,
   draftId: string,
@@ -148,22 +155,20 @@ export function adminDraftDatasetPath(
 }
 
 /**
- * The two addresses an open editor talks to rather than navigates to. **They
- * carry no language prefix**: nothing they return is interface text, and a page
- * that changed language mid-edit would otherwise heartbeat to a second address.
+ * Where an open editor says it is still open. **No language prefix**, as with
+ * the three above: nothing it returns is interface text, and a page that
+ * changed language mid-edit would otherwise heartbeat to a second address.
  */
 export function draftPresencePath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/presence`
 }
 
-export function draftUndoPath(researchId: string, draftId: string, undoId: string): string {
-  return `${adminDraftPath(researchId, draftId)}/undo/${undoId}`
-}
-
-export interface ListingQuery {
+/**
+ * What every listing carries in its address beside the conditions: the word it
+ * was searched by, and how the result is presented.
+ */
+interface ListingPresentation {
   keyword: string
-  statuses: readonly string[]
-  flags: readonly string[]
   page: number
   /** The ordering to keep, or `null` when it is the one the listing opens in. */
   sort: string | null
@@ -173,21 +178,85 @@ export interface ListingQuery {
   size: number | null
 }
 
+export interface ListingQuery extends ListingPresentation {
+  statuses: readonly string[]
+  flags: readonly string[]
+}
+
+/** The listing of approval branches narrows by two axes of its own. */
+export interface BranchListingQuery extends ListingPresentation {
+  standings: readonly string[]
+  registrations: readonly string[]
+}
+
 /**
  * Only what differs from the default is written, so an unfiltered listing is
  * the bare address and the same filter always reads the same way.
+ *
+ * **The conditions arrive named** rather than as fields of their own, because
+ * what differs between two listings is which axes they have — the word, the
+ * ordering, the size and the page are written the same way by both, and a
+ * second copy of that rule is a second way for two addresses to disagree.
  */
-export function listingQuery(query: ListingQuery): string {
+function listingAddress(
+  query: ListingPresentation,
+  axes: Readonly<Record<string, readonly string[]>>,
+): string {
   const search = new URLSearchParams()
   if (query.keyword !== "") search.set("q", query.keyword)
-  for (const status of query.statuses) search.append("status", status)
-  for (const flag of query.flags) search.append("flag", flag)
+  for (const [name, values] of Object.entries(axes)) {
+    for (const value of values) search.append(name, value)
+  }
   if (query.sort !== null) search.set("sort", query.sort)
   if (query.order !== null) search.set("order", query.order)
   if (query.size !== null) search.set("size", String(query.size))
   if (query.page > 1) search.set("page", String(query.page))
   const written = search.toString()
   return written === "" ? "" : `?${written}`
+}
+
+export function listingQuery(query: ListingQuery): string {
+  return listingAddress(query, { status: query.statuses, flag: query.flags })
+}
+
+export function branchListingQuery(query: BranchListingQuery): string {
+  return listingAddress(query, { standing: query.standings, registered: query.registrations })
+}
+
+/**
+ * The listing of articles narrows by three axes of its own: whether the article
+ * keeps revisions, and what each of the two languages is up to.
+ *
+ * **It carries no ordering.** Articles are listed by slug and nothing else —
+ * the order is the address space rather than a presentation of it
+ * (docs/editing.md の「サイトコンテンツ」).
+ */
+export interface ContentsListingQuery extends ListingPresentation {
+  versioning: readonly string[]
+  ja: readonly string[]
+  en: readonly string[]
+}
+
+export function contentsQuery(query: ContentsListingQuery): string {
+  return listingAddress(query, { versioning: query.versioning, ja: query.ja, en: query.en })
+}
+
+/**
+ * The listing of announcements narrows by three axes of its own: whether one
+ * has been given its date, and what each of the two languages is up to.
+ *
+ * **It carries no ordering either.** Announcements stand newest first with the
+ * undated ones above them, which is the order the public listing reads them in
+ * rather than a presentation this screen offers a choice of.
+ */
+export interface NewsListingQuery extends ListingPresentation {
+  dating: readonly string[]
+  ja: readonly string[]
+  en: readonly string[]
+}
+
+export function newsQuery(query: NewsListingQuery): string {
+  return listingAddress(query, { dating: query.dating, ja: query.ja, en: query.en })
 }
 
 /**
@@ -226,6 +295,15 @@ export function adminContentsPath(): string {
 
 export function adminDocumentPath(documentId: string): string {
   return `${adminContentsPath()}/document/${documentId}`
+}
+
+/**
+ * A versioned article: the pointer that says which revision is current, and the
+ * revisions under it. The listing carries one row for the whole series, so this
+ * is where everything that acts on the series as a whole stands.
+ */
+export function adminSeriesPath(seriesId: string): string {
+  return `${adminContentsPath()}/series/${seriesId}`
 }
 
 /** The strip that stands above every public page. */

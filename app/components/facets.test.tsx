@@ -313,6 +313,6 @@ describe("a facet the result carries no value for", () => {
 
   it("draws no list and no box to narrow one", () => {
     expect(empty).not.toContain("<ul")
-    expect(empty).not.toContain("値をさがす")
+    expect(empty).not.toContain("値を探す")
   })
 })

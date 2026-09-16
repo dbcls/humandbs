@@ -76,6 +76,11 @@ function pages(scope: string) {
         { id: `${scope}-admin-contents-document` },
       ),
       route(
+        "admin/contents/series/:seriesId",
+        "routes/admin-contents-series.tsx",
+        { id: `${scope}-admin-contents-series` },
+      ),
+      route(
         "admin/contents/alert",
         "routes/admin-contents-alert.tsx",
         { id: `${scope}-admin-contents-alert` },
@@ -166,7 +171,6 @@ function pages(scope: string) {
  */
 const editing = [
   route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
-  route("admin/research/:researchId/draft/:draftId/undo/:undoId", "routes/admin-draft-undo.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
   route("admin/research/:researchId/draft/:draftId/page", "routes/admin-draft-page.ts"),
   route(

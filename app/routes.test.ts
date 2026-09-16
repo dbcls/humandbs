@@ -1,3 +1,6 @@
+import { readdir, readFile } from "node:fs/promises"
+import path from "node:path"
+
 import { describe, expect, it, vi } from "vitest"
 
 /**
@@ -74,7 +77,6 @@ describe("管理画面の登録", () => {
     expect(outside.every((path) => path?.startsWith("admin/assistant/api") === true
       || path?.includes("/upload") === true
       || path?.includes("/presence") === true
-      || path?.includes("/undo/") === true
       || path?.includes("/comments") === true
       // The draft drawn as its page, which the editor's second pane asks for
       // as the content changes. It answers with the drawing, not with a screen.
@@ -93,5 +95,49 @@ describe("管理画面の登録", () => {
     const screens = flatten(await treeUnder("development"))
       .filter((entry) => entry.file === "routes/admin-assistant.tsx")
     expect(screens).toHaveLength(2)
+  })
+})
+
+/** Where a screen is written, and so where one of these could be called. */
+async function screenSources(): Promise<string[]> {
+  const roots = ["components", "routes"].map((one) => path.join(import.meta.dirname, one))
+  const found: string[] = []
+  for (const root of roots) {
+    for (const entry of await readdir(root, { withFileTypes: true })) {
+      if (entry.isFile() && /\.tsx?$/.test(entry.name) && !entry.name.includes(".test.")) {
+        found.push(path.join(root, entry.name))
+      }
+    }
+  }
+  return found
+}
+
+/**
+ * The addresses an open editor talks to rather than navigates to, which
+ * `routes.ts` registers once and without a language prefix.
+ */
+const TALKED_TO = [
+  "draftCommentsPath",
+  "draftPagePath",
+  "datasetPagePath",
+  "draftPresencePath",
+]
+
+/**
+ * **Nothing looks wrong when one of these is given a prefix.** The address is
+ * built, no route matches it, and the router answers 405 without a request ever
+ * leaving the browser — so the editor a curator had open is replaced by the
+ * error page a few seconds after it drew, with nothing in the network to point
+ * at. It cannot happen in Japanese, where the prefix is the empty string, which
+ * is why the screens have to be read rather than opened.
+ */
+describe("編集画面が叩く道", () => {
+  it("言語の接頭辞を付けて呼ばれていない", async () => {
+    const wrapped = new RegExp(`href\\([^()]*,\\s*(?:${TALKED_TO.join("|")})\\(`)
+    const offenders: string[] = []
+    for (const file of await screenSources()) {
+      if (wrapped.test(await readFile(file, "utf8"))) offenders.push(path.basename(file))
+    }
+    expect(offenders).toEqual([])
   })
 })

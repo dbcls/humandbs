@@ -193,7 +193,7 @@ describe("adding datasets to a draft from upstream", () => {
     await saveDraftContent(
       db,
       { draftId: at.draftId, revision: at.revision },
-      { note: "", content: emptyResearchContent() },
+      { content: emptyResearchContent() },
     )
 
     const outcome = await addDatasetsFromUpstream(
@@ -358,6 +358,27 @@ describe("the screen that starts a research from an application", () => {
 
     expect(view.holder?.researchId).toBe(held.researchId)
     expect(listing.rows[0]?.heldBy).toBe(held.researchId)
+  })
+
+  it("narrows by what the portal holds, which is the answer the application system has not got", async () => {
+    const token = await signIn()
+    const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
+    if (held.status !== "created") throw new Error(held.status)
+
+    const kept = await upstreamResearchPage(get(token, "?standing=held"), "ja")
+    const dropped = await upstreamResearchPage(get(token, "?standing=absent"), "ja")
+
+    expect(kept.rows.map((row) => row.applicationId)).toEqual([BRANCH])
+    expect(kept.total).toBe(1)
+    expect(dropped.rows).toEqual([])
+    expect(dropped.total).toBe(0)
+    // The page is cut here, so upstream is asked for every branch that matched.
+    expect(vi.mocked(searchDsBranches)).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "",
+      null,
+    )
   })
 
   it("offers every draft of that research, and the version it could replace", async () => {

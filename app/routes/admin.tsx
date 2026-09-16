@@ -9,6 +9,7 @@ import { Card, Empty, KeyValue, Page, Section, Table, Td } from "~/components/pa
 import { minuteInJst } from "~/dates"
 import { getDb } from "~/db/client.server"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { upstreamStatus } from "~/upstream/status.server"
 
@@ -52,7 +53,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${messages.admin.overview} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.overview) },
     { name: "robots", content: "noindex" },
   ]
 }

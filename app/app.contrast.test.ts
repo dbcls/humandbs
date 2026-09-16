@@ -135,3 +135,97 @@ describe("the palette", () => {
     expect(contrast(colours.warning ?? "", ground)).toBeGreaterThanOrEqual(NON_TEXT)
   })
 })
+
+/**
+ * **A colour a screen writes has to be one the palette defines.**
+ *
+ * There are two ways past that, and both had been taken. Tailwind still ships
+ * its own ramp, so `text-green-700` draws a green nothing here chose and the
+ * page ends up with two systems for the same job (`docs/ui.md` の「色」). And a
+ * name the theme does not hold — `border-border`, which is what another design
+ * system calls the same idea — produces no utility at all: the border stays,
+ * takes `currentColor`, and comes out the colour of the words rather than the
+ * quiet grey it was meant to be. Neither is visible in a diff.
+ *
+ * The allowed spellings are read from `app.css`, so a colour added there is
+ * usable the moment it exists. What is listed below is the other half: the
+ * utilities that share these prefixes without naming a colour. It is written
+ * out rather than guessed at, which means a new one fails this test until
+ * somebody has looked at it — which is the point.
+ */
+const COLOUR_PREFIX = [
+  "bg", "text", "border", "ring", "fill", "stroke", "outline", "decoration",
+  "caret", "from", "via", "to", "divide", "shadow", "placeholder",
+]
+
+/** What these prefixes also spell, none of which names a colour. */
+const NOT_A_COLOUR = new Set([
+  "white", "black", "transparent", "current", "inherit",
+  // edges: which ones, how thick, how they are drawn
+  "0", "2", "4", "b", "l", "r", "t", "x", "y", "b-0", "b-2", "l-2", "l-4",
+  "dashed", "dotted", "solid", "separate", "collapse", "spacing-0",
+  // sizes and alignment
+  "none", "auto", "base", "xs", "sm", "md", "lg", "xl", "2xl", "3xl",
+  "center", "left", "right", "justify", "nowrap", "top", "bottom",
+  // fills that are pictures rather than colours
+  "no-repeat", "blend-multiply", "linear-to-b", "linear-to-l", "linear-to-r",
+  "linear-to-t", "offset-1",
+])
+
+/**
+ * The strings in a source file that are lists of classes.
+ *
+ * **Told apart by what they are made of**, rather than by where they sit: the
+ * faces are held in constants (`BUTTON_VARIANT`, `CONTROL`, `FILE_FACE` …) as
+ * often as they are written on an element, so reading only `className=` would
+ * miss the places a face is actually decided. A class list is lower case and
+ * punctuation; anything a reader would see — a sentence, a name, a heading —
+ * has capitals or Japanese in it and is left alone.
+ */
+const CLASS_LIST = /^[a-z0-9 :_\-[\]/.%#]+$/
+
+function classStrings(source: string): string[] {
+  const found: string[] = []
+  for (const [, double, back] of source.matchAll(/"([^"\n]*)"|`([^`\n$]*)`/g)) {
+    const text = double ?? back
+    if (text !== undefined && text.includes("-") && CLASS_LIST.test(text)) found.push(text)
+  }
+  return found
+}
+
+describe("the palette is the only one", () => {
+  const defined = new Set(Object.keys(palette()))
+
+  it("has no colour a screen spells for itself", async () => {
+    const { readdir, readFile } = await import("node:fs/promises")
+    const path = await import("node:path")
+    const root = fileURLToPath(new URL(".", import.meta.url))
+    const offenders: string[] = []
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const at = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          await walk(at)
+          continue
+        }
+        if (!/\.tsx?$/.test(entry.name) || entry.name.includes(".test.")) continue
+        const source = await readFile(at, "utf8")
+        for (const text of classStrings(source)) {
+          for (const raw of text.split(/\s+/)) {
+            const token = raw.replace(/^-/, "").split(":").pop() ?? ""
+            const at_ = token.indexOf("-")
+            if (at_ < 0) continue
+            const prefix = token.slice(0, at_)
+            const name = token.slice(at_ + 1).split("/")[0] ?? ""
+            if (!COLOUR_PREFIX.includes(prefix)) continue
+            if (name === "" || name.startsWith("[")) continue
+            if (defined.has(name) || NOT_A_COLOUR.has(name)) continue
+            offenders.push(`${path.relative(root, at)}: ${token}`)
+          }
+        }
+      }
+    }
+    await walk(root)
+    expect([...new Set(offenders)].sort()).toEqual([])
+  })
+})

@@ -193,8 +193,8 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
 }
 
 /**
- * The banner every page carries. Its text is a translated pair rather than a
- * per-locale row, because a banner is one announcement shown in whichever
+ * The alert every page carries. Its text is a translated pair rather than a
+ * per-locale row, because an alert is one announcement shown in whichever
  * language the reader is on.
  */
 export interface AlertView {
@@ -216,7 +216,9 @@ export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
     .select({ content: alert.content })
     .from(alert)
     .where(eq(alert.active, true))
-    .orderBy(alert.createdAt)
+    // The id breaks the tie: alerts written in one statement share a
+    // timestamp, and the v7 id carries the order they were made in.
+    .orderBy(alert.createdAt, alert.id)
 
   return rows
     .map((row) => ({

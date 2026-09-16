@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 
 import type { CartNotice } from "~/cart/store"
 import { cartPressGathers, isCartable, useCart, useCartNotice } from "~/cart/store"
-import { Button, ButtonLink, IconButton, Menu, Note, Toast } from "~/components/base"
+import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS } from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import type { Messages } from "~/i18n/messages"
@@ -129,15 +129,6 @@ function noticeSentence(notice: CartNotice, messages: Messages): string {
 }
 
 /**
- * How long a notice stands before it goes, in milliseconds.
- *
- * **Long enough to read a sentence and reach for the way back.** The count in
- * the top bar is the lasting record of what the cart holds; this only has to
- * outlive the press that caused it.
- */
-const NOTICE_MS = 3000
-
-/**
  * What the cart says back when it is pressed.
  *
  * **The cart is never where the press is.** A mark at the foot of a listing is
@@ -157,7 +148,7 @@ export function CartToast({ locale }: { locale: Locale }) {
   const at = notice?.at
   useEffect(() => {
     if (at === undefined || reading) return
-    const timer = window.setTimeout(dismiss, NOTICE_MS)
+    const timer = window.setTimeout(dismiss, TOAST_MS)
     return () => {
       window.clearTimeout(timer)
     }

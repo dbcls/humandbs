@@ -6,7 +6,7 @@ import { diffDraftInput, takeField } from "./diff"
 import { researchContentInput, type DraftInput } from "./form"
 
 function draft(): DraftInput {
-  return { note: "", content: researchContentInput(emptyResearchContent()) }
+  return { content: researchContentInput(emptyResearchContent()) }
 }
 
 function withProvider(id: string, name: string): DraftInput {
@@ -31,10 +31,6 @@ function withProvider(id: string, name: string): DraftInput {
 describe("diffDraftInput", () => {
   it("reports nothing about a draft compared with itself", () => {
     expect(diffDraftInput(draft(), draft())).toEqual([])
-  })
-
-  it("reports the memo, which is edited on the same screen and saved with it", () => {
-    expect(diffDraftInput(draft(), { ...draft(), note: "for the 2026 release" })).toEqual(["note"])
   })
 
   it("reports a field by the path the editor addresses it with", () => {

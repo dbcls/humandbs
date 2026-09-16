@@ -1,4 +1,4 @@
-import { Stack } from "~/components/base"
+import { PaneHeading, Stack } from "~/components/base"
 import { Table, Td } from "~/components/page"
 
 import type {
@@ -82,6 +82,14 @@ export function joinText(
     .join(" ")
 }
 
+/**
+ * Whether one check passed.
+ *
+ * **Only what did not pass carries a colour.** A report is read to find the
+ * things to look at, and a page where every answer is coloured has nothing
+ * standing out on it — which is also why the site keeps no colour for "this is
+ * fine" (`docs/ui.md` の「押せるもの」の既定の状態の段).
+ */
 export function StatusText({
   result,
   words,
@@ -89,11 +97,10 @@ export function StatusText({
   result: boolean | null | undefined
   words: AssistantWords
 }) {
-  if (result === true)
-    return <span className="text-green-700">{words.verified}</span>
+  if (result === true) return <span>{words.verified}</span>
   if (result === false)
     return <span className="text-danger">{words.unverified}</span>
-  return <span className="text-warning">-</span>
+  return <span className="text-ink-muted">-</span>
 }
 
 export function ChecklistStatus({
@@ -105,7 +112,7 @@ export function ChecklistStatus({
 }) {
   const className
     = status === "ok"
-      ? "text-green-700"
+      ? ""
       : status === "warning"
         ? "text-warning"
         : "text-danger"
@@ -184,14 +191,18 @@ export function VerificationRow({
   )
 }
 
+/**
+ * A sentence the service wrote about one comparison.
+ *
+ * **What went wrong is marked and what went right is not**, the same way round
+ * as `StatusText`. The pattern has to catch the negative forms of the words it
+ * also matches — 「一致しません」 holds 「一致」 — so it is written as the
+ * refusals rather than as a pair of tests.
+ */
 export function JudgmentText({ value }: { value: string }) {
-  const className
-    = /不一致|一致(?:しない|しません|していない|していません)|未確認|確認(?:できない|できません)|NOT\s+OK|(?:^|[^A-Z])NG(?:$|[^A-Z])/iu.test(value)
-      ? "text-danger"
-      : /一致|確認済み|(?:^|[^A-Z])OK(?:$|[^A-Z])/iu.test(value)
-        ? "text-green-700"
-        : undefined
-  return <span className={className}>{value}</span>
+  const wrong
+    = /不一致|一致(?:しない|しません|していない|していません)|未確認|確認(?:できない|できません)|NOT\s+OK|(?:^|[^A-Z])NG(?:$|[^A-Z])/iu
+  return <span className={wrong.test(value) ? "text-danger" : undefined}>{value}</span>
 }
 
 export function ValidationChecklist({
@@ -212,7 +223,7 @@ export function ValidationChecklist({
     return null
   return (
     <Stack gap="tight">
-      <h3 className="font-semibold text-sm">{title}</h3>
+      <PaneHeading title={title} level="h3" rule="start" />
       <Table headers={[words.content, words.result, words.message]}>
         {checks.map((check) => (
           <tr key={check.description}>

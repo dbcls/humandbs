@@ -180,14 +180,19 @@ export function exportPath(target: "research" | "dataset"): string {
 }
 
 /**
- * Where a JGA study is described, which is not here.
+ * Where a JGA accession is described, which is not here.
  *
  * The portal holds the accession and the edge to it, but nothing about the
- * study itself — the archive is what describes it, so the name is shown as a
- * way there rather than as a string to copy.
+ * study or the dataset itself — the archive is what describes it, so the name
+ * is shown as a way there rather than as a string to copy.
+ *
+ * **The prefix decides which of the archive's two entry addresses it is.** A
+ * registration is a study and the datasets under it, and those are all the
+ * accessions the portal ever holds of it.
  */
-export function jgaStudyUrl(accession: string): string {
-  return `https://ddbj.nig.ac.jp/search/entry/jga-study/${encodeURIComponent(accession)}/`
+export function jgaEntryUrl(accession: string): string {
+  const kind = accession.startsWith("JGAS") ? "jga-study" : "jga-dataset"
+  return `https://ddbj.nig.ac.jp/search/entry/${kind}/${encodeURIComponent(accession)}/`
 }
 
 /**

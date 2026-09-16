@@ -462,3 +462,85 @@ describe("the ICD10 dictionary", () => {
     expect(only(await db.select().from(s.vocabularyTerm)).parentId).toBeNull()
   })
 })
+
+describe("narrowing the fields listing", () => {
+  /** Three fields: one of each type the listing's axis offers but `disease`. */
+  async function threeFields(): Promise<string> {
+    const box = only(await db.insert(s.facetCategory)
+      .values({ code: "experiment", labelJa: "実験", labelEn: "Experiment", position: 0 })
+      .returning({ id: s.facetCategory.id })).id
+    await freeTextKey("targets")
+    await db.insert(s.contentKey).values([
+      {
+        code: "platform",
+        scope: "experiment",
+        valueType: "vocabulary",
+        labelJa: "プラットフォーム",
+        labelEn: "Platform",
+        position: 1,
+        facetCategoryId: box,
+        showOnPublicPage: true,
+      },
+      {
+        code: "read-length",
+        scope: "experiment",
+        valueType: "number",
+        labelJa: "リード長",
+        labelEn: "Read length",
+        position: 2,
+        facetCategoryId: box,
+        showOnPublicPage: false,
+      },
+    ])
+    return box
+  }
+
+  it("counts each axis over the fields the other conditions leave", async () => {
+    const token = await signIn(CURATOR, true)
+    await threeFields()
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields?type=number"))
+
+    expect(view.keys.map((one) => one.code)).toEqual(["read-length"])
+    // The name of the screen counts every field, not the ones left standing.
+    expect(view.total).toBe(3)
+    // The type axis is counted with its own condition lifted, so all three.
+    expect(view.counts.types).toEqual({ text: 1, vocabulary: 1, number: 1, disease: 0 })
+    // The other two are counted inside what the type left.
+    expect(view.counts.boxes).toEqual({ experiment: 1, none: 0 })
+    expect(view.counts.showing).toEqual({ shown: 0, hidden: 1 })
+  })
+
+  it("narrows by the box a field stands in, and by standing in none", async () => {
+    const token = await signIn(CURATOR, true)
+    await threeFields()
+
+    const inBox = await catalogPage(get(token, "/admin/experiment-fields?box=experiment"))
+    expect(inBox.keys.map((one) => one.code)).toEqual(["platform", "read-length"])
+
+    const loose = await catalogPage(get(token, "/admin/experiment-fields?box=none"))
+    expect(loose.keys.map((one) => one.code)).toEqual(["targets"])
+  })
+
+  it("drops a condition the address carries that names nothing", async () => {
+    const token = await signIn(CURATOR, true)
+    await threeFields()
+
+    const view = await catalogPage(
+      get(token, "/admin/experiment-fields?box=nonesuch&type=nonesuch&shown=nonesuch"),
+    )
+
+    expect(view.boxes).toEqual([])
+    expect(view.types).toEqual([])
+    expect(view.showing).toEqual([])
+    expect(view.keys).toHaveLength(3)
+  })
+
+  it("keeps the fields in the order the public table has them", async () => {
+    const token = await signIn(CURATOR, true)
+    await threeFields()
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((one) => one.code)).toEqual(["targets", "platform", "read-length"])
+  })
+})

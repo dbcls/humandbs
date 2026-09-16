@@ -6,10 +6,18 @@ import { PAGE_SIZE } from "~/search/page-size"
 
 import {
   ADMIN_FLAG_KEYS,
+  ADMIN_STATUSES,
+  axisCounts,
+  BRANCH_REGISTRATIONS,
+  BRANCH_STANDINGS,
+  branchStanding,
+  filterBranchRows,
   filterResearchRows,
   pageOf,
+  sortBranchRows,
   sortResearchRows,
   type AdminResearchRow,
+  type BranchRow,
 } from "./listing"
 
 const NOTHING = {
@@ -167,7 +175,7 @@ describe("the filters", () => {
   })
 
   it("keeps the status and the shortcomings as separate axes, ANDed", () => {
-    // 「未確定あり」は d だけが持ち、その d は未公開。公開済みとは重ならない。
+    // 「未確定あり」は d だけが持ち、その d は未公開。公開中とは重ならない。
     expect(filterResearchRows(rows, {
       keyword: "糖尿病",
       statuses: ["published"],
@@ -259,5 +267,147 @@ describe("the order and the page", () => {
 
   it("has one page even when there is nothing on it", () => {
     expect(pageOf([], 1)).toEqual({ rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 })
+  })
+})
+
+function branch(overrides: Partial<BranchRow> = {}): BranchRow {
+  return {
+    applicationId: "J-DS000136-010",
+    humLabel: "hum0001",
+    approvedOn: "2026-01-01",
+    datasets: ["JGAD000001"],
+    heldBy: "00000000-0000-0000-0000-000000000001",
+    ...overrides,
+  }
+}
+
+const HELD = branch()
+const ABSENT = branch({ applicationId: "J-DS000200-001", heldBy: null })
+const UNLABELLED = branch({ applicationId: "J-DS000300-001", humLabel: null, heldBy: null })
+const NOTHING_REGISTERED = branch({ applicationId: "J-DS000400-001", datasets: [] })
+const ALL = [HELD, ABSENT, UNLABELLED, NOTHING_REGISTERED]
+
+describe("where a branch stands with the portal", () => {
+  it("reads the hum label first: no label is its own standing, not a missing research", () => {
+    expect(branchStanding(HELD)).toBe("held")
+    expect(branchStanding(ABSENT)).toBe("absent")
+    expect(branchStanding(UNLABELLED)).toBe("unlabelled")
+  })
+
+  it("keeps every branch when an axis is asked for in full, as when it is not asked at all", () => {
+    const every = { standings: BRANCH_STANDINGS, registrations: BRANCH_REGISTRATIONS }
+    const none = { standings: [], registrations: [] }
+
+    expect(filterBranchRows(ALL, every)).toEqual(ALL)
+    expect(filterBranchRows(ALL, none)).toEqual(ALL)
+  })
+
+  it("combines the two axes as an AND and the values within one as an OR", () => {
+    const held = filterBranchRows(ALL, { standings: ["held"], registrations: [] })
+    expect(held.map((row) => row.applicationId))
+      .toEqual([HELD.applicationId, NOTHING_REGISTERED.applicationId])
+
+    const twoStandings = filterBranchRows(ALL, {
+      standings: ["absent", "unlabelled"],
+      registrations: [],
+    })
+    expect(twoStandings.map((row) => row.applicationId))
+      .toEqual([ABSENT.applicationId, UNLABELLED.applicationId])
+
+    // Held **and** holding datasets: the one row that manages both, not the
+    // three that manage either.
+    const both = filterBranchRows(ALL, { standings: ["held"], registrations: ["some"] })
+    expect(both.map((row) => row.applicationId)).toEqual([HELD.applicationId])
+  })
+
+  it("counts a branch with no dataset as registering nothing", () => {
+    const none = filterBranchRows(ALL, { standings: [], registrations: ["none"] })
+
+    expect(none.map((row) => row.applicationId)).toEqual([NOTHING_REGISTERED.applicationId])
+  })
+})
+
+describe("the order the branches come in", () => {
+  const older = branch({ applicationId: "J-DS000100-001", approvedOn: "2020-05-06" })
+  const newer = branch({ applicationId: "J-DS000900-001", approvedOn: "2026-05-06" })
+  const undated = branch({ applicationId: "J-DS000500-001", approvedOn: null })
+  const ids = (rows: readonly BranchRow[]): string[] => rows.map((row) => row.applicationId)
+
+  it("opens on the newest approval and on the first number issued", () => {
+    expect(ids(sortBranchRows([older, newer]))).toEqual([newer.applicationId, older.applicationId])
+    expect(ids(sortBranchRows([newer, older], "application")))
+      .toEqual([older.applicationId, newer.applicationId])
+  })
+
+  it("turns round when the other direction is asked for", () => {
+    expect(ids(sortBranchRows([newer, older], "approved", "asc")))
+      .toEqual([older.applicationId, newer.applicationId])
+    expect(ids(sortBranchRows([older, newer], "application", "desc")))
+      .toEqual([newer.applicationId, older.applicationId])
+  })
+
+  it("sinks a branch with no approval date whichever way the order runs", () => {
+    const rows = [undated, older, newer]
+
+    expect(ids(sortBranchRows(rows, "approved", "desc")).at(-1)).toBe(undated.applicationId)
+    expect(ids(sortBranchRows(rows, "approved", "asc")).at(-1)).toBe(undated.applicationId)
+  })
+
+  it("breaks a tie by the application number, so a page boundary stays put", () => {
+    const first = branch({ applicationId: "J-DS000136-010", approvedOn: "2026-01-01" })
+    const second = branch({ applicationId: "J-DS000136-011", approvedOn: "2026-01-01" })
+
+    expect(ids(sortBranchRows([first, second]))).toEqual(ids(sortBranchRows([second, first])))
+    expect(ids(sortBranchRows([second, first])))
+      .toEqual([first.applicationId, second.applicationId])
+  })
+
+  it("leaves the rows it was given alone", () => {
+    const rows = [older, newer]
+    sortBranchRows(rows)
+
+    expect(ids(rows)).toEqual([older.applicationId, newer.applicationId])
+  })
+})
+
+describe("axisCounts", () => {
+  const published = row({ researchId: "1", status: "published" })
+  const unpublished = row({ researchId: "2", status: "unpublished" })
+  const alsoUnpublished = row({ researchId: "3", status: "unpublished" })
+
+  it("counts the rows each value holds", () => {
+    expect(axisCounts(
+      [published, unpublished, alsoUnpublished],
+      ADMIN_STATUSES,
+      (one, status) => one.status === status,
+    )).toEqual({ published: 1, unpublished: 2 })
+  })
+
+  it("gives every value a number, including the ones nothing holds", () => {
+    expect(axisCounts([published], ADMIN_STATUSES, (one, status) => one.status === status))
+      .toEqual({ published: 1, unpublished: 0 })
+    expect(axisCounts([], ADMIN_STATUSES, () => false))
+      .toEqual({ published: 0, unpublished: 0 })
+  })
+
+  it("counts a row under every value it holds, where one row can hold several", () => {
+    const two = row({ flags: { ...NOTHING, noHumLabel: true, untranslated: true } })
+    const one = row({ flags: { ...NOTHING, untranslated: true } })
+
+    expect(axisCounts([two, one], ADMIN_FLAG_KEYS, (which, flag) => which.flags[flag]))
+      .toEqual({
+        noHumLabel: 1,
+        noDatasetLabel: 0,
+        unsettled: 0,
+        untranslated: 2,
+        upstreamMismatch: 0,
+      })
+  })
+
+  it("leaves the rows it was given alone", () => {
+    const rows = [published, unpublished]
+    axisCounts(rows, ADMIN_STATUSES, (one, status) => one.status === status)
+
+    expect(rows).toEqual([published, unpublished])
   })
 })

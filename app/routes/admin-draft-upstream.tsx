@@ -3,11 +3,13 @@ import { data, Form } from "react-router"
 import { upstreamDraftAction, upstreamDraftPage } from "~/admin/templates.server"
 import { adminDraftPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Heading, Note, Stack } from "~/components/base"
+import { Heading, Stack } from "~/components/base"
+import { Answered, Result } from "~/components/form"
 import { Card, Page, Section } from "~/components/page"
 import { UpstreamMerge } from "~/components/upstream-merge"
 import { UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-upstream"
@@ -38,9 +40,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.editor.heading
   return [
-    { title: `${messages.admin.templates.headingDraft} - ${label} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.templates.headingDraft, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -53,17 +54,20 @@ export default function AdminDraftUpstream({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
+      {/* Only a refusal is answered: taking it in leaves for the draft. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
+        {actionData?.status === "taken" && <Result ok={false}>{t.takenLabel}</Result>}
+      </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.headingDraft}>
+          <Heading title={t.headingDraft} aside={view.humLabel ?? undefined}>
             <AdminBack
               to={href(locale, adminDraftPath(view.researchId, view.draftId))}
               label={t.backToDraft}
+              icon="chevron-left"
             />
           </Heading>
-          {actionData?.status === "conflict" && <Note kind="warning" live>{t.conflict}</Note>}
-          {actionData?.status === "taken" && <Note kind="danger" live>{t.takenLabel}</Note>}
-
           {!view.connected || view.branch === null || view.merge === null
             ? <UpstreamNotConnected locale={locale} dra={false} />
             : (

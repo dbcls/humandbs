@@ -20,10 +20,8 @@ import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm"
 
 import type {
   DatasetContent,
-  DraftSnapshot,
   ResearchContent,
   TranslatedText,
-  UndoReason,
 } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import { descriptionOf, draftContentOf } from "~/content/version"
@@ -32,7 +30,6 @@ import {
   dataset,
   draftDatasetEntry,
   draftPresence,
-  draftUndo,
   humAccession,
   labelPin,
   research,
@@ -269,7 +266,6 @@ export interface AdminVersionRow {
 export interface AdminDraftRow {
   id: string
   revision: number
-  note: string
   /** The version number this draft was copied from, if it was copied from one. */
   copiedFromNumber: number | null
   flags: ContentFlags
@@ -315,7 +311,6 @@ export async function adminResearch(
       .select({
         id: researchDraft.id,
         revision: researchDraft.revision,
-        note: researchDraft.note,
         content: researchDraft.content,
         copiedFromNumber: researchDraft.copiedFromNumber,
         createdAt: researchDraft.createdAt,
@@ -334,7 +329,6 @@ export async function adminResearch(
     drafts: drafts.map((row) => ({
       id: row.id,
       revision: row.revision,
-      note: row.note,
       copiedFromNumber: row.copiedFromNumber,
       flags: contentFlags(row.content),
       createdAt: row.createdAt.toISOString(),
@@ -348,7 +342,6 @@ export interface DraftRecord {
   id: string
   researchId: string
   revision: number
-  note: string
   content: ResearchContent
   copiedFromNumber: number | null
 }
@@ -359,7 +352,6 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
       id: researchDraft.id,
       researchId: researchDraft.researchId,
       revision: researchDraft.revision,
-      note: researchDraft.note,
       content: researchDraft.content,
       copiedFromNumber: researchDraft.copiedFromNumber,
     })
@@ -486,44 +478,6 @@ export async function draftDatasetRows(
     edited: edited.has(row.id),
     isOwn: introduced.has(row.id),
   }))
-}
-
-export interface UndoEntryRow {
-  id: string
-  reason: UndoReason
-  createdAt: string
-}
-
-/** The stack, newest first. The snapshots themselves are fetched one at a time. */
-export async function readUndoStack(db: Executor, draftId: string): Promise<UndoEntryRow[]> {
-  const rows = await db
-    .select({
-      id: draftUndo.id,
-      snapshot: draftUndo.snapshot,
-      createdAt: draftUndo.createdAt,
-    })
-    .from(draftUndo)
-    .where(eq(draftUndo.draftId, draftId))
-    .orderBy(desc(draftUndo.createdAt), desc(draftUndo.id))
-
-  return rows.map((row) => ({
-    id: row.id,
-    reason: row.snapshot.reason,
-    createdAt: row.createdAt.toISOString(),
-  }))
-}
-
-export async function readUndoSnapshot(
-  db: Executor,
-  draftId: string,
-  undoId: string,
-): Promise<DraftSnapshot | null> {
-  const [row] = await db
-    .select({ snapshot: draftUndo.snapshot })
-    .from(draftUndo)
-    .where(and(eq(draftUndo.id, undoId), eq(draftUndo.draftId, draftId)))
-    .limit(1)
-  return row?.snapshot ?? null
 }
 
 export interface PresenceRow {

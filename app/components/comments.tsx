@@ -17,11 +17,11 @@
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { useFetcher, useLocation } from "react-router"
 
-import { Badge, Button, controlFace, Note, Stack } from "~/components/base"
+import { Badge, Button, controlFace, Fold, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import type { AnchorSubject } from "~/review/anchors"
-import { unresolvedCount, type ThreadView } from "~/review/comments"
+import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
+import { byAttention, unresolvedCount, type ThreadView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -32,7 +32,8 @@ export interface CommentContext {
   locale: Locale
   /** Where the forms post. */
   action: string
-  subject: AnchorSubject
+  /** What is being commented on — or the draft itself, which is the memo. */
+  subject: AnchorSubject | "draft"
   /** Only an administrator resolves; a link holder reads and answers. */
   canResolve: boolean
   /** The name comments will be signed with, when the reader is signed in. */
@@ -118,7 +119,7 @@ export function CommentSpot({ context, at, threads }: {
   const fetcher = useFetcher<Answer>()
   const answer = fetcher.data
   const shown = answer?.status === "threads"
-    ? answer.threads.filter((thread) => thread.anchor.path === at)
+    ? answer.threads.filter(({ anchor }) => isFieldAnchor(anchor) && anchor.path === at)
     : [...threads]
   const open = unresolvedCount(shown)
 
@@ -282,9 +283,18 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
       <Stack gap="normal">
         <input type="hidden" name="intent" value={intent} />
         {threadId !== undefined && <input type="hidden" name="threadId" value={threadId} />}
-        {intent === "comment" && <input type="hidden" name="path" value={at ?? ""} />}
-        {intent === "comment" && <input type="hidden" name="subject" value={context.subject.kind} />}
-        {intent === "comment" && context.subject.kind === "dataset" && (
+        {/* The memo names no place, so it posts no path. */}
+        {intent === "comment" && context.subject !== "draft" && (
+          <input type="hidden" name="path" value={at ?? ""} />
+        )}
+        {intent === "comment" && (
+          <input
+            type="hidden"
+            name="subject"
+            value={context.subject === "draft" ? "draft" : context.subject.kind}
+          />
+        )}
+        {intent === "comment" && context.subject !== "draft" && context.subject.kind === "dataset" && (
           <input type="hidden" name="datasetId" value={context.subject.datasetId} />
         )}
         {at !== undefined && <input type="hidden" name="at" value={at} />}
@@ -316,5 +326,52 @@ export function CommentForm({ context, at, fetcher, intent, threadId }: {
         </div>
       </Stack>
     </fetcher.Form>
+  )
+}
+
+/**
+ * The draft's memo — threads about the work rather than about a field.
+ *
+ * **It is a conversation rather than a box.** A draft stays open for as long as
+ * it takes to settle a version, and more than one curator writes in it: what is
+ * worth keeping is who said what and when, which a single field everybody
+ * overwrites cannot hold. It is the same thread the fields carry, so it is
+ * resolved the same way and counted in the same place.
+ *
+ * **Nobody outside the management area sees it.** A share link neither shows
+ * these threads nor accepts one — what the provider is asked about is attached
+ * to the field it is about.
+ */
+export function DraftNote({ context, threads }: {
+  context: CommentContext
+  threads: readonly ThreadView[]
+}) {
+  const t = messagesFor(context.locale).admin.editor
+  const fetcher = useFetcher<Answer>()
+  const answer = fetcher.data
+  const shown = answer?.status === "threads"
+    ? answer.threads.filter((thread) => thread.anchor.kind === "draft")
+    : [...threads]
+  const open = unresolvedCount(shown)
+
+  return (
+    <Fold
+      summary={(
+        <span className="flex flex-wrap items-center gap-2">
+          <Icon name="comment" aria-hidden="true" />
+          {t.memo}
+          {shown.length > 0 && <Badge tone={open > 0 ? "accent" : undefined}>{shown.length}</Badge>}
+        </span>
+      )}
+      note={t.memoHint}
+    >
+      <Stack gap="normal">
+        {shown.length === 0 && <Note kind="plain">{t.memoEmpty}</Note>}
+        {byAttention(shown).map((thread) => (
+          <Thread key={thread.id} context={context} thread={thread} fetcher={fetcher} />
+        ))}
+        <CommentForm context={context} fetcher={fetcher} intent="comment" />
+      </Stack>
+    </Fold>
   )
 }

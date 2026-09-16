@@ -1,11 +1,15 @@
-import { Form } from "react-router"
+import { Form, Link } from "react-router"
 
 import { documentAction, documentPage } from "~/admin/contents.server"
-import { Confirm, Stack } from "~/components/base"
+import { adminSeriesPath } from "~/admin/urls"
+import { Confirm, Heading, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
-import { Field, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section } from "~/components/page"
+import { Answered, Field, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
+import { Card, Empty, Page, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
+import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-document"
 
@@ -34,7 +38,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${loaderData.slug} - ${messages.admin.contents.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.contents.documentHeading, loaderData.slug) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -45,28 +49,36 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <PageHead kicker={slug} label={t.documentHeading} />
-      <Card>
+      <Answered answer={actionData} locale={locale}>
+        <ResultLine result={actionData} locale={locale} />
+      </Answered>
+      <Card under={false}>
         <Stack gap="block">
-          <ResultLine result={actionData} locale={locale} />
+          <Heading title={t.documentHeading} aside={slug} />
 
           <Section title={t.address}>
+            {/* Everything about the series as a whole — which revision is
+                current, what the next one is numbered, retiring the lot — is on
+                the series' own screen, so saying which series this belongs to
+                is also the way there. */}
             {seriesOf !== null && (
               <Empty>
-                {t.revisionOf(seriesOf.slug, seriesOf.number)}
+                <Link to={href(locale, adminSeriesPath(seriesOf.id))}>
+                  {t.revisionOf(seriesOf.slug, seriesOf.number)}
+                </Link>
                 {seriesOf.isCurrent && ` — ${t.isCurrent}`}
               </Empty>
             )}
             <Form method="post" className="flex flex-wrap items-end gap-2">
               <Field label={t.slug} name="slug" value={slug} width="w-96" />
-              <Submit intent="rename">{t.rename}</Submit>
+              <Submit intent="rename" icon={<Icon name="edit" />}>{t.rename}</Submit>
             </Form>
             <Empty>{t.renameNote}</Empty>
 
             {seriesOf === null && (
               <Form method="post" className="flex flex-wrap items-end gap-3">
                 <Field label={t.versionNumber} name="number" type="number" width="w-24" value="1" />
-                <Submit intent="cut-into-version">{t.cut}</Submit>
+                <Submit intent="cut-into-version" icon={<Icon name="copy" />}>{t.cut}</Submit>
                 <Empty>{t.cutNote(slug)}</Empty>
               </Form>
             )}
@@ -78,6 +90,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
             <Form method="post">
               <Confirm
                 label={t.removeDocument}
+                title={t.removeDocumentTitle(slug)}
                 warning={t.removeNote}
                 confirm={t.removeDocumentConfirm}
                 cancel={t.cancel}

@@ -5,7 +5,7 @@ import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href, jgaStudyUrl, listPath, researchPath } from "~/public/urls"
+import { href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
 import { Downloads } from "./files"
@@ -128,7 +128,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         */}
         {view.studyAccession !== null && (
           <KeyValue title={t.jgaStudy}>
-            <ExternalLink to={jgaStudyUrl(view.studyAccession)} locale={locale}>
+            <ExternalLink to={jgaEntryUrl(view.studyAccession)} locale={locale}>
               {view.studyAccession}
             </ExternalLink>
           </KeyValue>

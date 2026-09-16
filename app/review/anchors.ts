@@ -20,7 +20,23 @@ export type AnchorSubject
   = | { kind: "research" }
     | { kind: "dataset", datasetId: string }
 
+/** An anchor that names a place inside the content, rather than the draft. */
+export type FieldAnchor = Exclude<CommentAnchor, { kind: "draft" }>
+
 export const RESEARCH: AnchorSubject = { kind: "research" }
+
+/**
+ * The anchor the draft's own threads carry — the memo.
+ *
+ * **It names no place.** What is written there is about the work rather than
+ * about a field, so there is no path to check it against and nothing for a
+ * reader of the published page to look at beside.
+ */
+export const DRAFT_ANCHOR: CommentAnchor = { kind: "draft" }
+
+export function isFieldAnchor(anchor: CommentAnchor): anchor is FieldAnchor {
+  return anchor.kind !== "draft"
+}
 
 /** A path is names joined by dots; identities and catalog keys are names too. */
 const PATH = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/
@@ -31,18 +47,19 @@ export function isAnchorPath(value: unknown): value is string {
   return typeof value === "string" && value.length <= PATH_LIMIT && PATH.test(value)
 }
 
-export function anchorOf(subject: AnchorSubject, path: string): CommentAnchor {
+export function anchorOf(subject: AnchorSubject, path: string): FieldAnchor {
   return subject.kind === "research"
     ? { kind: "research-field", path }
     : { kind: "dataset-field", datasetId: subject.datasetId, path }
 }
 
-export function subjectOf(anchor: CommentAnchor): AnchorSubject {
+export function subjectOf(anchor: FieldAnchor): AnchorSubject {
   return anchor.kind === "research-field" ? RESEARCH : { kind: "dataset", datasetId: anchor.datasetId }
 }
 
 /** One string for one place, for grouping and for looking a place up. */
 export function anchorKey(anchor: CommentAnchor): string {
+  if (anchor.kind === "draft") return "draft"
   return anchor.kind === "research-field"
     ? `research:${anchor.path}`
     : `dataset:${anchor.datasetId}:${anchor.path}`

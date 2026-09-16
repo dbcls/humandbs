@@ -15,7 +15,7 @@
 import { diffDatasetInput } from "./dataset-diff"
 import type { DatasetContentInput } from "./dataset-form"
 import { diffDraftInput } from "./diff"
-import type { DraftInput, ResearchContentInput } from "./form"
+import type { ResearchContentInput } from "./form"
 
 export interface Comparison {
   /** Paths where the two say different things. Taking one replaces mine. */
@@ -39,19 +39,11 @@ export function compare<T>(changed: (a: T, b: T) => string[], theirs: T, mine: T
   return { differing: changed(mine, theirs) }
 }
 
-/**
- * The memo is not part of what gets published, so it is held equal on both
- * sides rather than compared: a version has no memo to disagree with.
- */
-function withoutNote(content: ResearchContentInput): DraftInput {
-  return { note: "", content }
-}
-
 export function compareResearch(
   theirs: ResearchContentInput,
   mine: ResearchContentInput,
 ): Comparison {
-  return compare(diffDraftInput, withoutNote(theirs), withoutNote(mine))
+  return compare(diffDraftInput, { content: theirs }, { content: mine })
 }
 
 export function compareDataset(

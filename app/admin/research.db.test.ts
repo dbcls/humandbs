@@ -61,7 +61,6 @@ async function ready(label: string) {
   const created = await createResearchWithDraft(db)
   await pinHum(created.researchId, label)
   await saveDraftContent(db, { draftId: created.draftId, revision: 1 }, {
-    note: "",
     content: titled("研究"),
   })
   const made = await createDatasetInDraft(db, { draftId: created.draftId, revision: 2 }, created.researchId)

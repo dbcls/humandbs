@@ -3,6 +3,7 @@ import { data } from "react-router"
 import { draftEditorPage, saveDraftAction } from "~/admin/pages.server"
 import { DraftEditor } from "~/components/editor"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft"
@@ -29,9 +30,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.editor.heading
+  const editor = messages.admin.editor
+  // The same name the bar gives it, which carries the research in it already
+  // (`components/editor.tsx`).
+  const name = loaderData.humLabel === null
+    ? editor.headingUnlabelled
+    : editor.headingOf(loaderData.humLabel)
   return [
-    { title: `${label} - ${messages.admin.editor.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, name) },
     { name: "robots", content: "noindex" },
   ]
 }

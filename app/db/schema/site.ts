@@ -107,7 +107,7 @@ export const newsContent = pgTable("news_content", {
 ])
 
 /**
- * The site-wide banner. On or off, with no schedule: the two banners the
+ * The site-wide alert. On or off, with no schedule: the two alerts the
  * current site carries both leave their window empty, and a window would make
  * "is this shown" a question with two answers to combine.
  *

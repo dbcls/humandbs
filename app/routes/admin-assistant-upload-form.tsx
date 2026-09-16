@@ -1,15 +1,21 @@
 import { type SyntheticEvent } from "react"
 
 import { Button, Stack } from "~/components/base"
+import { FileField } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Section } from "~/components/page"
+import { Section } from "~/components/page"
+import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 interface AdminAssistantUploadFormProps {
+  /**
+   * The one file the send needs. **The other two are the chooser's own** — it
+   * says what was picked — so only this one is read here, to keep the send
+   * closed until there is something to send.
+   */
   application: File | null
-  ethics: File | null
-  plan: File | null
   busy: boolean
+  locale: Locale
   words: ReturnType<typeof messagesFor>["admin"]["assistant"]
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
   onApplicationChange: (file: File | null) => void
@@ -19,9 +25,8 @@ interface AdminAssistantUploadFormProps {
 
 export function AdminAssistantUploadForm({
   application,
-  ethics,
-  plan,
   busy,
+  locale,
   words,
   onSubmit,
   onApplicationChange,
@@ -29,79 +34,55 @@ export function AdminAssistantUploadForm({
   onPlanChange,
 }: AdminAssistantUploadFormProps) {
   return (
-    <Card under={false}>
+    <Section title={words.uploadHeading}>
       <form onSubmit={onSubmit}>
-        <Stack>
-          <Section title={words.uploadHeading}>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <FileInput
-                label={words.applicationFile}
-                required
-                file={application}
-                disabled={busy}
-                onChange={onApplicationChange}
-              />
-              <FileInput
-                label={words.ethicsFile}
-                file={ethics}
-                disabled={busy}
-                onChange={onEthicsChange}
-              />
-              <FileInput
-                label={words.planFile}
-                file={plan}
-                disabled={busy}
-                onChange={onPlanChange}
-              />
-            </div>
-          </Section>
-          <div>
+        <Stack gap="normal">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FileField
+              locale={locale}
+              label={words.applicationFile}
+              name="application"
+              accept="application/pdf"
+              disabled={busy}
+              onChoose={(files) => { onApplicationChange(files[0] ?? null) }}
+            />
+            <FileField
+              locale={locale}
+              label={words.ethicsFile}
+              name="ethics"
+              accept="application/pdf"
+              disabled={busy}
+              onChoose={(files) => { onEthicsChange(files[0] ?? null) }}
+            />
+            <FileField
+              locale={locale}
+              label={words.planFile}
+              name="plan"
+              accept="application/pdf"
+              disabled={busy}
+              onChoose={(files) => { onPlanChange(files[0] ?? null) }}
+            />
+          </div>
+          {/* **The button keeps its name while it works.** How far it has got
+              is said beside it, where a live region can announce the change
+              (`docs/ui.md` の「壊れるもの」). */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* **要る 1 つが選ばれるまで送れない。**隠した input に `required`
+                を置くと、browser がフォーカスできない相手を指して止まるので、
+                要求は画面の側が言う (`components/form.tsx` の `FileField`)。 */}
             <Button
               variant="primary"
-              disabled={busy}
-              icon={(
-                <Icon
-                  name={busy ? "spinner" : "upload"}
-                  className={busy ? "animate-spin" : ""}
-                />
-              )}
+              disabled={busy || application === null}
+              icon={<Icon name="upload" />}
             >
-              {busy ? words.uploading : words.upload}
+              {words.upload}
             </Button>
+            <span role="status" className="text-ink-muted text-sm">
+              {busy ? words.uploading : ""}
+            </span>
           </div>
         </Stack>
       </form>
-    </Card>
-  )
-}
-
-function FileInput({
-  label,
-  required = false,
-  file,
-  disabled,
-  onChange,
-}: {
-  label: string
-  required?: boolean
-  file: File | null
-  disabled: boolean
-  onChange: (file: File | null) => void
-}) {
-  return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="font-semibold text-ink-muted text-xs">{label}</span>
-      <input
-        type="file"
-        accept="application/pdf"
-        required={required}
-        disabled={disabled}
-        onChange={(event) => { onChange(event.target.files?.[0] ?? null) }}
-        className="text-sm file:mr-3 file:cursor-pointer file:rounded file:border file:border-brand file:bg-white file:px-3 file:py-1 file:text-brand"
-      />
-      {file !== null && (
-        <span className="truncate text-ink-muted text-xs">{file.name}</span>
-      )}
-    </label>
+    </Section>
   )
 }

@@ -437,22 +437,34 @@ export interface JgadRegistration {
 const APPROVED = 60
 
 /**
+ * The values a row of a listing is read from: what a branch is recognised by,
+ * and nothing that would be read past. Kept apart from the rest because a
+ * listing answers with every branch that matched — the aims and the methods of
+ * a thousand branches are a megabyte nobody looks at.
+ */
+const ROW_KEYS = [
+  "submission_study_title", "submission_study_title_en",
+  "pi_last_name", "pi_first_name", "pi_last_name_en", "pi_first_name_en",
+] as const
+
+/** The rest of what one branch hands a draft, read a branch at a time. */
+const DETAIL_KEYS = [
+  "aim", "aim_en",
+  "method", "method_en",
+  "participant", "participant_en",
+  "pi_division", "pi_institution", "pi_division_en", "pi_institution_en",
+  "pi_country_en",
+  "icd10",
+] as const
+
+/**
  * The keys of the application form a draft reads. **Naming them is what makes
  * the pivot cheap**, and it is also the whole of what leaves the upstream
  * system: the connection can reach the addresses and the telephone numbers, and
  * this list is where it is decided that it does not
  * (docs/editing.md の「下書きを外から作る」).
  */
-const FORM_KEYS = [
-  "submission_study_title", "submission_study_title_en",
-  "aim", "aim_en",
-  "method", "method_en",
-  "participant", "participant_en",
-  "pi_last_name", "pi_first_name", "pi_last_name_en", "pi_first_name_en",
-  "pi_division", "pi_institution", "pi_division_en", "pi_institution_en",
-  "pi_country_en",
-  "icd10",
-] as const
+const FORM_KEYS = [...ROW_KEYS, ...DETAIL_KEYS] as const
 
 /**
  * The branches, the form values, and what each branch registered.
@@ -513,12 +525,17 @@ function branchCte(schema: string): string {
     )`
 }
 
-/** What every branch query selects, ordered newest approval first. */
-const BRANCH_COLUMNS = `
-  b.application_id, b.hum_label, b.data_access,
+/** What a listing selects of a branch, which is what its rows show. */
+const ROW_COLUMNS = `
+  b.application_id, b.hum_label,
   (ap.approved_at AT TIME ZONE 'Asia/Tokyo')::date::text AS approved_on,
-  ${FORM_KEYS.map((key) => `v."${key}"`).join(", ")},
+  ${ROW_KEYS.map((key) => `v."${key}"`).join(", ")},
   coalesce(r.accessions, ARRAY[]::text[]) AS accessions`
+
+/** What one branch selects: its row, and everything a draft takes from it. */
+const DETAIL_COLUMNS = `
+  ${ROW_COLUMNS}, b.data_access,
+  ${DETAIL_KEYS.map((key) => `v."${key}"`).join(", ")}`
 
 const BRANCH_FROM = `
   FROM branch b
@@ -526,19 +543,23 @@ const BRANCH_FROM = `
   LEFT JOIN approved ap ON ap.appl_id = b.appl_id
   LEFT JOIN registered r ON r.appl_id = b.appl_id`
 
-interface BranchQueryRow extends Record<(typeof FORM_KEYS)[number], string | null> {
+interface BranchRowQuery extends Record<(typeof ROW_KEYS)[number], string | null> {
   application_id: string
   hum_label: string | null
-  data_access: number | null
   approved_on: string | null
   accessions: string[]
+}
+
+interface BranchDetailQuery
+  extends BranchRowQuery, Record<(typeof DETAIL_KEYS)[number], string | null> {
+  data_access: number | null
 }
 
 function text(value: string | null | undefined): string {
   return value?.trim() ?? ""
 }
 
-function branchRow(row: BranchQueryRow): DsBranchRow {
+function branchRow(row: BranchRowQuery): DsBranchRow {
   return {
     applicationId: row.application_id,
     humLabel: row.hum_label,
@@ -559,17 +580,23 @@ function branchRow(row: BranchQueryRow): DsBranchRow {
  * that what is searched and what is read back are the same four things. An
  * empty keyword answers the newest branches, which is what somebody who has
  * just been told a number is looking at.
+ *
+ * **A null limit is every branch that matched**, which is what a listing that
+ * counts and pages asks for. Cutting the answer short saves nothing: the CTE
+ * above assembles every approved branch before the cut is applied, so thirty
+ * rows and all of them are the same 110ms. (`LIMIT NULL` is how Postgres spells
+ * no limit at all, so the cut needs no second query.)
  */
 export async function searchDsBranches(
   pool: Pool,
   schema: string,
   keyword: string,
-  limit: number,
+  limit: number | null,
 ): Promise<DsBranchRow[]> {
   const trimmed = keyword.trim()
-  const { rows } = await pool.query<BranchQueryRow>(`
+  const { rows } = await pool.query<BranchRowQuery>(`
     WITH ${branchCte(schema)}
-    SELECT ${BRANCH_COLUMNS}
+    SELECT ${ROW_COLUMNS}
     ${BRANCH_FROM}
     WHERE $1 = '' OR (
          b.application_id ILIKE '%' || $1 || '%'
@@ -590,9 +617,9 @@ export async function fetchDsBranch(
   schema: string,
   applicationId: string,
 ): Promise<DsBranchDetail | null> {
-  const { rows } = await pool.query<BranchQueryRow>(`
+  const { rows } = await pool.query<BranchDetailQuery>(`
     WITH ${branchCte(schema)}
-    SELECT ${BRANCH_COLUMNS}
+    SELECT ${DETAIL_COLUMNS}
     ${BRANCH_FROM}
     WHERE b.application_id = $1
     LIMIT 1`, [applicationId])

@@ -97,7 +97,7 @@ const SEARCH_GLYPH = {
   large: "text-base",
 }
 
-export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", searchAsTyped = false, children }: {
+export function SearchBox({ action, name, value, label, placeholder, submit, size = "normal", searchAsTyped = false, keepEmpty = false, children }: {
   action: string
   /** What the typed words are called in the address. */
   name: string
@@ -118,10 +118,26 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
    * the page in the middle of a word.
    */
   searchAsTyped?: boolean
+  /**
+   * Whether an empty box is a condition of its own.
+   *
+   * **Only where the server folds this field into another one.** The public
+   * listings send what was typed as `k` and it is folded into the query it is
+   * one condition of, so an empty `k` is how that condition is lifted
+   * (`search-as-typed.ts` の `conditions`). Where the box writes the address's
+   * own field — every listing in the management area — an empty box is no
+   * condition, and writing it would leave the same listing with two addresses.
+   */
+  keepEmpty?: boolean
   /** What the form has to carry that the box does not show. */
   children?: ReactNode
 }) {
-  const { form, onSubmit, field: typed } = useSearchAsTyped({ action, name, enabled: searchAsTyped })
+  const { form, onSubmit, field: typed } = useSearchAsTyped({
+    action,
+    name,
+    enabled: searchAsTyped,
+    keepEmpty,
+  })
   const field = useRef<HTMLInputElement>(null)
 
   /*
@@ -232,6 +248,9 @@ export function SearchForm({
       submit={messages.search.submit}
       size={size}
       searchAsTyped={searchAsTyped}
+      // The box writes `k`, which the server folds into `q`; emptying it is how
+      // the word is lifted out of a query that holds more than the word.
+      keepEmpty
     >
       <input type="hidden" name="q" value={query} />
       {rows !== null && <input type="hidden" name="size" value={String(rows)} />}
@@ -276,15 +295,33 @@ export function SearchForm({
  * for a skeleton: it is still true of the search behind it, and at the speed
  * these loaders answer (`app/navigating.ts`) a skeleton would be a flicker.
  */
-export function RefinableList({ open, busy, heading, closed, refine, refineHasMore, tools, panel, children }: {
+export function RefinableList({
+  open,
+  busy,
+  locale,
+  onToggle,
+  inForce,
+  refine,
+  refineHasMore,
+  tools,
+  panel,
+  children,
+}: {
   /** Whether the pane is showing what it holds. */
   open: boolean
   /** Whether a refinement of this same listing is still on its way. */
   busy: boolean
-  /** What names the pane. Its rule is the line the table's edge continues. */
-  heading: React.ReactNode
-  /** What stands in the pane's place while it is folded away. */
-  closed: React.ReactNode
+  locale: Locale
+  /** Folding the pane away, and opening it again. */
+  onToggle: () => void
+  /**
+   * How many conditions are narrowing the listing.
+   *
+   * **What the folded pane has to carry**: the conditions themselves stand in
+   * the pane, so a fold naming nothing would leave a reader looking at a
+   * narrowed result with nothing on screen admitting to the narrowing.
+   */
+  inForce: number
   /** The box and the conditions in force. */
   refine: React.ReactNode
   /**
@@ -301,6 +338,8 @@ export function RefinableList({ open, busy, heading, closed, refine, refineHasMo
   panel: React.ReactNode
   children: React.ReactNode
 }) {
+  const messages = messagesFor(locale)
+
   // **Folded, there is no pane and so no grid.** The way back into it joins the
   // row of controls over the table and stands at that row's left end, which is
   // the table's own left edge now that nothing is beside it. A grid kept with an
@@ -312,7 +351,7 @@ export function RefinableList({ open, busy, heading, closed, refine, refineHasMo
       <div className={PALE[busy ? "on" : "off"]} aria-busy={busy}>
         {/* The same 4px the row leaves over the table when the pane is open. */}
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pb-1">
-          {closed}
+          <PaneUnfold locale={locale} inForce={inForce} onToggle={onToggle} />
           {tools}
         </div>
         <div className="min-w-0">{children}</div>
@@ -325,7 +364,25 @@ export function RefinableList({ open, busy, heading, closed, refine, refineHasMo
       aria-busy={busy}
       className={`grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)] ${PALE[busy ? "on" : "off"]}`}
     >
-      <div className="flex flex-col justify-end md:col-start-1 md:row-start-1">{heading}</div>
+      <div className="flex flex-col justify-end md:col-start-1 md:row-start-1">
+        <PaneHeading title={messages.search.refine.heading} rule="start">
+          {/*
+            **It is read at the heading's size and carries a mark pointing the
+            way it folds.** At the size the pane's other asides take (12px, no
+            glyph) it stands beside a bold heading and is not found — the reader
+            has to already know a control is there.
+          */}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded="true"
+            className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
+          >
+            <Icon name="chevron-left" aria-hidden="true" />
+            {messages.search.refine.fold}
+          </button>
+        </PaneHeading>
+      </div>
       <div className="pt-4 md:col-start-1 md:row-start-2">{refine}</div>
       {/* The same 4px the heading leaves over its rule, so the two sides sit
           the same distance above the line they share. */}
@@ -359,6 +416,74 @@ export function RefinableList({ open, busy, heading, closed, refine, refineHasMo
         {panel}
       </div>
     </div>
+  )
+}
+
+/**
+ * The way back into a folded pane.
+ *
+ * **A mark and a count, and no word.** What folding gives back is the pane's
+ * width, so the way into it again keeps as little of that as it can — the glyph
+ * says what it opens and the number says how much is in force, and the words
+ * for both are in the name it announces with.
+ *
+ * **4px rather than a circle**, for the reason the page numbers beside it keep
+ * theirs (`docs/ui.md`): a glyph of 16px in a box of 36 does not fill it, and a
+ * round box around something that leaves that much air reads as a disc with a
+ * mark on it rather than as one of the controls in the row.
+ */
+function PaneUnfold({ locale, inForce, onToggle }: {
+  locale: Locale
+  inForce: number
+  onToggle: () => void
+}) {
+  const messages = messagesFor(locale)
+  const name = inForce === 0
+    ? messages.search.refine.heading
+    : messages.search.refine.foldedWith(inForce)
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded="false"
+      aria-label={name}
+      title={name}
+      className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
+    >
+      <Icon name="filter" aria-hidden="true" />
+      {inForce > 0 && (
+        <span className="rounded-full bg-brand px-1.5 font-semibold text-white text-xs">
+          {inForce}
+        </span>
+      )}
+    </button>
+  )
+}
+
+/**
+ * One thing a listing can be narrowed by, and the boxes it is narrowed with.
+ *
+ * **It is named the way the public panel names its groups** — the pane's own
+ * heading, 8px above what it holds (`components/facets.tsx`) — so that a
+ * curator moving between the two sides reads one column, not two arrangements
+ * of the same parts.
+ */
+export function RefineAxis({ label, children }: { label: string, children: ReactNode }) {
+  return (
+    // A `fieldset` rather than a heading and a list, so the question the boxes
+    // answer is announced once instead of on each of them (`form.tsx` の
+    // `RadioGroup`).
+    <fieldset>
+      {/* **The step under the name is the legend's own.** A `legend` is drawn
+          out of the box's flow rather than as one of its items, so a gap set on
+          the box never reaches it and the name would sit on top of the first
+          one. */}
+      <legend className={`pb-2 ${PANE_LABEL}`}>{label}</legend>
+      {/* **The boxes stand in from the name**, the way the public panel sets its
+          values in under the group they belong to (`components/facets.tsx`) —
+          the name says what the group is, and what is in it is one step inside. */}
+      <div className="flex flex-col gap-2 pl-2">{children}</div>
+    </fieldset>
   )
 }
 
@@ -792,11 +917,6 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
   const messages = messagesFor(locale)
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
-  // What the folded pane announces with, since on screen it is a mark and a
-  // number: the pane's own name, and how much is in force behind it.
-  const folded = view.conditions.length === 0
-    ? messages.search.refine.heading
-    : messages.search.refine.foldedWith(view.conditions.length)
   const swap = target === "research" ? "dataset" : "research"
   const carry = (which: "research" | "dataset") =>
     href(locale, listPath(which) + searchQuery({
@@ -959,58 +1079,10 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
           <RefinableList
             open={paneOpen}
             busy={busy}
+            locale={locale}
+            onToggle={togglePane}
+            inForce={view.conditions.length}
             refineHasMore={view.conditions.length > 0 || other !== null}
-            heading={(
-              <PaneHeading title={messages.search.refine.heading} rule="start">
-                {/*
-                  **It is read at the heading's size and carries a mark
-                  pointing the way it folds.** At the size the pane's other
-                  asides take (12px, no glyph) it stands beside a bold heading
-                  and is not found — the reader has to already know a control
-                  is there.
-                */}
-                <button
-                  type="button"
-                  onClick={togglePane}
-                  aria-expanded="true"
-                  className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
-                >
-                  <Icon name="chevron-left" aria-hidden="true" />
-                  {messages.search.refine.fold}
-                </button>
-              </PaneHeading>
-            )}
-            closed={(
-              // **A mark and a count, and no word.** What folding gives back is
-              // the pane's width, so the way into it again keeps as little of
-              // that as it can — the glyph says what it opens and the number
-              // says how much is in force, and the words for both are in the
-              // name it announces with. **The count is not decoration**: the
-              // conditions stand in the pane, so a fold naming nothing would
-              // leave a reader looking at a narrowed result with nothing on
-              // screen admitting to the narrowing.
-              //
-              // **4px rather than a circle**, for the reason the page numbers
-              // beside it keep theirs (`docs/ui.md`): a glyph of 16px in a box
-              // of 36 does not fill it, and a round box around something that
-              // leaves that much air reads as a disc with a mark on it rather
-              // than as one of the controls in the row.
-              <button
-                type="button"
-                onClick={togglePane}
-                aria-expanded="false"
-                aria-label={folded}
-                title={folded}
-                className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
-              >
-                <Icon name="filter" aria-hidden="true" />
-                {view.conditions.length > 0 && (
-                  <span className="rounded-full bg-brand px-1.5 font-semibold text-white text-xs">
-                    {view.conditions.length}
-                  </span>
-                )}
-              </button>
-            )}
             refine={refine}
             tools={view.parseError === null && !empty ? tools : null}
             panel={panel}

@@ -19,7 +19,7 @@ import type { CommentAnchor, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import { adminUser, comment, commentThread, reviewAcknowledgement } from "~/db/schema"
 
-import { anchorOf, type AnchorSubject } from "./anchors"
+import { anchorOf, DRAFT_ANCHOR, type AnchorSubject } from "./anchors"
 import type { CommentView, ThreadView } from "./comments"
 import { anchorExists } from "./queries.server"
 
@@ -153,6 +153,25 @@ export async function postComment(
   return startThread(db, {
     draftId: input.about.draftId,
     anchor: anchorOf(input.subject, input.path),
+    author: input.author,
+    body: input.body.trim(),
+  })
+}
+
+/**
+ * A line of the memo — a thread about the draft itself.
+ *
+ * **Nothing is checked against the content**, because the memo names no place
+ * in it. What it is checked against is the draft still being there, which is
+ * what `startThread` answers.
+ */
+export async function postDraftNote(
+  db: Executor,
+  input: { draftId: string, author: CommentAuthor, body: string },
+): Promise<PostOutcome> {
+  return startThread(db, {
+    draftId: input.draftId,
+    anchor: DRAFT_ANCHOR,
     author: input.author,
     body: input.body.trim(),
   })

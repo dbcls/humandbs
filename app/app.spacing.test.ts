@@ -83,6 +83,7 @@ const MANAGEMENT_PARTS = [
   "components/publish.tsx",
   "components/review.tsx",
   "components/upstream.tsx",
+  "components/upstream-merge.tsx",
 ]
 
 async function managementFiles(): Promise<string[]> {
@@ -126,12 +127,18 @@ describe("縦の間隔", () => {
    * **絞り込み pane を持つ一覧だけが `normal`。** h1 の下に来るのが節ではなく
    * pane の見出しで、見出しが 2 つ続く形に節と節の距離を空けると h1 だけが浮く。
    * 公開側の一覧も同じ理由で `normal` で、両者は同じ形の 2 つの面になる。
+   *
+   * **編集画面のバーだけが `tight`** (`components/draft-tools.tsx`)。あのカードが
+   * 並べるのは節ではなく 2 行 — 名前と行き先と保存、その下に出口と面の切り替え —
+   * で、節と節の距離を空けると 1 本の帯が 2 つに割れて見える。
    */
-  it("管理画面のカードは block で始まる — 絞り込む一覧だけが normal", async () => {
+  it("管理画面のカードは block で始まる — 絞り込む一覧と編集画面のバーだけが違う", async () => {
     const offenders: string[] = []
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
-      const wanted = /<RefinableList\b/.test(text) ? "normal" : "block"
+      const wanted = /<RefinableList\b/.test(text)
+        ? "normal"
+        : file.endsWith("draft-tools.tsx") ? "tight" : "block"
       for (const found of text.matchAll(/<Card\b[^>]*>\s*<Stack gap="(\w+)"/g)) {
         if (found[1] !== wanted) offenders.push(`${file}: ${found[1]} (${wanted} を待つ)`)
       }
@@ -507,6 +514,11 @@ describe("ボタンの面と形", () => {
    * **A face chosen in an expression counts the same as one written out.** Read
    * for the literal alone, a switch handing `primary` to whichever option is
    * current passed as a single filled button and drew one per field.
+   *
+   * **`accent` is a fill and is not counted here**, because it is not the
+   * screen ranking anything: it is worn by a save that is holding something
+   * unsent, so how many appear is decided by what has been typed. A screen with
+   * four things to edit can be waiting on all four.
    */
   it("塗りの面は 1 つのファイルに 1 つまで", async () => {
     const filled = /variant=(?:"primary"|\{[^}]*"primary"[^}]*\})/g
@@ -531,9 +543,10 @@ describe("ボタンの面と形", () => {
   })
 
   /** The palette itself, so that a face nobody uses cannot quietly come back. */
-  it("面は 4 つしかない", async () => {
+  it("面は 5 つしかない", async () => {
     const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
     const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
-    expect(union?.match(/"[a-z]+"/g)).toEqual(["\"primary\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
+    expect(union?.match(/"[a-z]+"/g))
+      .toEqual(["\"primary\"", "\"accent\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
   })
 })

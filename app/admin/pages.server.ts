@@ -33,7 +33,7 @@ import { redirect } from "react-router"
 import { requireCapability } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { convertible } from "~/content/units"
-import type { DatasetContent, DraftSnapshot, ResearchContent, TranslatedText } from "~/content/types"
+import type { DatasetContent, ResearchContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
 import type { BoxEntry } from "~/files/box"
@@ -96,8 +96,6 @@ import {
   readDatasetEntry,
   readDraft,
   readPublishedDataset,
-  readUndoSnapshot,
-  readUndoStack,
   researchDatasets,
   comparableVersion,
   type AdminDraftRow,
@@ -107,9 +105,11 @@ import {
   type EditableTerm,
   type PresenceRow,
   type ResearchDatasetRow,
-  type UndoEntryRow,
 } from "./queries.server"
 import {
+  ADMIN_FLAG_KEYS,
+  ADMIN_STATUSES,
+  axisCounts,
   filterResearchRows,
   isAdminFlagKey,
   isAdminStatus,
@@ -174,11 +174,21 @@ export interface AdminListRowView {
   publishedOn: string | null
 }
 
+/**
+ * How many rows each choice of the pane would leave, counted the way the public
+ * panel counts (`app/admin/listing.ts` の `axisCounts`).
+ */
+export interface AdminListCounts {
+  statuses: Record<AdminStatus, number>
+  flags: Record<AdminFlagKey, number>
+}
+
 export interface AdminListView {
   locale: Locale
   keyword: string
   statuses: AdminStatus[]
   flags: AdminFlagKey[]
+  counts: AdminListCounts
   sort: SortKey
   order: SortOrder
   size: PageSize
@@ -191,7 +201,8 @@ export interface AdminListView {
   rangeTo: number
 }
 
-function readPage(value: string | null): number {
+/** The page asked for, or the first one when the address says nothing sensible. */
+export function readPage(value: string | null): number {
   const page = Number(value ?? "1")
   return Number.isInteger(page) && page >= 1 ? page : 1
 }
@@ -226,11 +237,27 @@ export async function researchListPage(
     size,
   )
 
+  // Each axis is counted over the rows the *other* conditions leave, so that a
+  // second status is still reachable after the first has been ticked.
+  const counts: AdminListCounts = {
+    statuses: axisCounts(
+      filterResearchRows(all, { ...filter, statuses: [] }),
+      ADMIN_STATUSES,
+      (row, status) => row.status === status,
+    ),
+    flags: axisCounts(
+      filterResearchRows(all, { ...filter, flags: [] }),
+      ADMIN_FLAG_KEYS,
+      (row, flag) => row.flags[flag],
+    ),
+  }
+
   return {
     locale,
     keyword: filter.keyword,
     statuses: filter.statuses,
     flags: filter.flags,
+    counts,
     sort,
     order,
     size,
@@ -347,7 +374,6 @@ export interface AdminDraftPageView {
   datasets: ResearchDatasetRow[]
   /** Who else has this draft open, and what there is to go back to. */
   presence: PresenceView[]
-  undo: UndoEntryRow[]
   upstream: UpstreamView<DraftInput> | null
   review: ReviewMarksView
   /**
@@ -399,18 +425,17 @@ export async function draftEditorPage(
 ): Promise<AdminDraftPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, datasets, presence, undo, moved, threads, published, page] = await Promise.all([
+  const [humLabel, datasets, presence, moved, threads, published, page] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     activePresence(db, draftId),
-    readUndoStack(db, draftId),
     comparableVersion(db, researchId, null),
     readThreads(db, draftId),
     latestPublishedVersion(db, researchId),
     drawDraft(request, locale, { researchId, draftId, content: draft.content }),
   ])
 
-  const input = { note: draft.note, content: researchContentInput(draft.content) }
+  const input = { content: researchContentInput(draft.content) }
   const changed = published === null
     ? []
     : changedFromPublished(published.content, draft.content)
@@ -424,7 +449,6 @@ export async function draftEditorPage(
     input,
     datasets,
     presence: presenceView(presence, actor.sessionId),
-    undo,
     upstream: moved === null ? null : researchUpstream(moved, input),
     review: {
       changed,
@@ -446,7 +470,7 @@ function researchUpstream(
   if (isEmptyComparison(compared)) return null
   // The memo is the draft's own and is never what the version holds.
   return {
-    theirs: { note: mine.note, content: theirs },
+    theirs: { content: theirs },
     differing: compared.differing,
     number: against.number,
   }
@@ -554,7 +578,6 @@ export interface DatasetEditorView {
    */
   terms: EditableTerm[]
   presence: PresenceView[]
-  undo: UndoEntryRow[]
   upstream: UpstreamView<DatasetContentInput> | null
   review: ReviewMarksView
   /**
@@ -595,13 +618,12 @@ export async function datasetEditorPage(
   // not a dataset this draft could be editing.
   if (row === undefined) notFound()
 
-  const [entry, published, humLabel, catalog, presence, undo, threads] = await Promise.all([
+  const [entry, published, humLabel, catalog, presence, threads] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
     readPublishedDataset(db, researchId, datasetId),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
     activePresence(db, draftId),
-    readUndoStack(db, draftId),
     readThreads(db, draftId),
   ])
   const box = await adminBox(db, researchId, humLabel)
@@ -633,7 +655,6 @@ export async function datasetEditorPage(
     catalog,
     terms,
     presence: presenceView(presence, actor.sessionId),
-    undo,
     upstream: datasetUpstream(published, input),
     review: {
       changed,
@@ -811,27 +832,6 @@ export async function presenceAction(
     displayName: actor.name,
   })
   return { present: presenceView(await activePresence(db, draftId), actor.sessionId) }
-}
-
-/**
- * One entry of the undo stack, for the screen to put back into its form. It is
- * handed over rather than written: **restoring is an ordinary save**, so it
- * goes through the same revision check as anything else the author does.
- */
-export async function undoSnapshotLoader(
-  request: Request,
-  params: {
-    researchId: string | undefined
-    draftId: string | undefined
-    undoId: string | undefined
-  },
-): Promise<DraftSnapshot> {
-  const { db, draftId } = await draftOf(request, params)
-  const undoId = identity(params.undoId)
-
-  const found = await readUndoSnapshot(db, draftId, undoId)
-  if (found === null) notFound()
-  return found
 }
 
 /** A new research is created together with the draft it will be written in. */
@@ -1283,7 +1283,7 @@ export async function saveDraftAction(
   const outcome = await saveDraftContent(
     db,
     { draftId, revision: payload.data.revision },
-    { note: payload.data.note, content: content.content },
+    { content: content.content },
   )
   if (outcome.status === "saved") return { status: "saved", revision: outcome.revision }
   if (outcome.status === "gone") notFound()
@@ -1293,7 +1293,7 @@ export async function saveDraftAction(
   return {
     status: "conflict",
     revision: current.revision,
-    current: { note: current.note, content: researchContentInput(current.content) },
+    current: { content: researchContentInput(current.content) },
   }
 }
 

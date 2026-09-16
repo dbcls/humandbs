@@ -28,7 +28,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { isAnchorPath, subjectOf, type AnchorSubject } from "./anchors"
+import { isAnchorPath, isFieldAnchor, subjectOf, type AnchorSubject } from "./anchors"
 import { byAttention, checkComment, type CommentProblem, type ThreadView } from "./comments"
 import {
   readAcknowledgements,
@@ -36,6 +36,7 @@ import {
   replyToThread,
   setThreadResolved,
   postComment,
+  postDraftNote,
   type AcknowledgementView,
 } from "./comments.server"
 import { readShare } from "./queries.server"
@@ -82,6 +83,8 @@ export interface ReviewThreadView {
   thread: ThreadView
   /** What it is about, named as the screen names things. */
   subject: string
+  /** The place inside it, or null for the memo, which names none. */
+  path: string | null
   /** Where to go to deal with it. */
   href: string
 }
@@ -127,12 +130,24 @@ export async function reviewPage(
     share: shareView(share, locale),
     unresolved: threads.filter((thread) => !thread.resolved).length,
     threads: byAttention(threads).map((thread) => {
-      const subject = subjectOf(thread.anchor)
+      const anchor = thread.anchor
+      // The memo is about the draft rather than about a place in it, so it is
+      // named as itself and leads back to the screen it is written on.
+      if (!isFieldAnchor(anchor)) {
+        return {
+          thread,
+          subject: t.admin.review.memo,
+          path: null,
+          href: href(locale, adminDraftPath(researchId, draftId)),
+        }
+      }
+      const subject = subjectOf(anchor)
       return {
         thread,
         subject: subject.kind === "research"
           ? t.admin.review.research
           : labelOf.get(subject.datasetId) ?? t.preview.unnamedDataset,
+        path: anchor.path,
         href: subject.kind === "research"
           ? href(locale, adminDraftPath(researchId, draftId))
           : href(locale, adminDraftDatasetPath(researchId, draftId, subject.datasetId)),
@@ -229,10 +244,18 @@ export async function reviewAction(
 
   if (intent !== "comment") badRequest()
 
-  const path = form.get("path")
-  if (!isAnchorPath(path)) badRequest()
   const subject = readSubject(form)
   if (subject === null) badRequest()
+
+  // The memo names no place, so there is no path to check it against.
+  if (subject === "draft") {
+    const outcome = await postDraftNote(db, { draftId, author, body: body.trim() })
+    if (outcome.status === "gone") notFound()
+    return done()
+  }
+
+  const path = form.get("path")
+  if (!isAnchorPath(path)) badRequest()
 
   const outcome = await postComment(db, {
     about: {
@@ -252,8 +275,9 @@ export async function reviewAction(
   return done()
 }
 
-function readSubject(form: FormData): AnchorSubject | null {
+function readSubject(form: FormData): AnchorSubject | "draft" | null {
   const subject = form.get("subject")
+  if (subject === "draft") return "draft"
   if (subject === "research") return { kind: "research" }
   if (subject !== "dataset") return null
   const datasetId = readString(form, "datasetId")

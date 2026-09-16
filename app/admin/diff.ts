@@ -95,7 +95,6 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
   const a = base.content
   const b = other.content
 
-  into.when(base.note === other.note, "note")
   into.when(sameTextPair(a.title, b.title), "title")
   into.when(sameTextPair(a.summary.aims, b.summary.aims), "summary.aims")
   into.when(sameTextPair(a.summary.methods, b.summary.methods), "summary.methods")

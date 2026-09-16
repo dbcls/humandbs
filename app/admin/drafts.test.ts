@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest"
 
 const WRITER = "app/admin/drafts.server.ts"
 
-const DRAFT_TABLES = ["researchDraft", "draftDatasetEntry", "draftUndo", "draftPresence"]
+const DRAFT_TABLES = ["researchDraft", "draftDatasetEntry", "draftPresence"]
 
 function sources(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {

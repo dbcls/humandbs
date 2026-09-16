@@ -104,17 +104,17 @@ export type TreeEntry
     | { kind: "series", depth: number, series: SeriesRow, current: DocumentRow | null }
 
 /**
- * How many entries above this one are prefixes of its slug. `guidelines` sits
- * above `guidelines/data-sharing-guidelines`, which is what makes the listing a
- * tree without anything storing a parent.
+ * How far under the root this slug sits. `guidelines/data-sharing-guidelines`
+ * is one below `guidelines`, which is what makes the listing a tree without
+ * anything storing a parent.
+ *
+ * **It is read from the slug alone, not from what else the listing holds.** The
+ * listing can be narrowed and paged, so the entry above this one is not always
+ * on screen — a depth counted from its neighbours would move as the reader
+ * types.
  */
-function depthOf(slug: string, slugs: ReadonlySet<string>): number {
-  const segments = slug.split("/")
-  let depth = 0
-  for (let i = 1; i < segments.length; i += 1) {
-    if (slugs.has(segments.slice(0, i).join("/"))) depth += 1
-  }
-  return depth
+function depthOf(slug: string): number {
+  return slug.split("/").length - 1
 }
 
 /**
@@ -143,10 +143,125 @@ export function siteTree(documents: readonly DocumentRow[], series: readonly Ser
     })),
   ]
 
-  const slugs = new Set(top.map((entry) => entry.slug))
   return top
     .sort((a, b) => a.slug.localeCompare(b.slug))
-    .map((entry) => entry.entry(depthOf(entry.slug, slugs)))
+    .map((entry) => entry.entry(depthOf(entry.slug)))
+}
+
+/** What a row of the listing is called and titled, whichever kind it is. */
+export function entryNames(entry: TreeEntry): { slug: string, title: string } {
+  if (entry.kind === "document") return { slug: entry.document.slug, title: entry.document.title }
+  return { slug: entry.series.slug, title: entry.current?.title ?? "" }
+}
+
+/**
+ * The entries holding what was typed, in either the address or the title.
+ *
+ * **A series is matched on what its row shows** — its own slug and the title of
+ * the revision it points at. The revisions under it are not rows here, and a
+ * listing that answered on them would offer a line whose words are nowhere in
+ * it.
+ */
+export function matchingEntries(entries: readonly TreeEntry[], words: string): TreeEntry[] {
+  const needle = words.trim().toLowerCase()
+  if (needle === "") return [...entries]
+  return entries.filter((entry) => {
+    const { slug, title } = entryNames(entry)
+    return slug.toLowerCase().includes(needle) || title.toLowerCase().includes(needle)
+  })
+}
+
+/**
+ * Whether an article keeps numbered revisions.
+ *
+ * **This says what kind of row it is rather than what state it is in**: a
+ * versioned article's row stands for the pointer and everything under it at
+ * once, and a plain one stands for a body.
+ */
+export type Versioning = "versioned" | "plain"
+
+export const VERSIONINGS: readonly Versioning[] = ["versioned", "plain"]
+
+/** Whether one language of an article answers a reader. */
+export type PublishState = "published" | "unpublished"
+
+export const PUBLISH_STATES: readonly PublishState[] = ["published", "unpublished"]
+
+export function isVersioning(value: string): value is Versioning {
+  return (VERSIONINGS as readonly string[]).includes(value)
+}
+
+export function isPublishState(value: string): value is PublishState {
+  return (PUBLISH_STATES as readonly string[]).includes(value)
+}
+
+export function emptyStates(): LocaleStates {
+  return {
+    ja: { published: false, hasDraft: false },
+    en: { published: false, hasDraft: false },
+  }
+}
+
+/**
+ * What a row's two languages are up to.
+ *
+ * **A series wears the states of the revision it points at**, because that is
+ * what its address answers with. A pointer naming nothing readable answers in
+ * neither language, and is read here as exactly that.
+ */
+export function entryStates(entry: TreeEntry): LocaleStates {
+  if (entry.kind === "document") return entry.document.states
+  return entry.current?.states ?? emptyStates()
+}
+
+/** Which kind of row this is, which is what one axis of the listing reads. */
+export function versioningOf(entry: TreeEntry): Versioning {
+  return entry.kind === "series" ? "versioned" : "plain"
+}
+
+/** Whether one language of a row answers a reader, which is what the other two read. */
+export function publishStateOf(entry: TreeEntry, locale: Locale): PublishState {
+  return publishStateIn(entryStates(entry), locale)
+}
+
+/**
+ * The same read taken from the states alone, for the rows that are not
+ * articles. An announcement carries the pair a document does, and the axis a
+ * curator narrows either listing by has to mean the same thing on both.
+ */
+export function publishStateIn(states: LocaleStates, locale: Locale): PublishState {
+  return states[locale].published ? "published" : "unpublished"
+}
+
+export interface ContentsFilter {
+  keyword: string
+  /** Which kinds to keep. Empty is every kind, as an untouched axis is. */
+  versioning: readonly Versioning[]
+  ja: readonly PublishState[]
+  en: readonly PublishState[]
+}
+
+/**
+ * The rows a filter leaves.
+ *
+ * **The box and the three axes combine as an AND; within an axis the choices
+ * are an OR** — the same rule the research listing runs on
+ * (`app/admin/listing.ts`). An axis nothing is ticked on narrows nothing, so
+ * the bare listing is every article there is.
+ */
+export function filterEntries(
+  entries: readonly TreeEntry[],
+  filter: ContentsFilter,
+): TreeEntry[] {
+  return matchingEntries(entries, filter.keyword).filter((entry) => {
+    if (filter.versioning.length > 0 && !filter.versioning.includes(versioningOf(entry))) {
+      return false
+    }
+    for (const [locale, wanted] of [["ja", filter.ja], ["en", filter.en]] as const) {
+      if (wanted.length > 0 && !wanted.includes(publishStateOf(entry, locale))) return false
+    }
+    return true
+  })
 }
 
 /**
@@ -161,4 +276,78 @@ export function unansweredLocales(
 ): Locale[] {
   if (current === null) return [...locales]
   return locales.filter((locale) => !current.states[locale].published)
+}
+
+// === announcements ===
+
+/**
+ * One announcement as the listing shows it: the day it is dated, the title it
+ * is read by, and what each of its languages is up to.
+ *
+ * **The title is one string rather than one per language.** The listing is a
+ * way to reach an announcement rather than a reading of it, and a row carrying
+ * both languages of a sentence is two lines of prose where a curator is
+ * scanning for a date.
+ */
+export interface NewsRow {
+  id: string
+  title: string
+  publishedAt: string | null
+  states: LocaleStates
+}
+
+/**
+ * Whether an announcement has been given its day.
+ *
+ * **An undated announcement is one still being written.** The date is what the
+ * public listing orders by, so an item without one has nowhere to appear even
+ * where its body is published — which makes "no date" the thing about an
+ * announcement a curator hunts for rather than reads.
+ */
+export type NewsDating = "dated" | "undated"
+
+export const NEWS_DATINGS: readonly NewsDating[] = ["dated", "undated"]
+
+export function isNewsDating(value: string): value is NewsDating {
+  return (NEWS_DATINGS as readonly string[]).includes(value)
+}
+
+/** Which kind of row this is, which is what one axis of the listing reads. */
+export function datingOf(row: NewsRow): NewsDating {
+  return row.publishedAt === null ? "undated" : "dated"
+}
+
+export interface NewsFilter {
+  keyword: string
+  /** Which to keep. Empty is every one, as an untouched axis is. */
+  dating: readonly NewsDating[]
+  ja: readonly PublishState[]
+  en: readonly PublishState[]
+}
+
+/**
+ * The announcements a filter leaves.
+ *
+ * **What is typed is looked for in the date as well as the title**, because the
+ * date is what an announcement is addressed by here: `2026-06` is how a month
+ * of them is asked for, and the listing offers no other way to ask. **The two
+ * are read one at a time** rather than as one line, so that a word ending a
+ * date and beginning a title is not a match neither of them holds.
+ *
+ * The box and the three axes combine as an AND; within an axis the choices are
+ * an OR — the rule the other listings run on (`app/admin/listing.ts`).
+ */
+export function filterNewsRows(rows: readonly NewsRow[], filter: NewsFilter): NewsRow[] {
+  const needle = filter.keyword.trim().toLowerCase()
+  return rows.filter((row) => {
+    if (needle !== "") {
+      const held = [row.publishedAt ?? "", row.title]
+      if (!held.some((one) => one.toLowerCase().includes(needle))) return false
+    }
+    if (filter.dating.length > 0 && !filter.dating.includes(datingOf(row))) return false
+    for (const [locale, wanted] of [["ja", filter.ja], ["en", filter.en]] as const) {
+      if (wanted.length > 0 && !wanted.includes(publishStateIn(row.states, locale))) return false
+    }
+    return true
+  })
 }

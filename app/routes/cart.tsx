@@ -163,7 +163,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                           </Td>
                         </>
                       )}
-                  <Td narrow>
+                  <Td holds="mark">
                     <IconButton
                       name="trash"
                       label={messages.cart.removeOne(label)}

@@ -19,8 +19,8 @@
  * always where the field is.
  */
 
-import { useEffect, useState, type ReactNode } from "react"
-import { Link, useFetcher } from "react-router"
+import { useState, type ReactNode } from "react"
+import { Link } from "react-router"
 
 import { diffDraftInput, takeField } from "~/admin/diff"
 import type {
@@ -30,38 +30,34 @@ import type {
   LinksPairInput,
   ResearchContentInput,
 } from "~/admin/form"
-import { researchContentInput } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftUpstreamPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
   draftPresencePath,
-  draftUndoPath,
 } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { AnnotationLayer, Empty, Page } from "~/components/page"
+import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
-import { threadsByPath, unresolvedCount } from "~/review/comments"
-import type { DrawnDraft } from "~/review/preview.server"
+import { draftThreads, threadsByPath, unresolvedCount } from "~/review/comments"
 
 import { PaneSpot, usePanes } from "./admin"
-import { Button, Note, Stack } from "./base"
-import { DraftBar, useDraftEditing } from "./draft-tools"
+import { Badge, Button, Note, Stack } from "./base"
+import { DraftBar, useDraftEditing, useDrawn } from "./draft-tools"
+import { DraftNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { ResearchBody } from "./research"
 import {
-  AddElement,
   ConflictBand,
-  ElementCard,
   FieldHead,
+  ItemList,
   PairField,
   ProblemBand,
   RowButton,
@@ -74,10 +70,10 @@ import {
   emptySlot,
   moved,
   newId,
-  replacing,
   type Marks,
 } from "./fields"
 import { CONTROL } from "./form"
+import { Icon } from "./icons"
 
 /**
  * The section a path is written in, which is the first name in it.
@@ -88,7 +84,6 @@ import { CONTROL } from "./form"
  * the field is hidden.
  */
 /** How long the keys have to be still before the pane is redrawn. */
-const DRAW_AFTER = 300
 
 function sectionOf(path: string): string {
   return path.split(".")[0] ?? path
@@ -102,7 +97,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const review: FieldReviewData = {
     context: {
       locale,
-      action: href(locale, draftCommentsPath(view.researchId, view.draftId)),
+      action: draftCommentsPath(view.researchId, view.draftId),
       subject: RESEARCH,
       canResolve: true,
       signedInName: view.review.signedInName,
@@ -121,12 +116,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     upstream: view.upstream,
     diff: diffDraftInput,
     take: takeField,
-    body: (value) => ({ note: value.note, content: value.content }),
-    fromSnapshot: (snapshot) => ({
-      note: snapshot.note,
-      content: researchContentInput(snapshot.content),
-    }),
-    undoPath: (undoId) => draftUndoPath(view.researchId, view.draftId, undoId),
+    body: (value) => ({ content: value.content }),
   })
 
   const input = editing.value
@@ -138,36 +128,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     editing.edit({ ...input, content: produce(content) })
   }
 
-  /**
-   * The pane catching up with what is being typed.
-   *
-   * **It waits for the keys to stop.** Drawing the page is a round trip, and
-   * one per keystroke would be a request per letter for an answer nobody has
-   * time to read; a pause is also when somebody looks up at it.
-   *
-   * **The same content is not asked for twice.** Moving the caret, marking a
-   * value unsettled and back, or undoing to where it already was all leave the
-   * content as it was, and the pane has nothing to redraw.
-   *
-   * **Prose the tree cannot hold leaves the pane on the page as it was loaded.**
-   * Refusing markup is the save's job and it says where the problem is; the
-   * drawing answers with nothing rather than with half a page, and comes back
-   * as soon as the prose parses again.
-   */
-  const drawing = useFetcher<DrawnDraft | null>()
-  const submit = drawing.submit
-  const drawAt = href(locale, draftPagePath(view.researchId, view.draftId, locale))
-  const body = JSON.stringify({ revision: view.revision, note: input.note, content })
-  useEffect(() => {
-    const waiting = setTimeout(() => {
-      void submit(body, { method: "post", action: drawAt, encType: "application/json" })
-    }, DRAW_AFTER)
-    return () => {
-      clearTimeout(waiting)
-    }
-  }, [body, drawAt, submit])
-
-  const page = drawing.data ?? view.page
+  const body = JSON.stringify({ revision: view.revision, content })
+  const pageJa = useDrawn(draftPagePath(view.researchId, view.draftId, "ja"), body,
+    locale === "ja" ? view.page : null)
+  const pageEn = useDrawn(draftPagePath(view.researchId, view.draftId, "en"), body,
+    locale === "en" ? view.page : null)
 
   /**
    * Where the caret is, as a place in the content rather than a box on screen.
@@ -227,114 +192,145 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   const formBody = (
     <div onFocusCapture={onFormFocus}>
-      <Stack>
-        <PublishedBand view={view} onGo={goTo} />
+      <Card under={false}>
+        <Stack>
+          <PublishedBand view={view} onGo={goTo} />
 
-        {editing.conflict !== null && (
-          <div onClick={onBandJump}>
-            <ConflictBand locale={locale} changed={editing.conflict.changed} />
-          </div>
-        )}
-        {upstream !== null && upstream.differing.length > 0 && (
-          <UpstreamBand
-            locale={locale}
-            differing={upstream.differing}
-            number={upstream.number}
-            onTakeAll={editing.takeUpstream}
-          />
-        )}
-        {editing.problems.length > 0 && <ProblemBand locale={locale} problems={editing.problems} />}
+          {editing.conflict !== null && (
+            <div onClick={onBandJump}>
+              <ConflictBand locale={locale} changed={editing.conflict.changed} />
+            </div>
+          )}
+          {upstream !== null && upstream.differing.length > 0 && (
+            <UpstreamBand
+              locale={locale}
+              differing={upstream.differing}
+              number={upstream.number}
+              onTakeAll={editing.takeUpstream}
+            />
+          )}
+          {editing.problems.length > 0 && <ProblemBand locale={locale} problems={editing.problems} />}
 
-        {/* The memo is about the draft rather than about the research: it never
-            reaches a reader, and looking for it under a tab named after a part
-            of the description would be looking in the wrong place. */}
-        <Section id="note" title={t.sections.note}>
-          <Empty>{t.noteHint}</Empty>
-          <textarea
-            className={`${CONTROL} w-full text-sm`}
-            rows={3}
-            value={input.note}
-            onChange={(event) => { editing.edit({ ...input, note: event.target.value }) }}
-          />
-        </Section>
-
-        <Stack gap="block">
           <Stack gap="block">
-            <Section id="title" title={t.sections.title}>
-              <PairField
-                label={words.title}
-                value={content.title}
-                marks={marksFor("title")}
-                locale={locale}
-                onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
-              />
-            </Section>
-
-            <Section id="summary" title={t.sections.summary}>
-              {(["aims", "methods", "targets"] as const).map((field) => (
+            <Stack gap="block">
+              <Section id="title" title={t.sections.title}>
                 <PairField
-                  key={field}
-                  label={words[field]}
-                  value={content.summary[field]}
-                  multiline
-                  marks={marksFor(`summary.${field}`)}
+                  label={words.title}
+                  value={content.title}
+                  marks={marksFor("title")}
+                  locale={locale}
+                  onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
+                />
+              </Section>
+
+              <Section id="summary" title={t.sections.summary}>
+                {(["aims", "methods", "targets"] as const).map((field) => (
+                  <PairField
+                    key={field}
+                    label={words[field]}
+                    value={content.summary[field]}
+                    multiline
+                    marks={marksFor(`summary.${field}`)}
+                    locale={locale}
+                    onChange={(next) => {
+                      editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
+                    }}
+                  />
+                ))}
+                <LinksField
+                  label={words.url}
+                  value={content.summary.url}
+                  marks={marksFor("summary.url")}
                   locale={locale}
                   onChange={(next) => {
-                    editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
+                    editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
                   }}
                 />
-              ))}
-              <LinksField
-                label={words.url}
-                value={content.summary.url}
-                marks={marksFor("summary.url")}
-                locale={locale}
-                onChange={(next) => {
-                  editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
-                }}
-              />
-            </Section>
+              </Section>
 
-            <Section id="listingSummary" title={t.sections.listingSummary}>
-              {(["methods", "targets", "typeOfData"] as const).map((field) => (
-                <PairField
-                  key={field}
-                  label={words.listingSummary[field]}
-                  value={content.listingSummary[field]}
-                  multiline
-                  marks={marksFor(`listingSummary.${field}`)}
+              <Section id="listingSummary" title={t.sections.listingSummary}>
+                {(["methods", "targets", "typeOfData"] as const).map((field) => (
+                  <PairField
+                    key={field}
+                    label={words.listingSummary[field]}
+                    value={content.listingSummary[field]}
+                    multiline
+                    marks={marksFor(`listingSummary.${field}`)}
+                    locale={locale}
+                    onChange={(next) => {
+                      editContent((c) => ({
+                        ...c,
+                        listingSummary: { ...c.listingSummary, [field]: next },
+                      }))
+                    }}
+                  />
+                ))}
+                <FieldHead
+                  label={words.listingSummary.dataProviders}
+                  marks={marksFor("listingSummary.dataProviders")}
                   locale={locale}
+                />
+                <p className="text-ink-muted text-xs">
+                  {content.listingSummary.dataProviders.length === 0
+                    ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
+                    : t.listingProvidersOwn}
+                </p>
+                <ItemList
+                  path="listingSummary.dataProviders"
+                  locale={locale}
+                  items={content.listingSummary.dataProviders}
+                  title={words.representative}
+                  summary={(item) => item.name.ja.text || item.name.en.text}
+                  makeEmpty={() => ({ id: newId(), name: emptyPair() })}
                   onChange={(next) => {
                     editContent((c) => ({
                       ...c,
-                      listingSummary: { ...c.listingSummary, [field]: next },
+                      listingSummary: { ...c.listingSummary, dataProviders: next },
                     }))
                   }}
+                >
+                  {(item, path, set) => (
+                    <PairField
+                      label={words.representative}
+                      value={item.name}
+                      marks={marksFor(`${path}.name`)}
+                      locale={locale}
+                      onChange={(name) => { set({ ...item, name }) }}
+                    />
+                  )}
+                </ItemList>
+              </Section>
+
+              <Section id="releaseNote" title={t.sections.releaseNote}>
+                <PairField
+                  label={t.sections.releaseNote}
+                  value={content.releaseNote}
+                  multiline
+                  marks={marksFor("releaseNote")}
+                  locale={locale}
+                  onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
                 />
-              ))}
-              <FieldHead
-                label={words.listingSummary.dataProviders}
-                marks={marksFor("listingSummary.dataProviders")}
-                locale={locale}
-              />
-              <p className="text-ink-muted text-xs">
-                {content.listingSummary.dataProviders.length === 0
-                  ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
-                  : t.listingProvidersOwn}
-              </p>
-              <RepeatingList
-                path="listingSummary.dataProviders"
-                locale={locale}
-                items={content.listingSummary.dataProviders}
-                makeEmpty={() => ({ id: newId(), name: emptyPair() })}
-                onChange={(next) => {
-                  editContent((c) => ({
-                    ...c,
-                    listingSummary: { ...c.listingSummary, dataProviders: next },
-                  }))
-                }}
-              >
-                {(item, path, set) => (
+              </Section>
+            </Stack>
+
+            <RepeatingSection
+              id="dataProviders"
+              title={t.sections.dataProviders}
+              locale={locale}
+              items={content.dataProviders}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                name: emptyPair(),
+                organization: { name: emptyPair(), address: emptyPair() },
+                orcid: emptySlot(),
+                email: emptySlot(),
+              })}
+              summary={(item) => item.name.ja.text || item.name.en.text}
+            >
+              {(item, path, set) => (
+                <>
                   <PairField
                     label={words.representative}
                     value={item.name}
@@ -342,216 +338,180 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     locale={locale}
                     onChange={(name) => { set({ ...item, name }) }}
                   />
-                )}
-              </RepeatingList>
-            </Section>
+                  <PairField
+                    label={words.organization}
+                    value={item.organization.name}
+                    marks={marksFor(`${path}.organization.name`)}
+                    locale={locale}
+                    onChange={(name) => {
+                      set({ ...item, organization: { ...item.organization, name } })
+                    }}
+                  />
+                  <PairField
+                    label={t.address}
+                    value={item.organization.address}
+                    marks={marksFor(`${path}.organization.address`)}
+                    locale={locale}
+                    onChange={(address) => {
+                      set({ ...item, organization: { ...item.organization, address } })
+                    }}
+                  />
+                  <SingleField
+                    label={t.orcid}
+                    value={item.orcid}
+                    marks={marksFor(`${path}.orcid`)}
+                    locale={locale}
+                    onChange={(orcid) => { set({ ...item, orcid }) }}
+                  />
+                  <SingleField
+                    label={t.email}
+                    value={item.email}
+                    marks={marksFor(`${path}.email`)}
+                    locale={locale}
+                    onChange={(email) => { set({ ...item, email }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
 
-            <Section id="releaseNote" title={t.sections.releaseNote}>
-              <PairField
-                label={t.sections.releaseNote}
-                value={content.releaseNote}
-                multiline
-                marks={marksFor("releaseNote")}
-                locale={locale}
-                onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
-              />
+            <RepeatingSection
+              id="researchProjects"
+              title={t.sections.researchProjects}
+              locale={locale}
+              items={content.researchProjects}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
+              makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
+              summary={(item) => item.name.ja.text || item.name.en.text}
+            >
+              {(item, path, set) => (
+                <>
+                  <PairField
+                    label={words.researchProjectName}
+                    value={item.name}
+                    marks={marksFor(`${path}.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, name }) }}
+                  />
+                  <LinksField
+                    label={words.url}
+                    value={item.url}
+                    marks={marksFor(`${path}.url`)}
+                    locale={locale}
+                    onChange={(url) => { set({ ...item, url }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
+
+            <RepeatingSection
+              id="grants"
+              title={t.sections.grants}
+              locale={locale}
+              items={content.grants}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                title: emptyPair(),
+                agency: { name: emptyPair() },
+                grantIds: [],
+              })}
+              summary={(item) => item.title.ja.text || item.title.en.text}
+            >
+              {(item, path, set) => (
+                <>
+                  <PairField
+                    label={words.grantTitle}
+                    value={item.title}
+                    marks={marksFor(`${path}.title`)}
+                    locale={locale}
+                    onChange={(title) => { set({ ...item, title }) }}
+                  />
+                  <PairField
+                    label={words.grantAgency}
+                    value={item.agency.name}
+                    marks={marksFor(`${path}.agency.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, agency: { name } }) }}
+                  />
+                  <GrantIds
+                    locale={locale}
+                    value={item.grantIds}
+                    marks={marksFor(`${path}.grantIds`)}
+                    onChange={(grantIds) => { set({ ...item, grantIds }) }}
+                  />
+                </>
+              )}
+            </RepeatingSection>
+
+            <RepeatingSection
+              id="relatedPublications"
+              title={t.sections.relatedPublications}
+              locale={locale}
+              items={content.relatedPublications}
+              marksFor={marksFor}
+              onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
+              makeEmpty={() => ({
+                id: newId(),
+                title: emptySlot(),
+                doi: emptySlot(),
+                datasetIds: [],
+              })}
+              summary={(item) => item.title.text}
+            >
+              {(item, path, set) => (
+                <>
+                  <SingleField
+                    label={words.publicationTitle}
+                    value={item.title}
+                    marks={marksFor(`${path}.title`)}
+                    locale={locale}
+                    onChange={(title) => { set({ ...item, title }) }}
+                  />
+                  <SingleField
+                    label={t.doi}
+                    value={item.doi}
+                    marks={marksFor(`${path}.doi`)}
+                    locale={locale}
+                    onChange={(doi) => { set({ ...item, doi }) }}
+                  />
+                  <Stack gap="tight">
+                    <FieldHead
+                      label={t.citedDatasets}
+                      marks={marksFor(`${path}.datasetIds`)}
+                      locale={locale}
+                    />
+                    <DatasetChecklist
+                      locale={locale}
+                      datasets={view.datasets}
+                      selected={item.datasetIds}
+                      onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
+                    />
+                  </Stack>
+                </>
+              )}
+            </RepeatingSection>
+
+            <Section id="datasetIds" title={t.sections.datasets}>
+              <Empty>{t.selectDatasets}</Empty>
+              <Stack gap="tight">
+                <FieldHead
+                  label={t.sections.datasets}
+                  marks={marksFor("datasetIds")}
+                  locale={locale}
+                />
+                <DatasetOrder
+                  locale={locale}
+                  datasets={view.datasets}
+                  selected={content.datasetIds}
+                  onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
+                />
+              </Stack>
             </Section>
           </Stack>
-
-          <RepeatingSection
-            id="dataProviders"
-            title={t.sections.dataProviders}
-            locale={locale}
-            items={content.dataProviders}
-            marksFor={marksFor}
-            onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
-            makeEmpty={() => ({
-              id: newId(),
-              name: emptyPair(),
-              organization: { name: emptyPair(), address: emptyPair() },
-              orcid: emptySlot(),
-              email: emptySlot(),
-            })}
-          >
-            {(item, path, set) => (
-              <>
-                <PairField
-                  label={words.representative}
-                  value={item.name}
-                  marks={marksFor(`${path}.name`)}
-                  locale={locale}
-                  onChange={(name) => { set({ ...item, name }) }}
-                />
-                <PairField
-                  label={words.organization}
-                  value={item.organization.name}
-                  marks={marksFor(`${path}.organization.name`)}
-                  locale={locale}
-                  onChange={(name) => {
-                    set({ ...item, organization: { ...item.organization, name } })
-                  }}
-                />
-                <PairField
-                  label={t.address}
-                  value={item.organization.address}
-                  marks={marksFor(`${path}.organization.address`)}
-                  locale={locale}
-                  onChange={(address) => {
-                    set({ ...item, organization: { ...item.organization, address } })
-                  }}
-                />
-                <SingleField
-                  label={t.orcid}
-                  value={item.orcid}
-                  marks={marksFor(`${path}.orcid`)}
-                  locale={locale}
-                  onChange={(orcid) => { set({ ...item, orcid }) }}
-                />
-                <SingleField
-                  label={t.email}
-                  value={item.email}
-                  marks={marksFor(`${path}.email`)}
-                  locale={locale}
-                  onChange={(email) => { set({ ...item, email }) }}
-                />
-              </>
-            )}
-          </RepeatingSection>
-
-          <RepeatingSection
-            id="researchProjects"
-            title={t.sections.researchProjects}
-            locale={locale}
-            items={content.researchProjects}
-            marksFor={marksFor}
-            onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
-            makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
-          >
-            {(item, path, set) => (
-              <>
-                <PairField
-                  label={words.researchProjectName}
-                  value={item.name}
-                  marks={marksFor(`${path}.name`)}
-                  locale={locale}
-                  onChange={(name) => { set({ ...item, name }) }}
-                />
-                <LinksField
-                  label={words.url}
-                  value={item.url}
-                  marks={marksFor(`${path}.url`)}
-                  locale={locale}
-                  onChange={(url) => { set({ ...item, url }) }}
-                />
-              </>
-            )}
-          </RepeatingSection>
-
-          <RepeatingSection
-            id="grants"
-            title={t.sections.grants}
-            locale={locale}
-            items={content.grants}
-            marksFor={marksFor}
-            onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
-            makeEmpty={() => ({
-              id: newId(),
-              title: emptyPair(),
-              agency: { name: emptyPair() },
-              grantIds: [],
-            })}
-          >
-            {(item, path, set) => (
-              <>
-                <PairField
-                  label={words.grantTitle}
-                  value={item.title}
-                  marks={marksFor(`${path}.title`)}
-                  locale={locale}
-                  onChange={(title) => { set({ ...item, title }) }}
-                />
-                <PairField
-                  label={words.grantAgency}
-                  value={item.agency.name}
-                  marks={marksFor(`${path}.agency.name`)}
-                  locale={locale}
-                  onChange={(name) => { set({ ...item, agency: { name } }) }}
-                />
-                <GrantIds
-                  locale={locale}
-                  value={item.grantIds}
-                  marks={marksFor(`${path}.grantIds`)}
-                  onChange={(grantIds) => { set({ ...item, grantIds }) }}
-                />
-              </>
-            )}
-          </RepeatingSection>
-
-          <RepeatingSection
-            id="relatedPublications"
-            title={t.sections.relatedPublications}
-            locale={locale}
-            items={content.relatedPublications}
-            marksFor={marksFor}
-            onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
-            makeEmpty={() => ({
-              id: newId(),
-              title: emptySlot(),
-              doi: emptySlot(),
-              datasetIds: [],
-            })}
-          >
-            {(item, path, set) => (
-              <>
-                <SingleField
-                  label={words.publicationTitle}
-                  value={item.title}
-                  marks={marksFor(`${path}.title`)}
-                  locale={locale}
-                  onChange={(title) => { set({ ...item, title }) }}
-                />
-                <SingleField
-                  label={t.doi}
-                  value={item.doi}
-                  marks={marksFor(`${path}.doi`)}
-                  locale={locale}
-                  onChange={(doi) => { set({ ...item, doi }) }}
-                />
-                <Stack gap="tight">
-                  <FieldHead
-                    label={t.citedDatasets}
-                    marks={marksFor(`${path}.datasetIds`)}
-                    locale={locale}
-                  />
-                  <DatasetChecklist
-                    locale={locale}
-                    datasets={view.datasets}
-                    selected={item.datasetIds}
-                    onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
-                  />
-                </Stack>
-              </>
-            )}
-          </RepeatingSection>
-
-          <Section id="datasetIds" title={t.sections.datasets}>
-            <Empty>{t.selectDatasets}</Empty>
-            <Stack gap="tight">
-              <FieldHead
-                label={t.sections.datasets}
-                marks={marksFor("datasetIds")}
-                locale={locale}
-              />
-              <DatasetOrder
-                locale={locale}
-                datasets={view.datasets}
-                selected={content.datasetIds}
-                onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
-              />
-            </Stack>
-          </Section>
         </Stack>
-      </Stack>
+      </Card>
     </div>
   )
   const panes = usePanes({
@@ -559,16 +519,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     remember: view.draftId,
     contents: [
       { id: "form", label: t.paneForm, body: formBody },
-      {
-        id: "page",
-        label: t.panePage,
-        // The release note is drawn because this is a draft: on a published
-        // page the note belongs to the release list, and a draft has none.
-        body: (
-          <AnnotationLayer
-            annotate={(anchor) => (
-              <>
-                {/*
+      // The release note is drawn because this is a draft: on a published page
+      // the note belongs to the release list, and a draft has none.
+      ...([["page", t.panePageJa, "ja", pageJa], ["page-en", t.panePageEn, "en", pageEn]] as const).map(
+        ([id, label, language, drawn]) => ({
+          id,
+          label,
+          body: (
+            <AnnotationLayer
+              annotate={(anchor) => (
+                <>
+                  {/*
                   **What the page carries and what the form carries are split by
                   whose question it is.** A difference from the published version
                   and a comment are about the place a reader looks at, so they
@@ -576,19 +537,36 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   refused are about the hands typing, and stay in the form. Drawn
                   in both, one thing waiting would appear on the screen twice.
                 */}
-                <FieldReview review={review} at={anchor} />
-                <PaneSpot
-                  here={anchor === at}
-                  label={t.goToField}
-                  onGo={() => { goTo(anchor) }}
-                />
-              </>
-            )}
-          >
-            <ResearchBody view={page.view} locale={locale} releaseNote />
-          </AnnotationLayer>
-        ),
-      },
+                  <FieldReview review={review} at={anchor} />
+                  <PaneSpot
+                    here={anchor === at}
+                    label={t.goToField}
+                    onGo={() => { goTo(anchor) }}
+                  />
+                </>
+              )}
+            >
+              <PageHead
+                level="p"
+                kicker={words.researchId}
+                label={(
+                  <>
+                    <Icon name="book" aria-hidden="true" />
+                    {view.page.humLabel ?? t.unlabelled}
+                  </>
+                )}
+              >
+                <Badge onBand>{t.draftBadge}</Badge>
+              </PageHead>
+              <Card>
+                {/* **Nothing is drawn until this language has been drawn.** The
+                  other language's page would be the wrong words under the right
+                  tab, and the first drawing arrives a keystroke's pause later. */}
+                {drawn !== null && <ResearchBody view={drawn.view} locale={language} releaseNote />}
+              </Card>
+            </AnnotationLayer>
+          ),
+        })),
     ],
   })
 
@@ -602,38 +580,44 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         */}
         <DraftBar
           locale={locale}
-          heading={view.humLabel === null ? t.heading : `${view.humLabel} ${t.heading}`}
+          heading={view.humLabel === null ? t.headingUnlabelled : t.headingOf(view.humLabel)}
           back={{
             to: href(locale, adminResearchPath(view.researchId)),
             label: t.backToResearch,
+            icon: "chevron-left",
           }}
           links={[
             {
               to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
               label: messagesFor(locale).admin.draft.datasets,
-            },
-            {
-              to: href(locale, adminDraftUpstreamPath(view.researchId, view.draftId)),
-              label: messagesFor(locale).admin.templates.headingDraft,
+              icon: "database",
             },
             {
               to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
-              label: t.review,
+              label: t.reviewNext,
+              icon: "comment",
             },
             {
               to: href(locale, adminDraftPublishPath(view.researchId, view.draftId)),
               label: messagesFor(locale).admin.publish.open,
+              icon: "upload",
             },
           ]}
           dirty={editing.dirty}
           saved={editing.saved}
           saving={editing.saving}
           onSave={editing.save}
-          undo={view.undo}
-          onUndo={editing.undo}
-          undoLoading={editing.undoLoading}
           presencePath={draftPresencePath(view.researchId, view.draftId)}
           presence={view.presence}
+          /* The memo is about the draft rather than about the research: it never
+             reaches a reader, and looking for it among the parts of the
+             description would be looking in the wrong place. */
+          memo={(
+            <DraftNote
+              context={{ ...review.context, subject: "draft" }}
+              threads={draftThreads(view.review.threads)}
+            />
+          )}
         >
           {panes.control}
         </DraftBar>
@@ -729,6 +713,7 @@ function RepeatingSection<T extends { id: string }>({
   marksFor,
   onChange,
   makeEmpty,
+  summary,
   children,
 }: {
   id: string
@@ -739,71 +724,26 @@ function RepeatingSection<T extends { id: string }>({
   onChange: (next: T[]) => void
   /** One more of whatever the list holds, with nothing written in it yet. */
   makeEmpty: () => T
+  /** What one element is, in a line, for the card that stands for it. */
+  summary: (item: T) => string
   /** One element's own fields, given the path it is addressed by and its setter. */
   children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
   return (
     <Section id={id} title={title}>
       <FieldHead label={title} marks={marksFor(id)} locale={locale} />
-      <RepeatingList
+      <ItemList
         path={id}
         locale={locale}
         items={items}
+        title={title}
+        summary={summary}
         onChange={onChange}
         makeEmpty={makeEmpty}
       >
         {children}
-      </RepeatingList>
+      </ItemList>
     </Section>
-  )
-}
-
-/**
- * The cards themselves, without the section around them.
- *
- * A list of one kind of thing is usually the whole of a section, and
- * `RepeatingSection` is that case. **A list that sits among other fields cannot
- * open a second section**: the path a band jumps to is resolved to an element by
- * its first name, so a nested section would give one name two places to land.
- */
-function RepeatingList<T extends { id: string }>({
-  path,
-  locale,
-  items,
-  onChange,
-  makeEmpty,
-  children,
-}: {
-  /** What one element's path opens with. */
-  path: string
-  locale: Locale
-  items: T[]
-  onChange: (next: T[]) => void
-  makeEmpty: () => T
-  children: (item: T, path: string, set: (next: T) => void) => ReactNode
-}) {
-  const t = messagesFor(locale).admin.editor
-
-  return (
-    <>
-      {items.map((item, at) => (
-        <ElementCard
-          key={item.id}
-          index={at}
-          count={items.length}
-          locale={locale}
-          onMove={(by) => { onChange(moved(items, at, by)) }}
-          onRemove={() => { onChange(items.filter((row) => row.id !== item.id)) }}
-        >
-          {children(
-            item,
-            `${path}.${item.id}`,
-            (next) => { onChange(replacing(items, item.id, next)) },
-          )}
-        </ElementCard>
-      ))}
-      <AddElement label={t.add} onClick={() => { onChange([...items, makeEmpty()]) }} />
-    </>
   )
 }
 

@@ -8,7 +8,8 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
 import { Fold, PANE_LABEL, PaneHeading, Stack } from "./base"
-import { Submit, TextArea } from "./form"
+import { Checkbox, Submit, TextArea } from "./form"
+import { Icon } from "./icons"
 import { Empty } from "./page"
 
 /**
@@ -45,13 +46,14 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
       {view.provider !== null && (
         <Stack gap="normal">
           <PaneHeading title={t.field.provider} level="h3" rule="start" />
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="provider" defaultChecked />
-            <span>
-              {[view.provider.nameJa, view.provider.affiliationJa].filter((one) => one !== "").join(" / ")}
-              <span className="block text-ink-muted text-xs">{t.takeProviderNote}</span>
-            </span>
-          </label>
+          <Checkbox
+            label={[view.provider.nameJa, view.provider.affiliationJa]
+              .filter((one) => one !== "")
+              .join(" / ")}
+            name="provider"
+            checked
+            hint={t.takeProviderNote}
+          />
         </Stack>
       )}
 
@@ -63,16 +65,13 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
               <ul className="flex flex-col gap-2 text-sm">
                 {view.datasets.map((entry) => (
                   <li key={entry.accession} className="flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        name="accession"
-                        value={entry.accession}
-                        defaultChecked={entry.heldBy === null}
-                        disabled={entry.heldBy !== null}
-                      />
-                      <span className="font-mono">{entry.accession}</span>
-                    </label>
+                    <Checkbox
+                      label={entry.accession}
+                      name="accession"
+                      value={entry.accession}
+                      checked={entry.heldBy === null}
+                      disabled={entry.heldBy !== null}
+                    />
                     {entry.description !== "" && (
                       <span className="text-ink-muted">{entry.description}</span>
                     )}
@@ -87,7 +86,7 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
             )}
       </Stack>
 
-      <div><Submit variant="primary">{t.apply}</Submit></div>
+      <div><Submit variant="primary" icon={<Icon name="download" />}>{t.apply}</Submit></div>
     </Stack>
   )
 }
@@ -102,10 +101,13 @@ function MergeField({ locale, row }: { locale: Locale, row: MergeRow }) {
         <Sided label={t.inDraft} value={row.current} />
         <Sided label={t.inApplication} value={row.incoming} />
       </div>
+      {/* The same face and size as the two panels above, which is what lets a
+          reader see this as one of the three readings of one sentence. */}
       <TextArea
         label={`${t.field[row.field]} — ${language}`}
         name={fieldKey(row)}
         value={mergeInitial(row)}
+        look="plain"
         rows={4}
       />
     </Stack>

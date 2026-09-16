@@ -348,7 +348,7 @@ describe("横に流れる表で残る列", () => {
     const marked = renderToStaticMarkup(
       <Table headers={["", "研究 ID"]} stuck={2}>
         <tr>
-          <Td stuck={0} narrow>x</Td>
+          <Td stuck={0} holds="mark">x</Td>
           <Td stuck={1} nowrap>hum0001</Td>
         </tr>
       </Table>,

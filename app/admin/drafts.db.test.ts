@@ -11,7 +11,6 @@ import { seedVersion } from "~/db/seed"
 
 import { PRESENCE_WINDOW_SECONDS } from "./presence"
 import {
-  UNDO_DEPTH,
   createDatasetInDraft,
   createDraft,
   createResearchWithDraft,
@@ -26,8 +25,6 @@ import {
   activePresence,
   readDatasetEntry,
   readDraft,
-  readUndoSnapshot,
-  readUndoStack,
 } from "./queries.server"
 
 /**
@@ -206,29 +203,25 @@ describe("saving a draft", () => {
     const { draftId } = await createResearchWithDraft(db)
 
     const outcome = await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "for the 2026 release",
       content: titled("written"),
     })
 
     expect(outcome).toEqual({ status: "saved", revision: 2 })
     const draft = await readDraft(db, draftId)
-    expect(draft?.note).toBe("for the 2026 release")
     expect(draft?.content.title.ja).toEqual(filled("written"))
   })
 
   it("reports a conflict and changes nothing when the revision no longer matches", async () => {
     const { draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "theirs", content: titled("theirs") })
+    await saveDraftContent(db, { draftId, revision: 1 }, { content: titled("theirs") })
 
     const outcome = await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "mine",
       content: titled("mine"),
     })
 
     expect(outcome).toEqual({ status: "conflict" })
     const draft = await readDraft(db, draftId)
     expect(draft?.revision).toBe(2)
-    expect(draft?.note).toBe("theirs")
     expect(draft?.content.title.ja).toEqual(filled("theirs"))
   })
 
@@ -237,7 +230,6 @@ describe("saving a draft", () => {
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, draftId))
 
     expect(await saveDraftContent(db, { draftId, revision: 1 }, {
-      note: "",
       content: emptyResearchContent(),
     })).toEqual({ status: "gone" })
   })
@@ -250,8 +242,6 @@ describe("discarding a draft", () => {
       .returning({ id: s.dataset.id }))
     await db.insert(s.draftDatasetEntry)
       .values({ draftId, datasetId: dataset.id, content: emptyDatasetContent() })
-    await db.insert(s.draftUndo)
-      .values({ draftId, snapshot: { reason: "before-save", note: "", content: emptyResearchContent(), datasetEntries: [] } })
     await db.insert(s.draftPresence).values({ draftId, sessionId: "a-session", displayName: "curator" })
     const thread = only(await db.insert(s.commentThread)
       .values({ draftId, anchor: { kind: "research-field", path: "title" } })
@@ -261,7 +251,7 @@ describe("discarding a draft", () => {
     await db.insert(s.reviewAcknowledgement).values({ draftId, actorName: "a provider" })
   }
 
-  it("takes the entries, the undo stack, the comments, the presence and its own datasets", async () => {
+  it("takes the entries, the comments, the presence and its own datasets", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     await hangEverythingOff(draftId, researchId)
 
@@ -270,7 +260,6 @@ describe("discarding a draft", () => {
 
     expect(await db.select().from(s.researchDraft)).toHaveLength(0)
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
-    expect(await db.select().from(s.draftUndo)).toHaveLength(0)
     expect(await db.select().from(s.draftPresence)).toHaveLength(0)
     expect(await db.select().from(s.commentThread)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
@@ -296,7 +285,7 @@ describe("discarding a draft", () => {
 
   it("refuses when the revision no longer matches, and the draft stays", async () => {
     const { draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "", content: titled("theirs") })
+    await saveDraftContent(db, { draftId, revision: 1 }, { content: titled("theirs") })
 
     expect(await discardDraft(db, { draftId, revision: 1 }, CURATOR))
       .toEqual({ status: "conflict" })
@@ -319,7 +308,7 @@ describe("discarding a draft", () => {
 
   it("records nothing when it did not discard anything", async () => {
     const { draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "", content: titled("theirs") })
+    await saveDraftContent(db, { draftId, revision: 1 }, { content: titled("theirs") })
 
     await discardDraft(db, { draftId, revision: 1 }, CURATOR)
     await discardDraft(db, { draftId: draftId, revision: 99 }, BOOTSTRAP_ACTOR)
@@ -424,65 +413,6 @@ describe("writing a dataset of a draft", () => {
   })
 })
 
-describe("the undo stack", () => {
-  it("keeps the state as it stood before an explicit save", async () => {
-    const { draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "first", content: titled("first") })
-    await saveDraftContent(db, { draftId, revision: 2 }, { note: "second", content: titled("second") })
-
-    const stack = await readUndoStack(db, draftId)
-    expect(stack.map((entry) => entry.reason)).toEqual(["before-save", "before-save"])
-    const newest = await readUndoSnapshot(db, draftId, stack[0]?.id ?? "")
-    expect(newest?.note).toBe("first")
-    expect(newest?.content.title.ja).toEqual(filled("first"))
-  })
-
-  it("keeps the form a conflict refused, which exists nowhere else once the screen closes", async () => {
-    const { draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "theirs", content: titled("theirs") })
-
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "mine", content: titled("mine") })
-
-    const stack = await readUndoStack(db, draftId)
-    expect(stack[0]?.reason).toBe("rejected")
-    const refused = await readUndoSnapshot(db, draftId, stack[0]?.id ?? "")
-    expect(refused?.note).toBe("mine")
-    expect(refused?.content.title.ja).toEqual(filled("mine"))
-  })
-
-  it("keeps the dataset a conflict refused alongside what the draft already held", async () => {
-    const { researchId, draftId } = await createResearchWithDraft(db)
-    const kept = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id })).id
-    const contested = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id })).id
-    await saveDatasetEntry(db, { draftId, datasetId: kept, revision: null }, described("kept"))
-    await saveDatasetEntry(db, { draftId, datasetId: contested, revision: null }, described("theirs"))
-
-    await saveDatasetEntry(db, { draftId, datasetId: contested, revision: null }, described("mine"))
-
-    const stack = await readUndoStack(db, draftId)
-    const refused = await readUndoSnapshot(db, draftId, stack[0]?.id ?? "")
-    expect(refused?.reason).toBe("rejected")
-    const entries = new Map(refused?.datasetEntries.map((row) => [row.datasetId, row.content]))
-    expect(entries.get(contested)).toEqual(described("mine"))
-    expect(entries.get(kept)).toEqual(described("kept"))
-  })
-
-  it("never grows past ten, dropping the oldest to make room", async () => {
-    const { draftId } = await createResearchWithDraft(db)
-    for (let revision = 1; revision <= 14; revision += 1) {
-      await saveDraftContent(db, { draftId, revision }, {
-        note: `save ${revision}`,
-        content: titled(`save ${revision}`),
-      })
-    }
-
-    const stack = await readUndoStack(db, draftId)
-    expect(stack).toHaveLength(UNDO_DEPTH)
-    const oldest = await readUndoSnapshot(db, draftId, stack[stack.length - 1]?.id ?? "")
-    expect(oldest?.note).toBe("save 4")
-  })
-})
-
 describe("who has a draft open", () => {
   it("keeps one row per session however often it says so", async () => {
     const { draftId } = await createResearchWithDraft(db)
@@ -526,7 +456,7 @@ describe("a dataset a draft adds", () => {
 
   it("leaves nothing behind when the draft has moved on since the screen opened", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
-    await saveDraftContent(db, { draftId, revision: 1 }, { note: "", content: titled("theirs") })
+    await saveDraftContent(db, { draftId, revision: 1 }, { content: titled("theirs") })
 
     expect(await createDatasetInDraft(db, { draftId, revision: 1 }, researchId))
       .toEqual({ status: "conflict" })

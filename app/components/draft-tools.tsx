@@ -1,29 +1,28 @@
 /**
  * What every editing screen of a draft carries, whichever thing it edits.
  *
- * Two of them are about the draft rather than about the screen, so a research
- * and one of its datasets show the same thing — the same people, the same
- * stack. **A dataset editor is an editor of the draft**, and somebody who has
- * one open is somebody to be careful of on the other. The bar and the state
- * behind it are here for the same reason: the two screens differ in what a
- * field is, not in what saving one means.
+ * Who else has the draft open is about the draft rather than about the screen,
+ * so a research and one of its datasets show the same people. **A dataset
+ * editor is an editor of the draft**, and somebody who has one open is somebody
+ * to be careful of on the other. The bar and the state behind it are here for
+ * the same reason: the two screens differ in what a field is, not in what
+ * saving one means.
  */
 
 import { useEffect, useState, type ReactNode } from "react"
-import { Link, useFetcher, type SubmitTarget } from "react-router"
+import { useFetcher, type SubmitTarget } from "react-router"
 
 import type { FieldProblem } from "~/admin/form.server"
 import { takeAll } from "~/admin/merge"
 import type { PresenceView, UpstreamView } from "~/admin/pages.server"
 import { PRESENCE_HEARTBEAT_SECONDS } from "~/admin/presence"
-import type { UndoEntryRow } from "~/admin/queries.server"
-import type { DraftSnapshot } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { AdminBack } from "./admin"
-import { Button, Heading, Menu, MENU_ITEM, Stack } from "./base"
-import { Empty } from "./page"
+import { Button, ButtonLink, Heading, Stack } from "./base"
+import { Icon, type IconName } from "./icons"
+import { Card } from "./page"
 import type { Marks } from "./fields"
 
 /**
@@ -65,62 +64,6 @@ export function PresenceLine({ locale, path, initial }: {
 }
 
 /**
- * The stack of what was on screen before, and of what a conflict refused.
- *
- * Picking one puts it back into the form and nowhere else. **Nothing here
- * writes**: an entry that a conflict refused would never pass the revision
- * check anyway, and one from before a save goes back the way any other edit
- * does — by being saved.
- *
- * **An empty stack is words rather than a control that cannot be pressed.** A
- * panel is a `<details>` and has no disabled state, and there is nothing behind
- * this one to open until somebody has saved once.
- */
-export function UndoMenu({ locale, entries, onPick, loading }: {
-  locale: Locale
-  entries: UndoEntryRow[]
-  onPick: (undoId: string) => void
-  loading: boolean
-}) {
-  const t = messagesFor(locale).admin.draft
-
-  if (entries.length === 0) return <Empty>{t.undoEmpty}</Empty>
-
-  return (
-    <Menu label={t.undo} icon="undo" word>
-      {entries.map((entry) => (
-        <div key={entry.id} className={MENU_ITEM}>
-          <span className="flex items-center gap-3">
-            <span>{stamp(entry.createdAt)}</span>
-            <span className="text-ink-muted">{t.undoReason[entry.reason]}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              disabled={loading}
-              onClick={(event) => {
-                // Choosing an entry has to close the panel, and what it does is
-                // a load rather than a move — nothing else here would close it.
-                const panel = event.currentTarget.closest("details")
-                if (panel !== null) panel.open = false
-                onPick(entry.id)
-              }}
-            >
-              {t.undoTake}
-            </Button>
-          </span>
-        </div>
-      ))}
-    </Menu>
-  )
-}
-
-/** The day and minute, which is as fine as a stack ten deep ever needs. */
-function stamp(iso: string): string {
-  return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`
-}
-
-/**
  * The bar an editing screen stands under: what is being edited, the way back
  * out of it, whether there is anything unsaved, and the way to save.
  *
@@ -129,8 +72,8 @@ function stamp(iso: string): string {
  * the screen for most of the time it is being typed.
  *
  * The two screens differ only in where they lead and in what they are called,
- * so both arrive as props; `children` is whatever a screen hangs under the bar
- * — the way between its own parts.
+ * so both arrive as props; `children` is how a screen lets the reader arrange
+ * what is below, which stands with the save rather than with the name.
  */
 export function DraftBar({
   locale,
@@ -142,9 +85,7 @@ export function DraftBar({
   saved,
   saving,
   onSave,
-  undo,
-  onUndo,
-  undoLoading,
+  memo,
   presencePath,
   presence,
   children,
@@ -153,39 +94,77 @@ export function DraftBar({
   /** What this screen edits, as it is known: a research ID, a dataset label. */
   heading: string
   /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
-  back: { to: string, label: string }
+  back: { to: string, label: string, icon: IconName }
   /** The other faces of what is being edited, in the order it offers them. */
-  links: { to: string, label: string }[]
+  links: { to: string, label: string, icon: IconName }[]
   /** Anything else the screen has to say about what it is editing. */
   note?: ReactNode
+  /**
+   * What is written about the draft rather than about what it holds. Only the
+   * research editor carries it: a dataset is a part of the draft, and a note
+   * about the draft written on one of its parts would be found from one screen
+   * and not from the other.
+   */
+  memo?: ReactNode
   dirty: boolean
   saved: boolean
   saving: boolean
   onSave: () => void
-  undo: UndoEntryRow[]
-  onUndo: (undoId: string) => void
-  undoLoading: boolean
   presencePath: string
   presence: PresenceView[]
   children?: ReactNode
 }) {
   const t = messagesFor(locale).admin.editor
   return (
-    <div className="sticky top-0 z-10 border-line border-b bg-white py-3">
+    <Card under={false}>
       <Stack gap="tight">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Centred rather than on the baseline: the name is a step larger
-              than the links beside it, and a shared baseline drops the smaller
-              of the two below the middle of the row (`docs/ui.md`). */}
-          <div className="flex flex-wrap items-center gap-3">
-            <AdminBack to={back.to} label={back.label} />
-            <Heading level="h1" look="bar" rule="start" title={heading} />
-            {links.map((link) => (
-              <Link key={link.to} to={link.to} className="text-sm">{link.label}</Link>
-            ))}
+        {/*
+          **The row that names what is being edited holds nothing else.** The
+          other faces of the draft are places to go rather than words the name
+          runs into, and the way out is the one of them that leaves — it stands
+          at the far end because that is where a row ends, not beside the name
+          it leaves behind.
+        */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          <Heading level="h1" title={heading} />
+          <AdminBack to={back.to} label={back.label} icon={back.icon} />
+        </div>
+        {/*
+          **Each of the other faces is a control carrying the mark of what it
+          leads to.** As words alone they read as a sentence, and a card whose
+          only outlined thing is the way out says that leaving is the work
+          (`docs/ui.md`).
+        */}
+        {(links.length > 0 || note !== undefined) && (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {links.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {links.map((link) => (
+                  <ButtonLink
+                    key={link.to}
+                    to={link.to}
+                    variant="secondary"
+                    icon={<Icon name={link.icon} aria-hidden="true" />}
+                  >
+                    {link.label}
+                  </ButtonLink>
+                ))}
+              </div>
+            )}
             {note}
           </div>
-          <div className="flex items-center gap-3 text-sm">
+        )}
+        {/*
+          **Who else is here, how the screen below is arranged, and what to do
+          with the work.** None of the three is about what is being edited — one
+          is about the people, one is the reader's own — so none of them belongs
+          in the row that names it. The arrangement and the save keep the far
+          end of the row whether or not anybody else is looking at the draft.
+        */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <PresenceLine locale={locale} path={presencePath} initial={presence} />
+          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+            {children}
             {/*
               **What the save is doing is said here and not on the button.** A
               control that renames itself while it works is a control the reader
@@ -199,17 +178,67 @@ export function DraftBar({
               {!saving && dirty && <span className="text-accent">{t.unsaved}</span>}
               {!saving && !dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
             </span>
-            <UndoMenu locale={locale} entries={undo} onPick={onUndo} loading={undoLoading} />
-            <Button type="button" variant="primary" onClick={onSave} disabled={saving}>
+            {/*
+              **The one control that carries the accent, and only while there is
+              something to save.** The colour says there is unsaved work and the
+              disabled state says there is not — but neither reaches somebody
+              who is not looking at it, so the words beside it stay.
+            */}
+            <Button
+              type="button"
+              variant="accent"
+              onClick={onSave}
+              disabled={!dirty || saving}
+              icon={<Icon name="save" aria-hidden="true" />}
+            >
               {t.save}
             </Button>
           </div>
         </div>
-        <PresenceLine locale={locale} path={presencePath} initial={presence} />
-        {children}
+        {memo}
       </Stack>
-    </div>
+    </Card>
   )
+}
+
+/** How long the keys have to stop before the pane beside the form is redrawn. */
+const DRAW_AFTER = 300
+
+/**
+ * The pane catching up with what is being typed, in one language.
+ *
+ * **It waits for the keys to stop.** Drawing the page is a round trip, and one
+ * per keystroke would be a request per letter for an answer nobody has time to
+ * read; a pause is also when somebody looks up at it.
+ *
+ * **The same content is not asked for twice.** Moving the caret, or marking a
+ * value unsettled and back, leaves the content as it was, and the pane has
+ * nothing to redraw.
+ *
+ * **Prose the tree cannot hold leaves the pane on the page as it was loaded.**
+ * Refusing markup is the save's job and it says where the problem is; the
+ * drawing answers with nothing rather than with half a page, and comes back as
+ * soon as the prose parses again.
+ *
+ * **Both languages are drawn, not the one being looked at.** Which pane holds
+ * which page is the reader's own arrangement and both can hold one at once, so
+ * a drawing that waited to be looked at would arrive after the look.
+ */
+export function useDrawn<T>(at: string, body: string, initial: T | null): T | null {
+  // The fetcher is typed by what the route answers with; a generic one cannot
+  // be told that a JSON document survives the trip unchanged.
+  const drawing = useFetcher() as { data?: T | null, submit: ReturnType<typeof useFetcher>["submit"] }
+  const submit = drawing.submit
+  useEffect(() => {
+    const waiting = setTimeout(() => {
+      void submit(body, { method: "post", action: at, encType: "application/json" })
+    }, DRAW_AFTER)
+    return () => {
+      clearTimeout(waiting)
+    }
+  }, [body, at, submit])
+
+  return drawing.data ?? initial
 }
 
 /**
@@ -243,14 +272,6 @@ export interface DraftEditingOptions<T> {
   take: (mine: T, theirs: T, path: string) => T
   /** What a save posts besides the revision. */
   body: (value: T) => Record<string, unknown>
-  /**
-   * This screen's part of a snapshot off the stack, or null when the snapshot
-   * holds none — a snapshot from before the draft had touched a dataset has
-   * nothing to put back into that dataset's form.
-   */
-  fromSnapshot: (snapshot: DraftSnapshot) => T | null
-  /** Where a snapshot is read from, by its id. */
-  undoPath: (undoId: string) => string
   /** What the review layer hangs beside a field, when the screen has one. */
   extraFor?: (path: string) => ReactNode
 }
@@ -272,20 +293,16 @@ export interface DraftEditing<T> {
   /** Taking everything only the other publish touched. */
   takeUpstream: () => void
   marksFor: (path: string) => Marks
-  undo: (undoId: string) => void
-  undoLoading: boolean
-  /** Whether the last snapshot taken off the stack held nothing for this screen. */
-  undoMissing: boolean
 }
 
 /**
  * Everything an editing screen does between a keystroke and a saved draft.
  *
  * **What is typed is never taken away.** A refused save leaves the form exactly
- * as it was and marks the fields the other version moved; refused markup comes
- * back attached to the field it was written in; a snapshot off the stack is
- * put into the form and left there as unsaved work, which is what keeps going
- * back from being a way around the revision check.
+ * as it was and marks the fields the other version moved, and refused markup
+ * comes back attached to the field it was written in. Nothing here replaces
+ * what is in the form — the only way back to an earlier state is the other
+ * version, taken field by field.
  *
  * The answer is taken while rendering rather than in an effect: it is one state
  * derived from another, not a message to an outside system, and which fields
@@ -299,12 +316,7 @@ export interface DraftEditing<T> {
  *   upstream: view.upstream,
  *   diff: diffDraftInput,
  *   take: takeField,
- *   body: (value) => ({ note: value.note, content: value.content }),
- *   fromSnapshot: (snapshot) => ({
- *     note: snapshot.note,
- *     content: researchContentInput(snapshot.content),
- *   }),
- *   undoPath: (undoId) => draftUndoPath(view.researchId, view.draftId, undoId),
+ *   body: (value) => ({ content: value.content }),
  *   extraFor: (path) => <FieldReview review={review} at={path} />,
  * })
  * ```
@@ -316,12 +328,9 @@ export function useDraftEditing<T>({
   diff,
   take,
   body,
-  fromSnapshot,
-  undoPath,
   extraFor,
 }: DraftEditingOptions<T>): DraftEditing<T> {
   const fetcher = useFetcher<DraftAnswer<T>>()
-  const undoFetcher = useFetcher<DraftSnapshot>()
 
   const [value, setValue] = useState<T>(initial)
   const [base, setBase] = useState<T>(initial)
@@ -335,8 +344,6 @@ export function useDraftEditing<T>({
   // version the server now holds without depending on what has been typed since.
   const [sent, setSent] = useState<T>(initial)
   const [answered, setAnswered] = useState<DraftAnswer<T> | null>(null)
-  const [restored, setRestored] = useState<DraftSnapshot | null>(null)
-  const [undoMissing, setUndoMissing] = useState(false)
 
   const answer = fetcher.state === "idle" ? fetcher.data : undefined
   if (answer !== undefined && answer !== answered) {
@@ -353,18 +360,6 @@ export function useDraftEditing<T>({
       setConflict({ theirs: answer.current, changed: diff(base, answer.current) })
       setRevision(answer.revision)
       setBase(answer.current)
-      setProblems([])
-    }
-  }
-
-  const snapshot = undoFetcher.state === "idle" ? undoFetcher.data : undefined
-  if (snapshot !== undefined && snapshot !== restored) {
-    setRestored(snapshot)
-    const held = fromSnapshot(snapshot)
-    setUndoMissing(held === null)
-    if (held !== null) {
-      setValue(held)
-      setSaved(false)
       setProblems([])
     }
   }
@@ -429,8 +424,5 @@ export function useDraftEditing<T>({
     problems,
     takeUpstream,
     marksFor,
-    undo: (undoId) => { void undoFetcher.load(undoPath(undoId)) },
-    undoLoading: undoFetcher.state !== "idle",
-    undoMissing,
   }
 }

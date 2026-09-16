@@ -373,23 +373,13 @@ export interface AlertContent {
  * element is addressed by its identity and reordering does not move a comment,
  * and a value slot is addressed by the catalog key it sits under. Because a
  * slot is a path like any other place, only the subject has to be named.
+ *
+ * **A thread may be attached to the draft itself** — that is the memo. What is
+ * written there is about the work rather than about any one field: what the
+ * draft is for, who was telephoned, why publishing is waiting. It names no
+ * place, and a share link neither shows one nor accepts one.
  */
 export type CommentAnchor
-  = | { kind: "research-field", path: string }
+  = | { kind: "draft" }
+    | { kind: "research-field", path: string }
     | { kind: "dataset-field", datasetId: string, path: string }
-
-/**
- * Why a snapshot was kept. The two are what the undo stack is for and they are
- * taken back differently: the state before a save is somewhere to return to,
- * while a form a conflict refused is work that was never written down anywhere
- * else.
- */
-export type UndoReason = "before-save" | "rejected"
-
-/** One entry of a draft's undo stack: the whole draft, not a diff. */
-export interface DraftSnapshot {
-  reason: UndoReason
-  note: string
-  content: ResearchContent
-  datasetEntries: { datasetId: string, content: DatasetContent }[]
-}

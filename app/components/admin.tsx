@@ -3,17 +3,15 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react"
-import { Link } from "react-router"
 
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Choice, IconButton, SectionTabs } from "./base"
+import { ButtonLink, Choice, IconButton, SectionTabs } from "./base"
+import { Icon, type IconName } from "./icons"
 
 /**
  * The way out of a screen the bar does not open.
@@ -26,20 +24,30 @@ import { Choice, IconButton, SectionTabs } from "./base"
  * at the top of every screen is one where a curator reads the depth instead of
  * the work.
  *
- * **It names where it goes rather than the step.** One link on a screen has
- * nothing beside it to say what "back" would be back to.
+ * **It is drawn as a control, not as a line of text.** It stands beside the
+ * other places the screen leads to, and a bare link among outlined buttons
+ * reads as a caption rather than as the one way out.
  *
  * `onBand` is for the one standing in a page's opening band (`base.tsx` の
  * `Band`), where the colour the rest of the site draws links in is unreadable
  * against the fill.
  */
-export function AdminBack({ to, label, onBand = false }: {
+export function AdminBack({ to, label, icon, onBand = false }: {
   to: string
   label: string
+  /** The mark it carries, which the screen chooses along with the word. */
+  icon?: IconName
   onBand?: boolean
 }) {
   return (
-    <Link to={to} className={`text-sm ${onBand ? "text-white" : ""}`}>{label}</Link>
+    <ButtonLink
+      to={to}
+      variant="secondary"
+      onBand={onBand}
+      icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}
+    >
+      {label}
+    </ButtonLink>
   )
 }
 
@@ -60,18 +68,7 @@ export interface PaneContent {
 interface Arrangement {
   left: string
   right: string
-  /** The share of the width the left pane takes. */
-  split: number
   showing: "both" | "left" | "right"
-}
-
-const SPLIT_LIMIT = { least: 0.2, most: 0.8 }
-
-/** What `Page` keeps below its content, which the panes may not scroll under. */
-const PAGE_FOOT = 16
-
-function held(split: number): number {
-  return Math.min(SPLIT_LIMIT.most, Math.max(SPLIT_LIMIT.least, split))
 }
 
 /**
@@ -100,15 +97,23 @@ function writePanes(filed: string, value: Arrangement): void {
 /**
  * Two panes, each showing whatever it is told to.
  *
- * **The arrangement belongs to the person, not to the screen.** Which of the
- * two is showing, what each holds and where the seam stands are all theirs, and
- * none of it changes a single value — so it is kept for the session rather than
- * written into the address, the line every other arrangement is held to.
+ * **What each pane holds belongs to the person, not to the screen.** Which of
+ * the two is showing and what each holds are theirs, and neither changes a
+ * single value — so both are kept for the session rather than written into the
+ * address, the line every other arrangement is held to.
  *
- * **The panes scroll separately and reach the foot of the window.** Reading one
- * beside the other is the whole point, and a single scroll would carry both away
- * together. Where they start is wherever the page put them, so the height is
- * measured rather than named.
+ * **The two are the same width.** What is read here is a form beside the page it
+ * writes and neither of them is the subject, so there is no width to prefer; a
+ * seam that can be dragged asks for a decision on every visit and leaves
+ * whoever opens the screen next with somebody else's answer to it.
+ *
+ * **Each pane is a box that scrolls inside itself, and the pair is as tall as
+ * the window.** Reading one beside the other is the whole point, and a single
+ * scroll would carry both away together. **The pair sticks to the top of the
+ * window**, so scrolling takes the bar away and leaves two panes filling the
+ * screen — which is what somebody writing is looking at most of the time. The
+ * height is the window's rather than a number measured on the way past, so
+ * nothing has to be told when the bar above wraps onto a second line.
  *
  * The switch is handed back apart from the panes because it belongs on the
  * draft's bar, up with saving and the draft's other faces, rather than floating
@@ -133,7 +138,6 @@ export function usePanes({ locale, contents, remember }: {
     const fallback: Arrangement = {
       left: first,
       right: contents[1]?.id ?? first,
-      split: 0.5,
       showing: "both",
     }
     if (raw === null) return fallback
@@ -143,7 +147,6 @@ export function usePanes({ locale, contents, remember }: {
       return {
         left: known(read.left) ? read.left : fallback.left,
         right: known(read.right) ? read.right : fallback.right,
-        split: typeof read.split === "number" ? held(read.split) : fallback.split,
         showing: read.showing ?? fallback.showing,
       }
     } catch {
@@ -156,64 +159,37 @@ export function usePanes({ locale, contents, remember }: {
     writePanes(filed, { ...state, ...next })
   }, [filed, state])
 
-  const box = useRef<HTMLDivElement>(null)
-  const [tall, setTall] = useState<number | null>(null)
-  useEffect(() => {
-    function fit() {
-      const top = box.current?.getBoundingClientRect().top
-      if (top === undefined) return
-      setTall(window.innerHeight - top - PAGE_FOOT)
-    }
-    fit()
-    window.addEventListener("resize", fit)
-    return () => {
-      window.removeEventListener("resize", fit)
-    }
-  }, [])
-
-  const dragging = useRef(false)
-  const onSeamDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    dragging.current = true
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }, [])
-  const onSeamMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return
-    const rect = box.current?.getBoundingClientRect()
-    if (rect === undefined || rect.width === 0) return
-    change({ split: held((event.clientX - rect.left) / rect.width) })
-  }, [change])
-  const onSeamUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    dragging.current = false
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }, [])
-  // The seam is a control, so it answers the keyboard as well as the pointer.
-  const onSeamKey = useCallback((event: React.KeyboardEvent) => {
-    const by = event.key === "ArrowLeft" ? -0.05 : event.key === "ArrowRight" ? 0.05 : 0
-    if (by === 0) return
-    event.preventDefault()
-    change({ split: held(state.split + by) })
-  }, [change, state.split])
-
+  // Left to right, the way the panes themselves stand: a list that starts with
+  // "both" asks the reader to find the arrangement they are looking at.
   const shows = [
-    { id: "both", label: words.both },
     { id: "left", label: words.left },
+    { id: "both", label: words.both },
     { id: "right", label: words.right },
   ] as const
 
   const control = (
-    <Choice
-      label={words.showing}
-      value={state.showing}
-      options={shows}
-      onChange={(showing) => { change({ showing }) }}
-    />
+    <span className="flex flex-wrap items-center gap-2 text-sm">
+      {/* **The word saying what is being chosen stays outside the control**, the
+          line a listing's own choices are held to (`base.tsx` の `Chooser`). */}
+      <span className="text-ink-muted">{words.showing}</span>
+      <Choice
+        label={words.showing}
+        value={state.showing}
+        options={shows}
+        onChange={(showing) => { change({ showing }) }}
+        pill
+      />
+    </span>
   )
 
   function pane(side: "left" | "right") {
     const current = side === "left" ? state.left : state.right
     const shown = contents.find((one) => one.id === current) ?? contents[0]
     return (
-      <>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded bg-white">
+        {/* **The tabs are the top of the box, not a row above it.** What a pane
+            holds is part of that pane, and a strip standing on the tint belongs
+            to neither of the two boxes it sits between. */}
         <SectionTabs
           label={words.holds}
           scope={side}
@@ -221,42 +197,29 @@ export function usePanes({ locale, contents, remember }: {
           current={shown?.id ?? ""}
           onSelect={(id) => { change(side === "left" ? { left: id } : { right: id }) }}
         />
-        <div className="min-h-0 flex-1 overflow-y-auto pt-4">{shown?.body}</div>
-      </>
+        {/* **The box that scrolls is also what the marks inside it are placed
+            against.** Left `static` it is not the containing block of anything
+            absolutely positioned within, so those are placed against the page
+            instead — and a box only clips what it is the containing block of,
+            so the comment marks hanging beside the fields escape the pane and
+            stretch the document to the length of the form. */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto">{shown?.body}</div>
+      </div>
     )
   }
 
   const view = (
     <div
-      ref={box}
-      className="flex items-stretch"
-      style={tall === null ? undefined : { height: `${tall}px` }}
+      // **The window less what the page keeps above and below its content**
+      // (`Page` の `py-4`), held that far off the top. At the window's full
+      // height the pair reaches both edges: the tabs at the head of each box
+      // end up against the browser's own frame, and — because a stuck box is
+      // pushed back up by its parent once the page is scrolled to the end —
+      // past it by whatever the page keeps under the content.
+      className="sticky top-4 flex h-[calc(100dvh-2rem)] items-stretch gap-4"
     >
-      {state.showing !== "right" && (
-        <div
-          className="flex min-w-0 flex-col"
-          style={state.showing === "both" ? { width: `${state.split * 100}%` } : { flex: "1 1 0%" }}
-        >
-          {pane("left")}
-        </div>
-      )}
-      {state.showing === "both" && (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label={words.seam}
-          aria-valuenow={Math.round(state.split * 100)}
-          tabIndex={0}
-          onPointerDown={onSeamDown}
-          onPointerMove={onSeamMove}
-          onPointerUp={onSeamUp}
-          onKeyDown={onSeamKey}
-          className="w-2 shrink-0 cursor-col-resize bg-line hover:bg-brand"
-        />
-      )}
-      {state.showing !== "left" && (
-        <div className="flex min-w-0 flex-1 flex-col">{pane("right")}</div>
-      )}
+      {state.showing !== "right" && pane("left")}
+      {state.showing !== "left" && pane("right")}
     </div>
   )
 

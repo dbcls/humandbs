@@ -123,7 +123,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
       <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.label}>
-            <Td stuck={0} narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+            <Td stuck={0} holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
             <Td stuck={1} floor="min-w-32">
               <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
               <Link to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</Link>

@@ -170,7 +170,6 @@ function view(
     input: datasetContentInput(content),
     catalog,
     presence: [],
-    undo: [],
     upstream: null,
     review: {
       changed: [],
@@ -223,7 +222,7 @@ describe("the dataset editing form", () => {
     // unchosen ones are reached by typing rather than by scrolling. The chosen
     // label contains the unchosen one, so it is counted rather than looked for.
     expect(html.split("制限公開").length - 1).toBe(1)
-    expect(html).toContain("選択肢をさがす")
+    expect(html).toContain("選択肢を探す")
   })
 
   it("shows nothing chosen as an empty vocabulary item rather than as no item", () => {
@@ -273,7 +272,7 @@ describe("the dataset editing form", () => {
     // The classification's own heading stands beside the name rather than
     // instead of it: the two answer different questions.
     expect(html).toContain("その他の明示された炎症性肝疾患")
-    expect(html).toContain("疾患を足す")
+    expect(html).toContain("疾患を追加")
   })
 
   it("shows a disease naming no code as an ordinary row, not as an empty item", () => {
@@ -339,10 +338,6 @@ describe("the dataset editing form", () => {
 
     expect(html).not.toContain("別の場所で保存されました")
     expect(html).not.toContain("文として保存できない記法があります")
-  })
-
-  it("offers nothing to restore while the stack is empty", () => {
-    expect(render(view())).toContain("履歴はまだありません")
   })
 
   it("offers a file selection for a dataset the portal issued the id for", () => {

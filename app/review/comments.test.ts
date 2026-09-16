@@ -6,6 +6,7 @@ import {
   NAME_LIMIT,
   byAttention,
   checkComment,
+  draftThreads,
   threadsByPath,
   unresolvedCount,
   type ThreadView,
@@ -58,6 +59,16 @@ describe("the threads a screen shows", () => {
       "summary.aims": [threads[2]],
     })
     expect(threadsByPath(threads, DATASET)).toEqual({ "values.k1": [threads[3]] })
+  })
+
+  it("leaves the memo out of every subject, because it is about none of them", () => {
+    const withMemo = [...threads, thread({ id: "memo", anchor: { kind: "draft" } })]
+    expect(threadsByPath(withMemo, RESEARCH)).toEqual({
+      "title": [threads[0], threads[1]],
+      "summary.aims": [threads[2]],
+    })
+    expect(draftThreads(withMemo).map((row) => row.id)).toEqual(["memo"])
+    expect(draftThreads(threads)).toEqual([])
   })
 
   it("counts as open only the ones nobody has closed", () => {

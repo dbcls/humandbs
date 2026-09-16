@@ -30,7 +30,7 @@ import "./app.css"
  * so a page has one language whoever asks for it and a link can name the
  * language it points at.
  *
- * The banner is loaded here because it belongs to every page. It is one small
+ * The alert is loaded here because it belongs to every page. It is one small
  * read, and asking each loader for it instead would mean a page that forgot it
  * silently stops announcing. The header's account area is here for the same
  * reason; a request with no session cookie asks the database nothing at all.

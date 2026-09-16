@@ -1,4 +1,3 @@
-import type { ReactNode } from "react"
 import { Form, Link } from "react-router"
 
 import {
@@ -23,19 +22,17 @@ import {
   Clamped,
   Excerpt,
   Heading,
-  LISTING_CONTROL,
   MENU_ITEM,
   MENU_ITEM_HERE,
-  PANE_LABEL,
-  PaneHeading,
   Stack,
 } from "~/components/base"
 import { Checkbox, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
-import { RefinableList, SearchBox, usePaneOpen } from "~/components/search"
+import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
@@ -75,7 +72,7 @@ export async function action({ request }: Route.ActionArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${messages.admin.research.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.research.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -92,9 +89,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.statuses.length
     + view.flags.length
-  const folded = inForce === 0
-    ? messages.search.refine.heading
-    : messages.search.refine.foldedWith(inForce)
 
   // The same row over the rows and under them: a listing this long is scrolled
   // past, and the way to the next page has to be at the end a reader reaches.
@@ -124,43 +118,12 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
           <RefinableList
             open={paneOpen}
             busy={false}
+            locale={locale}
+            onToggle={togglePane}
+            inForce={inForce}
             // The box is never alone in the pane here: a status and five
             // shortcomings stand under it whatever the reader has asked for.
             refineHasMore
-            heading={(
-              <PaneHeading title={messages.search.refine.heading} rule="start">
-                <button
-                  type="button"
-                  onClick={togglePane}
-                  aria-expanded="true"
-                  className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
-                >
-                  <Icon name="chevron-left" aria-hidden="true" />
-                  {messages.search.refine.fold}
-                </button>
-              </PaneHeading>
-            )}
-            closed={(
-              // **4px rather than a circle**, which is what the page numbers
-              // beside it take: the glyph is 16px in a box of 36, and a round
-              // box around something leaving that much air reads as a disc with
-              // a mark on it rather than as one of the controls in the row.
-              <button
-                type="button"
-                onClick={togglePane}
-                aria-expanded="false"
-                aria-label={folded}
-                title={folded}
-                className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
-              >
-                <Icon name="filter" aria-hidden="true" />
-                {inForce > 0 && (
-                  <span className="rounded-full bg-brand px-1.5 font-semibold text-white text-xs">
-                    {inForce}
-                  </span>
-                )}
-              </button>
-            )}
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
             panel={null}
@@ -224,11 +187,16 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       {/* The glyph says the one thing the status is about —
                           whether a reader can see this — and the word stays
                           beside it, because an eye and a lock are only obvious
-                          once you know that is the question. */}
-                      <span className="inline-flex items-center">
-                        <StatusIcon status={row.status} />
-                        {t.statuses[row.status]}
-                      </span>
+                          once you know that is the question.
+
+                          **The pair is not a box of its own.** A box that
+                          centres what it holds puts the glyph 0.8px below where
+                          the same glyph sits on a line of text, and this row
+                          draws that same glyph on the baseline two columns
+                          over. The cell already refuses to wrap, so there is
+                          nothing for a box to hold together. */}
+                      <StatusIcon status={row.status} />
+                      {t.statuses[row.status]}
                     </Td>
                     <Td>{row.publishedVersions}</Td>
                     <Td>{row.draftCount}</Td>
@@ -311,7 +279,7 @@ function Filters({ view, locale }: ViewProps) {
         <input type="hidden" name="q" value={view.keyword} />
         <Presented view={view} />
         <Stack gap="normal">
-          <Axis label={t.status}>
+          <RefineAxis label={t.status}>
             {ADMIN_STATUSES.map((status: AdminStatus) => (
               <Checkbox
                 key={status}
@@ -320,10 +288,11 @@ function Filters({ view, locale }: ViewProps) {
                 name="status"
                 value={status}
                 checked={view.statuses.includes(status)}
+                count={view.counts.statuses[status]}
               />
             ))}
-          </Axis>
-          <Axis label={t.incomplete}>
+          </RefineAxis>
+          <RefineAxis label={t.incomplete}>
             {ADMIN_FLAG_KEYS.map((flag: AdminFlagKey) => (
               <Checkbox
                 key={flag}
@@ -331,39 +300,13 @@ function Filters({ view, locale }: ViewProps) {
                 name="flag"
                 value={flag}
                 checked={view.flags.includes(flag)}
+                count={view.counts.flags[flag]}
               />
             ))}
-          </Axis>
+          </RefineAxis>
         </Stack>
       </Form>
     </Stack>
-  )
-}
-
-/**
- * One thing the listing can be narrowed by, and the boxes it is narrowed with.
- *
- * **It is named the way the public panel names its groups** — the pane's own
- * heading, 8px above what it holds (`components/facets.tsx`) — so that a
- * curator moving between the two sides reads one column, not two arrangements
- * of the same parts.
- */
-function Axis({ label, children }: { label: string, children: ReactNode }) {
-  return (
-    // A `fieldset` rather than a heading and a list, so the question the boxes
-    // answer is announced once instead of on each of them (`form.tsx` の
-    // `RadioGroup`).
-    <fieldset>
-      {/* **The step under the name is the legend's own.** A `legend` is drawn
-          out of the box's flow rather than as one of its items, so a gap set on
-          the box never reaches it and the name would sit on top of the first
-          one. */}
-      <legend className={`pb-2 ${PANE_LABEL}`}>{label}</legend>
-      {/* **The boxes stand in from the name**, the way the public panel sets its
-          values in under the group they belong to (`components/facets.tsx`) —
-          the name says what the group is, and what is in it is one step inside. */}
-      <div className="flex flex-col gap-2 pl-2">{children}</div>
-    </fieldset>
   )
 }
 

@@ -15,9 +15,11 @@ import { redirect } from "react-router"
 import { z } from "zod"
 
 import { requireCapability } from "~/auth/actor.server"
+import type { Actor } from "~/auth/capabilities"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { href } from "~/public/urls"
 
 import { adminContentFilesPath, adminResearchFilesPath } from "~/admin/urls"
@@ -25,14 +27,19 @@ import { humLabelOf } from "~/admin/queries.server"
 
 import {
   commonPrefix,
+  isFileSlug,
   isUploadableName,
   MULTIPART_PART_SIZE,
   MULTIPART_THRESHOLD,
+  BOX_SORT,
+  type BoxSortKey,
+  isBoxSortKey,
   pageOfBox,
   privatePrefix,
   PRIVATE_BUCKET,
   publicPrefix,
   PUBLIC_BUCKET,
+  sortedBox,
   type BoxEntry,
   type StoredNode,
 } from "./box"
@@ -43,7 +50,9 @@ import {
   abortMultipart,
   beginMultipart,
   completeMultipart,
+  copyObject,
   deleteObject,
+  objectExists,
   presignPut,
   type ObjectRef,
 } from "./store.server"
@@ -118,6 +127,8 @@ export async function filesPage(
 export type FilesActionResult
   = | { status: "no-box" }
     | { status: "nothing-selected" }
+    | { status: "malformed-slug" }
+    | { status: "slug-taken" }
 
 /**
  * Switching a selection of files, and deleting one. Both name the files by the
@@ -309,6 +320,9 @@ export interface CommonFilesView {
   locale: Locale
   /** Null when the store did not answer; the screen says so and offers nothing. */
   rows: StoredNode[] | null
+  sort: BoxSortKey
+  order: "asc" | "desc"
+  size: PageSize
   total: number
   page: number
   pageCount: number
@@ -330,12 +344,26 @@ export async function commonFilesPage(
   await requireCapability(request, "manage-site-content")
 
   const box = await commonBox()
-  const wanted = Number(new URL(request.url).searchParams.get("page") ?? "1")
-  const page = pageOfBox(box ?? [], Number.isInteger(wanted) ? wanted : 1)
+  const asked = new URL(request.url).searchParams
+  /*
+    **Anything unreadable is the default rather than a refusal.** These three
+    are typed into the address by hand as often as they are pressed, and a
+    listing that answers 400 to a mistyped ordering loses the reader the page
+    they were on.
+  */
+  const sort = isBoxSortKey(asked.get("sort")) ? asked.get("sort") as BoxSortKey : BOX_SORT
+  const order = asked.get("order") === "desc" ? "desc" : "asc"
+  const chosen = Number(asked.get("size") ?? "")
+  const size = isPageSize(chosen) ? chosen : PAGE_SIZE
+  const wanted = Number(asked.get("page") ?? "1")
+  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1, size)
 
   return {
     locale,
     rows: box === null ? null : page.rows,
+    sort,
+    order,
+    size,
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
@@ -353,7 +381,10 @@ export async function commonFilesAction(
   const actor = await requireCapability(request, "manage-site-content")
 
   const form = await request.formData()
-  if (form.get("intent") !== "delete") badRequest()
+  const intent = form.get("intent")
+  if (intent === "rename") return renameCommonFile(form, actor, locale)
+  if (intent !== "delete") badRequest()
+
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
 
@@ -369,6 +400,61 @@ export async function commonFilesAction(
         subjectId: commonPrefix() + name,
       })
     }
+  })
+
+  return redirect(href(locale, adminContentFilesPath()))
+}
+
+/**
+ * Giving a file a different slug, which is giving it a different address.
+ *
+ * **It is a copy and a delete**, because that is what a key is: an object does
+ * not move within a bucket. The copy goes first, so a failure between the two
+ * leaves the file reachable at both slugs rather than at neither.
+ *
+ * **A slug already taken is refused rather than overwritten.** An upload of the
+ * same name overwrites on purpose — it is the same file arriving again — but a
+ * rename onto an occupied slug destroys something the reader did not name.
+ *
+ * **The address the file used to answer at stops answering**, which is the same
+ * break deleting one makes, so it is written down the same way
+ * (docs/publishing.md の「証跡」).
+ */
+async function renameCommonFile(
+  form: FormData,
+  actor: Actor,
+  locale: Locale,
+): Promise<Response | FilesActionResult> {
+  const from = form.get("from")
+  const to = form.get("to")
+  if (typeof from !== "string" || typeof to !== "string") badRequest()
+  const slug = to.trim()
+  if (!isFileSlug(from)) badRequest()
+  if (!isFileSlug(slug)) return { status: "malformed-slug" }
+  if (slug === from) return redirect(href(locale, adminContentFilesPath()))
+
+  const at = (name: string): ObjectRef => ({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
+  if (await objectExists(at(slug))) return { status: "slug-taken" }
+
+  await copyObject(at(from), at(slug))
+  await deleteObject(at(from))
+  // **The move is written as the two things it does to a reader**: one address
+  // starts answering and the other stops. What the trail records is what can be
+  // fetched (docs/publishing.md の「証跡」), and those are exactly the two events
+  // there are names for.
+  await getDb().transaction(async (tx) => {
+    await recordEvent(tx, {
+      actor: actorOf(actor),
+      action: "publish-file",
+      subjectType: "file",
+      subjectId: at(slug).key,
+    })
+    await recordEvent(tx, {
+      actor: actorOf(actor),
+      action: "delete-file",
+      subjectType: "file",
+      subjectId: at(from).key,
+    })
   })
 
   return redirect(href(locale, adminContentFilesPath()))

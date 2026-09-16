@@ -3,7 +3,7 @@ import { type ReactNode } from "react"
 import { assistantApiPath } from "~/admin/urls"
 import { Button, ButtonLink, Note, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { Card, KeyValue, Pairs } from "~/components/page"
+import { KeyValue, Pairs, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -36,16 +36,11 @@ export function AdminAssistantTaskDetail({
     `applications/${encodeURIComponent(detail.task_id)}/handout/word`,
   )
   return (
-    <Card under={false}>
-      <Stack>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-brand text-lg">
-            {words.detailHeading(detail.task_id)}
-          </h2>
-          <span className={`${statusClass(detail.status)} text-sm`}>
-            {words.statuses[detail.status]}
-          </span>
-        </div>
+    <Section title={words.detailHeading(detail.task_id)}>
+      <Stack gap="normal">
+        <p className={`${statusClass(detail.status)} text-sm`}>
+          {words.statuses[detail.status]}
+        </p>
         <Pairs>
           <KeyValue title={words.created}>
             {formatTime(detail.created_at, locale)}
@@ -67,7 +62,7 @@ export function AdminAssistantTaskDetail({
               || detail.status === "pending"
             }
             onClick={onReanalyze}
-            icon={<Icon name="undo" />}
+            icon={<Icon name="refresh" />}
           >
             {words.reanalyze}
           </Button>
@@ -94,7 +89,7 @@ export function AdminAssistantTaskDetail({
         </div>
         {children}
       </Stack>
-    </Card>
+    </Section>
   )
 }
 
@@ -106,9 +101,9 @@ function formatTime(value: string | undefined, locale: Locale): string {
     : date.toLocaleString(locale === "ja" ? "ja-JP" : "en-GB")
 }
 
+/** The same reading as the listing's (`admin-assistant-task-list.tsx`). */
 function statusClass(status: Status): string {
-  if (status === "completed") return "text-ink-muted"
   if (status === "error") return "text-danger"
-  if (status === "pending") return "text-warning"
-  return "text-brand"
+  if (status === "pending" || status === "processing") return "text-ink-muted"
+  return ""
 }

@@ -127,18 +127,28 @@ export function Crumbs({ locale, trail = [], current }: {
  * opens with `Heading` instead. The subject's own label goes above the name it
  * is known by, the way v1 puts "NBDC Research ID:" over `hum0103-v4`.
  */
-export function PageHead({ tone = "deep", kicker, label, children }: {
+export function PageHead({ tone = "deep", level = "h1", kicker, label, children }: {
   tone?: BandTone
+  /**
+   * The step the name takes.
+   *
+   * **A band drawn inside another screen is not that screen's name.** The pane
+   * beside an editor's form carries the published page whole, band and all —
+   * left at `h1` the screen has two names, and the first one a reader is handed
+   * is an identifier rather than what the screen is for.
+   */
+  level?: "h1" | "p"
   /** What kind of name this is, said small above it. */
   kicker?: string
   label: ReactNode
   children?: ReactNode
 }) {
+  const Name = level
   return (
     <Band tone={tone} className="rounded-t">
       <div>
         {kicker !== undefined && <p className="text-white/80 text-xs">{kicker}</p>}
-        <h1 className="flex flex-wrap items-center gap-3 font-bold text-xl">{label}</h1>
+        <Name className="flex flex-wrap items-center gap-3 font-bold text-xl">{label}</Name>
       </div>
       {children !== undefined && (
         <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
@@ -306,7 +316,7 @@ const MARK_COLUMN = "w-15"
  *
  * **No width here at all.** What a listing freezes first is a mark on one side
  * and a name on the other, and the two are nothing like the same width; the
- * cells already say which they are (`Td` の `narrow` と `floor`). A width
+ * cells already say which they are (`Td` の `holds` と `floor`). A width
  * written here would reach both and squeeze the name into the mark's 60px.
  *
  * **A second column can only be frozen behind a mark.** Its `left` is the mark
@@ -600,20 +610,24 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
   )
 }
 
-export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, floor, className = "" }: {
+export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, className = "" }: {
   children?: ReactNode
   /** For a cell holding an identifier, which must not be broken to fit. */
   nowrap?: boolean
   /**
-   * For a cell holding a mark rather than a value.
+   * What the cell holds, where that is an operation rather than a value.
    *
-   * It needs no floor, and **it keeps no room above and below**: a mark is
-   * `size-tap` (36px) against a line of 22.4px, so a cell that padded it would
-   * make the row half as tall again and leave the mark sitting seven pixels
-   * below the words beside it. Without the padding the row is as tall as its
-   * text and the mark rides inside it, at the size a finger still finds.
+   * **Neither kind keeps room above and below.** A cell that padded its control
+   * would make the row half as tall again and leave the control sitting below
+   * the words beside it; without the padding the row is as tall as its text and
+   * the control rides inside it (`docs/ui.md` の「押せるものの大きさ」).
+   *
+   * The two differ in width. **A `mark` is one glyph**, so the column is a
+   * fixed 60px wherever it stands — left to the content it came out 60px in one
+   * listing and 74px in the next. **A `control` carries a word**, so its width
+   * is the word's; what it shares with a mark is only the missing padding.
    */
-  narrow?: boolean
+  holds?: "mark" | "control"
   /**
    * Which of the table's stuck columns this cell is, when the table has any.
    * A cell that stays put carries the card's own colour: the ones it slides
@@ -646,7 +660,7 @@ export function Td({ children, nowrap = false, narrow = false, stuck, colSpan, f
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 ${ALIGN[align]} ${narrow ? `${MARK_COLUMN} py-0` : `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`max-w-88 border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>

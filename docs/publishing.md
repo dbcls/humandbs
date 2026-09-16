@@ -130,7 +130,7 @@ draft として編集できる状態に戻る。
 **公開は draft を消費し、取り下げは版を消費する。** 同じ内容が版と draft の両方にあると、どちらが正かを
 言えなくなる。どちらの向きも行が移るだけで、増えも減りもしない。
 
-draft の破棄で消えるのは、draft 本体・dataset のエントリ・undo・presence・コメント・共有リンク・その
+draft の破棄で消えるのは、draft 本体・dataset のエントリ・presence・コメント・共有リンク・その
 draft が新規に追加した dataset の identity。既存の dataset に対する編集はエントリが消えるだけで、
 identity も pin も動かない。
 

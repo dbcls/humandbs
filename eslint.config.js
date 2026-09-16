@@ -5,7 +5,18 @@ import reactHooks from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
 export default defineConfig([
-  globalIgnores(["build/", ".react-router/", "node_modules/", "public/swagger-ui/", ".claude/", "assistant-api/"]),
+  // `test-results/` is what a failed e2e run leaves behind — traces and their
+  // copies of the sources. They come and go while a run is in flight, so
+  // linting them fails on a file that was there when the list was taken.
+  globalIgnores([
+    "build/",
+    ".react-router/",
+    "node_modules/",
+    "public/swagger-ui/",
+    ".claude/",
+    "assistant-api/",
+    "test-results/",
+  ]),
   {
     files: ["**/*.{js,ts,tsx}"],
     extends: [

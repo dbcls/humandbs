@@ -9,6 +9,7 @@ import { useRefine } from "~/search-as-typed"
 
 import { PaneHeading, Stack } from "./base"
 import { Field, Submit } from "./form"
+import { Icon } from "./icons"
 import { Empty } from "./page"
 
 /**
@@ -20,9 +21,12 @@ import { Empty } from "./page"
  */
 
 /**
- * A `GET` form, so a search has an address that can be kept. The reads behind it
- * take a second or so, which is why it is a button rather than a box that
- * searches as it is typed.
+ * A `GET` form, so a search has an address that can be kept.
+ *
+ * **It asks on a press**, the way the accession field beside it does. The two
+ * are one offer — name the thing to take in — and a box narrowing as it is
+ * typed beside a field waiting for a press would read as two controls with
+ * different manners.
  */
 export function UpstreamSearch({ locale, action, keyword }: {
   locale: Locale
@@ -39,7 +43,7 @@ export function UpstreamSearch({ locale, action, keyword }: {
         upstream, and the filled face belongs to the one control that does it
         (`base.tsx` の `ButtonVariant`).
       */}
-      <Submit>{t.find}</Submit>
+      <Submit icon={<Icon name="search" />}>{t.find}</Submit>
     </Form>
   )
 }
@@ -153,7 +157,15 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
 
       {submit !== null && (
         <div>
-          <Submit variant="primary" disabled={free.length === 0 && choice.fields.length === 0}>
+          {/* **The mark says what the press does, and this one makes
+              something** — a draft on one screen, a dataset on the other. The
+              way in from the application is what carries `download`
+              (`docs/ui.md` の「押せるもの」). */}
+          <Submit
+            variant="primary"
+            icon={<Icon name="plus" />}
+            disabled={free.length === 0 && choice.fields.length === 0}
+          >
             {submit}
           </Submit>
         </div>

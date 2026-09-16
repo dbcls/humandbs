@@ -212,7 +212,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                     return (
                       <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
                         {cart && (
-                          <Td narrow><CartToggle ids={[row.label]} locale={locale} /></Td>
+                          <Td holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
                         )}
                         <Td className="break-all">
                           <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />

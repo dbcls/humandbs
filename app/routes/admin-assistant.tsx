@@ -1,8 +1,9 @@
 import { requireCapability } from "~/auth/actor.server"
-import { Heading } from "~/components/base"
+import { Heading, Stack } from "~/components/base"
 import { Card, Empty, Page } from "~/components/page"
 import { loadConfig } from "~/config.server"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import { AssistantContents } from "./admin-assistant-client"
@@ -35,7 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${messages.admin.assistant.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.assistant.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -47,8 +48,10 @@ export default function AdminAssistant({ loaderData }: Route.ComponentProps) {
   return (
     <Page>
       <Card under={false}>
-        <Heading title={words.heading} />
-        {deployed ? <AssistantContents locale={locale} /> : <Card><Empty>{words.absent}</Empty></Card>}
+        <Stack gap="block">
+          <Heading title={words.heading} />
+          {deployed ? <AssistantContents locale={locale} /> : <Empty>{words.absent}</Empty>}
+        </Stack>
       </Card>
     </Page>
   )

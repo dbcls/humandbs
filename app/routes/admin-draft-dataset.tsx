@@ -3,6 +3,7 @@ import { data } from "react-router"
 import { datasetEditorPage, saveDatasetAction } from "~/admin/pages.server"
 import { DatasetEditor } from "~/components/dataset-editor"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-dataset"
@@ -29,9 +30,12 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.datasetLabel ?? messages.admin.editor.unpinnedDataset
+  // The same name the bar gives it (`components/dataset-editor.tsx`).
+  const name = loaderData.datasetLabel === null
+    ? messages.admin.datasetEditor.heading
+    : messages.admin.editor.headingOf(loaderData.datasetLabel)
   return [
-    { title: `${label} - ${messages.admin.editor.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, name) },
     { name: "robots", content: "noindex" },
   ]
 }

@@ -197,10 +197,18 @@ function startsOrderedList(reader: Reader, node: Nodes): boolean {
  * bare URL. The offset is the node's own start, so the character there is `[`
  * for `[text](url)` and `<` for `<url>`; a literal autolink starts with the URL
  * itself.
+ *
+ * **A node with no position of its own is one GFM built, not one the source
+ * wrote.** An address whose first character is escaped — which is how the
+ * serialiser writes a value beginning with `-` or `_`, so that the line is not
+ * read as a bullet — is recognised across that escape, and the link the parser
+ * hands back for it carries no position at all. Written links always carry one,
+ * so the absence is what tells the two apart; reading it as "written" put a
+ * `mailto:` nobody typed into every such value the second time it was saved.
  */
 function isWritten(reader: Reader, node: Nodes): boolean {
   const offset = node.position?.start.offset
-  if (offset === undefined) return true
+  if (offset === undefined) return false
   const head = reader.source.charAt(offset)
   return head === "[" || head === "<"
 }

@@ -386,8 +386,8 @@ function standingInFrontOf(ground: Ground, number: number | null): VersionRow | 
  */
 function researchFieldsChanged(previous: VersionContent, mine: ResearchContent): number {
   return diffDraftInput(
-    { note: "", content: researchContentInput(draftContentOf(previous)) },
-    { note: "", content: researchContentInput(mine) },
+    { content: researchContentInput(draftContentOf(previous)) },
+    { content: researchContentInput(mine) },
   ).filter((path) => path !== "datasetIds").length
 }
 

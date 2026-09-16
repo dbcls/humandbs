@@ -387,8 +387,9 @@ describe("a listing waiting for the answer to replace it", () => {
     <RefinableList
       open
       busy={busy}
-      heading={<h2>絞り込み</h2>}
-      closed={null}
+      locale="ja"
+      onToggle={() => { /* the pane is held open here */ }}
+      inForce={0}
       refine={<p>条件</p>}
       refineHasMore={false}
       tools={<p>並び替え</p>}

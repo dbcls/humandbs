@@ -91,25 +91,40 @@ export function commonPrefix(): string {
 }
 
 /**
- * A name the screen is allowed to create.
+ * A name a file may answer under, once it is in a box.
  *
- * A key is the prefix followed by the name, so a name carrying a separator
- * would put the object somewhere else in the bucket. Listings tolerate one —
- * `common/dac/DAC_summary-1.pdf` is a real key and the box shows it — but
- * nothing on the screen makes a directory, so nothing may ask for one.
+ * **It may carry `/`.** The `common/` box keeps the article assets under the
+ * shape they already had (`/files/common/dac/DAC_summary-1.pdf`), so a slug
+ * there is a path rather than a word — which is also what lets one be moved
+ * from one folder to another without leaving the box.
+ *
+ * What it may not be is anything that would name a different object than it
+ * reads as: an empty segment, a `.` or a `..` walking out of the prefix, or a
+ * control character, which survives the signature and comes back out in a
+ * header. Code units are the right unit for that last one — a control
+ * character is one of them, and splitting the name into graphemes would say
+ * nothing more.
  */
-export function isUploadableName(name: string): boolean {
-  if (name === "" || name.length > 255) return false
-  if (name === "." || name === "..") return false
-  if (name.includes("/") || name.includes("\\")) return false
-  // A control character survives the signature and comes back out in a header.
-  // Code units are the right unit: a control character is one of them, and
-  // splitting the name into graphemes would say nothing more.
-  for (let at = 0; at < name.length; at += 1) {
-    const code = name.charCodeAt(at)
+export function isFileSlug(slug: string): boolean {
+  if (slug === "" || slug.length > 255) return false
+  if (slug.includes("\\")) return false
+  for (let at = 0; at < slug.length; at += 1) {
+    const code = slug.charCodeAt(at)
     if (code < 0x20 || code === 0x7f) return false
   }
-  return true
+  return slug.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
+}
+
+/**
+ * A name the screen is allowed to bring in.
+ *
+ * **An upload names one file and nothing else**, so unlike a slug it carries no
+ * separator: a research's box is flat, and what arrives by drop is a file
+ * somebody picked rather than a place they chose for it. Putting one under a
+ * folder in the `common/` box is done afterwards, by changing its slug.
+ */
+export function isUploadableName(name: string): boolean {
+  return !name.includes("/") && isFileSlug(name)
 }
 
 /**
@@ -143,6 +158,45 @@ export function composeBox(
   }
 
   return [...entries.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * The orderings a box can be read in.
+ *
+ * **The slug is the first of them** because it is the address, and a box is
+ * read by looking for one — the size and the date are for finding what is big
+ * or what moved, which is a second question rather than the first.
+ */
+export const BOX_SORT_KEYS = ["slug", "size", "updated"] as const
+
+export type BoxSortKey = typeof BOX_SORT_KEYS[number]
+
+export const BOX_SORT: BoxSortKey = BOX_SORT_KEYS[0]
+
+export function isBoxSortKey(value: string | null): value is BoxSortKey {
+  return value !== null && (BOX_SORT_KEYS as readonly string[]).includes(value)
+}
+
+/**
+ * The box in the order asked for.
+ *
+ * **The slug breaks every tie**, so the ordering is total: two files of the
+ * same size or written in the same second would otherwise be free to swap, and
+ * a row that swaps between two requests can cross a page boundary and be missed
+ * or read twice.
+ */
+export function sortedBox<T extends StoredNode>(
+  rows: readonly T[],
+  key: BoxSortKey,
+  order: "asc" | "desc",
+): T[] {
+  const by = (a: T, b: T): number => {
+    if (key === "size") return a.size - b.size || a.name.localeCompare(b.name)
+    if (key === "updated") return a.updatedAt.localeCompare(b.updatedAt) || a.name.localeCompare(b.name)
+    return a.name.localeCompare(b.name)
+  }
+  const sorted = [...rows].sort(by)
+  return order === "desc" ? sorted.reverse() : sorted
 }
 
 export interface BoxPage<T> {

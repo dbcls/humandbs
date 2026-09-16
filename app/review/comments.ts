@@ -13,7 +13,7 @@
 
 import type { CommentAnchor } from "~/content/types"
 
-import { isSameSubject, subjectOf, type AnchorSubject } from "./anchors"
+import { isFieldAnchor, isSameSubject, subjectOf, type AnchorSubject } from "./anchors"
 
 export const NAME_LIMIT = 80
 
@@ -58,7 +58,18 @@ export function threadsOfSubject(
   threads: readonly ThreadView[],
   subject: AnchorSubject,
 ): ThreadView[] {
-  return threads.filter((thread) => isSameSubject(subjectOf(thread.anchor), subject))
+  return threads.filter(({ anchor }) =>
+    isFieldAnchor(anchor) && isSameSubject(subjectOf(anchor), subject))
+}
+
+/**
+ * The draft's own threads — the memo.
+ *
+ * **They belong to no subject**, so nothing that draws a research or a dataset
+ * picks them up: a screen that wants them asks for them by name.
+ */
+export function draftThreads(threads: readonly ThreadView[]): ThreadView[] {
+  return threads.filter((thread) => thread.anchor.kind === "draft")
 }
 
 /**
@@ -71,8 +82,8 @@ export function threadsOfSubjects(
   threads: readonly ThreadView[],
   subjects: readonly AnchorSubject[],
 ): ThreadView[] {
-  return threads.filter((thread) =>
-    subjects.some((subject) => isSameSubject(subjectOf(thread.anchor), subject)))
+  return threads.filter(({ anchor }) =>
+    isFieldAnchor(anchor) && subjects.some((subject) => isSameSubject(subjectOf(anchor), subject)))
 }
 
 /** The threads of one subject, by the path each is attached to. */
@@ -82,6 +93,7 @@ export function threadsByPath(
 ): Record<string, ThreadView[]> {
   const held: Record<string, ThreadView[]> = {}
   for (const thread of threadsOfSubject(threads, subject)) {
+    if (!isFieldAnchor(thread.anchor)) continue
     const path = thread.anchor.path
     held[path] = [...held[path] ?? [], thread]
   }

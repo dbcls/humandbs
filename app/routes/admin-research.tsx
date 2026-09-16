@@ -9,12 +9,14 @@ import {
   adminDraftReviewPath,
   adminResearchFilesPath,
 } from "~/admin/urls"
-import { Badge, Confirm, Note, Stack } from "~/components/base"
-import { Checkbox, Field, Submit } from "~/components/form"
-import { Card, Empty, Page, PageHead, Section, Table, Td } from "~/components/page"
+import { Badge, Confirm, Heading, Note, Stack } from "~/components/base"
+import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
+import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale, researchPath } from "~/public/urls"
 import type { DraftReviewSummary } from "~/review/queries.server"
 
@@ -49,9 +51,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const label = loaderData.humLabel ?? messages.admin.detail.heading
   return [
-    { title: `${label} - ${messages.admin.heading} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.detail.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -73,24 +74,44 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
     return actionData.status === "taken" ? t.pinTaken : t.pinMalformed
   }
 
+  /**
+   * **画面ぜんたいに向いた答えだけが浮く。**撥ねられた ID は打った欄の下に
+   * 立つので (上)、そちらをここに渡すと、どの欄の話かを言わない箱が窓の上に
+   * 出ることになる。
+   */
+  const answer = actionData?.status === "conflict" ? actionData : null
+
   return (
     <Page>
-      <PageHead kicker={view.humLabel ?? undefined} label={t.heading} />
-      <Card>
+      <Answered answer={answer} locale={locale}>
+        <Result ok={false}>{t.discardConflict}</Result>
+      </Answered>
+      <Card under={false}>
         <Stack gap="block">
-          {actionData?.status === "conflict" && <Note kind="danger" live>{t.discardConflict}</Note>}
+          <Heading title={t.heading} aside={view.humLabel ?? undefined} />
 
           <Section title={t.labels} note={t.labelsNote}>
             <Stack gap="normal">
               {view.labels.length === 0
                 ? <Empty>{t.unpinned}</Empty>
                 : (
-                    <ul className="flex flex-wrap gap-3 text-sm">
-                      {/* **どちらの ID かは ID の前に立つ。** 読むのは ID の
-                          ほうで、primary か secondary かはその ID をどう読むかを
-                          先に言う印なので、後ろに置くと目を戻すことになる。 */}
+                    /*
+                      **ID は縦に読み、3 つの列で揃える。**1 行に流すと 2 本目の
+                      ID が 1 本目の操作の隣に来て、どの外すがどの ID のものか
+                      読めなくなる。**列にするのは印の幅が揃わないため** —
+                      「primary」と「secondary」は 11px 違うので、行ごとに流すと
+                      ID の頭がその差だけ食い違う。
+
+                      **どちらの ID かは ID の前に立つ。**読むのは ID のほうで、
+                      primary か secondary かはその ID をどう読むかを先に言う印
+                      なので、後ろに置くと目を戻すことになる。
+
+                      **操作は 1 段離す。**同じ空きで 3 つ並べると、読むもので
+                      ある ID が、その両脇を飾る 2 つと同じ重さで立つ。
+                    */
+                    <ul className="grid grid-cols-[auto_auto_auto] justify-start items-center gap-x-4 gap-y-2 text-sm">
                       {view.labels.map((label) => (
-                        <li key={label.id} className="flex items-center gap-2">
+                        <li key={label.id} className="col-span-3 grid grid-cols-subgrid items-center">
                           <Badge tone={label.isPrimary ? "brand" : "muted"}>
                             {label.isPrimary ? t.primary : t.secondary}
                           </Badge>
@@ -116,7 +137,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 行が言えるのは「出ている」だけになる。 */}
             <Table
               align="middle"
-              headers={[t.version, t.releaseDate, ""]}
+              headers={[
+                t.version,
+                t.releaseDate,
+                /* The column of things to press names itself for anyone reading
+                   the row aloud and nowhere else. */
+                <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+              ]}
               whenEmpty={t.noVersions}
             >
               {view.versions.map((version) => (
@@ -131,7 +158,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                         )}
                   </Td>
                   <Td className="whitespace-nowrap">{version.releaseDate}</Td>
-                  <Td>
+                  <Td holds="control">
                     <Withdraw versionId={version.id} number={version.number} locale={locale} />
                   </Td>
                 </tr>
@@ -142,7 +169,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           <Section title={t.drafts} note={t.draftsNote}>
             <Stack gap="normal">
               <Form method="post">
-                <Submit intent="create-draft">{t.createDraft}</Submit>
+                <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createDraft}</Submit>
               </Form>
               {view.drafts.length === 0
                 ? <Empty>{t.noDrafts}</Empty>
@@ -166,13 +193,17 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             {view.datasets.length === 0
               ? <Empty>{t.noDatasets}</Empty>
               : (
-                  <ul className="flex flex-col gap-2 text-sm">
+                  <Stack gap="tight" as="ul">
                     {view.datasets.map((row) => (
-                      <li key={row.id} className="flex flex-wrap items-center gap-2">
-                        <span>{row.label ?? messages.admin.editor.unpinnedDataset}</span>
-                        {!row.published && (
-                          <span className="text-ink-muted text-xs">{t.unpublishedDataset}</span>
-                        )}
+                      // The same grouping the research IDs above take: what is
+                      // read, then a step, then what acts on it.
+                      <li key={row.id} className="flex flex-wrap items-center gap-4 text-sm">
+                        <span className="flex items-center gap-2">
+                          <span>{row.label ?? messages.admin.editor.unpinnedDataset}</span>
+                          {!row.published && (
+                            <span className="text-ink-muted text-xs">{t.unpublishedDataset}</span>
+                          )}
+                        </span>
                         {row.pinId === null
                           ? (
                               <PinForm
@@ -193,7 +224,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                             )}
                       </li>
                     ))}
-                  </ul>
+                  </Stack>
                 )}
           </Section>
 
@@ -218,6 +249,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             <Form method="post">
               <Confirm
                 label={t.deleteResearch}
+                title={t.deleteResearchTitle(view.humLabel ?? t.heading)}
                 warning={t.deleteResearchWarning}
                 confirm={t.deleteResearchConfirm}
                 cancel={t.cancel}
@@ -247,10 +279,11 @@ function Withdraw({ versionId, number, locale }: {
     <Form method="post">
       <Confirm
         label={t.withdraw}
+        title={t.withdrawTitle(`v${number}`)}
         warning={t.withdrawWarning}
         confirm={t.withdrawConfirm}
         cancel={t.cancel}
-        subject={`v${number}`}
+        size="row"
       >
         <input type="hidden" name="intent" value="withdraw-version" />
         <input type="hidden" name="versionId" value={versionId} />
@@ -265,10 +298,11 @@ function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, loc
     <Form method="post">
       <Confirm
         label={t.unpin}
+        title={t.unpinTitle(subject)}
         warning={t.unpinWarning}
         confirm={t.unpinConfirm}
         cancel={t.cancel}
-        subject={subject}
+        size="row"
       >
         <input type="hidden" name="intent" value="unpin" />
         <input type="hidden" name="pinId" value={pinId} />
@@ -313,7 +347,7 @@ function PinForm({ kind, datasetId, placeholder, suggestion, problem, locale }: 
           hideLabel
         />
         <Checkbox label={t.pinPrimary} name="isPrimary" checked />
-        <Submit intent="pin">{t.pinSubmit}</Submit>
+        <Submit intent="pin" icon={<Icon name="link" />}>{t.pinSubmit}</Submit>
       </Form>
       {problem !== undefined && <Note kind="danger" live>{problem}</Note>}
     </Stack>
@@ -367,9 +401,11 @@ function DraftRow({ draft, review, researchId, locale }: {
           <Form method="post">
             <Confirm
               label={t.discard}
+              title={t.discardTitle}
               warning={t.discardWarning}
               confirm={t.discardConfirm}
               cancel={t.cancel}
+              size="row"
             >
               <input type="hidden" name="intent" value="discard-draft" />
               <input type="hidden" name="draftId" value={draft.id} />
@@ -377,9 +413,6 @@ function DraftRow({ draft, review, researchId, locale }: {
             </Confirm>
           </Form>
         </div>
-        <p className="text-sm">
-          {draft.note === "" ? <span className="text-ink-muted">{t.noNote}</span> : draft.note}
-        </p>
       </Stack>
     </li>
   )

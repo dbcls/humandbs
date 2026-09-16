@@ -8,10 +8,12 @@ import {
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
-import { Field, Submit } from "~/components/form"
+import { Answered, Field, Result, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
 import { UpstreamChoice, UpstreamSearch } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
+import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { useRefine } from "~/search-as-typed"
 
@@ -43,7 +45,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${messages.admin.templates.headingDataset} - ${messages.siteName}` },
+    { title: pageTitle(messages, messages.admin.templates.headingDataset, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -64,17 +66,22 @@ export default function AdminDraftDatasetUpstream({
 
   return (
     <Page>
+      {/* Only a refusal is answered: a dataset that was made comes back as the
+          list it was added to. */}
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "taken" && <Result ok={false}>{t.takenLabel}</Result>}
+        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
+      </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.headingDataset}>
+          <Heading title={t.headingDataset} aside={view.humLabel ?? undefined}>
             <AdminBack
               to={href(locale, adminDraftDatasetsPath(view.researchId, view.draftId))}
               label={t.backToDatasets}
+              icon="chevron-left"
             />
           </Heading>
 
-          {actionData?.status === "taken" && <Note kind="warning" live>{t.takenLabel}</Note>}
-          {actionData?.status === "conflict" && <Note kind="danger" live>{t.conflict}</Note>}
           {view.unknown !== null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
 
           <Section title={t.byAccession}>
@@ -92,7 +99,7 @@ export default function AdminDraftDatasetUpstream({
                 hint="DRA000123"
                 width="w-64"
               />
-              <Submit variant="primary">{t.look}</Submit>
+              <Submit variant="primary" icon={<Icon name="search" />}>{t.look}</Submit>
             </Form>
           </Section>
 
@@ -102,8 +109,11 @@ export default function AdminDraftDatasetUpstream({
               : (
                   <Stack gap="normal">
                     <UpstreamSearch locale={locale} action={href(locale, here)} keyword={view.keyword} />
-                    {/* No count and no page links, for the reason the research
-                        side gives (`routes/admin-research-upstream.tsx`). */}
+                    {/* **A cut list rather than a listing.** This section is one
+                        of two ways to name what to take in, and the errand here
+                        is the datasets: browsing every approved branch, counted
+                        and narrowed, is what the listing of branches is for
+                        (`routes/admin-research-upstream.tsx`). */}
                     <Table
                       headers={[t.application, t.humLabel, t.approvedOn, t.title, t.registered]}
                       whenEmpty={t.none}
@@ -120,7 +130,7 @@ export default function AdminDraftDatasetUpstream({
                           <Td floor="min-w-64">
                             {row.titleJa === "" ? row.titleEn : row.titleJa}
                           </Td>
-                          <Td className="text-xs">{row.accessions.join(", ")}</Td>
+                          <Td className="text-xs">{row.datasets.join(", ")}</Td>
                         </tr>
                       ))}
                     </Table>
