@@ -161,20 +161,13 @@ export function BoxTable({ locale, rows, humLabel }: {
             the column names are what say what was being looked for. */}
         {rows.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {/* **Making a file public is not asked about and taking one back
-                is.** Readers hold the addresses of what is out, so withdrawing
-                is what somebody notices; putting a file out is undone by the
-                button beside it. */}
+            {/* **Neither direction is asked about: each is the other's undo.**
+                What a panel is for is the press there is no second press for —
+                which here is the delete beside them. */}
             <Submit intent="publish" variant="secondary" icon={<Icon name="upload" />}>{t.publish}</Submit>
-            <Confirm
-              label={t.unpublish}
-              title={t.unpublishTitle}
-              warning={t.unpublishWarning}
-              confirm={t.unpublishConfirm}
-              cancel={t.cancel}
-              intent="unpublish"
-              icon="lock"
-            />
+            <Submit intent="unpublish" variant="secondary" icon={<Icon name="lock" />}>
+              {t.unpublish}
+            </Submit>
             <Confirm
               label={t.delete}
               title={t.deleteTitle}
@@ -369,8 +362,8 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
           that opens the picker; it is only kept out of sight, and the button
           presses it.
         */}
-        <div className="flex flex-col items-center gap-2 py-2 text-center">
-          <Icon name="upload" className="size-6 text-ink-muted" aria-hidden="true" />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Icon name="upload" className="text-3xl text-ink-muted" aria-hidden="true" />
           <p className="font-semibold text-ink text-sm">{t.uploadDrop}</p>
           {hint !== undefined && <p className="text-ink-muted text-xs">{hint}</p>}
           <input
@@ -451,7 +444,12 @@ export function CopyAddress({ address, locale }: { address: string, locale: Loca
         })
       }}
     >
-      {copied ? t.copied : t.copyAddress}
+      {/* The two words stand in one cell, so the control is the width of the
+          longer of them whichever one it is showing. */}
+      <span className="grid">
+        <span className={`col-start-1 row-start-1 ${copied ? "invisible" : ""}`}>{t.copyAddress}</span>
+        <span className={`col-start-1 row-start-1 ${copied ? "" : "invisible"}`}>{t.copied}</span>
+      </span>
     </Button>
   )
 }

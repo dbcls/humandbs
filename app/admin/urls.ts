@@ -245,9 +245,10 @@ export function contentsQuery(query: ContentsListingQuery): string {
  * The listing of announcements narrows by three axes of its own: whether one
  * has been given its date, and what each of the two languages is up to.
  *
- * **It carries no ordering either.** Announcements stand newest first with the
- * undated ones above them, which is the order the public listing reads them in
- * rather than a presentation this screen offers a choice of.
+ * **It carries an ordering of two keys** — the day it goes out and the title —
+ * because an editor looking for one they wrote does not always know its date.
+ * Announcements without a day sink to the end of either (`admin/contents.ts` の
+ * `sortedNews`).
  */
 export interface NewsListingQuery extends ListingPresentation {
   dating: readonly string[]
@@ -290,11 +291,11 @@ export function adminExperimentFieldPath(keyCode: string): string {
  * corrects it cannot be reached through the value it is about to change.
  */
 export function adminContentsPath(): string {
-  return "/admin/contents"
+  return "/admin/documents"
 }
 
 export function adminDocumentPath(documentId: string): string {
-  return `${adminContentsPath()}/document/${documentId}`
+  return `${adminContentsPath()}/${documentId}`
 }
 
 /**
@@ -306,13 +307,20 @@ export function adminSeriesPath(seriesId: string): string {
   return `${adminContentsPath()}/series/${seriesId}`
 }
 
-/** The strip that stands above every public page. */
+/**
+ * The strip that stands above every public page.
+ *
+ * **A screen of its own rather than one under the articles.** The bar lights
+ * the entry the reader is under (`navigation.ts` の `isHere`), so an address
+ * that sits beneath another screen's lights two names at once — and these three
+ * are not parts of the article listing, only neighbours of it.
+ */
 export function adminAlertPath(): string {
-  return `${adminContentsPath()}/alert`
+  return "/admin/alert"
 }
 
 export function adminNewsListPath(): string {
-  return `${adminContentsPath()}/news`
+  return "/admin/news"
 }
 
 export function adminNewsPath(newsId: string): string {
@@ -321,7 +329,7 @@ export function adminNewsPath(newsId: string): string {
 
 /** The `common/` box: the images and PDFs the article bodies link to. */
 export function adminContentFilesPath(): string {
-  return `${adminContentsPath()}/files`
+  return "/admin/files"
 }
 
 /**

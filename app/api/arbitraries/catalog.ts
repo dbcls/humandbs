@@ -29,7 +29,6 @@ export function termIdsIn(content: DatasetContent): string[] {
 export function catalogViewArb(termIds: readonly string[]): fc.Arbitrary<CatalogView> {
   return fc.record({
     keys: fc.subarray([...KEY_IDS], { minLength: 1 }),
-    shown: fc.array(fc.boolean(), { minLength: KEY_IDS.length, maxLength: KEY_IDS.length }),
     // Usually the catalog knows every term the content refers to, so that
     // resolving one is the common case; sometimes it knows only part of them,
     // which is the case where a value has to disappear.
@@ -37,14 +36,13 @@ export function catalogViewArb(termIds: readonly string[]): fc.Arbitrary<Catalog
       { weight: 3, arbitrary: fc.constant<string[]>([...termIds]) },
       { weight: 1, arbitrary: fc.subarray<string>([...termIds]) },
     ),
-  }).map(({ keys, shown, known }) => {
+  }).map(({ keys, known }) => {
     const entries = keys.map((id, at) => [id, {
       id,
       code: `code-${id}`,
       labelJa: at % 2 === 0 ? `ラベル ${id}` : "",
       labelEn: `Label ${id}`,
       position: keys.length - at,
-      showOnPublicPage: shown[at] ?? true,
     }] as const)
 
     return {

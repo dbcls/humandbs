@@ -1,4 +1,4 @@
-import { data } from "react-router"
+import { data, Link } from "react-router"
 
 import {
   adminResearchFilesPath,
@@ -6,11 +6,20 @@ import {
   fileUploadPath,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Heading, Note, Stack } from "~/components/base"
+import {
+  Chooser,
+  CHOOSER_SIDE,
+  Heading,
+  MENU_ITEM,
+  MENU_ITEM_HERE,
+  Note,
+  Stack,
+} from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
 import { Answered, Result } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Card, Page, Paging, Section } from "~/components/page"
-import { formatSize } from "~/files/box"
+import { BOX_SORT, BOX_SORT_KEYS, type BoxSortKey, formatSize } from "~/files/box"
 import { filesAction, filesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -54,6 +63,80 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.files
+
+  const at = (over: { sort?: BoxSortKey, order?: "asc" | "desc", page?: number }): string => {
+    const next = { sort: view.sort, order: view.order, page: 1, ...over }
+    const search = new URLSearchParams()
+    if (next.sort !== BOX_SORT) search.set("sort", next.sort)
+    if (next.order !== "asc") search.set("order", next.order)
+    if (next.page !== 1) search.set("page", String(next.page))
+    const written = search.toString()
+    return href(
+      locale,
+      adminResearchFilesPath(view.researchId) + (written === "" ? "" : `?${written}`),
+    )
+  }
+
+  // The box names its own columns, so the orders are named by them rather than
+  // by a second set of words meaning the same three things.
+  const sortNames: Record<BoxSortKey, string> = {
+    slug: t.name,
+    size: t.size,
+    updated: t.updatedAt,
+  }
+  const flipped = view.order === "asc" ? "desc" : "asc"
+  const turn = flipped === "asc"
+    ? messages.search.sort.toAscending
+    : messages.search.sort.toDescending
+
+  /*
+    How the box is read, and which part of it is on screen.
+
+    **It stands above the table and again below it.** A page of rows is longer
+    than the window, so a reader who has decided against this page would
+    otherwise have to climb back over it to reach the next one. Listings with a
+    pane get the same repetition from `RefinableList`; this box has no pane, so
+    it places the row itself.
+  */
+  const paging = (
+    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+      <Chooser
+        label={messages.search.sort.label}
+        value={sortNames[view.sort]}
+        beside={(
+          <Link
+            to={at({ order: flipped })}
+            aria-label={turn}
+            title={turn}
+            className={CHOOSER_SIDE}
+          >
+            {/* The glyph says which way the box runs now, not where it goes. */}
+            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
+          </Link>
+        )}
+      >
+        {BOX_SORT_KEYS.map((option) => (
+          <Link
+            key={option}
+            to={at({ sort: option, order: "asc" })}
+            aria-current={option === view.sort ? "true" : undefined}
+            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {sortNames[option]}
+          </Link>
+        ))}
+      </Chooser>
+      <Paging
+        locale={locale}
+        total={view.total}
+        from={view.rangeFrom}
+        to={view.rangeTo}
+        page={view.page}
+        pageCount={view.pageCount}
+        at={(page) => at({ page })}
+      />
+    </div>
+  )
 
   return (
     <Page>
@@ -99,21 +182,9 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     {view.switching > 0 && (
                       <p className="text-accent text-sm">{t.switching(view.switching)}</p>
                     )}
+                    {paging}
                     <BoxTable locale={locale} rows={view.rows} humLabel={view.humLabel} />
-                    <div className="flex justify-end">
-                      <Paging
-                        locale={locale}
-                        total={view.total}
-                        from={view.rangeFrom}
-                        to={view.rangeTo}
-                        page={view.page}
-                        pageCount={view.pageCount}
-                        at={(to) => href(
-                          locale,
-                          `${adminResearchFilesPath(view.researchId)}?page=${to}`,
-                        )}
-                      />
-                    </div>
+                    {paging}
                   </Stack>
                 )}
           </Section>

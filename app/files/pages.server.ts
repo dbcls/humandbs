@@ -78,6 +78,8 @@ export interface FilesPageView {
   humLabel: string | null
   /** Null when the store did not answer; the screen says so and offers nothing. */
   rows: BoxEntry[] | null
+  sort: BoxSortKey
+  order: "asc" | "desc"
   total: number
   page: number
   pageCount: number
@@ -104,14 +106,21 @@ export async function filesPage(
   const humLabel = await humLabelOf(db, id)
   const box = await adminBox(db, id, humLabel)
 
-  const wanted = Number(new URL(request.url).searchParams.get("page") ?? "1")
-  const page = pageOfBox(box ?? [], Number.isInteger(wanted) ? wanted : 1)
+  const asked = new URL(request.url).searchParams
+  // Unreadable is the default rather than a refusal, for the reason the
+  // `common/` box reads its own address that way.
+  const sort = isBoxSortKey(asked.get("sort")) ? asked.get("sort") as BoxSortKey : BOX_SORT
+  const order = asked.get("order") === "desc" ? "desc" : "asc"
+  const wanted = Number(asked.get("page") ?? "1")
+  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1)
 
   return {
     locale,
     researchId: id,
     humLabel,
     rows: box === null ? null : page.rows,
+    sort,
+    order,
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,

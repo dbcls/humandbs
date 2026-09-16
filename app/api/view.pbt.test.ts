@@ -53,7 +53,7 @@ function datasetAnswer(input: {
     dateModified: null,
     content: publicDatasetContent(
       input.content,
-      { keys: input.catalog.keyById, files: input.files },
+      { files: input.files },
       PUBLISHED,
     ),
     files: input.files,

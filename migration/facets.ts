@@ -225,12 +225,20 @@ function modelNames(maker: string | null, model: string | null | undefined): str
     .filter((one) => one !== "")
 }
 
-/** A closed set small enough to be worth a Japanese label. */
+/**
+ * A closed set small enough to be worth a Japanese label.
+ *
+ * **The English label raises the first letter.** The dump writes these values as
+ * bare words (`affected`, `paired-end`), and a refinement panel that lists them
+ * unchanged reads as code rather than as the choices they are. Nothing in the
+ * set is an acronym or a name, so raising the first letter is the whole of
+ * sentence case here.
+ */
 function labelled(value: string | null | undefined, labels: Record<string, string>): TermSeed[] {
   if (!value) return []
   return [{
     code: slugify(value),
-    labelEn: value,
+    labelEn: value.charAt(0).toUpperCase() + value.slice(1),
     labelJa: labels[value] ?? null,
     parentCode: null,
     maker: null,
@@ -744,8 +752,6 @@ export const TEXT_NUMBER_CODES = new Set(TEXT_NUMBERS.map((one) => one.code))
  * the full text is built from that projection (docs/public-pages.md の
  * 「dataset」).
  */
-export const SHOWN_NEW_KEYS = new Set([DISEASE_KEY])
-
 export const RETYPED_CODES = new Set([
   ...VOCABULARY_FACETS.filter((facet) => facet.retyped).map((facet) => facet.code),
   ...NUMBER_FACETS.filter((facet) => facet.retyped).map((facet) => facet.code),

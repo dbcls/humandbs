@@ -8,7 +8,10 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 `app/i18n/` に置く。この表が縛るのはドメインの語で、辞書も API の説明も facet のラベルも語彙の
 ラベルもこの訳に従う。
 
-英語表記は v1 が公開してきたものをそのまま引き継ぐ。`Unrestricted-access` のハイフンや
+英語表記はポータルが公開してきたものを引き継ぐ。出自は Joomla 版で、v1 はそれを写した層なので、
+**両者が食い違うときは Joomla を採る** — `Representative` や `Targets` は v1 が独自に置き換えた語で、
+読者が見てきた語ではない。ただし **v1 が正した誤りは戻さない**: Joomla は研究一覧で「アクセス制限」を
+`Type of Data` と書き、参加者の列に `(Ethnicity)` を付けていた。`Unrestricted-access` のハイフンや
 `Controlled-access (Type I)` の括弧は、facet の値として外部に出ている文字列でもある。
 
 ## 対象と構造
@@ -21,14 +24,15 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 | dataset | データセット | Dataset |
 | dataset id | データセット ID | Dataset ID |
 | experiment | 解析手法 | Analysis method |
+| 研究題目 | 研究題目 | Research title |
 | 研究概要 | 研究概要 | Research overview |
 | 目的 | 目的 | Aims |
 | 研究方法 | 研究方法 | Methods |
-| 対象 | 対象 | Targets |
+| 対象 | 対象 | Participants/materials |
 | リリースノート | リリースノート | Release note |
 | 提供者 | 提供者 | Data provider |
-| 代表者 | 代表者 | Representative |
-| 所属機関 | 所属機関 | Organization |
+| 研究代表者 | 研究代表者 | Principal investigator |
+| 所属機関 | 所属機関 | Affiliation |
 | 研究プロジェクト | 研究プロジェクト | Research project |
 | 助成金 | 助成金情報 | Grants |
 | 研究課題番号 | 研究課題番号 | Project number |
@@ -47,8 +51,10 @@ Analysis method」で、これは v1 が使っていた語。
 | 制限公開 (Type II) | 制限公開（Type II） | Controlled-access (Type II) |
 | データの種類 | データの種類 | Type of data |
 | 制限公開データの利用者 (CAU) | 制限公開データの利用者一覧 | Controlled access users |
+| 利用データ | 利用データID | Data in use |
+| 国 | 国・州名 | Country/Region |
 | データ利用期間 | データ利用期間 | Period of data use |
-| ダウンロード | ダウンロードリンク | Download links |
+| ダウンロード | ダウンロード | Downloads |
 
 ## 日付
 

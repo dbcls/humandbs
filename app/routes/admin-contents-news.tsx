@@ -1,10 +1,19 @@
 import { Form, Link } from "react-router"
 
-import { NEWS_DATINGS, PUBLISH_STATES, type NewsRow } from "~/admin/contents"
+import {
+  NEWS_DATINGS,
+  NEWS_SORT,
+  NEWS_SORT_KEYS,
+  PUBLISH_STATES,
+  type NewsRow,
+  type NewsSortKey,
+} from "~/admin/contents"
 import { newsListAction, newsListPage } from "~/admin/contents.server"
 import { adminNewsListPath, adminNewsPath, newsQuery, type NewsListingQuery } from "~/admin/urls"
 import {
+  Badge,
   Chooser,
+  CHOOSER_SIDE,
   Heading,
   MENU_ITEM,
   MENU_ITEM_HERE,
@@ -15,6 +24,7 @@ import { Answered, Checkbox, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { minuteOf } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -107,12 +117,11 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
           >
             <Stack gap="normal">
               <Table
-                headers={[t.news.publishedAt, t.title, t.languages.ja, t.languages.en]}
+                headers={[t.title, t.news.publishedAt, t.languages.ja, t.languages.en]}
                 whenEmpty={inForce === 0 ? t.news.none : t.news.noMatch}
               >
                 {view.rows.map((row) => <Row key={row.id} row={row} locale={locale} />)}
               </Table>
-              {view.total > 0 && tools}
             </Stack>
           </RefinableList>
         </Stack>
@@ -129,20 +138,38 @@ interface ViewProps {
 /**
  * One announcement.
  *
- * **The date is the way in.** It is what an announcement is known by — the
- * titles down the column are a hundred variations of one sentence — so the
- * column a reader scans is the column they press.
+ * **The title is the way in**, standing first and carrying the link, as the
+ * identifier does on the other listings: an announcement is looked for by what
+ * it says, and the date is the value it is ordered and narrowed by rather than
+ * the name it answers to.
+ *
+ * **An announcement with nothing written yet still has to be openable**, so the
+ * word for that stands in the link's place — the date is in the next column and
+ * would be the same thing twice.
  */
 function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
   const t = messagesFor(locale).admin.contents
   return (
     <tr>
-      <Td nowrap>
+      <Td floor="min-w-64">
         <Link to={href(locale, adminNewsPath(row.id))}>
-          {row.publishedAt ?? t.news.undated}
+          {row.title === "" ? t.news.untitled : row.title}
         </Link>
       </Td>
-      <Td floor="min-w-64">{row.title}</Td>
+      {/* **A date still ahead is marked in this column**, because the date is
+          what holds the announcement back — the two language columns say what a
+          curator set, and an item can be published in both and still be
+          waiting. */}
+      <Td nowrap>
+        {row.publishedAt === null
+          ? <span className="text-ink-muted">{t.news.undated}</span>
+          : (
+              <span className="inline-flex items-center gap-2">
+                {minuteOf(row.publishedAt)}
+                {row.scheduled && <Badge tone="accent">{t.news.scheduled}</Badge>}
+              </span>
+            )}
+      </Td>
       <Td nowrap><StateCell state={row.states.ja} locale={locale} /></Td>
       <Td nowrap><StateCell state={row.states.en} locale={locale} /></Td>
     </tr>
@@ -172,7 +199,7 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.news.find}
-        placeholder={t.news.find}
+        placeholder={messages.search.boxHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -241,6 +268,7 @@ function Presented({ view }: { view: ViewProps["view"] }) {
  */
 function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
+  const t = messages.admin.contents
   const at = (over: Partial<NewsListingQuery>): string =>
     href(locale, adminNewsListPath() + newsQuery({
       keyword: view.keyword,
@@ -248,16 +276,53 @@ function Tools({ view, locale }: ViewProps) {
       ja: view.ja,
       en: view.en,
       page: 1,
-      // The listing runs newest first and offers no other order, so there is
-      // nothing of the ordering to keep in the address.
-      sort: null,
-      order: null,
+      sort: view.sort === NEWS_SORT ? null : view.sort,
+      order: view.order === "desc" ? null : view.order,
       size: view.size === PAGE_SIZE ? null : view.size,
       ...over,
     }))
 
+  // The table names these two columns, so the orders are named by them rather
+  // than by a second set of words meaning the same things.
+  const sortNames: Record<NewsSortKey, string> = {
+    published: t.news.publishedAt,
+    title: t.title,
+  }
+  // **The day runs newest first and the title runs A to Z**, so the direction
+  // each opens in is the key's own rather than one for the listing.
+  const flipped = view.order === "asc" ? "desc" : "asc"
+  const turn = flipped === "asc"
+    ? messages.search.sort.toAscending
+    : messages.search.sort.toDescending
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+      <Chooser
+        label={messages.search.sort.label}
+        value={sortNames[view.sort]}
+        beside={(
+          <Link
+            to={at({ order: flipped })}
+            aria-label={turn}
+            title={turn}
+            className={CHOOSER_SIDE}
+          >
+            {/* The glyph says which way the listing runs now, not where it goes. */}
+            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
+          </Link>
+        )}
+      >
+        {NEWS_SORT_KEYS.map((option) => (
+          <Link
+            key={option}
+            to={at({ sort: option === NEWS_SORT ? null : option, order: option === "title" ? "asc" : null })}
+            aria-current={option === view.sort ? "true" : undefined}
+            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {sortNames[option]}
+          </Link>
+        ))}
+      </Chooser>
       <Chooser label={messages.search.pageSize} value={String(view.size)}>
         {PAGE_SIZES.map((option) => (
           <Link

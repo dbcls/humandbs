@@ -31,7 +31,7 @@ import { isLocale } from "~/i18n/locale"
 import { href, readLocale } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
-import { today } from "~/dates"
+import { nowInJst, stampFromLocalInput, today } from "~/dates"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
 import { readPage } from "./pages.server"
 import {
@@ -46,6 +46,9 @@ import {
   filterEntries,
   filterNewsRows,
   isNewsDating,
+  isNewsSortKey,
+  NEWS_SORT,
+  sortedNews,
   isPublishState,
   isVersioning,
   NEWS_DATINGS,
@@ -64,6 +67,7 @@ import {
   type DocumentRow,
   type NewsDating,
   type NewsFilter,
+  type NewsSortKey,
   type NewsRow,
   type PublishState,
   type SeriesRow,
@@ -198,12 +202,16 @@ export interface NewsListView extends ListingPage<NewsRow> {
     en: Record<PublishState, number>
   }
   size: PageSize
+  sort: NewsSortKey
+  order: "asc" | "desc"
 }
 
 export interface NewsView {
   locale: Locale
   id: string
   publishedAt: string | null
+  /** Whether the date is still ahead, which keeps it off the public side. */
+  scheduled: boolean
   editors: LocaleEditor[]
 }
 
@@ -503,14 +511,29 @@ export async function documentPage(
  */
 async function newsRows(db: Executor): Promise<NewsRow[]> {
   const rows = await db
-    .select({ id: news.id, publishedAt: news.publishedAt })
+    .select({
+      id: news.id,
+      publishedAt: news.publishedAt,
+      // **Read in the clock the value is written in.** The column holds a JST
+      // wall clock, so comparing it against a bare `now()` would answer by the
+      // zone the database happens to run in. An undated item is not scheduled —
+      // it is unwritten, and there is no moment it is waiting for.
+      scheduled: sql<boolean>`coalesce(${news.publishedAt} > (now() at time zone 'Asia/Tokyo'), false)`,
+    })
     .from(news)
-    // Undated items are the ones being written, so they sit at the top.
+    // Where the sorting starts from; which order the reader gets is decided
+    // after the rows are built.
     .orderBy(desc(news.publishedAt), desc(news.id))
 
   const byId = new Map<string, NewsRow>(rows.map((row) => [
     row.id,
-    { id: row.id, title: "", publishedAt: row.publishedAt, states: emptyStates() },
+    {
+      id: row.id,
+      title: "",
+      publishedAt: row.publishedAt,
+      scheduled: row.scheduled,
+      states: emptyStates(),
+    },
   ]))
 
   const contents = byId.size === 0
@@ -557,6 +580,11 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
   // way the other listings read theirs.
   const askedSize = Number(url.searchParams.get("size") ?? "")
   const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  // Unreadable is the default rather than a refusal, the way the other
+  // listings read their own address.
+  const asked = url.searchParams.get("sort")
+  const sort = isNewsSortKey(asked) ? asked : NEWS_SORT
+  const order = url.searchParams.get("order") === "asc" ? "asc" : "desc"
 
   const rows = await newsRows(db)
 
@@ -588,7 +616,13 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
     en: [...filter.en],
     counts,
     size,
-    ...pageOf(filterNewsRows(rows, filter), readPage(url.searchParams.get("page")), size),
+    sort,
+    order,
+    ...pageOf(
+      sortedNews(filterNewsRows(rows, filter), sort, order),
+      readPage(url.searchParams.get("page")),
+      size,
+    ),
   }
 }
 
@@ -596,7 +630,12 @@ export async function newsPage(request: Request, newsId: string): Promise<NewsVi
   await requireCapability(request, "manage-site-content")
   const db = getDb()
   const [row] = await db
-    .select({ id: news.id, publishedAt: news.publishedAt })
+    .select({
+      id: news.id,
+      publishedAt: news.publishedAt,
+      // The same reading as the listing's.
+      scheduled: sql<boolean>`coalesce(${news.publishedAt} > (now() at time zone 'Asia/Tokyo'), false)`,
+    })
     .from(news)
     .where(idIs(news.id, newsId))
     .limit(1)
@@ -617,6 +656,7 @@ export async function newsPage(request: Request, newsId: string): Promise<NewsVi
     locale: readLocale(new URL(request.url).pathname).locale,
     id: row.id,
     publishedAt: row.publishedAt,
+    scheduled: row.scheduled,
     editors: editorsFrom(contents),
   }
 }
@@ -1130,17 +1170,84 @@ async function unpublishLocale(
   return { status: "ok" }
 }
 
-async function discardDraft(
+/**
+ * Taking one language away.
+ *
+ * **The last language takes the whole thing with it.** An address that answers
+ * in neither language answers with nothing, and leaving the row standing would
+ * send a curator back to the listing to finish what they started here.
+ *
+ * **What a series points at is refused before anything is deleted**, not after:
+ * the version-less address has to keep answering, and a refusal that arrives
+ * once the body is gone is not a refusal.
+ */
+async function deleteLocale(
   tx: Executor,
   target: ContentTarget,
   form: FormData,
-): Promise<ContentsResult> {
+  actor: Actor,
+): Promise<Applied> {
   const locale = localeOf(form)
   const revision = revisionOf(form)
   if (locale === null || revision === null) return { status: "unknown-target" }
-  return await updateLocale(tx, target, locale, revision, { draftContent: null })
-    ? { status: "ok" }
-    : { status: "stale" }
+
+  const written = target.kind === "document"
+    ? await tx
+        .select({ locale: documentContent.locale })
+        .from(documentContent)
+        .where(eq(documentContent.documentId, target.id))
+    : await tx
+        .select({ locale: newsContent.locale })
+        .from(newsContent)
+        .where(eq(newsContent.newsId, target.id))
+  const last = written.length <= 1
+
+  if (last && target.kind === "document") {
+    const [pointed] = await tx
+      .select({ id: documentSeries.id })
+      .from(documentSeries)
+      .where(eq(documentSeries.currentId, target.id))
+      .limit(1)
+    if (pointed !== undefined) return { status: "in-use" }
+  }
+
+  const gone = target.kind === "document"
+    ? await tx
+        .delete(documentContent)
+        .where(and(
+          eq(documentContent.documentId, target.id),
+          eq(documentContent.locale, locale),
+          eq(documentContent.revision, revision),
+        ))
+        .returning({ published: documentContent.published })
+    : await tx
+        .delete(newsContent)
+        .where(and(
+          eq(newsContent.newsId, target.id),
+          eq(newsContent.locale, locale),
+          eq(newsContent.revision, revision),
+        ))
+        .returning({ published: newsContent.published })
+  if (gone.length === 0) return { status: "stale" }
+
+  const subject = subjectOf(target)
+  if (gone.some((one) => one.published)) {
+    await recordEvent(tx, {
+      actor,
+      action: "unpublish-site-content",
+      subjectType: subject.type,
+      subjectId: target.id,
+      detail: { ...subject.detail, locale, deleted: true },
+    })
+  }
+  if (!last) return { status: "ok" }
+
+  if (target.kind === "document") {
+    await tx.delete(document).where(eq(document.id, target.id))
+    return { status: "ok", goTo: adminContentsPath() }
+  }
+  await tx.delete(news).where(eq(news.id, target.id))
+  return { status: "ok", goTo: adminNewsListPath() }
 }
 
 // --- one document ------------------------------------------------------------
@@ -1171,12 +1278,10 @@ export async function documentAction(
         return publishLocale(tx, target, form, actor)
       case "unpublish":
         return unpublishLocale(tx, target, form, actor)
-      case "discard-draft":
-        return discardDraft(tx, target, form)
+      case "delete-locale":
+        return deleteLocale(tx, target, form, actor)
       case "cut-into-version":
         return cutIntoVersion(tx, target, form)
-      case "delete-document":
-        return deleteDocument(tx, target, actor)
       default:
         return { status: "unknown-target" }
     }
@@ -1232,38 +1337,6 @@ async function cutIntoVersion(
   return { status: "ok" }
 }
 
-async function deleteDocument(
-  tx: Executor,
-  target: ContentTarget & { kind: "document" },
-  actor: Actor,
-): Promise<Applied> {
-  const [pointed] = await tx
-    .select({ id: documentSeries.id })
-    .from(documentSeries)
-    .where(eq(documentSeries.currentId, target.id))
-    .limit(1)
-  // The version-less address has to keep answering, so the revision it names
-  // cannot be taken away underneath it.
-  if (pointed !== undefined) return { status: "in-use" }
-
-  const published = await tx
-    .select({ locale: documentContent.locale })
-    .from(documentContent)
-    .where(and(eq(documentContent.documentId, target.id), eq(documentContent.published, true)))
-
-  await tx.delete(document).where(eq(document.id, target.id))
-  if (published.length > 0) {
-    await recordEvent(tx, {
-      actor,
-      action: "unpublish-site-content",
-      subjectType: "document",
-      subjectId: target.id,
-      detail: { slug: target.slug, deleted: true, locales: published.map((one) => one.locale) },
-    })
-  }
-  return { status: "ok", goTo: adminContentsPath() }
-}
-
 // --- news --------------------------------------------------------------------
 
 export async function newsListAction(request: Request): Promise<ContentsResult> {
@@ -1272,7 +1345,10 @@ export async function newsListAction(request: Request): Promise<ContentsResult> 
   if (text(form, "intent") !== "create-news") return { status: "unknown-target" }
   const [created] = await getDb()
     .insert(news)
-    .values({ publishedAt: today() })
+    // Dated now rather than at midnight: a new announcement is written to go
+    // out, and a date whose time has already passed is one less thing to
+    // correct. It is unpublished in both languages either way.
+    .values({ publishedAt: nowInJst() })
     .returning({ id: news.id })
   if (created === undefined) return { status: "unknown-target" }
   return settle(request, { status: "ok", goTo: adminNewsPath(created.id) })
@@ -1301,10 +1377,8 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
         return publishLocale(tx, target, form, actor)
       case "unpublish":
         return unpublishLocale(tx, target, form, actor)
-      case "discard-draft":
-        return discardDraft(tx, target, form)
-      case "delete-news":
-        return deleteNews(tx, row.id, actor)
+      case "delete-locale":
+        return deleteLocale(tx, target, form, actor)
       default:
         return { status: "unknown-target" }
     }
@@ -1312,30 +1386,18 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
   return settle(request, applied)
 }
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/
-
+/**
+ * The date an announcement goes out under, as the field sent it.
+ *
+ * **An empty field clears the date**, which is how an announcement goes back to
+ * being a draft. Anything else has to be the minute the field is made of — the
+ * value reaches here as text, and one that is not is a form that was not the
+ * screen's.
+ */
 async function setNewsDate(tx: Executor, id: string, form: FormData): Promise<ContentsResult> {
   const value = text(form, "publishedAt")
-  if (value !== "" && !DATE.test(value)) return { status: "unknown-target" }
-  await tx.update(news).set({ publishedAt: value === "" ? null : value }).where(eq(news.id, id))
+  const stamp = value === "" ? null : stampFromLocalInput(value)
+  if (value !== "" && stamp === null) return { status: "unknown-target" }
+  await tx.update(news).set({ publishedAt: stamp }).where(eq(news.id, id))
   return { status: "ok" }
-}
-
-async function deleteNews(tx: Executor, id: string, actor: Actor): Promise<Applied> {
-  const published = await tx
-    .select({ locale: newsContent.locale })
-    .from(newsContent)
-    .where(and(eq(newsContent.newsId, id), eq(newsContent.published, true)))
-
-  await tx.delete(news).where(eq(news.id, id))
-  if (published.length > 0) {
-    await recordEvent(tx, {
-      actor,
-      action: "unpublish-site-content",
-      subjectType: "news",
-      subjectId: id,
-      detail: { deleted: true, locales: published.map((one) => one.locale) },
-    })
-  }
-  return { status: "ok", goTo: adminNewsListPath() }
 }

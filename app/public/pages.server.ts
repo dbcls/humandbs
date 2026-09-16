@@ -103,7 +103,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
       label: row.label,
       content: publicDatasetContent(
         row.content,
-        { keys: catalog.keyById, files: listing ?? [] },
+        { files: listing ?? [] },
         PUBLISHED,
       ),
       datePublished: row.datePublished,
@@ -183,7 +183,7 @@ export async function datasetPage(
     studyAccession: row.studyAccession,
     content: publicDatasetContent(
       row.content,
-      { keys: catalog.keyById, files: listing ?? [] },
+      { files: listing ?? [] },
       PUBLISHED,
     ),
     datePublished: row.datePublished,

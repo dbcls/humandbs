@@ -170,7 +170,6 @@ export const contentKey = pgTable("content_key", {
    * Keeping this in the catalog means the decision can be revisited without a
    * migration.
    */
-  showOnPublicPage: boolean().notNull().default(false),
 }, (t) => [
   index().on(t.scope, t.position),
 ])

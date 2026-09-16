@@ -74,18 +74,29 @@ export interface AdminTask {
  */
 export function adminNavbar(locale: Locale): AdminDestination[] {
   const words = messagesFor(locale).admin
-  return [
-    { path: adminPath(), label: words.overview },
-    { path: adminResearchListPath(), label: words.tasks.research.find },
-    { path: adminUpstreamResearchPath(), label: words.tasks.research.fromUpstream },
-    { path: adminContentsPath(), label: words.contents.heading },
-    { path: adminAlertPath(), label: words.contents.alert.heading },
-    { path: adminNewsListPath(), label: words.tasks.contents.news },
-    { path: adminContentFilesPath(), label: words.contents.files.heading },
-    { path: adminExperimentFieldsPath(), label: words.catalog.heading },
-    { path: adminAssistantPath(), label: words.assistant.heading },
-  ]
+  return BAR.map(({ path, label }) => ({ path, label: label(words) }))
 }
+
+type AdminWords = ReturnType<typeof messagesFor>["admin"]
+
+/**
+ * The bar's destinations, held apart from the words they are drawn with.
+ *
+ * **Which entry the reader is under is a question about addresses**, and the
+ * answer has to see all of them at once rather than one at a time (`isHere`).
+ * The words come from a locale; the shape of the area does not.
+ */
+const BAR: { path: string, label: (words: AdminWords) => string }[] = [
+  { path: adminPath(), label: (words) => words.overview },
+  { path: adminResearchListPath(), label: (words) => words.tasks.research.find },
+  { path: adminUpstreamResearchPath(), label: (words) => words.tasks.research.fromUpstream },
+  { path: adminContentsPath(), label: (words) => words.contents.heading },
+  { path: adminAlertPath(), label: (words) => words.contents.alert.heading },
+  { path: adminNewsListPath(), label: (words) => words.tasks.contents.news },
+  { path: adminContentFilesPath(), label: (words) => words.contents.files.heading },
+  { path: adminExperimentFieldsPath(), label: (words) => words.catalog.heading },
+  { path: adminAssistantPath(), label: (words) => words.assistant.heading },
+]
 
 /**
  * **How wide the window has to be before each entry appears in the bar**, the
@@ -194,8 +205,20 @@ export function adminTasks(locale: Locale): AdminTask[] {
  * **The entry for the area's own front page matches only itself**, because
  * every other address starts with it; the rest match what lies under them, so
  * that a draft three levels down still lights the area it belongs to.
+ *
+ * **Where one destination stands under another, only the deeper one lights.**
+ * Taking a research from an approved application is its own screen at an
+ * address below the research listing, and covering what lies underneath would
+ * otherwise make the bar say the reader is in two places. The listing is not
+ * one of them: a screen that has an address of its own here is a place, and
+ * what is under a place is that place only until something else claims it.
+ * The trailing slash is what keeps a name from claiming a longer one.
  */
 export function isHere(entry: { path: string }, path: string): boolean {
   if (entry.path === adminPath()) return path === adminPath()
-  return path === entry.path || path.startsWith(`${entry.path}/`)
+  if (path !== entry.path && !path.startsWith(`${entry.path}/`)) return false
+  return !BAR.some(({ path: other }) => (
+    other.length > entry.path.length
+    && (path === other || path.startsWith(`${other}/`))
+  ))
 }

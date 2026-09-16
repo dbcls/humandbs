@@ -354,7 +354,11 @@ export function RefinableList({
           <PaneUnfold locale={locale} inForce={inForce} onToggle={onToggle} />
           {tools}
         </div>
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {children}
+          {/* The same 4px the row leaves over the table, under it. */}
+          <div className="pt-1">{tools}</div>
+        </div>
       </div>
     )
   }
@@ -391,7 +395,11 @@ export function RefinableList({
       </div>
       {/* The result keeps a floor of nothing so that a table wider than the
           column scrolls inside its own box rather than stretching the grid. */}
-      <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-2">{children}</div>
+      <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-2">
+        {children}
+        {/* The same 4px the row leaves over the table, under it. */}
+        <div className="pt-1">{tools}</div>
+      </div>
       {/* **The pane is two groups, and the space between them is the widest in
           it.** What it asks with — the box and the conditions in force — is one
           thing, and the dimensions it can narrow by are another; at the step
@@ -1090,10 +1098,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
             {view.parseError !== null
               ? <InvalidQuery locale={locale} column={view.parseError.column} />
               : (
-                  <Stack gap="normal">
-                    {children}
-                    {!empty && tools}
-                  </Stack>
+                  <Stack gap="normal">{children}</Stack>
                 )}
           </RefinableList>
         </Stack>

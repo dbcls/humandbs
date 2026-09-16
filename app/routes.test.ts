@@ -62,8 +62,9 @@ describe("管理画面の登録", () => {
   it("画面はすべて 1 つの layout の中にある", async () => {
     const tree = await treeUnder("development")
     const layouts = flatten(tree).filter((entry) => entry.file === "routes/admin-layout.tsx")
-    // One per language, the way the pages themselves are registered twice.
-    expect(layouts).toHaveLength(2)
+    // One, not one per language: the management area is Japanese only, so it is
+    // registered beside the pages rather than inside the pair of them.
+    expect(layouts).toHaveLength(1)
 
     const inside = new Set(layouts.flatMap((layout) =>
       (layout.children ?? []).map((child) => child.path)))
@@ -91,10 +92,18 @@ describe("管理画面の登録", () => {
     expect(registered[0]?.path).toBe("admin/assistant/api/*")
   })
 
-  it("アシスタントの画面は両方の言語で開ける", async () => {
-    const screens = flatten(await treeUnder("development"))
-      .filter((entry) => entry.file === "routes/admin-assistant.tsx")
-    expect(screens).toHaveLength(2)
+  /**
+   * **The management area is registered once, the public pages twice.** Both
+   * are easy to get wrong in the same file, and the assistant is the screen
+   * that sits next to a proxy which is also registered once — so a rule read
+   * off the proxy would put the screen in the wrong group.
+   */
+  it("管理画面は言語ごとに複製されていない", async () => {
+    const tree = flatten(await treeUnder("development"))
+    const screens = tree.filter((entry) => entry.file === "routes/admin-assistant.tsx")
+    expect(screens).toHaveLength(1)
+    expect(tree.filter((entry) => entry.path?.startsWith("en/") === true
+      && entry.path.includes("admin"))).toEqual([])
   })
 })
 

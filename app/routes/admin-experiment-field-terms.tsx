@@ -1,16 +1,53 @@
-import { Form } from "react-router"
+import { Form, Link } from "react-router"
 
-import { catalogAction, fieldTermsPage, type TermRow } from "~/admin/catalog.server"
-import { adminExperimentFieldPath } from "~/admin/urls"
-import { Badge, Button, Confirm, Fold, Heading, Stack } from "~/components/base"
-import { Answered, Editing, Field, Result, Submit, Unsaved } from "~/components/form"
+import {
+  TERM_SORT,
+  TERM_SORT_KEYS,
+  TERM_STATES,
+  type TermSortKey,
+  type TermState,
+} from "~/admin/catalog"
+import {
+  catalogAction,
+  fieldTermsPage,
+  type TermRow,
+  type VocabularyView,
+} from "~/admin/catalog.server"
+import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
+import { ICD10_SET_CODE } from "~/icd10/codes"
+import { AdminBack } from "~/components/admin"
+import {
+  Badge,
+  Button,
+  Chooser,
+  CHOOSER_SIDE,
+  Confirm,
+  Dialog,
+  Heading,
+  LISTING_CONTROL,
+  MENU_ITEM,
+  MENU_ITEM_HERE,
+  Note,
+  Stack,
+} from "~/components/base"
+import {
+  Answered,
+  Checkbox,
+  Editing,
+  Field,
+  Result,
+  Submit,
+  Unsaved,
+} from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Empty, Page, Paging, Section } from "~/components/page"
-import { SearchBox } from "~/components/search"
+import { Card, Empty, ExternalLink, Page, Paging, Section, Table, Td } from "~/components/page"
+import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
+import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
-import { href } from "~/public/urls"
+import { datasetsUsing, href } from "~/public/urls"
+import { useAsk } from "~/search-as-typed"
 
 import type { Route } from "./+types/admin-experiment-field-terms"
 
@@ -55,13 +92,111 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
+/**
+ * The same listing, read another way.
+ *
+ * **Choosing an order sends the reader back to the first page**: the seventh
+ * page of an order nobody has seen yet is not a place anyone asked for. What
+ * the box holds is carried through, because an order is a way of reading the
+ * answer rather than a different question.
+ */
+function at(view: VocabularyView, over: {
+  sort?: TermSortKey
+  order?: "asc" | "desc"
+  page?: number
+  state?: TermState[]
+  /** The term a merge aims from; `null` puts the listing back to ordinary. */
+  mergeFrom?: string | null
+}): string {
+  const next = {
+    sort: view.sort,
+    order: view.order,
+    page: 1,
+    state: view.state,
+    mergeFrom: view.mergeFrom?.id ?? null,
+    ...over,
+  }
+  const search = new URLSearchParams()
+  if (view.find !== "") search.set("find", view.find)
+  // Carried through the box, the axis and the pages: choosing where to fold a
+  // term into is reading this listing, and losing the aim on the second page
+  // would mean starting over.
+  if (next.mergeFrom !== null) search.set("mergeFrom", next.mergeFrom)
+  // Carried rather than dropped: the ordering and the pages are read inside
+  // whatever the pane is holding, and an address that forgets it would put the
+  // rest of the vocabulary back on the next press.
+  for (const one of next.state) search.append("state", one)
+  if (next.sort !== TERM_SORT) search.set("sort", next.sort)
+  if (next.order !== "asc") search.set("order", next.order)
+  if (next.page !== 1) search.set("page", String(next.page))
+  const written = search.toString()
+  return href(
+    view.locale,
+    adminExperimentFieldPath(view.field.code) + (written === "" ? "" : `?${written}`),
+  )
+}
+
 export default function AdminFieldTerms({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.catalog
   const set = view.set
+  // The one vocabulary whose values arrive with codes of their own.
+  const brought = set.code === ICD10_SET_CODE
   const here = adminExperimentFieldPath(view.field.code)
+  const [paneOpen, togglePane] = usePaneOpen()
+  const flipped = view.order === "asc" ? "desc" : "asc"
+  const turn = flipped === "asc"
+    ? messages.search.sort.toAscending
+    : messages.search.sort.toDescending
+
+  /*
+    How the terms are read, and which of them are on screen.
+
+    **The same row the table of fields carries**, in the same place — the two
+    screens are one step apart, and a reader who learned the controls on the
+    table should not have to find them again in what it opens.
+  */
+  const tools = (
+    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+      <Chooser
+        label={messages.search.sort.label}
+        value={t.sortKeys[view.sort]}
+        beside={(
+          <Link
+            to={at(view, { order: flipped })}
+            aria-label={turn}
+            title={turn}
+            className={CHOOSER_SIDE}
+          >
+            {/* The glyph says which way the list runs now, not where it goes. */}
+            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
+          </Link>
+        )}
+      >
+        {TERM_SORT_KEYS.map((option) => (
+          <Link
+            key={option}
+            to={at(view, { sort: option, order: "asc" })}
+            aria-current={option === view.sort ? "true" : undefined}
+            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {t.sortKeys[option]}
+          </Link>
+        ))}
+      </Chooser>
+      <Paging
+        locale={locale}
+        total={set.terms}
+        from={view.rangeFrom}
+        to={view.rangeTo}
+        page={view.page}
+        pageCount={view.pageCount}
+        at={(page) => at(view, { page })}
+      />
+    </div>
+  )
 
   return (
     <Page>
@@ -73,52 +208,127 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
         )}
       </Answered>
       <Card under={false}>
-        <Stack gap="block">
-          {/* **The name says what these are, and the field stands beside it.**
-              Every vocabulary belongs to exactly one field, so the field is
-              which one rather than part of what the screen does. */}
-          <Heading title={t.termsHeading} aside={catalogLabel(view.field, locale)} />
+        <Stack gap="normal">
+          {/* **The name says what these are, and the field stands beside it** —
+              every vocabulary belongs to exactly one field, so the field is
+              which one rather than part of what the screen does.
+
+              **The way to make one stands with the name**, as it does over the
+              table of fields: it is the one thing a reader comes here to do
+              that is not "open one of these". */}
+          <Heading title={t.termsHeading} aside={catalogLabel(view.field, locale)} note={t.termsNote}>
+            {/* **A settled vocabulary has no way in either.** What it holds is
+                part of what the portal is, so the screen carries the name and
+                the rows and nothing to press. */}
+            {view.editable && (
+              <Editing method="post">
+                <input type="hidden" name="setId" value={set.id} />
+                <Dialog label={t.addTerm} title={t.addTerm} icon={<Icon name="plus" />}>
+                  {(close) => (
+                    <Stack gap="normal">
+                      {/* **The code is asked for only where the standard owns it.**
+                        Everywhere else it is made from the English label
+                        (`admin/catalog.ts` の `termCodeFrom`): it is an address
+                        the public side carries rather than a name to choose,
+                        and asking for one asks the curator to know which
+                        characters a query holds unquoted. */}
+                      {brought && <Field label={t.code} name="code" width="w-full" />}
+                      <Field label={t.labelJa} name="labelJa" width="w-full" />
+                      <Field label={t.labelEn} name="labelEn" width="w-full" />
+                      <span className="flex flex-wrap items-center justify-end gap-2">
+                        <Button type="button" variant="ghost" onClick={close}>{t.cancel}</Button>
+                        <Submit intent="create-term" variant="primary" icon={<Icon name="plus" />}>
+                          {t.addTerm}
+                        </Submit>
+                        <Unsaved locale={locale} />
+                      </span>
+                    </Stack>
+                  )}
+                </Dialog>
+              </Editing>
+            )}
+            <AdminBack
+              to={href(locale, adminExperimentFieldsPath())}
+              label={t.backToList}
+              icon="chevron-left"
+            />
+          </Heading>
 
           {set.hierarchical && (
             <p className="text-sm"><Badge>{t.hierarchical}</Badge></p>
           )}
 
-          <SearchBox
-            action={href(locale, here)}
-            name="find"
-            value={view.find}
-            label={t.find}
-            placeholder={t.find}
-            submit={t.find}
-            searchAsTyped
-          />
+          {/* **A settled vocabulary is read here and changed nowhere**, so the
+              screen says so once at the top instead of drawing a row of
+              controls that refuse. */}
+          {!view.editable && (
+            <Note kind="info">{t.settledNote}</Note>
+          )}
 
-          {view.terms.length === 0
-            ? <Empty>{view.find === "" ? t.noTerm : t.noMatchingTerm}</Empty>
-            : (
-                <ul className="flex flex-col divide-y divide-line border-line border-y">
-                  {view.terms.map((term) => (
-                    <Term key={term.id} term={term} locale={locale} />
-                  ))}
-                </ul>
+          {/* **Choosing where to fold a term into is reading this listing**, so
+              what is in force says so over the rows it changes the meaning of —
+              every row's control is now "keep this one" rather than "edit
+              this one". The way out stands in the same band as the way in. */}
+          {view.mergeFrom !== null && (
+            <Note
+              kind="warning"
+              action={(
+                <Link to={at(view, { mergeFrom: null })} className={MENU_ITEM}>
+                  {t.mergeCancel}
+                </Link>
               )}
-          <div className="flex justify-end">
-            <Paging
-              locale={locale}
-              total={set.terms}
-              from={view.rangeFrom}
-              to={view.rangeTo}
-              page={view.page}
-              pageCount={view.pageCount}
-              at={(to) => href(
-                locale,
-                `${here}?${new URLSearchParams({
-                  ...(view.find === "" ? {} : { find: view.find }),
-                  page: String(to),
-                }).toString()}`,
-              )}
-            />
-          </div>
+            >
+              <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <strong>{t.mergeChoosing(view.mergeFrom.labelJa ?? view.mergeFrom.labelEn)}</strong>
+                <span className="text-sm">{t.mergeChoosingNote}</span>
+              </span>
+            </Note>
+          )}
+
+          <RefinableList
+            open={paneOpen}
+            busy={false}
+            locale={locale}
+            onToggle={togglePane}
+            inForce={(view.find === "" ? 0 : 1) + view.state.length}
+            // One axis stands under the box whatever the reader has asked for.
+            refineHasMore
+            refine={<Filters view={view} locale={locale} />}
+            tools={tools}
+            panel={null}
+          >
+            {view.terms.length === 0
+              ? <Empty>{view.find === "" && view.state.length === 0 ? t.noTerm : t.noMatchingTerm}</Empty>
+              : (
+                  <Table
+                    align="middle"
+                    headers={[
+                      t.labelJa,
+                      t.labelEn,
+                      ...(set.hierarchical ? [t.parent] : []),
+                      t.usage,
+                      t.state,
+                      /* The column of things to press names itself for anyone
+                         reading the row aloud and nowhere else. */
+                      <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+                    ]}
+                    whenEmpty={t.noMatchingTerm}
+                  >
+                    {view.terms.map((term) => (
+                      <Row
+                        key={term.id}
+                        term={term}
+                        field={view.field.code}
+                        hierarchical={set.hierarchical}
+                        editable={view.editable}
+                        mergeFrom={view.mergeFrom}
+                        mergeAt={(termId) => at(view, { mergeFrom: termId })}
+                        locale={locale}
+                      />
+                    ))}
+                  </Table>
+                )}
+          </RefinableList>
 
           {view.dictionary !== null && (
             <Section title={t.dictionary}>
@@ -161,73 +371,262 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
             </Section>
           )}
 
-          <Section title={t.addTerm}>
-            <Form method="post" className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="intent" value="create-term" />
-              <input type="hidden" name="setId" value={set.id} />
-              <Field label={t.code} name="code" />
-              <Field label={t.labelEn} name="labelEn" />
-              <Field label={t.labelJa} name="labelJa" />
-              <Submit icon={<Icon name="plus" />}>{t.addTerm}</Submit>
-            </Form>
-          </Section>
         </Stack>
       </Card>
     </Page>
   )
 }
 
-function Term({ term, locale }: { term: TermRow, locale: "ja" | "en" }) {
-  const t = messagesFor(locale).admin.catalog
-  const note = [
-    term.used === 0 ? t.unused : t.used(term.used),
-    term.parentCode === null ? undefined : `${t.parent}: ${term.parentCode}`,
-  ].filter((part): part is string => part !== undefined).join(" · ")
+/**
+ * The pane: the box, and the one thing a vocabulary can be asked about beyond
+ * the word.
+ *
+ * **GET forms, so a narrowed listing has an address that can be kept and
+ * shared** — the same rule the table of fields and the public listings follow.
+ * **Nothing here waits to be confirmed**: the box asks once the typing has
+ * stopped and a tick asks as it is made.
+ *
+ * **The box and the ticks are two forms, and each carries what the other
+ * holds**, because a form cannot stand inside another. The ordering rides along
+ * too — it is not a condition, but losing it on every tick would re-sort the
+ * listing under the reader.
+ */
+function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.catalog
+  const to = href(locale, adminExperimentFieldPath(view.field.code))
+  const { form, ask } = useAsk(to)
+
+  const ordering = (
+    <>
+      {view.sort !== TERM_SORT && <input type="hidden" name="sort" value={view.sort} />}
+      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
+    </>
+  )
 
   return (
-    <li>
-      <Fold
-        summary={(
-          <>
-            <code className="text-ink-muted text-xs">{term.code}</code>
-            {`${term.labelEn} / ${term.labelJa ?? "—"}`}
-          </>
-        )}
-        note={(
-          <>
-            {note}
-            {!term.active && <Badge>{t.inactive}</Badge>}
-          </>
-        )}
+    <Stack gap="normal">
+      <SearchBox
+        action={to}
+        name="find"
+        value={view.find}
+        label={t.find}
+        placeholder={messages.search.boxHint}
+        submit={t.find}
+        size="compact"
+        searchAsTyped
       >
-        <Editing method="post" className="flex flex-wrap items-end gap-2 text-sm">
-          <input type="hidden" name="termId" value={term.id} />
-          <Field label={t.labelEn} name="labelEn" value={term.labelEn} />
-          <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} />
-          <Submit size="xs" intent="update-term" icon={<Icon name="save" />} saves>{t.save}</Submit>
-          <Unsaved locale={locale} />
-          <input type="hidden" name="active" value={term.active ? "false" : "true"} />
-          <Button size="xs" name="intent" value="set-term-active">
-            {term.active ? t.deactivate : t.activate}
-          </Button>
-        </Editing>
-        {/* Nothing names this term, so it can go — and going is what cannot be
-            undone, unlike deactivating it. */}
-        {term.used === 0 && (
-          <Form method="post">
-            <input type="hidden" name="termId" value={term.id} />
-            <Confirm
-              label={t.remove}
-              title={t.removeTitle(term.code)}
-              warning={t.removeWarning}
-              confirm={t.removeConfirm}
-              cancel={t.cancel}
-            >
-              <input type="hidden" name="intent" value="delete-term" />
-            </Confirm>
-          </Form>
-        )}
-      </Fold>
-    </li>
+        {view.state.map((one) => (
+          <input key={one} type="hidden" name="state" value={one} />
+        ))}
+        {ordering}
+      </SearchBox>
+
+      <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
+        <input type="hidden" name="find" value={view.find} />
+        {ordering}
+        {/* **A term is turned off rather than taken away once anything names
+            it**, so a vocabulary that has been curated for a while holds both
+            kinds at once and "what can still be chosen" is the question asked
+            of it. */}
+        <RefineAxis label={t.state}>
+          {TERM_STATES.map((one) => (
+            <Checkbox
+              key={one}
+              label={t.states[one]}
+              icon={(
+                <Icon
+                  name={one === "active" ? "check" : "close"}
+                  aria-hidden="true"
+                  className="mr-1 text-ink-muted"
+                />
+              )}
+              name="state"
+              value={one}
+              checked={view.state.includes(one)}
+              count={view.counts.state[one]}
+            />
+          ))}
+        </RefineAxis>
+      </Form>
+    </Stack>
+  )
+}
+
+/**
+ * One term.
+ *
+ * **The code stands first and in the face the data is written in.** It is what
+ * the value is filed under — a dataset carries the code, and the labels are how
+ * a reader recognises which code that is.
+ *
+ * **What can be pressed is at the end, and what it opens is a panel rather than
+ * the row** — the same shape the table of fields uses (`docs/editing.md` の
+ * 「解析手法の表」). A row is opened to read it as often as to change it, and
+ * one that grows to hold a form leaves the listing a column of boxes of
+ * different heights.
+ */
+function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }: {
+  term: TermRow
+  /** The code of the field these values belong to, which the address needs. */
+  field: string
+  /** Whether this vocabulary nests, which is what gives the column a value. */
+  hierarchical: boolean
+  /** Whether this vocabulary is the administrator's to change at all. */
+  editable: boolean
+  /** The term a merge is being aimed from, when the address names one. */
+  mergeFrom: TermRow | null
+  /** Where to go to aim a merge from this row. */
+  mergeAt: (termId: string) => string
+  locale: Locale
+}) {
+  const t = messagesFor(locale).admin.catalog
+  const naming = (row: TermRow) => row.labelJa ?? row.labelEn
+
+  return (
+    <tr>
+      <Td floor="min-w-40">
+        {term.labelJa ?? <span className="text-ink-muted">—</span>}
+      </Td>
+      <Td floor="min-w-40">{term.labelEn}</Td>
+      {hierarchical && (
+        <Td nowrap>
+          {term.parentCode === null
+            ? <span className="text-ink-muted">—</span>
+            : <code className="text-xs">{term.parentCode}</code>}
+        </Td>
+      )}
+      {/* **How many published objects name it**, which is the one thing that
+          decides whether it can still be taken away — and the way to see which
+          ones they are. **The count goes to the public listing narrowed by this
+          value**, because that is where the rows already are; a screen of our
+          own would answer the same question from the same rows.
+
+          **It opens a tab of its own.** The curator is in the middle of editing
+          a vocabulary, and the answer is something to look at beside that work
+          rather than instead of it. */}
+      <Td nowrap>
+        {term.used === 0
+          ? <span className="text-ink-muted">{t.unused}</span>
+          : (
+              <ExternalLink to={href(locale, datasetsUsing(field, term.code))} locale={locale}>
+                {t.usedSearch(term.used)}
+              </ExternalLink>
+            )}
+      </Td>
+      {/* The glyph says the one thing the state is about — whether this value is
+          still offered — and the word stays beside it, because a tick and a
+          cross are only obvious once you know that is the question. */}
+      <Td nowrap>
+        <span className="inline-flex items-center text-nowrap">
+          <Icon
+            name={term.active ? "check" : "close"}
+            aria-hidden="true"
+            className="mr-1 text-ink-muted"
+          />
+          {t.states[term.active ? "active" : "inactive"]}
+        </span>
+      </Td>
+      {/* **What a row offers depends on what the screen is for right now.** A
+          settled vocabulary offers nothing; a listing being read to choose a
+          merge's destination offers only that; otherwise the ordinary three. */}
+      <Td nowrap holds="control">
+        {!editable
+          ? null
+          : mergeFrom !== null
+            ? (
+                mergeFrom.id === term.id
+                  // The row being folded away cannot be its own destination, and
+                  // saying which one it is beats leaving a gap in the column.
+                  ? <Badge tone="warning">{t.merge}</Badge>
+                  : (
+                      <Form method="post">
+                        <input type="hidden" name="termId" value={mergeFrom.id} />
+                        <input type="hidden" name="intoId" value={term.id} />
+                        <Confirm
+                          label={t.mergeInto}
+                          title={t.mergeTitle(naming(mergeFrom), naming(term))}
+                          warning={t.mergeWarning}
+                          confirm={t.mergeConfirm}
+                          cancel={t.cancel}
+                          // Not the bin: what is pressed here keeps this row.
+                          icon="check"
+                          size="row"
+                        >
+                          <input type="hidden" name="intent" value="merge-term" />
+                        </Confirm>
+                      </Form>
+                    )
+              )
+            : (
+                <span className="flex items-center gap-1">
+                  {/* **The save answers what the panel holds**: the labels and
+                      whether the value is still offered are one answer to "what
+                      should this be now", so they are settled in one press. */}
+                  <Editing method="post">
+                    <input type="hidden" name="termId" value={term.id} />
+                    <Dialog
+                      label={t.edit}
+                      title={t.editTitle(term.code)}
+                      size="row"
+                      icon={<Icon name="edit" />}
+                    >
+                      {(close) => (
+                        <Stack gap="normal">
+                          <Field
+                            label={t.labelJa}
+                            name="labelJa"
+                            value={term.labelJa ?? ""}
+                            width="w-full"
+                          />
+                          <Field
+                            label={t.labelEn}
+                            name="labelEn"
+                            value={term.labelEn}
+                            width="w-full"
+                          />
+                          <Checkbox label={t.offerTerm} name="active" checked={term.active} />
+                          <span className="flex flex-wrap items-center justify-end gap-2">
+                            <Button type="button" variant="ghost" onClick={close}>
+                              {t.cancel}
+                            </Button>
+                            <Submit intent="update-term" icon={<Icon name="save" />} saves>
+                              {t.save}
+                            </Submit>
+                            <Unsaved locale={locale} />
+                          </span>
+                        </Stack>
+                      )}
+                    </Dialog>
+                  </Editing>
+                  {/* **Folding is where a used term goes.** It is offered on
+                      every row rather than only on the used ones, because
+                      pulling two spellings together is the same operation and
+                      neither of them has to be in use. */}
+                  <Link to={mergeAt(term.id)} className={LISTING_CONTROL}>
+                    {t.mergeStart}
+                  </Link>
+                  {/* Nothing names this term, so it can go — and going is what
+                      cannot be undone, unlike turning it off or folding it. */}
+                  {term.used === 0 && (
+                    <Form method="post">
+                      <input type="hidden" name="termId" value={term.id} />
+                      <Confirm
+                        label={t.remove}
+                        title={t.removeTitle(term.code)}
+                        warning={t.removeWarning}
+                        confirm={t.removeConfirm}
+                        cancel={t.cancel}
+                        icon="trash"
+                        size="row"
+                      >
+                        <input type="hidden" name="intent" value="delete-term" />
+                      </Confirm>
+                    </Form>
+                  )}
+                </span>
+              )}
+      </Td>
+    </tr>
   )
 }

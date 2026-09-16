@@ -34,7 +34,7 @@
 import { inArray } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
-import { publicDataset, publicResearchContent, PUBLISHED, type CatalogKey } from "~/content/public"
+import { publicDataset, publicResearchContent, PUBLISHED } from "~/content/public"
 import type {
   DatasetContent,
   Slot,
@@ -46,7 +46,6 @@ import { descriptionOf, draftContentOf } from "~/content/version"
 import type { Executor } from "~/db/client.server"
 import {
   accessionDate,
-  contentKey,
   labelPin,
   research,
   researchVersion,
@@ -246,13 +245,6 @@ export async function rebuildSearchDocs(
     if (pin.kind === "dataset" && pin.datasetId) datasetLabelOf.set(pin.datasetId, pin.label)
   }
 
-  // The projection needs to know which keys may be shown; nothing else about
-  // the catalog matters here.
-  const keyRows = await db
-    .select({ id: contentKey.id, showOnPublicPage: contentKey.showOnPublicPage })
-    .from(contentKey)
-  const keys = new Map<string, CatalogKey>(keyRows.map((key) => [key.id, key]))
-
   const versions = await db
     .select({
       id: researchVersion.id,
@@ -352,7 +344,7 @@ export async function rebuildSearchDocs(
     if (!humLabel || !label) continue
     const projected = publicDataset(
       row.content,
-      { keys, files: [], archive: archiveDates.get(label) ?? null },
+      { files: [], archive: archiveDates.get(label) ?? null },
       PUBLISHED,
     )
     const text = concatSearchText([

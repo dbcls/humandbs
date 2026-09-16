@@ -417,7 +417,7 @@ describe("the article assets", () => {
   function postCommon(token: string, fields: [string, string][]): Request {
     const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
     headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
-    return new Request("http://localhost:8080/admin/contents/files", {
+    return new Request("http://localhost:8080/admin/files", {
       method: "POST",
       headers,
       body: new URLSearchParams(fields).toString(),

@@ -246,7 +246,6 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
         facetCategoryId: k.facetCategoryCode === null
           ? null
           : identityOf(categories, k.facetCategoryCode, "facet category"),
-        showOnPublicPage: k.showOnPublicPage,
       })))
       .returning({ id: contentKey.id }),
   )

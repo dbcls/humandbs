@@ -59,16 +59,6 @@ export interface PublicOptions {
 export const PUBLISHED: PublicOptions = { keepUnsettled: false }
 
 /**
- * What the public side needs to know about a catalog key. Only the flag is read
- * here: labels are resolved and keys are ordered where they are rendered, since
- * doing either would add something the content does not hold.
- */
-export interface CatalogKey {
-  id: string
-  showOnPublicPage: boolean
-}
-
-/**
  * One usage of a research's controlled-access data, from the cache of the
  * application system. Not content: curators cannot edit it, and its two
  * languages are whatever upstream has, so it is never counted as untranslated.
@@ -243,13 +233,14 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
  * there is nothing that says it may be shown, and the safe reading of an
  * unknown key is that it may not.
  */
-function publicValues(
-  values: ValueSlot[],
-  keys: ReadonlyMap<string, CatalogKey>,
-  options: PublicOptions,
-): ValueSlot[] {
+/**
+ * **Every key a dataset carries is drawn.** What a reader may see is decided by
+ * the state of each value rather than by the key it stands under — a key the
+ * public page had no place for would be a key nothing in the portal could act
+ * on (`docs/data-model.md` の「値と文」).
+ */
+function publicValues(values: ValueSlot[], options: PublicOptions): ValueSlot[] {
   return values.flatMap((slot) => {
-    if (!keys.get(slot.keyId)?.showOnPublicPage) return []
     const value = publicValue(slot.value, options)
     return value === null ? [] : [{ keyId: slot.keyId, value }]
   })
@@ -257,18 +248,18 @@ function publicValues(
 
 export function publicDatasetContent(
   content: DatasetContent,
-  input: { keys: ReadonlyMap<string, CatalogKey>, files: readonly StoredFile[] },
+  input: { files: readonly StoredFile[] },
   options: PublicOptions,
 ): DatasetContent {
   const listed = new Set(input.files.map((file) => file.name))
   return {
     releaseDate: content.releaseDate,
     fileSelection: content.fileSelection.filter((name) => listed.has(name)),
-    values: publicValues(content.values, input.keys, options),
+    values: publicValues(content.values, options),
     experiments: content.experiments.map((experiment) => ({
       id: experiment.id,
       label: single(experiment.label, options),
-      values: publicValues(experiment.values, input.keys, options),
+      values: publicValues(experiment.values, options),
     })),
   }
 }
@@ -288,7 +279,6 @@ export function publicResearch(
 export function publicDataset(
   content: DatasetContent,
   input: {
-    keys: ReadonlyMap<string, CatalogKey>
     files: readonly StoredFile[]
     archive: ArchiveDates | null
   },

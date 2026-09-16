@@ -64,12 +64,42 @@ describe("管理のナビ", () => {
       "/admin/research",
       "/admin/research/upstream",
       "/admin/experiment-fields",
-      "/admin/contents",
-      "/admin/contents/alert",
-      "/admin/contents/news",
-      "/admin/contents/files",
+      "/admin/documents",
+      "/admin/alert",
+      "/admin/news",
+      "/admin/files",
       "/admin/assistant",
     ]))
+  })
+
+  /**
+   * **濃くなるのはいつも 1 つ。** 行き先が別の行き先の下にあるとき — 提供申請の
+   * 取り込みは研究一覧の下にある — 前方一致だけで決めると 2 つ濃くなり、バーが
+   * 読者の居場所を 2 か所だと言うことになる。深いほうが勝つ。
+   *
+   * **下の階層が親を濃くすること自体は正しい。** 研究 1 件や下書きの中から
+   * 「研究一覧」が濃くなるのがそれで、そこは一致する行き先がもともと 1 つしかない。
+   */
+  it("どの画面でも、濃くなる行き先はちょうど 1 つ", () => {
+    const bar = adminNavbar("ja")
+    const lit = (path: string): string[] =>
+      bar.filter((entry) => isHere(entry, path)).map((entry) => entry.path)
+
+    expect(lit("/admin")).toEqual(["/admin"])
+    expect(lit("/admin/research")).toEqual(["/admin/research"])
+    expect(lit("/admin/research/upstream")).toEqual(["/admin/research/upstream"])
+    expect(lit("/admin/research/upstream/JGAS000123")).toEqual(["/admin/research/upstream"])
+    expect(lit("/admin/research/01a0")).toEqual(["/admin/research"])
+    expect(lit("/admin/research/01a0/draft/9f/dataset/upstream")).toEqual(["/admin/research"])
+    expect(lit("/admin/documents/01a0")).toEqual(["/admin/documents"])
+
+    // 行き先そのものと、その 1 つ下。どこに立っても 2 つは濃くならない。
+    for (const entry of bar) {
+      expect(lit(entry.path), entry.path).toHaveLength(1)
+      if (entry.path !== adminPath()) {
+        expect(lit(`${entry.path}/x`), `${entry.path}/x`).toHaveLength(1)
+      }
+    }
   })
 
   /**

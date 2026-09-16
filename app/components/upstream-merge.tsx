@@ -7,10 +7,10 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { Fold, PANE_LABEL, PaneHeading, Stack } from "./base"
+import { Fold, PANE_LABEL, Stack } from "./base"
 import { Checkbox, Submit, TextArea } from "./form"
 import { Icon } from "./icons"
-import { Empty } from "./page"
+import { Empty, Section } from "./page"
 
 /**
  * The draft and the application, put side by side so that a third value can be
@@ -44,8 +44,7 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
       </Stack>
 
       {view.provider !== null && (
-        <Stack gap="normal">
-          <PaneHeading title={t.field.provider} level="h3" rule="start" />
+        <Section title={t.field.provider}>
           <Checkbox
             label={[view.provider.nameJa, view.provider.affiliationJa]
               .filter((one) => one !== "")
@@ -54,11 +53,10 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
             checked
             hint={t.takeProviderNote}
           />
-        </Stack>
+        </Section>
       )}
 
-      <Stack gap="normal">
-        <PaneHeading title={t.datasets} level="h3" rule="start" />
+      <Section title={t.registered}>
         {view.datasets.length === 0
           ? <Empty>{t.noDatasets}</Empty>
           : (
@@ -84,7 +82,7 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
                 ))}
               </ul>
             )}
-      </Stack>
+      </Section>
 
       <div><Submit variant="primary" icon={<Icon name="download" />}>{t.apply}</Submit></div>
     </Stack>

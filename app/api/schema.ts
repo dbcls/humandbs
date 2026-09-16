@@ -126,8 +126,7 @@ export const valueSchema = z.discriminatedUnion("type", [
   id: "Value",
   description:
     "A value under a catalog key. `type` says which of the payloads is present, and `key` is the "
-    + "code `/api/fields` lists it under. **Not every key a query may name appears here** — see "
-    + "`inAnswers` on that endpoint.",
+    + "code `/api/fields` lists it under.",
 })
 
 export const fileSchema = z.object({
@@ -285,12 +284,6 @@ export const searchFieldSchema = z.object({
   unit: z.string().optional().meta({ description: "The unit the stored values are in." }),
   values: z.array(termSchema).optional().meta({
     description: "Every value the published set carries, at the level a query can name it.",
-  }),
-  inAnswers: z.boolean().meta({
-    description:
-      "Whether an answer carries this field's value. A field that does not can still be "
-      + "filtered on — it is a question the catalog can be asked, not something an object "
-      + "says about itself.",
   }),
 }).meta({
   id: "SearchField",

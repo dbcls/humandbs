@@ -36,7 +36,7 @@ import { ResearchBody } from "./research"
  */
 
 function key(id: string, code: string, position: number): CatalogKeyView {
-  return { id, code, labelJa: code, labelEn: code, position, showOnPublicPage: true }
+  return { id, code, labelJa: code, labelEn: code, position }
 }
 
 const KEYS = [

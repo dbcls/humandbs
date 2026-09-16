@@ -232,10 +232,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       "Everything `?q=` can be written against. A `term` field lists the values the published "
       + "set carries, so a value taken from here always matches something; a `number` field "
       + "gives the unit its values are stored in. The catalog is the list — a key typed as a "
-      + "vocabulary, a number or a disease is a field, and no other key is.\n\n"
-      + "**`inAnswers` says whether an object carries the field's value.** A field where it is "
-      + "false can be filtered on all the same: it is a question the catalog can be asked, not "
-      + "something an object says about itself.",
+      + "vocabulary, a number or a disease is a field, and no other key is.",
     response: {
       mediaType: JSON_MEDIA,
       schema: searchFieldsSchema,

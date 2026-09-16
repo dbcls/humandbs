@@ -66,7 +66,7 @@ import {
   Note,
   Stack,
 } from "~/components/base"
-import { CONTROL } from "~/components/form"
+import { CONTROL, PULLDOWN, Pulldown } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
@@ -802,15 +802,17 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
               />
               {units.length > 1
                 ? (
-                    <select
-                      value={row.unit ?? ""}
-                      disabled={disabled}
-                      aria-label={t.unit}
-                      onChange={(event) => { edit(at, { unit: event.target.value }) }}
-                      className={box}
-                    >
-                      {units.map((one) => <option key={one} value={one}>{one}</option>)}
-                    </select>
+                    <Pulldown>
+                      <select
+                        value={row.unit ?? ""}
+                        disabled={disabled}
+                        aria-label={t.unit}
+                        onChange={(event) => { edit(at, { unit: event.target.value }) }}
+                        className={`${box} ${PULLDOWN}`}
+                      >
+                        {units.map((one) => <option key={one} value={one}>{one}</option>)}
+                      </select>
+                    </Pulldown>
                   )
                 : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
               {named && (

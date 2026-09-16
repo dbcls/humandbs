@@ -4,7 +4,7 @@ import {
   codeProblem,
   filterKeyRows,
   moved,
-  NO_BOX,
+  termCodeFrom,
   termCodeProblem,
   type KeyFilter,
   type KeyFilterRow,
@@ -45,6 +45,47 @@ describe("the code of a term", () => {
   })
 })
 
+describe("the code a new term is stored under", () => {
+  /* The codes already in the vocabulary were written by hand, and the labels
+     they were written from are still there — so a generated one has to come out
+     the same, or every value added from now on reads differently in an address
+     than the ones beside it. */
+  it("comes out as the ones written by hand already are", () => {
+    expect(termCodeFrom("ATAC-seq")).toBe("atac-seq")
+    expect(termCodeFrom("16S rRNA Sequencing")).toBe("16s-rrna-sequencing")
+    expect(termCodeFrom("Genotyping by array")).toBe("genotyping-by-array")
+    expect(termCodeFrom("CUT&RUN-seq")).toBe("cut-run-seq")
+  })
+
+  it("puts one hyphen where a run of anything else was", () => {
+    expect(termCodeFrom("Whole  —  genome")).toBe("whole-genome")
+    expect(termCodeFrom("a / b (c)")).toBe("a-b-c")
+  })
+
+  it("leaves no hyphen at either end", () => {
+    expect(termCodeFrom("  ATAC-seq  ")).toBe("atac-seq")
+    expect(termCodeFrom("(WGS)")).toBe("wgs")
+  })
+
+  /* A label with nothing a code can hold leaves an empty one, and an empty code
+     is what `termCodeProblem` already refuses — so the screen answers with the
+     same problem it would for a code typed by hand. */
+  it("leaves nothing to refuse when the label holds no letters or digits", () => {
+    expect(termCodeFrom("―")).toBe("")
+    expect(termCodeProblem(termCodeFrom("―"))).toBe("malformed")
+    expect(termCodeProblem(termCodeFrom("メチル化アレイ"))).toBe("malformed")
+  })
+
+  /* Whatever the label holds, what comes out is a code a query can carry
+     unquoted — that is the one thing the generated side must not get wrong. */
+  it("never makes a code the query language would refuse", () => {
+    for (const label of ["ATAC-seq", "a:b", "x (y) [z]", "q?w*e", "back\\slash", "'quoted'"]) {
+      const code = termCodeFrom(label)
+      if (code !== "") expect(termCodeProblem(code)).toBeNull()
+    }
+  })
+})
+
 describe("moving an entry one place", () => {
   const items = [{ id: "a" }, { id: "b" }, { id: "c" }]
 
@@ -70,8 +111,6 @@ describe("narrowing the fields listing", () => {
       labelJa: code,
       labelEn: code,
       valueType: "text",
-      categoryCode: null,
-      showOnPublicPage: true,
       ...over,
     }
   }
@@ -80,20 +119,17 @@ describe("narrowing the fields listing", () => {
     labelJa: "プラットフォーム",
     labelEn: "Platform",
     valueType: "vocabulary",
-    categoryCode: "experiment",
   })
   const readLength = field("read-length", {
     labelJa: "リード長",
     labelEn: "Read length",
     valueType: "number",
-    categoryCode: "experiment",
-    showOnPublicPage: false,
   })
   const targets = field("targets", { labelJa: "ターゲット", labelEn: "Targets" })
   const rows = [platform, readLength, targets]
 
   function found(filter: Partial<KeyFilter>): string[] {
-    return filterKeyRows(rows, { keyword: "", types: [], boxes: [], showing: [], ...filter })
+    return filterKeyRows(rows, { keyword: "", types: [], ...filter })
       .map((row) => row.code)
   }
 
@@ -120,26 +156,13 @@ describe("narrowing the fields listing", () => {
     expect(found({ types: ["vocabulary", "number"] })).toEqual(["platform", "read-length"])
   })
 
-  it("reads a field standing in no box as a value of the box axis", () => {
-    expect(found({ boxes: [NO_BOX] })).toEqual(["targets"])
-    expect(found({ boxes: ["experiment"] })).toEqual(["platform", "read-length"])
+  it("combines the keyword and the type as an AND", () => {
+    expect(found({ keyword: "read", types: ["number"] })).toEqual(["read-length"])
+    expect(found({ keyword: "platform", types: ["number"] })).toEqual([])
   })
 
-  it("reads whether a field is drawn as an axis of its own", () => {
-    expect(found({ showing: ["hidden"] })).toEqual(["read-length"])
-    expect(found({ showing: ["shown"] })).toEqual(["platform", "targets"])
-  })
-
-  it("combines the box and the axes as an AND", () => {
-    expect(found({ types: ["vocabulary", "number"], showing: ["hidden"] })).toEqual(["read-length"])
-    expect(found({ keyword: "platform", showing: ["hidden"] })).toEqual([])
-  })
-
-  it("narrows nothing when every value of an axis is ticked", () => {
-    expect(found({ showing: ["shown", "hidden"] })).toEqual(["platform", "read-length", "targets"])
-  })
-
-  it("keeps a field whose box the address does not know out of the way", () => {
-    expect(found({ boxes: ["nonesuch"] })).toEqual([])
+  it("narrows nothing when every value of the axis is ticked", () => {
+    expect(found({ types: ["text", "vocabulary", "number", "disease"] }))
+      .toEqual(["platform", "read-length", "targets"])
   })
 })

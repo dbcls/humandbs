@@ -166,19 +166,6 @@ export function DraftBar({
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             {children}
             {/*
-              **What the save is doing is said here and not on the button.** A
-              control that renames itself while it works is a control the reader
-              cannot find again, and the three things this says — there is
-              unsaved work, it is being written, it is written — are one piece
-              of news that assistive tech should hear as it changes
-              (`docs/ui.md` の「壊れるもの」).
-            */}
-            <span role="status">
-              {saving && <span className="text-ink-muted">{t.saving}</span>}
-              {!saving && dirty && <span className="text-accent">{t.unsaved}</span>}
-              {!saving && !dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
-            </span>
-            {/*
               **The one control that carries the accent, and only while there is
               something to save.** The colour says there is unsaved work and the
               disabled state says there is not — but neither reaches somebody
@@ -193,6 +180,19 @@ export function DraftBar({
             >
               {t.save}
             </Button>
+            {/*
+              **What the save is doing is said here and not on the button.** A
+              control that renames itself while it works is a control the reader
+              cannot find again, and the three things this says — there is
+              unsaved work, it is being written, it is written — are one piece
+              of news that assistive tech should hear as it changes
+              (`docs/ui.md` の「壊れるもの」).
+            */}
+            <span role="status">
+              {saving && <span className="text-ink-muted">{t.saving}</span>}
+              {!saving && dirty && <span className="text-accent">{t.unsaved}</span>}
+              {!saving && !dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
+            </span>
           </div>
         </div>
         {memo}

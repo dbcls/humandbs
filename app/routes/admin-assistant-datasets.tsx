@@ -3,7 +3,7 @@ import { useState, type SyntheticEvent } from "react"
 import { Button, Confirm, Fold, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Empty, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
+import { Counted, Empty, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -140,6 +140,7 @@ export function Datasets({
             </Stack>
           </form>
         )}
+        <Counted locale={locale} total={datasets.length} />
         {datasets.length === 0
           ? (
               <Empty>{words.noDatasets}</Empty>

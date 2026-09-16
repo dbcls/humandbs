@@ -113,14 +113,43 @@ describe("document の組み立て", () => {
 })
 
 describe("news の組み立て", () => {
-  it("公開日は日付だけになる", () => {
+  it("公開日は JST の日時になる", () => {
     const [item] = buildNews([{
       id: "1",
       publishedAt: "2025-09-24T09:00:00+09:00",
       translations: [{ locale: "ja", title: "t", content: "<p>b</p>" }],
     }])
-    expect(item?.publishedAt).toBe("2025-09-24")
+    expect(item?.publishedAt).toBe("2025-09-24 09:00:00")
     expect(item?.contents[0]?.content.body).toBe("b")
+  })
+
+  it("JST 以外の offset で書かれていても、JST の壁時計に直る", () => {
+    const [item] = buildNews([{
+      id: "1",
+      publishedAt: "2025-09-24T00:00:00Z",
+      translations: [],
+    }])
+    expect(item?.publishedAt).toBe("2025-09-24 09:00:00")
+  })
+
+  it("同じ日の 2 件が、時刻で前後に並ぶ", () => {
+    const built = buildNews([
+      { id: "1", publishedAt: "2025-09-24T03:00:00+09:00", translations: [] },
+      { id: "2", publishedAt: "2025-09-24T06:00:00+09:00", translations: [] },
+    ])
+    const dates = built.map((one) => one.publishedAt)
+    expect(dates).toEqual(["2025-09-24 03:00:00", "2025-09-24 06:00:00"])
+    // The listing orders by this value, so the later one has to sort after.
+    expect([...dates].sort()).toEqual(dates)
+  })
+
+  it("日付をまたぐ時刻でも、JST の日付になる", () => {
+    const [item] = buildNews([{
+      id: "1",
+      publishedAt: "2025-09-24T16:30:00Z",
+      translations: [],
+    }])
+    expect(item?.publishedAt).toBe("2025-09-25 01:30:00")
   })
 
   it("公開日を持たない item も落ちない", () => {

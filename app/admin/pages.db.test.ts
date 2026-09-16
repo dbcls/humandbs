@@ -407,11 +407,13 @@ describe("the research screen's forms", () => {
   it("opens a new research and sends the browser to the draft it was given", async () => {
     const token = await signIn(CURATOR, true)
 
+    // The language is passed in and makes no difference: the management area
+    // has one address and it carries no prefix (`public/urls.ts` の `href`).
     const response = await createResearchAction(postForm(token, "/admin/research", {}), "en")
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location"))
-      .toMatch(/^\/en\/admin\/research\/[0-9a-f-]{36}\/draft\/[0-9a-f-]{36}$/)
+      .toMatch(/^\/admin\/research\/[0-9a-f-]{36}\/draft\/[0-9a-f-]{36}$/)
   })
 
   it("opens a draft of an existing research and sends the browser to it", async () => {

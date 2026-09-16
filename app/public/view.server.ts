@@ -136,7 +136,6 @@ export interface CatalogKeyView {
   labelJa: string
   labelEn: string
   position: number
-  showOnPublicPage: boolean
 }
 
 export interface VocabularyTermView {
@@ -469,7 +468,7 @@ export interface ResearchView {
   releaseNote: FieldView
   summary: { aims: FieldView, methods: FieldView, targets: FieldView, links: LinksView }
   datasets: DatasetRowView[]
-  dataProviders: { id: string, representative: FieldView, organization: FieldView }[]
+  dataProviders: { id: string, principalInvestigator: FieldView, organization: FieldView }[]
   researchProjects: { id: string, name: FieldView, links: LinksView }[]
   grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
   relatedPublications: { id: string, title: FieldView, doi: FieldView, datasetLabels: string[] }[]
@@ -563,7 +562,7 @@ export function anchoredResearchView(
     datasets,
     dataProviders: content.dataProviders.map((provider) => ({
       id: provider.id,
-      representative: at.field(
+      principalInvestigator: at.field(
         `dataProviders.${provider.id}.name`,
         translated(provider.name, locale, fallbacks),
       ),
@@ -607,7 +606,7 @@ export function anchoredResearchView(
   // An array carries its own path for membership and order, so each list is
   // anchored as a whole as well: an element added or taken away is a change
   // nobody could see if only the surviving elements were anchored.
-  at.list("dataProviders", view.dataProviders.map((row) => fieldText(row.representative)))
+  at.list("dataProviders", view.dataProviders.map((row) => fieldText(row.principalInvestigator)))
   at.list("researchProjects", view.researchProjects.map((row) => fieldText(row.name)))
   at.list("grants", view.grants.map((row) => fieldText(row.title)))
   at.list("relatedPublications", view.relatedPublications.map((row) => fieldText(row.title)))
@@ -780,8 +779,8 @@ export interface ResearchListRowView {
   accessTypes: TermView[]
   /**
    * Whom the row names as the provider: the listing's own names where someone
-   * wrote them, and otherwise the representative of each provider the research
-   * carries — not the organisation beside it. The research page carries both
+   * wrote them, and otherwise the principal investigator of each provider the
+   * research carries — not the organisation beside it. The page carries both
    * under one heading; a cell in a listing holds a line, and the name is the
    * half a reader scans for.
    */

@@ -356,9 +356,9 @@ describe("アシスタント API のセッション切れ", () => {
     ).rejects.toThrow(words.loadFailed)
     expect(signIn).toHaveBeenCalledOnce()
     expect(
-      assistantLoginPath("/en/admin/assistant", "?view=processing"),
+      assistantLoginPath("/admin/assistant", "?view=processing"),
     ).toBe(
-      "/auth/login?redirect=%2Fen%2Fadmin%2Fassistant%3Fview%3Dprocessing",
+      "/auth/login?redirect=%2Fadmin%2Fassistant%3Fview%3Dprocessing",
     )
   })
 

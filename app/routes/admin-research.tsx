@@ -8,11 +8,13 @@ import {
   adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchFilesPath,
+  adminResearchListPath,
 } from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
 import { Badge, Confirm, Heading, Note, Stack } from "~/components/base"
 import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
+import { Card, Counted, Empty, Page, Section, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -88,7 +90,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
       </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading} aside={view.humLabel ?? undefined} />
+          <Heading title={t.heading} aside={view.humLabel ?? undefined}>
+            <AdminBack
+              to={href(locale, adminResearchListPath())}
+              label={t.backToList}
+              icon="chevron-left"
+            />
+          </Heading>
 
           <Section title={t.labels} note={t.labelsNote}>
             <Stack gap="normal">
@@ -135,6 +143,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
             {/* **状態の列を持たない。** 並んでいることが公開されていることなので、
                 行が言えるのは「出ている」だけになる。 */}
+            <Counted locale={locale} total={view.versions.length} />
             <Table
               align="middle"
               headers={[
@@ -190,6 +199,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           </Section>
 
           <Section title={t.datasets}>
+            <Counted locale={locale} total={view.datasets.length} />
             {view.datasets.length === 0
               ? <Empty>{t.noDatasets}</Empty>
               : (

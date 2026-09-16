@@ -240,7 +240,6 @@ export async function loadCatalog(db: Executor): Promise<CatalogView> {
       labelJa: contentKey.labelJa,
       labelEn: contentKey.labelEn,
       position: contentKey.position,
-      showOnPublicPage: contentKey.showOnPublicPage,
     })
     .from(contentKey)
   const terms = await db

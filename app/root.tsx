@@ -88,9 +88,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
    * destinations would be drawn for anybody who typed a wrong address. Reading
    * the account as well means a stranger gets the portal's own 404, with the
    * navigation that lets them leave it.
+   *
+   * **The area is recognised by the address as asked for, not by what is left
+   * after the language comes off.** `/en/admin` is not a management address —
+   * the area has no English one (`app/routes.ts`) — and taking the prefix off
+   * first would leave it looking like `/admin` and draw the frame around a 404.
    */
-  const { path } = readLocale(useLocation().pathname)
-  const managing = isAdminPath(path) && data?.account?.isAdmin === true
+  const pathname = useLocation().pathname
+  const { path } = readLocale(pathname)
+  const managing = isAdminPath(pathname) && data?.account?.isAdmin === true
 
   return (
     <html lang={locale}>

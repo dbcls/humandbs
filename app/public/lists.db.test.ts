@@ -385,7 +385,6 @@ async function withDiseases(): Promise<void> {
       vocabularySetId: setId,
       facetCategoryId: category,
       multiple: true,
-      showOnPublicPage: true,
     })
     .returning({ id: s.contentKey.id }))
 

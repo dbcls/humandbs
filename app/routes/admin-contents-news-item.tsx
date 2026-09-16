@@ -1,13 +1,15 @@
-import { Form } from "react-router"
-
 import { newsAction, newsPage } from "~/admin/contents.server"
-import { Confirm, Heading, Stack } from "~/components/base"
+import { adminNewsListPath } from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
+import { Badge, Heading, Stack } from "~/components/base"
 import { LocaleEditors, ResultLine } from "~/components/contents"
 import { Answered, Editing, Field, Submit, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
+import { asLocalInput, minuteOf } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
+import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-news-item"
 
@@ -48,7 +50,8 @@ function titleOf(editors: { draftTitle: string }[]): string | null {
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   const words = messages.admin.contents
-  const label = titleOf(loaderData.editors) ?? loaderData.publishedAt ?? words.news.undated
+  const dated = loaderData.publishedAt === null ? null : minuteOf(loaderData.publishedAt)
+  const label = titleOf(loaderData.editors) ?? dated ?? words.news.undated
   return [
     { title: pageTitle(messages, words.news.itemHeading, label) },
     { name: "robots", content: "noindex" },
@@ -56,17 +59,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function AdminContentsNewsItem({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, publishedAt, editors } = loaderData
+  const { locale, publishedAt, scheduled, editors } = loaderData
   const t = messagesFor(locale).admin.contents
-  /*
-    **What is about to be deleted, named at the moment of deleting it.** This is
-    the one place the announcement's own words belong: a confirmation has to say
-    which thing it is about, and a value that moves as the form is typed into is
-    exactly right there — it names what is on screen now. An item with neither
-    language written is named by its date, and one with no date either by the
-    word for that.
-  */
-  const naming = titleOf(editors) ?? publishedAt ?? t.news.undated
+  const save = messagesFor(locale).admin.editor.save
 
   return (
     <Page>
@@ -75,36 +70,58 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
       </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.news.itemHeading} />
+          <Heading title={t.news.itemHeading}>
+            <AdminBack
+              to={href(locale, adminNewsListPath())}
+              label={t.news.backToList}
+              icon="chevron-left"
+            />
+          </Heading>
 
+          {/*
+            **The field names the zone and the value carries no offset.** The
+            clock in the box is the one the announcement goes out on, and a
+            reader with no way to check which zone that is would have to guess
+            from the value — which reads the same either way.
+
+            **A date still ahead is said here rather than by the published
+            state.** The two languages each have their own state and this date
+            belongs to the announcement as a whole, so a word about waiting in
+            the state would be the same word in two places saying something
+            about a third.
+          */}
           <Section title={t.news.publishedAt}>
-            <Editing method="post" className="flex flex-wrap items-end gap-2">
-              <Field
-                label={t.news.publishedAt}
-                name="publishedAt"
-                type="date"
-                value={publishedAt ?? ""}
-              />
-              <Submit intent="set-date" icon={<Icon name="save" />} saves>{t.save}</Submit>
-              <Unsaved locale={locale} />
-            </Editing>
+            <Stack gap="tight">
+              <Editing method="post" className="flex flex-wrap items-end gap-2">
+                <Field
+                  label={t.news.publishedAtField}
+                  name="publishedAt"
+                  type="datetime-local"
+                  width="w-56"
+                  value={publishedAt === null ? "" : asLocalInput(publishedAt)}
+                />
+                <span className="flex items-center gap-2">
+                  <Submit intent="set-date" icon={<Icon name="save" />} saves>{save}</Submit>
+                  <Unsaved locale={locale} />
+                </span>
+              </Editing>
+              {scheduled && (
+                <p className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
+                  <Badge tone="accent">{t.news.scheduled}</Badge>
+                  {t.news.scheduledNote}
+                </p>
+              )}
+            </Stack>
           </Section>
 
-          <LocaleEditors editors={editors} locale={locale} />
-
-          <Section title={t.removeHeading}>
-            <Form method="post">
-              <Confirm
-                label={t.news.remove}
-                title={t.news.removeTitle(naming)}
-                warning={t.removeNote}
-                confirm={t.news.removeConfirm}
-                cancel={t.cancel}
-              >
-                <input type="hidden" name="intent" value="delete-news" />
-              </Confirm>
-            </Form>
-          </Section>
+          {/* **The announcement is deleted one language at a time**, the way an
+              article is: there is nothing to it apart from what it says, so
+              taking away the last thing it says takes it away. */}
+          <LocaleEditors
+            editors={editors}
+            locale={locale}
+            lastWarning={t.news.removeLastWarning}
+          />
         </Stack>
       </Card>
     </Page>

@@ -3,7 +3,7 @@ import { Form } from "react-router"
 
 import { alertAction, alertsPage, type AlertRow } from "~/admin/contents.server"
 import { Badge, Confirm, Heading, Stack } from "~/components/base"
-import { ResultLine } from "~/components/contents"
+import { ResultLine, SHOWING } from "~/components/contents"
 import { Answered, Editing, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
@@ -52,8 +52,12 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
       <Answered answer={actionData} locale={locale}>
         <ResultLine result={actionData} locale={locale} />
       </Answered>
+      {/* **This screen has no sections**, so the distance under the heading is
+          the one between a heading and what it heads rather than between two
+          parts. What comes next is the first alert itself, which opens with its
+          own state rather than with a name. */}
       <Card under={false}>
-        <Stack gap="block">
+        <Stack gap="normal">
           {/* The way to make one stands on the heading's own line: it acts on
               the screen rather than on any one alert, and at the foot it moves
               further down the page with every alert added. */}
@@ -83,16 +87,6 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
     </Page>
   )
 }
-
-/**
- * The width the control that shows and hides is held at.
- *
- * **The word changes with the state and the width may not.** 「表示する」 and
- * 「非表示にする」 are two and four characters apart, so a control drawn to fit
- * moves the save beside it every time it is pressed — and the row is the one
- * place on the screen the reader presses twice in a row.
- */
-const SHOWING = "min-w-36"
 
 /** What is typed into one of the two boxes, with the spaces around it dropped. */
 function bodyOf(form: HTMLFormElement, name: string): string {
@@ -126,7 +120,7 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
   return (
     <Editing
       method="post"
-      className="flex flex-col gap-2"
+      className="flex flex-col gap-4"
       onInput={(event) => {
         const form = event.currentTarget
         setReady(bodyOf(form, "ja") !== "" && bodyOf(form, "en") !== "")
@@ -135,25 +129,30 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
       <input type="hidden" name="alertId" value={row.id} />
       {/* Which of these the site is saying, above the words rather than in the
           state of a control at the foot of them. */}
-      <p>
+      <p className="text-sm">
         {row.active
           ? <Badge tone="accent" icon={<Icon name="eye" />}>{t.alert.shown}</Badge>
           : <Badge tone="muted" icon={<Icon name="eye-off" />}>{t.alert.hidden}</Badge>}
       </p>
-      <TextArea
-        label={t.languages.ja}
-        name="ja"
-        value={row.ja}
-        accepts={messages.admin.accepts.markdown}
-        rows={2}
-      />
-      <TextArea
-        label={t.languages.en}
-        name="en"
-        value={row.en}
-        accepts={messages.admin.accepts.markdown}
-        rows={2}
-      />
+      {/* **The two languages are one value**, so they sit at the distance a
+          label sits from what it labels — closer than the parts of the form are
+          to each other. */}
+      <div className="flex flex-col gap-2">
+        <TextArea
+          label={t.languages.ja}
+          name="ja"
+          value={row.ja}
+          accepts={messages.admin.accepts.markdown}
+          rows={2}
+        />
+        <TextArea
+          label={t.languages.en}
+          name="en"
+          value={row.en}
+          accepts={messages.admin.accepts.markdown}
+          rows={2}
+        />
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex flex-wrap items-center gap-3">
           {row.active

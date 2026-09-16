@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest"
 import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
-import { emptyDatasetContent, filled } from "~/content/empty"
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { ContentValue } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
@@ -13,6 +13,7 @@ import { seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { catalogAction, catalogPage, fieldTermsPage } from "./catalog.server"
+import { saveDatasetEntry } from "./drafts.server"
 
 /**
  * The catalog screens with their guard on, against the development database.
@@ -281,12 +282,34 @@ describe("the terms of a vocabulary", () => {
 
     expect(await catalogAction(post(token, { intent: "delete-term", termId })))
       .toEqual({ status: "in-use" })
-    expect(await catalogAction(post(token, { intent: "set-term-active", termId, active: "false" })))
+    // Turning it off is part of editing it: the panel holds the labels and the
+    // tick together, and a tick left unticked sends nothing at all.
+    expect(await catalogAction(post(token, { intent: "update-term", termId, labelEn: "wgs" })))
       .toEqual({ status: "ok" })
 
     // Deactivated, and still resolvable for the data that names it.
     const held = only(await db.select().from(s.vocabularyTerm))
     expect(held.active).toBe(false)
+  })
+
+  it("turns a term back on in the same save that renames it", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    const termId = await term(setId, "wgs")
+    await db.update(s.vocabularyTerm).set({ active: false })
+
+    expect(await catalogAction(post(token, {
+      intent: "update-term",
+      termId,
+      labelEn: "Whole genome sequencing",
+      labelJa: "全ゲノム",
+      active: "on",
+    }))).toEqual({ status: "ok" })
+
+    const held = only(await db.select().from(s.vocabularyTerm))
+    expect(held.active).toBe(true)
+    expect(held.labelEn).toBe("Whole genome sequencing")
+    expect(held.labelJa).toBe("全ゲノム")
   })
 
   it("counts a term only a disease names as in use, which is a shape of its own", async () => {
@@ -339,33 +362,66 @@ describe("the terms of a vocabulary", () => {
     const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
     expect(view?.terms.map((row) => row.used)).toEqual([2])
   })
-})
 
-describe("changing what a key shows", () => {
-  it("rebuilds the search rows, so hiding a key takes its words out of the index", async () => {
+  it("narrows to the state asked for, and counts with that axis lifted", async () => {
     const token = await signIn(CURATOR, true)
-    const keyId = await freeTextKey("internal-note")
-    await db.update(s.contentKey).set({ showOnPublicPage: true }).where(eq(s.contentKey.id, keyId))
-    await publishedValue({ keyId })
-    await catalogAction(post(token, {
-      intent: "update-key",
-      keyId,
-      labelJa: "メモ",
-      labelEn: "Note",
-      showOnPublicPage: "on",
-    }))
-    const shown = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
-    expect(shown.some((row) => row.textJa.includes("x"))).toBe(true)
+    const setId = await vocabulary("assay")
+    await term(setId, "wgs")
+    const off = await term(setId, "wes")
+    await db.update(s.vocabularyTerm)
+      .set({ active: false })
+      .where(eq(s.vocabularyTerm.id, off))
+    await db.insert(s.contentKey).values({
+      code: "assay",
+      scope: "experiment",
+      valueType: "vocabulary",
+      labelJa: "手法",
+      labelEn: "Assay",
+      vocabularySetId: setId,
+    })
 
-    await catalogAction(post(token, {
-      intent: "update-key",
-      keyId,
-      labelJa: "メモ",
-      labelEn: "Note",
-    }))
+    const all = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
+    expect(all?.terms.map((row) => row.code)).toEqual(["wes", "wgs"])
 
-    const hidden = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
-    expect(hidden.every((row) => !row.textJa.includes("x"))).toBe(true)
+    const active = await fieldTermsPage(
+      get(token, "/admin/experiment-fields/assay?state=active"),
+      "assay",
+    )
+    expect(active?.terms.map((row) => row.code)).toEqual(["wgs"])
+    // Counted over the set with this axis lifted, so picking one value does not
+    // drop the other to zero and leave no way back.
+    expect(active?.counts.state).toEqual({ active: 1, inactive: 1 })
+
+    // Asking for both is asking for neither.
+    const both = await fieldTermsPage(
+      get(token, "/admin/experiment-fields/assay?state=active&state=inactive"),
+      "assay",
+    )
+    expect(both?.terms.map((row) => row.code)).toEqual(["wes", "wgs"])
+  })
+
+  it("counts the axis over what the box matched, not over the whole vocabulary", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    await term(setId, "wgs")
+    const off = await term(setId, "wes")
+    await db.update(s.vocabularyTerm)
+      .set({ active: false })
+      .where(eq(s.vocabularyTerm.id, off))
+    await db.insert(s.contentKey).values({
+      code: "assay",
+      scope: "experiment",
+      valueType: "vocabulary",
+      labelJa: "手法",
+      labelEn: "Assay",
+      vocabularySetId: setId,
+    })
+
+    const found = await fieldTermsPage(
+      get(token, "/admin/experiment-fields/assay?find=wgs"),
+      "assay",
+    )
+    expect(found?.counts.state).toEqual({ active: 1, inactive: 0 })
   })
 })
 
@@ -479,7 +535,6 @@ describe("narrowing the fields listing", () => {
         labelEn: "Platform",
         position: 1,
         facetCategoryId: box,
-        showOnPublicPage: true,
       },
       {
         code: "read-length",
@@ -489,7 +544,6 @@ describe("narrowing the fields listing", () => {
         labelEn: "Read length",
         position: 2,
         facetCategoryId: box,
-        showOnPublicPage: false,
       },
     ])
     return box
@@ -506,20 +560,6 @@ describe("narrowing the fields listing", () => {
     expect(view.total).toBe(3)
     // The type axis is counted with its own condition lifted, so all three.
     expect(view.counts.types).toEqual({ text: 1, vocabulary: 1, number: 1, disease: 0 })
-    // The other two are counted inside what the type left.
-    expect(view.counts.boxes).toEqual({ experiment: 1, none: 0 })
-    expect(view.counts.showing).toEqual({ shown: 0, hidden: 1 })
-  })
-
-  it("narrows by the box a field stands in, and by standing in none", async () => {
-    const token = await signIn(CURATOR, true)
-    await threeFields()
-
-    const inBox = await catalogPage(get(token, "/admin/experiment-fields?box=experiment"))
-    expect(inBox.keys.map((one) => one.code)).toEqual(["platform", "read-length"])
-
-    const loose = await catalogPage(get(token, "/admin/experiment-fields?box=none"))
-    expect(loose.keys.map((one) => one.code)).toEqual(["targets"])
   })
 
   it("drops a condition the address carries that names nothing", async () => {
@@ -527,12 +567,10 @@ describe("narrowing the fields listing", () => {
     await threeFields()
 
     const view = await catalogPage(
-      get(token, "/admin/experiment-fields?box=nonesuch&type=nonesuch&shown=nonesuch"),
+      get(token, "/admin/experiment-fields?type=nonesuch"),
     )
 
-    expect(view.boxes).toEqual([])
     expect(view.types).toEqual([])
-    expect(view.showing).toEqual([])
     expect(view.keys).toHaveLength(3)
   })
 
@@ -542,5 +580,222 @@ describe("narrowing the fields listing", () => {
 
     const view = await catalogPage(get(token, "/admin/experiment-fields"))
     expect(view.keys.map((one) => one.code)).toEqual(["targets", "platform", "read-length"])
+  })
+})
+
+describe("folding one term into another", () => {
+  /** A vocabulary with two spellings of the same thing, and the field for it. */
+  async function twoSpellings(): Promise<{ setId: string, keyId: string, from: string, into: string }> {
+    const setId = await vocabulary("assay")
+    const from = await term(setId, "wgs")
+    const into = await term(setId, "whole-genome-sequencing")
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({
+        code: "assay",
+        scope: "experiment",
+        valueType: "vocabulary",
+        labelJa: "手法",
+        labelEn: "Assay",
+        vocabularySetId: setId,
+      })
+      .returning({ id: s.contentKey.id }))
+    return { setId, keyId, from, into }
+  }
+
+  function chosenIn(content: unknown): string[] {
+    const held = JSON.stringify(content)
+    return [...held.matchAll(/"termIds":\{"state":"value","value":\[([^\]]*)\]/g)]
+      .flatMap((match) => (match[1] ?? "").split(",").filter((one) => one !== ""))
+      .map((one) => one.replaceAll("\"", ""))
+  }
+
+  it("rewrites a published version to point at the term that is kept", async () => {
+    const token = await signIn(CURATOR, true)
+    const { keyId, from, into } = await twoSpellings()
+    await publishedValue({ keyId, termId: from })
+
+    expect(await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into })))
+      .toEqual({ status: "ok" })
+
+    const version = only(await db.select().from(s.researchVersion))
+    expect(chosenIn(version.content)).toEqual([into])
+    // The folded term is gone, which is what makes this different from
+    // turning one off.
+    expect(await db.select().from(s.vocabularyTerm).where(eq(s.vocabularyTerm.id, from)))
+      .toHaveLength(0)
+  })
+
+  it("rewrites a draft and moves its revision on, so an open editor is refused", async () => {
+    const token = await signIn(CURATOR, true)
+    const { keyId, from, into } = await twoSpellings()
+    const { id: researchId } = only(await db.insert(s.research).values({})
+      .returning({ id: s.research.id }))
+    const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    const { id: draftId } = only(await db.insert(s.researchDraft)
+      .values({
+        researchId,
+        content: emptyResearchContent(),
+        shareToken: `share-${researchId}`,
+      })
+      .returning({ id: s.researchDraft.id }))
+    await db.insert(s.draftDatasetEntry).values({
+      draftId,
+      datasetId,
+      content: {
+        ...emptyDatasetContent(),
+        values: [{ keyId, value: { kind: "vocabulary", termIds: filled([from]) } }],
+      },
+    })
+
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
+
+    const entry = only(await db.select().from(s.draftDatasetEntry))
+    expect(chosenIn(entry.content)).toEqual([into])
+    expect(entry.revision).toBe(2)
+  })
+
+  it("refuses the save of an editor who was holding the row when it was folded", async () => {
+    const token = await signIn(CURATOR, true)
+    const { keyId, from, into } = await twoSpellings()
+    const { id: researchId } = only(await db.insert(s.research).values({})
+      .returning({ id: s.research.id }))
+    const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    const { id: draftId } = only(await db.insert(s.researchDraft)
+      .values({
+        researchId,
+        content: emptyResearchContent(),
+        shareToken: `share-${researchId}`,
+      })
+      .returning({ id: s.researchDraft.id }))
+    const pointing = {
+      ...emptyDatasetContent(),
+      values: [{ keyId, value: { kind: "vocabulary" as const, termIds: filled([from]) } }],
+    }
+    const opened = await saveDatasetEntry(db, { draftId, datasetId, revision: null }, pointing)
+    if (opened.status !== "saved") throw new Error("expected the first save to land")
+
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
+
+    // **This is what the merge rests on.** The editor is still holding the
+    // description it read, which names a term that no longer exists; saving it
+    // would put the folded value back and undo the merge in that one row.
+    const stale = await saveDatasetEntry(
+      db,
+      { draftId, datasetId, revision: opened.revision },
+      pointing,
+    )
+    expect(stale).toEqual({ status: "conflict" })
+    expect(chosenIn(only(await db.select().from(s.draftDatasetEntry)).content)).toEqual([into])
+  })
+
+  it("leaves one identity where a description named both spellings", async () => {
+    const token = await signIn(CURATOR, true)
+    const { keyId, from, into } = await twoSpellings()
+    const { id: researchId } = only(await db.insert(s.research).values({})
+      .returning({ id: s.research.id }))
+    const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{
+        datasetId,
+        content: {
+          ...emptyDatasetContent(),
+          values: [{ keyId, value: { kind: "vocabulary", termIds: filled([from, into]) } }],
+        },
+      }],
+    })
+
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
+
+    // Counted twice, the facet would say the dataset holds this value twice.
+    expect(chosenIn(only(await db.select().from(s.researchVersion)).content)).toEqual([into])
+  })
+
+  it("refuses to fold across two vocabularies", async () => {
+    const token = await signIn(CURATOR, true)
+    const { from } = await twoSpellings()
+    const elsewhere = await term(await vocabulary("platform"), "hiseq")
+
+    expect(await catalogAction(post(token, {
+      intent: "merge-term",
+      termId: from,
+      intoId: elsewhere,
+    }))).toEqual({ status: "unknown-target" })
+    expect(await db.select().from(s.vocabularyTerm)).toHaveLength(3)
+  })
+
+  it("refuses to fold a term of a settled vocabulary", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("sex")
+    const from = await term(setId, "male")
+    const into = await term(setId, "mixed")
+
+    expect(await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into })))
+      .toEqual({ status: "not-editable" })
+  })
+
+  it("refuses to fold a term into itself", async () => {
+    const token = await signIn(CURATOR, true)
+    const { from } = await twoSpellings()
+
+    expect(await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: from })))
+      .toEqual({ status: "unknown-target" })
+    expect(await db.select().from(s.vocabularyTerm)).toHaveLength(2)
+  })
+})
+
+describe("what the terms screen opens on", () => {
+  it("opens a settled vocabulary to be read, rather than answering 404", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("sex")
+    await term(setId, "male")
+    await fieldFor("sex", setId)
+
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/sex"), "sex")
+    expect(view?.terms.map((row) => row.code)).toEqual(["male"])
+    // The screen reads it and offers nothing; the write paths refuse anyway.
+    expect(view?.editable).toBe(false)
+  })
+
+  it("names the term a merge is aimed from, wherever it sits in the pages", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    const aimed = await term(setId, "wgs")
+    await fieldFor("assay", setId)
+
+    const view = await fieldTermsPage(
+      get(token, `/admin/experiment-fields/assay?mergeFrom=${aimed}`),
+      "assay",
+    )
+    expect(view?.mergeFrom?.code).toBe("wgs")
+  })
+
+  it("names nothing when the address points at a term of another vocabulary", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    await fieldFor("assay", setId)
+    const elsewhere = await term(await vocabulary("platform"), "hiseq")
+
+    const view = await fieldTermsPage(
+      get(token, `/admin/experiment-fields/assay?mergeFrom=${elsewhere}`),
+      "assay",
+    )
+    expect(view?.mergeFrom).toBeNull()
+  })
+
+  it("names nothing when the address carries something that is not an id", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    await fieldFor("assay", setId)
+
+    const view = await fieldTermsPage(
+      get(token, "/admin/experiment-fields/assay?mergeFrom=not-a-uuid"),
+      "assay",
+    )
+    expect(view?.mergeFrom).toBeNull()
   })
 })

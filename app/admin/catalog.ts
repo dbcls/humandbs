@@ -44,6 +44,25 @@ export function termCodeProblem(code: string): CodeProblem | null {
 }
 
 /**
+ * The code a new term is stored under, made from its English label.
+ *
+ * **Nobody is asked for it.** The code is an address the public side carries
+ * (`?q=experimental-method:atac-seq`), not a name a curator chooses — and
+ * asking for one is asking somebody to know which characters a query can hold
+ * unquoted. The label already says what the value is.
+ *
+ * **A vocabulary that arrives with codes of its own keeps them** — ICD10 writes
+ * `C34`, and a slug made from the label would be a second name for the same
+ * thing. That is the one place a code is still typed.
+ *
+ * **Runs of anything else become one hyphen**, so `CUT&RUN-seq` and
+ * `Genotyping by array` come out as they were already written by hand.
+ */
+export function termCodeFrom(labelEn: string): string {
+  return labelEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+/**
  * The vocabularies whose values are settled by what the portal is, rather than
  * by what arrives in the data.
  *
@@ -115,22 +134,34 @@ export function isKeyValueType(value: string): value is KeyValueType {
 }
 
 /** Whether a field is drawn on the public analysis-method table. */
-export type KeyShowing = "shown" | "hidden"
-
-export const KEY_SHOWINGS: readonly KeyShowing[] = ["shown", "hidden"]
-
-export function isKeyShowing(value: string): value is KeyShowing {
-  return (KEY_SHOWINGS as readonly string[]).includes(value)
-}
+/**
+ * The orders the terms of one field can be read in.
+ *
+ * **A vocabulary is a set, not a sequence.** What order the terms of a field
+ * are offered in is the input control's business, so this listing is free to be
+ * read either way round — unlike the table of fields, where the order on screen
+ * is the order the public page draws and is therefore edited rather than
+ * chosen.
+ */
+export const TERM_SORT_KEYS = ["code", "label"] as const
+export type TermSortKey = typeof TERM_SORT_KEYS[number]
+export const TERM_SORT: TermSortKey = "code"
 
 /**
- * The value the box axis carries for a field standing in none.
+ * Whether a term is still offered when a dataset is written.
  *
- * **It is a value of the axis rather than the absence of one**, because most
- * fields are in no box at all — an axis that could only say which box a field
- * is in would leave the larger half of the listing unreachable.
+ * **A term is turned off rather than taken away once anything names it** — the
+ * published rows keep pointing at it, so what changes is whether it is offered
+ * next time. This is the one thing a vocabulary can be asked about beyond the
+ * word itself, which is what makes it the listing's only axis.
  */
-export const NO_BOX = "none"
+export type TermState = "active" | "inactive"
+
+export const TERM_STATES: readonly TermState[] = ["active", "inactive"]
+
+export function isTermState(value: string): value is TermState {
+  return (TERM_STATES as readonly string[]).includes(value)
+}
 
 /** What the listing reads off a field. The screen's row carries more. */
 export interface KeyFilterRow {
@@ -138,25 +169,12 @@ export interface KeyFilterRow {
   labelJa: string
   labelEn: string
   valueType: string
-  /** The code of the box this field stands in, or null when it stands in none. */
-  categoryCode: string | null
-  showOnPublicPage: boolean
-}
-
-export function keyBox(row: KeyFilterRow): string {
-  return row.categoryCode ?? NO_BOX
-}
-
-export function keyShowing(row: KeyFilterRow): KeyShowing {
-  return row.showOnPublicPage ? "shown" : "hidden"
 }
 
 export interface KeyFilter {
   keyword: string
   /** Which to keep. Empty is every one, as an untouched axis is. */
   types: readonly string[]
-  boxes: readonly string[]
-  showing: readonly string[]
 }
 
 /**
@@ -167,7 +185,7 @@ export interface KeyFilter {
  * its own: a field is reached by its code as often as by its name, and the two
  * languages are what an administrator is comparing when they come here.
  *
- * The box and the three axes combine as an AND; within an axis the choices are
+ * The keyword and the type combine as an AND; within the axis the choices are
  * an OR — the rule the other listings run on (`app/admin/listing.ts`).
  */
 export function filterKeyRows<Row extends KeyFilterRow>(
@@ -181,8 +199,6 @@ export function filterKeyRows<Row extends KeyFilterRow>(
       if (!held.some((one) => one.toLowerCase().includes(needle))) return false
     }
     if (filter.types.length > 0 && !filter.types.includes(row.valueType)) return false
-    if (filter.boxes.length > 0 && !filter.boxes.includes(keyBox(row))) return false
-    if (filter.showing.length > 0 && !filter.showing.includes(keyShowing(row))) return false
     return true
   })
 }

@@ -1,18 +1,19 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import {
-  KEY_SHOWINGS,
   KEY_VALUE_TYPES,
-  NO_BOX,
   SETTLED_VOCABULARIES,
 } from "~/admin/catalog"
 import { catalogAction, catalogPage, type CatalogKeyRow } from "~/admin/catalog.server"
 import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
 import {
+  Badge,
   Button,
   Confirm,
   Dialog,
   Heading,
+  IconButton,
+  MoreLink,
   Stack,
 } from "~/components/base"
 import {
@@ -21,14 +22,12 @@ import {
   Editing,
   Field,
   Result,
-  Select,
   Submit,
   Unsaved,
 } from "~/components/form"
-import { Icon } from "~/components/icons"
+import { Icon, type IconName } from "~/components/icons"
 import { Card, Page, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -71,15 +70,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
-/** A box of the public panel, as both the pane and a row's cell name it. */
-interface Box {
-  /** The id a form posts, which is what the row is stored by. */
-  id: string
-  /** The code the address narrows by. */
-  code: string
-  label: string
-}
-
 export default function AdminExperimentFields({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const { locale } = view
@@ -87,20 +77,9 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
   const t = messages.admin.catalog
   const [paneOpen, togglePane] = usePaneOpen()
 
-  // A box drawn without a heading still has to be pickable here, and its code
-  // is the only name it has.
-  const boxes: Box[] = view.categories.map((category) => ({
-    id: category.id,
-    code: category.code,
-    label: catalogLabel({ ...category, labelEn: category.labelEn ?? category.code }, locale),
-  }))
-
   // Folded, the way back into the pane says how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
-  const inForce = (view.keyword === "" ? 0 : 1)
-    + view.types.length
-    + view.boxes.length
-    + view.showing.length
+  const inForce = (view.keyword === "" ? 0 : 1) + view.types.length
 
   /*
     **The order is only offered over the whole listing.** A field's place is its
@@ -138,7 +117,6 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
                     <Field label={t.code} name="code" width="w-full" />
                     <Field label={t.labelJa} name="labelJa" width="w-full" />
                     <Field label={t.labelEn} name="labelEn" width="w-full" />
-                    <Checkbox label={t.showOnPublicPage} name="showOnPublicPage" checked />
                     <span className="flex flex-wrap items-center justify-end gap-2">
                       <Button type="button" variant="ghost" onClick={close}>{t.cancel}</Button>
                       <Submit variant="primary" icon={<Icon name="plus" />}>{t.addKey}</Submit>
@@ -158,19 +136,17 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
             // The box is never alone in the pane here: three axes stand under it
             // whatever the reader has asked for.
             refineHasMore
-            refine={<Filters view={view} boxes={boxes} locale={locale} />}
-            tools={<Counted view={view} locale={locale} />}
+            refine={<Filters view={view} locale={locale} />}
+            tools={<Matched view={view} locale={locale} />}
             panel={null}
           >
             <Table
+              align="middle"
               headers={[
-                t.code,
                 t.labelJa,
                 t.labelEn,
                 t.type,
-                t.category,
                 t.terms,
-                t.publicPage,
                 ...(ordered ? [t.order] : []),
                 /* The column of things to press names itself for anyone reading
                    the row aloud and nowhere else. */
@@ -178,12 +154,13 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
               ]}
               whenEmpty={inForce === 0 ? t.noKey : t.noMatchingKey}
             >
-              {view.keys.map((entry) => (
+              {view.keys.map((entry, at) => (
                 <Row
                   key={entry.id}
                   entry={entry}
-                  boxes={boxes}
                   ordered={ordered}
+                  at={at}
+                  of={view.keys.length}
                   locale={locale}
                 />
               ))}
@@ -204,7 +181,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
  * pages, so the one place a reader looks for a count is the same on all of them
  * (docs/editing.md の「管理画面」).
  */
-function Counted({ view, locale }: {
+function Matched({ view, locale }: {
   view: Route.ComponentProps["loaderData"]
   locale: Locale
 }) {
@@ -224,76 +201,73 @@ function Counted({ view, locale }: {
  * code, the two labels, what it holds, where it stands, whether it is drawn —
  * and none of it is a control that a scanning eye has to step over.
  */
-function Row({ entry, boxes, ordered, locale }: {
+/**
+ * The mark a type is drawn with.
+ *
+ * **What a key holds is a shape before it is a word**, and the shapes are what
+ * separate the four kinds at a glance: strokes on a page for prose, a bulleted
+ * set for a value picked from one, a number sign for a measured one, a trace
+ * for the one vocabulary that carries a tree. A key that names something
+ * elsewhere takes the link's mark rather than a shape of its own.
+ */
+const TYPE_MARK: Record<CatalogKeyRow["valueType"], IconName> = {
+  text: "type",
+  single: "check",
+  accession: "link",
+  vocabulary: "list",
+  number: "hash",
+  disease: "activity",
+}
+
+function Row({ entry, ordered, at, of, locale }: {
   entry: CatalogKeyRow
-  boxes: Box[]
   ordered: boolean
+  /** Where the row stands, which is what says whether it can still move. */
+  at: number
+  of: number
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.catalog
   const typed = entry.valueType !== "text"
   const settled = entry.vocabularySetCode !== null
     && SETTLED_VOCABULARIES.has(entry.vocabularySetCode)
-  const box = boxes.find((one) => one.id === entry.categoryId)
 
   return (
     <tr>
-      <Td nowrap><code className="text-xs">{entry.code}</code></Td>
       <Td floor="min-w-40">{entry.labelJa}</Td>
       <Td floor="min-w-40">{entry.labelEn}</Td>
       <Td nowrap>
-        {entry.canonicalUnit === null
-          ? t.types[entry.valueType]
-          : `${t.types[entry.valueType]} (${entry.canonicalUnit})`}
+        <Badge icon={<Icon name={TYPE_MARK[entry.valueType]} />}>
+          {entry.canonicalUnit === null
+            ? t.types[entry.valueType]
+            : `${t.types[entry.valueType]} (${entry.canonicalUnit})`}
+        </Badge>
       </Td>
-      <Td nowrap>{box?.label ?? <span className="text-ink-muted">{t.noCategory}</span>}</Td>
-      {/* What the field draws from, when it draws from anything. A settled
-          vocabulary has no screen: what it may hold is fixed by what the portal
-          is, so the cell says so rather than offering a way in. */}
+      {/* What the field draws from, when it draws from anything.
+
+          **How many, and the way to them, in one.** The count alone reads as a
+          fact about the row; the mark says the cell is a way onward.
+
+          **Both kinds of vocabulary have the screen; only one may be changed
+          there.** What a settled vocabulary holds is fixed by what the portal
+          is, so its screen refuses every write (`catalog.server.ts`) and draws
+          no control — and the word here says so before the press rather than
+          after it. */}
       <Td nowrap>
         {entry.terms === null
           ? null
-          : settled
-            ? <span className="text-ink-muted">{t.settled}</span>
-            : (
-                <Link to={href(locale, adminExperimentFieldPath(entry.code))}>
-                  {t.termCount(entry.terms)}
-                </Link>
-              )}
-      </Td>
-      <Td nowrap>
-        <span className="inline-flex items-center text-nowrap">
-          <Icon
-            name={entry.showOnPublicPage ? "eye" : "eye-off"}
-            aria-hidden="true"
-            className="mr-1 text-ink-muted"
-          />
-          {entry.showOnPublicPage ? t.showings.shown : t.showings.hidden}
-        </span>
+          : (
+              <MoreLink to={href(locale, adminExperimentFieldPath(entry.code))}>
+                {settled ? t.termCountRead(entry.terms) : t.termCount(entry.terms)}
+              </MoreLink>
+            )}
       </Td>
       {ordered && (
         <Td holds="mark">
-          <Form method="post" className="flex gap-1">
-            <input type="hidden" name="keyId" value={entry.id} />
-            <Button
-              variant="ghost"
-              size="xs"
-              name="intent"
-              value="move-key-up"
-              aria-label={t.up}
-              title={t.up}
-              icon={<Icon name="chevron-up" />}
-            />
-            <Button
-              variant="ghost"
-              size="xs"
-              name="intent"
-              value="move-key-down"
-              aria-label={t.down}
-              title={t.down}
-              icon={<Icon name="chevron-down" />}
-            />
-          </Form>
+          <span className="flex gap-1">
+            <Move id={entry.id} intent="move-key-up" icon="chevron-up" label={t.up} stuck={at === 0} />
+            <Move id={entry.id} intent="move-key-down" icon="chevron-down" label={t.down} stuck={at === of - 1} />
+          </span>
         </Td>
       )}
       <Td nowrap holds="control">
@@ -322,20 +296,6 @@ function Row({ entry, boxes, ordered, locale }: {
                     name="labelEn"
                     value={entry.labelEn}
                     width="w-full"
-                  />
-                  <Select
-                    label={t.category}
-                    name="categoryId"
-                    value={entry.categoryId ?? ""}
-                    options={[
-                      { value: "", label: t.noCategory },
-                      ...boxes.map((one) => ({ value: one.id, label: one.label })),
-                    ]}
-                  />
-                  <Checkbox
-                    label={t.showOnPublicPage}
-                    name="showOnPublicPage"
-                    checked={entry.showOnPublicPage}
                   />
                   <span className="flex flex-wrap items-center justify-end gap-2">
                     <Button type="button" variant="ghost" onClick={close}>{t.cancel}</Button>
@@ -380,6 +340,35 @@ function Row({ entry, boxes, ordered, locale }: {
 }
 
 /**
+ * One direction of the ordering.
+ *
+ * **Each direction stands in its own form.** `IconButton` spends its `name` on
+ * the glyph, so two of them in one form have nothing left to tell the press
+ * apart by; the intent goes in a hidden field instead.
+ *
+ * **A glyph has no colour of its own to dim**, so the row's end is said by the
+ * box around it.
+ */
+function Move({ id, intent, icon, label, stuck }: {
+  id: string
+  intent: string
+  icon: IconName
+  label: string
+  /** At the end it points to, where there is nothing left to swap with. */
+  stuck: boolean
+}) {
+  return (
+    <Form method="post">
+      <input type="hidden" name="keyId" value={id} />
+      <input type="hidden" name="intent" value={intent} />
+      <span className={stuck ? "opacity-50" : ""}>
+        <IconButton name={icon} label={label} type="submit" disabled={stuck} />
+      </span>
+    </Form>
+  )
+}
+
+/**
  * GET forms, so a narrowed listing has an address that can be kept and shared —
  * the same rule the other listings follow.
  *
@@ -389,9 +378,8 @@ function Row({ entry, boxes, ordered, locale }: {
  * **The box and the ticks are two forms, and each carries what the other
  * holds**, because a form cannot stand inside another.
  */
-function Filters({ view, boxes, locale }: {
+function Filters({ view, locale }: {
   view: Route.ComponentProps["loaderData"]
-  boxes: Box[]
   locale: Locale
 }) {
   const messages = messagesFor(locale)
@@ -401,8 +389,6 @@ function Filters({ view, boxes, locale }: {
   const carried = (
     <>
       {view.types.map((one) => <input key={one} type="hidden" name="type" value={one} />)}
-      {view.boxes.map((one) => <input key={one} type="hidden" name="box" value={one} />)}
-      {view.showing.map((one) => <input key={one} type="hidden" name="shown" value={one} />)}
     </>
   )
 
@@ -413,7 +399,7 @@ function Filters({ view, boxes, locale }: {
         name="q"
         value={view.keyword}
         label={t.find}
-        placeholder={t.find}
+        placeholder={messages.search.boxHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -436,37 +422,6 @@ function Filters({ view, boxes, locale }: {
                 value={one}
                 checked={view.types.includes(one)}
                 count={view.counts.types[one]}
-              />
-            ))}
-          </RefineAxis>
-          <RefineAxis label={t.category}>
-            {[...boxes, { id: NO_BOX, code: NO_BOX, label: t.noCategory }].map((one) => (
-              <Checkbox
-                key={one.code}
-                label={one.label}
-                name="box"
-                value={one.code}
-                checked={view.boxes.includes(one.code)}
-                count={view.counts.boxes[one.code]}
-              />
-            ))}
-          </RefineAxis>
-          <RefineAxis label={t.publicPage}>
-            {KEY_SHOWINGS.map((one) => (
-              <Checkbox
-                key={one}
-                label={t.showings[one]}
-                icon={(
-                  <Icon
-                    name={one === "shown" ? "eye" : "eye-off"}
-                    aria-hidden="true"
-                    className="mr-1 text-ink-muted"
-                  />
-                )}
-                name="shown"
-                value={one}
-                checked={view.showing.includes(one)}
-                count={view.counts.showing[one]}
               />
             ))}
           </RefineAxis>

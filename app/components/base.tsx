@@ -1734,6 +1734,28 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
     ? () => { setOwnOpen(false) }
     : held.close
 
+  /*
+    **The way out that costs nothing to find.** A panel over the page is shut by
+    Escape and by whatever its own contents offer, and pressing the dark outside
+    it is the third — the same three a `Menu` has (`docs/ui.md` の「部品」).
+
+    **Outside is measured against the panel's own rectangle**, not by asking
+    whether the press landed on the `<dialog>` element: the element is the
+    backdrop *and* the box, so its own 24px of padding would otherwise count as
+    outside and shut the panel from within.
+
+    **The press has to start outside as well as end there.** A word selected
+    inside the panel and released past its edge is not somebody asking to leave.
+  */
+  const pressedOut = useRef(false)
+  const outside = (at: { clientX: number, clientY: number }): boolean => {
+    const el = box.current
+    if (el === null) return false
+    const r = el.getBoundingClientRect()
+    return at.clientX < r.left || at.clientX > r.right
+      || at.clientY < r.top || at.clientY > r.bottom
+  }
+
   // **Whether it is open is the state, and the element follows it**, rather
   // than the two being set from different places. Closing it is something the
   // panel's own contents ask for, and a caller handed the element's `close`
@@ -1761,7 +1783,16 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
       <dialog
         ref={box}
         onClose={close}
-        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] overflow-y-auto ${wide ? "max-w-2xl" : "max-w-md"} rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40`}
+        onPointerDown={(event) => { pressedOut.current = outside(event) }}
+        onClick={(event) => {
+          if (event.target === box.current && pressedOut.current && outside(event)) close()
+        }}
+        /* **The panel wraps its own words.** It is drawn in the top layer but
+           inherits from where it stands in the markup, and a row's cell that
+           holds its controls on one line would otherwise hand the panel that
+           line too: the words inside would run off the side instead of
+           breaking. */
+        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] overflow-y-auto whitespace-normal ${wide ? "max-w-2xl" : "max-w-md"} rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40`}
       >
         {open && (
           <Stack gap="normal">

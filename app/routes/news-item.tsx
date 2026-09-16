@@ -1,6 +1,7 @@
 import { Heading, Stack } from "~/components/base"
 import { Markdown } from "~/components/markdown"
 import { Card, Crumbs, Page } from "~/components/page"
+import { dayOf } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
 import { newsItemPage } from "~/public/site.server"
 import { href, newsPath, readLocale } from "~/public/urls"
@@ -39,7 +40,7 @@ export default function NewsItem({ loaderData }: Route.ComponentProps) {
           <Stack gap="tight">
             <Heading title={item.title} />
             <p className="text-ink-muted text-sm">
-              {item.publishedAt ?? messages.news.undated}
+              {dayOf(item.publishedAt)}
             </p>
           </Stack>
           <Markdown html={item.html} />

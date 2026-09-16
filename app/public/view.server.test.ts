@@ -28,8 +28,8 @@ import {
 const UNKNOWN: Slot<never> = { state: "unknown" }
 const NOT_APPLICABLE: Slot<never> = { state: "not-applicable" }
 
-function key(id: string, code: string, position: number, showOnPublicPage = true): CatalogKeyView {
-  return { id, code, labelJa: `${code} ja`, labelEn: `${code} en`, position, showOnPublicPage }
+function key(id: string, code: string, position: number): CatalogKeyView {
+  return { id, code, labelJa: `${code} ja`, labelEn: `${code} en`, position }
 }
 
 const KEYS = [
@@ -37,7 +37,6 @@ const KEYS = [
   key("k-type", TYPE_OF_DATA_KEY, 1),
   key("k-late", "late", 90),
   key("k-early", "early", 10),
-  key("k-hidden", "hidden", 20, false),
 ]
 
 const catalog: CatalogView = {

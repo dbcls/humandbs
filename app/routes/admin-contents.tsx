@@ -165,7 +165,6 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
                   />
                 ))}
               </Table>
-              {view.total > 0 && tools}
             </Stack>
           </RefinableList>
         </Stack>
@@ -239,7 +238,7 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.find}
-        placeholder={t.find}
+        placeholder={messages.search.boxHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped

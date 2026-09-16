@@ -14,7 +14,6 @@ function catalogOf(): CatalogView {
     labelJa: "プラットフォーム",
     labelEn: "Platform",
     position: 1,
-    showOnPublicPage: true,
   }
   const later = { ...key, id: "key-2", code: "read-length", labelJa: "", labelEn: "Read length", position: 2 }
   return {

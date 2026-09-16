@@ -199,7 +199,7 @@ describe("rebuildSearchDocs", () => {
       .values({ setId, code: "C349", labelEn: "Bronchus or lung", labelJa: "気管支又は肺" })
       .returning({ id: s.vocabularyTerm.id }))
     const shown = only(await db.insert(s.contentKey)
-      .values({ code: "disease-icd10", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId, showOnPublicPage: true })
+      .values({ code: "disease-icd10", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
     const hidden = only(await db.insert(s.contentKey)
       .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId })
@@ -302,7 +302,7 @@ describe("rebuildSearchDocs", () => {
     expect(version.textJa).toContain("JGAD000001")
   })
 
-  it("leaves a value the catalog hides out of the text while still counting it as a facet", async () => {
+  it("reads every value into the text and counts the typed ones as facets", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
       .values({ code: "tissue", labelJa: "組織", labelEn: "Tissue" })
@@ -311,10 +311,10 @@ describe("rebuildSearchDocs", () => {
       .values({ setId, code: "liver", labelEn: "Liver" })
       .returning({ id: s.vocabularyTerm.id }))
     const { id: hiddenTerms } = only(await db.insert(s.contentKey)
-      .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId, showOnPublicPage: false })
+      .values({ code: "tissue", scope: "experiment", valueType: "vocabulary", labelJa: "組織", labelEn: "Tissue", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
     const { id: hiddenProse } = only(await db.insert(s.contentKey)
-      .values({ code: "internal-note", scope: "experiment", valueType: "text", labelJa: "メモ", labelEn: "Note", showOnPublicPage: false })
+      .values({ code: "internal-note", scope: "experiment", valueType: "text", labelJa: "メモ", labelEn: "Note" })
       .returning({ id: s.contentKey.id }))
 
     const datasetId = await createDataset(researchId, "JGAD000001")
@@ -340,8 +340,10 @@ describe("rebuildSearchDocs", () => {
     const counts = await rebuildSearchDocs(db)
 
     expect(counts.facetTerms).toBe(2)
+    // **The prose is in the index too.** Which key a value stands under decides
+    // whether it can be asked for by name, not whether it can be read.
     const texts = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
-    expect(texts.every((row) => !row.textJa.includes("内部メモ"))).toBe(true)
+    expect(texts.some((row) => row.textJa.includes("内部メモ"))).toBe(true)
   })
 
   it("takes the dates of an accession the archive issued from the cache", async () => {

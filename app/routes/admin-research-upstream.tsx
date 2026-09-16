@@ -203,7 +203,6 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                         </tr>
                       ))}
                     </Table>
-                    {view.total > 0 && tools}
                   </Stack>
                 </RefinableList>
               )}

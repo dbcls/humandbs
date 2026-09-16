@@ -2,7 +2,8 @@ import { Form, Link } from "react-router"
 
 import { nextVersionNumber } from "~/admin/contents"
 import { seriesAction, seriesPage } from "~/admin/contents.server"
-import { adminDocumentPath } from "~/admin/urls"
+import { adminContentsPath, adminDocumentPath } from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
 import { Badge, Confirm, Heading, Stack } from "~/components/base"
 import { ResultLine, StateCell } from "~/components/contents"
 import { Answered, Field, Result, Select, Submit } from "~/components/form"
@@ -56,7 +57,13 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
       </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.seriesHeading} aside={series.slug} />
+          <Heading title={t.seriesHeading} aside={series.slug}>
+            <AdminBack
+              to={href(locale, adminContentsPath())}
+              label={t.backToList}
+              icon="chevron-left"
+            />
+          </Heading>
 
           {unanswered.length > 0 && (
             <Result ok={false}>

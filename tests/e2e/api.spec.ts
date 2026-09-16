@@ -86,7 +86,7 @@ test.describe("public API", () => {
 
   test("S-API-08: fields が挙げた値は、そのまま q に書いて必ず当たる", async ({ request }) => {
     const { fields } = await (await request.get("/api/fields")).json() as {
-      fields: { code: string, type: string, inAnswers: boolean, values?: { code: string }[] }[]
+      fields: { code: string, type: string, values?: { code: string }[] }[]
     }
     // 検索行そのものが持つ 4 つは、catalog に何があろうと必ずある
     expect(fields.map((one) => one.code))
@@ -103,20 +103,6 @@ test.describe("public API", () => {
       expect(answer.status(), q).toBe(200)
       const { total } = await answer.json() as { total: number }
       expect(total, q).toBeGreaterThan(0)
-    }
-
-    // **絞れることと読めることは別で、それを言うのが `inAnswers`。** 公開表現が
-    // 落とすキーは答えに出ないまま、条件としては効く
-    const unshown = named.find((one) => !one.inAnswers)
-    if (unshown !== undefined) {
-      const q = `${unshown.code}:"${unshown.values?.[0]?.code ?? ""}"`
-      const answer = await request.get(`/api/dataset?q=${encodeURIComponent(q)}`)
-      const { total, hits } = await answer.json() as {
-        total: number
-        hits: { values: { key: string }[] }[]
-      }
-      expect(total, q).toBeGreaterThan(0)
-      expect(hits[0]?.values.map((one) => one.key)).not.toContain(unshown.code)
     }
   })
 

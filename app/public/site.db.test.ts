@@ -168,6 +168,42 @@ describe("news の一覧", () => {
       .toEqual(["新しい", "中", "古い"])
   })
 
+  it("同じ日の 2 件は、時刻の遅いほうが先に出る", async () => {
+    await createNews("2026-03-01 09:00:00", [{ locale: "ja", title: "朝" }])
+    await createNews("2026-03-01 15:00:00", [{ locale: "ja", title: "夕方" }])
+
+    expect((await newsList("ja", 1)).items.map((item) => item.title)).toEqual(["夕方", "朝"])
+  })
+
+  it("公開日時がまだ来ていないものは、一覧にも個別にも出てこない", async () => {
+    const id = await createNews("2099-01-01 09:00:00", [{ locale: "ja", title: "予約" }])
+
+    expect((await newsList("ja", 1)).items).toHaveLength(0)
+    expect(await status(newsItemPage(id, "ja"))).toBe(404)
+  })
+
+  it("日時が過ぎていれば出る", async () => {
+    await createNews("2020-01-01 09:00:00", [{ locale: "ja", title: "済み" }])
+
+    expect((await newsList("ja", 1)).items.map((item) => item.title)).toEqual(["済み"])
+  })
+
+  it("公開日時を持たないものは、公開に倒してあっても出てこない", async () => {
+    // 日時の無い news は書きかけで、一覧が日付で並べる以上そこに居場所が無い。
+    const id = await createNews(null, [{ locale: "ja", title: "書きかけ" }])
+
+    expect((await newsList("ja", 1)).items).toHaveLength(0)
+    expect(await status(newsItemPage(id, "ja"))).toBe(404)
+  })
+
+  it("検索で当てても、まだ来ていない日時のものは出てこない", async () => {
+    await createNews("2099-01-01 09:00:00", [{ locale: "ja", title: "hum0103 の予約" }])
+    await createNews("2020-01-01 09:00:00", [{ locale: "ja", title: "hum0103 の済み" }])
+
+    expect((await newsList("ja", 1, 20, "hum0103")).items.map((item) => item.title))
+      .toEqual(["hum0103 の済み"])
+  })
+
   it("その言語の翻訳を持つものだけが並ぶ", async () => {
     await createNews("2026-01-01", [{ locale: "ja" }, { locale: "en" }])
     await createNews("2026-01-02", [{ locale: "ja" }])
@@ -222,12 +258,6 @@ describe("news の一覧", () => {
 
   it("id の形が uuid でなくても落ちずに 404 になる", async () => {
     expect(await status(newsItemPage("not-a-uuid", "ja"))).toBe(404)
-  })
-
-  it("公開日を持たない item も並ぶ", async () => {
-    await createNews(null, [{ locale: "ja", title: "日付なし" }])
-    const { items } = await newsList("ja", 1)
-    expect(items.map((item) => item.publishedAt)).toEqual([null])
   })
 })
 

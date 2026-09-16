@@ -16,7 +16,7 @@ import {
 import { CopyAddress, UploadPanel } from "~/components/files"
 import { Answered, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Page, Paging, Table, Td } from "~/components/page"
+import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { BOX_SORT, BOX_SORT_KEYS, formatSize, type BoxSortKey, type StoredNode } from "~/files/box"
 import {
   commonFilesAction,
@@ -91,8 +91,12 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
       <Answered answer={actionData} locale={locale}>
         {actionData !== undefined && <Result ok={false}>{refusal(actionData, locale)}</Result>}
       </Answered>
+      {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
+          (`docs/ui.md` の「縦の間隔」)。下に来るのは upload の枠そのもので、枠は
+          自分の余白を持つ — 32px を空けると字から字までが 48px になり、h1 だけが
+          浮いて見える。 */}
       <Card under={false}>
-        <Stack gap="block">
+        <Stack gap="normal">
           <Heading title={t.heading} />
 
           <UploadPanel
@@ -128,17 +132,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                       <Row key={row.name} row={row} locale={locale} />
                     ))}
                   </Table>
-                  <div className="flex justify-end">
-                    <Paging
-                      locale={locale}
-                      total={view.total}
-                      from={view.rangeFrom}
-                      to={view.rangeTo}
-                      page={view.page}
-                      pageCount={view.pageCount}
-                      at={(page) => at(view, { page })}
-                    />
-                  </div>
+                  <Tools view={view} locale={locale} />
                 </Stack>
               )}
         </Stack>
@@ -174,11 +168,16 @@ function at(view: CommonFilesView, over: {
 }
 
 /**
- * How the box is read: in what order, and how much of it at a time.
+ * How the box is read: in what order, how much of it at a time, and which part
+ * of it is on screen.
  *
- * **The same pair the research listing carries**, in the same place and the
+ * **The same four the research listing carries**, in the same place and the
  * same shape — a box of files and a list of research are both listings, and a
  * reader who learned the controls on one should not have to find them again.
+ *
+ * **The row stands above the table and again below it.** A page of files is
+ * longer than the window, so a reader who has decided against this page would
+ * otherwise have to climb back over it to reach the next one.
  */
 function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -228,6 +227,15 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
           </Link>
         ))}
       </Chooser>
+      <Paging
+        locale={locale}
+        total={view.total}
+        from={view.rangeFrom}
+        to={view.rangeTo}
+        page={view.page}
+        pageCount={view.pageCount}
+        at={(page) => at(view, { page })}
+      />
     </div>
   )
 }
@@ -238,7 +246,10 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
  * **The slug is the row**: it is the address readers hold, minus the part every
  * file here shares. The whole address is what a body needs, so it is on the
  * button that copies rather than in a column that repeats the slug with a
- * prefix in front of it.
+ * prefix in front of it. **It is also the way to the file itself** — this box
+ * is public from the moment something is put in it, so the address always
+ * answers, and letting the browser decide what to do with what comes back is
+ * the only answer that fits a box holding documents and spreadsheets alike.
  *
  * **Both acts are on the row they act on.** Ticking a column and then pressing
  * something at the foot of the table is a way to delete the wrong file — the
@@ -251,7 +262,9 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
 
   return (
     <tr>
-      <Td><code className="text-xs">{row.name}</code></Td>
+      <Td>
+        <ExternalLink to={address} locale={locale}><code className="text-xs">{row.name}</code></ExternalLink>
+      </Td>
       <Td nowrap>{formatSize(row.size)}</Td>
       <Td nowrap>{row.updatedAt.slice(0, 10)}</Td>
       <Td nowrap holds="control">
@@ -262,14 +275,26 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
             <input type="hidden" name="from" value={row.name} />
             {/* Everything standing in a row is the row's size, not the
                 page's (`docs/ui.md` の「押せるものの大きさ」). */}
+            {/* **Moving the address is the break deleting it makes.** The
+                object does not move within the bucket: the file is copied to
+                the new key and the old one is deleted, and the trail writes it
+                as exactly that. So the way in wears the same face as the way to
+                delete beside it, and the panel says what stops answering rather
+                than only how to spell the new name. */}
             <Dialog
               label={t.rename}
               title={t.renameTitle}
               icon={<Icon name="edit" />}
+              variant="danger"
               size="row"
             >
               {(close) => (
                 <Stack gap="normal">
+                  {/* **What the address is for, said once and in the one place
+                      the panel says such things.** That the old address stops
+                      answering is what renaming means rather than a second
+                      thing to be told, and the face of this panel and of its
+                      button already say the press cannot be taken back. */}
                   <Field
                     label={t.slug}
                     name="to"
@@ -281,7 +306,7 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
                     <Button type="button" variant="ghost" onClick={close}>
                       {messages.admin.contents.cancel}
                     </Button>
-                    <Submit icon={<Icon name="save" />}>{t.renameConfirm}</Submit>
+                    <Submit variant="danger" icon={<Icon name="edit" />}>{t.renameConfirm}</Submit>
                   </span>
                 </Stack>
               )}

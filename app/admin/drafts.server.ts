@@ -28,10 +28,11 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, sql, type SQL } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
+import { datasetWithTermMerged } from "~/content/terms"
 import type {
   DatasetContent,
   ResearchContent,
@@ -762,4 +763,53 @@ export async function discardDraft(
     })
     return { status: "discarded" }
   })
+}
+
+/**
+ * Folding one vocabulary value into another, wherever a draft's description
+ * points at it.
+ *
+ * **This is the one write here that takes no revision, and the reason is that
+ * it is aimed the other way round.** Every other function changes the row
+ * somebody said they were holding, so it checks what they read against what is
+ * there — *refuse me if this changed under me*. A merge is aimed at a
+ * vocabulary value; whoever runs it is looking at the catalog screen and holds
+ * no draft at all, so there is nothing of theirs to check. It moves the
+ * revision of every row it touches on instead — *I changed this, so refuse
+ * whoever was reading it*. The two are the same rule from opposite ends, and
+ * between them no save can put a description back the way it was read.
+ *
+ * Without the bump, an editor holding one of these rows would save the
+ * description they read, the folded term would come back in that row alone, and
+ * nothing would say so — the row would point at a term the vocabulary no longer
+ * has.
+ *
+ * The condition is handed over rather than built here — which rows point at a
+ * term is the catalog's question, and this module's job is that they are
+ * written the one way drafts are written (`drafts.test.ts`).
+ */
+export async function mergeTermInDrafts(
+  db: Executor,
+  pointing: SQL,
+  from: string,
+  into: string,
+): Promise<void> {
+  const entries = await db
+    .select({
+      id: draftDatasetEntry.id,
+      content: draftDatasetEntry.content,
+      revision: draftDatasetEntry.revision,
+    })
+    .from(draftDatasetEntry)
+    .where(pointing)
+
+  for (const entry of entries) {
+    await db
+      .update(draftDatasetEntry)
+      .set({
+        content: datasetWithTermMerged(entry.content, from, into),
+        revision: entry.revision + 1,
+      })
+      .where(eq(draftDatasetEntry.id, entry.id))
+  }
 }

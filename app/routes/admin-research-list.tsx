@@ -220,7 +220,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                   </tr>
                 ))}
               </Table>
-              {view.total > 0 && tools}
             </Stack>
           </RefinableList>
         </Stack>

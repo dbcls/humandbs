@@ -23,10 +23,10 @@ test.describe("P-ADMIN", () => {
     "/admin/research",
     "/admin/research/upstream",
     "/admin/experiment-fields",
-    "/admin/contents",
-    "/admin/contents/alert",
-    "/admin/contents/news",
-    "/admin/contents/files",
+    "/admin/documents",
+    "/admin/alert",
+    "/admin/news",
+    "/admin/files",
     "/admin/assistant",
   ]
 
@@ -43,7 +43,7 @@ test.describe("P-ADMIN", () => {
 
     // 押せるものは行き先とは限らない。研究を始める 3 通りのうち 1 つは操作で、
     // リンクだけを数えると 2 通りに見える。
-    await expect(top.getByRole("button", { name: "研究を作る" })).toBeVisible()
+    await expect(top.getByRole("button", { name: "研究の作成" })).toBeVisible()
 
     // 行き先はリンクであって、説明の文ではない。1 つ押して、その先が開くことまで見る。
     await top.locator("a[href=\"/admin/experiment-fields\"]").first().click()
@@ -51,7 +51,7 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-02: バーに親が無い画面だけが、その親への戻る道を持つ", async ({ page }) => {
+  test("S-ADMIN-02: 管理画面はパンくずを持たず、1 段ずつ親へ戻る", async ({ page }) => {
     // バーが開ける画面は、区画の中の位置を自分では言わない。
     for (const path of [...STANDALONE, "/admin"]) {
       await page.goto(path)
@@ -71,12 +71,12 @@ test.describe("P-ADMIN", () => {
   })
 
   test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ", async ({ page }) => {
-    for (const path of ["/admin/research", "/admin/contents/news"]) {
+    for (const path of ["/admin/research", "/admin/news"]) {
       await page.goto(path)
       const counted = page.getByText(/^\d+–\d+ \/ \d+ 件$/)
       await expect(counted.first(), path).toBeVisible()
 
-      // ページ送りは件数と同じ器の中。離れていたのが U8 の入力そのものだった。
+      // ページ送りは件数と同じ器の中。離れて立つと、どちらがどの表のものか読めない。
       const box = counted.first().locator("..")
       await expect(box.getByRole("navigation", { name: /ページ|Pagination/ }), path).toBeVisible()
     }
@@ -87,7 +87,31 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("table")).toBeVisible()
     // 列の名前が残っているから、何を探していたのかが分かる。
     await expect(page.getByRole("columnheader").first()).toBeVisible()
-    await expect(page.getByText("0 件")).toBeVisible()
+    // 件数は表の上と下に 1 つずつ立つので、見るのは先に来るほう。
+    await expect(page.getByText("0 件").first()).toBeVisible()
+  })
+
+  /**
+   * **道具の行は表の上と下に 1 つずつ。** 50 行の表の下までページを送った人が、次の
+   * ページを開くのに頭まで戻ることにならない。上だけに立てると下端で行き止まりになり、
+   * 下だけに立てると開いた瞬間に何件あるか分からない。
+   *
+   * **先の 2 つが並んでいるのは、そこが割れていた画面だから** — `common/` の箱は
+   * 並び替えと表示件数が上、件数とページ送りが下にあり、選べる値の画面は下だけだった。
+   * 研究とお知らせは初めから 2 本あるので、壊れたことがないことしか言わない。
+   */
+  test("S-ADMIN-06: 一覧の道具は表の上と下に 1 つずつ立つ", async ({ page }) => {
+    const paths = [
+      "/admin/files",
+      "/admin/experiment-fields/experimental-method",
+      "/admin/research",
+      "/admin/news",
+    ]
+    for (const path of paths) {
+      await page.goto(path)
+      await expect(page.getByRole("navigation", { name: /ページ|Pagination/ }), path)
+        .toHaveCount(2)
+    }
   })
 
   /**
@@ -109,7 +133,7 @@ test.describe("P-ADMIN", () => {
     const datasets = page.locator(`a[href^="${draft}/dataset/"]:not([href$="/upstream"])`)
     if (await datasets.count() === 0) {
       // 作ると、そのデータセットの編集画面にそのまま着く。
-      await page.getByRole("button", { name: "新しいデータセットを作る" }).click()
+      await page.getByRole("button", { name: "データセットの作成" }).click()
     } else {
       await datasets.first().click()
     }
@@ -122,13 +146,15 @@ test.describe("P-ADMIN", () => {
     await page.locator(`a[href="${research}/files"]`).first().click()
     await expect(page).toHaveURL(new RegExp(`${research}/files$`))
 
-    for (const [listing, prefix] of [
-      ["/admin/contents", "/admin/contents/document/"],
-      ["/admin/contents", "/admin/contents/series/"],
-      ["/admin/contents/news", "/admin/contents/news/"],
+    // 版を持たない記事は identity がそのままアドレスなので、その prefix は
+    // 系列のものも拾う。系列のほうを除いて選ぶ。
+    for (const [listing, prefix, apart] of [
+      ["/admin/documents", "/admin/documents/", ":not([href*='/series/'])"],
+      ["/admin/documents", "/admin/documents/series/", ""],
+      ["/admin/news", "/admin/news/", ""],
     ] as const) {
       await page.goto(listing)
-      await page.locator(`a[href^="${prefix}"]`).first().click()
+      await page.locator(`a[href^="${prefix}"]${apart}`).first().click()
       await expect(page, listing).toHaveURL(new RegExp(prefix.replaceAll("/", "\\/")))
       await expect(page.getByRole("heading", { level: 1 }), listing).not.toBeEmpty()
     }
@@ -161,7 +187,7 @@ async function openADraft(page: Page): Promise<string> {
 
   const existing = page.locator(`a[href^="${research}/draft/"]`).first()
   if (await existing.count() === 0) {
-    await page.getByRole("button", { name: "下書きを作る" }).click()
+    await page.getByRole("button", { name: "下書きの作成" }).click()
     await expect(page.locator(`a[href^="${research}/draft/"]`).first()).toBeVisible()
   }
   const href = await page.locator(`a[href^="${research}/draft/"]`).first().getAttribute("href")

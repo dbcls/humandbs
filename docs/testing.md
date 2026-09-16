@@ -258,6 +258,19 @@ docker compose exec app npm run test:unit     # 不変量 + 単体 (DB 不要)
 docker compose exec app npm run test:db       # schema + 経路
 ```
 
+**`test:db` を同時に 2 つ走らせない。** どのテストも 1 つの test database を共有し、それぞれが自分の前に
+database を空にするので、2 つ目の run が 1 つ目の入れた行を消す。**落ちる場所も数も run ごとに変わり**、
+消えた親を指した外部キー違反として出るので、原因が並行実行だとは読めない — **数が動くことがいちばんの
+手がかり**になる。`vitest.config.ts` の `fileParallelism: false` が守るのは **1 つの run の中だけ**で、
+プロセスが 2 つあれば素通りする。走らせる前に接続を数える:
+
+```bash
+docker compose exec -T db psql -U humandbs -d humandbs_test \
+  -c "select count(*) from pg_stat_activity where datname = 'humandbs_test'"
+```
+
+0 でなければ誰かが走らせている。
+
 e2e はブラウザを持つ別の image で回す。**profile の下にあるので、上の 3 つを回すときには起動しない。**
 
 ```bash

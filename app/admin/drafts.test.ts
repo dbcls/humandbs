@@ -78,10 +78,16 @@ describe("writing to a draft", () => {
       .map((match) => match[1] ?? "")
 
     // Five of these create a row, which has no earlier version of itself to
-    // disagree with. The rest are not content: presence, which nobody reads for
+    // disagree with. Three are not content: presence, which nobody reads for
     // correctness and where a lost write costs one heartbeat, and the two share
     // settings, where the last press winning is the answer and a check would
     // make flipping the switch fail every open editor's next save.
+    //
+    // The last one changes content with nothing to check against: a merge is
+    // aimed at a vocabulary value rather than at a draft, so no row is one
+    // anybody said they were holding. It moves the revision of every row it
+    // touches on instead, which is what refuses the next save from an editor
+    // that was holding one.
     expect(exported.filter((name) => !changing.has(name)))
       .toEqual([
         "createResearchWithDraft",
@@ -92,6 +98,7 @@ describe("writing to a draft", () => {
         "touchPresence",
         "setDraftSharing",
         "reissueShareToken",
+        "mergeTermInDrafts",
       ])
   })
 })

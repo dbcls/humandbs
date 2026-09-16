@@ -264,7 +264,9 @@ describe("お知らせの一覧の絞り込み", () => {
     title: string,
     published?: { ja?: boolean, en?: boolean },
   ): NewsRow {
-    return { id, publishedAt, title, states: states(published) }
+    // Narrowing never reads it — whether a date has arrived is the database's
+    // answer, and these rows are built by hand.
+    return { id, publishedAt, title, scheduled: false, states: states(published) }
   }
 
   const june = news("a", "2026-06-23", "hum0556 の制限公開データを公開しました")

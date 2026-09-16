@@ -26,6 +26,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { AlertContent, ArticleContent } from "~/content/types"
+import { JST_OFFSET_MS } from "~/dates"
 
 import { htmlToMarkdown, rewriteLinks } from "./html"
 
@@ -125,6 +126,20 @@ function publishedOn(version: CmsDocumentVersion): string | null {
   return stamp === null ? null : stamp.slice(0, 10)
 }
 
+/**
+ * An announcement's date, as the JST wall clock its column keeps.
+ *
+ * **The hour is part of the value.** 126 days carry more than one announcement,
+ * and which went out first is in the hour — dropping it leaves those days in
+ * whatever order the rows happen to be read in. The input writes its offset,
+ * and only the instant it names is trusted: the shift to JST is done here
+ * rather than by reading the digits as if they were already local.
+ */
+function jstStampOf(instant: string): string {
+  const shifted = new Date(new Date(instant).getTime() + JST_OFFSET_MS)
+  return shifted.toISOString().slice(0, 19).replace("T", " ")
+}
+
 export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
   const built: BuiltDocument[] = []
   const series: BuiltSeries[] = []
@@ -181,7 +196,7 @@ export interface BuiltNews {
  */
 export function buildNews(items: CmsNews[]): BuiltNews[] {
   return items.map((item) => ({
-    publishedAt: item.publishedAt === null ? null : item.publishedAt.slice(0, 10),
+    publishedAt: item.publishedAt === null ? null : jstStampOf(item.publishedAt),
     contents: item.translations.filter((t) => isLocale(t.locale)).map((t) => ({
       locale: t.locale as Locale,
       content: {

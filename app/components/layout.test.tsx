@@ -163,9 +163,15 @@ describe("ヘッダのログイン導線", () => {
     expect(header("ja", "/", signedIn)).not.toContain("href=\"/admin\"")
   })
 
-  it("admin には Admin への行き先を出し、英語では /en の下を指す", () => {
+  /**
+   * **The management area has one address whichever language the reader is
+   * in** — it exists in Japanese only, so `/en/admin` is not an address
+   * (`app/routes.ts`). The way in from an English page still reaches it.
+   */
+  it("admin には Admin への行き先を出し、英語からでも /admin を指す", () => {
     expect(header("ja", "/", admin)).toContain("href=\"/admin\"")
-    expect(header("en", "/en", admin)).toContain("href=\"/en/admin\"")
+    expect(header("en", "/en", admin)).toContain("href=\"/admin\"")
+    expect(header("en", "/en", admin)).not.toContain("href=\"/en/admin\"")
   })
 
   it("管理画面では、その行き先が公開側へ向き直って Public を名乗る", () => {
@@ -180,8 +186,13 @@ describe("ヘッダのログイン導線", () => {
     expect(header("ja", "/admin", admin, true)).not.toContain(">Admin<")
   })
 
-  it("英語の管理画面でも、戻る先は /en の下の公開トップ", () => {
-    expect(header("en", "/en/admin", admin, true)).toMatch(/<a[^>]*href="\/en"[^>]*>Public/)
+  /**
+   * The area has no English address, so a reader who was on an English page
+   * lands on the Japanese management screens — and the way out has to take
+   * them back to the side they came from.
+   */
+  it("管理画面から公開へ戻る先は、読んでいた言語のトップ", () => {
+    expect(header("en", "/admin", admin, true)).toMatch(/<a[^>]*href="\/en"[^>]*>Public/)
   })
 
   it("区画をまたぐ行は、押すと移ることを言う印を持つ。隣のログアウトは持たない", () => {
@@ -193,7 +204,8 @@ describe("ヘッダのログイン導線", () => {
   it("wordmark はいまいる区画のトップを指す", () => {
     expect(wordmark(header("ja", "/research", admin))).toBe("/")
     expect(wordmark(header("ja", "/admin/research", admin, true))).toBe("/admin")
-    expect(wordmark(header("en", "/en/admin/research", admin, true))).toBe("/en/admin")
+    // The area's top is the same address in either language.
+    expect(wordmark(header("en", "/admin/research", admin, true))).toBe("/admin")
   })
 
   it("行き先の名前は「管理」ではない。申請管理システムと読み違えられる", () => {

@@ -124,9 +124,15 @@ describe("縦の間隔", () => {
    * 決めている。ここだけが `normal` の画面があると、同じ関係が 32px と 16px の
    * 2 通りになり、画面を渡り歩く人には理由の無い差として残る。
    *
-   * **絞り込み pane を持つ一覧だけが `normal`。** h1 の下に来るのが節ではなく
-   * pane の見出しで、見出しが 2 つ続く形に節と節の距離を空けると h1 だけが浮く。
-   * 公開側の一覧も同じ理由で `normal` で、両者は同じ形の 2 つの面になる。
+   * **h1 の下に節の名前が来ない画面だけが `normal`。** 絞り込み pane を持つ
+   * 一覧がそれで、下に来るのは節ではなく pane の見出し — 見出しが 2 つ続く形に
+   * 節と節の距離を空けると h1 だけが浮く。公開側の一覧も同じ理由で `normal` で、
+   * 両者は同じ形の 2 つの面になる。**`common/` の箱も同じ**
+   * (`routes/admin-contents-files.tsx`)。節を 1 つも持たない画面で、h1 の下に
+   * 来るのは upload の枠そのもの — 枠は自分の余白を持つので、32px を空けると
+   * 字から字までは 48px になる。**アラートの画面も節を持たない**
+   * (`routes/admin-contents-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
+   * それが開くのは名前ではなく自分の状態のチップ。
    *
    * **編集画面のバーだけが `tight`** (`components/draft-tools.tsx`)。あのカードが
    * 並べるのは節ではなく 2 行 — 名前と行き先と保存、その下に出口と面の切り替え —
@@ -136,7 +142,9 @@ describe("縦の間隔", () => {
     const offenders: string[] = []
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
-      const wanted = /<RefinableList\b/.test(text)
+      const sectionless = file.endsWith("admin-contents-files.tsx")
+        || file.endsWith("admin-contents-alert.tsx")
+      const wanted = /<RefinableList\b/.test(text) || sectionless
         ? "normal"
         : file.endsWith("draft-tools.tsx") ? "tight" : "block"
       for (const found of text.matchAll(/<Card\b[^>]*>\s*<Stack gap="(\w+)"/g)) {

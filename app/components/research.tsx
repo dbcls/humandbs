@@ -253,8 +253,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         <Section title={t.dataProvider} at="dataProviders">
           {view.dataProviders.map((provider) => (
             <Pairs key={provider.id}>
-              <KeyValue title={t.representative} at={`dataProviders.${provider.id}.name`}>
-                <Value field={provider.representative} locale={locale} />
+              <KeyValue title={t.principalInvestigator} at={`dataProviders.${provider.id}.name`}>
+                <Value field={provider.principalInvestigator} locale={locale} />
               </KeyValue>
               <KeyValue
                 title={t.organization}
@@ -320,7 +320,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
 
       {view.relatedPublications.length > 0 && (
         <Section title={t.relatedPublications} at="relatedPublications">
-          <Table headers={[t.publicationTitle, "DOI", messages.dataset.datasets]}>
+          <Table headers={[t.publicationTitle, "DOI", t.dataInUse]}>
             {view.relatedPublications.map((publication) => (
               <tr key={publication.id}>
                 <Td>
@@ -363,12 +363,12 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
           ? <Empty>{t.noControlledAccessUsers}</Empty>
           : (
               <Table headers={[
-                t.representative,
+                t.principalInvestigator,
                 t.organization,
                 t.country,
                 t.title,
                 t.periodOfDataUse,
-                messages.dataset.datasets,
+                t.dataInUse,
               ]}
               >
                 {view.cau.map((usage, index) => (

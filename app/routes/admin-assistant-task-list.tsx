@@ -1,6 +1,6 @@
 import { Button, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { Section, Table, Td } from "~/components/page"
+import { Counted, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -43,6 +43,7 @@ export function AdminAssistantTaskList({
         </div>
         {/* **The table stays when there is nothing in it**: the column names
             say what would have been here (`docs/ui.md` の「壊れるもの」). */}
+        <Counted locale={locale} total={tasks.length} />
         <Table
           headers={[
             words.taskId,

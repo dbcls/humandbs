@@ -43,6 +43,13 @@ export interface ReadLocale {
 const DATA_SUFFIX = ".data"
 
 /**
+ * Where the management area begins. **It is not a public page and has no
+ * language prefix** (`href`), so both the builders and the reader of an
+ * address have to know it by the same string.
+ */
+export const ADMIN_ROOT = "/admin"
+
+/**
  * The language an address is written in, and the address with the prefix taken
  * off.
  *
@@ -69,8 +76,18 @@ export function readLocale(pathname: string): ReadLocale {
   }
 }
 
-/** Turns an internal path into the address it has in a given language. */
+/**
+ * Turns an internal path into the address it has in a given language.
+ *
+ * **The management area has one address and it carries no language.** Its
+ * screens are written for the people who run the portal and exist in Japanese
+ * only, so a prefixed address would be a second address answering nothing.
+ * **Screens under it still link out to the public side**, and those keep their
+ * prefix — what decides is the path being built, not the screen doing the
+ * building.
+ */
 export function href(locale: Locale, path: string): string {
+  if (path === ADMIN_ROOT || path.startsWith(`${ADMIN_ROOT}/`)) return path
   const prefix = localePrefix(locale)
   return prefix === "" ? path : `${prefix}${path === "/" ? "" : path}`
 }
@@ -93,6 +110,14 @@ export function datasetPath(datasetLabel: string): string {
 
 export function listPath(target: "research" | "dataset"): string {
   return target === "research" ? "/research" : "/dataset"
+}
+
+/**
+ * The dataset listing narrowed to one value of one field, which is what the
+ * refinement panel writes when the same value is ticked.
+ */
+export function datasetsUsing(fieldCode: string, termCode: string): string {
+  return `${listPath("dataset")}?q=${encodeURIComponent(`${fieldCode}:${termCode}`)}`
 }
 
 export interface SearchParams {

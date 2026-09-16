@@ -279,7 +279,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   path="listingSummary.dataProviders"
                   locale={locale}
                   items={content.listingSummary.dataProviders}
-                  title={words.representative}
+                  title={words.principalInvestigator}
                   summary={(item) => item.name.ja.text || item.name.en.text}
                   makeEmpty={() => ({ id: newId(), name: emptyPair() })}
                   onChange={(next) => {
@@ -291,7 +291,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 >
                   {(item, path, set) => (
                     <PairField
-                      label={words.representative}
+                      label={words.principalInvestigator}
                       value={item.name}
                       marks={marksFor(`${path}.name`)}
                       locale={locale}
@@ -332,7 +332,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               {(item, path, set) => (
                 <>
                   <PairField
-                    label={words.representative}
+                    label={words.principalInvestigator}
                     value={item.name}
                     marks={marksFor(`${path}.name`)}
                     locale={locale}

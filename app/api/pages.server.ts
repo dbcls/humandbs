@@ -216,7 +216,7 @@ function datasetObject(
     dateModified: bundle.dateModified,
     content: publicDatasetContent(
       bundle.content,
-      { keys: context.catalog.keyById, files: listing },
+      { files: listing },
       PUBLISHED,
     ),
     files: listing,
@@ -332,11 +332,6 @@ function inOrder<T extends { id: string }>(objects: readonly T[], order: readonl
  * but not which key it came from, so their words are reachable as free text and
  * not as `key:word` (`docs/data-model.md` の「検索用の行」).
  *
- * **A field an object does not show is still a field to ask by.** Thirteen keys
- * are drawn in the refinement panel and left off the page (`show_on_public_page`),
- * and the public projection is one function, so what the page leaves off the API
- * leaves off too. `inAnswers` is how a caller learns that before it goes looking
- * for a value that will not be there.
  */
 export async function searchFields(): Promise<Response> {
   const db = getDb()
@@ -363,12 +358,11 @@ export async function searchFields(): Promise<Response> {
   return jsonResponse({
     fields: [
       // The four the search row is made of are the ones an answer opens with.
-      ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, { inAnswers: true })),
+      ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, {})),
       ...definitions.flatMap((one) => described(one.field.code, {
         label: labelOf({ labelJa: one.labelJa, labelEn: one.labelEn }),
         ...one.canonicalUnit === null ? {} : { unit: one.canonicalUnit },
         ...one.field.kind === "number" ? {} : { values: held.get(one.field.keyId) ?? [] },
-        inAnswers: one.showOnPublicPage,
       })),
     ],
   })

@@ -568,7 +568,7 @@ async function datasetRowsOf(
       id: hit.targetId,
       label: hit.datasetLabel,
       humLabel: hit.humLabel,
-      content: publicDatasetContent(content, { keys: catalog.keyById, files: [] }, PUBLISHED),
+      content: publicDatasetContent(content, { files: [] }, PUBLISHED),
       datePublished: hit.datePublished,
       dateModified: hit.dateModified,
     }, locale, catalog)]

@@ -7,10 +7,10 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { useRefine } from "~/search-as-typed"
 
-import { PaneHeading, Stack } from "./base"
+import { Stack } from "./base"
 import { Field, Submit } from "./form"
 import { Icon } from "./icons"
-import { Empty } from "./page"
+import { Empty, Section } from "./page"
 
 /**
  * The parts both seeding screens are built from.
@@ -75,21 +75,47 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
   return (
     <Stack gap="block">
       {choice.fields.length > 0 && (
-        <Stack gap="normal">
-          <PaneHeading title={t.fields} level="h3" rule="start" />
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <Section title={t.fields}>
+          {/* **The two languages stand one above the other.** Side by side
+              they read as two values rather than one said twice, and a
+              statement of aims runs long enough that the second column would
+              begin where the first is still going.
+
+              **Which of the two it is, is said by a word.** Told apart by
+              colour alone the pair reads as one statement and a quieter
+              second one, and nothing on the screen says the quieter one is
+              the English — least of all to a reader who cannot see the
+              difference. With the word there, both take the colour of text. */}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
             {choice.fields.map((field) => (
               <div key={field.field} className="contents">
                 <dt className="text-ink-muted">{t.field[field.field]}</dt>
-                <dd>{languages(t, field.ja, field.en)}</dd>
+                <dd className="flex flex-col gap-2">
+                  {field.ja === "" && field.en === ""
+                    ? <span className="text-ink-muted">{t.neither}</span>
+                    : (["ja", "en"] as const).map((language) => (
+                        field[language] === ""
+                          ? null
+                          : (
+                              <span key={language} className="flex gap-2">
+                                <span
+                                  className="w-5 shrink-0 text-ink-muted text-xs leading-[1.6]"
+                                  lang={language}
+                                >
+                                  {language}
+                                </span>
+                                <span lang={language}>{field[language]}</span>
+                              </span>
+                            )
+                      ))}
+                </dd>
               </div>
             ))}
           </dl>
-        </Stack>
+        </Section>
       )}
 
-      <Stack gap="normal">
-        <PaneHeading title={t.datasets} level="h3" rule="start" />
+      <Section title={t.registered}>
         {choice.datasets.length === 0
           ? <Empty>{t.noDatasets}</Empty>
           : (
@@ -128,15 +154,14 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
                 ))}
               </ul>
             )}
-      </Stack>
+      </Section>
 
       {choice.unreachable.length > 0 && (
         <p className="text-ink-muted text-sm">{t.unreachable(choice.unreachable.length)}</p>
       )}
 
       {choice.dropped.length > 0 && (
-        <Stack gap="normal">
-          <PaneHeading title={t.dropped} level="h3" rule="start" />
+        <Section title={t.dropped}>
           <Stack gap="tight">
             <ul className="flex flex-col gap-1 text-sm">
               {choice.dropped.map((value) => (
@@ -152,7 +177,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
               <Link to={href(locale, adminExperimentFieldsPath())}>{t.openCatalog}</Link>
             </p>
           </Stack>
-        </Stack>
+        </Section>
       )}
 
       {submit !== null && (
@@ -172,15 +197,4 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
       )}
     </Stack>
   )
-}
-
-function languages(
-  t: ReturnType<typeof messagesFor>["admin"]["templates"],
-  ja: boolean,
-  en: boolean,
-): string {
-  if (ja && en) return t.both
-  if (ja) return t.jaOnly
-  if (en) return t.enOnly
-  return t.neither
 }

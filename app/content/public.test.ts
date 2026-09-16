@@ -6,7 +6,6 @@ import {
   publicDatasetContent,
   publicResearch,
   publicResearchContent,
-  type CatalogKey,
   type PublicOptions,
 } from "./public"
 import type { Slot } from "./types"
@@ -16,9 +15,6 @@ const PREVIEW: PublicOptions = { keepUnsettled: true }
 
 const UNKNOWN: Slot<never> = { state: "unknown" }
 const NOT_APPLICABLE: Slot<never> = { state: "not-applicable" }
-
-const catalog = (...keys: CatalogKey[]): ReadonlyMap<string, CatalogKey> =>
-  new Map(keys.map((key) => [key.id, key]))
 
 describe("publicResearchContent", () => {
   it("empties an unsettled language for a public page and keeps its state for a preview", () => {
@@ -83,31 +79,12 @@ describe("publicResearchContent", () => {
 })
 
 describe("publicDatasetContent", () => {
-  const shown: CatalogKey = { id: "shown", showOnPublicPage: true }
-  const hidden: CatalogKey = { id: "hidden", showOnPublicPage: false }
   const value = { kind: "single", value: filled("x") } as const
-
-  it("drops a value under a key the catalog hides", () => {
-    const content = {
-      ...emptyDatasetContent(),
-      values: [{ keyId: "shown", value }, { keyId: "hidden", value }],
-    }
-
-    const out = publicDatasetContent(content, { keys: catalog(shown, hidden), files: [] }, PREVIEW)
-    expect(out.values.map((v) => v.keyId)).toEqual(["shown"])
-  })
-
-  it("drops a value under a key the catalog does not know", () => {
-    const content = { ...emptyDatasetContent(), values: [{ keyId: "gone", value }] }
-
-    const out = publicDatasetContent(content, { keys: catalog(shown), files: [] }, PREVIEW)
-    expect(out.values).toEqual([])
-  })
 
   it("drops an unsettled single value for a public page and keeps it for a preview", () => {
     const unsettled = { keyId: "shown", value: { kind: "single", value: UNKNOWN } as const }
     const content = { ...emptyDatasetContent(), values: [unsettled] }
-    const input = { keys: catalog(shown), files: [] }
+    const input = { files: [] }
 
     expect(publicDatasetContent(content, input, PUBLISHED).values).toEqual([])
     expect(publicDatasetContent(content, input, PREVIEW).values).toEqual([unsettled])
@@ -123,25 +100,26 @@ describe("publicDatasetContent", () => {
       }],
     }
 
-    const out = publicDatasetContent(content, { keys: catalog(shown), files: [] }, PUBLISHED)
+    const out = publicDatasetContent(content, { files: [] }, PUBLISHED)
     expect(out.values[0]?.value)
       .toEqual({ kind: "text", text: { ja: filled(ja), en: filled([]) } })
   })
 
   it("applies the same rules to an experiment's values", () => {
+    const unsettled = { keyId: "shown", value: { kind: "single", value: UNKNOWN } as const }
     const content = {
       ...emptyDatasetContent(),
       experiments: [{
         id: "e1",
         label: UNKNOWN,
-        values: [{ keyId: "shown", value }, { keyId: "hidden", value }],
+        values: [{ keyId: "shown", value }, unsettled],
       }],
     }
 
-    const out = publicDatasetContent(content, { keys: catalog(shown, hidden), files: [] }, PUBLISHED)
+    const out = publicDatasetContent(content, { files: [] }, PUBLISHED)
     expect(out.experiments).toHaveLength(1)
     expect(out.experiments[0]?.label).toEqual(filled(""))
-    expect(out.experiments[0]?.values.map((v) => v.keyId)).toEqual(["shown"])
+    expect(out.experiments[0]?.values).toEqual([{ keyId: "shown", value }])
   })
 
   it("drops a file selection the listing no longer contains", () => {
@@ -149,7 +127,7 @@ describe("publicDatasetContent", () => {
 
     const out = publicDatasetContent(
       content,
-      { keys: catalog(), files: [{ name: "kept.zip", size: 1 }] },
+      { files: [{ name: "kept.zip", size: 1 }] },
       PREVIEW,
     )
     expect(out.fileSelection).toEqual(["kept.zip"])
@@ -157,7 +135,7 @@ describe("publicDatasetContent", () => {
 })
 
 describe("publicDataset", () => {
-  const input = { keys: catalog(), files: [] }
+  const input = { files: [] }
 
   it("gives an NHA dataset one day, written as both of its dates", () => {
     // The portal does not version a dataset, so there is no later event that

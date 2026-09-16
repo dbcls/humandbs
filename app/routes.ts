@@ -52,117 +52,129 @@ function pages(scope: string) {
       "routes/preview-dataset.tsx",
       { id: `${scope}-preview-dataset` },
     ),
-    /**
-     * Everything under `/admin` is inside one layout, so that the area's
-     * frame — the width, the destinations, the demand for a session — is set
-     * once rather than by each screen (`routes/admin-layout.tsx`).
-     */
-    layout("routes/admin-layout.tsx", { id: `${scope}-admin-layout` }, [
-      route("admin", "routes/admin.tsx", { id: `${scope}-admin` }),
-      route(
-        "admin/experiment-fields",
-        "routes/admin-experiment-fields.tsx",
-        { id: `${scope}-admin-experiment-fields` },
-      ),
-      route(
-        "admin/experiment-fields/:key",
-        "routes/admin-experiment-field-terms.tsx",
-        { id: `${scope}-admin-experiment-field-terms` },
-      ),
-      route("admin/contents", "routes/admin-contents.tsx", { id: `${scope}-admin-contents` }),
-      route(
-        "admin/contents/document/:documentId",
-        "routes/admin-contents-document.tsx",
-        { id: `${scope}-admin-contents-document` },
-      ),
-      route(
-        "admin/contents/series/:seriesId",
-        "routes/admin-contents-series.tsx",
-        { id: `${scope}-admin-contents-series` },
-      ),
-      route(
-        "admin/contents/alert",
-        "routes/admin-contents-alert.tsx",
-        { id: `${scope}-admin-contents-alert` },
-      ),
-      route(
-        "admin/contents/news",
-        "routes/admin-contents-news.tsx",
-        { id: `${scope}-admin-contents-news` },
-      ),
-      route(
-        "admin/contents/news/:newsId",
-        "routes/admin-contents-news-item.tsx",
-        { id: `${scope}-admin-contents-news-item` },
-      ),
-      route(
-        "admin/contents/files",
-        "routes/admin-contents-files.tsx",
-        { id: `${scope}-admin-contents-files` },
-      ),
-      route("admin/research", "routes/admin-research-list.tsx", { id: `${scope}-admin-research-list` }),
-      // Before the identity, so that `upstream` is a screen rather than a research
-      // that could never be found.
-      route(
-        "admin/research/upstream",
-        "routes/admin-research-upstream.tsx",
-        { id: `${scope}-admin-research-upstream` },
-      ),
-      route(
-        "admin/research/upstream/:applicationId",
-        "routes/admin-upstream-branch.tsx",
-        { id: `${scope}-admin-upstream-branch` },
-      ),
-      route("admin/research/:researchId", "routes/admin-research.tsx", { id: `${scope}-admin-research` }),
-      route(
-        "admin/research/:researchId/files",
-        "routes/admin-research-files.tsx",
-        { id: `${scope}-admin-research-files` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId",
-        "routes/admin-draft.tsx",
-        { id: `${scope}-admin-draft` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/upstream",
-        "routes/admin-draft-upstream.tsx",
-        { id: `${scope}-admin-draft-upstream` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/publish",
-        "routes/admin-draft-publish.tsx",
-        { id: `${scope}-admin-draft-publish` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/review",
-        "routes/admin-draft-review.tsx",
-        { id: `${scope}-admin-draft-review` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/dataset",
-        "routes/admin-draft-datasets.tsx",
-        { id: `${scope}-admin-draft-datasets` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/dataset/upstream",
-        "routes/admin-draft-dataset-upstream.tsx",
-        { id: `${scope}-admin-draft-dataset-upstream` },
-      ),
-      route(
-        "admin/research/:researchId/draft/:draftId/dataset/:datasetId",
-        "routes/admin-draft-dataset.tsx",
-        { id: `${scope}-admin-draft-dataset` },
-      ),
-      /**
-       * The assistant. **The screen is registered here and the service it talks
-       * to is not registered at all** — it answers under the proxy below, which
-       * is the only address that reaches it (`docs/assistant.md`).
-       */
-      route("admin/assistant", "routes/admin-assistant.tsx", { id: `${scope}-admin-assistant` }),
-    ]),
   ]
 }
+
+/**
+ * The management area, registered once.
+ *
+ * **It carries no language prefix.** These screens are written for the people
+ * who run the portal and exist in Japanese only, so `/en/admin` would be a
+ * second address answering the same screens in the same words (`public/urls.ts`
+ * の `href`). The public pages above are registered twice; this is not.
+ *
+ * Everything under `/admin` is inside one layout, so that the area's frame —
+ * the width, the destinations, the demand for a session — is set once rather
+ * than by each screen (`routes/admin-layout.tsx`).
+ */
+const management = [
+  layout("routes/admin-layout.tsx", { id: "admin-layout" }, [
+    route("admin", "routes/admin.tsx", { id: "admin" }),
+    route(
+      "admin/experiment-fields",
+      "routes/admin-experiment-fields.tsx",
+      { id: "admin-experiment-fields" },
+    ),
+    route(
+      "admin/experiment-fields/:key",
+      "routes/admin-experiment-field-terms.tsx",
+      { id: "admin-experiment-field-terms" },
+    ),
+    route("admin/documents", "routes/admin-contents.tsx", { id: "admin-contents" }),
+    // Before the identity, so that `series` is a screen rather than a document
+    // that could never be found.
+    route(
+      "admin/documents/series/:seriesId",
+      "routes/admin-contents-series.tsx",
+      { id: "admin-contents-series" },
+    ),
+    route(
+      "admin/documents/:documentId",
+      "routes/admin-contents-document.tsx",
+      { id: "admin-contents-document" },
+    ),
+    route(
+      "admin/alert",
+      "routes/admin-contents-alert.tsx",
+      { id: "admin-contents-alert" },
+    ),
+    route(
+      "admin/news",
+      "routes/admin-contents-news.tsx",
+      { id: "admin-contents-news" },
+    ),
+    route(
+      "admin/news/:newsId",
+      "routes/admin-contents-news-item.tsx",
+      { id: "admin-contents-news-item" },
+    ),
+    route(
+      "admin/files",
+      "routes/admin-contents-files.tsx",
+      { id: "admin-contents-files" },
+    ),
+    route("admin/research", "routes/admin-research-list.tsx", { id: "admin-research-list" }),
+    // Before the identity, so that `upstream` is a screen rather than a research
+    // that could never be found.
+    route(
+      "admin/research/upstream",
+      "routes/admin-research-upstream.tsx",
+      { id: "admin-research-upstream" },
+    ),
+    route(
+      "admin/research/upstream/:applicationId",
+      "routes/admin-upstream-branch.tsx",
+      { id: "admin-upstream-branch" },
+    ),
+    route("admin/research/:researchId", "routes/admin-research.tsx", { id: "admin-research" }),
+    route(
+      "admin/research/:researchId/files",
+      "routes/admin-research-files.tsx",
+      { id: "admin-research-files" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId",
+      "routes/admin-draft.tsx",
+      { id: "admin-draft" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/upstream",
+      "routes/admin-draft-upstream.tsx",
+      { id: "admin-draft-upstream" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/publish",
+      "routes/admin-draft-publish.tsx",
+      { id: "admin-draft-publish" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/review",
+      "routes/admin-draft-review.tsx",
+      { id: "admin-draft-review" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset",
+      "routes/admin-draft-datasets.tsx",
+      { id: "admin-draft-datasets" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset/upstream",
+      "routes/admin-draft-dataset-upstream.tsx",
+      { id: "admin-draft-dataset-upstream" },
+    ),
+    route(
+      "admin/research/:researchId/draft/:draftId/dataset/:datasetId",
+      "routes/admin-draft-dataset.tsx",
+      { id: "admin-draft-dataset" },
+    ),
+    /**
+     * The assistant. **The screen is registered here and the service it talks
+     * to is not registered at all** — it answers under the proxy below, which
+     * is the only address that reaches it (`docs/assistant.md`).
+     */
+    route("admin/assistant", "routes/admin-assistant.tsx", { id: "admin-assistant" }),
+  ]),
+]
 
 /**
  * What an open editor talks to rather than navigates to. They are registered
@@ -179,7 +191,7 @@ const editing = [
   ),
   route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
-  route("admin/contents/files/upload", "routes/admin-contents-files-upload.ts"),
+  route("admin/files/upload", "routes/admin-contents-files-upload.ts"),
   /**
    * The assistant's API, handed on unchanged to a service that holds no
    * authorisation of its own (`docs/assistant.md`). **Registered once**, beside
@@ -240,6 +252,7 @@ export default [
   ...api,
   ...editing,
   ...dev,
+  ...management,
   ...pages("ja"),
   ...prefix("en", pages("en")),
   route("*", "routes/document.tsx"),

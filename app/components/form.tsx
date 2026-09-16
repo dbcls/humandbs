@@ -232,7 +232,7 @@ export function Field({
   value?: string
   width?: string
   /** `text` unless the value has a shape the browser can help with. */
-  type?: "text" | "email" | "url" | "number" | "date" | "search"
+  type?: "text" | "email" | "url" | "number" | "date" | "datetime-local" | "search"
   /**
    * **The shape of the value, shown inside the empty box.** It is an example
    * rather than help, so it belongs where what is typed will appear and not in
@@ -322,6 +322,40 @@ export function TextArea({
 }
 
 /** One of a fixed, short list. Anything longer is a search box over a catalog. */
+/**
+ * What a native `<select>` wears on top of `CONTROL`.
+ *
+ * **The caret the browser draws is the one part of a select the page cannot
+ * reach**, so it is turned off and the site's own glyph is laid over the box
+ * (`Pulldown`) — the same `chevron-down` a menu shows when it stands for a
+ * value. **The list that opens stays the browser's**: it is drawn outside the
+ * page, and taking it over means rebuilding the keyboard walk, the type-ahead
+ * and the picker a phone puts up, for a panel nobody is looking at while it is
+ * closed.
+ *
+ * **The size has to be said.** Every other control takes the page's; a select
+ * starts at `normal` instead, which is 18px against 22.4px and leaves it 4.4px
+ * shorter than the box above it in the same panel. **What is written is the
+ * size, not the leading** — `app.css` gives every size its own line height, so
+ * a `leading-*` written here would be a second rule for the same thing and
+ * would win against the one the size carries.
+ */
+export const PULLDOWN = "appearance-none pr-8 text-sm"
+
+/** The box that draws a pulldown's caret, over whatever select it is given. */
+export function Pulldown({ children }: { children: ReactNode }) {
+  return (
+    <span className="relative flex items-center">
+      {children}
+      <Icon
+        name="chevron-down"
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2 text-ink-muted"
+      />
+    </span>
+  )
+}
+
 export function Select({ label, name, value, options, hint, error, disabled }: FieldLook & {
   value?: string
   options: { value: string, label: string }[]
@@ -329,18 +363,20 @@ export function Select({ label, name, value, options, hint, error, disabled }: F
   const id = useId()
   return (
     <Labelled id={id} label={label} hint={hint} error={error}>
-      <select
-        id={id}
-        name={name}
-        defaultValue={value}
-        disabled={disabled}
-        className={`${CONTROL} ${edge(error)} disabled:opacity-50`}
-        {...invalid(id, error)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
+      <Pulldown>
+        <select
+          id={id}
+          name={name}
+          defaultValue={value}
+          disabled={disabled}
+          className={`${CONTROL} ${PULLDOWN} w-full ${edge(error)} disabled:opacity-50`}
+          {...invalid(id, error)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </Pulldown>
     </Labelled>
   )
 }
@@ -662,6 +698,13 @@ export function Editing({ children, onInput, ...rest }: ComponentProps<typeof Fo
  * this is what says it to anybody who is not. It is a live region, so it is
  * read at the moment the first character is typed rather than when the reader
  * next happens to move the focus there.
+ *
+ * **It stands to the right of the save and centred on it**, which is a pairing
+ * rather than a property of either: `self-center` would centre it on the flex
+ * line, and a row that ends in a save usually holds a field twice the button's
+ * height that sets what the line is. **So the two go in one box that centres its
+ * own contents** (`flex items-center`), and that box takes whatever alignment
+ * the row gives it.
  */
 export function Unsaved({ locale }: { locale: Locale }) {
   const changed = useContext(Changed)
@@ -817,11 +860,22 @@ export function Answered({ answer, locale, children }: {
             >
               <Dismiss.Provider
                 value={(
-                  <IconButton
-                    name="close"
-                    label={messages.admin.dismissNotice}
-                    onClick={() => { setNth(0) }}
-                  />
+                  // **The way out is 36px to press and 24px tall in the box.**
+                  // An icon-only control is 36px square (`docs/ui.md` の
+                  // 「押せるものの大きさ」), and left to itself it is the tallest
+                  // thing here — taller than the glyph and half again the line
+                  // of text — so the box stood 54px for a sentence needing 40.
+                  // **It is given the glyph's height and lets its target hang
+                  // over**, rather than a negative margin: the management
+                  // screens write no margins at all (`app.spacing.test.ts`), and
+                  // nothing here clips, so the 36px stays pressable.
+                  <span className="flex h-6 items-center">
+                    <IconButton
+                      name="close"
+                      label={messages.admin.dismissNotice}
+                      onClick={() => { setNth(0) }}
+                    />
+                  </span>
                 )}
               >
                 {children}

@@ -216,7 +216,7 @@ export async function drawDraft(
   const rows: DatasetRowInput[] = datasets.map((row) => {
     const dataset = publicDataset(
       row.content,
-      { keys: catalog.keyById, files: listing, archive: row.archive },
+      { files: listing, archive: row.archive },
       PREVIEW,
     )
     return {
@@ -355,7 +355,7 @@ export async function drawDatasetDraft(
 
   const dataset = publicDataset(
     writing,
-    { keys: catalog.keyById, files: listing, archive: row.archive },
+    { files: listing, archive: row.archive },
     PREVIEW,
   )
   const anchored = anchoredDatasetView({
@@ -385,7 +385,7 @@ export async function drawDatasetDraft(
         studyAccession: null,
         content: publicDatasetContent(
           row.published,
-          { keys: catalog.keyById, files: listing },
+          { files: listing },
           { keepUnsettled: false },
         ),
         datePublished: null,

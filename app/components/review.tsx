@@ -149,7 +149,7 @@ function Share({ view }: { view: ReviewPageView }) {
           <span className="text-ink-muted text-xs">
             {share.expiresOn === null ? t.expiryNone : ""}
           </span>
-          <Submit icon={<Icon name="save" />} saves>{t.setExpiry}</Submit>
+          <Submit icon={<Icon name="save" />} saves>{t.save}</Submit>
           <Unsaved locale={locale} />
         </Editing>
 

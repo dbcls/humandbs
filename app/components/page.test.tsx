@@ -253,6 +253,28 @@ describe("a table with no rows", () => {
   })
 })
 
+describe("how wide a cell goes before what it holds falls to the next line", () => {
+  const of = (nowrap?: boolean) => renderToStaticMarkup(
+    <Table headers={["ID"]}>
+      <tr><Td nowrap={nowrap}>hum0001</Td></tr>
+    </Table>,
+  )
+
+  /* One long sentence would otherwise take the whole table. */
+  it("holds a cell that can wrap to the ceiling", () => {
+    expect(of()).toMatch(/<td[^>]*max-w-88/)
+  })
+
+  /*
+    A cell that cannot wrap holds an identifier with nowhere to fall, and a table
+    cell does not clip — the glyphs run past the edge and sit on the column
+    beside it. Measured at 66px over, on a slug 402px wide in a cell given 336px.
+  */
+  it("gives a cell that cannot wrap no ceiling to overflow", () => {
+    expect(of(true)).not.toMatch(/<td[^>]*max-w-88/)
+  })
+})
+
 describe("where a cell sits in a row taller than it is", () => {
   const of = (align?: "top" | "middle") => renderToStaticMarkup(
     <Table headers={["ID"]} align={align}>

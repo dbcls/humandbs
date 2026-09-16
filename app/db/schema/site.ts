@@ -8,6 +8,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  timestamp,
   uuid,
 } from "drizzle-orm/pg-core"
 
@@ -84,10 +85,17 @@ export const documentSeries = pgTable("document_series", {
  * A news item. Separate from documents because it is an announcement with a
  * date rather than a page with a slug. It gets a draft because the current
  * system has no way to hold an unpublished one.
+ *
+ * **`publishedAt` carries a JST value in a column with no zone**, and it says
+ * two things at once: where the item sits in the order, and whether it is
+ * public at all — one dated ahead of now is not shown yet. Holding the value
+ * the way it is written and read means no conversion anywhere, and the
+ * comparison against "now" names the zone itself rather than leaning on how
+ * the server's clock happens to be set.
  */
 export const news = pgTable("news", {
   id: primaryId(),
-  publishedAt: date(),
+  publishedAt: timestamp({ mode: "string" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [

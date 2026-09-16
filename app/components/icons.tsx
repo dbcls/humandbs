@@ -54,6 +54,10 @@ export type IconName
     | "link"
     | "comment"
     | "file"
+    | "type"
+    | "list"
+    | "hash"
+    | "activity"
     | "newspaper"
     | "bell"
     | "megaphone"
@@ -294,6 +298,38 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M16 17H8" />
     </>
   ),
+  /*
+    The four shapes a value can take (`/admin/experiment-fields`). Each stands
+    beside its word rather than alone — at 14px `type` and `list` are both
+    strokes on a page, and what tells them apart is the T standing over the
+    first one.
+  */
+  "type": (
+    <>
+      <path d="M12 4v16" />
+      <path d="M4 7V4h16v3" />
+      <path d="M9 20h6" />
+    </>
+  ),
+  "list": (
+    <>
+      <path d="M3 6h.01" />
+      <path d="M3 12h.01" />
+      <path d="M3 18h.01" />
+      <path d="M8 6h13" />
+      <path d="M8 12h13" />
+      <path d="M8 18h13" />
+    </>
+  ),
+  "hash": (
+    <>
+      <path d="M4 9h16" />
+      <path d="M4 15h16" />
+      <path d="M10 3 8 21" />
+      <path d="m16 3-2 18" />
+    </>
+  ),
+  "activity": <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
   /*
     A folded sheet with a headline block, which is what tells it from `file`:
     both are paper with lines on it, and at 14px the fold and the block are the

@@ -19,7 +19,6 @@ import {
   NEW_KEY_ORDER,
   NUMBER_FACETS,
   RETYPED_CODES,
-  SHOWN_NEW_KEYS,
   slugify,
   takesMany,
   TEXT_NUMBERS,
@@ -40,7 +39,6 @@ export interface ContentKeySeed {
   multiple: boolean
   canonicalUnit: string | null
   inputUnits: string[] | null
-  showOnPublicPage: boolean
 }
 
 export const ACCESS_CRITERIA_SET = "access-criteria"
@@ -68,7 +66,6 @@ function freeText(seed: {
   labelJa: string
   labelEn: string
   position: number
-  showOnPublicPage: boolean
 }): ContentKeySeed {
   return {
     ...seed,
@@ -113,7 +110,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
         labelJa: "アクセス制限",
         labelEn: "Access type",
         position: 0,
-        showOnPublicPage: true,
       }),
       valueType: "vocabulary",
       vocabularySetCode: ACCESS_CRITERIA_SET,
@@ -125,7 +121,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
       labelJa: "データの種類",
       labelEn: "Type of data",
       position: 1,
-      showOnPublicPage: true,
     }),
   ]
 
@@ -154,7 +149,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
           labelJa: asNumbers.labelJa,
           labelEn: asNumbers.labelEn,
           position: index,
-          showOnPublicPage: true,
         }),
         valueType: "number",
         facetCategoryCode: asNumbers.categoryCode,
@@ -171,7 +165,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
       position: index,
       // A key that was already on the public page stays on it: giving it a type
       // changes how the value is held, not whether a reader sees it.
-      showOnPublicPage: true,
     })
     const vocabulary = vocabularyByCode.get(code)
     if (vocabulary !== undefined) {
@@ -202,9 +195,10 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
     keys.push(base)
   })
 
-  // The keys v1 had no place for. They stand beside the free text they were
-  // read out of rather than replacing it, and they are not shown — they exist
-  // to be filtered by. The disease is the exception (`SHOWN_NEW_KEYS`).
+  // The keys v1 had no place for. **They stand beside the free text they were
+  // read out of rather than replacing it**, so the same fact is written twice
+  // until a migration reads the prose into them — thirteen keys are in that
+  // state (`docs/data-model.md` の「値と文」).
   const newKeys = [
     ...VOCABULARY_FACETS.filter((facet) => !RETYPED_CODES.has(facet.code)).map((facet) => ({
       ...freeText({
@@ -213,7 +207,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
         labelJa: facet.labelJa,
         labelEn: facet.labelEn,
         position: 0,
-        showOnPublicPage: SHOWN_NEW_KEYS.has(facet.code),
       }),
       valueType: facet.valueType,
       vocabularySetCode: facet.setCode,
@@ -227,7 +220,6 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
         labelJa: facet.labelJa,
         labelEn: facet.labelEn,
         position: 0,
-        showOnPublicPage: false,
       }),
       valueType: "number" as const,
       facetCategoryCode: facet.categoryCode,

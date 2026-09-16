@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { minuteInJst } from "./dates"
+import { asLocalInput, minuteInJst, minuteOf, nowInJst, stampFromLocalInput, today } from "./dates"
 
 /**
  * The same question put to `Intl`, which takes the offset from its own database
@@ -55,5 +55,110 @@ describe("minuteInJst", () => {
         expect(minuteInJst(instant.toISOString())).toBe(minuteByIntl(instant))
       },
     ))
+  })
+})
+
+/** A minute between 2000 and 2100, which is the range a date field is used in. */
+const someMinute = fc.date({
+  min: new Date("2000-01-01T00:00:00.000Z"),
+  max: new Date("2100-01-01T00:00:00.000Z"),
+  noInvalidDate: true,
+})
+
+describe("nowInJst", () => {
+  it("お知らせの列が持つ形で返る", () => {
+    expect(nowInJst()).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+  })
+
+  it("日付の部分は today() と同じ日を指す", () => {
+    expect(nowInJst().slice(0, 10)).toBe(today())
+  })
+
+  it("時は 24 時制で書く", () => {
+    // 12 時制なら午後が 01〜12 に落ちて、そのまま並べると夕方が朝より前に来る。
+    // 列の値は文字列のまま比べられるので、ここが 24 時制であることが「公開日時が
+    // 過ぎたか」の判定そのものを支えている。
+    const hour = Number(nowInJst().slice(11, 13))
+    expect(hour).toBeGreaterThanOrEqual(0)
+    expect(hour).toBeLessThanOrEqual(23)
+  })
+})
+
+describe("minuteOf", () => {
+  it("秒を落とす", () => {
+    expect(minuteOf("2026-06-23 09:30:45")).toBe("2026-06-23 09:30")
+  })
+
+  it("秒を落としても、分が違えば前後は入れ替わらない", () => {
+    const stamp = (at: Date) => at.toISOString().slice(0, 19).replace("T", " ")
+    fc.assert(fc.property(someMinute, someMinute, (a, b) => {
+      const [one, other] = [stamp(a), stamp(b)]
+      if (one.slice(0, 16) === other.slice(0, 16)) return
+      expect(minuteOf(one) < minuteOf(other)).toBe(one < other)
+    }))
+  })
+})
+
+describe("datetime-local の欄との往復", () => {
+  it("欄に出して受け取り直すと、元の値に戻る", () => {
+    fc.assert(fc.property(someMinute, (at) => {
+      const stored = `${at.toISOString().slice(0, 16).replace("T", " ")}:00`
+      expect(stampFromLocalInput(asLocalInput(stored))).toBe(stored)
+    }))
+  })
+
+  it("欄は分までしか持たないので、秒はゼロに落ちる", () => {
+    expect(stampFromLocalInput(asLocalInput("2026-06-23 09:30:45"))).toBe("2026-06-23 09:30:00")
+  })
+})
+
+describe("stampFromLocalInput", () => {
+  it("欄が送る形をそのまま受ける", () => {
+    expect(stampFromLocalInput("2026-06-23T09:30")).toBe("2026-06-23 09:30:00")
+  })
+
+  it("うるう年の 2 月 29 日は受ける", () => {
+    expect(stampFromLocalInput("2024-02-29T09:30")).toBe("2024-02-29 09:30:00")
+  })
+
+  it("うるう年でない年の 2 月 29 日は受けない", () => {
+    // `Date` はこれを 3 月 1 日へ繰り上げるので、形だけ見ていると打った覚えの
+    // 無い日付が黙って入る。
+    expect(stampFromLocalInput("2026-02-29T09:30")).toBeNull()
+  })
+
+  it("暦に無い日は受けない", () => {
+    expect(stampFromLocalInput("2026-02-31T09:30")).toBeNull()
+    expect(stampFromLocalInput("2026-06-31T09:30")).toBeNull()
+    expect(stampFromLocalInput("2026-13-01T09:30")).toBeNull()
+  })
+
+  it("時刻の範囲を外れた値は受けない", () => {
+    expect(stampFromLocalInput("2026-06-23T24:00")).toBeNull()
+    expect(stampFromLocalInput("2026-06-23T09:60")).toBeNull()
+  })
+
+  it("日付だけ・秒つき・空・前後の空白は受けない", () => {
+    expect(stampFromLocalInput("2026-06-23")).toBeNull()
+    expect(stampFromLocalInput("2026-06-23T09:30:00")).toBeNull()
+    expect(stampFromLocalInput("")).toBeNull()
+    expect(stampFromLocalInput(" 2026-06-23T09:30")).toBeNull()
+    expect(stampFromLocalInput("2026-06-23T09:30 ")).toBeNull()
+  })
+
+  it("受けた値は、そのまま並べれば時系列になる", () => {
+    const asField = (at: Date) => at.toISOString().slice(0, 16)
+    fc.assert(fc.property(someMinute, someMinute, (a, b) => {
+      const [one, other] = [stampFromLocalInput(asField(a)), stampFromLocalInput(asField(b))]
+      if (one === null || other === null) throw new Error("a real minute was refused")
+      expect(one < other).toBe(asField(a) < asField(b))
+    }))
+  })
+
+  it("形が合っていない文字列は、どれも受けない", () => {
+    fc.assert(fc.property(fc.string(), (value) => {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return
+      expect(stampFromLocalInput(value)).toBeNull()
+    }))
   })
 })

@@ -3,6 +3,7 @@ import { Link } from "react-router"
 
 import { BigAction, Stack } from "~/components/base"
 import type { IconName } from "~/components/icons"
+import { dayOf } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { NewsSummary } from "~/public/site.server"
@@ -100,9 +101,6 @@ export function NewsList({ locale, items, dateBeside = false }: {
   /** Whether the date sits in its own column, which needs the room for one. */
   dateBeside?: boolean
 }) {
-  const messages = messagesFor(locale)
-  const date = (item: NewsSummary) => item.publishedAt ?? messages.news.undated
-
   return (
     // **The listing is closed on both ends, the front page's column is not.**
     // A listing is the whole of what the page is for, so a rule above the first
@@ -123,11 +121,11 @@ export function NewsList({ locale, items, dateBeside = false }: {
         >
           <div className={dateBeside ? "flex items-start gap-4" : ""}>
             {dateBeside && (
-              <span className="w-24 shrink-0 text-ink-muted text-sm">{date(item)}</span>
+              <span className="w-24 shrink-0 text-ink-muted text-sm">{dayOf(item.publishedAt)}</span>
             )}
             <div className="min-w-0 flex-1">
               <Stack gap="tight">
-                {!dateBeside && <span className="text-ink-muted text-xs">{date(item)}</span>}
+                {!dateBeside && <span className="text-ink-muted text-xs">{dayOf(item.publishedAt)}</span>}
                 <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
                 {item.excerpt !== "" && (
                   <p className="line-clamp-2 text-ink-muted text-sm">{item.excerpt}</p>

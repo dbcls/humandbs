@@ -211,3 +211,29 @@ describe("the disease slot an experiment carries", () => {
     expect(diseaseSlots(experimentSaying("健常者: 7名"), identity)).toEqual([])
   })
 })
+
+describe("a value that comes from a closed set", () => {
+  it("is labelled in English with its first letter raised, the dump writing it as a bare word", () => {
+    expect(readerOf("health-status")({ healthStatus: "affected" }).map((term) => term.labelEn))
+      .toEqual(["Affected"])
+  })
+
+  it("raises only the first letter, so a hyphenated value keeps its second half", () => {
+    expect(readerOf("read-type")({ readType: "paired-end" }).map((term) => term.labelEn))
+      .toEqual(["Paired-end"])
+  })
+
+  it("raises only the first word, so a value of two words keeps its second", () => {
+    expect(readerOf("has-phenotype-data")({ hasPhenotypeData: false }).map((term) => term.labelEn))
+      .toEqual(["Not included"])
+  })
+
+  it("codes the value as it was written, so raising the letter moves no term", () => {
+    expect(readerOf("has-phenotype-data")({ hasPhenotypeData: false }).map((term) => term.code))
+      .toEqual(["not-included"])
+  })
+
+  it("carries the Japanese label the set was written with", () => {
+    expect(readerOf("sex")({ sex: "female" }).map((term) => term.labelJa)).toEqual(["女性"])
+  })
+})

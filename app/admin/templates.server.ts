@@ -123,13 +123,19 @@ export interface UpstreamBranchView {
   heldBy: string | null
 }
 
-/** A field of the research, and which languages the application filled in. */
+/** A field of the research, as the application states it in each language. */
 export type SeededField = "title" | "aims" | "methods" | "targets" | "provider"
 
+/**
+ * **The value itself rather than whether there is one.** This is read before
+ * anything is written, and "ja あり" answers a question nobody has — what a
+ * curator is deciding is whether these words belong in the research, which
+ * cannot be told from their presence.
+ */
 export interface SeededFieldView {
   field: SeededField
-  ja: boolean
-  en: boolean
+  ja: string
+  en: string
 }
 
 export interface DatasetChoiceView {
@@ -303,11 +309,11 @@ async function branchViews(
 
 function fieldsOf(branch: DsBranchDetail): SeededFieldView[] {
   return [
-    { field: "title", ja: branch.titleJa !== "", en: branch.titleEn !== "" },
-    { field: "aims", ja: branch.aimsJa !== "", en: branch.aimsEn !== "" },
-    { field: "methods", ja: branch.methodsJa !== "", en: branch.methodsEn !== "" },
-    { field: "targets", ja: branch.targetsJa !== "", en: branch.targetsEn !== "" },
-    { field: "provider", ja: branch.piNameJa !== "", en: branch.piNameEn !== "" },
+    { field: "title", ja: branch.titleJa, en: branch.titleEn },
+    { field: "aims", ja: branch.aimsJa, en: branch.aimsEn },
+    { field: "methods", ja: branch.methodsJa, en: branch.methodsEn },
+    { field: "targets", ja: branch.targetsJa, en: branch.targetsEn },
+    { field: "provider", ja: branch.piNameJa, en: branch.piNameEn },
   ]
 }
 

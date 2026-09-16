@@ -574,7 +574,7 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
                     // Which column a value belongs to, for a reader who hears
                     // the row rather than seeing it line up under the name.
                     scope="col"
-                    className={`max-w-88 px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${CEILING} ${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
                     {header}
                   </th>
@@ -609,6 +609,18 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
     </div>
   )
 }
+
+/**
+ * How wide a cell goes before what it holds falls to the next line.
+ *
+ * **A cell that cannot wrap has no ceiling.** The limit keeps one long sentence
+ * from taking the table, but a `nowrap` cell holds an identifier that has
+ * nowhere to fall — and a table cell does not clip, so the glyphs run past the
+ * edge and sit on the column beside it (measured at 66px over, on a slug 402px
+ * wide in a cell given 336px). The table scrolls sideways instead, which is
+ * what `overflow-x` is already there for.
+ */
+const CEILING = "max-w-88"
 
 export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, className = "" }: {
   children?: ReactNode
@@ -660,7 +672,7 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
   return (
     <td
       colSpan={colSpan}
-      className={`max-w-88 border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`${nowrap ? "" : CEILING} border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>
@@ -853,6 +865,28 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
         next={messages.search.nextPage}
         most={most}
       />
+    </div>
+  )
+}
+
+/**
+ * How many rows are standing, where a listing that pages says which page of how
+ * many is on screen.
+ *
+ * **There is no range to give.** A listing that is never cut into pages shows
+ * the whole of what it counts, so the bare total is the answer rather than the
+ * half-truth it would be over twenty rows of six hundred. It stands where
+ * `Paging` stands, so that the one place a reader looks for a count is the same
+ * on every listing — a table that cannot page is still a table somebody wants
+ * to know the size of.
+ */
+export function Counted({ locale, total }: { locale: Locale, total: number }) {
+  const messages = messagesFor(locale)
+  // The row keeps the height of the steps it does not draw, for the reason
+  // `Paging` does: what stands in a row settles that row's height once.
+  return (
+    <div className="flex min-h-tap flex-wrap items-center justify-end gap-2">
+      <p className="text-ink-muted text-sm">{messages.search.results(total)}</p>
     </div>
   )
 }

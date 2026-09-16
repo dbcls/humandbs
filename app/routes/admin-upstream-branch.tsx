@@ -1,6 +1,8 @@
 import { data, Form } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
+import { adminUpstreamResearchPath } from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
 import { Answered, RadioGroup, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
@@ -8,7 +10,7 @@ import { Card, Page, Section } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
-import { readLocale } from "~/public/urls"
+import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-upstream-branch"
 
@@ -61,10 +63,15 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
       </Answered>
       <Card under={false}>
         <Stack gap="block">
-          {/* No way back of its own: the screen it came from is on the bar.
-              The name says what is done here and the branch stands beside it —
+          {/* The name says what is done here and the branch stands beside it —
               an application ID on its own would not say which screen this is. */}
-          <Heading title={t.branchHeading} aside={view.applicationId} />
+          <Heading title={t.branchHeading} aside={view.applicationId}>
+            <AdminBack
+              to={href(locale, adminUpstreamResearchPath())}
+              label={t.backToList}
+              icon="chevron-left"
+            />
+          </Heading>
 
           {!view.connected || view.branch === null || view.chosen === null
             ? <UpstreamNotConnected locale={locale} dra={false} />
@@ -84,15 +91,43 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     already there the datasets are ticked on the screen the
                     draft arrives at, so here they are only read.
                   */}
-                  <Section title={view.branch.titleJa === "" ? view.branch.titleEn : view.branch.titleJa}>
-                    {holder === null
-                      ? (
-                          <Form method="post">
-                            <input type="hidden" name="into" value="new" />
-                            <UpstreamChoice locale={locale} choice={view.chosen} submit={t.create} />
-                          </Form>
-                        )
-                      : <UpstreamChoice locale={locale} choice={view.chosen} />}
+                  {/* **The heading names what is being read; the branch says
+                      which one.** Standing the branch's own title where the
+                      heading goes left the screen without a word for what it
+                      holds — and the listing this screen is opened from names
+                      six things about a branch where this named one. */}
+                  <Section title={t.branchSummary}>
+                    <Stack gap="normal">
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                        <div className="contents">
+                          <dt className="text-ink-muted">{t.humLabel}</dt>
+                          <dd>{view.branch.humLabel ?? t.noHumLabel}</dd>
+                        </div>
+                        <div className="contents">
+                          <dt className="text-ink-muted">{t.approvedOn}</dt>
+                          <dd>{view.branch.approvedOn ?? ""}</dd>
+                        </div>
+                        <div className="contents">
+                          <dt className="text-ink-muted">{t.title}</dt>
+                          <dd>
+                            {view.branch.titleJa === "" ? view.branch.titleEn : view.branch.titleJa}
+                          </dd>
+                        </div>
+                        <div className="contents">
+                          <dt className="text-ink-muted">{t.pi}</dt>
+                          <dd>{view.branch.piName}</dd>
+                        </div>
+                      </dl>
+
+                      {holder === null
+                        ? (
+                            <Form method="post">
+                              <input type="hidden" name="into" value="new" />
+                              <UpstreamChoice locale={locale} choice={view.chosen} submit={t.create} />
+                            </Form>
+                          )
+                        : <UpstreamChoice locale={locale} choice={view.chosen} />}
+                    </Stack>
                   </Section>
 
                   {holder !== null && (

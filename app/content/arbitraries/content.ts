@@ -32,7 +32,7 @@ import type {
   ValueSlot,
 } from "../types"
 
-import type { CatalogKey, StoredFile } from "../public"
+import type { StoredFile } from "../public"
 
 export const KEY_IDS = ["key-a", "key-b", "key-c", "key-d"] as const
 export const FILE_NAMES = ["a.zip", "b.zip", "c.pdf", "d.txt"] as const
@@ -230,11 +230,6 @@ export const datasetContentArb: fc.Arbitrary<DatasetContent> = fc.record({
   values: fc.array(valueSlotArb, { maxLength: 4 }),
   experiments: fc.array(experimentArb, { maxLength: 3 }),
 })
-
-/** A catalog that knows some of the key ids and shows some of those. */
-export const catalogArb: fc.Arbitrary<ReadonlyMap<string, CatalogKey>> = fc
-  .array(fc.record({ id: keyIdArb, showOnPublicPage: fc.boolean() }), { maxLength: 4 })
-  .map((keys) => new Map(keys.map((key) => [key.id, key])))
 
 export const filesArb: fc.Arbitrary<StoredFile[]> = fc.array(
   fc.record({ name: fileNameArb, size: fc.nat() }),

@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { catalogArb, datasetContentArb, filesArb, researchContentArb } from "./arbitraries/content"
+import { datasetContentArb, filesArb, researchContentArb } from "./arbitraries/content"
 import { publicDatasetContent, publicResearchContent, type PublicOptions } from "./public"
 
 const PUBLISHED: PublicOptions = { keepUnsettled: false }
@@ -105,31 +105,18 @@ describe("publicResearchContent", () => {
 
 describe("publicDatasetContent", () => {
   it("leaves no unsettled slot in what a public page receives", () => {
-    fc.assert(fc.property(datasetContentArb, catalogArb, filesArb, (content, keys, files) => {
-      expect(unsettled(publicDatasetContent(content, { keys, files }, PUBLISHED))).toBe(0)
+    fc.assert(fc.property(datasetContentArb, filesArb, (content, files) => {
+      expect(unsettled(publicDatasetContent(content, { files }, PUBLISHED))).toBe(0)
     }))
   })
 
   it("carries no string the content does not have", () => {
     fc.assert(fc.property(
-      datasetContentArb, catalogArb, filesArb, modeArb,
-      (content, keys, files, options) => {
+      datasetContentArb, filesArb, modeArb,
+      (content, files, options) => {
         const source = strings(content)
-        for (const value of strings(publicDatasetContent(content, { keys, files }, options))) {
+        for (const value of strings(publicDatasetContent(content, { files }, options))) {
           expect(source.has(value)).toBe(true)
-        }
-      },
-    ))
-  })
-
-  it("keeps no value under a key the catalog does not show on the public page", () => {
-    fc.assert(fc.property(
-      datasetContentArb, catalogArb, filesArb, modeArb,
-      (content, keys, files, options) => {
-        const out = publicDatasetContent(content, { keys, files }, options)
-        const kept = [...out.values, ...out.experiments.flatMap((e) => e.values)]
-        for (const value of kept) {
-          expect(keys.get(value.keyId)?.showOnPublicPage).toBe(true)
         }
       },
     ))
@@ -137,9 +124,9 @@ describe("publicDatasetContent", () => {
 
   it("keeps only the file selections the listing contains", () => {
     fc.assert(fc.property(
-      datasetContentArb, catalogArb, filesArb, modeArb,
-      (content, keys, files, options) => {
-        const out = publicDatasetContent(content, { keys, files }, options)
+      datasetContentArb, filesArb, modeArb,
+      (content, files, options) => {
+        const out = publicDatasetContent(content, { files }, options)
         for (const name of out.fileSelection) {
           expect(files.some((file) => file.name === name)).toBe(true)
         }
@@ -149,10 +136,10 @@ describe("publicDatasetContent", () => {
 
   it("makes no further difference when applied to its own output", () => {
     fc.assert(fc.property(
-      datasetContentArb, catalogArb, filesArb, modeArb,
-      (content, keys, files, options) => {
-        const once = publicDatasetContent(content, { keys, files }, options)
-        expect(publicDatasetContent(once, { keys, files }, options)).toEqual(once)
+      datasetContentArb, filesArb, modeArb,
+      (content, files, options) => {
+        const once = publicDatasetContent(content, { files }, options)
+        expect(publicDatasetContent(once, { files }, options)).toEqual(once)
       },
     ))
   })

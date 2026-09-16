@@ -37,7 +37,6 @@ export interface FacetDefinition {
    * without being shown** — thirteen of them are, and they are the ones the
    * panel offers as questions rather than as descriptions.
    */
-  showOnPublicPage: boolean
 }
 
 interface FacetRow extends Record<string, unknown> {
@@ -51,7 +50,6 @@ interface FacetRow extends Record<string, unknown> {
   categoryCode: string | null
   categoryLabelJa: string | null
   categoryLabelEn: string | null
-  showOnPublicPage: boolean
 }
 
 /**
@@ -74,7 +72,6 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
       labelEn: contentKey.labelEn,
       setId: contentKey.vocabularySetId,
       canonicalUnit: contentKey.canonicalUnit,
-      showOnPublicPage: contentKey.showOnPublicPage,
       categoryCode: facetCategory.code,
       categoryLabelJa: facetCategory.labelJa,
       categoryLabelEn: facetCategory.labelEn,
@@ -106,7 +103,6 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
     categoryLabelJa: row.categoryLabelJa,
     categoryLabelEn: row.categoryLabelEn,
     canonicalUnit: row.canonicalUnit,
-    showOnPublicPage: row.showOnPublicPage,
   }))
 }
 

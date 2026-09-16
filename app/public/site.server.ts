@@ -70,7 +70,8 @@ export async function documentPage(slug: string, locale: Locale): Promise<Articl
 export interface NewsSummary {
   id: string
   title: string
-  publishedAt: string | null
+  /** A JST wall clock. Never absent here: an undated announcement is unpublished. */
+  publishedAt: string
   /** The opening of the body as plain words, for the listing to show a line of. */
   excerpt: string
 }
@@ -107,6 +108,22 @@ const NEWS_PER_PAGE = 20
  * them into the index would mean maintaining a second kind of row for a
  * listing that is read by date.
  */
+/**
+ * The half of "is this readable" that the announcement itself answers: it is
+ * dated, and the date has come.
+ *
+ * **The stored value is a JST wall clock, and "now" is read in the same
+ * clock**, so the comparison names the zone rather than leaning on how the
+ * server's clock is set — left to `now()` alone, an item dated nine in the
+ * morning would appear the previous afternoon wherever the database runs in
+ * UTC. An announcement with no date is one still being written, so there is no
+ * moment for it to have arrived at.
+ */
+function arrived() {
+  return sql`${news.publishedAt} is not null
+    and ${news.publishedAt} <= (now() at time zone 'Asia/Tokyo')`
+}
+
 export async function newsList(
   locale: Locale,
   page: number,
@@ -118,6 +135,7 @@ export async function newsList(
   const matching = and(
     eq(newsContent.locale, locale),
     eq(newsContent.published, true),
+    arrived(),
     ...(wanted === ""
       ? []
       : [sql`(${newsContent.content} ->> 'title' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\'
@@ -137,7 +155,13 @@ export async function newsList(
   const at = Math.min(Math.max(page, 1), pageCount)
 
   const rows = await db
-    .select({ id: news.id, publishedAt: news.publishedAt, content: newsContent.content })
+    .select({
+      id: news.id,
+      // Not nullable here, because `arrived()` is part of every condition this
+      // runs under.
+      publishedAt: sql<string>`${news.publishedAt}`,
+      content: newsContent.content,
+    })
     .from(newsContent)
     .innerJoin(news, eq(news.id, newsContent.newsId))
     .where(matching)
@@ -165,13 +189,18 @@ function likeEscaped(value: string): string {
 }
 
 export interface NewsItemView extends ArticleView {
-  publishedAt: string | null
+  /** A JST wall clock. Never absent here: an undated announcement is unpublished. */
+  publishedAt: string
 }
 
 export async function newsItemPage(id: string, locale: Locale): Promise<NewsItemView> {
   const db = getDb()
   const rows = await db
-    .select({ publishedAt: news.publishedAt, content: newsContent.content })
+    .select({
+      // Not nullable here, for the same reason as the listing.
+      publishedAt: sql<string>`${news.publishedAt}`,
+      content: newsContent.content,
+    })
     .from(newsContent)
     .innerJoin(news, eq(news.id, newsContent.newsId))
     .where(and(
@@ -180,6 +209,7 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
       sql`${newsContent.newsId}::text = ${id}`,
       eq(newsContent.locale, locale),
       eq(newsContent.published, true),
+      arrived(),
     ))
     .limit(1)
 

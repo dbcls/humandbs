@@ -293,7 +293,65 @@ export interface NewsRow {
   id: string
   title: string
   publishedAt: string | null
+  /**
+   * Whether the date is still ahead, which is what keeps a published
+   * announcement off the public side until it arrives.
+   */
+  scheduled: boolean
   states: LocaleStates
+}
+
+/**
+ * The orders the announcements can be read in.
+ *
+ * **The day it goes out is what an announcement is filed under**, so that is
+ * the order the listing opens in, newest first. The title is the other way in:
+ * an editor looking for one they wrote does not know its date.
+ */
+export const NEWS_SORT_KEYS = ["published", "title"] as const
+
+export type NewsSortKey = typeof NEWS_SORT_KEYS[number]
+
+export const NEWS_SORT: NewsSortKey = NEWS_SORT_KEYS[0]
+
+export function isNewsSortKey(value: string | null): value is NewsSortKey {
+  return value !== null && (NEWS_SORT_KEYS as readonly string[]).includes(value)
+}
+
+/**
+ * **Announcements without a day sink to the end whichever way the order runs.**
+ * A row with nothing to be measured by has no place on the scale, and treating
+ * the absence as a value walks it from one end of the listing to the other
+ * every time the direction is turned.
+ *
+ * **The order is total**: the identity decides between two rows sharing a day
+ * or a title, so that a pair does not swap between requests and get read twice
+ * across a page boundary.
+ */
+export function sortedNews(
+  rows: readonly NewsRow[],
+  sort: NewsSortKey,
+  order: "asc" | "desc",
+): NewsRow[] {
+  const way = order === "asc" ? 1 : -1
+  const by = (row: NewsRow): string | null => sort === "title" ? row.title : row.publishedAt
+  return [...rows].sort((left, right) => {
+    const one = by(left)
+    const other = by(right)
+    // Ranked apart from the scale rather than at one end of it: a row with
+    // nothing to measure would otherwise cross the listing as the way turns.
+    if (one === null || other === null) {
+      if (one !== other) return one === null ? 1 : -1
+    } else if (one !== other) {
+      return one < other ? -way : way
+    }
+    // **The identity settles it, and turns with the order.** The listing read
+    // newest first before it offered a choice of order, and two announcements
+    // put out at the same minute kept that way round; a tie broken the same
+    // way whichever direction the rest of the listing runs would stand out as
+    // the one pair reading backwards.
+    return left.id < right.id ? -way : way
+  })
 }
 
 /**

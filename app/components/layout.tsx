@@ -480,16 +480,22 @@ export function SiteHeader({ locale, account, managing = false }: {
             listing keeps the listing — read through `normalizeQuery`, which is
             what makes the address the same one on the server and in the
             browser (`public/urls.ts`).
+
+            **Not on a management screen.** Those exist in Japanese only, so
+            the other pill would lead to an address that answers nothing —
+            and a control that cannot be pressed is not one to draw.
           */}
-          <LanguagePills
-            label={messages.language}
-            options={[...LOCALES].sort().map((code) => ({
-              code,
-              label: code.toUpperCase(),
-              to: `${href(code, path)}${normalizeQuery(location.search)}`,
-              current: code === locale,
-            }))}
-          />
+          {!managing && (
+            <LanguagePills
+              label={messages.language}
+              options={[...LOCALES].sort().map((code) => ({
+                code,
+                label: code.toUpperCase(),
+                to: `${href(code, path)}${normalizeQuery(location.search)}`,
+                current: code === locale,
+              }))}
+            />
+          )}
           {/*
             **Not on a management screen.** The cart is a reader collecting
             datasets to ask for, which is not what somebody editing them is
