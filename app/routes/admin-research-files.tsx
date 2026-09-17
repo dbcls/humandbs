@@ -24,6 +24,7 @@ import { filesAction, filesPage } from "~/files/pages.server"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
+import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-research-files"
 
@@ -64,11 +65,12 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
   const messages = messagesFor(locale)
   const t = messages.admin.files
 
-  const at = (over: { sort?: BoxSortKey, order?: "asc" | "desc", page?: number }): string => {
-    const next = { sort: view.sort, order: view.order, page: 1, ...over }
+  const at = (over: { sort?: BoxSortKey, order?: "asc" | "desc", size?: PageSize, page?: number }): string => {
+    const next = { sort: view.sort, order: view.order, size: view.size, page: 1, ...over }
     const search = new URLSearchParams()
     if (next.sort !== BOX_SORT) search.set("sort", next.sort)
     if (next.order !== "asc") search.set("order", next.order)
+    if (next.size !== PAGE_SIZE) search.set("size", String(next.size))
     if (next.page !== 1) search.set("page", String(next.page))
     const written = search.toString()
     return href(
@@ -90,15 +92,27 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
     : messages.search.sort.toDescending
 
   /*
-    How the box is read, and which part of it is on screen.
+    The count and the way through the pages, over the table and again under it.
 
-    **It stands above the table and again below it.** A page of rows is longer
-    than the window, so a reader who has decided against this page would
-    otherwise have to climb back over it to reach the next one. Listings with a
-    pane get the same repetition from `RefinableList`; this box has no pane, so
-    it places the row itself.
+    **Only these stand under it.** A page of rows is longer than the window, so a
+    reader who has decided against this page would otherwise have to climb back
+    over it to reach the next one — but the ordering and the page size send that
+    reader back to the top of page one. Listings with a pane get the same split
+    from `RefinableList`; this box has no pane, so it places both rows itself.
   */
-  const paging = (
+  const pages = (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => at({ page })}
+    />
+  )
+  // How the box is read, and which part of it is on screen.
+  const tools = (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
       <Chooser
         label={messages.search.sort.label}
@@ -126,15 +140,19 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at({ page })}
-      />
+      <Chooser label={messages.search.pageSize} value={String(view.size)}>
+        {PAGE_SIZES.map((option) => (
+          <Link
+            key={option}
+            to={at({ size: option })}
+            aria-current={option === view.size ? "true" : undefined}
+            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {option}
+          </Link>
+        ))}
+      </Chooser>
+      {pages}
     </div>
   )
 
@@ -182,9 +200,9 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     {view.switching > 0 && (
                       <p className="text-accent text-sm">{t.switching(view.switching)}</p>
                     )}
-                    {paging}
+                    {tools}
                     <BoxTable locale={locale} rows={view.rows} humLabel={view.humLabel} />
-                    {paging}
+                    <div className="flex justify-end">{pages}</div>
                   </Stack>
                 )}
           </Section>

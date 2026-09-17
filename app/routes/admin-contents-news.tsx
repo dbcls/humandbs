@@ -75,9 +75,11 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
     + view.ja.length
     + view.en.length
 
-  // The same row over the rows and under them: the listing is scrolled past,
-  // and the way to the next page has to be at the end a reader reaches.
+  // The whole row over the rows, and only the count with the way through the
+  // pages under them: a reader who reaches the end of a page is looking for the
+  // next one, and the ordering and the page size would send them back to the top.
   const tools = <Tools view={view} locale={locale} />
+  const pages = <Pages view={view} locale={locale} />
 
   return (
     <Page>
@@ -113,6 +115,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
+            pages={pages}
             panel={null}
           >
             <Stack gap="normal">
@@ -263,24 +266,31 @@ function Presented({ view }: { view: ViewProps["view"] }) {
 }
 
 /**
- * How the rows are presented, over the rows and under them: how many a page
- * holds, and the way through the pages.
+ * This listing under a different setting. Everything the reader chose is
+ * carried, and the page is the first one unless the page is what changes.
+ */
+function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<NewsListingQuery>): string {
+  return href(locale, adminNewsListPath() + newsQuery({
+    keyword: view.keyword,
+    dating: view.dating,
+    ja: view.ja,
+    en: view.en,
+    page: 1,
+    sort: view.sort === NEWS_SORT ? null : view.sort,
+    order: view.order === "desc" ? null : view.order,
+    size: view.size === PAGE_SIZE ? null : view.size,
+    ...over,
+  }))
+}
+
+/**
+ * How the rows are presented, over the rows: how many a page holds, and the way
+ * through the pages.
  */
 function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents
-  const at = (over: Partial<NewsListingQuery>): string =>
-    href(locale, adminNewsListPath() + newsQuery({
-      keyword: view.keyword,
-      dating: view.dating,
-      ja: view.ja,
-      en: view.en,
-      page: 1,
-      sort: view.sort === NEWS_SORT ? null : view.sort,
-      order: view.order === "desc" ? null : view.order,
-      size: view.size === PAGE_SIZE ? null : view.size,
-      ...over,
-    }))
+  const at = (over: Partial<NewsListingQuery>): string => listingAt(view, locale, over)
 
   // The table names these two columns, so the orders are named by them rather
   // than by a second set of words meaning the same things.
@@ -335,15 +345,25 @@ function Tools({ view, locale }: ViewProps) {
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at({ page })}
-      />
+      <Pages view={view} locale={locale} />
     </div>
+  )
+}
+
+/**
+ * The count and the way through the pages, which stand over the rows and again
+ * under them.
+ */
+function Pages({ view, locale }: ViewProps) {
+  return (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => listingAt(view, locale, { page })}
+    />
   )
 }

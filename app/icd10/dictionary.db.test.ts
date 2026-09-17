@@ -33,7 +33,7 @@ beforeAll(async () => {
     .returning({ id: s.vocabularyTerm.id })).id
   await db.insert(s.vocabularyTerm).values([
     { setId, code: "C349", labelEn: "Lung, unspecified", labelJa: "肺がん 詳細不明", parentId: parent },
-    { setId, code: "C50", labelEn: "Breast", labelJa: "乳がん", active: false },
+    { setId, code: "C50", labelEn: "Breast", labelJa: "乳がん" },
   ])
 })
 

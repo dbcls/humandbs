@@ -19,6 +19,7 @@ import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
 
 import {
+  drawDraft,
   PREVIEW_HEADERS,
   previewAction,
   previewDatasetPage,
@@ -247,6 +248,79 @@ describe("a dataset preview", () => {
     const view = await previewDatasetPage(get(), "ja", token, datasetId)
     expect(view.view.datePublished).toBe("2018-04-02")
     expect(view.view.dateModified).toBe("2023-11-15")
+  })
+})
+
+describe("the listing row a draft is drawn with", () => {
+  /** A key whose one term a dataset can hold. */
+  async function keyWithTerm(
+    code: string,
+    scope: "dataset" | "experiment",
+    term: string,
+  ): Promise<{ keyId: string, termId: string }> {
+    const [set] = await db.insert(s.vocabularySet)
+      .values({ code, labelJa: code, labelEn: code })
+      .returning({ id: s.vocabularySet.id })
+    if (set === undefined) throw new Error("no vocabulary")
+    const [made] = await db.insert(s.vocabularyTerm)
+      .values({ setId: set.id, code: term, labelEn: term })
+      .returning({ id: s.vocabularyTerm.id })
+    const [key] = await db.insert(s.contentKey)
+      .values({ code, scope, valueType: "vocabulary", labelJa: code, labelEn: code, vocabularySetId: set.id })
+      .returning({ id: s.contentKey.id })
+    if (made === undefined || key === undefined) throw new Error("no key")
+    return { keyId: key.id, termId: made.id }
+  }
+
+  const holding = (keyId: string, termId: string) =>
+    ({ keyId, value: { kind: "vocabulary" as const, termIds: { state: "value" as const, value: [termId] } } })
+
+  /*
+    The row has no search rows to be read from, so what can go wrong is reading
+    the wrong things off the draft: a value under some other key counted as a
+    platform, a dataset without an id listed as an empty label, or the saved
+    content drawn where the form's unsaved one was asked for.
+  */
+  it("reads the summaries from the content it is given, and the platforms and access off the draft's datasets", async () => {
+    const { researchId, draftId } = await sharedDraft()
+    const platform = await keyWithTerm("platform", "experiment", "NovaSeq 6000")
+    const access = await keyWithTerm("access-criteria", "dataset", "Controlled-access")
+    const other = await keyWithTerm("sex", "experiment", "female")
+
+    const listed = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+    if (listed.status !== "created") throw new Error(listed.status)
+    await saveDatasetEntry(db, { draftId, datasetId: listed.datasetId, revision: null }, {
+      ...emptyDatasetContent(),
+      values: [holding(access.keyId, access.termId)],
+      experiments: [{
+        id: "e1",
+        label: filled("WGS"),
+        values: [holding(platform.keyId, platform.termId), holding(other.keyId, other.termId)],
+      }],
+    })
+    await db.insert(s.labelPin)
+      .values({ kind: "dataset", label: "JGAD000001", datasetId: listed.datasetId, isPrimary: true })
+    const unpinned = await createDatasetInDraft(db, { draftId, revision: 3 }, researchId)
+    if (unpinned.status !== "created") throw new Error(unpinned.status)
+
+    const saved = await db.select({ content: s.researchDraft.content }).from(s.researchDraft)
+      .where(eq(s.researchDraft.id, draftId))
+    const typed: ResearchContent = {
+      ...(saved[0]?.content ?? emptyResearchContent()),
+      listingSummary: {
+        ...emptyResearchContent().listingSummary,
+        methods: { ja: filled([[{ text: "まだ保存していない手法" }]]), en: filled([]) },
+      },
+    }
+
+    const drawn = await drawDraft(get(), "ja", { researchId, draftId, content: typed })
+
+    expect(drawn.row.methods).toEqual(expect.objectContaining({ state: "rich" }))
+    expect(JSON.stringify(drawn.row.methods)).toContain("まだ保存していない手法")
+    expect(drawn.row.datasetLabels).toEqual(["JGAD000001"])
+    expect(drawn.row.platforms.map((term) => term.label)).toEqual(["NovaSeq 6000"])
+    expect(drawn.row.accessTypes.map((term) => term.label)).toEqual(["Controlled-access"])
+    expect([drawn.row.datePublished, drawn.row.dateModified]).toEqual([null, null])
   })
 })
 

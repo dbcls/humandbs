@@ -93,11 +93,8 @@ import {
   upstreamQuery,
 } from "./urls"
 
-/**
- * How many branches the accession screen's search answers with. The listing of
- * branches takes every match instead, because it counts them and pages them.
- */
-const BRANCH_LIMIT = 30
+/** What a draft's identity looks like, so an address naming anything else names no draft. */
+const DRAFT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The two archives a dataset is seeded from. */
 const JGAD = /^JGAD\d+$/
@@ -184,6 +181,21 @@ export interface UpstreamResearchView {
   /** 1-based positions of the shown rows within the whole result. */
   rangeFrom: number
   rangeTo: number
+  /** The draft the branches are being chosen for, when the listing was opened from one. */
+  target: UpstreamTargetView | null
+}
+
+/**
+ * The draft a branch is being chosen for.
+ *
+ * **Opened from a draft, the question is only which branch** — where it goes is
+ * already answered, so the listing says so and the branch screen offers that
+ * draft and nothing else (`docs/editing.md` の「行き先」).
+ */
+export interface UpstreamTargetView {
+  researchId: string
+  draftId: string
+  humLabel: string | null
 }
 
 /** The research a branch's hum label already names, and what it holds. */
@@ -208,17 +220,15 @@ export interface UpstreamBranchPageView {
   branch: UpstreamBranchView | null
   chosen: UpstreamChoiceView | null
   holder: UpstreamHolderView | null
+  target: UpstreamTargetView | null
 }
 
 export interface UpstreamDatasetView {
   locale: Locale
-  connected: boolean
   researchId: string
   draftId: string
   revision: number
-  keyword: string
   accession: string
-  rows: UpstreamBranchView[]
   chosen: UpstreamChoiceView | null
   /** An accession that was typed and is not one upstream holds. */
   unknown: string | null
@@ -406,7 +416,7 @@ export async function upstreamResearchPage(
   const order = isSortOrder(askedOrder) ? askedOrder : branchOrder(sort)
   const askedSize = Number(url.searchParams.get("size") ?? "")
   const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
-  const presented = { ...filter, keyword, sort, order, size }
+  const presented = { ...filter, keyword, sort, order, size, target: await targetOf(db, url) }
 
   const rows = await withApplicationDb((at) =>
     searchDsBranches(at.pool, at.schema, keyword, null))
@@ -484,8 +494,9 @@ export async function upstreamBranchPage(
     const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
     return { branch, seeds: branch === null ? [] : await jgadSeeds(at, branch, catalog) }
   })
+  const target = await targetOf(db, new URL(request.url))
   if (read === null) {
-    return { locale, connected: false, applicationId, branch: null, chosen: null, holder: null }
+    return { locale, connected: false, applicationId, branch: null, chosen: null, holder: null, target }
   }
   if (read.branch === null) notFound()
 
@@ -494,6 +505,7 @@ export async function upstreamBranchPage(
     locale,
     connected: true,
     applicationId,
+    target,
     branch: view ?? null,
     chosen: await choiceOf(db, { applicationId, branch: read.branch, seeds: read.seeds }),
     holder: view?.heldBy === undefined || view.heldBy === null || view.humLabel === null
@@ -607,8 +619,9 @@ async function holderView(
 // === adding datasets to a draft ===
 
 /**
- * What can be added to a draft: the branches of the application system, and
- * whatever a typed accession turns out to be.
+ * What a typed accession can add to a draft. **Branches are not chosen here** —
+ * the listing of branches is the one place a branch is chosen, and a draft opens
+ * it aimed at itself (`upstreamResearchPage`'s `target`).
  *
  * A DRA accession is answered without the application system, which is why the
  * two halves are read apart — a deployment that cannot reach the application
@@ -624,21 +637,9 @@ export async function upstreamDatasetPage(
   const at = await draftAt(db, params)
 
   const url = new URL(request.url)
-  const keyword = url.searchParams.get("q") ?? ""
-  const applicationId = url.searchParams.get("application")
   const accession = url.searchParams.get("accession") ?? ""
   const catalog = await loadCatalogWithTerms(db)
-
-  const rows = await withApplicationDb((connection) =>
-    searchDsBranches(connection.pool, connection.schema, keyword, BRANCH_LIMIT))
-  const listing = {
-    ...at,
-    locale,
-    connected: rows !== null,
-    keyword,
-    accession,
-    rows: rows === null ? [] : await branchViews(db, rows),
-  }
+  const listing = { ...at, locale, accession }
 
   if (DRA.test(accession)) {
     const submission = await fetchDraSubmission(accession)
@@ -656,29 +657,22 @@ export async function upstreamDatasetPage(
     }
   }
 
-  const asked = applicationId !== null || accession !== ""
-  if (!asked) return { ...listing, chosen: null, unknown: null }
+  if (accession === "") return { ...listing, chosen: null, unknown: null }
 
   const read = await withApplicationDb(async (connection) => {
-    const named = applicationId
-      ?? (JGAD.test(accession)
-        ? await fetchAccessionBranchId(connection.pool, connection.schema, accession)
-        : null)
+    const named = JGAD.test(accession)
+      ? await fetchAccessionBranchId(connection.pool, connection.schema, accession)
+      : null
     const branch = named === null
       ? null
       : await fetchDsBranch(connection.pool, connection.schema, named)
     if (branch === null) return null
+    // A typed accession takes only itself, not the rest of the branch it came in.
     const seeds = await jgadSeeds(connection, branch, catalog)
-    // A typed accession takes only itself; a chosen branch takes all it holds.
-    return {
-      branch,
-      seeds: accession === "" ? seeds : seeds.filter((seed) => seed.label === accession),
-    }
+    return { branch, seeds: seeds.filter((seed) => seed.label === accession) }
   })
 
-  if (read == null || read.seeds.length === 0) {
-    return { ...listing, chosen: null, unknown: accession === "" ? null : accession }
-  }
+  if (read == null || read.seeds.length === 0) return { ...listing, chosen: null, unknown: accession }
   return {
     ...listing,
     chosen: await choiceOf(db, {
@@ -920,6 +914,21 @@ async function requireSeeding(request: Request): Promise<Actor> {
     throw new Response(null, { status: 403, statusText: "Forbidden" })
   }
   return actor
+}
+
+/**
+ * The draft the branch screens are choosing for, when the address names one.
+ *
+ * **A draft that cannot be read is no draft.** An address outlives the draft it
+ * was copied from, and answering 404 for it would take the listing away along
+ * with the aim — so the listing opens as it does from the bar.
+ */
+async function targetOf(db: Executor, url: URL): Promise<UpstreamTargetView | null> {
+  const asked = url.searchParams.get("draft")
+  if (asked === null || !DRAFT_ID.test(asked)) return null
+  const draft = await readDraft(db, asked)
+  if (draft === null) return null
+  return { researchId: draft.researchId, draftId: asked, humLabel: await humLabelOf(db, draft.researchId) }
 }
 
 async function draftAt(

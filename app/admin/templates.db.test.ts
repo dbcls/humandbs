@@ -36,7 +36,12 @@ import {
   saveDraftContent,
 } from "./drafts.server"
 import { readDatasetEntry, readDraft } from "./queries.server"
-import { upstreamBranchAction, upstreamBranchPage, upstreamResearchPage } from "./templates.server"
+import {
+  upstreamBranchAction,
+  upstreamBranchPage,
+  upstreamDatasetPage,
+  upstreamResearchPage,
+} from "./templates.server"
 
 /**
  * Writing a seeded draft, against the development database.
@@ -402,6 +407,70 @@ describe("the screen that starts a research from an application", () => {
     expect(view.chosen?.datasets).toEqual([
       expect.objectContaining({ accession: "JGAD000891", heldBy: held.researchId }),
     ])
+  })
+
+  /** A draft of a research another hum names, to aim the branch screens at. */
+  async function otherDraft(): Promise<{ researchId: string, draftId: string }> {
+    const made = await createResearchFromUpstream(
+      db,
+      { ...seed("hum0600", []), applicationId: "J-DS000999-001" },
+      CURATOR,
+    )
+    if (made.status !== "created") throw new Error(made.status)
+    return { researchId: made.researchId, draftId: made.draftId }
+  }
+
+  it("aims the listing and the branch screen at the draft the address names", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    const expected = { ...aim, humLabel: "hum0600" }
+
+    const listing = await upstreamResearchPage(get(token, `?draft=${aim.draftId}`), "ja")
+    const branchScreen = await upstreamBranchPage(get(token, `?draft=${aim.draftId}`), "ja", at)
+
+    expect(listing.target).toEqual(expected)
+    expect(branchScreen.target).toEqual(expected)
+  })
+
+  it("opens as it does from the bar when the address names no draft it can read", async () => {
+    const token = await signIn()
+
+    for (const asked of ["", "?draft=", "?draft=hum0522", "?draft=00000000-0000-0000-0000-000000000000"]) {
+      const listing = await upstreamResearchPage(get(token, asked), "ja")
+      const branchScreen = await upstreamBranchPage(get(token, asked), "ja", at)
+      expect(listing.target, asked).toBeNull()
+      expect(branchScreen.target, asked).toBeNull()
+    }
+  })
+
+  it("takes a branch into the draft it was opened from, even one another hum names", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+
+    const answer = await upstreamBranchAction(post(token, [["into", `draft:${aim.draftId}`]]), "ja", at)
+
+    if (!(answer instanceof Response)) throw new Error("expected a redirect")
+    expect(answer.headers.get("Location"))
+      .toBe(`/admin/research/${aim.researchId}/draft/${aim.draftId}/upstream?application=${BRANCH}`)
+  })
+
+  it("chooses no application on the dataset screen, and a typed JGAD takes only itself", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    vi.mocked(fetchAccessionBranchId).mockResolvedValue(BRANCH)
+    const registeredTwo = { ...branch, accessions: ["JGAD000891", "JGAD000892", "JGAS000720"] }
+    vi.mocked(fetchJgadRegistrations).mockResolvedValue([
+      { accession: "JGAD000891", title: "A cohort", datasetType: "WGS" },
+      { accession: "JGAD000892", title: "Another cohort", datasetType: "WES" },
+    ])
+
+    const named = await upstreamDatasetPage(get(token, `?application=${BRANCH}`), "ja", aim)
+    expect(named.chosen).toBeNull()
+    expect(vi.mocked(fetchDsBranch)).not.toHaveBeenCalled()
+
+    vi.mocked(fetchDsBranch).mockResolvedValue(registeredTwo)
+    const typed = await upstreamDatasetPage(get(token, "?accession=JGAD000892"), "ja", aim)
+    expect(typed.chosen?.datasets.map((one) => one.accession)).toEqual(["JGAD000892"])
   })
 
   it("creates only the datasets the application registered, whatever the form asked for", async () => {

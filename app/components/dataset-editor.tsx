@@ -438,7 +438,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           links={[
             {
               to: href(locale, adminDraftReviewPath(researchId, draftId)),
-              label: editor.reviewNext,
+              label: editor.review,
               icon: "comment",
             },
           ]}

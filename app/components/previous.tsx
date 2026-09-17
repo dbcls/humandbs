@@ -7,15 +7,14 @@
  * old value reads exactly as it read when it was the current one.
  */
 
-import { useEffect, useRef, type ReactNode } from "react"
-import { useLocation } from "react-router"
+import type { ReactNode } from "react"
 
 import type { ShownLine } from "~/admin/changes"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { AnchoredValue } from "~/public/view.server"
 
-import { Badge, Stack } from "./base"
+import { Badge, Stack, useDismissible } from "./base"
 import { AccessTypeBadge, LinksValue, Value } from "./page"
 
 /**
@@ -30,16 +29,9 @@ function Mark({ label }: { label: string }) {
 /**
  * The mark with the old value folded behind it.
  *
- * **It closes on Escape, on a press anywhere else, and on going somewhere.** A
- * panel that only closes by pressing its own mark again stays open over the
- * page while the reader carries on with something else, and a screen full of
- * fields carries dozens of these. The two listeners are on the document because
- * the press that should close it is by definition not on this element, and the
- * address is watched because a client-side move does not reload the page.
- *
  * The mark is not a menu's control — it is a badge standing beside a value —
  * but what it opens is a panel, and a panel is closed the same three ways
- * wherever it hangs (`docs/ui.md`).
+ * wherever it hangs (`base.tsx` の `useDismissible`).
  */
 function OldValue({ label, heading, children }: {
   label: string
@@ -47,37 +39,7 @@ function OldValue({ label, heading, children }: {
   heading: string
   children: ReactNode
 }) {
-  const box = useRef<HTMLDetailsElement>(null)
-  const { key } = useLocation()
-
-  useEffect(() => {
-    if (box.current !== null) box.current.open = false
-  }, [key])
-
-  useEffect(() => {
-    const element = box.current
-    if (element === null) return
-
-    const onPress = (event: PointerEvent) => {
-      if (!element.open) return
-      if (event.target instanceof Node && element.contains(event.target)) return
-      element.open = false
-    }
-    // Focus goes back to the mark that opened it: closing a panel the reader is
-    // inside would otherwise leave focus on nothing.
-    const onKey = (event: KeyboardEvent) => {
-      if (!element.open || event.key !== "Escape") return
-      element.open = false
-      element.querySelector("summary")?.focus()
-    }
-
-    document.addEventListener("pointerdown", onPress)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("pointerdown", onPress)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [])
+  const box = useDismissible()
 
   return (
     <details ref={box} className="inline-flex flex-col items-start gap-2 align-top">

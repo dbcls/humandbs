@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import { researchContentInput, type DraftInput } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import { emptyResearchContent } from "~/content/empty"
-import { anchoredResearchView, type CatalogView } from "~/public/view.server"
+import { anchoredResearchView, researchListRowView, type CatalogView } from "~/public/view.server"
 import type { DrawnDraft } from "~/review/preview.server"
 
 import { DraftEditor } from "./editor"
@@ -26,7 +26,16 @@ function drawn(): DrawnDraft {
     cau: [],
     files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, "ja", NO_CATALOG)
-  return { humLabel: "hum0001", publishedNumber: null, view: anchored.view, changed: [], previous: {} }
+  const row = researchListRowView({
+    humLabel: "hum0001",
+    content: emptyResearchContent(),
+    datasetLabels: [],
+    accessTermIds: [],
+    platformTermIds: [],
+    datePublished: null,
+    dateModified: null,
+  }, "ja", NO_CATALOG)
+  return { humLabel: "hum0001", publishedNumber: null, view: anchored.view, row, changed: [], previous: {} }
 }
 
 function view(produce: (input: DraftInput) => void = () => undefined): AdminDraftPageView {

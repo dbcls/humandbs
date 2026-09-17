@@ -1,13 +1,13 @@
 import { data, Form } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
-import { adminUpstreamResearchPath } from "~/admin/urls"
+import { adminUpstreamResearchPath, draftTargetQuery } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
 import { Answered, RadioGroup, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
-import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
+import { UpstreamChoice, UpstreamNotConnected, UpstreamTarget } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
@@ -67,14 +67,16 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
               an application ID on its own would not say which screen this is. */}
           <Heading title={t.branchHeading} aside={view.applicationId}>
             <AdminBack
-              to={href(locale, adminUpstreamResearchPath())}
+              to={href(locale, adminUpstreamResearchPath() + draftTargetQuery(view.target?.draftId ?? null))}
               label={t.backToList}
               icon="chevron-left"
             />
           </Heading>
 
+          {view.target !== null && <UpstreamTarget locale={locale} target={view.target} />}
+
           {!view.connected || view.branch === null || view.chosen === null
-            ? <UpstreamNotConnected locale={locale} dra={false} />
+            ? <UpstreamNotConnected locale={locale} />
             : (
                 <>
                   {view.branch.humLabel === null && (
@@ -119,7 +121,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                         </div>
                       </dl>
 
-                      {holder === null
+                      {holder === null && view.target === null
                         ? (
                             <Form method="post">
                               <input type="hidden" name="into" value="new" />
@@ -130,19 +132,43 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     </Stack>
                   </Section>
 
-                  {holder !== null && (
+                  {/* **Opened from a draft, the destination is already chosen**, so
+                      the one thing offered is to take the branch into it — a
+                      new research or a copy of the newest version would be an
+                      answer to a question this reader did not ask. Either way
+                      the section ends in the one press the screen is for. */}
+                  {(view.target !== null || holder !== null) && (
                     <Section title={t.destination}>
                       <Form method="post">
-                        <input type="hidden" name="research" value={holder.researchId} />
                         <Stack gap="normal">
-                          <RadioGroup
-                            label={t.destination}
-                            name="into"
-                            value={destinations(messages, holder)[0]?.value}
-                            options={destinations(messages, holder)}
-                          />
+                          {view.target !== null
+                            ? (
+                                <>
+                                  <input type="hidden" name="into" value={`draft:${view.target.draftId}`} />
+                                  {view.branch.humLabel !== null
+                                    && view.target.humLabel !== null
+                                    && view.branch.humLabel !== view.target.humLabel && (
+                                    <Note kind="warning">
+                                      {t.humDiffers(view.branch.humLabel, view.target.humLabel)}
+                                    </Note>
+                                  )}
+                                </>
+                              )
+                            : holder !== null && (
+                              <>
+                                <input type="hidden" name="research" value={holder.researchId} />
+                                <RadioGroup
+                                  label={t.destination}
+                                  name="into"
+                                  value={destinations(messages, holder)[0]?.value}
+                                  options={destinations(messages, holder)}
+                                />
+                              </>
+                            )}
                           <div>
-                            <Submit variant="primary" icon={<Icon name="download" />}>{t.go}</Submit>
+                            <Submit variant="primary" icon={<Icon name="download" />}>
+                              {view.target !== null ? t.goIntoTarget : t.go}
+                            </Submit>
                           </div>
                         </Stack>
                       </Form>

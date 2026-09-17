@@ -95,9 +95,11 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
     + view.ja.length
     + view.en.length
 
-  // The same row over the rows and under them: the listing is scrolled past,
-  // and the way to the next page has to be at the end a reader reaches.
+  // The whole row over the rows, and only the count with the way through the
+  // pages under them: a reader who reaches the end of a page is looking for the
+  // next one, and the ordering and the page size would send them back to the top.
   const tools = <Tools view={view} locale={locale} />
+  const pages = <Pages view={view} locale={locale} />
 
   return (
     <Page>
@@ -150,6 +152,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
+            pages={pages}
             panel={null}
           >
             <Stack gap="normal">
@@ -302,25 +305,32 @@ function Presented({ view }: { view: ViewProps["view"] }) {
 }
 
 /**
- * How the rows are presented, over the rows and under them: how many a page
- * holds, and the way through the pages.
+ * This listing under a different setting. Everything the reader chose is
+ * carried, and the page is the first one unless the page is what changes.
+ */
+function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<ContentsListingQuery>): string {
+  return href(locale, adminContentsPath() + contentsQuery({
+    keyword: view.keyword,
+    versioning: view.versioning,
+    ja: view.ja,
+    en: view.en,
+    page: 1,
+    // The listing runs by slug and offers no other order, so there is nothing
+    // of the ordering to keep in the address.
+    sort: null,
+    order: null,
+    size: view.size === PAGE_SIZE ? null : view.size,
+    ...over,
+  }))
+}
+
+/**
+ * How the rows are presented, over the rows: how many a page holds, and the way
+ * through the pages.
  */
 function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
-  const at = (over: Partial<ContentsListingQuery>): string =>
-    href(locale, adminContentsPath() + contentsQuery({
-      keyword: view.keyword,
-      versioning: view.versioning,
-      ja: view.ja,
-      en: view.en,
-      page: 1,
-      // The listing runs by slug and offers no other order, so there is nothing
-      // of the ordering to keep in the address.
-      sort: null,
-      order: null,
-      size: view.size === PAGE_SIZE ? null : view.size,
-      ...over,
-    }))
+  const at = (over: Partial<ContentsListingQuery>): string => listingAt(view, locale, over)
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
@@ -336,15 +346,25 @@ function Tools({ view, locale }: ViewProps) {
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at({ page })}
-      />
+      <Pages view={view} locale={locale} />
     </div>
+  )
+}
+
+/**
+ * The count and the way through the pages, which stand over the rows and again
+ * under them.
+ */
+function Pages({ view, locale }: ViewProps) {
+  return (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => listingAt(view, locale, { page })}
+    />
   )
 }

@@ -8,7 +8,7 @@ import { Badge, Confirm, Heading, Stack } from "~/components/base"
 import { ResultLine, StateCell } from "~/components/contents"
 import { Answered, Field, Result, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Page, Section, Table, Td } from "~/components/page"
+import { Card, Counted, Page, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
@@ -77,7 +77,8 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
             anyway, and said in both places the two drift apart the moment a
             pointer is moved.
           */}
-          <Section title={t.revisions(series.revisions.length)}>
+          <Section title={t.revisions}>
+            <Counted locale={locale} total={series.revisions.length} />
             <Table
               headers={[t.slug, t.title, t.languages.ja, t.languages.en]}
               whenEmpty={t.noRevision}

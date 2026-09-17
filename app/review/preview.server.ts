@@ -38,14 +38,17 @@ import {
 } from "~/public/queries.server"
 import {
   ACCESS_TYPE_KEY,
+  PLATFORM_KEY,
   TYPE_OF_DATA_KEY,
   anchorUnderCode,
   anchoredDatasetView,
   anchoredResearchView,
+  researchListRowView,
   type AnchoredValue,
   type CatalogView,
   type DatasetRowInput,
   type DatasetView,
+  type ResearchListRowView,
   type ResearchView,
 } from "~/public/view.server"
 
@@ -189,10 +192,42 @@ export interface DrawnDraft {
   humLabel: string | null
   publishedNumber: number | null
   view: ResearchView
+  /**
+   * The row the research listing would give this draft. **The short summaries
+   * are written for the listing and appear nowhere on the research's own page**,
+   * so this is the only place they can be read back before publishing.
+   */
+  row: ResearchListRowView
   /** Anchors the page draws where the draft and the published version differ. */
   changed: string[]
   /** What the published version says at each of those, and only at those. */
   previous: Record<string, AnchoredValue>
+}
+
+/**
+ * The terms a draft's datasets hold under one key, each once.
+ *
+ * **Read off the datasets rather than off the search rows**, which is where the
+ * listing reads a published research's: a draft has no search rows, and its
+ * datasets are what the rows would be built from once it is published.
+ */
+function termIdsUnder(
+  contents: readonly DatasetContent[],
+  catalog: CatalogView,
+  code: string,
+): string[] {
+  const key = catalog.keyByCode.get(code)
+  if (key === undefined) return []
+  const ids = new Set<string>()
+  for (const content of contents) {
+    for (const slot of [...content.values, ...content.experiments.flatMap((one) => one.values)]) {
+      if (slot.keyId !== key.id) continue
+      if (slot.value.kind === "vocabulary" && slot.value.termIds.state === "value") {
+        for (const id of slot.value.termIds.value) ids.add(id)
+      }
+    }
+  }
+  return [...ids]
 }
 
 export async function drawDraft(
@@ -241,6 +276,17 @@ export async function drawDraft(
     files: fileListOf(listing, readFilePage(new URL(request.url))),
   }, locale, catalog)
 
+  const row = researchListRowView({
+    humLabel: humLabel ?? "",
+    content: projected.content,
+    datasetLabels: datasets.flatMap((one) => one.label === null ? [] : [one.label]),
+    accessTermIds: termIdsUnder(datasets.map((one) => one.content), catalog, ACCESS_TYPE_KEY),
+    platformTermIds: termIdsUnder(datasets.map((one) => one.content), catalog, PLATFORM_KEY),
+    // The listing's dates are a published version's; a draft has not been one.
+    datePublished: null,
+    dateModified: null,
+  }, locale, catalog)
+
   const changed = published === null
     ? []
     : markedAnchors(
@@ -252,6 +298,7 @@ export async function drawDraft(
     humLabel,
     publishedNumber: published?.number ?? null,
     view: anchored.view,
+    row,
     changed,
     previous: changed.length === 0 || published === null
       ? {}

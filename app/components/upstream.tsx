@@ -1,14 +1,13 @@
-import { Form, Link } from "react-router"
+import { Link } from "react-router"
 
-import type { UpstreamChoiceView } from "~/admin/templates.server"
-import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
+import type { UpstreamChoiceView, UpstreamTargetView } from "~/admin/templates.server"
+import { adminDraftDatasetsPath, adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
-import { useRefine } from "~/search-as-typed"
 
-import { Stack } from "./base"
-import { Field, Submit } from "./form"
+import { MENU_ITEM, Note, Stack } from "./base"
+import { Submit } from "./form"
 import { Icon } from "./icons"
 import { Empty, Section } from "./page"
 
@@ -20,37 +19,36 @@ import { Empty, Section } from "./page"
  * datasets (docs/editing.md の「下書きを外から作る」).
  */
 
-/**
- * A `GET` form, so a search has an address that can be kept.
- *
- * **It asks on a press**, the way the accession field beside it does. The two
- * are one offer — name the thing to take in — and a box narrowing as it is
- * typed beside a field waiting for a press would read as two controls with
- * different manners.
- */
-export function UpstreamSearch({ locale, action, keyword }: {
-  locale: Locale
-  action: string
-  keyword: string
-}) {
+export function UpstreamNotConnected({ locale }: { locale: Locale }) {
   const t = messagesFor(locale).admin.templates
-  const refine = useRefine({ action })
-  return (
-    <Form method="get" action={action} onSubmit={refine} className="flex flex-wrap items-end gap-3">
-      <Field type="search" label={t.keyword} name="q" value={keyword} width="w-96" />
-      {/*
-        A tool rather than the errand: this screen is here to take a draft from
-        upstream, and the filled face belongs to the one control that does it
-        (`base.tsx` の `ButtonVariant`).
-      */}
-      <Submit icon={<Icon name="search" />}>{t.find}</Submit>
-    </Form>
-  )
+  return <Empty>{t.notConnected}</Empty>
 }
 
-export function UpstreamNotConnected({ locale, dra }: { locale: Locale, dra: boolean }) {
+/**
+ * Which draft the branch screens are choosing for, when a draft opened them.
+ *
+ * **It stands over what it changes the meaning of** — a branch on these screens
+ * is now one to take into that draft rather than one to see the destinations
+ * of — and the way out stands in the same band, back to where the choosing
+ * began.
+ */
+export function UpstreamTarget({ locale, target }: { locale: Locale, target: UpstreamTargetView }) {
   const t = messagesFor(locale).admin.templates
-  return <Empty>{dra ? t.notConnectedDra : t.notConnected}</Empty>
+  return (
+    <Note
+      kind="info"
+      action={(
+        <Link
+          to={href(locale, adminDraftDatasetsPath(target.researchId, target.draftId))}
+          className={MENU_ITEM}
+        >
+          {t.targetCancel}
+        </Link>
+      )}
+    >
+      <strong>{t.choosingFor(target.humLabel)}</strong>
+    </Note>
+  )
 }
 
 /**

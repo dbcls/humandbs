@@ -578,7 +578,7 @@ export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog
 }
 
 /**
- * The catalog with every active term.
+ * The catalog with every term.
  *
  * **Only what runs on the server may ask for this.** Matching what an archive
  * spells against the vocabulary needs the whole of it, and nothing of it
@@ -590,17 +590,12 @@ export async function loadCatalogWithTerms(db: Executor): Promise<CatalogWithTer
     db
       .select(TERM_COLUMNS)
       .from(vocabularyTerm)
-      .where(eq(vocabularyTerm.active, true))
       .orderBy(vocabularyTerm.position, vocabularyTerm.labelEn),
   ])
   return { ...catalog, terms }
 }
 
-/**
- * The terms these identities name. **Deactivated ones are included** — a value
- * that already names one still has to be readable, and taking a term out of the
- * candidates is not the same as taking it out of the documents.
- */
+/** The terms these identities name. */
 export async function termsByIds(
   db: Executor,
   ids: readonly string[],
@@ -614,7 +609,7 @@ export async function termsByIds(
 
 /**
  * The candidates for what was typed into a vocabulary's box: by code or by
- * either label, the active ones only, capped. **The cap is why an empty box
+ * either label, capped. **The cap is why an empty box
  * answers with nothing** rather than with an arbitrary twenty.
  */
 export async function findTerms(
@@ -630,7 +625,6 @@ export async function findTerms(
     .from(vocabularyTerm)
     .where(and(
       eq(vocabularyTerm.setId, setId),
-      eq(vocabularyTerm.active, true),
       or(
         sql`${vocabularyTerm.code} ILIKE ${like}`,
         sql`${vocabularyTerm.labelEn} ILIKE ${like}`,

@@ -69,7 +69,7 @@ export default function AdminDraftUpstream({ loaderData, actionData }: Route.Com
             />
           </Heading>
           {!view.connected || view.branch === null || view.merge === null
-            ? <UpstreamNotConnected locale={locale} dra={false} />
+            ? <UpstreamNotConnected locale={locale} />
             : (
                 <Section title={view.branch.applicationId}>
                   <Form method="post">

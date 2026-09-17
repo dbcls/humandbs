@@ -180,6 +180,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               <Form method="post">
                 <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createDraft}</Submit>
               </Form>
+              <Counted locale={locale} total={view.drafts.length} />
               {view.drafts.length === 0
                 ? <Empty>{t.noDrafts}</Empty>
                 : (

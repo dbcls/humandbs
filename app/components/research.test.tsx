@@ -2,9 +2,17 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { CauView, FileListView, LinksView, ResearchView } from "~/public/view.server"
+import { emptyResearchContent } from "~/content/empty"
+import {
+  researchListRowView,
+  type CatalogView,
+  type CauView,
+  type FileListView,
+  type LinksView,
+  type ResearchView,
+} from "~/public/view.server"
 
-import { ResearchBody, ResearchVersionPage } from "./research"
+import { ResearchBody, ResearchListTable, ResearchVersionPage } from "./research"
 
 /**
  * The download section is the one part of this page that comes from outside the
@@ -212,5 +220,49 @@ describe("what a grant says, in the order it says it", () => {
     expect(html).not.toContain("19H05656, 22K15385")
     expect(html).toContain("19H05656")
     expect(html).toContain("22K15385")
+  })
+})
+
+describe("the row of the research listing", () => {
+  const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+  const row = researchListRowView({
+    humLabel: "hum0001",
+    content: emptyResearchContent(),
+    datasetLabels: ["JGAD000001"],
+    accessTermIds: [],
+    platformTermIds: [],
+    datePublished: "2020-01-01",
+    dateModified: "2021-01-01",
+  }, "ja", NO_CATALOG)
+
+  const drawn = (preview: boolean): string => {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <ResearchListTable rows={[row]} locale="ja" preview={preview} whenEmpty="なし" />,
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
+  }
+  /** Header cells, and not the `<thead>` they stand in. */
+  const headers = (html: string): number => (html.match(/<th[\s>]/g) ?? []).length
+
+  it("is a way into the research and its datasets on the public listing, with the cart beside it", () => {
+    const html = drawn(false)
+    expect(html).toContain("href=\"/research/hum0001\"")
+    expect(html).toContain("href=\"/dataset/JGAD000001\"")
+    expect(headers(html)).toBe(12)
+  })
+
+  /*
+    A draft's row is read beside the form: the research has no page yet to be
+    sent to, and a cart in the editing screen would put a draft's datasets into
+    the reader's own cart.
+  */
+  it("presses nowhere and holds no cart when it previews a draft, and keeps every other column", () => {
+    const html = drawn(true)
+    expect(html).not.toContain("href=")
+    expect(headers(html)).toBe(11)
+    expect(html).toContain("hum0001")
+    expect(html).toContain("JGAD000001")
+    expect(html).toContain("2021-01-01")
   })
 })

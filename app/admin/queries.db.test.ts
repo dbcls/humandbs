@@ -43,7 +43,7 @@ beforeAll(async () => {
     { setId, code: "C34", labelEn: "Bronchus and lung", labelJa: "気管支及び肺" },
     { setId, code: "C349", labelEn: "Bronchus or lung, unspecified", labelJa: "気管支又は肺" },
     { setId, code: "C50", labelEn: "Breast", labelJa: "乳房" },
-    { setId, code: "C61", labelEn: "Prostate", labelJa: "前立腺", active: false },
+    { setId, code: "C61", labelEn: "Prostate", labelJa: "前立腺" },
     { setId, code: "K758", labelEn: "Other specified inflammatory liver diseases", labelJa: "その他の明示された炎症性肝疾患" },
   ]).returning({ id: s.vocabularyTerm.id, code: s.vocabularyTerm.code })
   for (const row of rows) held[row.code] = row.id
@@ -73,7 +73,7 @@ describe("the catalog an editing screen gets", () => {
     // Only the server side may ask for this: nothing of it reaches a page.
     const catalog = await loadCatalogWithTerms(db)
 
-    expect(catalog.terms.map((term) => term.code).sort()).toEqual(["C34", "C349", "C50", "K758"])
+    expect(catalog.terms.map((term) => term.code).sort()).toEqual(["C34", "C349", "C50", "C61", "K758"])
   })
 })
 
@@ -84,12 +84,6 @@ describe("resolving what a document names", () => {
     const terms = await termsByIds(db, wanted)
 
     expect(terms.map((term) => term.code).sort()).toEqual(["C34", "C50"])
-  })
-
-  // Taking a term out of the candidates is not taking it out of the documents:
-  // a value that already names one still has to be readable.
-  it("answers a deactivated term as well as an active one", async () => {
-    expect((await termsByIds(db, [held.C61 ?? ""])).map((term) => term.code)).toEqual(["C61"])
   })
 
   it("asks nothing of the database when nothing is named", async () => {
@@ -112,10 +106,6 @@ describe("the candidates for what was typed", () => {
   it("answers an empty box with nothing rather than with an arbitrary handful", async () => {
     expect(await codesOf("")).toEqual([])
     expect(await codesOf("   ")).toEqual([])
-  })
-
-  it("leaves out a deactivated term, which is what deactivating is for", async () => {
-    expect(await codesOf("prostate")).toEqual([])
   })
 
   it("reads a code as a code, however the box was written", async () => {

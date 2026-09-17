@@ -44,6 +44,15 @@ export function adminUpstreamBranchPath(applicationId: string): string {
   return `${adminUpstreamResearchPath()}/${encodeURIComponent(applicationId)}`
 }
 
+/**
+ * The draft a branch is being chosen for, as it rides on the branch screens'
+ * addresses. **Empty when there is none**, so a listing opened from the bar
+ * keeps its bare address.
+ */
+export function draftTargetQuery(draftId: string | null): string {
+  return draftId === null ? "" : `?${new URLSearchParams({ draft: draftId }).toString()}`
+}
+
 export function adminResearchPath(researchId: string): string {
   return `/admin/research/${researchId}`
 }
@@ -132,12 +141,10 @@ export function adminUpstreamDatasetPath(researchId: string, draftId: string): s
 
 /** What an upstream screen was looking at, kept so the address can be shared. */
 export function upstreamQuery(query: {
-  keyword?: string
   applicationId?: string | null
   accession?: string | null
 }): string {
   const search = new URLSearchParams()
-  if (query.keyword !== undefined && query.keyword !== "") search.set("q", query.keyword)
   if (query.applicationId != null && query.applicationId !== "") {
     search.set("application", query.applicationId)
   }
@@ -183,10 +190,14 @@ export interface ListingQuery extends ListingPresentation {
   flags: readonly string[]
 }
 
-/** The listing of approval branches narrows by two axes of its own. */
+/**
+ * The listing of approval branches narrows by two axes of its own, and carries
+ * the draft the branches are being chosen for when it was opened from one.
+ */
 export interface BranchListingQuery extends ListingPresentation {
   standings: readonly string[]
   registrations: readonly string[]
+  draft: string | null
 }
 
 /**
@@ -220,7 +231,11 @@ export function listingQuery(query: ListingQuery): string {
 }
 
 export function branchListingQuery(query: BranchListingQuery): string {
-  return listingAddress(query, { standing: query.standings, registered: query.registrations })
+  return listingAddress(query, {
+    standing: query.standings,
+    registered: query.registrations,
+    draft: query.draft === null ? [] : [query.draft],
+  })
 }
 
 /**

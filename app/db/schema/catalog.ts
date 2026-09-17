@@ -58,14 +58,10 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   labelEn: text().notNull(),
   maker: text(),
   parentId: uuid().references((): AnyPgColumn => vocabularyTerm.id, { onDelete: "set null" }),
-  /** Deactivated terms stay resolvable for data that already references them. */
-  active: boolean().notNull().default(true),
   position: integer().notNull().default(0),
 }, (t) => [
   unique("vocabulary_term_code_unique").on(t.setId, t.code),
   index().on(t.parentId),
-  /** The picker searches by code and by either label. */
-  index().on(t.setId, t.active),
 ])
 
 /**

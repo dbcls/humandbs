@@ -21,7 +21,7 @@
 
 import type { LinksPairInput, SlotState, TextInput, TextPairInput } from "~/admin/form"
 import type { FieldProblem } from "~/admin/form.server"
-import { useState } from "react"
+import { useId, useState } from "react"
 
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -220,6 +220,18 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
   const classes = `${CONTROL} w-full text-sm disabled:opacity-50 ${
     problems.length > 0 ? "border-danger" : ""
   }`
+  /*
+    **The problems are the box's to announce, the way a field's own error is**
+    (`form.tsx` の `Labelled`). There can be several, one per line of markup a
+    save refused, so they stay a list rather than the single line `Labelled`
+    has room for — but the box names the list, so a reader on the box hears
+    what is wrong with what they are typing instead of meeting it only by
+    reading on past the box.
+  */
+  const problemsId = useId()
+  const described = problems.length > 0
+    ? { "aria-invalid": true, "aria-describedby": problemsId }
+    : {}
 
   return (
     <Stack gap="tight">
@@ -244,6 +256,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
               rows={4}
               lang={language}
               disabled={disabled}
+              {...described}
               value={value.text}
               onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
             />
@@ -254,14 +267,18 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
               className={classes}
               lang={language}
               disabled={disabled}
+              {...described}
               value={value.text}
               onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
             />
           )}
       {problems.length > 0 && (
-        <ul className="text-danger text-xs">
+        <ul id={problemsId} className="flex flex-col gap-1 text-danger text-xs">
           {problems.map((problem, at) => (
-            <li key={at}>{`${t.syntax[problem.syntax]} (${t.problemLine(problem.line)})`}</li>
+            <li key={at} className="flex items-center gap-1">
+              <Icon name="alert" />
+              {`${t.syntax[problem.syntax]} (${t.problemLine(problem.line)})`}
+            </li>
           ))}
         </ul>
       )}

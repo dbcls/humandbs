@@ -1,17 +1,13 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import { upstreamDatasetAction, upstreamDatasetPage } from "~/admin/templates.server"
-import {
-  adminDraftDatasetsPath,
-  adminUpstreamDatasetPath,
-  upstreamQuery,
-} from "~/admin/urls"
+import { adminDraftDatasetsPath, adminUpstreamDatasetPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
 import { Answered, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Empty, Page, Section, Table, Td } from "~/components/page"
-import { UpstreamChoice, UpstreamSearch } from "~/components/upstream"
+import { Card, Page, Section } from "~/components/page"
+import { UpstreamChoice } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
@@ -20,12 +16,14 @@ import { useRefine } from "~/search-as-typed"
 import type { Route } from "./+types/admin-draft-dataset-upstream"
 
 /**
- * Adding datasets to a draft from what an archive already holds.
+ * Adding a dataset to a draft by the accession an archive already holds — a
+ * JGAD, found through the application it was registered under, or a DRA
+ * submission, which the application system does not hold at all.
  *
- * Two ways in, because the two archives are reached differently: JGA datasets
- * hang off an approved application and are chosen a branch at a time, while DRA
- * is not in the application system at all and is named by its accession
- * (docs/editing.md の「下書きを外から作る」).
+ * **An application is not chosen here.** Taking a branch's datasets goes through
+ * the listing of branches, opened aimed at this draft (docs/editing.md の
+ * 「行き先」); a second place to choose a branch would be a second listing of
+ * them.
  *
  * **The research's own description is not touched.** Bringing upstream's newer
  * wording into a draft somebody is writing is the three-way take-up, which the
@@ -61,9 +59,6 @@ export default function AdminDraftDatasetUpstream({
   const here = adminUpstreamDatasetPath(view.researchId, view.draftId)
   const refine = useRefine({ action: href(locale, here) })
 
-  const at = (query: { applicationId?: string, accession?: string }) =>
-    href(locale, here + upstreamQuery({ keyword: view.keyword, ...query }))
-
   return (
     <Page>
       {/* Only a refusal is answered: a dataset that was made comes back as the
@@ -91,51 +86,19 @@ export default function AdminDraftDatasetUpstream({
               onSubmit={refine}
               className="flex flex-wrap items-end gap-3"
             >
-              <input type="hidden" name="q" value={view.keyword} />
+              {/* **The example is the box's grey word rather than a line under
+                  it.** A line under the box makes the field taller than the
+                  button beside it, and a row aligned at its foot then stands
+                  the button level with the line instead of with the box. */}
               <Field
                 label={t.accessionHint}
                 name="accession"
                 value={view.accession}
-                hint="DRA000123"
+                placeholder={t.accessionPlaceholder}
                 width="w-64"
               />
               <Submit variant="primary" icon={<Icon name="search" />}>{t.look}</Submit>
             </Form>
-          </Section>
-
-          <Section title={t.byApplication}>
-            {!view.connected
-              ? <Empty>{t.notConnectedDra}</Empty>
-              : (
-                  <Stack gap="normal">
-                    <UpstreamSearch locale={locale} action={href(locale, here)} keyword={view.keyword} />
-                    {/* **A cut list rather than a listing.** This section is one
-                        of two ways to name what to take in, and the errand here
-                        is the datasets: browsing every approved branch, counted
-                        and narrowed, is what the listing of branches is for
-                        (`routes/admin-research-upstream.tsx`). */}
-                    <Table
-                      headers={[t.application, t.humLabel, t.approvedOn, t.title, t.registered]}
-                      whenEmpty={t.none}
-                    >
-                      {view.rows.map((row) => (
-                        <tr key={row.applicationId}>
-                          <Td className="whitespace-nowrap">
-                            <Link to={at({ applicationId: row.applicationId })}>
-                              {row.applicationId}
-                            </Link>
-                          </Td>
-                          <Td className="whitespace-nowrap">{row.humLabel ?? ""}</Td>
-                          <Td className="whitespace-nowrap">{row.approvedOn ?? ""}</Td>
-                          <Td floor="min-w-64">
-                            {row.titleJa === "" ? row.titleEn : row.titleJa}
-                          </Td>
-                          <Td className="text-xs">{row.datasets.join(", ")}</Td>
-                        </tr>
-                      ))}
-                    </Table>
-                  </Stack>
-                )}
           </Section>
 
           {view.chosen !== null && (

@@ -58,7 +58,7 @@ test.describe("P-ADMIN", () => {
       await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
     }
 
-    // いちばん深いところからは、1 段ずつ親へ。データセット一覧 → 下書き → 研究。
+    // いちばん深いところからは、1 段ずつ親へ。データセット一覧 → 下書き → 研究 → 研究一覧。
     const draft = await openADraft(page)
     const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
 
@@ -66,8 +66,14 @@ test.describe("P-ADMIN", () => {
     await page.getByRole("link", { name: "下書きの編集へ" }).click()
     await expect(page).toHaveURL(draft)
 
-    await page.getByRole("link", { name: "研究へ戻る" }).click()
+    // 戻る道の語は行き先の h1 に「へ」を付けたもの。語だけ直して h1 を直さない (または逆) と、ここで割れる。
+    await page.getByRole("link", { name: "研究の編集へ" }).click()
     await expect(page).toHaveURL(research)
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の編集/)
+
+    await page.getByRole("link", { name: "研究へ", exact: true }).click()
+    await expect(page).toHaveURL("/admin/research")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究$/)
   })
 
   test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ", async ({ page }) => {
@@ -92,25 +98,47 @@ test.describe("P-ADMIN", () => {
   })
 
   /**
-   * **道具の行は表の上と下に 1 つずつ。** 50 行の表の下までページを送った人が、次の
-   * ページを開くのに頭まで戻ることにならない。上だけに立てると下端で行き止まりになり、
-   * 下だけに立てると開いた瞬間に何件あるか分からない。
+   * **表の上には道具の行が 1 本、表の下には件数とページ送りだけ。** 表の下端まで読んだ人が探すのは
+   * 次のページで、並び替えと表示件数は押すと 1 ページ目の頭に戻す — 下に置くと、読み終えた位置に
+   * 先頭へ飛ぶ操作が 2 つ並ぶ。上だけに立てると下端で行き止まりになる。
    *
-   * **先の 2 つが並んでいるのは、そこが割れていた画面だから** — `common/` の箱は
-   * 並び替えと表示件数が上、件数とページ送りが下にあり、選べる値の画面は下だけだった。
-   * 研究とお知らせは初めから 2 本あるので、壊れたことがないことしか言わない。
+   * **ページに切る一覧はどれも表示件数を持ち、記事を除いて並び替えも持つ。** 記事だけは slug 順に
+   * 並ぶことで木になるので、並びを選ばせない。研究の箱は識別子を要るので、下書きから辿った研究で見る。
+   * データ提供申請の枝番は申請管理システムに繋がっていない環境で表を持たないので、ここでは数えない
+   * (同じ `RefinableList` を通る)。
    */
-  test("S-ADMIN-06: 一覧の道具は表の上と下に 1 つずつ立つ", async ({ page }) => {
-    const paths = [
-      "/admin/files",
-      "/admin/experiment-fields/experimental-method",
-      "/admin/research",
-      "/admin/news",
+  test("S-ADMIN-06: ページに切る一覧は、並び替えと表示件数を表の上に 1 つずつ、件数を上下に持つ", async ({ page }) => {
+    const draft = await openADraft(page)
+    const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
+    const BOTH = ["並び替え", "表示件数"]
+    const listings: [string, string[]][] = [
+      ["/admin/research", BOTH],
+      ["/admin/news", BOTH],
+      ["/admin/documents", ["表示件数"]],
+      ["/admin/files", BOTH],
+      [`${research}/files`, BOTH],
+      ["/admin/experiment-fields/experimental-method", BOTH],
     ]
-    for (const path of paths) {
+    for (const [path, offered] of listings) {
       await page.goto(path)
-      await expect(page.getByRole("navigation", { name: /ページ|Pagination/ }), path)
-        .toHaveCount(2)
+      const main = page.getByRole("main")
+      const table = await main.locator("table").first().boundingBox()
+      expect(table, path).not.toBeNull()
+
+      for (const name of BOTH) {
+        const chooser = main.locator(`summary[aria-label^="${name}:"]`)
+        await expect(chooser, `${path} ${name}`).toHaveCount(offered.includes(name) ? 1 : 0)
+        if (!offered.includes(name)) continue
+        const box = await chooser.boundingBox()
+        expect((box?.y ?? Infinity) + (box?.height ?? 0), `${path} ${name}`)
+          .toBeLessThanOrEqual(table?.y ?? 0)
+      }
+
+      // 件数は 1 ページに収まる一覧でも立つので、ページ送りの番号ではなくこちらを数える。
+      const counted = main.getByText(/^(\d+–\d+ \/ \d+ 件|0 件)$/)
+      await expect(counted, path).toHaveCount(2)
+      const under = await counted.last().boundingBox()
+      expect(under?.y ?? 0, path).toBeGreaterThanOrEqual((table?.y ?? 0) + (table?.height ?? 0))
     }
   })
 

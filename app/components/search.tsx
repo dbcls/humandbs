@@ -304,6 +304,7 @@ export function RefinableList({
   refine,
   refineHasMore,
   tools,
+  pages,
   panel,
   children,
 }: {
@@ -335,10 +336,25 @@ export function RefinableList({
   refineHasMore: boolean
   /** How the result is presented, over the table it presents. */
   tools: React.ReactNode
+  /**
+   * The count and the way through the pages, under the table.
+   *
+   * **Only these, and not the whole row over the table.** A reader at the foot
+   * of a page is looking for the next one; the ordering and the page size
+   * reshape the result and send the reader back to the top of page one, so
+   * they have nothing to do where a page has just been read to its end. Absent
+   * for a listing that is never cut into pages.
+   */
+  pages?: React.ReactNode
   panel: React.ReactNode
   children: React.ReactNode
 }) {
   const messages = messagesFor(locale)
+  // The same 4px the row leaves over the table, under it, and at the same right
+  // edge the row over the table keeps.
+  const foot = pages === undefined || pages === null
+    ? null
+    : <div className="flex justify-end pt-1">{pages}</div>
 
   // **Folded, there is no pane and so no grid.** The way back into it joins the
   // row of controls over the table and stands at that row's left end, which is
@@ -356,8 +372,7 @@ export function RefinableList({
         </div>
         <div className="min-w-0">
           {children}
-          {/* The same 4px the row leaves over the table, under it. */}
-          <div className="pt-1">{tools}</div>
+          {foot}
         </div>
       </div>
     )
@@ -397,8 +412,7 @@ export function RefinableList({
           column scrolls inside its own box rather than stretching the grid. */}
       <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-2">
         {children}
-        {/* The same 4px the row leaves over the table, under it. */}
-        <div className="pt-1">{tools}</div>
+        {foot}
       </div>
       {/* **The pane is two groups, and the space between them is the widest in
           it.** What it asks with — the box and the conditions in force — is one
@@ -1014,6 +1028,21 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
     with its own inner distance (`page.tsx` の `Paging`) rather than as two of
     the four.
   */
+  const pages = (
+    <Pagination
+      locale={locale}
+      target={target}
+      query={view.query}
+      sort={view.requestedSort}
+      order={view.requestedOrder}
+      page={view.page}
+      pageCount={view.pageCount}
+      rows={view.requestedSize}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+    />
+  )
   const tools = (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
       <SortChooser
@@ -1032,19 +1061,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
         order={view.requestedOrder}
         size={view.size}
       />
-      <Pagination
-        locale={locale}
-        target={target}
-        query={view.query}
-        sort={view.requestedSort}
-        order={view.requestedOrder}
-        page={view.page}
-        pageCount={view.pageCount}
-        rows={view.requestedSize}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-      />
+      {pages}
     </div>
   )
 
@@ -1093,6 +1110,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
             refineHasMore={view.conditions.length > 0 || other !== null}
             refine={refine}
             tools={view.parseError === null && !empty ? tools : null}
+            pages={view.parseError === null && !empty ? pages : null}
             panel={panel}
           >
             {view.parseError !== null

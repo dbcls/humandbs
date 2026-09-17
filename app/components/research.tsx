@@ -1,6 +1,6 @@
 import { Link } from "react-router"
 
-import { Badge, Clamped, Stack } from "~/components/base"
+import { Badge, Clamped, Excerpt, Stack } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -12,7 +12,7 @@ import {
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
-import type { ResearchView } from "~/public/view.server"
+import type { ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
 
 import { Downloads } from "./files"
 import {
@@ -31,9 +31,13 @@ import {
   Section,
   Table,
   Td,
+  TermLabel,
   UntranslatedNotice,
   Value,
 } from "./page"
+
+const SHOWN_DATASETS = 3
+const SHOWN_PLATFORMS = 3
 
 /**
  * The published face of one version of a research. `/research/{humId}` and
@@ -432,6 +436,152 @@ function DatasetList({ labels, linkTo, messages }: {
           </span>
         )
       })}
+    />
+  )
+}
+
+/**
+ * Rows of the research listing, as a table.
+ *
+ * **The columns are the ones v1 shows**, which is more than a window holds: the
+ * table scrolls sideways and the columns that say which row it is stay put
+ * (`components/page.tsx`). **Three of them hold what the datasets beneath a
+ * study carry** rather than anything the study says of itself — the analysis
+ * methods, the platforms and who took part — which is why they are named for
+ * the values and not for the sections of the research's own page.
+ *
+ * **A preview draws the same row with nothing to press.** The draft beside the
+ * form has no page of its own to send anyone to and no datasets in the cart,
+ * so the identifiers stay as text and the cart's column is not drawn — the
+ * cells a curator is checking stand exactly where a reader will find them.
+ */
+export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: {
+  rows: readonly ResearchListRowView[]
+  locale: Locale
+  preview?: boolean
+  whenEmpty: string
+}) {
+  const messages = messagesFor(locale)
+  const t = messages.research
+  const short = t.listingSummary
+  const headers = [
+    ...(preview ? [] : [<CartColumnHead key="cart" locale={locale} />]),
+    t.researchId,
+    t.datasets,
+    t.title,
+    short.methods,
+    short.typeOfData,
+    t.platforms,
+    short.targets,
+    messages.dataset.accessType,
+    t.dataProvider,
+    messages.dataset.datePublished,
+    messages.dataset.dateModified,
+  ]
+  const id = preview ? 0 : 1
+  return (
+    <Table headers={headers} stuck={id + 1} whenEmpty={whenEmpty}>
+      {rows.map((row) => (
+        <tr key={row.humLabel}>
+          {!preview && (
+            <Td stuck={0} holds="mark"><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
+          )}
+          <Td stuck={id} nowrap floor="min-w-26">
+            <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
+            {preview
+              ? row.humLabel
+              : <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>}
+          </Td>
+          <Td floor="min-w-40">
+            <ListedDatasets labels={row.datasetLabels} locale={locale} linked={!preview} />
+          </Td>
+          <Td floor="min-w-72">
+            <Prose messages={messages}><Value field={row.title} locale={locale} /></Prose>
+          </Td>
+          <Td floor="min-w-40">
+            <Prose messages={messages}><Value field={row.methods} locale={locale} /></Prose>
+          </Td>
+          <Td floor="min-w-56">
+            <Prose messages={messages}><Value field={row.typeOfData} locale={locale} /></Prose>
+          </Td>
+          <Td floor="min-w-40">
+            <Platforms terms={row.platforms} locale={locale} />
+          </Td>
+          <Td floor="min-w-56">
+            <Prose messages={messages}><Value field={row.targets} locale={locale} /></Prose>
+          </Td>
+          <Td>
+            <ul>
+              {row.accessTypes.map((term) => (
+                <li key={term.code}><AccessTypeBadge term={term} /></li>
+              ))}
+            </ul>
+          </Td>
+          <Td>
+            <ul>
+              {row.dataProviders.map((provider, at) => (
+                <li key={at}><Value field={provider} locale={locale} /></li>
+              ))}
+            </ul>
+          </Td>
+          <Td nowrap floor="min-w-24">{row.datePublished}</Td>
+          <Td nowrap floor="min-w-24">{row.dateModified}</Td>
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+/**
+ * A cell of prose, cut where the row would otherwise grow. The listing's own
+ * name for `Excerpt`, so that the four columns drawn this way name the part
+ * once and read the same. Not `Clamped`, which cuts a list of items short.
+ */
+function Prose({ messages, children }: {
+  messages: ReturnType<typeof messagesFor>
+  children: React.ReactNode
+}) {
+  return (
+    <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
+      {children}
+    </Excerpt>
+  )
+}
+
+function ListedDatasets({ labels, locale, linked }: {
+  labels: string[]
+  locale: Locale
+  linked: boolean
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      shown={SHOWN_DATASETS}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={labels.map((label) => (
+        <span key={label} className="whitespace-nowrap">
+          <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+          {linked ? <Link to={href(locale, datasetPath(label))}>{label}</Link> : label}
+        </span>
+      ))}
+    />
+  )
+}
+
+/**
+ * What the datasets beneath a study were run on. A study of any size collects
+ * these — one of them names twenty-five — so the cell counts the rest instead
+ * of opening with them.
+ */
+function Platforms({ terms, locale }: { terms: TermView[], locale: Locale }) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      shown={SHOWN_PLATFORMS}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={terms.map((term) => <TermLabel key={term.code} term={term} />)}
     />
   )
 }

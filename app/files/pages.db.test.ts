@@ -81,10 +81,10 @@ function get(token: string | null, search = ""): Request {
   return new Request(`http://localhost:8080/admin/research/${researchId}/files${search}`, { headers })
 }
 
-function postForm(token: string, fields: [string, string][]): Request {
+function postForm(token: string, fields: [string, string][], search = ""): Request {
   const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
   headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
-  return new Request(`http://localhost:8080/admin/research/${researchId}/files`, {
+  return new Request(`http://localhost:8080/admin/research/${researchId}/files${search}`, {
     method: "POST",
     headers,
     body: new URLSearchParams(fields).toString(),
@@ -100,6 +100,17 @@ function postJson(token: string, payload: unknown): Request {
     body: JSON.stringify(payload),
   })
 }
+
+/** Where an answer sends the reader, as the path and the settings in its query. */
+function sentTo(answer: unknown): [string, [string, string][]] {
+  if (!(answer instanceof Response)) throw new Error("expected a redirect")
+  const to = new URL(answer.headers.get("Location") ?? "", "http://localhost:8080")
+  return [to.pathname, [...to.searchParams]]
+}
+
+/** The ordering, page size and page a listing was read at, with something that is not one of them. */
+const READ_AT = "?sort=size&order=desc&size=50&page=2&q=unrelated"
+const KEPT: [string, string][] = [["sort", "size"], ["order", "desc"], ["size", "50"], ["page", "2"]]
 
 async function thrown(work: () => Promise<unknown>): Promise<Response> {
   const result = await work().then(() => null, (error: unknown) => error)
@@ -138,6 +149,57 @@ describe("the box screen", () => {
 
     expect(view.total).toBe(2)
     expect(view.totalBytes).toBe(8)
+  })
+
+  it("cuts the box at the page size asked for, and at the default for any other", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    for (let at = 0; at < 21; at += 1) {
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}${String(at).padStart(2, "0")}.zip`)
+    }
+    const cut = async (search: string) => {
+      const view = await filesPage(get(token, search), JA, researchId)
+      return [view.size, view.rows?.length, view.pageCount, view.rangeFrom, view.rangeTo]
+    }
+
+    expect(await cut("")).toEqual([20, 20, 2, 1, 20])
+    expect(await cut("?page=2")).toEqual([20, 1, 2, 21, 21])
+    expect(await cut("?size=50")).toEqual([50, 21, 1, 1, 21])
+    // Past the last page of a larger size is that last page, not an empty one.
+    expect(await cut("?size=100&page=2")).toEqual([100, 21, 1, 1, 21])
+    for (const asked of ["?size=21", "?size=0", "?size=-20", "?size=abc", "?size="]) {
+      expect(await cut(asked), asked).toEqual([20, 20, 2, 1, 20])
+    }
+  })
+
+  it("returns to the listing it was sent from, with its ordering, page size and page", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+    const listing = `/admin/research/${researchId}/files`
+
+    const deleted = await filesAction(
+      postForm(token, [["intent", "delete"], ["name", "a.zip"]], READ_AT),
+      JA,
+      researchId,
+    )
+    expect(sentTo(deleted)).toEqual([listing, KEPT])
+
+    const published = await filesAction(
+      postForm(token, [["intent", "publish"], ["name", "b.zip"]], READ_AT),
+      JA,
+      researchId,
+    )
+    expect(sentTo(published)).toEqual([listing, KEPT])
+
+    // A reader who chose nothing comes back to the bare address.
+    const bare = await filesAction(
+      postForm(token, [["intent", "unpublish"], ["name", "b.zip"]]),
+      JA,
+      researchId,
+    )
+    expect(sentTo(bare)).toEqual([listing, []])
   })
 
   it("queues the switch rather than performing it, so the screen never waits", async () => {
@@ -414,10 +476,10 @@ describe("the article assets", () => {
     await clearPrefix(PUBLIC_BUCKET, commonPrefix() + MINE)
   })
 
-  function postCommon(token: string, fields: [string, string][]): Request {
+  function postCommon(token: string, fields: [string, string][], search = ""): Request {
     const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" })
     headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
-    return new Request("http://localhost:8080/admin/files", {
+    return new Request(`http://localhost:8080/admin/files${search}`, {
       method: "POST",
       headers,
       body: new URLSearchParams(fields).toString(),
@@ -507,6 +569,37 @@ describe("the article assets", () => {
 
     expect(answer).toBeInstanceOf(Response)
     expect(await held()).toEqual([at(staying)])
+  })
+
+  it("returns to the listing it was sent from, with its ordering, page size and page", async () => {
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
+    await putTestObject(PUBLIC_BUCKET, at(mine("b.png")))
+
+    const moved = await commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", mine("a.png")], ["to", mine("c.png")]], READ_AT),
+      JA,
+    )
+    expect(sentTo(moved)).toEqual(["/admin/files", KEPT])
+
+    // Given the slug it already has, nothing moves, and the reader still comes back to where they were.
+    const unmoved = await commonFilesAction(
+      postCommon(token, [["intent", "rename"], ["from", mine("b.png")], ["to", mine("b.png")]], READ_AT),
+      JA,
+    )
+    expect(sentTo(unmoved)).toEqual(["/admin/files", KEPT])
+
+    const deleted = await commonFilesAction(
+      postCommon(token, [["intent", "delete"], ["name", mine("b.png")]], READ_AT),
+      JA,
+    )
+    expect(sentTo(deleted)).toEqual(["/admin/files", KEPT])
+
+    const bare = await commonFilesAction(
+      postCommon(token, [["intent", "delete"], ["name", mine("c.png")]]),
+      JA,
+    )
+    expect(sentTo(bare)).toEqual(["/admin/files", []])
   })
 
   it("is refused to somebody signed in without the capability to manage site content", async () => {

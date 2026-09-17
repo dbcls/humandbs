@@ -90,11 +90,11 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
     + view.statuses.length
     + view.flags.length
 
-  // The same row over the rows and under them: a listing this long is scrolled
-  // past, and the way to the next page has to be at the end a reader reaches.
-  // **Under an empty result there is no second row** — nothing was scrolled
-  // past, there is no page to turn to, and the count would be said twice.
+  // The whole row over the rows, and only the count with the way through the
+  // pages under them: a reader who reaches the end of a page is looking for the
+  // next one, and the ordering and the page size would send them back to the top.
   const tools = <Tools view={view} locale={locale} />
+  const pages = <Pages view={view} locale={locale} />
 
   return (
     <Page>
@@ -126,6 +126,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
+            pages={pages}
             panel={null}
           >
             <Stack gap="normal">
@@ -347,8 +348,25 @@ function Presented({ view }: { view: ViewProps["view"] }) {
 }
 
 /**
- * How the rows are presented, over the rows and under them: the ordering, how
- * many a page holds, and the way through the pages.
+ * This listing under a different setting. Everything the reader chose is
+ * carried, and the page is the first one unless the page is what changes.
+ */
+function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<ListingQuery>): string {
+  return href(locale, adminResearchListPath() + listingQuery({
+    keyword: view.keyword,
+    statuses: view.statuses,
+    flags: view.flags,
+    page: 1,
+    sort: view.sort === DEFAULT_SORT ? null : view.sort,
+    order: view.order === defaultOrder(view.sort) ? null : view.order,
+    size: view.size === PAGE_SIZE ? null : view.size,
+    ...over,
+  }))
+}
+
+/**
+ * How the rows are presented, over the rows: the ordering, how many a page
+ * holds, and the way through the pages.
  *
  * **Only what differs from the default is written into the addresses.** A
  * reader who asked for nothing is reading the default, and writing it out would
@@ -356,17 +374,7 @@ function Presented({ view }: { view: ViewProps["view"] }) {
  */
 function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
-  const at = (over: Partial<ListingQuery>): string =>
-    href(locale, adminResearchListPath() + listingQuery({
-      keyword: view.keyword,
-      statuses: view.statuses,
-      flags: view.flags,
-      page: 1,
-      sort: view.sort === DEFAULT_SORT ? null : view.sort,
-      order: view.order === defaultOrder(view.sort) ? null : view.order,
-      size: view.size === PAGE_SIZE ? null : view.size,
-      ...over,
-    }))
+  const at = (over: Partial<ListingQuery>): string => listingAt(view, locale, over)
 
   const flipped = view.order === "asc" ? "desc" : "asc"
   const turn = flipped === "asc"
@@ -415,15 +423,25 @@ function Tools({ view, locale }: ViewProps) {
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at({ page })}
-      />
+      <Pages view={view} locale={locale} />
     </div>
+  )
+}
+
+/**
+ * The count and the way through the pages, which stand over the rows and again
+ * under them.
+ */
+function Pages({ view, locale }: ViewProps) {
+  return (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => listingAt(view, locale, { page })}
+    />
   )
 }

@@ -132,7 +132,9 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                       <Row key={row.name} row={row} locale={locale} />
                     ))}
                   </Table>
-                  <Tools view={view} locale={locale} />
+                  <div className="flex justify-end">
+                    <Pages view={view} locale={locale} />
+                  </div>
                 </Stack>
               )}
         </Stack>
@@ -174,10 +176,6 @@ function at(view: CommonFilesView, over: {
  * **The same four the research listing carries**, in the same place and the
  * same shape — a box of files and a list of research are both listings, and a
  * reader who learned the controls on one should not have to find them again.
- *
- * **The row stands above the table and again below it.** A page of files is
- * longer than the window, so a reader who has decided against this page would
- * otherwise have to climb back over it to reach the next one.
  */
 function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -227,16 +225,31 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at(view, { page })}
-      />
+      <Pages view={view} locale={locale} />
     </div>
+  )
+}
+
+/**
+ * The count and the way through the pages, which stand over the table and again
+ * under it.
+ *
+ * **Only these stand under it.** A page of files is longer than the window, so
+ * a reader who has decided against this page would otherwise have to climb back
+ * over it to reach the next one — but the ordering and the page size send that
+ * reader back to the top of page one, and have no business at the foot.
+ */
+function Pages({ view, locale }: { view: CommonFilesView, locale: Locale }) {
+  return (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => at(view, { page })}
+    />
   )
 }
 

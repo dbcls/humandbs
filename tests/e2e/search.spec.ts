@@ -63,6 +63,32 @@ test.describe("P-ANON 絞り込み", () => {
     await expect(row).toHaveText(first)
   })
 
+  /**
+   * **並び替えと表示件数は表の上だけ、件数とページ送りは上と下。** 表の下端に着いた読者が探すのは次の
+   * ページで、そこに 1 ページ目へ戻す操作を置かない。両方の一覧が同じ部品を通るので両方で見る。
+   */
+  test("S-SEARCH-06: 並び替えと表示件数は表の上にだけ立ち、ページ送りは上と下に立つ", async ({ page }) => {
+    for (const path of ["/research", "/dataset"]) {
+      await page.goto(path)
+      const main = page.getByRole("main")
+      const table = await main.locator("table").first().boundingBox()
+      expect(table, path).not.toBeNull()
+
+      for (const name of ["並び替え", "表示件数"]) {
+        const chooser = main.locator(`summary[aria-label^="${name}:"]`)
+        await expect(chooser, `${path} ${name}`).toHaveCount(1)
+        const box = await chooser.boundingBox()
+        expect((box?.y ?? Infinity) + (box?.height ?? 0), `${path} ${name}`)
+          .toBeLessThanOrEqual(table?.y ?? 0)
+      }
+
+      const pages = main.getByRole("navigation", { name: "ページ送り" })
+      await expect(pages, path).toHaveCount(2)
+      const under = await pages.last().boundingBox()
+      expect(under?.y ?? 0, path).toBeGreaterThanOrEqual((table?.y ?? 0) + (table?.height ?? 0))
+    }
+  })
+
   test("S-SEARCH-05: 一覧の切り替えが条件を持ち越す", async ({ page }) => {
     await page.goto("/research")
     const box = page.getByRole("searchbox", { name: "キーワードで研究を検索" })

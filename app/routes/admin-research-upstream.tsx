@@ -15,6 +15,7 @@ import {
   adminUpstreamBranchPath,
   adminUpstreamResearchPath,
   branchListingQuery,
+  draftTargetQuery,
   type BranchListingQuery,
 } from "~/admin/urls"
 import {
@@ -31,7 +32,7 @@ import { Checkbox } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { UpstreamNotConnected } from "~/components/upstream"
+import { UpstreamNotConnected, UpstreamTarget } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -90,10 +91,11 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
     + view.standings.length
     + view.registrations.length
 
-  // The same row over the rows and under them, as on the research listing: a
-  // page of a hundred is scrolled past, and the way to the next one has to be
-  // at the end a reader reaches.
+  // The whole row over the rows, and only the count with the way through the
+  // pages under them: a reader who reaches the end of a page is looking for the
+  // next one, and the ordering and the page size would send them back to the top.
   const tools = <Tools view={view} locale={locale} />
+  const pages = <Pages view={view} locale={locale} />
 
   return (
     <Page>
@@ -101,8 +103,10 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
         <Stack gap="normal">
           <Heading title={t.heading} />
 
+          {view.target !== null && <UpstreamTarget locale={locale} target={view.target} />}
+
           {!view.connected
-            ? <UpstreamNotConnected locale={locale} dra={false} />
+            ? <UpstreamNotConnected locale={locale} />
             : (
                 <RefinableList
                   open={paneOpen}
@@ -115,6 +119,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
                   tools={tools}
+                  pages={pages}
                   panel={null}
                 >
                   <Stack gap="normal">
@@ -130,7 +135,13 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                       {view.rows.map((row) => (
                         <tr key={row.applicationId}>
                           <Td stuck={0} nowrap>
-                            <Link to={href(locale, adminUpstreamBranchPath(row.applicationId))}>
+                            <Link
+                              to={href(
+                                locale,
+                                adminUpstreamBranchPath(row.applicationId)
+                                + draftTargetQuery(view.target?.draftId ?? null),
+                              )}
+                            >
                               {row.applicationId}
                             </Link>
                           </Td>
@@ -299,28 +310,37 @@ function Presented({ view }: { view: ViewProps["view"] }) {
       {view.order !== branchOrder(view.sort)
         && <input type="hidden" name="order" value={view.order} />}
       {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
+      {view.target !== null && <input type="hidden" name="draft" value={view.target.draftId} />}
     </>
   )
 }
 
 /**
- * How the rows are presented, over the rows and under them: the ordering, how
- * many a page holds, and the way through the pages.
+ * This listing under a different setting. Everything the reader chose is
+ * carried, and the page is the first one unless the page is what changes.
+ */
+function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<BranchListingQuery>): string {
+  return href(locale, adminUpstreamResearchPath() + branchListingQuery({
+    keyword: view.keyword,
+    standings: view.standings,
+    registrations: view.registrations,
+    page: 1,
+    sort: view.sort === BRANCH_SORT ? null : view.sort,
+    order: view.order === branchOrder(view.sort) ? null : view.order,
+    size: view.size === PAGE_SIZE ? null : view.size,
+    draft: view.target?.draftId ?? null,
+    ...over,
+  }))
+}
+
+/**
+ * How the rows are presented, over the rows: the ordering, how many a page
+ * holds, and the way through the pages.
  */
 function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.templates
-  const at = (over: Partial<BranchListingQuery>): string =>
-    href(locale, adminUpstreamResearchPath() + branchListingQuery({
-      keyword: view.keyword,
-      standings: view.standings,
-      registrations: view.registrations,
-      page: 1,
-      sort: view.sort === BRANCH_SORT ? null : view.sort,
-      order: view.order === branchOrder(view.sort) ? null : view.order,
-      size: view.size === PAGE_SIZE ? null : view.size,
-      ...over,
-    }))
+  const at = (over: Partial<BranchListingQuery>): string => listingAt(view, locale, over)
 
   const flipped = view.order === "asc" ? "desc" : "asc"
   const turn = flipped === "asc"
@@ -369,15 +389,25 @@ function Tools({ view, locale }: ViewProps) {
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={view.total}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at({ page })}
-      />
+      <Pages view={view} locale={locale} />
     </div>
+  )
+}
+
+/**
+ * The count and the way through the pages, which stand over the rows and again
+ * under them.
+ */
+function Pages({ view, locale }: ViewProps) {
+  return (
+    <Paging
+      locale={locale}
+      total={view.total}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => listingAt(view, locale, { page })}
+    />
   )
 }

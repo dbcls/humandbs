@@ -1968,18 +1968,62 @@ export const MENU_ITEM_HERE
 const MENU_CORNER = { all: "rounded-full", left: "rounded-l-full" }
 
 /**
+ * A `<details>` that closes the three ways a panel hanging off a control has to:
+ * on Escape, on a press anywhere else, and on going somewhere. Give the returned
+ * ref to the `<details>`.
+ *
+ * **A panel that only closes by pressing its own control again stays open over
+ * the page** while the reader goes on doing something else — the one in the bar
+ * covers the top right corner of every screen, and an edit screen carries dozens
+ * of the marks beside its fields. The two listeners are on the document because
+ * the press that should close it is by definition not on this element; they are
+ * attached once and do nothing while it is shut. **A client-side move does not
+ * reload the page**, so arriving somewhere has to close it too, which is what
+ * the address is watched for. Escape hands focus back to the `<summary>`:
+ * closing a panel the reader is inside would otherwise leave focus on nothing.
+ *
+ * **Every such panel goes through here**, so that no panel can close fewer ways
+ * than the others.
+ */
+export function useDismissible() {
+  const box = useRef<HTMLDetailsElement>(null)
+  const { key } = useLocation()
+
+  useEffect(() => {
+    if (box.current !== null) box.current.open = false
+  }, [key])
+
+  useEffect(() => {
+    const element = box.current
+    if (element === null) return
+
+    const onPress = (event: PointerEvent) => {
+      if (!element.open) return
+      if (event.target instanceof Node && element.contains(event.target)) return
+      element.open = false
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (!element.open || event.key !== "Escape") return
+      element.open = false
+      element.querySelector("summary")?.focus()
+    }
+
+    document.addEventListener("pointerdown", onPress)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", onPress)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [])
+
+  return box
+}
+
+/**
  * A set of actions that would crowd the row they belong to.
  *
  * A `<details>`, so what it holds is in the markup and its own control opens it.
- *
- * **It closes on Escape, on a press anywhere else, and on going somewhere.** A
- * panel that only closes by pressing the same control again stays open over the
- * page while the reader goes on doing something else — and the one in the bar
- * covers the top right corner of every screen. The two listeners are on the
- * document because the press that should close it is by definition not on this
- * element; they are attached once and do nothing while it is shut. **Choosing
- * an entry does not reload the page**, so arriving somewhere has to close it
- * too, which is what the address is watched for.
+ * It closes the way every panel off a control does (`useDismissible`).
  */
 export function Menu({ label, icon = "more", glyph, round = false, filled = false, word = false, count, value, corner = "all", children }: {
   label: string
@@ -2023,37 +2067,7 @@ export function Menu({ label, icon = "more", glyph, round = false, filled = fals
   corner?: keyof typeof MENU_CORNER
   children: ReactNode
 }) {
-  const box = useRef<HTMLDetailsElement>(null)
-  const { key } = useLocation()
-
-  useEffect(() => {
-    if (box.current !== null) box.current.open = false
-  }, [key])
-
-  useEffect(() => {
-    const element = box.current
-    if (element === null) return
-
-    const onPress = (event: PointerEvent) => {
-      if (!element.open) return
-      if (event.target instanceof Node && element.contains(event.target)) return
-      element.open = false
-    }
-    // Focus goes back to the control that opened it: closing a panel the
-    // reader is inside would otherwise leave focus on nothing.
-    const onKey = (event: KeyboardEvent) => {
-      if (!element.open || event.key !== "Escape") return
-      element.open = false
-      element.querySelector("summary")?.focus()
-    }
-
-    document.addEventListener("pointerdown", onPress)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("pointerdown", onPress)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [])
+  const box = useDismissible()
 
   return (
     <details ref={box} className="relative inline-block">

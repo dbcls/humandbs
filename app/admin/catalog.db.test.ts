@@ -271,7 +271,7 @@ describe("the terms of a vocabulary", () => {
     expect(held.labelJa).toBe("リンパ性白血病")
   })
 
-  it("deactivates a term in use rather than letting it be deleted", async () => {
+  it("refuses to delete a term in use, and keeps it for the data that names it", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
     const termId = await term(setId, "wgs")
@@ -282,34 +282,8 @@ describe("the terms of a vocabulary", () => {
 
     expect(await catalogAction(post(token, { intent: "delete-term", termId })))
       .toEqual({ status: "in-use" })
-    // Turning it off is part of editing it: the panel holds the labels and the
-    // tick together, and a tick left unticked sends nothing at all.
-    expect(await catalogAction(post(token, { intent: "update-term", termId, labelEn: "wgs" })))
-      .toEqual({ status: "ok" })
 
-    // Deactivated, and still resolvable for the data that names it.
-    const held = only(await db.select().from(s.vocabularyTerm))
-    expect(held.active).toBe(false)
-  })
-
-  it("turns a term back on in the same save that renames it", async () => {
-    const token = await signIn(CURATOR, true)
-    const setId = await vocabulary("assay")
-    const termId = await term(setId, "wgs")
-    await db.update(s.vocabularyTerm).set({ active: false })
-
-    expect(await catalogAction(post(token, {
-      intent: "update-term",
-      termId,
-      labelEn: "Whole genome sequencing",
-      labelJa: "全ゲノム",
-      active: "on",
-    }))).toEqual({ status: "ok" })
-
-    const held = only(await db.select().from(s.vocabularyTerm))
-    expect(held.active).toBe(true)
-    expect(held.labelEn).toBe("Whole genome sequencing")
-    expect(held.labelJa).toBe("全ゲノム")
+    expect(only(await db.select().from(s.vocabularyTerm)).id).toBe(termId)
   })
 
   it("counts a term only a disease names as in use, which is a shape of its own", async () => {
@@ -363,65 +337,37 @@ describe("the terms of a vocabulary", () => {
     expect(view?.terms.map((row) => row.used)).toEqual([2])
   })
 
-  it("narrows to the state asked for, and counts with that axis lifted", async () => {
+  it("lists every term, whatever an address kept from before asks about their state", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
+    await fieldFor("assay", setId)
     await term(setId, "wgs")
-    const off = await term(setId, "wes")
-    await db.update(s.vocabularyTerm)
-      .set({ active: false })
-      .where(eq(s.vocabularyTerm.id, off))
-    await db.insert(s.contentKey).values({
-      code: "assay",
-      scope: "experiment",
-      valueType: "vocabulary",
-      labelJa: "手法",
-      labelEn: "Assay",
-      vocabularySetId: setId,
-    })
+    await term(setId, "wes")
 
-    const all = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
-    expect(all?.terms.map((row) => row.code)).toEqual(["wes", "wgs"])
-
-    const active = await fieldTermsPage(
-      get(token, "/admin/experiment-fields/assay?state=active"),
-      "assay",
-    )
-    expect(active?.terms.map((row) => row.code)).toEqual(["wgs"])
-    // Counted over the set with this axis lifted, so picking one value does not
-    // drop the other to zero and leave no way back.
-    expect(active?.counts.state).toEqual({ active: 1, inactive: 1 })
-
-    // Asking for both is asking for neither.
-    const both = await fieldTermsPage(
-      get(token, "/admin/experiment-fields/assay?state=active&state=inactive"),
-      "assay",
-    )
-    expect(both?.terms.map((row) => row.code)).toEqual(["wes", "wgs"])
+    for (const asked of ["", "?state=active", "?state=inactive", "?state=active&state=inactive"]) {
+      const view = await fieldTermsPage(get(token, `/admin/experiment-fields/assay${asked}`), "assay")
+      expect(view?.terms.map((row) => row.code), asked).toEqual(["wes", "wgs"])
+    }
   })
 
-  it("counts the axis over what the box matched, not over the whole vocabulary", async () => {
+  it("cuts the terms at the page size asked for, and at the default for any other", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
-    await term(setId, "wgs")
-    const off = await term(setId, "wes")
-    await db.update(s.vocabularyTerm)
-      .set({ active: false })
-      .where(eq(s.vocabularyTerm.id, off))
-    await db.insert(s.contentKey).values({
-      code: "assay",
-      scope: "experiment",
-      valueType: "vocabulary",
-      labelJa: "手法",
-      labelEn: "Assay",
-      vocabularySetId: setId,
-    })
+    await fieldFor("assay", setId)
+    for (let at = 0; at < 21; at += 1) await term(setId, `t${String(at).padStart(2, "0")}`)
+    const cut = async (search: string) => {
+      const view = await fieldTermsPage(get(token, `/admin/experiment-fields/assay${search}`), "assay")
+      return [view?.size, view?.terms.length, view?.pageCount, view?.rangeFrom, view?.rangeTo]
+    }
 
-    const found = await fieldTermsPage(
-      get(token, "/admin/experiment-fields/assay?find=wgs"),
-      "assay",
-    )
-    expect(found?.counts.state).toEqual({ active: 1, inactive: 0 })
+    expect(await cut("")).toEqual([20, 20, 2, 1, 20])
+    expect(await cut("?page=2")).toEqual([20, 1, 2, 21, 21])
+    expect(await cut("?size=50")).toEqual([50, 21, 1, 1, 21])
+    // Past the last page of a larger size is that last page, not an empty one.
+    expect(await cut("?size=100&page=2")).toEqual([100, 21, 1, 1, 21])
+    for (const asked of ["?size=21", "?size=0", "?size=-20", "?size=abc", "?size="]) {
+      expect(await cut(asked), asked).toEqual([20, 20, 2, 1, 20])
+    }
   })
 })
 

@@ -14,10 +14,10 @@
  * previous one's name.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from "react"
-import { useFetcher, useLocation } from "react-router"
+import { useSyncExternalStore } from "react"
+import { useFetcher } from "react-router"
 
-import { Badge, Button, controlFace, Fold, Note, Stack } from "~/components/base"
+import { Badge, Button, controlFace, Fold, Note, Stack, useDismissible } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
@@ -101,14 +101,7 @@ export function DdbjMark({ locale }: { locale: Locale }) {
  * the way to say something yourself. Everything is inside a `details`, so
  * nothing about it needs JavaScript to open.
  *
- * **It closes on Escape, on a press anywhere else, and on going somewhere.** A
- * research edit screen carries dozens of these open at once, and a panel that
- * only closes by pressing its own control again stays open over the page while
- * the reader carries on with something else. The two listeners are on the
- * document because the press that should close it is by definition not on this
- * element, and the address is watched because a client-side move does not
- * reload the page — the same three ways every panel that hangs off a control
- * closes (`docs/ui.md`).
+ * It closes the way every panel off a control does (`base.tsx` の `useDismissible`).
  */
 export function CommentSpot({ context, at, threads }: {
   context: CommentContext
@@ -123,37 +116,7 @@ export function CommentSpot({ context, at, threads }: {
     : [...threads]
   const open = unresolvedCount(shown)
 
-  const box = useRef<HTMLDetailsElement>(null)
-  const { key } = useLocation()
-
-  useEffect(() => {
-    if (box.current !== null) box.current.open = false
-  }, [key])
-
-  useEffect(() => {
-    const element = box.current
-    if (element === null) return
-
-    const onPress = (event: PointerEvent) => {
-      if (!element.open) return
-      if (event.target instanceof Node && element.contains(event.target)) return
-      element.open = false
-    }
-    // Focus goes back to the control that opened it: closing a panel the
-    // reader is inside would otherwise leave focus on nothing.
-    const onKey = (event: KeyboardEvent) => {
-      if (!element.open || event.key !== "Escape") return
-      element.open = false
-      element.querySelector("summary")?.focus()
-    }
-
-    document.addEventListener("pointerdown", onPress)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("pointerdown", onPress)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [])
+  const box = useDismissible()
 
   return (
     <details ref={box} className="inline-flex flex-col items-start gap-2 align-top text-sm" id={encodeURIComponent(at)}>

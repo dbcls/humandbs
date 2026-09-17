@@ -39,13 +39,13 @@ import { pageRange } from "~/paging"
 import { lookUpCode, searchDictionary } from "~/icd10/dictionary.server"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
   codeProblem,
   filterKeyRows,
   isKeyValueType,
-  isTermState,
   KEY_VALUE_TYPES,
   moved,
   SETTLED_VOCABULARIES,
@@ -53,11 +53,9 @@ import {
   termCodeProblem,
   TERM_SORT,
   TERM_SORT_KEYS,
-  TERM_STATES,
   type KeyFilter,
   type KeyValueType,
   type TermSortKey,
-  type TermState,
 } from "./catalog"
 import { mergeTermInDrafts } from "./drafts.server"
 import { axisCounts } from "./listing"
@@ -122,7 +120,6 @@ export interface TermRow {
   labelJa: string | null
   labelEn: string
   parentCode: string | null
-  active: boolean
   /** How many published objects carry this value. */
   used: number
 }
@@ -139,6 +136,7 @@ export interface VocabularyView {
   locale: Locale
   sort: TermSortKey
   order: "asc" | "desc"
+  size: PageSize
   /** The field the terms belong to. **Its label is what the screen is called.** */
   field: { code: string, labelJa: string, labelEn: string }
   set: VocabularyRow
@@ -161,17 +159,9 @@ export interface VocabularyView {
    * **Choosing where to fold a term into is choosing a row of this listing.** A
    * vocabulary runs to a few hundred values, so a panel holding them all would
    * be a select of every term on every row; putting the choice back into the
-   * listing gives it the box, the axis and the pages that are already there.
+   * listing gives it the box and the pages that are already there.
    */
   mergeFrom: TermRow | null
-  /** The states asked for. Empty means every one of them, as on the table. */
-  state: TermState[]
-  /**
-   * How many the axis would leave, counted over what the box matched rather
-   * than over the page — the same reading the table of fields gives its own
-   * axes (`docs/editing.md` の「管理画面」).
-   */
-  counts: { state: Record<TermState, number> }
   /**
    * Set on the ICD10 vocabulary: what was typed into the dictionary's box and
    * what it answered. The dictionary is where a new term's labels come from, so
@@ -192,8 +182,6 @@ export type CatalogProblem
     | "unknown-target"
 
 export type CatalogResult = { status: "ok" } | { status: CatalogProblem }
-
-const TERMS_PER_PAGE = 50
 
 /**
  * **A total order.** Labels repeat where codes cannot, so the code decides
@@ -290,6 +278,8 @@ export async function fieldTermsPage(
   const asked = url.searchParams.get("sort")
   const sort = TERM_SORT_KEYS.find((one) => one === asked) ?? TERM_SORT
   const order = url.searchParams.get("order") === "desc" ? "desc" : "asc"
+  const askedSize = Number(url.searchParams.get("size") ?? "")
+  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
 
   const [found] = await db
     .select({
@@ -323,28 +313,11 @@ export async function fieldTermsPage(
         OR ${vocabularyTerm.labelEn} ILIKE ${`%${find}%`}
         OR coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${`%${find}%`})`
 
-  // Asking for both is asking for neither: a value left unticked narrows
-  // nothing, which is how every axis in the admin reads.
-  const state = url.searchParams.getAll("state").filter(isTermState)
-  const inState = state.length === 0 || state.length === TERM_STATES.length
-    ? sql`TRUE`
-    : eq(vocabularyTerm.active, state.includes("active"))
-
-  // Counted over what the box left, with this axis itself lifted — otherwise
-  // ticking one value drops the other to zero and there is no way back.
-  const [counted] = await db
-    .select({
-      active: sql<number>`count(*) filter (where ${vocabularyTerm.active})::int`,
-      inactive: sql<number>`count(*) filter (where not ${vocabularyTerm.active})::int`,
-    })
-    .from(vocabularyTerm)
-    .where(and(eq(vocabularyTerm.setId, set.id), matching))
-
   const [total] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(vocabularyTerm)
-    .where(and(eq(vocabularyTerm.setId, set.id), matching, inState))
-  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / TERMS_PER_PAGE))
+    .where(and(eq(vocabularyTerm.setId, set.id), matching))
+  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / size))
   const at = Math.min(page, pageCount)
 
   const rows = await db
@@ -354,14 +327,13 @@ export async function fieldTermsPage(
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
       parentCode: parent.code,
-      active: vocabularyTerm.active,
     })
     .from(vocabularyTerm)
     .leftJoin(parent, eq(parent.id, vocabularyTerm.parentId))
-    .where(and(eq(vocabularyTerm.setId, set.id), matching, inState))
+    .where(and(eq(vocabularyTerm.setId, set.id), matching))
     .orderBy(...termOrder(sort, order))
-    .limit(TERMS_PER_PAGE)
-    .offset((at - 1) * TERMS_PER_PAGE)
+    .limit(size)
+    .offset((at - 1) * size)
 
   const used = await usageOfTerms(db, rows.map((row) => row.id))
 
@@ -377,7 +349,6 @@ export async function fieldTermsPage(
           labelJa: vocabularyTerm.labelJa,
           labelEn: vocabularyTerm.labelEn,
           parentCode: parent.code,
-          active: vocabularyTerm.active,
         })
         .from(vocabularyTerm)
         .leftJoin(parent, eq(parent.id, vocabularyTerm.parentId))
@@ -394,21 +365,18 @@ export async function fieldTermsPage(
     locale: readLocale(new URL(request.url).pathname).locale,
     sort,
     order,
+    size,
     field,
     set: { ...set, terms: total?.count ?? 0 },
     terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0 })),
     page: at,
     pageCount,
-    ...pageRange(at, TERMS_PER_PAGE, total?.count ?? 0),
+    ...pageRange(at, size, total?.count ?? 0),
     find,
     editable,
     mergeFrom: aimed === undefined
       ? null
       : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number },
-    state,
-    counts: {
-      state: { active: counted?.active ?? 0, inactive: counted?.inactive ?? 0 },
-    },
     dictionary: set.code === ICD10_SET_CODE
       ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }
       : null,
@@ -832,14 +800,7 @@ async function refusedTerm(db: Executor, id: string): Promise<CatalogResult | nu
   return SETTLED_VOCABULARIES.has(term.setCode) ? { status: "not-editable" } : null
 }
 
-/**
- * The labels a term is offered under, and whether it is still offered.
- *
- * **The three are settled together**, because they are what one panel holds: a
- * term turned off in the same press that renamed it is one answer to "what
- * should this be now" rather than two operations that can half-succeed. An
- * unticked box sends nothing, which is what says it is off.
- */
+/** The labels a term is offered under, settled together as the one panel that holds them. */
 async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> {
   const id = text(form, "termId")
   const labelEn = text(form, "labelEn")
@@ -852,7 +813,6 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
     .set({
       labelEn,
       labelJa: labelJa === "" ? null : labelJa,
-      active: form.get("active") !== null,
     })
     .where(eq(vocabularyTerm.id, id))
   return { status: "ok" }

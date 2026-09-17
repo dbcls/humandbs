@@ -53,7 +53,7 @@ import { Badge, Button, Note, Stack } from "./base"
 import { DraftBar, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
-import { ResearchBody } from "./research"
+import { ResearchBody, ResearchListTable } from "./research"
 import {
   ConflictBand,
   FieldHead,
@@ -567,6 +567,33 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             </AnnotationLayer>
           ),
         })),
+      // **The listing's row is a place of its own**: the short summaries are
+      // read there and nowhere on the research's page. Both languages stand in
+      // the one tab, each under its own column names, because the row is short
+      // and the two are checked against each other.
+      {
+        id: "row",
+        label: t.paneRow,
+        body: (
+          <Card>
+            <Stack gap="block">
+              {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
+                <Stack key={language} gap="tight">
+                  <span className="text-ink-muted text-xs" lang={language}>{language}</span>
+                  {drawn !== null && (
+                    <ResearchListTable
+                      rows={[drawn.row]}
+                      locale={language}
+                      preview
+                      whenEmpty={messagesFor(language).search.none}
+                    />
+                  )}
+                </Stack>
+              ))}
+            </Stack>
+          </Card>
+        ),
+      },
     ],
   })
 
@@ -594,7 +621,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             },
             {
               to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
-              label: t.reviewNext,
+              label: t.review,
               icon: "comment",
             },
             {

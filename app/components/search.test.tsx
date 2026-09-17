@@ -382,6 +382,52 @@ describe("which way the ordering runs", () => {
   })
 })
 
+describe("the rows over a listing and under it", () => {
+  const of = (open: boolean, pages?: React.ReactNode) => render(
+    <RefinableList
+      open={open}
+      busy={false}
+      locale="ja"
+      onToggle={() => { /* nothing to fold here */ }}
+      inForce={0}
+      refine={<p>条件</p>}
+      refineHasMore={false}
+      tools={<p>並び替え 表示件数</p>}
+      pages={pages}
+      panel={null}
+    >
+      <p>hum0001</p>
+    </RefinableList>,
+  )
+  const count = (html: string, word: string): number => html.split(word).length - 1
+
+  /*
+    The foot of a page is where a reader goes looking for the next one; the
+    ordering and the page size send them back to the top of page one. Both
+    layouts are asked, since the folded pane draws the listing on its own.
+  */
+  for (const open of [true, false]) {
+    const pane = open ? "with the pane open" : "with the pane folded"
+
+    it(`stands the whole row over the rows and only the pages under them, ${pane}`, () => {
+      const html = of(open, <p>ページ送り</p>)
+      expect(count(html, "並び替え 表示件数")).toBe(1)
+      expect(count(html, "ページ送り")).toBe(1)
+      expect(html.indexOf("並び替え 表示件数")).toBeLessThan(html.indexOf("hum0001"))
+      expect(html.indexOf("ページ送り")).toBeGreaterThan(html.indexOf("hum0001"))
+    })
+
+    it(`puts nothing under a listing that is not cut into pages, ${pane}`, () => {
+      for (const nothing of [undefined, null]) {
+        const html = of(open, nothing)
+        const after = html.slice(html.indexOf("hum0001"))
+        expect(after).not.toContain("justify-end")
+        expect(count(html, "並び替え 表示件数")).toBe(1)
+      }
+    })
+  }
+})
+
 describe("a listing waiting for the answer to replace it", () => {
   const of = (busy: boolean) => render(
     <RefinableList

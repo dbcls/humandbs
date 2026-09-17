@@ -6,14 +6,16 @@ import {
   adminDraftDatasetPath,
   adminDraftPath,
   adminUpstreamDatasetPath,
+  adminUpstreamResearchPath,
   draftPresencePath,
+  draftTargetQuery,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Confirm, Heading, Stack } from "~/components/base"
 import { PresenceLine } from "~/components/draft-tools"
 import { Answered, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Empty, Page } from "~/components/page"
+import { Card, Counted, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -84,28 +86,40 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
             />
           </Stack>
 
-          {view.rows.length === 0
-            ? <Empty>{t.noDatasets}</Empty>
-            : (
-                <Stack gap="normal" as="ul">
-                  {view.rows.map((row) => (
-                    <DatasetRow
-                      key={row.id}
-                      row={row}
-                      locale={locale}
-                      researchId={view.researchId}
-                      draftId={view.draftId}
-                      revision={view.revision}
-                    />
-                  ))}
-                </Stack>
-              )}
+          <Stack gap="normal">
+            <Counted locale={locale} total={view.rows.length} />
+            {view.rows.length === 0
+              ? <Empty>{t.noDatasets}</Empty>
+              : (
+                  <Stack gap="normal" as="ul">
+                    {view.rows.map((row) => (
+                      <DatasetRow
+                        key={row.id}
+                        row={row}
+                        locale={locale}
+                        researchId={view.researchId}
+                        draftId={view.draftId}
+                        revision={view.revision}
+                      />
+                    ))}
+                  </Stack>
+                )}
+          </Stack>
 
           <div className="flex flex-wrap items-center gap-4">
             <Form method="post">
               <input type="hidden" name="revision" value={view.revision} />
               <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
             </Form>
+            {/* The two ways upstream can fill this draft: a whole application,
+                chosen on the listing of branches with this draft as where it
+                goes, and a single accession. */}
+            <Link
+              to={href(locale, adminUpstreamResearchPath() + draftTargetQuery(view.draftId))}
+              className="text-sm"
+            >
+              {messagesFor(locale).admin.templates.openApplication}
+            </Link>
             <Link
               to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
               className="text-sm"

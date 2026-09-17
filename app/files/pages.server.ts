@@ -67,6 +67,30 @@ function badRequest(): never {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** What a box listing reads from its address. */
+const LISTING_SETTINGS = ["sort", "order", "size", "page"] as const
+
+/**
+ * The listing an operation on its rows answers with: the one it was sent from.
+ *
+ * **The ordering, the page size and the page come back with it.** The forms on
+ * a listing post to the address they stand on, so what the reader chose is in
+ * the request's own query; dropping it put a reader who had asked for fifty rows
+ * back on twenty after every delete. Only the listing's settings are carried —
+ * the rest of a query is not the listing's to keep. A page the operation emptied
+ * is the listing's to settle, the way it settles any page past the end.
+ */
+function backToListing(request: Request, locale: Locale, path: string): Response {
+  const asked = new URL(request.url).searchParams
+  const kept = new URLSearchParams()
+  for (const name of LISTING_SETTINGS) {
+    const value = asked.get(name)
+    if (value !== null) kept.set(name, value)
+  }
+  const written = kept.toString()
+  return redirect(href(locale, path + (written === "" ? "" : `?${written}`)))
+}
+
 function identity(value: string | undefined): string {
   if (value === undefined || !UUID.test(value)) notFound()
   return value
@@ -80,6 +104,7 @@ export interface FilesPageView {
   rows: BoxEntry[] | null
   sort: BoxSortKey
   order: "asc" | "desc"
+  size: PageSize
   total: number
   page: number
   pageCount: number
@@ -111,8 +136,10 @@ export async function filesPage(
   // `common/` box reads its own address that way.
   const sort = isBoxSortKey(asked.get("sort")) ? asked.get("sort") as BoxSortKey : BOX_SORT
   const order = asked.get("order") === "desc" ? "desc" : "asc"
+  const chosen = Number(asked.get("size") ?? "")
+  const size = isPageSize(chosen) ? chosen : PAGE_SIZE
   const wanted = Number(asked.get("page") ?? "1")
-  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1)
+  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1, size)
 
   return {
     locale,
@@ -121,6 +148,7 @@ export async function filesPage(
     rows: box === null ? null : page.rows,
     sort,
     order,
+    size,
     total: page.total,
     page: page.page,
     pageCount: page.pageCount,
@@ -159,7 +187,7 @@ export async function filesAction(
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
 
-  const back = redirect(href(locale, adminResearchFilesPath(id)))
+  const back = backToListing(request, locale, adminResearchFilesPath(id))
 
   if (intent === "publish" || intent === "unpublish") {
     // Nowhere to put a public copy. Refused here rather than left to fail in
@@ -391,7 +419,7 @@ export async function commonFilesAction(
 
   const form = await request.formData()
   const intent = form.get("intent")
-  if (intent === "rename") return renameCommonFile(form, actor, locale)
+  if (intent === "rename") return renameCommonFile(request, form, actor, locale)
   if (intent !== "delete") badRequest()
 
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
@@ -411,7 +439,7 @@ export async function commonFilesAction(
     }
   })
 
-  return redirect(href(locale, adminContentFilesPath()))
+  return backToListing(request, locale, adminContentFilesPath())
 }
 
 /**
@@ -430,6 +458,7 @@ export async function commonFilesAction(
  * (docs/publishing.md の「証跡」).
  */
 async function renameCommonFile(
+  request: Request,
   form: FormData,
   actor: Actor,
   locale: Locale,
@@ -440,7 +469,7 @@ async function renameCommonFile(
   const slug = to.trim()
   if (!isFileSlug(from)) badRequest()
   if (!isFileSlug(slug)) return { status: "malformed-slug" }
-  if (slug === from) return redirect(href(locale, adminContentFilesPath()))
+  if (slug === from) return backToListing(request, locale, adminContentFilesPath())
 
   const at = (name: string): ObjectRef => ({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
   if (await objectExists(at(slug))) return { status: "slug-taken" }
@@ -466,7 +495,7 @@ async function renameCommonFile(
     })
   })
 
-  return redirect(href(locale, adminContentFilesPath()))
+  return backToListing(request, locale, adminContentFilesPath())
 }
 
 /**

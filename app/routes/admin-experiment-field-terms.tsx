@@ -3,9 +3,7 @@ import { Form, Link } from "react-router"
 import {
   TERM_SORT,
   TERM_SORT_KEYS,
-  TERM_STATES,
   type TermSortKey,
-  type TermState,
 } from "~/admin/catalog"
 import {
   catalogAction,
@@ -32,7 +30,6 @@ import {
 } from "~/components/base"
 import {
   Answered,
-  Checkbox,
   Editing,
   Field,
   Result,
@@ -41,13 +38,13 @@ import {
 } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, ExternalLink, Page, Paging, Section, Table, Td } from "~/components/page"
-import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { RefinableList, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { datasetsUsing, href } from "~/public/urls"
-import { useAsk } from "~/search-as-typed"
+import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-experiment-field-terms"
 
@@ -103,31 +100,28 @@ export function meta({ loaderData }: Route.MetaArgs) {
 function at(view: VocabularyView, over: {
   sort?: TermSortKey
   order?: "asc" | "desc"
+  size?: PageSize
   page?: number
-  state?: TermState[]
   /** The term a merge aims from; `null` puts the listing back to ordinary. */
   mergeFrom?: string | null
 }): string {
   const next = {
     sort: view.sort,
     order: view.order,
+    size: view.size,
     page: 1,
-    state: view.state,
     mergeFrom: view.mergeFrom?.id ?? null,
     ...over,
   }
   const search = new URLSearchParams()
   if (view.find !== "") search.set("find", view.find)
-  // Carried through the box, the axis and the pages: choosing where to fold a
-  // term into is reading this listing, and losing the aim on the second page
-  // would mean starting over.
+  // Carried through the box and the pages: choosing where to fold a term into
+  // is reading this listing, and losing the aim on the second page would mean
+  // starting over.
   if (next.mergeFrom !== null) search.set("mergeFrom", next.mergeFrom)
-  // Carried rather than dropped: the ordering and the pages are read inside
-  // whatever the pane is holding, and an address that forgets it would put the
-  // rest of the vocabulary back on the next press.
-  for (const one of next.state) search.append("state", one)
   if (next.sort !== TERM_SORT) search.set("sort", next.sort)
   if (next.order !== "asc") search.set("order", next.order)
+  if (next.size !== PAGE_SIZE) search.set("size", String(next.size))
   if (next.page !== 1) search.set("page", String(next.page))
   const written = search.toString()
   return href(
@@ -158,6 +152,17 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
     screens are one step apart, and a reader who learned the controls on the
     table should not have to find them again in what it opens.
   */
+  const pages = (
+    <Paging
+      locale={locale}
+      total={set.terms}
+      from={view.rangeFrom}
+      to={view.rangeTo}
+      page={view.page}
+      pageCount={view.pageCount}
+      at={(page) => at(view, { page })}
+    />
+  )
   const tools = (
     <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
       <Chooser
@@ -186,15 +191,19 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
           </Link>
         ))}
       </Chooser>
-      <Paging
-        locale={locale}
-        total={set.terms}
-        from={view.rangeFrom}
-        to={view.rangeTo}
-        page={view.page}
-        pageCount={view.pageCount}
-        at={(page) => at(view, { page })}
-      />
+      <Chooser label={messages.search.pageSize} value={String(view.size)}>
+        {PAGE_SIZES.map((option) => (
+          <Link
+            key={option}
+            to={at(view, { size: option })}
+            aria-current={option === view.size ? "true" : undefined}
+            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {option}
+          </Link>
+        ))}
+      </Chooser>
+      {pages}
     </div>
   )
 
@@ -290,15 +299,16 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
             busy={false}
             locale={locale}
             onToggle={togglePane}
-            inForce={(view.find === "" ? 0 : 1) + view.state.length}
-            // One axis stands under the box whatever the reader has asked for.
-            refineHasMore
+            inForce={view.find === "" ? 0 : 1}
+            // The box is all the pane holds: a vocabulary has no axis of its own.
+            refineHasMore={false}
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
+            pages={pages}
             panel={null}
           >
             {view.terms.length === 0
-              ? <Empty>{view.find === "" && view.state.length === 0 ? t.noTerm : t.noMatchingTerm}</Empty>
+              ? <Empty>{view.find === "" ? t.noTerm : t.noMatchingTerm}</Empty>
               : (
                   <Table
                     align="middle"
@@ -307,7 +317,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                       t.labelEn,
                       ...(set.hierarchical ? [t.parent] : []),
                       t.usage,
-                      t.state,
                       /* The column of things to press names itself for anyone
                          reading the row aloud and nowhere else. */
                       <span key="actions" className="sr-only">{messages.admin.actions}</span>,
@@ -378,78 +387,35 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
 }
 
 /**
- * The pane: the box, and the one thing a vocabulary can be asked about beyond
- * the word.
+ * The pane: the box.
  *
- * **GET forms, so a narrowed listing has an address that can be kept and
+ * **A GET form, so a narrowed listing has an address that can be kept and
  * shared** — the same rule the table of fields and the public listings follow.
  * **Nothing here waits to be confirmed**: the box asks once the typing has
- * stopped and a tick asks as it is made.
- *
- * **The box and the ticks are two forms, and each carries what the other
- * holds**, because a form cannot stand inside another. The ordering rides along
- * too — it is not a condition, but losing it on every tick would re-sort the
- * listing under the reader.
+ * stopped. The ordering and the page size ride along — neither is a condition,
+ * but losing them on every search would re-sort and re-cut the listing under
+ * the reader.
  */
 function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
   const messages = messagesFor(locale)
   const t = messages.admin.catalog
   const to = href(locale, adminExperimentFieldPath(view.field.code))
-  const { form, ask } = useAsk(to)
-
-  const ordering = (
-    <>
-      {view.sort !== TERM_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
-    </>
-  )
 
   return (
-    <Stack gap="normal">
-      <SearchBox
-        action={to}
-        name="find"
-        value={view.find}
-        label={t.find}
-        placeholder={messages.search.boxHint}
-        submit={t.find}
-        size="compact"
-        searchAsTyped
-      >
-        {view.state.map((one) => (
-          <input key={one} type="hidden" name="state" value={one} />
-        ))}
-        {ordering}
-      </SearchBox>
-
-      <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
-        <input type="hidden" name="find" value={view.find} />
-        {ordering}
-        {/* **A term is turned off rather than taken away once anything names
-            it**, so a vocabulary that has been curated for a while holds both
-            kinds at once and "what can still be chosen" is the question asked
-            of it. */}
-        <RefineAxis label={t.state}>
-          {TERM_STATES.map((one) => (
-            <Checkbox
-              key={one}
-              label={t.states[one]}
-              icon={(
-                <Icon
-                  name={one === "active" ? "check" : "close"}
-                  aria-hidden="true"
-                  className="mr-1 text-ink-muted"
-                />
-              )}
-              name="state"
-              value={one}
-              checked={view.state.includes(one)}
-              count={view.counts.state[one]}
-            />
-          ))}
-        </RefineAxis>
-      </Form>
-    </Stack>
+    <SearchBox
+      action={to}
+      name="find"
+      value={view.find}
+      label={t.find}
+      placeholder={messages.search.boxHint}
+      submit={t.find}
+      size="compact"
+      searchAsTyped
+    >
+      {view.sort !== TERM_SORT && <input type="hidden" name="sort" value={view.sort} />}
+      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
+      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
+    </SearchBox>
   )
 }
 
@@ -514,19 +480,6 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
               </ExternalLink>
             )}
       </Td>
-      {/* The glyph says the one thing the state is about — whether this value is
-          still offered — and the word stays beside it, because a tick and a
-          cross are only obvious once you know that is the question. */}
-      <Td nowrap>
-        <span className="inline-flex items-center text-nowrap">
-          <Icon
-            name={term.active ? "check" : "close"}
-            aria-hidden="true"
-            className="mr-1 text-ink-muted"
-          />
-          {t.states[term.active ? "active" : "inactive"]}
-        </span>
-      </Td>
       {/* **What a row offers depends on what the screen is for right now.** A
           settled vocabulary offers nothing; a listing being read to choose a
           merge's destination offers only that; otherwise the ordinary three. */}
@@ -585,7 +538,6 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
                             value={term.labelEn}
                             width="w-full"
                           />
-                          <Checkbox label={t.offerTerm} name="active" checked={term.active} />
                           <span className="flex flex-wrap items-center justify-end gap-2">
                             <Button type="button" variant="ghost" onClick={close}>
                               {t.cancel}

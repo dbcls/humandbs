@@ -147,22 +147,6 @@ export const TERM_SORT_KEYS = ["code", "label"] as const
 export type TermSortKey = typeof TERM_SORT_KEYS[number]
 export const TERM_SORT: TermSortKey = "code"
 
-/**
- * Whether a term is still offered when a dataset is written.
- *
- * **A term is turned off rather than taken away once anything names it** — the
- * published rows keep pointing at it, so what changes is whether it is offered
- * next time. This is the one thing a vocabulary can be asked about beyond the
- * word itself, which is what makes it the listing's only axis.
- */
-export type TermState = "active" | "inactive"
-
-export const TERM_STATES: readonly TermState[] = ["active", "inactive"]
-
-export function isTermState(value: string): value is TermState {
-  return (TERM_STATES as readonly string[]).includes(value)
-}
-
 /** What the listing reads off a field. The screen's row carries more. */
 export interface KeyFilterRow {
   code: string

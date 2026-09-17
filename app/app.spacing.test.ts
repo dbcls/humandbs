@@ -461,6 +461,24 @@ describe("一覧の件数とページ送り", () => {
   })
 })
 
+/**
+ * **畳んで開くパネルが閉じる 3 通り (Escape・外を押す・遷移) は `base.tsx` の `useDismissible` だけが持つ**
+ * (`docs/ui.md` の「畳んで開くパネルは `Menu` から作る」)。パネルごとに書くと、どれか 1 つだけが閉じ方を
+ * 1 つ欠いても、他のパネルと見比べるまで誰も気づかない。
+ */
+describe("パネルの閉じ方", () => {
+  it("外を押したことを document で聞くのは useDismissible だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const listeners = sources.flatMap(({ name, text }) =>
+      [...text.matchAll(/document\.addEventListener\("(pointerdown|keydown)"/g)].map((found) => `${name} ${found[1]}`))
+    expect(listeners.sort()).toEqual(["components/base.tsx keydown", "components/base.tsx pointerdown"])
+    const base = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
+    const hook = /export function useDismissible\(\)[\s\S]*?\n}\n/.exec(base)?.[0] ?? ""
+    expect(hook).toContain("document.addEventListener(\"pointerdown\"")
+    expect(hook).toContain("document.addEventListener(\"keydown\"")
+  })
+})
+
 /** The three numbers the slope is made of, read from where each one lives. */
 async function slope(): Promise<{ width: number, shear: number, radius: number }> {
   const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
