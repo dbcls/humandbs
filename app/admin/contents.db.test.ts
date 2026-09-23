@@ -7,11 +7,13 @@ import { createSession, sessionCookie } from "~/auth/session.server"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { renderMarkdown } from "~/public/markdown.server"
 import { findDocument } from "~/public/site.server"
 
 import {
   alertAction,
   alertsPage,
+  articlePreviewAction,
   contentsAction,
   contentsPage,
   documentAction,
@@ -167,25 +169,28 @@ describe("slug", () => {
   })
 })
 
-describe("下書きと公開", () => {
-  it("**保存は下書きに書き、公開されている本文は動かない**", async () => {
+describe("本文と公開", () => {
+  it("**保存は本文そのものを書き換え、公開中ならその場で読者に届く**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja", "公開されている本文")
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft",
+      intent: "save",
       locale: "ja",
       revision: "1",
       title: "新しい題",
-      body: "書きかけ",
+      body: "書き換えた本文",
     }), id)
 
     expect(result.status).toBe("ok")
-    expect((await findDocument("faq", "ja"))?.html).toContain("公開されている本文")
+    const page = await findDocument("faq", "ja")
+    expect(page?.title).toBe("新しい題")
+    expect(page?.html).toContain("書き換えた本文")
+    expect(page?.html).not.toContain("公開されている本文")
   })
 
-  it("公開はフォームの中身を本文にし、下書きを消す", async () => {
+  it("公開はフォームの中身を本文にして、公開にする", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja", "古い本文")
@@ -200,7 +205,7 @@ describe("下書きと公開", () => {
 
     expect((await findDocument("faq", "ja"))?.html).toContain("新しい本文")
     const row = only(await db.select().from(s.documentContent).where(eq(s.documentContent.documentId, id)))
-    expect(row.draftContent).toBeNull()
+    expect(row.published).toBe(true)
     expect(row.publishedAt).not.toBeNull()
   })
 
@@ -242,7 +247,7 @@ describe("下書きと公開", () => {
     await publishSide(id, "ja", "そのまま")
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft",
+      intent: "save",
       locale: "ja",
       revision: "99",
       title: "題",
@@ -250,7 +255,7 @@ describe("下書きと公開", () => {
     }), id)
 
     expect(result.status).toBe("stale")
-    expect(only(await db.select().from(s.documentContent)).draftContent).toBeNull()
+    expect(only(await db.select().from(s.documentContent)).content.body).toBe("そのまま")
   })
 
   it("行が既にあるのに revision を持たない保存も、同じく弾かれる", async () => {
@@ -259,7 +264,7 @@ describe("下書きと公開", () => {
     await publishSide(id, "ja")
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft",
+      intent: "save",
       locale: "ja",
       revision: "",
       title: "題",
@@ -273,7 +278,7 @@ describe("下書きと公開", () => {
     const id = await makeDocument("faq")
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft",
+      intent: "save",
       locale: "ja",
       revision: "",
       title: "題",
@@ -289,7 +294,7 @@ describe("下書きと公開", () => {
     const id = await makeDocument("faq")
 
     const result = await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft",
+      intent: "save",
       locale: "ja",
       revision: "",
       title: "",
@@ -319,11 +324,11 @@ describe("下書きと公開", () => {
     expect(events[1]?.detail).toMatchObject({ slug: "faq", locale: "ja" })
   })
 
-  it("下書きの保存は証跡に残らない", async () => {
+  it("保存は証跡に残らない", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft", locale: "ja", revision: "", title: "題", body: "本文",
+      intent: "save", locale: "ja", revision: "", title: "題", body: "本文",
     }), id)
 
     const events = await db.select().from(s.event)
@@ -448,64 +453,95 @@ describe("版", () => {
     expect(view.unanswered).toEqual([{ slug: "x", locales: ["en"] }])
   })
 
-  it("**指し先になっている document は、最後の言語を消せない**", async () => {
+  it("**指し先になっている document は消せない**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
 
     const result = await documentAction(
-      post(token, adminDocumentPath(id), { intent: "delete-locale", locale: "ja", revision: "1" }),
+      post(token, adminDocumentPath(id), { intent: "delete-document" }),
       id,
     )
     expect(result.status).toBe("in-use")
     expect(await db.select().from(s.document)).toHaveLength(1)
-    // 撥ねるのは本文を消す前。片方だけ消えて残る、が起きてはいけない。
     expect(await db.select().from(s.documentContent)).toHaveLength(1)
+    expect(await db.select().from(s.documentSeries)).toHaveLength(1)
   })
 
-  it("**言語を 1 つ消しても document は残る**", async () => {
+  it("**記事を消すと本文ごと消えて、一覧へ送られる**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja")
     await publishSide(id, "en")
 
-    const result = await documentAction(
-      post(token, adminDocumentPath(id), { intent: "delete-locale", locale: "ja", revision: "1" }),
+    const redirected = await thrown(() => documentAction(
+      post(token, adminDocumentPath(id), { intent: "delete-document" }),
       id,
-    )
-    expect(result.status).toBe("ok")
-    expect(await db.select().from(s.document)).toHaveLength(1)
-    expect(await findDocument("x", "ja")).toBeNull()
-    expect(await findDocument("x", "en")).not.toBeNull()
+    ))
+    expect(redirected.status).toBe(302)
+    expect(redirected.headers.get("location")).toContain(adminContentsPath())
+    expect(await db.select().from(s.document)).toHaveLength(0)
+    expect(await db.select().from(s.documentContent)).toHaveLength(0)
+
+    // 公開されていた言語は、記事 1 件につき 1 つの証跡にまとめて残る。
+    const removals = (await db.select().from(s.event))
+      .filter((one) => one.action === "unpublish-site-content")
+    expect(removals).toHaveLength(1)
+    expect(removals[0]?.subjectId).toBe(id)
+    expect(removals[0]?.detail).toMatchObject({ slug: "x", deleted: true, locales: ["ja", "en"] })
   })
 
-  it("**最後の言語を消すと document ごと消えて、一覧へ送られる**", async () => {
+  it("**版を消すと、その系列の画面へ送られる** — 一覧には版の行が無い", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await publishSide(id, "ja")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+    // A second revision, so that the one taken out is not the one the address answers with.
+    await thrown(() => seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "add-version", number: "2" }),
+      series.id,
+    ))
+    const second = only((await db.select().from(s.document)).filter((one) => one.slug === "x/version/2"))
 
     const redirected = await thrown(() => documentAction(
-      post(token, adminDocumentPath(id), { intent: "delete-locale", locale: "ja", revision: "1" }),
+      post(token, adminDocumentPath(second.id), { intent: "delete-document" }),
+      second.id,
+    ))
+    expect(redirected.status).toBe(302)
+    expect(redirected.headers.get("location")).toContain(adminSeriesPath(series.id))
+    expect(redirected.headers.get("location")).not.toContain(adminContentsPath() + "?")
+    expect((await db.select().from(s.document)).map((one) => one.slug)).toEqual(["x/version/1"])
+  })
+
+  it("**本文を 1 つも持たない記事も消せて、証跡は残らない**", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+
+    const redirected = await thrown(() => documentAction(
+      post(token, adminDocumentPath(id), { intent: "delete-document" }),
       id,
     ))
     expect(redirected.status).toBe(302)
     expect(await db.select().from(s.document)).toHaveLength(0)
-    expect(await db.select().from(s.documentContent)).toHaveLength(0)
+    expect(await db.select().from(s.event).where(eq(s.event.subjectType, "document"))).toEqual([])
   })
 
-  it("**読み替えられた revision では消えない**", async () => {
+  it("公開されていない言語だけの記事を消しても、証跡は残らない", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
-    await publishSide(id, "ja")
-    await publishSide(id, "en")
+    await documentAction(post(token, adminDocumentPath(id), {
+      intent: "save", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+    expect(await db.select().from(s.documentContent)).toHaveLength(1)
 
-    const result = await documentAction(
-      post(token, adminDocumentPath(id), { intent: "delete-locale", locale: "ja", revision: "99" }),
+    await thrown(() => documentAction(
+      post(token, adminDocumentPath(id), { intent: "delete-document" }),
       id,
-    )
-    expect(result.status).toBe("stale")
-    expect(await db.select().from(s.documentContent)).toHaveLength(2)
+    ))
+    expect(await db.select().from(s.document)).toHaveLength(0)
+    expect(await db.select().from(s.documentContent)).toHaveLength(0)
+    expect(await db.select().from(s.event).where(eq(s.event.subjectType, "document"))).toEqual([])
   })
 
   it("**系列を消すと、版なし slug と配下の版が一緒に消える**", async () => {
@@ -633,6 +669,43 @@ describe("お知らせ", () => {
     expect(event?.action).toBe("publish-site-content")
   })
 
+  it("**本文を 1 つも持たないお知らせも消せて、一覧へ送られる**", async () => {
+    const token = await signIn(CURATOR, true)
+    await thrown(() => newsListAction(post(token, adminNewsListPath(), { intent: "create-news" })))
+    const id = only(await db.select().from(s.news)).id
+
+    const redirected = await thrown(() => newsAction(
+      post(token, adminNewsPath(id), { intent: "delete-news" }),
+      id,
+    ))
+    expect(redirected.status).toBe(302)
+    expect(redirected.headers.get("location")).toContain(adminNewsListPath())
+    expect(await db.select().from(s.news)).toEqual([])
+    expect(await db.select().from(s.event).where(eq(s.event.subjectType, "news"))).toEqual([])
+  })
+
+  it("お知らせを消すと本文ごと消えて、公開されていた言語だけが証跡に残る", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({}).returning({ id: s.news.id })).id
+    await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+    await newsAction(post(token, adminNewsPath(id), {
+      intent: "save", locale: "en", revision: "", title: "title", body: "body",
+    }), id)
+
+    await thrown(() => newsAction(post(token, adminNewsPath(id), { intent: "delete-news" }), id))
+    expect(await db.select().from(s.news)).toEqual([])
+    expect(await db.select().from(s.newsContent)).toEqual([])
+
+    const removals = (await db.select().from(s.event))
+      .filter((one) => one.action === "unpublish-site-content")
+    expect(removals).toHaveLength(1)
+    expect(removals[0]?.subjectType).toBe("news")
+    expect(removals[0]?.subjectId).toBe(id)
+    expect(removals[0]?.detail).toEqual({ deleted: true, locales: ["ja"] })
+  })
+
   it("1 件の画面は公開日時と 2 つの言語を返す", async () => {
     const token = await signIn(CURATOR, true)
     const id = only(await db.insert(s.news).values({ publishedAt: "2026-05-05 09:00:00" })
@@ -726,6 +799,44 @@ describe("アラート", () => {
     const after = only(await db.select().from(s.alert))
     expect(after.content.body.ja).toBe("直した")
     expect(after.active).toBe(true)
+  })
+
+  it("表示日は最後に表示にした日で、表示中のあいだだけ持ち、本文の保存では動かない", async () => {
+    const token = await signIn(CURATOR, true)
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+    const shownAt = async (): Promise<string | null> =>
+      only((await alertsPage(get(token, adminAlertPath()))).alerts).shownAt
+
+    // 作ったばかりで、まだ一度も表示にしていない
+    expect(await shownAt()).toBeNull()
+
+    // 以前に表示にした跡があっても、いま表示中でなければ持たない
+    await db.insert(s.event).values({
+      occurredAt: new Date("2020-01-01T00:00:00Z"),
+      actorSub: CURATOR.sub,
+      actorName: CURATOR.name,
+      action: "publish-site-content",
+      subjectType: "alert",
+      subjectId: alert.id,
+    })
+    expect(await shownAt()).toBeNull()
+
+    // 表示にした日 — 以前の跡ではなく、最後に表示にした日
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
+    }))
+    expect(await shownAt()).toBe(today())
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed",
+    }))
+    expect(await shownAt()).toBe(today())
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "hide-alert", alertId: alert.id, ja: "直した", en: "fixed",
+    }))
+    expect(await shownAt()).toBeNull()
   })
 
   it("非表示にしたアラートは、本文を保存しても非表示のまま", async () => {
@@ -944,19 +1055,61 @@ describe("画面", () => {
     expect(view.counts.ja).toEqual({ published: 1, unpublished: 1 })
   })
 
-  it("フォームには下書きが入り、公開されている本文も併せて返る", async () => {
+  it("フォームには保存した本文が入り、隣に描く姿も同じ本文から出る", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja", "公開分")
     await documentAction(post(token, adminDocumentPath(id), {
-      intent: "save-draft", locale: "ja", revision: "1", title: "題", body: "下書き",
+      intent: "save", locale: "ja", revision: "1", title: "題", body: "## 節\n\n保存した **本文**",
     }), id)
 
     const view = await documentPage(get(token, adminDocumentPath(id)), id)
     const ja = view?.editors.find((editor) => editor.locale === "ja")
-    expect(ja?.draftBody).toBe("下書き")
-    expect(ja?.body).toBe("公開分")
-    expect(ja?.hasDraft).toBe(true)
+    expect(ja?.body).toBe("## 節\n\n保存した **本文**")
+    expect(ja?.html).toContain("<strong>本文</strong>")
     expect(ja?.revision).toBe(2)
+    const published = await findDocument("faq", "ja")
+    expect(published?.html).toContain("<strong>本文</strong>")
+    // The pane's drawing keeps the heading's id and leaves out the link the
+    // public page offers in the margin: the pane has no address to hand out.
+    expect(ja?.html).toContain("id=\"節\"")
+    expect(ja?.html).not.toContain("この見出しへのリンク")
+    expect(published?.html).toContain("この見出しへのリンク")
+  })
+})
+
+describe("隣に描く姿", () => {
+  function postJson(token: string, payload: unknown): Request {
+    return new Request("http://localhost:8080/admin/documents/preview", {
+      method: "POST",
+      headers: { "cookie": cookie(token), "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  }
+
+  it("打った本文を、公開ページと同じ関数で描いて返す", async () => {
+    const token = await signIn(CURATOR, true)
+    const body = "# 見出し\n\n本文 **強調** と <b>タグ</b>"
+
+    const drawn = await articlePreviewAction(postJson(token, { locale: "ja", title: "題", body }))
+
+    expect(drawn.title).toBe("題")
+    expect(drawn.html).toContain("<strong>強調</strong>")
+    expect(drawn.html).toBe(renderMarkdown(body, "ja", { headingLinks: false }))
+    expect(drawn.html).not.toContain("この見出しへのリンク")
+    // Nothing was written: the words came from the form and went back drawn.
+    expect(await db.select().from(s.documentContent)).toHaveLength(0)
+  })
+
+  it("形の違う問いは 400", async () => {
+    const token = await signIn(CURATOR, true)
+    const refused = await thrown(() => articlePreviewAction(postJson(token, { locale: "fr", body: 1 })))
+    expect(refused.status).toBe(400)
+  })
+
+  it("manage-site-content の無い人には描かない", async () => {
+    const token = await signIn(READER, false)
+    const refused = await thrown(() => articlePreviewAction(postJson(token, { locale: "ja", title: "", body: "" })))
+    expect(refused.status).toBe(403)
   })
 })

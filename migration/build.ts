@@ -51,7 +51,14 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
-import { facetValueSlots, MERGED_READERS, RETYPED_CODES, TEXT_NUMBERS } from "./facets"
+import {
+  facetValueSlots,
+  MERGED_READERS,
+  NUMBER_SPLITS,
+  RETYPED_CODES,
+  TEXT_NUMBERS,
+  type TextNumberKey,
+} from "./facets"
 import { readCell, storedNumber, withHandReadings, type ReadNumber } from "./numbers"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
@@ -123,10 +130,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
     name: valueText(p.name),
     organization: {
       name: valueText(p.organization?.name),
-      address: valueText(p.organization?.address),
     },
-    orcid: single(p.orcid),
-    email: single(p.email),
   }))
 
   const researchProjects: ResearchProject[] = (rv.researchProject ?? []).map((p, i) => ({
@@ -300,6 +304,23 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     return staying.length === lines.length ? text : staying.join("\n")
   }
 
+  /**
+   * The number key (or keys, `facets.ts` の `NUMBER_SPLITS`) a v1 source cell
+   * reads into, or none when it is not a numeric key at all. A merged source
+   * (`SNV Number` and friends) keeps the target key's identity and canonical
+   * unit but reads with its own rule, which is what tells `variant-number`
+   * which kind a bare count belongs to.
+   */
+  const singleTextNumberKey = (sourceKey: string): TextNumberKey[] => {
+    const mergedRead = MERGED_READERS.get(sourceKey)
+    const code = mergedRead === undefined
+      ? TEXT_NUMBERS.find((one) => one.source === sourceKey)?.code
+      : codeBySourceKey.get(sourceKey)
+    const target = code === undefined ? undefined : TEXT_NUMBERS.find((one) => one.code === code)
+    if (target === undefined) return []
+    return [mergedRead === undefined ? target : { ...target, read: mergedRead }]
+  }
+
   const values: ValueSlot[] = []
 
   const criteriaKeyId = keyIdByCode.get(input.accessCriteriaKeyCode)
@@ -329,34 +350,60 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   const experiments: Experiment[] = (doc.experiments ?? []).map((e, i) => {
     // The numbers read out of the cells, gathered by the key they belong to:
     // several v1 cells may be the same key (`facets.ts` の `MERGED_SOURCES`),
-    // and a key may appear once.
+    // one v1 cell may become several keys (`facets.ts` の `NUMBER_SPLITS`), and
+    // a key may appear once.
     const numbers = new Map<string, NumberValue[]>()
+    // A code this cell attempted but read nothing usable out of, and why: the
+    // slot becomes `unknown` rather than disappearing, because the cell said
+    // something (`docs/data-model.md` の「値の状態」).
+    const unresolved = new Set<string>()
     for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
-      const rule = MERGED_READERS.get(sourceKey)
-        ?? TEXT_NUMBERS.find((one) => one.source === sourceKey)?.read
-      const code = codeBySourceKey.get(sourceKey)
-      if (rule === undefined || code === undefined) continue
-      const reader = withHandReadings(sourceKey, rule, input.byHand)
-      const canonical = TEXT_NUMBERS.find((one) => one.code === code)?.canonicalUnit ?? null
-      const { read, declined } = readCell(kept(sourceKey, "ja", value.ja?.text ?? ""), reader)
-      for (const line of declined) input.unread.push({ dataset: dataset.label, sourceKey, line })
-      // **A key with no canonical unit converts nothing.** Its unit is the kind
-      // of thing counted — SNVs, indels, fold coverage — not a scale, so the
-      // unit written is the unit stored. Running those through the converter
-      // asks it to turn `SNVs` into null, which it refuses, and the value would
-      // disappear without a word.
-      const stored = read.flatMap((raw) => {
-        // A row labelled with the dataset it is already filed under says
-        // nothing: the label existed to tell sibling rows apart, and those have
-        // gone to the datasets they were about (`ownLines`).
-        const one = raw.label === dataset.label ? { ...raw, label: null } : raw
-        if (canonical === null) return [storedNumber(one, one.value, one.unit)]
-        const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
-        return converted === null
-          ? (input.unread.push({ dataset: dataset.label, sourceKey, line: `単位が合わない: ${one.value} ${one.unit ?? ""}` }), [])
-          : [storedNumber(one, converted, canonical)]
+      const text = kept(sourceKey, "ja", value.ja?.text ?? "")
+      const keys = NUMBER_SPLITS.get(sourceKey) ?? singleTextNumberKey(sourceKey)
+      if (keys.length === 0) continue
+      const results = keys.map((key) => {
+        const reader = withHandReadings(sourceKey, key.read, input.byHand)
+        return { key, ...readCell(text, reader) }
       })
-      numbers.set(code, [...(numbers.get(code) ?? []), ...stored])
+      // **A line every candidate this cell was tried against declined is
+      // residue.** A line only some of them could read is not about the
+      // others — `Coverage` splits into a depth and a breadth, and a depth
+      // line is not a breadth key's problem.
+      const trulyDeclined = results.length <= 1
+        ? (results[0]?.declined ?? [])
+        : (results[0]?.declined ?? []).filter((line) => results.every((r) => r.declined.includes(line)))
+      for (const line of trulyDeclined) input.unread.push({ dataset: dataset.label, sourceKey, line })
+
+      for (const { key, read } of results) {
+        const canonical = key.canonicalUnit
+        // **A key with no canonical unit converts nothing.** Its unit is the
+        // kind of thing counted — SNVs, indels, fold coverage — not a scale,
+        // so the unit written is the unit stored. Running those through the
+        // converter asks it to turn `SNVs` into null, which it refuses, and
+        // the value would disappear without a word.
+        const stored = read.flatMap((raw) => {
+          // A row labelled with the dataset it is already filed under says
+          // nothing: the label existed to tell sibling rows apart, and those
+          // have gone to the datasets they were about (`ownLines`).
+          const one = raw.label === dataset.label ? { ...raw, label: null } : raw
+          if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high)]
+          const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
+          if (converted === null) {
+            input.unread.push({
+              dataset: dataset.label,
+              sourceKey,
+              line: `単位が合わない: ${one.value} ${one.unit ?? ""}`,
+            })
+            return []
+          }
+          const convertedHigh = one.high === null
+            ? null
+            : (one.unit === canonical ? one.high : convert(one.high, one.unit, canonical))
+          return [storedNumber(one, converted, canonical, convertedHigh)]
+        })
+        numbers.set(key.code, [...(numbers.get(key.code) ?? []), ...stored])
+        if (trulyDeclined.length > 0) unresolved.add(key.code)
+      }
     }
 
     return {
@@ -376,13 +423,19 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
           return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
         }),
-        ...[...numbers].flatMap(([code, held]) => {
+        ...[...numbers].flatMap(([code, nums]): ValueSlot[] => {
           const keyId = keyIdByCode.get(code)
-          // A key with nothing read is a key with no slot: the cell said
-          // something, but not something this can hold as a number.
-          return keyId === undefined || held.length === 0
-            ? []
-            : [{ keyId, value: { kind: "number" as const, values: { state: "value" as const, value: held } } }]
+          if (keyId === undefined) return []
+          if (nums.length > 0) {
+            return [{ keyId, value: { kind: "number", values: { state: "value", value: nums } } }]
+          }
+          // A cell that said something no rule could read is a question, not a
+          // key nobody touched — the words themselves are in `input.unread`.
+          // A cell with nothing to read at all leaves no slot: the question
+          // never came up for this experiment.
+          return unresolved.has(code)
+            ? [{ keyId, value: { kind: "number", values: { state: "unknown" } } }]
+            : []
         }),
         ...facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode }),
       ],

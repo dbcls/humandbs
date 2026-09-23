@@ -2,12 +2,13 @@ import { Link } from "react-router"
 
 import { mergeInitial, type MergeRow } from "~/admin/templates"
 import type { UpstreamDraftView } from "~/admin/templates.server"
-import { adminResearchPath } from "~/admin/urls"
+import { adminDraftUpstreamPath, adminResearchPath } from "~/admin/urls"
+import { AdminBack } from "~/components/admin"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { Fold, PANE_LABEL, Stack } from "./base"
+import { Fold, Note, PANE_LABEL, Stack } from "./base"
 import { Checkbox, Submit, TextArea } from "./form"
 import { Icon } from "./icons"
 import { Empty, Section } from "./page"
@@ -23,6 +24,9 @@ import { Empty, Section } from "./page"
  *
  * **Fields where the two agree are folded away.** A version bump changes a few
  * of them, and sixteen boxes with nothing to decide bury the ones that matter.
+ *
+ * **`view.branch` is not null here** — the screen only draws this face once a
+ * branch has been chosen — so its hum can be compared against the draft's own.
  */
 export function UpstreamMerge({ locale, view }: { locale: Locale, view: UpstreamDraftView }) {
   const t = messagesFor(locale).admin.templates
@@ -32,6 +36,25 @@ export function UpstreamMerge({ locale, view }: { locale: Locale, view: Upstream
 
   return (
     <Stack gap="block">
+      {/* **A way back to the table, distinct from the name row's way out.**
+          The name row's `AdminBack` leaves for the research's own screen;
+          this one returns to the table of branches this face was chosen from
+          (`docs/editing.md` の「取り込みの面」). */}
+      <AdminBack
+        to={href(locale, adminDraftUpstreamPath(view.researchId, view.draftId))}
+        label={t.backToBranches}
+        icon="chevron-left"
+      />
+
+      {/* **Nothing here stops the take-in.** The branch's own research ID
+          disagreeing with the draft's is stated rather than refused — a
+          version bump can be approved under a corrected ID before the ledger
+          catches up (`docs/editing.md` の「行き先」). */}
+      {view.branch?.humLabel != null
+        && view.humLabel !== null && view.branch.humLabel !== view.humLabel && (
+        <Note kind="warning">{t.humDiffers(view.branch.humLabel, view.humLabel)}</Note>
+      )}
+
       <Stack gap="normal">
         {differing.map((row) => <MergeField key={fieldKey(row)} locale={locale} row={row} />)}
         {agreeing.length > 0 && (

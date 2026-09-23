@@ -8,9 +8,9 @@
  * Two rules shape all of it (docs/editing.md の「下書きを外から作る」):
  *
  * - **Only what a public page shows.** The application form holds addresses,
- *   telephone numbers and every collaborator, and the content it seeds carries
- *   an email address and an ORCID out to the public API. So the investigator
- *   arrives as a name, an affiliation and a country, and nothing else
+ *   telephone numbers and every collaborator, and the content has no place
+ *   for any of them. So the investigator arrives as a name and an
+ *   affiliation, and nothing else
  * - **A value the catalog has no word for is not written.** Upstream spells its
  *   vocabularies its own way — INSDC writes `WXS` where the catalog writes
  *   `WES` — and minting a term to fit is how a catalog drifts from the data.
@@ -97,11 +97,7 @@ export function researchContentFrom(branch: DsBranchDetail): ResearchContent {
     name: pair(branch.piNameJa, branch.piNameEn),
     organization: {
       name: pair(branch.affiliationJa, branch.affiliationEn),
-      // The country is one value in the form, and it is written in English.
-      address: pair(branch.country, branch.country),
     },
-    orcid: filled(""),
-    email: filled(""),
   }
 
   return {
@@ -488,10 +484,7 @@ export function upstreamProvider(branch: DsBranchDetail): ResearchContent["dataP
     name: pair(branch.piNameJa, branch.piNameEn),
     organization: {
       name: pair(branch.affiliationJa, branch.affiliationEn),
-      address: pair(branch.country, branch.country),
     },
-    orcid: filled(""),
-    email: filled(""),
   }
 }
 

@@ -121,6 +121,18 @@ describe("searchTextOf", () => {
     expect(text.ja).not.toContain("raw-input-unit-label")
   })
 
+  it("keeps a width's converted upper end but drops its pre-conversion input, the same as the lower end", () => {
+    const text = searchTextOf({
+      dataVolume: {
+        value: "converted-low",
+        high: "converted-high",
+        inputHigh: "raw-input-high",
+      },
+    })
+    expect(text.ja).toContain("converted-high")
+    expect(text.ja).not.toContain("raw-input-high")
+  })
+
   it("leaves out the canonical unit even though it appears on screen, since one unit per key would match every row under it", () => {
     const text = searchTextOf({
       dataVolume: { value: "converted-magnitude", unit: "canonical-unit-label" },

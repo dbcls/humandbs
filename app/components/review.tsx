@@ -2,16 +2,17 @@
  * The management side of a review.
  *
  * One screen per draft: the link that was handed out, what came back, and what
- * is still waiting for an answer. Threads are also read and answered beside the
- * fields they are about in the editing screens — this is the place that shows
- * all of them at once, and the place the link itself is managed.
+ * is still waiting for an answer. Comments are also read and answered beside
+ * the fields they are about in the editing screens — this is the place that
+ * shows all of them at once, and the place the link itself is managed. The
+ * memo is not among them: it is the editing screen's own note, not a question.
  */
 
 import { Form, Link } from "react-router"
 
 import {
-  adminDraftPath,
   adminDraftReviewPath,
+  adminResearchPath,
 } from "~/admin/urls"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -20,7 +21,7 @@ import type { ReviewPageView } from "~/review/review.server"
 
 import { AdminBack } from "./admin"
 import { Badge, Confirm, Heading, Stack } from "./base"
-import { DdbjMark, Thread, type CommentContext } from "./comments"
+import { CommentRow, DdbjMark, type CommentContext } from "./comments"
 import { Checkbox, Editing, Field, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
 import { Card, Empty, ExternalLink, Page, Section } from "./page"
@@ -43,8 +44,8 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
         <Stack gap="block">
           <Heading title={t.heading} aside={view.humLabel ?? undefined}>
             <AdminBack
-              to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-              label={t.backToDraft}
+              to={href(locale, adminResearchPath(view.researchId))}
+              label={messages.admin.editor.backToResearch}
               icon="chevron-left"
             />
           </Heading>
@@ -57,27 +58,27 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
             <Stack gap="normal">
               {/* Answered ones are still listed; the count says how much of the
                   list is already dealt with. */}
-              {view.threads.length > view.unresolved && (
+              {view.comments.length > view.unresolved && (
                 <p className="text-ink-muted text-xs">
-                  {`${t.resolvedThreads} ${String(view.threads.length - view.unresolved)}`}
+                  {`${t.resolvedComments} ${String(view.comments.length - view.unresolved)}`}
                 </p>
               )}
-              {view.threads.length === 0
-                ? <Empty>{t.noThreads}</Empty>
+              {view.comments.length === 0
+                ? <Empty>{t.noComments}</Empty>
                 : (
                     <Stack as="ul" gap="normal">
-                      {view.threads.map((row) => (
-                        <li key={row.thread.id} className="rounded border border-line px-4 py-3">
+                      {view.comments.map((row) => (
+                        <li key={row.comment.id} className="rounded border border-line px-4 py-3">
                           <Stack gap="tight">
                             <p className="flex flex-wrap items-center gap-2 text-xs">
                               <span className="font-semibold">{row.subject}</span>
-                              {/* The memo names no place, so it has nothing to
-                                  print here. */}
+                              {/* The draft as a whole names no place, so it has
+                                  nothing to print here. */}
                               {row.path !== null
                                 && <code className="text-ink-muted">{row.path}</code>}
                               <Link to={row.href}>{t.openEditor}</Link>
                             </p>
-                            <Thread context={context} thread={row.thread} />
+                            <CommentRow context={context} comment={row.comment} />
                           </Stack>
                         </li>
                       ))}
@@ -86,22 +87,30 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
             </Stack>
           </Section>
 
-          <Section title={messages.preview.lgtmWho}>
-            {view.acknowledgements.length === 0
-              ? <Empty>{messages.preview.lgtmHint}</Empty>
-              : (
-                  <ul className="flex flex-wrap gap-2 text-sm">
-                    {view.acknowledgements.map((row) => (
-                      <li key={`${row.name}-${row.createdAt}`}>
-                        <Badge>
-                          {`${row.name} — ${row.createdAt.slice(0, 10)}`}
-                          {row.bySignedIn && <DdbjMark locale={locale} />}
-                        </Badge>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-          </Section>
+          {/* **The two marks a reader can leave are two lists**, since they answer
+              two different questions — whose turn it is, and whether anything is
+              left to fix — and one list would make the reader sort them apart. */}
+          {(["commented", "approved"] as const).map((kind) => {
+            const rows = view.acknowledgements.filter((row) => row.kind === kind)
+            return (
+              <Section key={kind} title={kind === "commented" ? messages.preview.commentedBy : messages.preview.approvedBy}>
+                {rows.length === 0
+                  ? <Empty>{t.nobodyYet}</Empty>
+                  : (
+                      <ul className="flex flex-wrap gap-2 text-sm">
+                        {rows.map((row) => (
+                          <li key={`${row.name}-${row.createdAt}`}>
+                            <Badge>
+                              {`${row.name} — ${row.createdAt.slice(0, 10)}`}
+                              {row.bySignedIn && <DdbjMark locale={locale} />}
+                            </Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+              </Section>
+            )
+          })}
         </Stack>
       </Card>
     </Page>

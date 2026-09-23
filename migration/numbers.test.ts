@@ -4,6 +4,11 @@ import { byHand, counts, numbersWithUnit, readCell, withHandReadings } from "./n
 
 const volume = numbersWithUnit(["KB", "MB", "GB", "TB"], { kB: "KB" })
 const variants = counts(["SNVs", "variants", "indels"])
+const readLength = numbersWithUnit(["bp", "kbp"], { kb: "kbp" })
+/** A count with no unit of its own — the shape `subject-count` reads with. */
+const bareCount = counts()
+const depth = numbersWithUnit(["x", "×", "X", "倍", "depth"], { "×": "x", "X": "x", "倍": "x", "depth": "x" })
+const breadth = numbersWithUnit(["%"])
 
 /** The rows a cell reads into, with the state each row is in. */
 function rows(text: string, read: Parameters<typeof readCell>[1]) {
@@ -14,13 +19,13 @@ function rows(text: string, read: Parameters<typeof readCell>[1]) {
 describe("reading a number out of a v1 cell", () => {
   it("takes the label, the number, the unit and what qualifies it apart", () => {
     expect(rows("GWAS: 平均 123 MB(zip)", volume).got).toEqual([
-      { label: "GWAS", value: 123, unit: "MB", note: "平均 zip" },
+      { label: "GWAS", value: 123, unit: "MB", high: null, note: "平均 zip" },
     ])
   })
 
   it("reads a line with no label as a number and nothing else", () => {
     expect(rows("1.32 TB", volume).got).toEqual([
-      { label: null, value: 1.32, unit: "TB", note: null },
+      { label: null, value: 1.32, unit: "TB", high: null, note: null },
     ])
   })
 
@@ -31,14 +36,19 @@ describe("reading a number out of a v1 cell", () => {
 
   it("keeps a comma between digits, which is not a separator between readings", () => {
     expect(rows("2,443,177 SNVs", variants).got).toEqual([
-      { label: null, value: 2443177, unit: "SNVs", note: null },
+      { label: null, value: 2443177, unit: "SNVs", high: null, note: null },
     ])
   })
 
   it("reads a kanji multiplier as the number it stands for", () => {
     expect(rows("常染色体: 約600万 SNVs (hg19)", variants).got).toEqual([
-      { label: "常染色体", value: 6_000_000, unit: "SNVs", note: "約 hg19" },
+      { label: "常染色体", value: 6_000_000, unit: "SNVs", high: null, note: "約 hg19" },
     ])
+  })
+
+  /** `2×150bp` names one read length, not a count of two. */
+  it("reads the number beside the unit rather than a factor written before it", () => {
+    expect(rows("2×150bp", readLength).got.map((one) => one.value)).toEqual([150])
   })
 })
 
@@ -48,31 +58,45 @@ describe("a line holding more than one reading", () => {
       .toEqual(["HiSeq", "NovaSeq"])
   })
 
+  /** `100, 150` is two values, not a width — a comma enumerates, a dash spans. */
+  it("splits values enumerated by a comma into two readings", () => {
+    expect(rows("100, 150", bareCount).got.map((one) => one.value)).toEqual([100, 150])
+  })
+
   it("keeps a total and what it is made of, because both were written", () => {
     const said = "61,608,817 variants(常染色体: 59,387,070 variants、X染色体: 2,221,747 variants)"
     expect(rows(said, variants).got.map((one) => one.value))
       .toEqual([61_608_817, 59_387_070, 2_221_747])
   })
 
-  /** A sum is the parts, added up by whoever wrote it down. */
-  it("splits a sum into the rows it is a sum of", () => {
-    expect(rows("73 TB(fastq)＋49 TB(bam)", volume).got.map((one) => one.value))
-      .toEqual([73, 49])
+  /**
+   * A sum is arithmetic somebody already did, and neither addend is a value
+   * anybody wrote — the line is left to a person rather than guessed at.
+   */
+  it("declines a bare sum rather than picking one addend or splitting it in two", () => {
+    expect(rows("73 TB＋49 TB", volume)).toEqual({ got: [], declined: ["73 TB＋49 TB"] })
   })
 
-  it("lends the trailing unit to the parts that were written without one", () => {
-    expect(rows("2.4＋1.4 TB", volume).got).toEqual([
-      { label: null, value: 2.4, unit: "TB", note: null },
-      { label: null, value: 1.4, unit: "TB", note: null },
-    ])
+  it("declines a sum whose parts are also bracketed rather than reading them as separate facts", () => {
+    expect(rows("73 TB(fastq)＋49 TB(bam)", volume).got).toEqual([])
+    expect(rows("2.4＋1.4 TB", volume).got).toEqual([])
   })
 
   /**
-   * A range is one quantity known within bounds. Either end alone is a value
-   * nobody wrote, and the middle is a value nobody wrote either.
+   * A width is one quantity known within bounds, read as a single value with an
+   * upper end rather than declined or split into two.
    */
-  it("declines a range rather than choosing a number out of it", () => {
-    expect(rows("0.9-1.3 GB", volume).declined).toEqual(["0.9-1.3 GB"])
+  it("reads a width as a value with an upper end, in the unit written once", () => {
+    expect(rows("0.9-1.3 GB", volume).got).toEqual([
+      { label: null, value: 0.9, unit: "GB", high: 1.3, note: null },
+    ])
+    expect(rows("85〜120 GB", volume).got).toEqual([
+      { label: null, value: 85, unit: "GB", high: 120, note: null },
+    ])
+  })
+
+  it("declines a width whose ends are not ordered low to high", () => {
+    expect(rows("1.3-0.9 GB", volume)).toEqual({ got: [], declined: ["1.3-0.9 GB"] })
   })
 })
 
@@ -85,7 +109,7 @@ describe("the part of the genome a count is over", () => {
   /** v1 writes the part before the number as a label or after it in brackets. */
   it("is taken out of the brackets when that is where the cell put it", () => {
     expect(rows("10,202,908 (常染色体)", variants).got[0]).toEqual({
-      label: "常染色体", value: 10_202_908, unit: null, note: null,
+      label: "常染色体", value: 10_202_908, unit: null, high: null, note: null,
     })
   })
 })
@@ -97,16 +121,36 @@ describe("a unit written another way", () => {
   })
 })
 
+/**
+ * Coverage is two quantities, not one: a depth (`x`) and a breadth (`%`). Each
+ * reads its own unit out of the same cell and declines the other's.
+ */
+describe("depth and breadth, read separately out of the same cell", () => {
+  it("reads a depth line and declines a breadth line", () => {
+    expect(rows("31.8x", depth).got).toEqual([
+      { label: null, value: 31.8, unit: "x", high: null, note: null },
+    ])
+    expect(rows("98%", depth).declined).toEqual(["98%"])
+  })
+
+  it("reads a breadth line and declines a depth line", () => {
+    expect(rows("98%", breadth).got).toEqual([
+      { label: null, value: 98, unit: "%", high: null, note: null },
+    ])
+    expect(rows("31.8x", breadth).declined).toEqual(["31.8x"])
+  })
+})
+
 describe("what somebody read by hand", () => {
   const hand = byHand([
-    { sourceKey: "Coverage", line: "98.21 depth", why: "", read: [{ label: null, value: 98.21, unit: "x", note: null }] },
+    { sourceKey: "Coverage", line: "98.21 depth", why: "", read: [{ label: null, value: 98.21, unit: "x", high: null, note: null }] },
     { sourceKey: "Coverage", line: "Mean ± Standard deviation", why: "見出し", read: [] },
   ])
   const reader = withHandReadings("Coverage", () => null, hand)
 
   it("wins over the rules, because somebody looked at the line", () => {
     expect(rows("98.21 depth", reader).got).toEqual([
-      { label: null, value: 98.21, unit: "x", note: null },
+      { label: null, value: 98.21, unit: "x", high: null, note: null },
     ])
   })
 

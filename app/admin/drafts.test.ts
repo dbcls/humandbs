@@ -60,6 +60,8 @@ describe("writing to a draft", () => {
       "saveDraftContent",
       "saveDatasetEntry",
       "createDatasetInDraft",
+      // Which datasets the version lists, and in what order, is content too.
+      "changeListing",
       "deleteDraftDataset",
       // Taking the draft away. Publishing calls it too, inside its own
       // transaction, which is how a publish stays inside this rule.
@@ -77,8 +79,8 @@ describe("writing to a draft", () => {
     const exported = [...source.matchAll(/export async function (\w+)/g)]
       .map((match) => match[1] ?? "")
 
-    // Five of these create a row, which has no earlier version of itself to
-    // disagree with. Three are not content: presence, which nobody reads for
+    // Six of these create a row (or find the one already made), which has no
+    // earlier version of itself to disagree with. Three are not content: presence, which nobody reads for
     // correctness and where a lost write costs one heartbeat, and the two share
     // settings, where the last press winning is the answer and a check would
     // make flipping the switch fail every open editor's next save.
@@ -92,8 +94,9 @@ describe("writing to a draft", () => {
       .toEqual([
         "createResearchWithDraft",
         "createResearchFromUpstream",
-        "createDraft",
-        "draftToTakeInto",
+        "createEmptyDraft",
+        "draftCopiedFrom",
+        "draftUpdating",
         "draftFromVersion",
         "touchPresence",
         "setDraftSharing",

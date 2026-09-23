@@ -6,7 +6,7 @@
  * `ddbj-search.server.ts`, which is the boundary tests replace.
  */
 
-import { JST_OFFSET_MS } from "~/dates"
+import { dayInJst } from "~/dates"
 
 /**
  * Which DDBJ Search resource answers for an accession.
@@ -40,9 +40,8 @@ const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
  * The answers are not one shape: some resources return a full instant
  * (`2020-09-28T02:03:50Z`) and others a day already (`2022-10-28`). A day is
  * taken as it stands — it carries no time to move — and an instant is shifted
- * before the day is read off it, so an entry released in the evening UTC does
- * not show as the day before. The offset is a constant because JST has no
- * daylight saving.
+ * before the day is read off it (`dates.ts` の `dayInJst`), so an entry released
+ * in the evening UTC does not show as the day before.
  */
 export function calendarDayOf(value: string | null | undefined): string | null {
   if (value === undefined || value === null) return null
@@ -52,5 +51,5 @@ export function calendarDayOf(value: string | null | undefined): string | null {
 
   const instant = new Date(trimmed)
   if (Number.isNaN(instant.getTime())) return null
-  return new Date(instant.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10)
+  return dayInJst(trimmed)
 }

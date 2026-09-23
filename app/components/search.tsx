@@ -21,18 +21,20 @@ import {
   Stack,
   SwitchTabs,
 } from "~/components/base"
+import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
-import { useSearchAsTyped } from "~/search-as-typed"
+import { useAsk, useSearchAsTyped } from "~/search-as-typed"
+import type { DateWindow } from "~/search/date-window"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type { SortKey } from "~/search/query.server"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
 
-import { Card, Crumbs, Page, Paging } from "./page"
+import { Card, Code, Crumbs, Page, Paging } from "./page"
 
 /**
  * The search box is a GET form. It carries the keywords under `k` and whatever
@@ -509,6 +511,108 @@ export function RefineAxis({ label, children }: { label: string, children: React
   )
 }
 
+/**
+ * A range of days: the windows offered as one press, and the two ends to type.
+ *
+ * **One piece for the public facets and the management panes** (`docs/ui.md` の
+ * 「行が並ぶ画面」): a reader who learned it over the publication dates finds the
+ * same thing over the files. The windows are links, so choosing one is going
+ * to the address it names — which window is lit is settled where the address
+ * was made (`~/search/date-window`). The ends are a GET form that asks the
+ * moment either holds a day, and **the form carries what the listing holds
+ * beside the range** (`children`), since a GET form replaces the whole query.
+ */
+export function DateRange({ locale, action, windows, from, to, names = { from: "from", to: "to" }, children }: {
+  locale: Locale
+  /** Where the form asks, which is the listing's own address. */
+  action: string
+  windows: readonly DateWindow[]
+  /** The day in force at each end, or empty when that end is open. */
+  from: string
+  to: string
+  /** What the two ends are called in the address. */
+  names?: { from: string, to: string }
+  /** The fields the form has to carry that the range does not show. */
+  children?: ReactNode
+}) {
+  const messages = messagesFor(locale).search.refine
+  const { form, ask } = useAsk(action)
+  return (
+    <Stack gap="tight">
+      {windows.length > 0 && (
+        <div className="flex gap-1">
+          {windows.map((window) => (
+            <Link
+              key={window.label}
+              to={window.href}
+              // The reader is standing in the pane when they press, beside a
+              // result they are watching change; landing at the top of the
+              // page would take both out of sight (`components/facets.tsx`).
+              preventScrollReset
+              aria-current={window.current ? "true" : undefined}
+              className={`flex-1 rounded border px-1 py-1 text-center text-xs no-underline ${
+                window.current
+                  ? "border-brand bg-surface-hover font-semibold text-ink"
+                  : "border-line text-brand hover:bg-surface-hover"
+              }`}
+            >
+              {window.label}
+            </Link>
+          ))}
+        </div>
+      )}
+      <Form ref={form} method="get" action={action} preventScrollReset>
+        <Stack gap="tight">
+          {children}
+          <RefineDate name={names.from} label={messages.dateFrom} value={from} ask={ask} />
+          <RefineDate name={names.to} label={messages.dateTo} value={to} ask={ask} />
+        </Stack>
+      </Form>
+    </Stack>
+  )
+}
+
+/**
+ * One end of a range of days.
+ *
+ * **It asks the moment it holds a day** (`docs/public-pages.md` の「絞り込み」): a
+ * date field hands over a whole day or nothing, and most readers hand it over
+ * in one press on the picker, so there is nothing to wait for. Clearing it asks
+ * too, since an empty end is the end left open.
+ *
+ * **Its name stands over it rather than beside it.** The two ends of a range of
+ * days stand one above the other with room for a name each, where a number's
+ * pair sits side by side in the width of the pane and has none
+ * (`components/facets.tsx`).
+ */
+function RefineDate({ name, label, value, ask }: {
+  name: string
+  label: string
+  /** The day in force at this end, or empty when it is open. */
+  value: string
+  /** Go to the address the form now stands for. */
+  ask: () => void
+}) {
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-ink-muted text-xs">{label}</span>
+      <input
+        type="date"
+        name={name}
+        defaultValue={value}
+        onChange={(event) => {
+          if (event.currentTarget.value !== value) ask()
+        }}
+        // `CONTROL` sizes itself against a 14px line (`form.tsx`); left to the
+        // browser's own default for a bare `type="date"` field the line is
+        // 16px and the box comes out 38px against the 36.4px every other
+        // `CONTROL` in the site stands at.
+        className={`w-full ${CONTROL} text-sm`}
+      />
+    </label>
+  )
+}
+
 /** Where the pane remembers whether it is folded. */
 const PANE_KEY = "humandbs.refine"
 
@@ -655,7 +759,7 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
                   */}
                   {condition.code !== null && (
                     <>
-                      <code className="mr-1 font-mono text-ink-muted">{condition.code}</code>
+                      <Code className="mr-1" muted>{condition.code}</Code>
                       {" "}
                     </>
                   )}

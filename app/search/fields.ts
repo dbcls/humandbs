@@ -4,8 +4,11 @@
  * A field is not a column of the content: it is a facet of the published set
  * that the search rows already carry. Four of them are built in and belong to
  * the rows themselves; the rest come from the catalog, one per key typed as a
- * vocabulary or a number. **Typing a key is therefore what adds a field**, and
- * the allowlist has no second list of its own to fall out of step with.
+ * vocabulary or a disease, and one per number key that has been given a facet
+ * category (`~/search/catalog.server` の `loadFacetDefinitions`) — most number
+ * keys are shown but not narrowed by. **Typing a key is therefore what adds a
+ * field**, and the allowlist has no second list of its own to fall out of step
+ * with.
  *
  * A facet is named by the key's code and its value by the term's code. Neither
  * the display label nor the identity would do: a label makes an address stop

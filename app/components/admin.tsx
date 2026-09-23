@@ -1,8 +1,6 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react"
@@ -10,7 +8,7 @@ import {
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { ButtonLink, Choice, IconButton, SectionTabs } from "./base"
+import { ButtonLink, Choice, SectionTabs } from "./base"
 import { Icon, type IconName } from "./icons"
 
 /**
@@ -115,16 +113,35 @@ function writePanes(filed: string, value: Arrangement): void {
  * height is the window's rather than a number measured on the way past, so
  * nothing has to be told when the bar above wraps onto a second line.
  *
- * The switch is handed back apart from the panes because it belongs on the
- * draft's bar, up with saving and the draft's other faces, rather than floating
- * above one of the two things it governs.
+ * The switch is handed back apart from the panes, for a screen that has a
+ * `DraftTools` row to put it on — up with saving and the draft's other faces —
+ * rather than floating above one of the two things it governs. A screen with
+ * no such row keeps it where it always stood, on the showing pane's own tabs.
  */
-export function usePanes({ locale, contents, remember }: {
+/**
+ * How far from the top of the window the panes stick, and how tall they are.
+ *
+ * **Under a row that stays, the panes start below it.** The row is one line of
+ * a known height (`draft-tools.tsx` の `TOOLS_HEIGHT`), so the two are a sum
+ * rather than a measurement: the page's own margin above, then the row, then
+ * the gap between the row and the boxes. Without such a row the panes start at
+ * the page's margin.
+ */
+const PANE_STANCE = {
+  page: "top-4 h-[calc(100dvh-2rem)]",
+  bar: "top-[calc(3.75rem+1rem)] h-[calc(100dvh-3.75rem-2rem)]",
+} as const
+
+export function usePanes({ locale, contents, remember, opens, under = "page" }: {
   locale: Locale
   contents: PaneContent[]
   /** What this screen's arrangement is filed under for the session. */
   remember: string
-}): { control: ReactNode, view: ReactNode } {
+  /** What the right pane opens on when nothing is remembered; the second content otherwise. */
+  opens?: string
+  /** What the panes stand under: the page's margin, or a row that stays at the top. */
+  under?: keyof typeof PANE_STANCE
+}): { view: ReactNode, control: ReactNode, left: string, right: string, showing: Arrangement["showing"] } {
   const words = messagesFor(locale).admin.panes
   const filed = `panes:${remember}`
   const raw = useSyncExternalStore(
@@ -137,7 +154,7 @@ export function usePanes({ locale, contents, remember }: {
     const first = contents[0]?.id ?? ""
     const fallback: Arrangement = {
       left: first,
-      right: contents[1]?.id ?? first,
+      right: (opens !== undefined && contents.some((one) => one.id === opens) ? opens : contents[1]?.id) ?? first,
       showing: "both",
     }
     if (raw === null) return fallback
@@ -153,7 +170,7 @@ export function usePanes({ locale, contents, remember }: {
       // A value this screen cannot read is one it did not write.
       return fallback
     }
-  }, [raw, contents])
+  }, [raw, contents, opens])
 
   const change = useCallback((next: Partial<Arrangement>) => {
     writePanes(filed, { ...state, ...next })
@@ -167,20 +184,26 @@ export function usePanes({ locale, contents, remember }: {
     { id: "right", label: words.right },
   ] as const
 
+  // **No word beside it.** It stands on the panes' own edge, which is what says
+  // what it is about; the name is kept for whoever cannot see where it stands.
   const control = (
-    <span className="flex flex-wrap items-center gap-2 text-sm">
-      {/* **The word saying what is being chosen stays outside the control**, the
-          line a listing's own choices are held to (`base.tsx` の `Chooser`). */}
-      <span className="text-ink-muted">{words.showing}</span>
-      <Choice
-        label={words.showing}
-        value={state.showing}
-        options={shows}
-        onChange={(showing) => { change({ showing }) }}
-        pill
-      />
-    </span>
+    <Choice
+      label={words.showing}
+      value={state.showing}
+      options={shows}
+      onChange={(showing) => { change({ showing }) }}
+      pill
+    />
   )
+
+  // **A screen with a `DraftTools` row draws the switch there instead**
+  // (`draft-tools.tsx`): the row stays at the top of the window and the switch
+  // belongs with saving and the draft's other faces, not floating above one of
+  // the two panes it governs. Every other screen keeps it where it always
+  // stood — on the panes' own top edge, at the far end of the strip of
+  // whichever pane stands last, the right one or the only one.
+  const onOwnEdge = under === "page"
+  const holdsControl = state.showing === "left" ? "left" : "right"
 
   function pane(side: "left" | "right") {
     const current = side === "left" ? state.left : state.right
@@ -196,6 +219,7 @@ export function usePanes({ locale, contents, remember }: {
           tabs={contents.map((one) => ({ id: one.id, label: one.label }))}
           current={shown?.id ?? ""}
           onSelect={(id) => { change(side === "left" ? { left: id } : { right: id }) }}
+          aside={onOwnEdge && side === holdsControl ? control : undefined}
         />
         {/* **The box that scrolls is also what the marks inside it are placed
             against.** Left `static` it is not the containing block of anything
@@ -216,40 +240,17 @@ export function usePanes({ locale, contents, remember }: {
       // end up against the browser's own frame, and — because a stuck box is
       // pushed back up by its parent once the page is scrolled to the end —
       // past it by whatever the page keeps under the content.
-      className="sticky top-4 flex h-[calc(100dvh-2rem)] items-stretch gap-4"
+      className={`sticky flex items-stretch gap-4 ${PANE_STANCE[under]}`}
     >
       {state.showing !== "right" && pane("left")}
       {state.showing !== "left" && pane("right")}
     </div>
   )
 
-  return { control, view }
-}
-
-/**
- * The mark the page pane hangs at a place, and the way into the field writing it.
- *
- * **It is the only thing on that page that can be pressed.** Writing in place
- * would put a second box for the same value on the screen, and then there are
- * two answers to what is written there; the press moves the caret into the form
- * instead.
- *
- * **It fills while the caret is in that place, and brings itself into view.**
- * The two ways into one value — the ja box and the en box — are the same place,
- * so moving between them leaves the mark and the page exactly where they are.
- */
-export function PaneSpot({ here, label, onGo }: {
-  here: boolean
-  label: string
-  onGo: () => void
-}) {
-  const box = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    if (here) box.current?.scrollIntoView({ block: "center" })
-  }, [here])
-  return (
-    <span ref={box}>
-      <IconButton name="edit" label={label} pressed={here} onClick={onGo} />
-    </span>
-  )
+  // **Which content stands where, for a screen whose own tools row has more to
+  // say about it than the switch alone.** An article's save is one control per
+  // open language, so the row above the panes has to know which of them are
+  // showing — and Ctrl+S sends the left one specifically — which the switch's
+  // own markup does not carry (`contents.tsx` の `ArticleTools`).
+  return { view, control, left: state.left, right: state.right, showing: state.showing }
 }

@@ -261,13 +261,19 @@ export interface AdminVersionRow {
   id: string
   number: number
   releaseDate: string
+  /** When the row was written, which for a version is when it was published. */
+  updatedAt: string
+  /**
+   * The draft this version is being updated in, while it is. It is the update's
+   * vessel and not a draft of its own, so it is carried here and not among the
+   * drafts (docs/editing.md の「draft」).
+   */
+  updating: AdminDraftRow | null
 }
 
 export interface AdminDraftRow {
   id: string
   revision: number
-  /** The version number this draft was copied from, if it was copied from one. */
-  copiedFromNumber: number | null
   flags: ContentFlags
   createdAt: string
   updatedAt: string
@@ -303,6 +309,7 @@ export async function adminResearch(
         id: researchVersion.id,
         number: researchVersion.number,
         releaseDate: researchVersion.releaseDate,
+        updatedAt: researchVersion.updatedAt,
       })
       .from(researchVersion)
       .where(eq(researchVersion.researchId, researchId))
@@ -312,7 +319,7 @@ export async function adminResearch(
         id: researchDraft.id,
         revision: researchDraft.revision,
         content: researchDraft.content,
-        copiedFromNumber: researchDraft.copiedFromNumber,
+        replacesVersionId: researchDraft.replacesVersionId,
         createdAt: researchDraft.createdAt,
         updatedAt: researchDraft.updatedAt,
       })
@@ -322,18 +329,23 @@ export async function adminResearch(
     researchDatasets(db, researchId),
   ])
 
+  const rows = drafts.map((row) => ({
+    id: row.id,
+    revision: row.revision,
+    flags: contentFlags(row.content),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    updates: row.replacesVersionId,
+  }))
   return {
     researchId,
     labels,
-    versions,
-    drafts: drafts.map((row) => ({
-      id: row.id,
-      revision: row.revision,
-      copiedFromNumber: row.copiedFromNumber,
-      flags: contentFlags(row.content),
-      createdAt: row.createdAt.toISOString(),
+    versions: versions.map((row) => ({
+      ...row,
       updatedAt: row.updatedAt.toISOString(),
+      updating: rows.find((draft) => draft.updates === row.id) ?? null,
     })),
+    drafts: rows.filter((row) => row.updates === null),
     datasets,
   }
 }
@@ -343,7 +355,12 @@ export interface DraftRecord {
   researchId: string
   revision: number
   content: ResearchContent
-  copiedFromNumber: number | null
+  /**
+   * The version this draft is the update of, when it is one. Every screen of
+   * the draft measures against that version rather than the newest, and names
+   * the draft after it (docs/editing.md の「draft」).
+   */
+  updating: { versionId: string, number: number } | null
 }
 
 export async function readDraft(db: Executor, draftId: string): Promise<DraftRecord | null> {
@@ -353,12 +370,19 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
       researchId: researchDraft.researchId,
       revision: researchDraft.revision,
       content: researchDraft.content,
-      copiedFromNumber: researchDraft.copiedFromNumber,
+      versionId: researchDraft.replacesVersionId,
+      number: researchVersion.number,
     })
     .from(researchDraft)
+    .leftJoin(researchVersion, eq(researchVersion.id, researchDraft.replacesVersionId))
     .where(eq(researchDraft.id, draftId))
     .limit(1)
-  return row ?? null
+  if (row === undefined) return null
+  const { versionId, number, ...draft } = row
+  return {
+    ...draft,
+    updating: versionId === null || number === null ? null : { versionId, number },
+  }
 }
 
 /**
@@ -424,11 +448,15 @@ export async function readPublishedDataset(
   db: Executor,
   researchId: string,
   datasetId: string,
+  /** The version to read it in: the one a draft updates. Null reads the newest. */
+  versionId: string | null,
 ): Promise<{ number: number, content: DatasetContent } | null> {
   const [row] = await db
     .select({ number: researchVersion.number, content: researchVersion.content })
     .from(researchVersion)
-    .where(eq(researchVersion.researchId, researchId))
+    .where(versionId === null
+      ? eq(researchVersion.researchId, researchId)
+      : and(eq(researchVersion.researchId, researchId), eq(researchVersion.id, versionId)))
     .orderBy(desc(researchVersion.number))
     .limit(1)
   if (row === undefined) return null

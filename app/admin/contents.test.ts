@@ -20,8 +20,8 @@ import {
 
 function states(published: { ja?: boolean, en?: boolean } = {}) {
   return {
-    ja: { published: published.ja ?? true, hasDraft: false },
-    en: { published: published.en ?? true, hasDraft: false },
+    ja: { published: published.ja ?? true },
+    en: { published: published.en ?? true },
   }
 }
 

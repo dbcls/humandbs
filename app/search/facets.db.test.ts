@@ -5,7 +5,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { publishedFacetValues } from "./catalog.server"
+import { loadFacetDefinitions, publishedFacetValues } from "./catalog.server"
 import { countTerms, dateBounds, numberBounds } from "./counts.server"
 import { parseQuery, type QueryNode } from "./dsl"
 import { queryFields, type FacetField } from "./fields"
@@ -315,5 +315,42 @@ describe("the values a query may name", () => {
   it("carries both labels, so a value can be shown as well as written", async () => {
     const values = await publishedFacetValues(db)
     expect(values.every((one) => one.labelEn !== "")).toBe(true)
+  })
+})
+
+/**
+ * A vocabulary or a disease key is always a facet; a number key is one only
+ * where the catalog has given it a category — today `subject-count` and
+ * `read-length` (`docs/public-pages.md` の「絞り込み」).
+ */
+describe("which keys the panel offers", () => {
+  it("excludes a number key that has been given no category, and keeps everything else", async () => {
+    const { id: categoryId } = only(await db.insert(s.facetCategory)
+      .values({ code: "subjects", labelJa: "対象者", labelEn: "Subjects" })
+      .returning({ id: s.facetCategory.id }))
+    await db.insert(s.contentKey).values({
+      code: "subject-count",
+      scope: "experiment",
+      valueType: "number",
+      labelJa: "対象者数",
+      labelEn: "Number of subjects",
+      facetCategoryId: categoryId,
+    })
+    await db.insert(s.contentKey).values({
+      code: "gene-number",
+      scope: "experiment",
+      valueType: "number",
+      labelJa: "遺伝子数",
+      labelEn: "Gene number",
+      facetCategoryId: null,
+    })
+
+    const codes = (await loadFacetDefinitions(db)).map((one) => one.field.code)
+
+    expect(codes).toContain("subject-count")
+    expect(codes).not.toContain("gene-number")
+    // The vocabulary keys seeded in `beforeAll` stay offered regardless.
+    expect(codes).toContain("disease")
+    expect(codes).toContain("assay")
   })
 })

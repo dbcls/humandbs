@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import type { BoxEntry } from "~/files/box"
 
-import { BoxTable, Downloads, type DownloadRow } from "./files"
+import { BoxTable, Downloads, UploadPanel, type DownloadRow } from "./files"
 
 /**
  * What the two lists put on the page.
@@ -85,6 +85,26 @@ describe("the download list", () => {
 })
 
 describe("the box", () => {
+  it("offers to copy the address of a public file, and of no other", () => {
+    const html = render(
+      <BoxTable
+        locale="ja"
+        humLabel="hum0009"
+        rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
+      />,
+    )
+
+    expect([...html.matchAll(/アドレスのコピー/g)]).toHaveLength(1)
+    expect(html).toContain("title=\"/files/hum0009/open.zip\"")
+    expect(html).not.toContain("title=\"/files/hum0009/closed.zip\"")
+  })
+
+  it("names nothing to copy while the research has no label, since no address answers", () => {
+    const html = render(<BoxTable locale="ja" humLabel={null} rows={[entry({ name: "open.zip" })]} />)
+
+    expect(html).not.toContain("アドレスをコピー")
+  })
+
   it("says which side of the store each file is on", () => {
     const html = render(
       <BoxTable
@@ -98,7 +118,36 @@ describe("the box", () => {
     expect(html).toContain("未公開")
   })
 
-  it("says a switch is running rather than saying where the file is", () => {
+  it("offers to fetch a public file as a download, and no other", () => {
+    const html = render(
+      <BoxTable
+        locale="ja"
+        humLabel="hum0009"
+        rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
+      />,
+    )
+
+    expect([...html.matchAll(/ダウンロード/g)]).toHaveLength(1)
+    expect(html).toMatch(/href="\/files\/hum0009\/open\.zip"[^>]*download/)
+    // The name itself is not a link: a fetch is not what reading a name asks for.
+    expect(html).not.toMatch(/<a[^>]*>[^<]*open\.zip<\/a>/)
+  })
+
+  it("offers the other side on the one switch control", () => {
+    const html = render(
+      <BoxTable
+        locale="ja"
+        humLabel="hum0009"
+        rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
+      />,
+    )
+
+    expect(html).toContain("value=\"unpublish\"")
+    expect(html).toContain("value=\"publish\"")
+    expect([...html.matchAll(/公開停止/g)]).toHaveLength(1)
+  })
+
+  it("says on the control that a switch is running, and will not take a second press", () => {
     const html = render(
       <BoxTable
         locale="ja"
@@ -107,23 +156,29 @@ describe("the box", () => {
       />,
     )
 
-    expect(html).toContain("公開へ切り替え中")
+    expect(html).toContain("切り替え中")
+    expect(html).toContain("公開へ切り替え中です")
+    expect(html).toContain("切り替え中は名前を変えられません")
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?切り替え中/)
   })
 
-  it("says a switch failed rather than that it is still running", () => {
+  it("says a switch failed, beside the side the file is on, and leaves the control pressable", () => {
     const html = render(
       <BoxTable
         locale="ja"
         humLabel="hum0009"
-        rows={[entry({ pending: { action: "unpublish", failed: true, lastError: null } })]}
+        rows={[entry({ pending: { action: "unpublish", failed: true, lastError: "copy refused" } })]}
       />,
     )
 
     expect(html).toContain("切り替えに失敗しました")
+    expect(html).toContain("copy refused")
+    expect(html).toContain("公開中")
     expect(html).not.toContain("未公開へ切り替え中")
+    expect(html).not.toContain("disabled=\"\"")
   })
 
-  it("names every file as a checkbox, because the operations take a selection", () => {
+  it("names the file in every form of its row, so a press names what it acts on", () => {
     const html = render(
       <BoxTable
         locale="ja"
@@ -132,27 +187,35 @@ describe("the box", () => {
       />,
     )
 
-    expect(html).toContain("name=\"name\" value=\"a.zip\"")
-    expect(html).toContain("name=\"name\" value=\"b.zip\"")
+    expect(html).not.toContain("type=\"checkbox\"")
+    expect([...html.matchAll(/name="name" value="a\.zip"/g)].length).toBeGreaterThanOrEqual(2)
+    expect(html).toContain("name=\"from\" value=\"b.zip\"")
   })
 
-  /**
-   * 13px の箱を素で置くと、無い散文の baseline に乗って隣の欄の語より上に出る。
-   * 1 行ぶんの高さを取って自分をその中心に置くと、語と同じところに来る。
-   */
-  it("mark は 1 行ぶんの高さの器に入っていて、その中心に立つ", () => {
+  it("changes the name on the one panel every slug is changed in", () => {
     const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
-    for (const box of html.matchAll(/<input type="checkbox"/g)) {
-      const before = html.slice(0, box.index)
-      expect(before.slice(before.lastIndexOf("<span"))).toMatch(/h-\[1lh\][^>]*items-center|items-center[^>]*h-\[1lh\]/)
-    }
-    expect([...html.matchAll(/<input type="checkbox"/g)]).toHaveLength(2)
+    expect(html).toContain("slug の編集")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {
     const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry()]} />)
 
     expect(html).not.toContain("value=\"delete\"")
+  })
+})
+
+describe("the upload panel", () => {
+  /**
+   * The question about names the box already holds is raised by a choice, not
+   * by a control, so at rest there is nothing of it on the page: the chooser
+   * is the one thing to press.
+   */
+  it("asks nothing at rest, and offers only the chooser", () => {
+    const html = render(<UploadPanel locale="ja" endpoint="/admin/files/upload" threshold={1} partSize={1} />)
+
+    expect(html.match(/<button/g)).toHaveLength(1)
+    expect(html).toContain("ファイルの選択")
+    expect(html).not.toContain("上書き")
   })
 })

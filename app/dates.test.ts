@@ -1,7 +1,16 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { asLocalInput, minuteInJst, minuteOf, nowInJst, stampFromLocalInput, today } from "./dates"
+import {
+  asLocalInput,
+  dayFromInput,
+  dayInJst,
+  minuteInJst,
+  minuteOf,
+  nowInJst,
+  stampFromLocalInput,
+  today,
+} from "./dates"
 
 /**
  * The same question put to `Intl`, which takes the offset from its own database
@@ -160,5 +169,62 @@ describe("stampFromLocalInput", () => {
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return
       expect(stampFromLocalInput(value)).toBeNull()
     }))
+  })
+})
+
+describe("dayInJst", () => {
+  it("UTC の 15 時ちょうどは、JST の翌日になる", () => {
+    expect(dayInJst("2026-09-22T15:00:00.000Z")).toBe("2026-09-23")
+  })
+
+  it("その 1 ミリ秒前は、まだ同じ日のまま", () => {
+    expect(dayInJst("2026-09-22T14:59:59.999Z")).toBe("2026-09-22")
+  })
+
+  it("どの instant でも、minuteInJst が読む分の日の部分と一致する", () => {
+    fc.assert(fc.property(
+      fc.date({
+        min: new Date("1970-01-01T00:00:00.000Z"),
+        max: new Date("2200-01-01T00:00:00.000Z"),
+        noInvalidDate: true,
+      }),
+      (instant) => {
+        expect(dayInJst(instant.toISOString())).toBe(minuteByIntl(instant).slice(0, 10))
+      },
+    ))
+  })
+})
+
+describe("dayFromInput", () => {
+  it("欄が送る形をそのまま受ける", () => {
+    expect(dayFromInput("2026-09-23")).toBe("2026-09-23")
+    expect(dayFromInput("2024-02-29")).toBe("2024-02-29")
+  })
+
+  it("存在しない日は、形が合っていても日ではない", () => {
+    expect(dayFromInput("2026-02-31")).toBeNull()
+    expect(dayFromInput("2026-02-29")).toBeNull()
+    expect(dayFromInput("2026-13-01")).toBeNull()
+    expect(dayFromInput("2026-00-10")).toBeNull()
+  })
+
+  it("形の違うものは受けない", () => {
+    for (const given of ["", "2026-9-3", "2026-09-23T00:00", "20260923", " 2026-09-23", "2026-09-23 ", "tomorrow"]) {
+      expect(dayFromInput(given), given).toBeNull()
+    }
+  })
+
+  it("Date が持てる日はどれも、そのまま返る", () => {
+    fc.assert(fc.property(
+      fc.date({
+        min: new Date("2000-01-01T00:00:00.000Z"),
+        max: new Date("2100-01-01T00:00:00.000Z"),
+        noInvalidDate: true,
+      }),
+      (at) => {
+        const day = at.toISOString().slice(0, 10)
+        expect(dayFromInput(day)).toBe(day)
+      },
+    ))
   })
 })

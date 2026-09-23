@@ -93,10 +93,14 @@ export const diseaseSchema = z.object({
  * genome counted, the data product measured — and `note` carries what qualifies
  * it without being part of it. Both are absent when the value does not have one,
  * so the common case is the same two fields it has always been.
+ *
+ * `high` is the upper end of a value written as a width — `0.9-1.3 GB` reads as
+ * `value: 0.9, high: 1.3` — and is `null` on every number that is not one.
  */
 export const numberValueSchema = z.object({
   value: z.number(),
   unit: z.string().nullable(),
+  high: z.number().nullable(),
   label: z.string().optional(),
   note: z.string().optional(),
 }).meta({
@@ -105,7 +109,8 @@ export const numberValueSchema = z.object({
     "A number in the key's canonical unit, which is the unit `/api/fields` gives for that field "
     + "and not necessarily the one it was entered in. `label` says which number this is where a "
     + "key holds several; `note` carries what qualifies it without being part of it. Both are "
-    + "absent when there is none.",
+    + "absent when there is none. `high` is the upper end of a value written as a width, and "
+    + "`null` on every number that is not one.",
 })
 
 const valueHead = { key: z.string(), label: textSchema }
@@ -166,10 +171,7 @@ export const researchSchema = z.object({
     name: textSchema.optional(),
     organization: z.object({
       name: textSchema.optional(),
-      address: textSchema.optional(),
     }),
-    orcid: z.string().nullable().optional(),
-    email: z.string().nullable().optional(),
   })),
   researchProjects: z.array(z.object({
     name: textSchema.optional(),

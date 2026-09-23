@@ -122,6 +122,12 @@ function textOf(node: Element): string {
  * headings does not gain a column of `#`. It stays reachable from the keyboard —
  * it is transparent rather than absent, so focus can land on it and bring it
  * into view.
+ *
+ * **Without a label, the heading keeps its id and offers no link.** The pane an
+ * article is written beside has no address of its own to hand out — pressed
+ * there, the mark would put the heading's name on the end of the editing
+ * screen's address. The id stays, so a contents list the article writes still
+ * lands on its heading in the pane.
  */
 const ANCHOR = [
   "absolute", "inset-y-0", "-left-5", "flex", "items-center",
@@ -129,7 +135,7 @@ const ANCHOR = [
   "opacity-0", "hover:text-brand", "focus-visible:opacity-100", "group-hover:opacity-100",
 ]
 
-function headingAnchors(options: { label: string }) {
+function headingAnchors(options: { label: string | null }) {
   return (tree: Root) => {
     // Numbered as a whole rather than one at a time, because what a repeat is
     // numbered from is the article and not the heading (`headingIds`).
@@ -140,6 +146,10 @@ function headingAnchors(options: { label: string }) {
     const ids = headingIds(headings.map((node) => textOf(node)))
     headings.forEach((node, at) => {
       const id = ids[at] ?? "section"
+      if (options.label === null) {
+        node.properties = { ...node.properties, id }
+        return
+      }
       node.properties = { ...node.properties, id, className: ["group", "relative"] }
       node.children = [
         {
@@ -279,28 +289,42 @@ function alertsFromQuotes() {
 
 /**
  * One per language, because the anchor a heading carries has a name and names
- * are words. The pipeline is otherwise the same, and both are built once.
+ * are words; one more without the anchor, which needs no language. The pipeline
+ * is otherwise the same, and all three are built once.
  */
-const PROCESSOR: Record<Locale, ReturnType<typeof buildProcessor>> = {
-  ja: buildProcessor("ja"),
-  en: buildProcessor("en"),
+const PROCESSOR = {
+  linked: {
+    ja: buildProcessor(messagesFor("ja").headingLink),
+    en: buildProcessor(messagesFor("en").headingLink),
+  } satisfies Record<Locale, ReturnType<typeof buildProcessor>>,
+  unlinked: buildProcessor(null),
 }
 
-function buildProcessor(locale: Locale) {
+function buildProcessor(headingLink: string | null) {
   return unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
     .use(shiftHeadings)
     .use(safeDestinations)
-    .use(headingAnchors, { label: messagesFor(locale).headingLink })
+    .use(headingAnchors, { label: headingLink })
     .use(alertsFromQuotes)
     .use(rehypeStringify, { allowDangerousHtml: true })
 }
 
-export function renderMarkdown(source: string, locale: Locale): string {
+/**
+ * `headingLinks: false` leaves out the link each heading offers in the margin
+ * and keeps everything else, ids included (`headingAnchors`). It is for the
+ * pane beside the editing form, which has no address to hand out.
+ */
+export function renderMarkdown(
+  source: string,
+  locale: Locale,
+  { headingLinks = true }: { headingLinks?: boolean } = {},
+): string {
   if (source.trim() === "") return ""
-  return String(PROCESSOR[locale].processSync(source))
+  const processor = headingLinks ? PROCESSOR.linked[locale] : PROCESSOR.unlinked
+  return String(processor.processSync(source))
 }
 
 /** Where a block ends, so the last word of one does not run into the next. */

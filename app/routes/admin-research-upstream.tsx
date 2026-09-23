@@ -15,7 +15,6 @@ import {
   adminUpstreamBranchPath,
   adminUpstreamResearchPath,
   branchListingQuery,
-  draftTargetQuery,
   type BranchListingQuery,
 } from "~/admin/urls"
 import {
@@ -32,9 +31,10 @@ import { Checkbox } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { UpstreamNotConnected, UpstreamTarget } from "~/components/upstream"
+import { UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
 import { href, jgaEntryUrl, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
@@ -84,6 +84,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
   const messages = messagesFor(locale)
   const t = messages.admin.templates
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
 
   // Folded, the way back into the pane says how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
@@ -103,14 +104,12 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
         <Stack gap="normal">
           <Heading title={t.heading} />
 
-          {view.target !== null && <UpstreamTarget locale={locale} target={view.target} />}
-
           {!view.connected
             ? <UpstreamNotConnected locale={locale} />
             : (
                 <RefinableList
                   open={paneOpen}
-                  busy={false}
+                  busy={busy}
                   locale={locale}
                   onToggle={togglePane}
                   inForce={inForce}
@@ -135,13 +134,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                       {view.rows.map((row) => (
                         <tr key={row.applicationId}>
                           <Td stuck={0} nowrap>
-                            <Link
-                              to={href(
-                                locale,
-                                adminUpstreamBranchPath(row.applicationId)
-                                + draftTargetQuery(view.target?.draftId ?? null),
-                              )}
-                            >
+                            <Link to={href(locale, adminUpstreamBranchPath(row.applicationId))}>
                               {row.applicationId}
                             </Link>
                           </Td>
@@ -310,7 +303,6 @@ function Presented({ view }: { view: ViewProps["view"] }) {
       {view.order !== branchOrder(view.sort)
         && <input type="hidden" name="order" value={view.order} />}
       {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
-      {view.target !== null && <input type="hidden" name="draft" value={view.target.draftId} />}
     </>
   )
 }
@@ -328,7 +320,6 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Branch
     sort: view.sort === BRANCH_SORT ? null : view.sort,
     order: view.order === branchOrder(view.sort) ? null : view.order,
     size: view.size === PAGE_SIZE ? null : view.size,
-    draft: view.target?.draftId ?? null,
     ...over,
   }))
 }

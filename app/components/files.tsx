@@ -2,6 +2,7 @@ import { useRef, useState, type DragEvent } from "react"
 import { Form } from "react-router"
 
 import { mapConcurrently } from "~/concurrency"
+import { dayInJst } from "~/dates"
 import {
   formatSize,
   isUploadableName,
@@ -15,15 +16,18 @@ import { filePath } from "~/public/urls"
 import {
   Badge,
   Button,
+  ButtonLink,
   Confirm,
   Fold,
   IconButton,
   Note,
   Progress,
   Stack,
+  Stated,
   TOAST_MS,
 } from "./base"
-import { CONTROL, SelectAll, SelectOne, Submit } from "./form"
+import { SlugEditor } from "./contents"
+import { CONTROL, Submit } from "./form"
 import { Icon } from "./icons"
 import { Empty, Paging, Table, Td } from "./page"
 
@@ -117,78 +121,160 @@ function NotPublicYet({ locale, humLabel, name }: {
 }
 
 /**
- * The box as an administrator works with it: both buckets in one list, with the
- * switches that have not finished marked on the lines they apply to.
+ * The box as an administrator works with it: both buckets in one list, and
+ * every act on the row it acts on.
  *
- * Switching and deleting take a selection, because that is how the work
- * actually arrives — the publish screen sends people here with a list of files
- * to make public, not with one.
+ * **Nothing is chosen and then acted on from the foot of the table.** A press
+ * that names nothing, over rows that have scrolled, is the way to switch or
+ * delete the wrong file; the one place several files are made public at once
+ * is the publish confirmation, which sends its own list
+ * (docs/files.md の「画面」).
+ *
+ * **The name is not pressed.** A public file opens as a download, and a fetch
+ * that starts because a name was read is not one the reader decided on; the
+ * download stands beside the name as an act of its own, and a file nobody
+ * outside can reach offers neither it nor its address.
  */
-export function BoxTable({ locale, rows, humLabel }: {
+export function BoxTable({ locale, rows, humLabel, whenEmpty }: {
   locale: Locale
   rows: readonly BoxEntry[]
   humLabel: string | null
+  /** What to say in place of the rows when there are none. The box's own word by default. */
+  whenEmpty?: string
 }) {
-  const t = messagesFor(locale).admin.files
+  const messages = messagesFor(locale)
+  const t = messages.admin.files
 
   return (
-    <Form method="post">
-      <Stack gap="normal">
-        <Table
-          headers={[<SelectAll key="all" name="name" label={t.selectAll} />, t.name, t.size, t.updatedAt, t.state]}
-          whenEmpty={t.empty}
-        >
-          {rows.map((row) => (
-            <tr key={row.name}>
-              <Td>
-                <SelectOne name="name" value={row.name} />
-              </Td>
-              <Td className="break-all">
-                {row.isPublic && humLabel !== null
-                  ? <a href={filePath(humLabel, row.name)}>{row.name}</a>
-                  : row.name}
-              </Td>
-              <Td className="whitespace-nowrap text-right">{formatSize(row.size)}</Td>
-              <Td className="whitespace-nowrap">{row.updatedAt.slice(0, 10)}</Td>
-              <Td className="whitespace-nowrap">
-                <State locale={locale} entry={row} />
-              </Td>
-            </tr>
-          ))}
-        </Table>
+    <Table
+      // No cell of a row runs to a second line but the name, and the row
+      // holds controls a line taller than its words.
+      align="middle"
+      headers={[
+        t.name,
+        { text: t.size, align: "right" },
+        t.updatedAt,
+        t.state,
+        /* The column of things to press names itself for anyone reading
+           the row aloud and nowhere else. */
+        <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+      ]}
+      whenEmpty={whenEmpty ?? t.empty}
+    >
+      {rows.map((row) => (
+        <BoxRow key={row.name} row={row} humLabel={humLabel} locale={locale} />
+      ))}
+    </Table>
+  )
+}
 
-        {/* Nothing to act on, so nothing to act with — the table stays, because
-            the column names are what say what was being looked for. */}
-        {rows.length > 0 && (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            {/* **Neither direction is asked about: each is the other's undo.**
-                What a panel is for is the press there is no second press for —
-                which here is the delete beside them. */}
-            <Submit intent="publish" variant="secondary" icon={<Icon name="upload" />}>{t.publish}</Submit>
-            <Submit intent="unpublish" variant="secondary" icon={<Icon name="lock" />}>
-              {t.unpublish}
+/**
+ * One file, and the five things done to it: fetched, its address copied,
+ * switched to the other side, renamed, deleted.
+ *
+ * **The switch is one control that offers the other side.** Which side the
+ * file is on, the row already says; the control says where a press would
+ * take it. **While a switch runs it says so and cannot be pressed** — the
+ * bytes are being copied and a second wish in the meantime would only be
+ * queued behind the first (docs/files.md の「切り替えの job」). Renaming waits
+ * for the same reason: which side to rename on is not settled.
+ *
+ * **Renaming a public file moves its address**, which is the break deleting it
+ * makes, so the way in wears the same face and the same panel every slug is
+ * changed in (`SlugEditor`).
+ */
+function BoxRow({ row, humLabel, locale }: {
+  row: BoxEntry
+  humLabel: string | null
+  locale: Locale
+}) {
+  const t = messagesFor(locale).admin.files
+  const address = humLabel === null ? null : filePath(humLabel, row.name)
+  const reachable = row.isPublic && address !== null
+  const running = row.pending !== null && !row.pending.failed
+  const switching = running
+    ? t.switchingReason(row.pending?.action === "publish" ? t.movingToPublic : t.movingToPrivate)
+    : undefined
+
+  return (
+    <tr>
+      <Td className="break-all">{row.name}</Td>
+      <Td nowrap className="text-right tabular-nums">{formatSize(row.size)}</Td>
+      <Td nowrap>{dayInJst(row.updatedAt)}</Td>
+      <Td nowrap>
+        <State locale={locale} entry={row} />
+      </Td>
+      <Td nowrap holds="control">
+        <span className="flex items-center gap-1">
+          {reachable && (
+            <ButtonLink
+              to={address}
+              external
+              download
+              size="row"
+              icon={<Icon name="download" />}
+            >
+              {t.download}
+            </ButtonLink>
+          )}
+          {reachable && <CopyAddress address={address} locale={locale} />}
+          <Form method="post">
+            <input type="hidden" name="name" value={row.name} />
+            <Submit
+              intent={row.isPublic ? "unpublish" : "publish"}
+              size="row"
+              icon={<Icon name={row.isPublic ? "lock" : "upload"} />}
+              disabled={switching}
+            >
+              {running ? t.switchingNow : row.isPublic ? t.unpublish : t.publish}
             </Submit>
+          </Form>
+          <Form method="post">
+            <input type="hidden" name="from" value={row.name} />
+            <SlugEditor
+              locale={locale}
+              intent="rename"
+              name="to"
+              value={row.name}
+              hint={t.renameHint}
+              size="row"
+              disabled={running ? t.renameSwitching : undefined}
+            />
+          </Form>
+          <Form method="post">
+            <input type="hidden" name="name" value={row.name} />
             <Confirm
               label={t.delete}
-              title={t.deleteTitle}
+              title={t.deleteTitle(row.name)}
               warning={t.deleteWarning}
               confirm={t.deleteConfirm}
               cancel={t.cancel}
               intent="delete"
+              size="row"
             />
-          </div>
-        )}
-      </Stack>
-    </Form>
+          </Form>
+        </span>
+      </Td>
+    </tr>
   )
 }
 
+/**
+ * Which side the file is on. **A switch that failed is said here**, with the
+ * store's own words: the control beside it is pressable again, and the reason
+ * the last press did not take is what decides whether to press it.
+ */
 function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   const t = messagesFor(locale).admin.files
-  if (entry.pending !== null) {
-    const moving = entry.pending.action === "publish" ? t.movingToPublic : t.movingToPrivate
-    if (!entry.pending.failed) return <Badge tone="accent">{moving}</Badge>
-    return (
+  // Every row has a side, so the side is a mark and a word rather than a box
+  // (docs/ui.md の「壊れるもの」); only a failure is a box.
+  const side = entry.isPublic
+    ? <Stated icon="eye">{t.isPublic}</Stated>
+    : <Stated icon="lock">{t.isPrivate}</Stated>
+  if (entry.pending?.failed !== true) return side
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {side}
       <Badge tone="danger">
         {t.failed}
         {/* The store's own words, untranslated: a message nobody wrote cannot be. */}
@@ -196,9 +282,8 @@ function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
           <span className="ml-1 text-ink-muted">{entry.pending.lastError}</span>
         )}
       </Badge>
-    )
-  }
-  return <Badge tone={entry.isPublic ? "brand" : "muted"}>{entry.isPublic ? t.isPublic : t.isPrivate}</Badge>
+    </span>
+  )
 }
 
 interface UploadProgress {
@@ -217,8 +302,17 @@ interface UploadProgress {
  * parts are signed — beginning and completing need credentials this page does
  * not have.
  *
+ * **A name the box already holds is asked about before anything is sent.** The
+ * name is the key, so sending it again replaces what is there and nothing brings
+ * that back; the server is asked which of the chosen names are there, and only
+ * those are put to the reader, in one question for the whole choice. A choice
+ * with no such name is sent without a word. The question is a `Confirm` held
+ * open by the choice itself: nothing was pressed to open it, so it has no way
+ * in of its own.
+ *
  * There is no resume. Closing the page abandons whatever is in flight, and the
- * file is sent again from the beginning under the same name, which overwrites.
+ * file is sent again from the beginning under the same name — which, being the
+ * same name, is asked about again.
  *
  * **The chooser stays a plain input rather than `FileField`.** What sends the
  * bytes is this component, not a form submission, so there is nothing for
@@ -244,6 +338,15 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
   const [badName, setBadName] = useState(false)
   const [folder, setFolder] = useState(false)
   const [over, setOver] = useState(false)
+  /** Whether the server is being asked which names it already holds. */
+  const [asking, setAsking] = useState(false)
+  /** The question could not be put, so nothing was sent. */
+  const [unchecked, setUnchecked] = useState(false)
+  /**
+   * A choice waiting on the reader's answer: the files, and the names among
+   * them the box already holds. Null while nothing is being asked.
+   */
+  const [pending, setPending] = useState<{ files: File[], existing: string[] } | null>(null)
   const aborter = useRef<AbortController | null>(null)
   const input = useRef<HTMLInputElement>(null)
   /**
@@ -256,12 +359,39 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
    */
   const depth = useRef(0)
 
+  /** Forgets the choice, so choosing the same files again is a new change. */
+  const forgetChoice = () => {
+    if (input.current !== null) input.current.value = ""
+  }
+
   const send = async (files: File[]) => {
     setDone(false)
+    setUnchecked(false)
     setBadName(files.some((file) => !isUploadableName(file.name)))
     const sendable = files.filter((file) => isUploadableName(file.name))
     if (sendable.length === 0) return
 
+    setAsking(true)
+    let existing: string[]
+    try {
+      existing = await whichExist(endpoint, sendable.map((file) => file.name))
+    } catch {
+      // Not knowing is not the same as knowing there is nothing there: the
+      // choice is dropped rather than sent over whatever it might replace.
+      setAsking(false)
+      setUnchecked(true)
+      forgetChoice()
+      return
+    }
+    setAsking(false)
+    if (existing.length > 0) {
+      setPending({ files: sendable, existing })
+      return
+    }
+    await transfer(sendable)
+  }
+
+  const transfer = async (sendable: File[]) => {
     const controller = new AbortController()
     aborter.current = controller
     setProgress(sendable.map((file) => ({ name: file.name, percent: 0, failed: false })))
@@ -282,13 +412,17 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
     aborter.current = null
     setProgress([])
     setDone(true)
-    if (input.current !== null) input.current.value = ""
+    forgetChoice()
     // The listing is read on the server, so what was just sent appears by
     // asking for the page again rather than by patching the table.
     window.location.reload()
   }
 
-  const busy = progress.length > 0
+  const sending = progress.length > 0
+  // Nothing more is taken while a choice is being asked about, on the server
+  // or of the reader — a second drop in the meantime would be a second answer
+  // to the same question.
+  const busy = sending || asking || pending !== null
 
   /** Whether what is being dragged is files at all, rather than a selection. */
   const holdsFiles = (event: DragEvent<HTMLDivElement>): boolean =>
@@ -362,10 +496,17 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
           that opens the picker; it is only kept out of sight, and the button
           presses it.
         */}
-        <div className="flex flex-col items-center gap-2 text-center">
+        <div className="flex flex-col items-center gap-3 text-center">
           <Icon name="upload" className="text-3xl text-ink-muted" aria-hidden="true" />
-          <p className="font-semibold text-ink text-sm">{t.uploadDrop}</p>
-          {hint !== undefined && <p className="text-ink-muted text-xs">{hint}</p>}
+          {/* **The sentence and what follows it are one block, in one size.**
+              What becomes of a file is the second half of what the panel says,
+              not a footnote to it: the same 14px, the quieter colour, and the
+              gap of lines within a paragraph rather than the gap between
+              things. */}
+          <div className="flex flex-col gap-1 text-sm">
+            <p className="font-semibold text-ink">{t.uploadDrop}</p>
+            {hint !== undefined && <p className="text-ink-muted">{hint}</p>}
+          </div>
           <input
             ref={input}
             type="file"
@@ -385,15 +526,36 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
             >
               {t.chooseFiles}
             </Button>
-            {busy && (
+            {sending && (
               <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>
                 {t.uploadCancel}
               </Button>
             )}
           </div>
         </div>
+        {/* **The names are in the sentence, not in a list of their own**: the
+            question is about those names, and a reader deciding whether to
+            press is deciding about exactly them. */}
+        <Confirm
+          held={{
+            open: pending !== null,
+            close: () => {
+              setPending(null)
+              forgetChoice()
+            },
+          }}
+          title={t.overwriteTitle}
+          warning={t.overwriteWarning(pending?.existing.length ?? 0, pending?.existing.join(", ") ?? "")}
+          confirm={t.overwrite}
+          cancel={t.cancel}
+          icon="upload"
+          onConfirm={() => {
+            if (pending !== null) void transfer(pending.files)
+          }}
+        />
         {folder && <Note kind="danger">{t.uploadFolder}</Note>}
         {badName && <Note kind="danger">{t.uploadBadName}</Note>}
+        {unchecked && <Note kind="danger">{t.uploadCheckFailed}</Note>}
         {done && <Note kind="done">{t.uploadDone}</Note>}
         {progress.map((row) => (
           row.failed
@@ -588,23 +750,37 @@ function put(
 }
 
 type UploadAsk
-  = | { kind: "single", name: string, size: number, contentType: string }
+  = | { kind: "check", names: string[] }
+    | { kind: "single", name: string, size: number, contentType: string }
     | { kind: "begin", name: string, size: number, contentType: string, partCount: number }
     | { kind: "complete", name: string, uploadId: string, parts: UploadedPart[] }
     | { kind: "abort", name: string, uploadId: string }
 
 interface UploadAnswer {
   kind: string
+  existing?: string[]
   url?: string
   uploadId?: string
   urls?: string[]
+}
+
+/** Which of the names the box already holds, as the server lists them. */
+async function whichExist(endpoint: string, names: string[]): Promise<string[]> {
+  const answer = await ask(endpoint, { kind: "check", names }, undefined)
+  if (answer.kind !== "check") throw new Error("the server answered with the wrong shape")
+  return answer.existing
 }
 
 async function ask(
   endpoint: string,
   body: UploadAsk,
   signal: AbortSignal | undefined,
-): Promise<{ kind: "single", url: string } | { kind: "begin", uploadId: string, urls: string[] } | { kind: "done" }> {
+): Promise<
+  | { kind: "check", existing: string[] }
+  | { kind: "single", url: string }
+  | { kind: "begin", uploadId: string, urls: string[] }
+  | { kind: "done" }
+> {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -613,6 +789,9 @@ async function ask(
   })
   if (!response.ok) throw new Error(`the server refused the upload (${response.status})`)
   const answer = await response.json() as UploadAnswer
+  if (answer.kind === "check" && answer.existing !== undefined) {
+    return { kind: "check", existing: answer.existing }
+  }
   if (answer.kind === "single" && answer.url !== undefined) {
     return { kind: "single", url: answer.url }
   }
@@ -676,9 +855,9 @@ export function FileSelection({ locale, listing, selected, onChange }: {
                 {entry !== undefined && (
                   <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
                 )}
-                <Badge tone={entry?.isPublic === true ? "brand" : "muted"}>
-                  {entry?.isPublic === true ? files.isPublic : files.isPrivate}
-                </Badge>
+                {entry?.isPublic === true
+                  ? <Stated icon="eye">{files.isPublic}</Stated>
+                  : <Stated icon="lock">{files.isPrivate}</Stated>}
                 <IconButton
                   name="chevron-up"
                   label={files.moveUp}

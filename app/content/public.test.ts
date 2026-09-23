@@ -53,10 +53,7 @@ describe("publicResearchContent", () => {
         name: { ja: UNKNOWN, en: UNKNOWN },
         organization: {
           name: { ja: filled("大学"), en: filled("University") },
-          address: { ja: filled(""), en: filled("") },
         },
-        orcid: filled(""),
-        email: filled(""),
       }],
     }
 

@@ -8,13 +8,14 @@ import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/emp
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
-import { seedVersion } from "~/db/seed"
+import { seedDataset, seedVersion } from "~/db/seed"
 
-import { createResearchWithDraft, saveDraftContent } from "./drafts.server"
+import { createDatasetInDraft, createResearchWithDraft, saveDraftContent } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
 import {
   createResearchAction,
   datasetEditorPage,
+  datasetLabelAction,
   draftDatasetListAction,
   draftDatasetListPage,
   draftEditorPage,
@@ -404,7 +405,7 @@ describe("saving a draft", () => {
 })
 
 describe("the research screen's forms", () => {
-  it("opens a new research and sends the browser to the draft it was given", async () => {
+  it("opens a new research and sends the browser to the research itself, not into its draft", async () => {
     const token = await signIn(CURATOR, true)
 
     // The language is passed in and makes no difference: the management area
@@ -412,13 +413,20 @@ describe("the research screen's forms", () => {
     const response = await createResearchAction(postForm(token, "/admin/research", {}), "en")
 
     expect(response.status).toBe(302)
-    expect(response.headers.get("location"))
-      .toMatch(/^\/admin\/research\/[0-9a-f-]{36}\/draft\/[0-9a-f-]{36}$/)
+    const location = response.headers.get("location") ?? ""
+    expect(location).toMatch(/^\/admin\/research\/[0-9a-f-]{36}$/)
+
+    // The draft it will be written in is already there, waiting as the one row.
+    const researchId = location.slice("/admin/research/".length)
+    const drafts = await db.select({ id: s.researchDraft.id }).from(s.researchDraft)
+      .where(eq(s.researchDraft.researchId, researchId))
+    expect(drafts).toHaveLength(1)
   })
 
-  it("opens a draft of an existing research and sends the browser to it", async () => {
+  it("opens an empty draft whatever is published, and sends the browser to it", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1, body: { title: { ja: filled("出ている"), en: filled("") } } })
 
     const response = await researchDetailAction(
       postForm(token, "/x", { intent: "create-draft" }),
@@ -427,7 +435,129 @@ describe("the research screen's forms", () => {
     )
 
     expect(response).toBeInstanceOf(Response)
+    if (!(response instanceof Response)) return
+    const opened = response.headers.get("location")?.split("/").at(-1) ?? ""
+    const draft = await readDraft(db, opened)
+    expect(draft?.content).toEqual(emptyResearchContent())
     expect(await db.select().from(s.researchDraft)).toHaveLength(2)
+  })
+
+  it("copies a version into a new draft each time, and sends the browser to it", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 2, body: { title: { ja: filled("v2 の題"), en: filled("") } } })
+
+    const copy = () => researchDetailAction(
+      postForm(token, "/x", { intent: "copy-version", number: "2" }),
+      "ja",
+      researchId,
+    )
+    const first = await copy()
+    const again = await copy()
+
+    if (!(first instanceof Response) || !(again instanceof Response)) throw new Error("expected redirects")
+    expect(first.headers.get("location")).toMatch(new RegExp(`^/admin/research/${researchId}/draft/`))
+    expect(again.headers.get("location")).not.toBe(first.headers.get("location"))
+    const opened = await readDraft(db, first.headers.get("location")?.split("/").at(-1) ?? "")
+    expect(opened?.content.title.ja).toEqual(filled("v2 の題"))
+    expect(await db.select().from(s.researchDraft)).toHaveLength(3)
+  })
+
+  it("edits a version by opening the draft it is updated in, and leaves the version out", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const versionId = await seedVersion(db, { researchId, number: 2, body: { title: { ja: filled("出ている"), en: filled("") } } })
+
+    const edit = () => researchDetailAction(
+      postForm(token, "/x", { intent: "edit-version", versionId }),
+      "ja",
+      researchId,
+    )
+    const response = await edit()
+    const again = await edit()
+
+    if (!(response instanceof Response) || !(again instanceof Response)) throw new Error("expected redirects")
+    const opened = response.headers.get("location")?.split("/").at(-1) ?? ""
+    expect(response.headers.get("location")).toBe(`/admin/research/${researchId}/draft/${opened}`)
+    // The same draft the second time: the update is one thing.
+    expect(again.headers.get("location")).toBe(response.headers.get("location"))
+    const draft = await readDraft(db, opened)
+    expect(draft?.content.title.ja).toEqual(filled("出ている"))
+    expect(draft?.updating).toEqual({ versionId, number: 2 })
+    // The version is untouched; the draft is the one it is updated in.
+    expect(await db.select().from(s.researchVersion)).toHaveLength(1)
+    expect(await db.select().from(s.researchDraft)).toHaveLength(2)
+  })
+
+  it("refuses to withdraw a version while it is being updated, and the version stays", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const versionId = await seedVersion(db, { researchId, number: 2 })
+    await researchDetailAction(
+      postForm(token, "/x", { intent: "edit-version", versionId }),
+      "ja",
+      researchId,
+    )
+
+    const result = await researchDetailAction(
+      postForm(token, "/x", { intent: "withdraw-version", versionId }),
+      "ja",
+      researchId,
+    )
+
+    expect(result).toEqual({ status: "updating" })
+    expect(await db.select().from(s.researchVersion)).toHaveLength(1)
+  })
+
+  it("answers not found for a version the research does not hold", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1 })
+
+    const response = await thrown(() => researchDetailAction(
+      postForm(token, "/x", { intent: "copy-version", number: "3" }),
+      "ja",
+      researchId,
+    ))
+
+    expect(response.status).toBe(404)
+    expect(await db.select().from(s.researchDraft)).toHaveLength(1)
+  })
+
+  it("makes a secondary research ID primary and keeps the old one as secondary", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await researchDetailAction(postForm(token, "/x", { intent: "pin", label: "hum0001", isPrimary: "on" }), "ja", researchId)
+    await researchDetailAction(postForm(token, "/x", { intent: "pin", label: "hum0002" }), "ja", researchId)
+    const before = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    const second = before.labels.find((label) => label.label === "hum0002")
+    expect(second?.isPrimary).toBe(false)
+
+    const response = await researchDetailAction(
+      postForm(token, "/x", { intent: "make-primary", pinId: second?.id ?? "" }),
+      "ja",
+      researchId,
+    )
+
+    expect(response).toBeInstanceOf(Response)
+    const after = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(after.labels.map((label) => [label.label, label.isPrimary]))
+      .toEqual([["hum0002", true], ["hum0001", false]])
+    expect(after.humLabel).toBe("hum0002")
+  })
+
+  it("pins only research IDs on the research screen, so a dataset id is malformed there", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+
+    const answer = await researchDetailAction(
+      postForm(token, "/x", { intent: "pin", label: "JGAD000001", kind: "dataset" }),
+      "ja",
+      researchId,
+    )
+
+    expect(answer).toEqual({ status: "malformed" })
+    expect(await db.select().from(s.labelPin)).toEqual([])
   })
 
   it("discards a draft and comes back to the research", async () => {
@@ -476,6 +606,58 @@ describe("the research screen's forms", () => {
 
     expect(response.status).toBe(404)
     expect(await readDraft(db, draftId)).not.toBeNull()
+  })
+})
+
+describe("the research screen's table", () => {
+  it("counts a draft's datasets and carries what its publish gate would stop", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    const before = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    const empty = before.reviews.find((row) => row.draftId === draftId)
+    expect(empty?.datasets).toBe(0)
+    // No research ID is pinned yet, which the gate always stops on.
+    expect(empty?.blocks).toBeGreaterThan(0)
+
+    await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
+
+    const after = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(after.reviews.find((row) => row.draftId === draftId)?.datasets).toBe(1)
+  })
+
+  it("counts a published version's own datasets, and an updating one's draft instead", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const first = await seedDataset(db, researchId, "JGAD000001")
+    const second = await seedDataset(db, researchId, "JGAD000002")
+    const versionId = await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{ datasetId: first }, { datasetId: second }],
+    })
+
+    const published = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(published.versions.find((row) => row.id === versionId)?.datasets).toBe(2)
+
+    await researchDetailAction(
+      postForm(token, "/x", { intent: "edit-version", versionId }),
+      "ja",
+      researchId,
+    )
+    const updating = only(await db
+      .select({ id: s.researchDraft.id })
+      .from(s.researchDraft)
+      .where(eq(s.researchDraft.replacesVersionId, versionId)))
+    // The update starts as a copy of the two published, then a third is added.
+    await createDatasetInDraft(db, { draftId: updating.id, revision: 1 }, researchId)
+
+    const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    // The version's own row still says what is published — two — while the
+    // count that moved is read off the updating draft the same way a plain
+    // draft's is, not stored a second time on the version.
+    expect(view.versions.find((row) => row.id === versionId)?.datasets).toBe(2)
+    expect(view.reviews.find((row) => row.draftId === updating.id)?.datasets).toBe(3)
   })
 })
 
@@ -771,6 +953,129 @@ describe("the dataset screens of a draft", () => {
       "ja",
       params,
     )).toEqual({ status: "refused" })
+  })
+
+  it("pins a dataset's id from its own screen and takes it off again, leaving the entry alone", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", { researchId, draftId })
+    const listing = await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })
+    const datasetId = listing.rows[0]?.id ?? ""
+    const params = { researchId, draftId, datasetId }
+
+    expect(await datasetLabelAction(postForm(token, "/x", { intent: "pin", label: "JGAD000777" }), params))
+      .toEqual({ status: "pinned" })
+    const pinned = await datasetEditorPage(get(token, "/x"), "ja", params)
+    expect(pinned.datasetLabel).toBe("JGAD000777")
+    expect(pinned.datasetPinId).not.toBeNull()
+    expect(pinned.datasetIdSuggestion).toBeNull()
+    // The ledger moved; the draft's rows did not.
+    expect((await readDraft(db, draftId))?.revision).toBe(listing.revision)
+
+    expect(await datasetLabelAction(
+      postForm(token, "/x", { intent: "unpin", pinId: pinned.datasetPinId ?? "" }),
+      params,
+    )).toEqual({ status: "unpinned" })
+    expect((await datasetEditorPage(get(token, "/x"), "ja", params)).datasetLabel).toBeNull()
+  })
+
+  it("refuses an id another dataset holds, and an unpin naming another dataset's row", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", { researchId, draftId })
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "2" }), "ja", { researchId, draftId })
+    const [one, two] = (await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })).rows
+    const first = { researchId, draftId, datasetId: one?.id ?? "" }
+    const second = { researchId, draftId, datasetId: two?.id ?? "" }
+    await datasetLabelAction(postForm(token, "/x", { intent: "pin", label: "JGAD000777" }), first)
+    const firstPin = (await datasetEditorPage(get(token, "/x"), "ja", first)).datasetPinId ?? ""
+
+    expect(await datasetLabelAction(postForm(token, "/x", { intent: "pin", label: "JGAD000777" }), second))
+      .toEqual({ status: "taken" })
+    const refused = await thrown(() => datasetLabelAction(
+      postForm(token, "/x", { intent: "unpin", pinId: firstPin }),
+      second,
+    ))
+    expect(refused.status).toBe(404)
+    expect((await datasetEditorPage(get(token, "/x"), "ja", first)).datasetLabel).toBe("JGAD000777")
+  })
+
+  it("proposes an id under the research's hum label while the dataset has none", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await researchDetailAction(postForm(token, "/x", { intent: "pin", label: "hum0042", isPrimary: "on" }), "ja", researchId)
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", { researchId, draftId })
+    const datasetId = (await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })).rows[0]?.id ?? ""
+
+    const view = await datasetEditorPage(get(token, "/x"), "ja", { researchId, draftId, datasetId })
+
+    expect(view.datasetIdSuggestion).toBe("hum0042-NHA001")
+  })
+
+  it("decides what the version lists, and in what order, from the listing screen", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const params = { researchId, draftId }
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", params)
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "2" }), "ja", params)
+    const made = await draftDatasetListPage(get(token, "/x"), "ja", params)
+    const [a, b] = made.listedIds
+    expect(made.revision).toBe(3)
+
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "move-dataset", datasetId: b ?? "", by: "-1", revision: "3" }),
+      "ja",
+      params,
+    )).toBeInstanceOf(Response)
+    expect((await draftDatasetListPage(get(token, "/x"), "ja", params)).listedIds).toEqual([b, a])
+
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "unlist-dataset", datasetId: a ?? "", revision: "4" }),
+      "ja",
+      params,
+    )).toBeInstanceOf(Response)
+    const unlisted = await draftDatasetListPage(get(token, "/x"), "ja", params)
+    expect(unlisted.listedIds).toEqual([b])
+    expect(unlisted.rows.find((row) => row.id === a)?.listed).toBe(false)
+
+    // A stale screen changes nothing.
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "list-dataset", datasetId: a ?? "", revision: "4" }),
+      "ja",
+      params,
+    )).toEqual({ status: "conflict" })
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "list-dataset", datasetId: a ?? "", revision: "5" }),
+      "ja",
+      params,
+    )).toBeInstanceOf(Response)
+    expect((await draftDatasetListPage(get(token, "/x"), "ja", params)).listedIds).toEqual([b, a])
+  })
+
+  it("refuses to list a dataset of another research, and a step that names no direction", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const other = await createResearchWithDraft(db)
+    await draftDatasetListAction(
+      postForm(token, "/x", { intent: "create-dataset", revision: "1" }),
+      "ja",
+      { researchId: other.researchId, draftId: other.draftId },
+    )
+    const theirs = (await draftDatasetListPage(get(token, "/x"), "ja", other)).rows[0]?.id ?? ""
+
+    const refused = await thrown(() => draftDatasetListAction(
+      postForm(token, "/x", { intent: "list-dataset", datasetId: theirs, revision: "1" }),
+      "ja",
+      { researchId, draftId },
+    ))
+    expect(refused.status).toBe(400)
+    const sideways = await thrown(() => draftDatasetListAction(
+      postForm(token, "/x", { intent: "move-dataset", datasetId: theirs, by: "2", revision: "1" }),
+      "ja",
+      { researchId, draftId },
+    ))
+    expect(sideways.status).toBe(400)
+    expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
   })
 
   it("records who is editing and answers with everybody, marking the one who asked", async () => {

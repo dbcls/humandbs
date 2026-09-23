@@ -55,6 +55,12 @@ Analysis method」で、これは v1 が使っていた語。
 | 国 | 国・州名 | Country/Region |
 | データ利用期間 | データ利用期間 | Period of data use |
 | ダウンロード | ダウンロード | Downloads |
+| カバレッジ (深度) | カバレッジ (深度) | Coverage (depth) |
+| カバレッジ (割合) | カバレッジ (割合) | Coverage (breadth) |
+
+v1 の `Coverage` は深度 (`30x`) と割合 (`98%`) の 2 つの量を 1 つのキーに持っていたので、v2 は 2 つの
+キーに割る ([data-model.md](data-model.md) の「catalog と語彙」)。どちらも v1 に無い新しい訳語なので、
+ここで固定する。
 
 ## 日付
 
@@ -69,21 +75,29 @@ v1 の dataset は「バージョン公開日 / Version release date」と「更
 ## 編集と公開
 
 curator が見る語。**未確定と該当なしと未翻訳は preview にも出る**ので、提供者が読んで分かる語である
-必要がある。
+必要がある。**未確定だけは preview で赤い「ご教示ください」になる** — 提供者に見せる場所では状態の名前ではなく
+依頼として読ませ、答えはその欄のコメントに書いてもらう ([editing.md](editing.md) の「レビュー」)。admin の
+画面では「未確定」。
 
 | 概念 | ja | en |
 |---|---|---|
 | draft | 下書き | Draft |
 | 公開する | 公開 | Publish |
 | 取り下げる | 取り下げ | Withdraw |
-| 未確定 (unknown) | 未確定 | Unsettled |
+| 未確定 (unknown) | 未確定 (preview では「ご教示ください」) | Unsettled (preview: Please let us know) |
 | 該当なし | 該当なし | Not applicable |
 | 未翻訳 | 未翻訳 | Untranslated |
 | 共有リンク | 共有リンク | Share link |
 | preview | プレビュー | Preview |
+| 閲覧者の印: コメントを書き終えた | コメントを書き終えました。事務局に確認をお願いします | I have finished commenting. Please review my comments |
+| 閲覧者の印: 直すところは無い | 直すところはありません。この内容で問題ありません | Nothing to fix. The content is fine as it is |
 | catalog のキー | key | Key |
 | 語彙値 | 値 | Value |
 | 語彙型 | 選択肢 | Choice |
+| alert (全ページの上部の 1 文) | アラート | Announcement |
+
+**alert は「アラート」で、「告知」「お知らせ」とは呼ばない** — 「お知らせ」は news の名前で、公開側も管理側も
+同じ 1 文を同じ語で呼ぶ。
 
 **`catalog` も `vocabulary` もモデル上の名前で、画面には出さない。** curator が口で言うのは「データセットが
 解析手法の表を持つ」「表の key と値」で、値の候補を決まった集合から取る型が「選択肢」になる。仕様の側は

@@ -28,7 +28,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, desc, eq, sql, type SQL } from "drizzle-orm"
+import { and, eq, sql, type SQL } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
@@ -366,64 +366,82 @@ async function writeSeededDatasets(
 }
 
 /**
- * A new draft of an existing research, copied from its newest version.
- *
- * A research with nothing published yet starts from empty content.
+ * An empty draft of an existing research. Nothing is copied into it: what it
+ * comes to hold is taken in afterwards — from a version, an application or an
+ * accession — or typed (docs/editing.md の「draft」).
  */
-export async function createDraft(db: Database, researchId: string): Promise<string> {
-  return db.transaction(async (tx) => {
-    const [latest] = await tx
-      .select({ number: researchVersion.number, content: researchVersion.content })
-      .from(researchVersion)
-      .where(eq(researchVersion.researchId, researchId))
-      .orderBy(desc(researchVersion.number))
-      .limit(1)
-    if (latest !== undefined) {
-      return draftFromVersion(tx, { researchId, number: latest.number, content: latest.content })
-    }
-
-    const draft = one(await tx
-      .insert(researchDraft)
-      .values({
-        researchId,
-        content: emptyResearchContent(),
-        shareToken: newShareToken(),
-      })
-      .returning({ id: researchDraft.id }))
-    return draft.id
-  })
+export async function createEmptyDraft(db: Database, researchId: string): Promise<string> {
+  const draft = one(await db
+    .insert(researchDraft)
+    .values({
+      researchId,
+      content: emptyResearchContent(),
+      shareToken: newShareToken(),
+    })
+    .returning({ id: researchDraft.id }))
+  return draft.id
 }
 
 /**
- * A draft for an application to be taken into, copied from the newest version.
+ * A new draft holding what a version holds. **A draft and nothing more**: it
+ * does not remember which version it came from, and which number it will be
+ * published under is asked when it is published (docs/editing.md の「draft」).
+ * Pressed twice, it makes two.
  *
- * **Whether it remembers the number is the whole of the difference** between
- * taking an update into what is published and taking it into a version that is
- * yet to be: the number is what the publish screen offers first, so a draft
- * that carries it replaces the version it came from and one that does not
- * becomes the next.
- *
- * Nothing is answered for a research with no version, which is a research the
- * new-research choice covers instead.
+ * Null for a number no version of the research holds.
  */
-export async function draftToTakeInto(
+export async function draftCopiedFrom(
   db: Database,
   researchId: string,
-  as: "replacement" | "next-version",
+  number: number,
 ): Promise<string | null> {
   return db.transaction(async (tx) => {
-    const [latest] = await tx
-      .select({ number: researchVersion.number, content: researchVersion.content })
+    const [version] = await tx
+      .select({ content: researchVersion.content })
       .from(researchVersion)
-      .where(eq(researchVersion.researchId, researchId))
-      .orderBy(desc(researchVersion.number))
+      .where(and(eq(researchVersion.researchId, researchId), eq(researchVersion.number, number)))
       .limit(1)
-    if (latest === undefined) return null
-    return draftFromVersion(
-      tx,
-      { researchId, number: latest.number, content: latest.content },
-      as === "replacement" ? latest.number : null,
-    )
+    if (version === undefined) return null
+    return draftFromVersion(tx, { researchId, content: version.content })
+  })
+}
+
+export type UpdatingOutcome
+  = | { status: "opened", draftId: string }
+    | { status: "gone" }
+
+/**
+ * The draft a version is updated in: the one already open for it, or a new one
+ * holding what the version holds.
+ *
+ * **The version is not touched.** It stays out while the draft is written, and
+ * publishing the draft is what puts it in the version's place, under the same
+ * number (docs/publishing.md の「版番号」). **One per version**, which the row
+ * lock is for: two presses find the same draft rather than racing the unique
+ * constraint. Gone for a version the research does not hold.
+ */
+export async function draftUpdating(
+  db: Database,
+  researchId: string,
+  versionId: string,
+): Promise<UpdatingOutcome> {
+  return db.transaction(async (tx): Promise<UpdatingOutcome> => {
+    const [version] = await tx
+      .select({ researchId: researchVersion.researchId, content: researchVersion.content })
+      .from(researchVersion)
+      .where(and(eq(researchVersion.id, versionId), eq(researchVersion.researchId, researchId)))
+      .limit(1)
+      .for("update")
+    if (version === undefined) return { status: "gone" }
+
+    const [open] = await tx
+      .select({ id: researchDraft.id })
+      .from(researchDraft)
+      .where(eq(researchDraft.replacesVersionId, versionId))
+      .limit(1)
+    if (open !== undefined) return { status: "opened", draftId: open.id }
+
+    return { status: "opened", draftId: await draftFromVersion(tx, version, versionId) }
   })
 }
 
@@ -433,23 +451,23 @@ export async function draftToTakeInto(
  *
  * **The copy is made once and in full**, rather than filled in as datasets are
  * touched. A draft that reached back to the version it came from would break
- * the moment that version was replaced or withdrawn — and the number it
- * remembers is a default for the publish screen, not a link: nothing checks it,
- * and a number naming a version that is gone simply stops being offered.
+ * the moment that version was withdrawn — and nothing about the version is
+ * kept: the draft does not know which one it came from.
  *
  * This is also what withdrawing does with the row it takes out of the table.
  */
 export async function draftFromVersion(
   tx: Transaction,
-  version: { researchId: string, number: number, content: VersionContent },
-  copiedFromNumber: number | null = version.number,
+  version: { researchId: string, content: VersionContent },
+  /** The version this draft is the update of, when it is one (`draftUpdating`). */
+  updates: string | null = null,
 ): Promise<string> {
   const draft = one(await tx
     .insert(researchDraft)
     .values({
       researchId: version.researchId,
       content: draftContentOf(version.content),
-      copiedFromNumber,
+      replacesVersionId: updates,
       shareToken: newShareToken(),
     })
     .returning({ id: researchDraft.id }))
@@ -590,6 +608,81 @@ export async function createDatasetInDraft(
     await tx.insert(dataset).values({ id: datasetId, researchId, originDraftId: at.draftId })
     return { status: "created", datasetId }
   })
+}
+
+/** What the listing screen does to which datasets the version lists. */
+export type ListingChange
+  = | { kind: "list", datasetId: string }
+    | { kind: "unlist", datasetId: string }
+    /** One step up (-1) or down (1) among the listed. */
+    | { kind: "move", datasetId: string, by: -1 | 1 }
+
+export type ListingOutcome
+  = | { status: "changed" }
+    | { status: "conflict" }
+    | { status: "gone" }
+    /** The dataset is not this research's, so it cannot be listed by it. */
+    | { status: "refused" }
+
+/**
+ * Which datasets the version lists, and in what order, changed by one step.
+ *
+ * The listing is research content, so it moves the draft's revision like a
+ * save does; it is changed here rather than by the editor's save because the
+ * datasets are decided on their own screen (docs/editing.md の「編集フォーム」).
+ * **A dataset of another research cannot be listed** — one belongs to exactly
+ * one research, and the screen never offers any other.
+ *
+ * A step that changes nothing (listing what is listed, moving the first row
+ * up) still moves the revision: the draft was written to, and the next save is
+ * checked against that.
+ */
+export async function changeListing(
+  db: Database,
+  at: DraftAt,
+  researchId: string,
+  change: ListingChange,
+): Promise<ListingOutcome> {
+  return db.transaction(async (tx) => {
+    const before = await currentContent(tx, at.draftId)
+    if (before === null) return { status: "gone" }
+
+    if (change.kind === "list") {
+      const [own] = await tx
+        .select({ id: dataset.id })
+        .from(dataset)
+        .where(and(eq(dataset.id, change.datasetId), eq(dataset.researchId, researchId)))
+        .limit(1)
+      if (own === undefined) return { status: "refused" }
+    }
+
+    const rows = await tx
+      .update(researchDraft)
+      .set({
+        content: { ...before, datasetIds: listingAfter(before.datasetIds, change) },
+        revision: sql`${researchDraft.revision} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
+      .returning({ revision: researchDraft.revision })
+    if (rows[0] === undefined) return { status: "conflict" }
+    return { status: "changed" }
+  })
+}
+
+/** The listing after one change. Pure, so that the screen and the server agree. */
+export function listingAfter(listed: readonly string[], change: ListingChange): string[] {
+  if (change.kind === "list") {
+    return listed.includes(change.datasetId) ? [...listed] : [...listed, change.datasetId]
+  }
+  if (change.kind === "unlist") return listed.filter((id) => id !== change.datasetId)
+  const at = listed.indexOf(change.datasetId)
+  const to = at + change.by
+  if (at === -1 || to < 0 || to >= listed.length) return [...listed]
+  const next = [...listed]
+  const [moved] = next.splice(at, 1)
+  if (moved !== undefined) next.splice(to, 0, moved)
+  return next
 }
 
 /**

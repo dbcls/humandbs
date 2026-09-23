@@ -1,23 +1,29 @@
 import { data, Form, Link } from "react-router"
 
-import { adminContentFilesPath, contentFileUploadPath } from "~/admin/urls"
 import {
-  Button,
+  adminContentFilesPath,
+  contentFileUploadPath,
+  filesQuery,
+  type FilesListingQuery,
+} from "~/admin/urls"
+import {
   Chooser,
   CHOOSER_SIDE,
   Confirm,
-  Dialog,
   Heading,
   MENU_ITEM,
   MENU_ITEM_HERE,
   Note,
   Stack,
 } from "~/components/base"
+import { SlugEditor } from "~/components/contents"
 import { CopyAddress, UploadPanel } from "~/components/files"
-import { Answered, Field, Result, Submit } from "~/components/form"
+import { Answered, Result } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
-import { BOX_SORT, BOX_SORT_KEYS, formatSize, type BoxSortKey, type StoredNode } from "~/files/box"
+import { Card, Code, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
+import { DateRange, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { dayInJst } from "~/dates"
+import { BOX_SORT, BOX_SORT_KEYS, formatSize, type StoredNode } from "~/files/box"
 import {
   commonFilesAction,
   commonFilesPage,
@@ -26,8 +32,10 @@ import {
 } from "~/files/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
-import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
+import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
+import { dateWindows } from "~/search/date-window"
 import { filePath, href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-files"
@@ -40,9 +48,11 @@ import type { Route } from "./+types/admin-contents-files"
  * both putting one in and taking one out are written into the audit trail,
  * unlike an upload into a research's box (docs/publishing.md の「証跡」).
  *
- * **The screen is the way in and the box, and nothing between them.** A heading
- * over a single upload panel and a second over the one table name what is
- * already the only thing there.
+ * **The screen is the way in and the box.** A heading over a single upload
+ * panel, and under it the one table with the pane the other listings carry: the
+ * box is looked through by the slug a body links and by the day a file was
+ * written, which are the two things a row says that a curator can have in mind
+ * (docs/files.md の「画面」).
  *
  * A body links to a file by writing its address, and nothing keeps that link
  * alive: deleting a file — or giving it a different slug — leaves whatever
@@ -85,6 +95,15 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
   const { locale } = view
   const messages = messagesFor(locale)
   const t = messages.admin.contents.files
+  const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
+
+  // Folded, the way back into the pane says how much is in force, because the
+  // conditions themselves are in the pane that is no longer on screen. **The
+  // two ends of the range are one condition**: the reader asked one question
+  // about the day, however many ends they gave it.
+  const inForce = (view.keyword === "" ? 0 : 1)
+    + (view.from === null && view.to === null ? 0 : 1)
 
   return (
     <Page>
@@ -97,7 +116,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
           浮いて見える。 */}
       <Card under={false}>
         <Stack gap="normal">
-          <Heading title={t.heading} />
+          <Heading title={t.heading} note={t.note} />
 
           <UploadPanel
             locale={locale}
@@ -112,8 +131,20 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
           {view.rows === null
             ? <Note kind="danger">{t.failed}</Note>
             : (
-                <Stack gap="normal">
-                  <Tools view={view} locale={locale} />
+                <RefinableList
+                  open={paneOpen}
+                  busy={busy}
+                  locale={locale}
+                  onToggle={togglePane}
+                  inForce={inForce}
+                  // The box is never alone in the pane here: the range of days
+                  // stands under it whatever the reader has asked for.
+                  refineHasMore
+                  refine={<Filters view={view} locale={locale} />}
+                  tools={<Tools view={view} locale={locale} />}
+                  pages={<Pages view={view} locale={locale} />}
+                  panel={null}
+                >
                   <Table
                     align="middle"
                     headers={[
@@ -126,16 +157,13 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                          said, and it drags the column off its own width. */
                       <span key="actions" className="sr-only">{messages.admin.actions}</span>,
                     ]}
-                    whenEmpty={t.none}
+                    whenEmpty={inForce === 0 ? t.none : t.noMatch}
                   >
                     {view.rows.map((row) => (
                       <Row key={row.name} row={row} locale={locale} />
                     ))}
                   </Table>
-                  <div className="flex justify-end">
-                    <Pages view={view} locale={locale} />
-                  </div>
-                </Stack>
+                </RefinableList>
               )}
         </Stack>
       </Card>
@@ -143,30 +171,104 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
   )
 }
 
+interface ViewProps {
+  view: CommonFilesView
+  locale: Locale
+}
+
 /**
  * This listing under a different setting.
  *
- * **What is at its default is left out of the address.** A reader who asked for
- * nothing is reading a bare address, and the link they copy out of the bar
- * carries no setting they never chose.
+ * **What is at its default is left out of the address** (`admin/urls.ts` の
+ * `filesQuery`). A reader who asked for nothing is reading a bare address, and
+ * the link they copy out of the bar carries no setting they never chose.
  *
  * **Changing anything but the page goes back to the first one.** Page 7 of an
  * ordering nobody has seen yet is not where anyone meant to land.
  */
-function at(view: CommonFilesView, over: {
-  sort?: BoxSortKey
-  order?: "asc" | "desc"
-  size?: PageSize
-  page?: number
-}): string {
-  const next = { sort: view.sort, order: view.order, size: view.size, page: 1, ...over }
-  const search = new URLSearchParams()
-  if (next.sort !== BOX_SORT) search.set("sort", next.sort)
-  if (next.order !== "asc") search.set("order", next.order)
-  if (next.size !== PAGE_SIZE) search.set("size", String(next.size))
-  if (next.page !== 1) search.set("page", String(next.page))
-  const written = search.toString()
-  return href(view.locale, adminContentFilesPath() + (written === "" ? "" : `?${written}`))
+function at(view: CommonFilesView, over: Partial<FilesListingQuery>): string {
+  return href(view.locale, adminContentFilesPath() + filesQuery({
+    keyword: view.keyword,
+    from: view.from,
+    to: view.to,
+    page: 1,
+    sort: view.sort === BOX_SORT ? null : view.sort,
+    order: view.order === "asc" ? null : view.order,
+    size: view.size === PAGE_SIZE ? null : view.size,
+    ...over,
+  }))
+}
+
+/**
+ * GET forms, so a narrowed box has an address that can be kept and shared —
+ * the rule every listing follows.
+ *
+ * **Nothing here waits to be confirmed.** The box asks once the typing has
+ * stopped, a window asks as it is pressed, and a day asks the moment it is
+ * whole.
+ *
+ * **The box and the days are two forms, and each carries what the other
+ * holds**, because a form cannot stand inside another.
+ */
+function Filters({ view, locale }: ViewProps) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.contents.files
+  const to = href(locale, adminContentFilesPath())
+  // The same four windows the public dates offer, opening from today and
+  // lifting only the days — the words typed stay in force.
+  const windows = dateWindows({
+    today: view.today,
+    from: view.from,
+    to: view.to,
+    labels: { all: messages.search.refine.presetAll, years: messages.search.refine.presetYears },
+    lifted: at(view, { from: null, to: null }),
+    opening: (from) => at(view, { from, to: null }),
+  })
+
+  return (
+    <Stack gap="normal">
+      <SearchBox
+        action={to}
+        name="q"
+        value={view.keyword}
+        label={t.find}
+        placeholder={messages.search.boxHint}
+        submit={messages.search.submit}
+        size="compact"
+        searchAsTyped
+      >
+        {view.from !== null && <input type="hidden" name="from" value={view.from} />}
+        {view.to !== null && <input type="hidden" name="to" value={view.to} />}
+        <Presented view={view} />
+      </SearchBox>
+
+      {/* **The day is the one the column shows** — the JST day the file was
+          written — so a range set against the days a reader can read keeps
+          exactly the rows they can see fall inside it (`files/box.ts` の
+          `narrowedBox`). Either end may be left open. */}
+      <RefineAxis label={t.sortKeys.updated}>
+        <DateRange locale={locale} action={to} windows={windows} from={view.from ?? ""} to={view.to ?? ""}>
+          <input type="hidden" name="q" value={view.keyword} />
+          <Presented view={view} />
+        </DateRange>
+      </RefineAxis>
+    </Stack>
+  )
+}
+
+/**
+ * How the result is presented, carried across a change of conditions. **Only
+ * what differs from the default is written**, so an unnarrowed box is still the
+ * bare address.
+ */
+function Presented({ view }: { view: CommonFilesView }) {
+  return (
+    <>
+      {view.sort !== BOX_SORT && <input type="hidden" name="sort" value={view.sort} />}
+      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
+      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
+    </>
+  )
 }
 
 /**
@@ -177,7 +279,7 @@ function at(view: CommonFilesView, over: {
  * same shape — a box of files and a list of research are both listings, and a
  * reader who learned the controls on one should not have to find them again.
  */
-function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
+function Tools({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents.files
   const flipped = view.order === "asc" ? "desc" : "asc"
@@ -192,7 +294,7 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
         value={t.sortKeys[view.sort]}
         beside={(
           <Link
-            to={at(view, { order: flipped })}
+            to={at(view, { order: flipped === "asc" ? null : flipped })}
             aria-label={turn}
             title={turn}
             className={CHOOSER_SIDE}
@@ -205,7 +307,7 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
         {BOX_SORT_KEYS.map((option) => (
           <Link
             key={option}
-            to={at(view, { sort: option, order: "asc" })}
+            to={at(view, { sort: option === BOX_SORT ? null : option, order: null })}
             aria-current={option === view.sort ? "true" : undefined}
             className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
           >
@@ -217,7 +319,7 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
         {PAGE_SIZES.map((option) => (
           <Link
             key={option}
-            to={at(view, { size: option })}
+            to={at(view, { size: option === PAGE_SIZE ? null : option })}
             aria-current={option === view.size ? "true" : undefined}
             className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
           >
@@ -239,7 +341,7 @@ function Tools({ view, locale }: { view: CommonFilesView, locale: Locale }) {
  * over it to reach the next one — but the ordering and the page size send that
  * reader back to the top of page one, and have no business at the foot.
  */
-function Pages({ view, locale }: { view: CommonFilesView, locale: Locale }) {
+function Pages({ view, locale }: ViewProps) {
   return (
     <Paging
       locale={locale}
@@ -264,6 +366,9 @@ function Pages({ view, locale }: { view: CommonFilesView, locale: Locale }) {
  * answers, and letting the browser decide what to do with what comes back is
  * the only answer that fits a box holding documents and spreadsheets alike.
  *
+ * **The day is the JST day**, as every day on a row is: an upload made at nine
+ * in the morning is on the day the curator made it, not on the UTC day before.
+ *
  * **Both acts are on the row they act on.** Ticking a column and then pressing
  * something at the foot of the table is a way to delete the wrong file — the
  * thing pressed names nothing, and the rows it was chosen from have scrolled.
@@ -276,15 +381,14 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
   return (
     <tr>
       <Td>
-        <ExternalLink to={address} locale={locale}><code className="text-xs">{row.name}</code></ExternalLink>
+        <ExternalLink to={address} locale={locale}><Code size="xs">{row.name}</Code></ExternalLink>
       </Td>
       <Td nowrap>{formatSize(row.size)}</Td>
-      <Td nowrap>{row.updatedAt.slice(0, 10)}</Td>
+      <Td nowrap>{dayInJst(row.updatedAt)}</Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           <CopyAddress address={address} locale={locale} />
           <Form method="post">
-            <input type="hidden" name="intent" value="rename" />
             <input type="hidden" name="from" value={row.name} />
             {/* Everything standing in a row is the row's size, not the
                 page's (`docs/ui.md` の「押せるものの大きさ」). */}
@@ -292,46 +396,24 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
                 object does not move within the bucket: the file is copied to
                 the new key and the old one is deleted, and the trail writes it
                 as exactly that. So the way in wears the same face as the way to
-                delete beside it, and the panel says what stops answering rather
-                than only how to spell the new name. */}
-            <Dialog
-              label={t.rename}
-              title={t.renameTitle}
-              icon={<Icon name="edit" />}
-              variant="danger"
+                delete beside it — the panel is the one every slug is changed
+                in, and only the rule under the box is this box's own. */}
+            <SlugEditor
+              locale={locale}
+              intent="rename"
+              name="to"
+              value={row.name}
+              hint={t.renameHint}
               size="row"
-            >
-              {(close) => (
-                <Stack gap="normal">
-                  {/* **What the address is for, said once and in the one place
-                      the panel says such things.** That the old address stops
-                      answering is what renaming means rather than a second
-                      thing to be told, and the face of this panel and of its
-                      button already say the press cannot be taken back. */}
-                  <Field
-                    label={t.slug}
-                    name="to"
-                    value={row.name}
-                    width="w-full"
-                    hint={t.renameHint}
-                  />
-                  <span className="flex flex-wrap items-center justify-end gap-2">
-                    <Button type="button" variant="ghost" onClick={close}>
-                      {messages.admin.contents.cancel}
-                    </Button>
-                    <Submit variant="danger" icon={<Icon name="edit" />}>{t.renameConfirm}</Submit>
-                  </span>
-                </Stack>
-              )}
-            </Dialog>
+            />
           </Form>
           <Form method="post">
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="name" value={row.name} />
             <Confirm
               label={t.removeFile}
-              title={t.removeFileTitle}
-              warning={t.removeConfirm}
+              title={t.removeFileTitle(row.name)}
+              warning={t.removeFileWarning}
               confirm={t.removeFileConfirm}
               cancel={messages.admin.contents.cancel}
               size="row"

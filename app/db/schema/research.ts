@@ -94,15 +94,6 @@ export const researchDraft = pgTable("research_draft", {
   content: jsonb().$type<ResearchContent>().notNull(),
   /** Free text for admins only. It never reaches the preview. */
   /**
-   * The version number this draft was copied from, when it was copied from one.
-   *
-   * **A hint for one default and nothing more.** It picks out which version the
-   * publish screen offers to replace; it does not decide what publishing does,
-   * and no check consults it. A number naming a version that is gone simply
-   * stops being offered.
-   */
-  copiedFromNumber: integer(),
-  /**
    * The approval branches of the application system this draft has taken values
    * from, oldest first.
    *
@@ -113,6 +104,17 @@ export const researchDraft = pgTable("research_draft", {
    * one at a time while a draft stays open.
    */
   takenBranches: text().array().notNull().default([]),
+  /**
+   * The published version this draft is the update of, when it is one.
+   *
+   * **An update is a state of the version, and the draft is only its vessel.**
+   * The version stays out, untouched, while the draft is written; publishing
+   * the draft puts it under that version's number, in its place. The research
+   * screen never shows such a draft as a draft — the version's row says it is
+   * being updated. One per version, and a version being updated cannot be
+   * withdrawn, so the draft never outlives what it points at.
+   */
+  replacesVersionId: uuid().references(() => researchVersion.id, { onDelete: "cascade" }),
   revision: integer().notNull().default(1),
   shareToken: text().notNull().unique(),
   shareEnabled: boolean().notNull().default(false),
@@ -121,6 +123,7 @@ export const researchDraft = pgTable("research_draft", {
   updatedAt: updatedAt(),
 }, (t) => [
   index().on(t.researchId),
+  unique("research_draft_replaces_version_unique").on(t.replacesVersionId),
 ])
 
 /**

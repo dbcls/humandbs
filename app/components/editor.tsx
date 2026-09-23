@@ -32,10 +32,12 @@ import type {
 } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
+import type { DraftStepsView } from "~/admin/steps.server"
 import {
   adminDraftDatasetsPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
+  adminDraftUpstreamPath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
@@ -46,12 +48,18 @@ import { messagesFor } from "~/i18n/messages"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
-import { draftThreads, threadsByPath, unresolvedCount } from "~/review/comments"
+import {
+  commentsByPath,
+  memoComments,
+  unresolvedCount,
+  wholeComments,
+  type CommentView,
+} from "~/review/comments"
 
-import { PaneSpot, usePanes } from "./admin"
-import { Badge, Button, Note, Stack } from "./base"
-import { DraftBar, useDraftEditing, useDrawn } from "./draft-tools"
-import { DraftNote } from "./comments"
+import { usePanes } from "./admin"
+import { Badge, Button, ButtonLink, IconButton, Note, Stack } from "./base"
+import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
+import { DraftNote, WholeNote, type CommentContext } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { ResearchBody, ResearchListTable } from "./research"
 import {
@@ -60,7 +68,6 @@ import {
   ItemList,
   PairField,
   ProblemBand,
-  RowButton,
   Section,
   SingleField,
   StateSwitch,
@@ -68,7 +75,6 @@ import {
   emptyLinksPair,
   emptyPair,
   emptySlot,
-  moved,
   newId,
   type Marks,
 } from "./fields"
@@ -91,8 +97,9 @@ function sectionOf(path: string): string {
 
 export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const locale = view.locale
-  const t = messagesFor(locale).admin.editor
-  const words = messagesFor(locale).research
+  const messages = messagesFor(locale)
+  const t = messages.admin.editor
+  const words = messages.research
 
   const review: FieldReviewData = {
     context: {
@@ -102,7 +109,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       canResolve: true,
       signedInName: view.review.signedInName,
     },
-    threads: threadsByPath(view.review.threads, RESEARCH),
+    comments: commentsByPath(view.review.comments, RESEARCH),
     changed: view.review.changed,
     previous: view.review.previous,
     heading: view.review.publishedNumber === null
@@ -126,6 +133,53 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   function editContent(produce: (held: ResearchContentInput) => ResearchContentInput): void {
     editing.edit({ ...input, content: produce(content) })
+  }
+
+  /**
+   * The field's own name for the comment panel's heading — a repeating
+   * section's own name for the list itself, and for a field inside one, the
+   * name the form gives that field. Read off the path a mark is addressed by,
+   * the same one the field itself is written at (`fields.tsx` の `Marks`).
+   */
+  function fieldLabelFor(path: string): string | undefined {
+    const [head, ...rest] = path.split(".")
+    const tail = rest.join(".")
+    switch (head) {
+      case "title": return words.title
+      case "releaseNote": return words.releaseNote
+      case "summary":
+        if (tail === "aims") return words.aims
+        if (tail === "methods") return words.methods
+        if (tail === "targets") return words.targets
+        if (tail === "url") return words.url
+        return words.overview
+      case "dataProviders":
+        if (tail.endsWith("organization.name")) return words.organization
+        if (tail.endsWith(".name")) return words.principalInvestigator
+        return words.dataProvider
+      case "researchProjects":
+        if (tail.endsWith(".name")) return words.researchProjectName
+        if (tail.endsWith(".url")) return words.url
+        return words.researchProjects
+      case "grants":
+        if (tail.endsWith(".title")) return words.grantTitle
+        if (tail.endsWith("agency.name")) return words.grantAgency
+        if (tail.endsWith("grantIds")) return t.grantIds
+        return words.grants
+      case "relatedPublications":
+        if (tail.endsWith(".title")) return words.publicationTitle
+        if (tail.endsWith(".doi")) return t.doi
+        if (tail.endsWith("datasetIds")) return t.citedDatasets
+        return words.relatedPublications
+      case "listingSummary":
+        if (tail === "methods") return words.listingSummary.methods
+        if (tail === "targets") return words.listingSummary.targets
+        if (tail === "typeOfData") return words.listingSummary.typeOfData
+        if (tail === "dataProviders" || tail.endsWith(".name")) return words.listingSummary.dataProviders
+        return t.paneRow
+      default:
+        return undefined
+    }
   }
 
   const body = JSON.stringify({ revision: view.revision, content })
@@ -160,14 +214,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
    * section that will take it.
    */
   function goTo(path: string): void {
-    const section = document.getElementById(sectionOf(path))
-    if (section === null) return
-    section.scrollIntoView()
+    // The field itself when it stands open on the form; the section holding it
+    // when it is written inside a panel that is not open (`ItemList`).
+    const field = document.querySelector<HTMLElement>(`[data-at="${CSS.escape(path)}"]`)
+    const target = field ?? document.getElementById(sectionOf(path))
+    if (target === null) return
+    target.scrollIntoView(field === null ? undefined : { block: "center" })
     // The first box that will take it, rather than the first one in the markup:
     // the review layer hangs a comment form beside every field, and its own
     // boxes come first while being hidden, folded away or otherwise unable to
     // hold the caret. Asking each in turn is what tells the two apart.
-    for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
+    for (const box of target.querySelectorAll<HTMLElement>("input, textarea")) {
       box.focus({ preventScroll: true })
       if (document.activeElement === box) return
     }
@@ -213,9 +270,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
           <Stack gap="block">
             <Stack gap="block">
-              <Section id="title" title={t.sections.title}>
+              <Section id="title" title={words.title}>
                 <PairField
-                  label={words.title}
                   value={content.title}
                   marks={marksFor("title")}
                   locale={locale}
@@ -223,7 +279,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 />
               </Section>
 
-              <Section id="summary" title={t.sections.summary}>
+              <Section id="releaseNote" title={words.releaseNote}>
+                <PairField
+                  value={content.releaseNote}
+                  multiline
+                  marks={marksFor("releaseNote")}
+                  locale={locale}
+                  onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
+                />
+              </Section>
+
+              <Section id="summary" title={words.overview}>
                 {(["aims", "methods", "targets"] as const).map((field) => (
                   <PairField
                     key={field}
@@ -247,75 +313,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   }}
                 />
               </Section>
-
-              <Section id="listingSummary" title={t.sections.listingSummary}>
-                {(["methods", "targets", "typeOfData"] as const).map((field) => (
-                  <PairField
-                    key={field}
-                    label={words.listingSummary[field]}
-                    value={content.listingSummary[field]}
-                    multiline
-                    marks={marksFor(`listingSummary.${field}`)}
-                    locale={locale}
-                    onChange={(next) => {
-                      editContent((c) => ({
-                        ...c,
-                        listingSummary: { ...c.listingSummary, [field]: next },
-                      }))
-                    }}
-                  />
-                ))}
-                <FieldHead
-                  label={words.listingSummary.dataProviders}
-                  marks={marksFor("listingSummary.dataProviders")}
-                  locale={locale}
-                />
-                <p className="text-ink-muted text-xs">
-                  {content.listingSummary.dataProviders.length === 0
-                    ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
-                    : t.listingProvidersOwn}
-                </p>
-                <ItemList
-                  path="listingSummary.dataProviders"
-                  locale={locale}
-                  items={content.listingSummary.dataProviders}
-                  title={words.principalInvestigator}
-                  summary={(item) => item.name.ja.text || item.name.en.text}
-                  makeEmpty={() => ({ id: newId(), name: emptyPair() })}
-                  onChange={(next) => {
-                    editContent((c) => ({
-                      ...c,
-                      listingSummary: { ...c.listingSummary, dataProviders: next },
-                    }))
-                  }}
-                >
-                  {(item, path, set) => (
-                    <PairField
-                      label={words.principalInvestigator}
-                      value={item.name}
-                      marks={marksFor(`${path}.name`)}
-                      locale={locale}
-                      onChange={(name) => { set({ ...item, name }) }}
-                    />
-                  )}
-                </ItemList>
-              </Section>
-
-              <Section id="releaseNote" title={t.sections.releaseNote}>
-                <PairField
-                  label={t.sections.releaseNote}
-                  value={content.releaseNote}
-                  multiline
-                  marks={marksFor("releaseNote")}
-                  locale={locale}
-                  onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
-                />
-              </Section>
             </Stack>
 
             <RepeatingSection
               id="dataProviders"
-              title={t.sections.dataProviders}
+              title={words.dataProvider}
               locale={locale}
               items={content.dataProviders}
               marksFor={marksFor}
@@ -323,9 +325,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               makeEmpty={() => ({
                 id: newId(),
                 name: emptyPair(),
-                organization: { name: emptyPair(), address: emptyPair() },
-                orcid: emptySlot(),
-                email: emptySlot(),
+                organization: { name: emptyPair() },
               })}
               summary={(item) => item.name.ja.text || item.name.en.text}
             >
@@ -347,36 +347,13 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                       set({ ...item, organization: { ...item.organization, name } })
                     }}
                   />
-                  <PairField
-                    label={t.address}
-                    value={item.organization.address}
-                    marks={marksFor(`${path}.organization.address`)}
-                    locale={locale}
-                    onChange={(address) => {
-                      set({ ...item, organization: { ...item.organization, address } })
-                    }}
-                  />
-                  <SingleField
-                    label={t.orcid}
-                    value={item.orcid}
-                    marks={marksFor(`${path}.orcid`)}
-                    locale={locale}
-                    onChange={(orcid) => { set({ ...item, orcid }) }}
-                  />
-                  <SingleField
-                    label={t.email}
-                    value={item.email}
-                    marks={marksFor(`${path}.email`)}
-                    locale={locale}
-                    onChange={(email) => { set({ ...item, email }) }}
-                  />
                 </>
               )}
             </RepeatingSection>
 
             <RepeatingSection
               id="researchProjects"
-              title={t.sections.researchProjects}
+              title={words.researchProjects}
               locale={locale}
               items={content.researchProjects}
               marksFor={marksFor}
@@ -406,7 +383,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
             <RepeatingSection
               id="grants"
-              title={t.sections.grants}
+              title={words.grants}
               locale={locale}
               items={content.grants}
               marksFor={marksFor}
@@ -447,7 +424,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
             <RepeatingSection
               id="relatedPublications"
-              title={t.sections.relatedPublications}
+              title={words.relatedPublications}
               locale={locale}
               items={content.relatedPublications}
               marksFor={marksFor}
@@ -493,21 +470,60 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               )}
             </RepeatingSection>
 
-            <Section id="datasetIds" title={t.sections.datasets}>
-              <Empty>{t.selectDatasets}</Empty>
-              <Stack gap="tight">
-                <FieldHead
-                  label={t.sections.datasets}
-                  marks={marksFor("datasetIds")}
+            {/* **The listing's row is not on the page**, so its fields stand
+                after everything that is, under the name of the pane that shows
+                them (`docs/editing.md` の「フォームの隣に立つ公開ページ」). */}
+            <Section id="listingSummary" title={t.paneRow}>
+              {(["methods", "targets", "typeOfData"] as const).map((field) => (
+                <PairField
+                  key={field}
+                  label={words.listingSummary[field]}
+                  value={content.listingSummary[field]}
+                  multiline
+                  marks={marksFor(`listingSummary.${field}`)}
                   locale={locale}
+                  onChange={(next) => {
+                    editContent((c) => ({
+                      ...c,
+                      listingSummary: { ...c.listingSummary, [field]: next },
+                    }))
+                  }}
                 />
-                <DatasetOrder
-                  locale={locale}
-                  datasets={view.datasets}
-                  selected={content.datasetIds}
-                  onChange={(next) => { editContent((c) => ({ ...c, datasetIds: next })) }}
-                />
-              </Stack>
+              ))}
+              <FieldHead
+                label={words.listingSummary.dataProviders}
+                marks={marksFor("listingSummary.dataProviders")}
+                locale={locale}
+              />
+              <p className="text-ink-muted text-xs">
+                {content.listingSummary.dataProviders.length === 0
+                  ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
+                  : t.listingProvidersOwn}
+              </p>
+              <ItemList
+                path="listingSummary.dataProviders"
+                locale={locale}
+                items={content.listingSummary.dataProviders}
+                title={words.principalInvestigator}
+                summary={(item) => item.name.ja.text || item.name.en.text}
+                makeEmpty={() => ({ id: newId(), name: emptyPair() })}
+                onChange={(next) => {
+                  editContent((c) => ({
+                    ...c,
+                    listingSummary: { ...c.listingSummary, dataProviders: next },
+                  }))
+                }}
+              >
+                {(item, path, set) => (
+                  <PairField
+                    label={words.principalInvestigator}
+                    value={item.name}
+                    marks={marksFor(`${path}.name`)}
+                    locale={locale}
+                    onChange={(name) => { set({ ...item, name }) }}
+                  />
+                )}
+              </ItemList>
             </Section>
           </Stack>
         </Stack>
@@ -517,6 +533,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const panes = usePanes({
     locale,
     remember: view.draftId,
+    under: "bar",
     contents: [
       { id: "form", label: t.paneForm, body: formBody },
       // The release note is drawn because this is a draft: on a published page
@@ -527,24 +544,20 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
           label,
           body: (
             <AnnotationLayer
-              annotate={(anchor) => (
-                <>
-                  {/*
-                  **What the page carries and what the form carries are split by
-                  whose question it is.** A difference from the published version
-                  and a comment are about the place a reader looks at, so they
-                  belong here; a field somebody else moved and markup a save
-                  refused are about the hands typing, and stay in the form. Drawn
-                  in both, one thing waiting would appear on the screen twice.
-                */}
-                  <FieldReview review={review} at={anchor} />
-                  <PaneSpot
-                    here={anchor === at}
-                    label={t.goToField}
-                    onGo={() => { goTo(anchor) }}
-                  />
-                </>
-              )}
+              /*
+                **What the page carries and what the form carries are split by
+                whose question it is.** A difference from the published version
+                and a comment are about the place a reader looks at, so they
+                belong here; a field somebody else moved and markup a save
+                refused are about the hands typing, and stay in the form. Drawn
+                in both, one thing waiting would appear on the screen twice.
+                **Where the caret is** is the page's to show too, on the value
+                itself (`page.tsx` の `Place`).
+              */
+              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
+              here={at}
+              onGo={goTo}
+              goLabel={t.goToField}
             >
               <PageHead
                 level="p"
@@ -556,7 +569,9 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   </>
                 )}
               >
-                <Badge onBand>{t.draftBadge}</Badge>
+                <Badge onBand>
+                  {view.updating === null ? t.draftBadge : t.updatingBadge(`v${view.updating}`)}
+                </Badge>
               </PageHead>
               <Card>
                 {/* **Nothing is drawn until this language has been drawn.** The
@@ -601,57 +616,111 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     <Page>
       <Stack>
         {/*
-          **One of these is the way out and the rest are the way across.** A
-          draft is left for the research it belongs to; what a curator reaches
-          from this screen and nowhere else is its other two faces.
+          **The head is left for the research this draft belongs to; the
+          tools row is what stays while typing.** Between the two, the head's
+          second line reaches this draft's other faces, its memo and the way
+          to take a data-providing application in.
         */}
-        <DraftBar
+        <DraftHead
           locale={locale}
-          heading={view.humLabel === null ? t.headingUnlabelled : t.headingOf(view.humLabel)}
+          title={messages.admin.draft.heading}
+          aside={view.humLabel ?? t.unlabelled}
+          updating={view.updating}
           back={{
             to: href(locale, adminResearchPath(view.researchId)),
             label: t.backToResearch,
             icon: "chevron-left",
           }}
-          links={[
-            {
-              to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)),
-              label: messagesFor(locale).admin.draft.datasets,
-              icon: "database",
-            },
-            {
-              to: href(locale, adminDraftReviewPath(view.researchId, view.draftId)),
-              label: t.review,
-              icon: "comment",
-            },
-            {
-              to: href(locale, adminDraftPublishPath(view.researchId, view.draftId)),
-              label: messagesFor(locale).admin.publish.open,
-              icon: "upload",
-            },
-          ]}
+          overview={(
+            <DraftOverview
+              locale={locale}
+              researchId={view.researchId}
+              draftId={view.draftId}
+              steps={view.steps}
+              review={{
+                context: review.context,
+                whole: wholeComments(view.review.comments),
+                memo: memoComments(view.review.comments),
+              }}
+            />
+          )}
+        />
+        <DraftTools
+          locale={locale}
+          panesControl={panes.control}
+          unresolved={view.steps.unresolved}
+          reviewHref={href(locale, adminDraftReviewPath(view.researchId, view.draftId))}
           dirty={editing.dirty}
           saved={editing.saved}
           saving={editing.saving}
           onSave={editing.save}
           presencePath={draftPresencePath(view.researchId, view.draftId)}
           presence={view.presence}
-          /* The memo is about the draft rather than about the research: it never
-             reaches a reader, and looking for it among the parts of the
-             description would be looking in the wrong place. */
-          memo={(
-            <DraftNote
-              context={{ ...review.context, subject: "draft" }}
-              threads={draftThreads(view.review.threads)}
-            />
-          )}
-        >
-          {panes.control}
-        </DraftBar>
+        />
 
         {panes.view}
       </Stack>
     </Page>
+  )
+}
+
+/**
+ * What this draft is, read once on the way in: its other three faces (each
+ * fact its own way there), the memo, the comments about the whole of it, and
+ * the way to take a data-providing application in.
+ *
+ * **Each fact is the way to the screen it is about** (`docs/editing.md` の
+ * 「draft」) — pressing "データセット 3 件" opens the dataset listing, and
+ * "未解決 4" opens the review screen. The three stand in the order the work
+ * runs in, but none is numbered and none is a step to complete: any of them
+ * can be reached from any of the others, and what a curator reads here is how
+ * the draft stands rather than what comes next.
+ */
+function DraftOverview({ locale, researchId, draftId, steps, review }: {
+  locale: Locale
+  researchId: string
+  draftId: string
+  steps: DraftStepsView
+  review: { context: CommentContext, whole: CommentView[], memo: CommentView[] }
+}) {
+  const messages = messagesFor(locale)
+  const admin = messages.admin
+  const detail = admin.detail
+  const share = steps.shared ? detail.shared : detail.notShared
+  const reviewFact = steps.unresolved > 0 ? `${share}・${detail.unresolved(steps.unresolved)}` : share
+  const publishFact = steps.blocks > 0
+    ? detail.blocked(steps.blocks)
+    : steps.findings > 0 ? detail.toConfirm(steps.findings) : detail.ready
+
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <ButtonLink
+        to={href(locale, adminDraftDatasetsPath(researchId, draftId))}
+        icon={<Icon name="database" aria-hidden="true" />}
+      >
+        {`${admin.draft.datasets} ${detail.datasetCount(steps.datasets)}`}
+      </ButtonLink>
+      <ButtonLink
+        to={href(locale, adminDraftReviewPath(researchId, draftId))}
+        icon={<Icon name="comment" aria-hidden="true" />}
+      >
+        {`${admin.review.heading} (${reviewFact})`}
+      </ButtonLink>
+      <ButtonLink
+        to={href(locale, adminDraftPublishPath(researchId, draftId))}
+        icon={<Icon name="upload" aria-hidden="true" />}
+      >
+        {`${admin.publish.heading} (${publishFact})`}
+      </ButtonLink>
+      <WholeNote context={review.context} comments={review.whole} />
+      <DraftNote context={review.context} comments={review.memo} />
+      <ButtonLink
+        to={href(locale, adminDraftUpstreamPath(researchId, draftId))}
+        icon={<Icon name="download" aria-hidden="true" />}
+      >
+        {admin.templates.openApplication}
+      </ButtonLink>
+    </div>
   )
 }
 
@@ -666,7 +735,7 @@ function PublishedBand({ view, onGo }: {
 }) {
   const t = messagesFor(view.locale).admin.editor
   const review = view.review
-  const open = unresolvedCount(review.threads)
+  const open = unresolvedCount(review.comments)
 
   if (review.publishedNumber === null) {
     return <Empty>{t.noPublishedVersion}</Empty>
@@ -678,11 +747,20 @@ function PublishedBand({ view, onGo }: {
       <Stack gap="tight">
         {review.changed.length > 0 && (
           <>
-            <p>{t.differsCount(review.changed.length)}</p>
+            <p>{t.differsCount(review.publishedNumber, review.changed.length)}</p>
             <ul className="flex flex-wrap gap-2">
               {review.changed.map((path) => (
                 <li key={path}>
-                  <Button type="button" variant="ghost" size="xs" onClick={() => { onGo(path) }}>
+                  {/* Each one goes to that field, and the mark is what says so:
+                      a bare path in a row of paths reads as a list, not as
+                      places to press (`docs/ui.md` の「押せるもの」). */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    icon={<Icon name="chevron-right" aria-hidden="true" />}
+                    onClick={() => { onGo(path) }}
+                  >
                     {path}
                   </Button>
                 </li>
@@ -758,7 +836,9 @@ function RepeatingSection<T extends { id: string }>({
 }) {
   return (
     <Section id={id} title={title}>
-      <FieldHead label={title} marks={marksFor(id)} locale={locale} />
+      {/* The list is the section's one field, so the heading is its name; the
+          line under it holds only what the review says about the list. */}
+      <FieldHead marks={marksFor(id)} locale={locale} />
       <ItemList
         path={id}
         locale={locale}
@@ -832,18 +912,24 @@ function LinksField({ label, value, marks, locale, onChange }: {
                         index === at ? { ...row, text: event.target.value } : row))
                     }}
                   />
-                  <RowButton
+                  <IconButton
+                    name="trash"
                     label={t.remove}
                     onClick={() => { setLinks(side.links.filter((_, index) => index !== at)) }}
                   />
                 </div>
               ))}
               <div>
-                <RowButton
-                  label={t.addLink}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  icon={<Icon name="plus" aria-hidden="true" />}
                   disabled={side.state !== "value"}
                   onClick={() => { setLinks([...side.links, { id: newId(), url: "", text: "" }]) }}
-                />
+                >
+                  {t.addLink}
+                </Button>
               </div>
             </Stack>
           )
@@ -884,14 +970,23 @@ function GrantIds({ locale, value, marks, onChange }: {
                   onChange(value.map((row, index) => index === at ? event.target.value : row))
                 }}
               />
-              <RowButton
+              <IconButton
+                name="trash"
                 label={t.remove}
                 onClick={() => { onChange(value.filter((_, index) => index !== at)) }}
               />
             </div>
           ))}
           <div>
-            <RowButton label={t.addGrantId} onClick={() => { onChange([...value, ""]) }} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              icon={<Icon name="plus" aria-hidden="true" />}
+              onClick={() => { onChange([...value, ""]) }}
+            >
+              {t.addGrantId}
+            </Button>
           </div>
         </Stack>
       </div>
@@ -901,75 +996,6 @@ function GrantIds({ locale, value, marks, onChange }: {
 
 function datasetName(row: ResearchDatasetRow, locale: Locale): string {
   return row.label ?? messagesFor(locale).admin.editor.unpinnedDataset
-}
-
-/**
- * The datasets a version lists, in the order it lists them.
- *
- * An id that names nothing is shown as gone rather than as itself. It happens:
- * another draft can destroy a dataset it introduced while this one still lists
- * it, and a save that lists a dataset of no research is refused — so the row
- * has to say what is wrong beside the button that fixes it.
- */
-function DatasetOrder({ locale, datasets, selected, onChange }: {
-  locale: Locale
-  datasets: ResearchDatasetRow[]
-  selected: string[]
-  onChange: (next: string[]) => void
-}) {
-  const t = messagesFor(locale).admin.editor
-  const byId = new Map(datasets.map((row) => [row.id, row]))
-  const unselected = datasets.filter((row) => !selected.includes(row.id))
-
-  if (datasets.length === 0 && selected.length === 0) {
-    return <Empty>{t.noDatasets}</Empty>
-  }
-
-  return (
-    <Stack gap="tight">
-      <ol className="flex flex-col gap-1">
-        {selected.map((id, at) => {
-          const row = byId.get(id)
-          return (
-            <li key={id} className="flex items-center gap-2 text-sm">
-              <span className={`min-w-40 ${row === undefined ? "text-danger" : ""}`}>
-                {row === undefined ? t.missingDataset : datasetName(row, locale)}
-              </span>
-              {row?.published === false && (
-                <span className="text-ink-muted text-xs">
-                  {messagesFor(locale).admin.detail.unpublishedDataset}
-                </span>
-              )}
-              <RowButton
-                label={t.moveUp}
-                disabled={at === 0}
-                onClick={() => { onChange(moved(selected, at, -1)) }}
-              />
-              <RowButton
-                label={t.moveDown}
-                disabled={at === selected.length - 1}
-                onClick={() => { onChange(moved(selected, at, 1)) }}
-              />
-              <RowButton
-                label={t.remove}
-                onClick={() => { onChange(selected.filter((held) => held !== id)) }}
-              />
-            </li>
-          )
-        })}
-      </ol>
-      <ul className="flex flex-wrap gap-2">
-        {unselected.map((row) => (
-          <li key={row.id}>
-            <RowButton
-              label={`${t.add}: ${datasetName(row, locale)}`}
-              onClick={() => { onChange([...selected, row.id]) }}
-            />
-          </li>
-        ))}
-      </ul>
-    </Stack>
-  )
 }
 
 /** Which datasets a publication covers. A set, so there is no order to keep. */

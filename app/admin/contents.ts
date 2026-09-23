@@ -79,7 +79,6 @@ export function parseVersionNumber(input: string): number | null {
 /** What one language of a document or a news item is up to. */
 export interface LocaleState {
   published: boolean
-  hasDraft: boolean
 }
 
 export type LocaleStates = Record<Locale, LocaleState>
@@ -197,8 +196,8 @@ export function isPublishState(value: string): value is PublishState {
 
 export function emptyStates(): LocaleStates {
   return {
-    ja: { published: false, hasDraft: false },
-    en: { published: false, hasDraft: false },
+    ja: { published: false },
+    en: { published: false },
   }
 }
 

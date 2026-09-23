@@ -1,4 +1,4 @@
-import { Children, createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { Children, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
 import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack } from "~/components/base"
@@ -22,18 +22,93 @@ import type { FieldView, LinksView, TermView } from "~/public/view.server"
  */
 export type Annotate = (at: string) => ReactNode
 
-const AnnotateContext = createContext<Annotate | null>(null)
-
-export function AnnotationLayer({ annotate, children }: {
+interface AnnotationLayerValue {
   annotate: Annotate
+  /** The place the caret is in, on the form this page is drawn beside. */
+  here: string | null
+  /** The way into the field writing a place, when the page stands beside its form. */
+  onGo: ((at: string) => void) | null
+  /** What that way is called, for whoever reaches it by keyboard. */
+  goLabel: string
+}
+
+const AnnotateContext = createContext<AnnotationLayerValue | null>(null)
+
+export function AnnotationLayer({ annotate, here = null, onGo = null, goLabel = "", children }: {
+  annotate: Annotate
+  here?: string | null
+  onGo?: ((at: string) => void) | null
+  goLabel?: string
   children: ReactNode
 }) {
-  return <AnnotateContext.Provider value={annotate}>{children}</AnnotateContext.Provider>
+  const value = useMemo<AnnotationLayerValue>(
+    () => ({ annotate, here, onGo, goLabel }),
+    [annotate, here, onGo, goLabel],
+  )
+  return <AnnotateContext.Provider value={value}>{children}</AnnotateContext.Provider>
 }
 
 export function Annotation({ at }: { at: string }) {
-  const annotate = useContext(AnnotateContext)
-  return annotate === null ? null : <>{annotate(at)}</>
+  const layer = useContext(AnnotateContext)
+  return layer === null ? null : <>{layer.annotate(at)}</>
+}
+
+/**
+ * A place's value, as the page draws it, so the form beside the page can point
+ * at it.
+ *
+ * **What says "this is the value you are writing" is the value itself.** While
+ * the caret is in the field writing this place, the value is tinted and brought
+ * to the middle of the pane; a mark beside the heading was a 36px point that
+ * left the paragraph being written looking like every other, and the two panes
+ * read as unrelated (`docs/editing.md` の「フォームの隣に立つ公開ページ」).
+ *
+ * **Pressing the value goes to its field.** Nothing is written here — a second
+ * box for the same value would leave two answers to what is written — and the
+ * links inside a value keep their own press. The same way is a button for the
+ * keyboard, shown only while it holds focus.
+ *
+ * **A public page has no layer**, and this draws the value and nothing else.
+ */
+export function Place({ at, children }: { at: string, children: ReactNode }) {
+  const layer = useContext(AnnotateContext)
+  const box = useRef<HTMLDivElement>(null)
+  const here = layer !== null && layer.here === at
+  useEffect(() => {
+    if (here) box.current?.scrollIntoView({ block: "center" })
+  }, [here])
+  if (layer === null) return <>{children}</>
+  const go = layer.onGo
+  return (
+    <div
+      ref={box}
+      data-place={at}
+      className={`-mx-2 rounded px-2 transition-colors ${here ? "bg-surface-hover" : ""} ${
+        go === null ? "" : "cursor-pointer"
+      }`}
+      onClick={go === null
+        ? undefined
+        : (event) => {
+            const pressed = event.target instanceof Element ? event.target : null
+            if (pressed?.closest("a, button, summary, details, input, textarea, select") !== null) return
+            go(at)
+          }}
+    >
+      {children}
+      {go !== null && (
+        <button
+          type="button"
+          className="sr-only focus:not-sr-only focus:mt-1 focus:inline-block focus:text-brand focus:text-xs"
+          onClick={(event) => {
+            event.stopPropagation()
+            go(at)
+          }}
+        >
+          {layer.goLabel}
+        </button>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -164,12 +239,20 @@ export function PageHead({ tone = "deep", level = "h1", kicker, label, children 
  * where the tint stops. `under` squares off the top, for a box that follows a
  * band and is one thing with it.
  */
-export function Card({ under = true, children }: {
+export function Card({ under = true, fill = false, children }: {
   under?: boolean
+  /**
+   * Stand exactly as tall as the box this is in and hand the room down as a
+   * column (`base.tsx` の `Stack` の `fill`) — for a pane whose one long field
+   * is to scroll on its own rather than carry the pane's length. When the
+   * window is too low for the column's floors, what does not fit runs past
+   * this box and the pane scrolls it.
+   */
+  fill?: boolean
   children: ReactNode
 }) {
   return (
-    <div className={`bg-white px-6 py-6 ${under ? "rounded-b" : "rounded"}`}>
+    <div className={`bg-white px-6 py-6 ${under ? "rounded-b" : "rounded"}${fill ? " flex h-full flex-col" : ""}`}>
       {children}
     </div>
   )
@@ -187,7 +270,7 @@ export function Card({ under = true, children }: {
  * the 32px that separates one part from the next, 8px leaves the page a single
  * rhythm, and the name crowds the first thing in the block.
  */
-export function Section({ title, note, at, children }: {
+export function Section({ title, note, at, fill = false, children }: {
   title: string
   /**
    * What the part is for, for the parts whose name does not say it.
@@ -200,10 +283,12 @@ export function Section({ title, note, at, children }: {
   note?: string
   /** The anchor of the whole section, when it draws one field. */
   at?: string
+  /** Take the room left in the column above (`base.tsx` の `Stack` の `fill`). */
+  fill?: boolean
   children: ReactNode
 }) {
   return (
-    <Stack gap="normal" as="section">
+    <Stack gap="normal" as="section" fill={fill}>
       {/* **The line belongs to the name, not to what follows.** At `tight` it
           sits under the heading as part of it; at the section's own `normal` it
           would float between the two, belonging to neither. */}
@@ -219,7 +304,7 @@ export function Section({ title, note, at, children }: {
         </h2>
         {note !== undefined && <p className="text-ink-muted text-sm">{note}</p>}
       </Stack>
-      {children}
+      {at === undefined ? children : <Place at={at}>{children}</Place>}
     </Stack>
   )
 }
@@ -276,7 +361,7 @@ export function KeyValue({ title, at, children }: {
       <Stack gap="tight">
         <dt className="text-ink-muted text-xs">{title}</dt>
         <dd>
-          {children}
+          {at === undefined ? children : <Place at={at}>{children}</Place>}
           {at !== undefined && <Annotation at={at} />}
         </dd>
       </Stack>
@@ -405,8 +490,21 @@ const ALIGN = { top: "align-top", middle: "align-middle" }
  * window: the floors are carried by `Td`, so a table of one wide cell stops
  * travelling sideways for as long as it has no rows.
  */
+/**
+ * A column name that sits over numbers: the name goes to the right, where the
+ * digits end, so the column reads as one thing from its head to its foot.
+ */
+export interface NumericHeader {
+  text: string
+  align: "right"
+}
+
+function isNumericHeader(header: ReactNode | NumericHeader): header is NumericHeader {
+  return typeof header === "object" && header !== null && "align" in header
+}
+
 export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }: {
-  headers: ReactNode[]
+  headers: (ReactNode | NumericHeader)[]
   children: ReactNode
   /** How many of the leading columns stay put when the table scrolls sideways. */
   stuck?: number
@@ -574,9 +672,9 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
                     // Which column a value belongs to, for a reader who hears
                     // the row rather than seeing it line up under the name.
                     scope="col"
-                    className={`px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${CEILING} ${MARK_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`px-3 align-middle font-semibold ${typeof header === "string" || isNumericHeader(header) ? "whitespace-nowrap py-1.5" : `${CEILING} ${MARK_COLUMN} py-0`} ${isNumericHeader(header) ? "text-right" : ""} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
-                    {header}
+                    {isNumericHeader(header) ? header.text : header}
                   </th>
                 ))}
               </tr>
@@ -676,6 +774,39 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
     >
       {children}
     </td>
+  )
+}
+
+/**
+ * A code — a slug, an accession, a facet's key — standing in a line of words.
+ *
+ * **It takes one line's height and sits in the middle of it**, the box a badge
+ * stands in (`base.tsx` の `Badge`), because it is set in another face: aligned
+ * by its baseline to the words beside it, a monospace face's glyphs sit a pixel
+ * lower than the sans ones and stretch the line box a pixel taller, so a column
+ * of slugs beside a column of titles reads as not quite settled. In a box of
+ * its own line's height the face's glyphs are centred where the words' are.
+ *
+ * **The size goes on the code, the layout on the box**, for the reason a
+ * badge's does: `1lh` is read off the box, and a smaller size there would make
+ * it a shorter box than the line it stands in.
+ *
+ * **Not for a block of code.** A `pre` sets its own lines, and a box of one
+ * line's height would cut off everything after the first.
+ */
+export function Code({ children, size, muted = false, className = "" }: {
+  children: ReactNode
+  size?: "xs" | "sm"
+  muted?: boolean
+  /** How the box sits in its row — a width, a margin — never a size of type. */
+  className?: string
+}) {
+  return (
+    <span className={`inline-flex h-[1lh] items-center align-top ${className}`}>
+      <code className={`${size === undefined ? "" : `text-${size}`} ${muted ? "text-ink-muted" : ""}`}>
+        {children}
+      </code>
+    </span>
   )
 }
 
@@ -925,14 +1056,16 @@ function Prose({ text }: { text: RichText }) {
  *
  * `unsettled` only ever arrives from a preview, and it is drawn as the empty
  * frame it is: the question is what the reader is being shown, and a blank
- * would look like a value nobody thought worth filling in.
+ * would look like a value nobody thought worth filling in. **The frame asks
+ * rather than names a state** — the reader is a provider, and what the office
+ * wants from them at this slot is the value (docs/editing.md の「レビュー」).
  */
 export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
   if (field.state === "not-applicable") {
     return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
   }
   if (field.state === "unsettled") {
-    return <Badge tone="accent" dashed>{messagesFor(locale).unsettled}</Badge>
+    return <Badge tone="danger" dashed>{messagesFor(locale).preview.unsettledMark}</Badge>
   }
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />
@@ -994,7 +1127,12 @@ export function ExternalLink({ to, locale, children }: {
       href={to}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1"
+      // **Top-aligned, the way a badge is.** An inline-flex box is placed on
+      // the line by the baseline of its first item, and a slug set in a
+      // monospace face carries its baseline a pixel lower than the words in
+      // the next cell — which put the whole link a pixel down and stretched
+      // the row by two. The box is one line tall, so its top is the line's.
+      className="inline-flex items-center gap-1 align-top"
     >
       {children}
       <Icon name="external" />

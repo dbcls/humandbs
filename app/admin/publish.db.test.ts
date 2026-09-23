@@ -10,8 +10,10 @@ import * as s from "~/db/schema"
 
 import {
   createDatasetInDraft,
-  createDraft,
+  createEmptyDraft,
   createResearchWithDraft,
+  draftCopiedFrom,
+  draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
 } from "./drafts.server"
@@ -133,7 +135,7 @@ describe("publishing a draft", () => {
 
     const outcome = await publish({ draftId: ground.draftId, revision: ground.revision })
 
-    expect(outcome).toEqual({ status: "published", versionNumber: 1, replaced: false })
+    expect(outcome).toEqual({ status: "published", versionNumber: 1 })
     const version = await theVersion()
     expect(version.number).toBe(1)
     expect(version.releaseDate).toBe(RELEASE_DATE)
@@ -283,57 +285,71 @@ describe("a publish that is refused", () => {
   })
 
   /**
-   * A number nothing ever carried would put a version under it with no
-   * withdrawal to account for the gap, which a reader cannot tell from a
-   * version that was taken back.
+   * Any free number will do, gap or not: the sequence is not promised to be
+   * unbroken (docs/publishing.md の「版番号」).
    */
-  it("writes nothing at all under a number that was never issued", async () => {
+  it("publishes under a number nothing ever carried", async () => {
     const ground = await ready()
-    const before = await counts()
 
     const outcome = await publish({ draftId: ground.draftId, revision: ground.revision }, 7)
 
-    expect(outcome).toEqual({ status: "number-unavailable" })
+    expect(outcome).toEqual({ status: "published", versionNumber: 7 })
+    expect((await theVersion()).number).toBe(7)
+  })
+
+  it("refuses a number below one, and writes nothing", async () => {
+    const ground = await ready()
+    const before = await counts()
+
+    for (const number of [0, -1, 1.5]) {
+      expect(await publish({ draftId: ground.draftId, revision: ground.revision }, number), String(number))
+        .toEqual({ status: "number-unavailable" })
+    }
     expect(await counts()).toEqual(before)
   })
 })
 
+/** A copy of v1 — a draft like any other. */
+async function copied(researchId: string): Promise<string> {
+  const draftId = await draftCopiedFrom(db, researchId, 1)
+  if (draftId === null) throw new Error("no v1 to copy")
+  return draftId
+}
+
 describe("publishing under a number a version already holds", () => {
-  it("replaces that version rather than writing over its row", async () => {
+  it("refuses, and writes nothing: a held number is freed by withdrawing, not taken over", async () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
     const first = await theVersion()
 
-    const draftId = await createDraft(db, ground.researchId)
+    const draftId = await copied(ground.researchId)
     await saveDraftContent(db, { draftId, revision: 1 }, {
       content: { ...titled("直した"), datasetIds: [ground.datasetId] },
     })
+    const before = await counts()
     const outcome = await publish({ draftId, revision: 2 }, 1, first.releaseDate)
 
-    expect(outcome).toEqual({ status: "published", versionNumber: 1, replaced: true })
-    const after = await theVersion()
-    expect(after.number).toBe(1)
-    expect(after.releaseDate).toBe(first.releaseDate)
-    // A new row under the same number, rather than the old one edited.
-    expect(after.id).not.toBe(first.id)
-    expect(after.content.title.ja).toEqual(filled("直した"))
+    expect(outcome).toEqual({ status: "number-unavailable" })
+    expect(await counts()).toEqual(before)
+    expect((await theVersion()).id).toBe(first.id)
   })
 
-  it("carries the descriptions of the version it replaces, as the draft holds them", async () => {
+  it("carries the descriptions of the version it was copied from, as the draft holds them", async () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
 
-    const draftId = await createDraft(db, ground.researchId)
+    const draftId = await copied(ground.researchId)
     await saveDatasetEntry(
       db,
       { draftId, datasetId: ground.datasetId, revision: 1 },
       described("直した記述"),
     )
-    await publish({ draftId, revision: 1 }, 1)
+    await publish({ draftId, revision: 1 }, 2)
 
     // The draft was copied from the version, so the description it holds
     // already carries the day that version went out.
-    expect(await theDescription())
+    const [second] = await db.select().from(s.researchVersion).where(eq(s.researchVersion.number, 2))
+    expect(descriptionOf(only(second?.content.datasets ?? [])))
       .toEqual({ ...described("直した記述"), releaseDate: RELEASE_DATE })
   })
 
@@ -341,13 +357,13 @@ describe("publishing under a number a version already holds", () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
 
-    const draftId = await createDraft(db, ground.researchId)
+    const draftId = await copied(ground.researchId)
     const draft = await readDraft(db, draftId)
     await saveDraftContent(db, { draftId, revision: draft?.revision ?? 0 }, {
       content: { ...titled("題目だけ直した"), datasetIds: [ground.datasetId] },
     })
     const after = await readDraft(db, draftId)
-    await publish({ draftId, revision: after?.revision ?? 0 }, 1)
+    await publish({ draftId, revision: after?.revision ?? 0 }, 2)
 
     const about = await db
       .select({ id: s.event.id })
@@ -376,17 +392,6 @@ describe("the trail a publish leaves", () => {
     expect(passed?.detail).toEqual({ passed: { "empty-dataset": 1 } })
   })
 
-  it("calls a publish under a held number a replacement", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
-    const draftId = await createDraft(db, ground.researchId)
-
-    await publish({ draftId, revision: 1 }, 1)
-
-    const actions = await db.select({ action: s.event.action }).from(s.event)
-    expect(actions.map((row) => row.action)).toContain("replace-version")
-  })
-
   it("names the person who did it rather than the fact that an administrator did", async () => {
     const ground = await ready()
 
@@ -412,7 +417,6 @@ describe("taking a version back", () => {
     const draft = only(await db.select().from(s.researchDraft))
     expect(draft.content.title.ja).toEqual(filled("研究"))
     expect(draft.content.datasetIds).toEqual([ground.datasetId])
-    expect(draft.copiedFromNumber).toBe(1)
   })
 
   it("brings the descriptions out with it, one entry each", async () => {
@@ -440,13 +444,137 @@ describe("taking a version back", () => {
     const draft = only(await db.select().from(s.researchDraft))
     const outcome = await publish({ draftId: withdrawn.draftId, revision: draft.revision }, 1)
 
-    expect(outcome).toEqual({ status: "published", versionNumber: 1, replaced: false })
+    expect(outcome).toEqual({ status: "published", versionNumber: 1 })
   })
 
   it("answers gone for a version that is not there", async () => {
     const outcome = await withdrawVersion(db, "00000000-0000-0000-0000-000000000000", CURATOR)
 
     expect(outcome).toEqual({ status: "gone" })
+  })
+})
+
+describe("updating a version", () => {
+  async function updating(researchId: string, versionId: string) {
+    const opened = await draftUpdating(db, researchId, versionId)
+    if (opened.status !== "opened") throw new Error(opened.status)
+    const draft = await readDraft(db, opened.draftId)
+    if (draft === null) throw new Error("the draft was not opened")
+    return draft
+  }
+
+  /** An update names no number: it carries the number of the version it stands in for. */
+  function update(at: { draftId: string, revision: number }) {
+    return publishDraft(
+      db,
+      { at, number: null, releaseDate: RELEASE_DATE, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+      CURATOR,
+    )
+  }
+
+  /** A version out, and the draft it is updated in with its title changed. */
+  async function corrected() {
+    const ground = await ready()
+    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const before = await theVersion()
+    const draft = await updating(ground.researchId, before.id)
+    const saved = await saveDraftContent(db, { draftId: draft.id, revision: draft.revision }, {
+      content: { ...draft.content, title: { ja: filled("直した"), en: filled("直した") } },
+    })
+    if (saved.status !== "saved") throw new Error(saved.status)
+    return { ...ground, before, at: { draftId: draft.id, revision: saved.revision } }
+  }
+
+  it("puts the draft in the version's place under the same number, and nothing else remains", async () => {
+    const ground = await corrected()
+
+    const outcome = await update(ground.at)
+
+    expect(outcome).toEqual({ status: "published", versionNumber: 1 })
+    const after = await theVersion()
+    expect(after.id).not.toBe(ground.before.id)
+    expect(after.content.title.ja).toEqual(filled("直した"))
+    expect(after.content.datasets.map((row) => row.datasetId)).toEqual([ground.datasetId])
+    expect(await db.select().from(s.researchDraft)).toEqual([])
+  })
+
+  it("is recorded as an update of the version, with no withdrawal beside it", async () => {
+    const ground = await corrected()
+
+    await update(ground.at)
+
+    const events = await db.select({ action: s.event.action, detail: s.event.detail }).from(s.event)
+    const replaced = events.filter((row) => row.action === "replace-version")
+    expect(replaced).toHaveLength(1)
+    expect(replaced[0]?.detail).toMatchObject({ versionNumber: 1, draftId: ground.at.draftId })
+    expect(events.filter((row) => row.action === "withdraw-version")).toEqual([])
+  })
+
+  it("puts the updated content into the search rows in the same transaction", async () => {
+    const ground = await corrected()
+    const before = (await db.select().from(s.searchDoc)).length
+
+    await update(ground.at)
+
+    const docs = await db.select({ title: s.searchDoc.title }).from(s.searchDoc)
+    expect(docs).toHaveLength(before)
+    expect(docs.every((row) => row.title.includes("直した"))).toBe(true)
+  })
+
+  it("measures against the version it stands in for, not the newest", async () => {
+    const ground = await ready()
+    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const first = await theVersion()
+    const second = await createEmptyDraft(db, ground.researchId)
+    await saveDraftContent(db, { draftId: second, revision: 1 }, { content: titled("二つ目") })
+    const published = await publish({ draftId: second, revision: 2 }, 2)
+    if (published.status !== "published") throw new Error(published.status)
+    const draft = await updating(ground.researchId, first.id)
+
+    const preview = await publishPreview(db, draft.id, NO_PRIVATE_FILES)
+
+    expect(preview?.updating).toEqual({ number: 1, releaseDate: RELEASE_DATE })
+    expect(preview?.researchFields).toBe(0)
+    expect(preview?.listingAdded).toEqual([])
+    expect(preview?.listingRemoved).toEqual([])
+  })
+
+  it("leaves the other versions where they are", async () => {
+    const ground = await corrected()
+    const second = await createEmptyDraft(db, ground.researchId)
+    await saveDraftContent(db, { draftId: second, revision: 1 }, { content: titled("二つ目") })
+    const published = await publish({ draftId: second, revision: 2 }, 2)
+    if (published.status !== "published") throw new Error(published.status)
+
+    const outcome = await update(ground.at)
+
+    expect(outcome).toEqual({ status: "published", versionNumber: 1 })
+    const versions = await db.select().from(s.researchVersion).orderBy(s.researchVersion.number)
+    expect(versions.map((row) => [row.number, row.content.title.ja])).toEqual([
+      [1, filled("直した")],
+      [2, filled("二つ目")],
+    ])
+  })
+
+  it("refuses to withdraw the version while its update is open, and writes nothing", async () => {
+    const ground = await corrected()
+    const before = await counts()
+
+    const outcome = await withdrawVersion(db, ground.before.id, CURATOR)
+
+    expect(outcome).toEqual({ status: "updating" })
+    expect(await counts()).toEqual(before)
+    expect((await theVersion()).id).toBe(ground.before.id)
+  })
+
+  it("refuses a draft of its own that names no number, and writes nothing", async () => {
+    const ground = await ready()
+    const before = await counts()
+
+    const outcome = await update({ draftId: ground.draftId, revision: ground.revision })
+
+    expect(outcome).toEqual({ status: "number-unavailable" })
+    expect(await counts()).toEqual(before)
   })
 })
 
@@ -458,8 +586,7 @@ describe("looking a publish over first", () => {
     const preview = await publishPreview(db, ground.draftId, NO_PRIVATE_FILES)
 
     expect(preview?.nextNumber).toBe(1)
-    expect(preview?.choices).toEqual([])
-    expect(preview?.suggestedNumber).toBeNull()
+    expect(preview?.heldNumbers).toEqual([])
     expect(preview?.listingAdded).toEqual([ground.datasetId])
     expect(preview?.datasetChanges).toEqual([{
       datasetId: ground.datasetId,
@@ -469,22 +596,21 @@ describe("looking a publish over first", () => {
     expect(await counts()).toEqual(before)
   })
 
-  it("offers the version a draft was copied from, and the next number beside it", async () => {
+  it("offers the next number, and names the ones versions hold", async () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
-    const draftId = await createDraft(db, ground.researchId)
+    const draftId = await copied(ground.researchId)
 
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
     expect(preview?.nextNumber).toBe(2)
-    expect(preview?.choices).toEqual([{ number: 1, releaseDate: RELEASE_DATE }])
-    expect(preview?.suggestedNumber).toBe(1)
+    expect(preview?.heldNumbers).toEqual([1])
   })
 
-  it("finds nothing to change in a copy of the version it would replace", async () => {
+  it("finds nothing to change in a copy of the newest version", async () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
-    const draftId = await createDraft(db, ground.researchId)
+    const draftId = await copied(ground.researchId)
 
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
@@ -502,19 +628,19 @@ describe("looking a publish over first", () => {
   it("says nothing about what another publish did in the meantime", async () => {
     const ground = await ready()
     await publish({ draftId: ground.draftId, revision: ground.revision })
-    const behind = await createDraft(db, ground.researchId)
+    const behind = await copied(ground.researchId)
 
-    const other = await createDraft(db, ground.researchId)
+    const other = await createEmptyDraft(db, ground.researchId)
     const otherDraft = await readDraft(db, other)
     await saveDraftContent(db, { draftId: other, revision: otherDraft?.revision ?? 0 }, {
       content: { ...titled("先に直した"), datasetIds: [ground.datasetId] },
     })
     const ready2 = await readDraft(db, other)
-    await publish({ draftId: other, revision: ready2?.revision ?? 0 }, 1)
+    await publish({ draftId: other, revision: ready2?.revision ?? 0 }, 2)
 
     const preview = await publishPreview(db, behind, NO_PRIVATE_FILES)
 
     expect(preview?.gate.findings).toEqual([])
-    expect(preview?.choices).toEqual([{ number: 1, releaseDate: RELEASE_DATE }])
+    expect(preview?.heldNumbers).toEqual([2, 1])
   })
 })

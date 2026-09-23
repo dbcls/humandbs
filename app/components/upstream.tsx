@@ -1,12 +1,12 @@
 import { Link } from "react-router"
 
-import type { UpstreamChoiceView, UpstreamTargetView } from "~/admin/templates.server"
-import { adminDraftDatasetsPath, adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
+import type { UpstreamChoiceView } from "~/admin/templates.server"
+import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { MENU_ITEM, Note, Stack } from "./base"
+import { Stack } from "./base"
 import { Submit } from "./form"
 import { Icon } from "./icons"
 import { Empty, Section } from "./page"
@@ -22,33 +22,6 @@ import { Empty, Section } from "./page"
 export function UpstreamNotConnected({ locale }: { locale: Locale }) {
   const t = messagesFor(locale).admin.templates
   return <Empty>{t.notConnected}</Empty>
-}
-
-/**
- * Which draft the branch screens are choosing for, when a draft opened them.
- *
- * **It stands over what it changes the meaning of** — a branch on these screens
- * is now one to take into that draft rather than one to see the destinations
- * of — and the way out stands in the same band, back to where the choosing
- * began.
- */
-export function UpstreamTarget({ locale, target }: { locale: Locale, target: UpstreamTargetView }) {
-  const t = messagesFor(locale).admin.templates
-  return (
-    <Note
-      kind="info"
-      action={(
-        <Link
-          to={href(locale, adminDraftDatasetsPath(target.researchId, target.draftId))}
-          className={MENU_ITEM}
-        >
-          {t.targetCancel}
-        </Link>
-      )}
-    >
-      <strong>{t.choosingFor(target.humLabel)}</strong>
-    </Note>
-  )
 }
 
 /**

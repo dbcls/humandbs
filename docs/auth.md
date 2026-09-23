@@ -19,7 +19,7 @@
 |---|---|
 | `view-unpublished` | 管理画面で未公開を読む |
 | `edit-content` | draft の作成・編集・破棄、共有リンクの管理、コメントの解決 |
-| `publish` | 版の公開 |
+| `publish` | 版の公開と更新 |
 | `withdraw` | 版の取り下げ (draft に戻す) |
 | `manage-labels` | hum ラベルと dataset id の pin と解除 |
 | `manage-files` | ファイルの upload と公開状態の切り替え |

@@ -20,6 +20,7 @@ import {
   Page,
   PageHead,
   Pairs,
+  Place,
   Section,
   UntranslatedNotice,
   Value,
@@ -160,7 +161,9 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                   <section key={experiment.id} className="overflow-hidden rounded border border-line">
                     <Band>
                       <h3 className="font-semibold">
-                        <Value field={experiment.label} locale={locale} />
+                        <Place at={`experiments.${experiment.id}.label`}>
+                          <Value field={experiment.label} locale={locale} />
+                        </Place>
                       </h3>
                     </Band>
                     <div className="px-4 py-3">

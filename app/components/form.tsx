@@ -21,7 +21,7 @@
  */
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
-import { Form } from "react-router"
+import { Form, useNavigation } from "react-router"
 
 import {
   Badge,
@@ -29,13 +29,20 @@ import {
   type ButtonSize,
   type ButtonVariant,
   IconButton,
+  MENU_ITEM,
+  MENU_ITEM_HERE,
+  MENU_PANEL,
   Note,
   Toast,
   TOAST_MS,
+  useDismissible,
 } from "~/components/base"
-import { Icon } from "~/components/icons"
+import { Icon, Spinner } from "~/components/icons"
+
+import type { MountedMarkdown } from "./codemirror.client"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { usePressed } from "~/navigating"
 
 /**
  * What anything typed into looks like.
@@ -99,6 +106,7 @@ export function Accepts({ children }: { children: string }) {
 function Labelled({
   id,
   label,
+  required,
   icon,
   accepts,
   after,
@@ -107,9 +115,20 @@ function Labelled({
   children,
   inline = false,
   hideLabel = false,
+  fill = false,
 }: {
   id: string
   label: string
+  /**
+   * The word for anyone not looking at the mark, where the box has to be
+   * filled (`FieldLook`).
+   *
+   * **The mark rides on the name itself**, a red `*` hard against the last
+   * character, the way every form a reader has filled in draws it. **It is
+   * not a badge**: the badge beside a name says which dialect the box reads,
+   * and a second badge there would have to be read before either was known.
+   */
+  required?: string
   /**
    * A glyph in front of the word, where the word is one of a set the reader is
    * already being shown the glyph for somewhere else.
@@ -140,6 +159,15 @@ function Labelled({
   children: ReactNode
   inline?: boolean
   hideLabel?: boolean
+  /**
+   * May be shrunk by the column it stands in, down to the box's own floor.
+   * Stacked only.
+   *
+   * **It does not grow past its content.** Room the column has left goes
+   * under whatever stands last in it — a form's row of buttons — rather than
+   * opening between the box and what is written under it.
+   */
+  fill?: boolean
 }) {
   /**
    * **A hidden name is still a name.** In a row where the control stands beside
@@ -147,10 +175,21 @@ function Labelled({
    * tall and nothing lines up with anything; the word is still read out, and
    * still what clicking it focuses.
    */
+  const name = (
+    <>
+      {label}
+      {required !== undefined && (
+        <>
+          <span aria-hidden="true" className="text-danger">*</span>
+          <span className="sr-only">{required}</span>
+        </>
+      )}
+    </>
+  )
   if (hideLabel) {
     return (
       <div className="text-sm">
-        <label htmlFor={id} className="sr-only">{label}</label>
+        <label htmlFor={id} className="sr-only">{name}</label>
         {children}
         {error !== undefined && (
           <span id={`${id}-error`} className="sr-only">{error}</span>
@@ -159,7 +198,7 @@ function Labelled({
     )
   }
   return (
-    <div className={inline ? "flex items-start gap-2 text-sm" : "flex flex-col gap-2 text-sm"}>
+    <div className={inline ? "flex items-start gap-2 text-sm" : `flex flex-col gap-2 text-sm${fill ? " min-h-0" : ""}`}>
       {inline
         ? (
             <>
@@ -169,7 +208,7 @@ function Labelled({
                   rather than beside a word of whatever length. */}
               <label htmlFor={id} className={`text-ink ${after === undefined ? "" : "flex-1"}`}>
                 {icon}
-                {label}
+                {name}
               </label>
               {after}
             </>
@@ -180,7 +219,7 @@ function Labelled({
                 htmlFor={id}
                 className="flex items-center gap-2 font-semibold text-ink-muted text-xs"
               >
-                {label}
+                <span>{name}</span>
                 {accepts !== undefined && <Accepts>{accepts}</Accepts>}
               </label>
               {children}
@@ -201,6 +240,16 @@ function Labelled({
 interface FieldLook {
   label: string
   name: string
+  /**
+   * That the box has to be filled, as the word read out for it.
+   *
+   * **What it has to be filled for is what the screen does with it**, which
+   * is not always sending the form: an alert is saved with one language and
+   * shown only with both, and its two boxes wear the mark for the showing.
+   * The server is what refuses either way (`required` is not set on the
+   * control); the mark says so before anything is pressed.
+   */
+  required?: string
   hint?: string
   error?: string
   disabled?: boolean
@@ -220,6 +269,7 @@ export function Field({
   label,
   name,
   value,
+  required,
   hint,
   error,
   disabled,
@@ -249,7 +299,7 @@ export function Field({
 }) {
   const id = useId()
   return (
-    <Labelled id={id} label={label} hint={hint} error={error} hideLabel={hideLabel}>
+    <Labelled id={id} label={label} required={required} hint={hint} error={error} hideLabel={hideLabel}>
       <input
         id={id}
         type={type}
@@ -273,9 +323,10 @@ export function Field({
  * column of a table, a backslash holds a character back from being read, and
  * two spaces at the end of a line are a line break — none of which can be
  * proof-read in a proportional face, where the columns do not line up and the
- * trailing spaces are invisible. It is the smaller of the two on purpose: a
- * long article is scrolled through, and a monospaced 14px line wraps a third
- * sooner than the prose it stands for.
+ * trailing spaces are invisible. **It is the size every other field is.** It
+ * was once smaller so that a long article wrapped less, but the box no longer
+ * grows with the article — it scrolls inside its seat — and a smaller face only
+ * made the lines harder to read.
  *
  * **`plain` is for a value that is read as it is typed.** Nothing in it is
  * syntax, so the face has no work to do, and the box usually stands beside
@@ -283,7 +334,7 @@ export function Field({
  * makes two readings of one sentence look like two sentences.
  */
 const TEXTAREA_LOOK = {
-  source: "font-mono text-xs",
+  source: "font-mono text-sm",
   plain: "text-sm",
 } as const
 
@@ -292,6 +343,7 @@ export function TextArea({
   label,
   name,
   value,
+  required,
   accepts,
   hint,
   error,
@@ -306,7 +358,7 @@ export function TextArea({
 }) {
   const id = useId()
   return (
-    <Labelled id={id} label={label} accepts={accepts} hint={hint} error={error}>
+    <Labelled id={id} label={label} required={required} accepts={accepts} hint={hint} error={error}>
       <textarea
         id={id}
         name={name}
@@ -321,67 +373,273 @@ export function TextArea({
   )
 }
 
-/** One of a fixed, short list. Anything longer is a search box over a catalog. */
 /**
- * What a native `<select>` wears on top of `CONTROL`.
+ * One of a fixed, short list, drawn by the site.
  *
- * **The caret the browser draws is the one part of a select the page cannot
- * reach**, so it is turned off and the site's own glyph is laid over the box
- * (`Pulldown`) — the same `chevron-down` a menu shows when it stands for a
- * value. **The list that opens stays the browser's**: it is drawn outside the
- * page, and taking it over means rebuilding the keyboard walk, the type-ahead
- * and the picker a phone puts up, for a panel nobody is looking at while it is
- * closed.
+ * **Closed, it is a field**: the edge and depth of the box beside it
+ * (`CONTROL`), the answer in force, and the `chevron-down` a menu shows when it
+ * stands for a value. **Open, it is a menu** — the panel `Menu` opens, with the
+ * choices as its lines — and it closes the three ways every panel off a control
+ * does (`useDismissible`), and when focus leaves it.
  *
- * **The size has to be said.** Every other control takes the page's; a select
- * starts at `normal` instead, which is 18px against 22.4px and leaves it 4.4px
- * shorter than the box above it in the same panel. **What is written is the
- * size, not the leading** — `app.css` gives every size its own line height, so
- * a `leading-*` written here would be a second rule for the same thing and
- * would win against the one the size carries.
+ * **Not a native `<select>`.** The one part of a select the page can reach is
+ * the closed box; the list it opens is drawn outside the page and matches
+ * nothing else on it (`docs/ui.md` の「押せるもの」). What that costs is carried
+ * here: ↑ / ↓ / Home / End walk the choices, Enter and Space choose, Escape
+ * closes and hands focus back to the box. **No type-ahead** — a list long
+ * enough to search is a picker with a box of its own, not a select.
+ *
+ * **What is chosen travels in a hidden field**, so the form around it submits
+ * as it would around a native one. Given `onChange` it is controlled instead,
+ * for a screen that holds its values in state.
  */
-export const PULLDOWN = "appearance-none pr-8 text-sm"
-
-/** The box that draws a pulldown's caret, over whatever select it is given. */
-export function Pulldown({ children }: { children: ReactNode }) {
-  return (
-    <span className="relative flex items-center">
-      {children}
-      <Icon
-        name="chevron-down"
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2 text-ink-muted"
-      />
-    </span>
-  )
-}
-
-export function Select({ label, name, value, options, hint, error, disabled }: FieldLook & {
+export function Select({
+  label,
+  name,
+  value,
+  options,
+  required,
+  hint,
+  error,
+  disabled = false,
+  width = "w-48",
+  hideLabel = false,
+  onChange,
+}: {
+  label: string
+  /** What the choice is called in the form. Absent on a controlled one. */
+  name?: string
   value?: string
   options: { value: string, label: string }[]
+  /** That a choice has to be made — see `FieldLook`. */
+  required?: string
+  hint?: string
+  error?: string
+  disabled?: boolean
+  width?: string
+  /** For a row where a visible label would leave nothing lined up with it. */
+  hideLabel?: boolean
+  /** Told of a choice, for a control whose value the screen holds. */
+  onChange?: (value: string) => void
 }) {
   const id = useId()
+  const box = useDismissible()
+  const [held, setHeld] = useState(value ?? options[0]?.value ?? "")
+  const chosen = onChange === undefined ? held : (value ?? "")
+  const current = options.find((option) => option.value === chosen)
+
+  // The line pressed closes the panel it stands in and hands focus back to
+  // the box, the way Escape does (`useDismissible`).
+  const choose = (event: React.MouseEvent<HTMLButtonElement>, next: string) => {
+    if (onChange === undefined) setHeld(next)
+    else onChange(next)
+    const panel = event.currentTarget.closest("details")
+    if (panel === null) return
+    panel.open = false
+    panel.querySelector("summary")?.focus()
+  }
+  // The walk the browser's own list would have given.
+  const walk = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const lines = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("[role='option']")]
+    const at = lines.findIndex((line) => line === document.activeElement)
+    const to = event.key === "ArrowDown"
+      ? Math.min(at + 1, lines.length - 1)
+      : event.key === "ArrowUp"
+        ? Math.max(at - 1, 0)
+        : event.key === "Home" ? 0 : event.key === "End" ? lines.length - 1 : null
+    if (to === null) return
+    event.preventDefault()
+    lines[to]?.focus()
+  }
+
   return (
-    <Labelled id={id} label={label} hint={hint} error={error}>
-      <Pulldown>
-        <select
+    <Labelled id={id} label={label} required={required} hint={hint} error={error} hideLabel={hideLabel}>
+      {name !== undefined && <input type="hidden" name={name} value={chosen} />}
+      <details
+        ref={box}
+        className={`relative ${width}`}
+        // Opened, the choice in force takes focus, so the walk starts from it.
+        onToggle={(event) => {
+          if (event.currentTarget.open) {
+            event.currentTarget.querySelector<HTMLElement>("[aria-selected='true']")?.focus()
+          }
+        }}
+        // Leaving by Tab closes it, as leaving by Escape does: a panel left
+        // open behind a focus that moved on is lying over something else.
+        onBlur={(event) => {
+          const { relatedTarget } = event
+          if (relatedTarget instanceof Node && event.currentTarget.contains(relatedTarget)) return
+          event.currentTarget.open = false
+        }}
+      >
+        <summary
           id={id}
-          name={name}
-          defaultValue={value}
-          disabled={disabled}
-          className={`${CONTROL} ${PULLDOWN} w-full ${edge(error)} disabled:opacity-50`}
+          aria-label={label}
+          aria-haspopup="listbox"
+          aria-controls={`${id}-list`}
+          aria-disabled={disabled ? true : undefined}
+          onClick={(event) => {
+            if (disabled) event.preventDefault()
+          }}
+          className={`${CONTROL} ${edge(error)} flex w-full list-none items-center justify-between gap-2 marker:content-none ${
+            disabled ? "cursor-default opacity-50" : "cursor-pointer"
+          }`}
           {...invalid(id, error)}
         >
+          <span className="truncate">{current?.label ?? ""}</span>
+          <Icon name="chevron-down" aria-hidden="true" className="shrink-0 text-ink-muted" />
+        </summary>
+        <div
+          id={`${id}-list`}
+          role="listbox"
+          aria-label={label}
+          onKeyDown={walk}
+          className={`absolute top-full left-0 z-20 flex w-full translate-y-2 ${MENU_PANEL}`}
+        >
           {options.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <button
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === chosen}
+              onClick={(event) => { choose(event, option.value) }}
+              className={`text-left ${option.value === chosen ? MENU_ITEM_HERE : MENU_ITEM}`}
+            >
+              {option.label}
+            </button>
           ))}
-        </select>
-      </Pulldown>
+        </div>
+      </details>
     </Labelled>
   )
 }
 
-export function Checkbox({ label, icon, name, value, checked, count, hint, error, disabled }: FieldLook & {
+/**
+ * The box a markdown body is written in.
+ *
+ * **A code editor over a textarea.** The body of a guideline runs to hundreds
+ * of lines and a save that refuses one of them names it by number, so the box
+ * has to show line numbers, wrap at its own edge, draw the markdown's marks
+ * apart from the words, and put the caret on a line by its number — none of
+ * which a textarea gives (docs/ui.md の「編集画面の 2 ペイン」).
+ *
+ * **The form still carries the body in the textarea.** The editor is mounted
+ * over it once the page has script (`codemirror.client.ts`), and every change
+ * is written back into the textarea and announced as a keystroke, so the form
+ * posts what it always posted, `Editing` sees the change the way it sees any
+ * other, the page beside the form is redrawn, and a page without script keeps
+ * a box that works.
+ *
+ * **The box stops at thirty lines and scrolls inside itself.** A body runs to
+ * hundreds of lines, and a box that grew with it carried the row that saves
+ * and the lines a save refused thousands of pixels below the top. A box that
+ * took whatever room the pane had left instead grew with the window, and on a
+ * tall one the row that saves sat at the foot of the pane with a gap between
+ * it and the words — thirty lines is as much as is read at once, and the row
+ * stands right under them. **A short body takes a shorter box**, down to 24rem,
+ * and a short window shrinks the box to that floor before the pane scrolls
+ * (`fill` down the column). The textarea that stands in for it without script
+ * is thirty rows.
+ */
+/** As many lines as a body's box shows at once; the rest scroll inside it. */
+const BODY_ROWS = 30
+
+export function MarkdownEditor({ label, name, value, required, accepts, hint, error, refused, onReady }: {
+  label: string
+  name: string
+  value: string
+  /** That the body has to be written — see `FieldLook`. */
+  required?: string
+  accepts?: string
+  hint?: string
+  error?: string
+  /**
+   * The lines a save refused: the list under the box that names them, and
+   * their numbers.
+   *
+   * **The list is the box's error.** A body's problems are several lines
+   * each with a line number, which no one-line `error` can hold; so the box
+   * is marked wrong and described by the list (`aria-invalid`,
+   * `aria-describedby`), and says nothing of its own above it — a count would
+   * only repeat what the list already shows. The editor colours the lines
+   * (`codemirror.client.ts` の `markLines`).
+   */
+  refused?: { id: string, lines: number[] }
+  /** Handed the way to put the caret on a line once the editor stands, and null when it goes. */
+  onReady?: (goToLine: ((line: number) => void) | null) => void
+}) {
+  const id = useId()
+  const box = useRef<HTMLTextAreaElement>(null)
+  const seat = useRef<HTMLDivElement>(null)
+  const editor = useRef<MountedMarkdown | null>(null)
+  const refusedLines = refused?.lines.join(",") ?? ""
+
+  useEffect(() => {
+    const textarea = box.current
+    const parent = seat.current
+    if (textarea === null || parent === null) return
+    let gone = false
+    void import("./codemirror.client").then(({ mountMarkdown }) => {
+      if (gone) return
+      const mounted = mountMarkdown(parent, {
+        doc: textarea.value,
+        label,
+        onChange: (doc) => {
+          textarea.value = doc
+          textarea.dispatchEvent(new Event("input", { bubbles: true }))
+        },
+      })
+      editor.current = mounted
+      textarea.hidden = true
+      onReady?.(mounted.goToLine)
+    })
+    return () => {
+      gone = true
+      editor.current?.destroy()
+      editor.current = null
+      textarea.hidden = false
+      onReady?.(null)
+    }
+  }, [label, onReady])
+
+  // The marks follow the answer: set when a save is refused, cleared when the
+  // next one goes through. Before the editor stands there is nothing to mark,
+  // and it reads the current answer as it mounts.
+  useEffect(() => {
+    editor.current?.markLines(refusedLines === "" ? [] : refusedLines.split(",").map(Number))
+  }, [refusedLines])
+
+  const wrong = error !== undefined || refused !== undefined
+  return (
+    <Labelled id={id} label={label} required={required} accepts={accepts} hint={hint} error={error} fill>
+      <textarea
+        id={id}
+        ref={box}
+        name={name}
+        defaultValue={value}
+        rows={BODY_ROWS}
+        spellCheck={false}
+        className={`${CONTROL} min-h-96 w-full ${TEXTAREA_LOOK.source} ${wrong ? "border-danger" : ""}`}
+        {...(refused === undefined
+          ? invalid(id, error)
+          : { "aria-invalid": true, "aria-describedby": refused.id })}
+      />
+      {/* Empty until the editor stands in it, and drawn as nothing while
+          empty. **It clips the editor at its own corners**: the editor's fill
+          and gutter are square, and a square corner shows past a round one.
+          **It is a column the editor fills**, so that the editor is as tall as
+          the seat and no taller (`codemirror.client.ts`). **Its ceiling is
+          thirty lines** of the editor's 21px (14px × 1.5) plus the content's
+          padding and the edge, and its floor is 24rem. */}
+      <div
+        ref={seat}
+        className={`${CONTROL_EDGE} flex min-h-96 max-h-[calc(30*1.3125rem+0.75rem+2px)] flex-col overflow-hidden rounded empty:hidden focus-within:outline-2 focus-within:outline-focus focus-within:-outline-offset-1 ${wrong ? "border-danger" : ""}`}
+      />
+    </Labelled>
+  )
+}
+
+export function Checkbox({ label, icon, name, value, checked, count, required, hint, error, disabled }: FieldLook & {
   value?: string
   checked?: boolean
   /** A glyph in front of the word — see `Labelled`. */
@@ -402,6 +660,7 @@ export function Checkbox({ label, icon, name, value, checked, count, hint, error
     <Labelled
       id={id}
       label={label}
+      required={required}
       icon={icon}
       after={count === undefined
         ? undefined
@@ -490,6 +749,7 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
 export function FileField({
   label,
   name,
+  required,
   hint,
   error,
   disabled,
@@ -510,7 +770,7 @@ export function FileField({
   const [chosen, setChosen] = useState<string[]>([])
   const t = messagesFor(locale).admin.files
   return (
-    <Labelled id={id} label={label} hint={hint} error={error}>
+    <Labelled id={id} label={label} required={required} hint={hint} error={error}>
       <span className="flex flex-wrap items-center gap-3">
         <input
           ref={input}
@@ -553,7 +813,7 @@ export function FileField({
  * them beside each other is what makes a missing translation visible without
  * anything having to say so.
  */
-export function BilingualField({ label, name, ja, en, hint, error, disabled }: FieldLook & {
+export function BilingualField({ label, name, ja, en, required, hint, error, disabled }: FieldLook & {
   ja?: string
   en?: string
 }) {
@@ -563,6 +823,7 @@ export function BilingualField({ label, name, ja, en, hint, error, disabled }: F
         label={`${label} (ja)`}
         name={`${name}.ja`}
         value={ja}
+        required={required}
         hint={hint}
         error={error}
         disabled={disabled}
@@ -572,6 +833,7 @@ export function BilingualField({ label, name, ja, en, hint, error, disabled }: F
         label={`${label} (en)`}
         name={`${name}.en`}
         value={en}
+        required={required}
         disabled={disabled}
         width="w-full"
       />
@@ -676,13 +938,39 @@ function changedIn(form: HTMLFormElement): boolean {
  * screen that had to thread the answer from its boxes to that button would
  * write the same three lines on every screen that saves anything.
  */
-export function Editing({ children, onInput, ...rest }: ComponentProps<typeof Form>) {
+export function Editing({ children, onInput, onDirty, ...rest }: ComponentProps<typeof Form> & {
+  /**
+   * Told whenever this form's own answer to "has this been typed into"
+   * changes — for a save standing outside the form it sends, which cannot
+   * read `Changed` because it is not inside the form's own tree
+   * (`docs/admin-ui.md` の「道具の行」).
+   */
+  onDirty?: (dirty: boolean) => void
+}) {
   const [changed, setChanged] = useState(false)
+  const form = useRef<HTMLFormElement>(null)
+  const { state } = useNavigation()
+  // **What was sent is no longer unsent.** Once a submission has settled the
+  // screen has been read again, and every control's loaded value is what the
+  // server now holds — so the same walk answers false, or true when the save
+  // was refused and the words are still only here. Without this the answer
+  // given at the last keystroke stood until the next one, over a save that
+  // had already gone through.
+  useEffect(() => {
+    if (state === "idle" && form.current !== null) {
+      const next = changedIn(form.current)
+      setChanged(next)
+      onDirty?.(next)
+    }
+  }, [state, onDirty])
   return (
     <Form
       {...rest}
+      ref={form}
       onInput={(event) => {
-        setChanged(changedIn(event.currentTarget))
+        const next = changedIn(event.currentTarget)
+        setChanged(next)
+        onDirty?.(next)
         onInput?.(event)
       }}
     >
@@ -706,8 +994,17 @@ export function Editing({ children, onInput, ...rest }: ComponentProps<typeof Fo
  * own contents** (`flex items-center`), and that box takes whatever alignment
  * the row gives it.
  */
-export function Unsaved({ locale }: { locale: Locale }) {
-  const changed = useContext(Changed)
+export function Unsaved({ locale, dirty }: {
+  locale: Locale
+  /**
+   * The "has this been typed into" answer to use in place of `Changed`, for a
+   * report standing beside a save that is outside the form it is about
+   * (`docs/admin-ui.md` の「道具の行」).
+   */
+  dirty?: boolean
+}) {
+  const contextChanged = useContext(Changed)
+  const changed = dirty ?? contextChanged
   return (
     <span role="status" className="text-xs">
       {changed === true && (
@@ -723,16 +1020,26 @@ export function Submit({
   variant = "secondary",
   size,
   disabled,
+  reasonAt,
   icon,
   className,
   saves = false,
+  dirty,
+  form,
+  id,
 }: {
   children: ReactNode
   intent?: string
   variant?: ButtonVariant
   /** Passed on to `Button`, for a save that stands in a row of `xs` controls. */
   size?: ButtonSize
-  disabled?: boolean
+  /**
+   * Passed on to `Button`: a sentence is why it cannot be pressed, drawn over
+   * it while it is pointed at or focused.
+   */
+  disabled?: boolean | string
+  /** Passed on to `Button`, with the reason: which edge of it the reason hangs from. */
+  reasonAt?: "left" | "right"
   /** Passed on to `Button`, for a row where the links beside it carry one. */
   icon?: ReactNode
   /**
@@ -753,22 +1060,51 @@ export function Submit({
    * against.
    */
   saves?: boolean
+  /**
+   * The "has this been typed into" answer to use in place of `Changed`, for a
+   * save that stands outside the form it sends and so cannot read a context
+   * provided inside that form's own tree (`docs/admin-ui.md` の「道具の行」).
+   */
+  dirty?: boolean
+  /** Passed on to `Button`: the form this control sends, when it is not the one it stands in. */
+  form?: string
+  /** Passed on to `Button`, for a control another one has to find by id (`docs/admin-ui.md` の「道具の行」の Ctrl+S). */
+  id?: string
 }) {
-  const changed = useContext(Changed)
+  const contextChanged = useContext(Changed)
+  const changed = dirty ?? contextChanged
   const waiting = saves && changed === true
+  /*
+    **While the deed it sent is in flight, the control that sent it waits in
+    place.** It cannot be pressed again, its icon's box holds the spinner, and
+    its name and width stay exactly as they were — a control that renamed
+    itself or grew would move whatever stands beside it at the moment the
+    reader is watching it (`docs/ui.md` の「壊れるもの」). What is read out is
+    beside it, out of sight: the admin screens are Japanese only, which is why
+    the word needs no locale.
+  */
+  const { pending, press } = usePressed()
   return (
-    <Button
-      type="submit"
-      variant={waiting ? "accent" : variant}
-      size={size}
-      disabled={disabled === true || (saves && changed === false)}
-      icon={icon}
-      className={className}
-      name={intent === undefined ? undefined : "intent"}
-      value={intent}
-    >
-      {children}
-    </Button>
+    <>
+      <Button
+        id={id}
+        type="submit"
+        variant={waiting ? "accent" : variant}
+        size={size}
+        disabled={typeof disabled === "string" ? disabled : disabled === true || pending || (saves && changed === false)}
+        reasonAt={reasonAt}
+        icon={pending ? <Spinner /> : icon}
+        className={className}
+        name={intent === undefined ? undefined : "intent"}
+        value={intent}
+        form={form}
+        aria-busy={pending || undefined}
+        onClick={(event) => { press(event.currentTarget.form) }}
+      >
+        {children}
+      </Button>
+      {pending && <span role="status" className="sr-only">{messagesFor("ja").admin.busy}</span>}
+    </>
   )
 }
 
@@ -783,9 +1119,31 @@ export function Submit({
  * **It carries no margin and no width.** It is drawn inside `Answered`, which
  * decides where it stands and how wide it gets.
  */
-export function Result({ ok, children }: { ok: boolean, children: ReactNode }) {
+export function Result({ ok, also, children }: {
+  ok: boolean
+  /**
+   * A control belonging to the answer rather than to the box — the way to take
+   * back what was just done. It stands left of the way out, which every answer
+   * has, so that the two are read as "undo this" and "put this away".
+   */
+  also?: ReactNode
+  children: ReactNode
+}) {
   const dismiss = useContext(Dismiss)
-  return <Note kind={ok ? "done" : "danger"} live action={dismiss}>{children}</Note>
+  return (
+    <Note
+      kind={ok ? "done" : "danger"}
+      live
+      action={(
+        <>
+          {also}
+          {dismiss}
+        </>
+      )}
+    >
+      {children}
+    </Note>
+  )
 }
 
 /** The way to put the answer away, handed to the `Result` inside it. */

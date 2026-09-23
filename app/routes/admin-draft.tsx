@@ -30,14 +30,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  const editor = messages.admin.editor
-  // The same name the bar gives it, which carries the research in it already
-  // (`components/editor.tsx`).
-  const name = loaderData.humLabel === null
-    ? editor.headingUnlabelled
-    : editor.headingOf(loaderData.humLabel)
+  // The same name and identifier the head gives it (`components/editor.tsx`).
   return [
-    { title: pageTitle(messages, name) },
+    { title: pageTitle(messages, messages.admin.draft.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

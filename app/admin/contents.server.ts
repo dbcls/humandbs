@@ -18,6 +18,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import type { PgColumn } from "drizzle-orm/pg-core"
 import { redirect } from "react-router"
+import { z } from "zod"
 
 import { requireCapability } from "~/auth/actor.server"
 import type { Actor } from "~/auth/capabilities"
@@ -25,9 +26,11 @@ import { recordEvent } from "~/auth/events.server"
 import { checkArticleBody, type ArticleSyntax } from "~/content/article.server"
 import type { ArticleContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
-import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
+import { alert, document, documentContent, documentSeries, event, news, newsContent } from "~/db/schema"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
+import { renderMarkdown } from "~/public/markdown.server"
+import type { ArticleView } from "~/public/site.server"
 import { href, readLocale } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
@@ -39,6 +42,7 @@ import {
   adminDocumentPath,
   adminNewsListPath,
   adminNewsPath,
+  adminSeriesPath,
 } from "./urls"
 import {
   datingOf,
@@ -116,6 +120,17 @@ export type ContentsResult
 export interface AlertRow {
   id: string
   active: boolean
+  /**
+   * The JST day it was put up, while it is up.
+   *
+   * **Read from the trail rather than kept on the row.** Putting an alert up
+   * is recorded there in the same transaction, so the day is true without a
+   * second thing being written — and it is the day of the *latest* raising,
+   * because what a reader of the screen wants to know is how long the sentence
+   * has been standing, not when it first went up. An alert raised before the
+   * trail existed (the two the migration carries) has no day to show.
+   */
+  shownAt: string | null
   ja: string
   en: string
 }
@@ -165,13 +180,11 @@ export interface LocaleEditor {
   locale: Locale
   published: boolean
   publishedAt: string | null
-  /** What readers see now. Empty until the first publish. */
+  /** The one body there is, public or not. Empty until something is saved. */
   title: string
   body: string
-  /** What the form holds: the draft if there is one, otherwise what is published. */
-  draftTitle: string
-  draftBody: string
-  hasDraft: boolean
+  /** The body drawn as readers would see it, for the pane beside the form before a key is pressed. */
+  html: string
   /** Null when no row exists yet, which is what tells a save to insert. */
   revision: number | null
 }
@@ -256,7 +269,6 @@ interface ContentRow {
   slug: string
   locale: Locale | null
   published: boolean | null
-  hasDraft: boolean | null
   title: string | null
 }
 
@@ -267,8 +279,7 @@ async function documentRows(db: Executor): Promise<DocumentRow[]> {
       slug: document.slug,
       locale: documentContent.locale,
       published: documentContent.published,
-      hasDraft: sql<boolean>`${documentContent.draftContent} is not null`,
-      title: sql<string>`coalesce(${documentContent.draftContent}, ${documentContent.content})->>'title'`,
+      title: sql<string>`${documentContent.content}->>'title'`,
     })
     .from(document)
     .leftJoin(documentContent, eq(documentContent.documentId, document.id))
@@ -279,10 +290,7 @@ async function documentRows(db: Executor): Promise<DocumentRow[]> {
     const found = byId.get(row.id)
       ?? { id: row.id, slug: row.slug, title: "", states: emptyStates() }
     if (row.locale !== null) {
-      found.states[row.locale] = {
-        published: row.published === true,
-        hasDraft: row.hasDraft === true,
-      }
+      found.states[row.locale] = { published: row.published === true }
       // Japanese names the page; English does when there is no Japanese side.
       if (found.title === "" || row.locale === "ja") found.title = row.title ?? ""
     }
@@ -402,9 +410,22 @@ export async function seriesPage(request: Request, seriesId: string): Promise<Se
 
 export async function alertsPage(request: Request): Promise<AlertsView> {
   await requireCapability(request, "manage-site-content")
+  // The last time each alert was put up, as the JST day (`AlertRow`). The
+  // trail is the one place that knows: the row only says whether it is up now.
+  const lastShown = getDb()
+    .select({
+      subjectId: event.subjectId,
+      day: sql<string>`to_char(max(${event.occurredAt}) at time zone 'Asia/Tokyo', 'YYYY-MM-DD')`.as("day"),
+    })
+    .from(event)
+    .where(and(eq(event.action, "publish-site-content"), eq(event.subjectType, "alert")))
+    .groupBy(event.subjectId)
+    .as("last_shown")
   const alerts = await getDb()
-    .select({ id: alert.id, active: alert.active, content: alert.content })
+    .select({ id: alert.id, active: alert.active, content: alert.content, shownDay: lastShown.day })
     .from(alert)
+    // The trail names its subject as text, whatever the subject's own key is.
+    .leftJoin(lastShown, sql`${lastShown.subjectId} = ${alert.id}::text`)
     // **Two alerts made in the same moment still have an order.** Rows written
     // in one statement share a timestamp, and ordering by the time alone hands
     // them back in whatever order they happen to lie in — which moves as soon as
@@ -417,6 +438,7 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
     alerts: alerts.map((row) => ({
       id: row.id,
       active: row.active,
+      shownAt: row.active ? row.shownDay : null,
       ja: row.content.body.ja,
       en: row.content.body.en,
     })),
@@ -426,23 +448,20 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
 function editorsFrom(rows: {
   locale: Locale
   content: ArticleContent
-  draftContent: ArticleContent | null
   published: boolean
   publishedAt?: string | null
   revision: number
 }[]): LocaleEditor[] {
   return LOCALES.map((locale) => {
     const row = rows.find((one) => one.locale === locale)
-    const draft = row?.draftContent ?? row?.content ?? EMPTY_ARTICLE
+    const content = row?.content ?? EMPTY_ARTICLE
     return {
       locale,
       published: row?.published ?? false,
       publishedAt: row?.publishedAt ?? null,
-      title: row?.content.title ?? "",
-      body: row?.content.body ?? "",
-      draftTitle: draft.title,
-      draftBody: draft.body,
-      hasDraft: row?.draftContent != null,
+      title: content.title,
+      body: content.body,
+      html: paneHtml(content.body, locale),
       revision: row?.revision ?? null,
     }
   })
@@ -467,7 +486,6 @@ export async function documentPage(
     .select({
       locale: documentContent.locale,
       content: documentContent.content,
-      draftContent: documentContent.draftContent,
       published: documentContent.published,
       publishedAt: documentContent.publishedAt,
       revision: documentContent.revision,
@@ -543,15 +561,14 @@ async function newsRows(db: Executor): Promise<NewsRow[]> {
           id: newsContent.newsId,
           locale: newsContent.locale,
           published: newsContent.published,
-          hasDraft: sql<boolean>`${newsContent.draftContent} is not null`,
-          title: sql<string>`coalesce(${newsContent.draftContent}, ${newsContent.content})->>'title'`,
+          title: sql<string>`${newsContent.content}->>'title'`,
         })
         .from(newsContent)
 
   for (const row of contents) {
     const found = byId.get(row.id)
     if (found === undefined) continue
-    found.states[row.locale] = { published: row.published, hasDraft: row.hasDraft }
+    found.states[row.locale] = { published: row.published }
     // Japanese names the item; English does when there is no Japanese side.
     if (found.title === "" || row.locale === "ja") found.title = row.title
   }
@@ -645,7 +662,6 @@ export async function newsPage(request: Request, newsId: string): Promise<NewsVi
     .select({
       locale: newsContent.locale,
       content: newsContent.content,
-      draftContent: newsContent.draftContent,
       published: newsContent.published,
       revision: newsContent.revision,
     })
@@ -993,12 +1009,7 @@ async function insertLocale(
   article: ArticleContent,
   published: boolean,
 ): Promise<boolean> {
-  const values = {
-    locale,
-    content: published ? article : EMPTY_ARTICLE,
-    draftContent: published ? null : article,
-    published,
-  }
+  const values = { locale, content: article, published }
   const inserted = target.kind === "document"
     ? await tx
         .insert(documentContent)
@@ -1019,7 +1030,6 @@ async function insertLocale(
 
 interface LocaleUpdate {
   content?: ArticleContent
-  draftContent?: ArticleContent | null
   published?: boolean
   /** Documents only: the day it first went out. */
   stampPublishedAt?: boolean
@@ -1034,7 +1044,6 @@ interface LocaleUpdate {
 function localeSet(revision: number, update: LocaleUpdate) {
   return {
     ...update.content === undefined ? {} : { content: update.content },
-    ...update.draftContent === undefined ? {} : { draftContent: update.draftContent },
     ...update.published === undefined ? {} : { published: update.published },
     revision: revision + 1,
   }
@@ -1082,7 +1091,13 @@ async function updateLocale(
   return changed.length > 0
 }
 
-async function saveDraft(
+/**
+ * Saving writes the one body there is. **A published page changes the moment
+ * it is saved** — there is no draft to hold the words back (docs/editing.md の
+ * 「サイトコンテンツ」); a rewrite that must not be read on the way is a new
+ * revision under a series.
+ */
+async function saveLocale(
   tx: Executor,
   target: ContentTarget,
   form: FormData,
@@ -1099,7 +1114,7 @@ async function saveDraft(
       ? { status: "ok" }
       : { status: "stale" }
   }
-  return await updateLocale(tx, target, locale, revision, { draftContent: article })
+  return await updateLocale(tx, target, locale, revision, { content: article })
     ? { status: "ok" }
     : { status: "stale" }
 }
@@ -1109,8 +1124,8 @@ async function saveDraft(
  * two buttons sit under the same body, and publishing the version before the
  * one on screen is not something anybody pressing "publish" means.
  *
- * Taking a locale down and discarding its draft are a separate form, so they
- * cannot swallow an edit that was never sent.
+ * Taking a locale down is a separate form, so it cannot swallow an edit that
+ * was never sent.
  */
 async function publishLocale(
   tx: Executor,
@@ -1129,7 +1144,6 @@ async function publishLocale(
     ? await insertLocale(tx, target, locale, article, true)
     : await updateLocale(tx, target, locale, revision, {
         content: article,
-        draftContent: null,
         published: true,
         stampPublishedAt: true,
       })
@@ -1171,38 +1185,18 @@ async function unpublishLocale(
 }
 
 /**
- * Taking one language away.
+ * Taking the whole thing away: the item, and every language written into it.
  *
- * **The last language takes the whole thing with it.** An address that answers
- * in neither language answers with nothing, and leaving the row standing would
- * send a curator back to the listing to finish what they started here.
+ * **What a series points at is refused before anything is deleted.** The
+ * version-less address has to keep answering, and the way to take that down is
+ * the series' own screen, which takes the pointer with it.
  *
- * **What a series points at is refused before anything is deleted**, not after:
- * the version-less address has to keep answering, and a refusal that arrives
- * once the body is gone is not a refusal.
+ * **One event for the item rather than one per language**, the way a series
+ * records its revisions: what happened is that the item went, and the
+ * languages that were public at the time are the detail of it.
  */
-async function deleteLocale(
-  tx: Executor,
-  target: ContentTarget,
-  form: FormData,
-  actor: Actor,
-): Promise<Applied> {
-  const locale = localeOf(form)
-  const revision = revisionOf(form)
-  if (locale === null || revision === null) return { status: "unknown-target" }
-
-  const written = target.kind === "document"
-    ? await tx
-        .select({ locale: documentContent.locale })
-        .from(documentContent)
-        .where(eq(documentContent.documentId, target.id))
-    : await tx
-        .select({ locale: newsContent.locale })
-        .from(newsContent)
-        .where(eq(newsContent.newsId, target.id))
-  const last = written.length <= 1
-
-  if (last && target.kind === "document") {
+async function deleteItem(tx: Executor, target: ContentTarget, actor: Actor): Promise<Applied> {
+  if (target.kind === "document") {
     const [pointed] = await tx
       .select({ id: documentSeries.id })
       .from(documentSeries)
@@ -1211,43 +1205,44 @@ async function deleteLocale(
     if (pointed !== undefined) return { status: "in-use" }
   }
 
-  const gone = target.kind === "document"
+  const published = target.kind === "document"
     ? await tx
-        .delete(documentContent)
-        .where(and(
-          eq(documentContent.documentId, target.id),
-          eq(documentContent.locale, locale),
-          eq(documentContent.revision, revision),
-        ))
-        .returning({ published: documentContent.published })
+        .select({ locale: documentContent.locale })
+        .from(documentContent)
+        .where(and(eq(documentContent.documentId, target.id), eq(documentContent.published, true)))
     : await tx
-        .delete(newsContent)
-        .where(and(
-          eq(newsContent.newsId, target.id),
-          eq(newsContent.locale, locale),
-          eq(newsContent.revision, revision),
-        ))
-        .returning({ published: newsContent.published })
-  if (gone.length === 0) return { status: "stale" }
+        .select({ locale: newsContent.locale })
+        .from(newsContent)
+        .where(and(eq(newsContent.newsId, target.id), eq(newsContent.published, true)))
 
-  const subject = subjectOf(target)
-  if (gone.some((one) => one.published)) {
+  // **A revision's screen goes back to its series, not to the listing.** The
+  // listing has no row for a revision, and the curator who took one out is
+  // looking at the rest of them. Read before the row goes, since the slug is
+  // what says which series it was under.
+  const owner = target.kind === "document"
+    ? (await tx.select({ id: documentSeries.id, slug: documentSeries.slug }).from(documentSeries))
+        .find((one) => versionNumberIn(one.slug, target.slug) !== null)
+    : undefined
+
+  if (target.kind === "document") await tx.delete(document).where(eq(document.id, target.id))
+  else await tx.delete(news).where(eq(news.id, target.id))
+
+  if (published.length > 0) {
+    const subject = subjectOf(target)
     await recordEvent(tx, {
       actor,
       action: "unpublish-site-content",
       subjectType: subject.type,
       subjectId: target.id,
-      detail: { ...subject.detail, locale, deleted: true },
+      detail: { ...subject.detail, deleted: true, locales: published.map((one) => one.locale) },
     })
   }
-  if (!last) return { status: "ok" }
-
-  if (target.kind === "document") {
-    await tx.delete(document).where(eq(document.id, target.id))
-    return { status: "ok", goTo: adminContentsPath() }
+  return {
+    status: "ok",
+    goTo: target.kind !== "document"
+      ? adminNewsListPath()
+      : owner === undefined ? adminContentsPath() : adminSeriesPath(owner.id),
   }
-  await tx.delete(news).where(eq(news.id, target.id))
-  return { status: "ok", goTo: adminNewsListPath() }
 }
 
 // --- one document ------------------------------------------------------------
@@ -1272,14 +1267,14 @@ export async function documentAction(
     switch (intent) {
       case "rename":
         return renameDocument(tx, target, form)
-      case "save-draft":
-        return saveDraft(tx, target, form)
+      case "save":
+        return saveLocale(tx, target, form)
       case "publish":
         return publishLocale(tx, target, form, actor)
       case "unpublish":
         return unpublishLocale(tx, target, form, actor)
-      case "delete-locale":
-        return deleteLocale(tx, target, form, actor)
+      case "delete-document":
+        return deleteItem(tx, target, actor)
       case "cut-into-version":
         return cutIntoVersion(tx, target, form)
       default:
@@ -1371,14 +1366,14 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
     switch (intent) {
       case "set-date":
         return setNewsDate(tx, row.id, form)
-      case "save-draft":
-        return saveDraft(tx, target, form)
+      case "save":
+        return saveLocale(tx, target, form)
       case "publish":
         return publishLocale(tx, target, form, actor)
       case "unpublish":
         return unpublishLocale(tx, target, form, actor)
-      case "delete-locale":
-        return deleteLocale(tx, target, form, actor)
+      case "delete-news":
+        return deleteItem(tx, target, actor)
       default:
         return { status: "unknown-target" }
     }
@@ -1400,4 +1395,38 @@ async function setNewsDate(tx: Executor, id: string, form: FormData): Promise<Co
   if (value !== "" && stamp === null) return { status: "unknown-target" }
   await tx.update(news).set({ publishedAt: stamp }).where(eq(news.id, id))
   return { status: "ok" }
+}
+
+const previewSchema = z.object({
+  locale: z.enum(["ja", "en"]),
+  title: z.string(),
+  body: z.string(),
+})
+
+/**
+ * A body drawn as readers would see it, for the pane beside the form.
+ *
+ * **The same function the public page runs** (`renderMarkdown`), so what the
+ * pane shows is what will be published rather than a second reading of the
+ * markdown. **Less the link each heading offers in the margin**: that link
+ * hands out the heading's address, and the pane has none to hand — pressed
+ * there, it would put the heading's name on the end of the editing screen's
+ * address. The ids stay, so a contents list the article writes still lands on
+ * its heading in the pane.
+ */
+function paneHtml(body: string, locale: Locale): string {
+  return renderMarkdown(body, locale, { headingLinks: false })
+}
+
+/**
+ * The typed body drawn for the pane (`paneHtml`). Nothing is written and
+ * nothing is looked up: the words come from the form and go back drawn, which
+ * is why the address names no article.
+ */
+export async function articlePreviewAction(request: Request): Promise<ArticleView> {
+  await requireCapability(request, "manage-site-content")
+  const payload = previewSchema.safeParse(await request.json())
+  if (!payload.success) throw new Response(null, { status: 400, statusText: "Bad Request" })
+  const { locale, title, body } = payload.data
+  return { title, html: paneHtml(body, locale) }
 }

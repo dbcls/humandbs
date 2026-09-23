@@ -130,6 +130,7 @@ const TALKED_TO = [
   "draftPagePath",
   "datasetPagePath",
   "draftPresencePath",
+  "adminArticlePreviewPath",
 ]
 
 /**

@@ -25,13 +25,17 @@ import {
   MENU_ITEM,
   MENU_ITEM_HERE,
   Stack,
+  Stated,
 } from "~/components/base"
 import { Checkbox, Submit } from "~/components/form"
-import { Icon } from "~/components/icons"
+import { Icon, type IconName } from "~/components/icons"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
+import { formatSize } from "~/files/box"
+import { boxSummariesOf } from "~/files/listing.server"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
@@ -61,7 +65,12 @@ const SHOWN_DATASETS = 3
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  return researchListPage(request, locale)
+  const view = await researchListPage(request, locale)
+  const boxes = await boxSummariesOf(view.rows)
+  return {
+    ...view,
+    rows: view.rows.map((row) => ({ ...row, box: boxes.get(row.researchId) ?? null })),
+  }
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -83,6 +92,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   const messages = messagesFor(locale)
   const t = messages.admin.research
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
 
   // Folded, the way back into the pane says how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
@@ -106,7 +116,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                 arriving from there should not have to match a name up. */}
             <ButtonLink
               to={href(locale, adminUpstreamResearchPath())}
-              icon={<Icon name="clipboard" />}
+              icon={<Icon name="download" />}
             >
               {messages.admin.tasks.research.fromUpstream}
             </ButtonLink>
@@ -117,7 +127,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
 
           <RefinableList
             open={paneOpen}
-            busy={false}
+            busy={busy}
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
@@ -130,7 +140,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             panel={null}
           >
             <Stack gap="normal">
-              {/* 9 列あって窓に入り切らないので、行がどれの話かを言う列だけ残す。
+              {/* 10 列あって窓に入り切らないので、行がどれの話かを言う列だけ残す。
                   2 列目以降を固定できるのは 1 列目が mark のときだけ (`page.tsx`
                   の `STUCK`)。 */}
               <Table
@@ -142,6 +152,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                   t.columns.status,
                   t.columns.versions,
                   t.columns.drafts,
+                  t.columns.files,
                   t.columns.incomplete,
                   t.columns.published,
                   t.columns.updated,
@@ -196,11 +207,19 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           draws that same glyph on the baseline two columns
                           over. The cell already refuses to wrap, so there is
                           nothing for a box to hold together. */}
-                      <StatusIcon status={row.status} />
-                      {t.statuses[row.status]}
+                      <Stated icon={STATUS_MARK[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
                     <Td>{row.publishedVersions}</Td>
                     <Td>{row.draftCount}</Td>
+                    <Td nowrap>
+                      {/* The two numbers the research's own screen gives for
+                          its box, in the same words. A store that did not
+                          answer is said rather than left blank: a blank cell
+                          in a column of counts reads as nothing there. */}
+                      {row.box === null
+                        ? <span className="text-ink-muted">{t.filesUnavailable}</span>
+                        : messages.admin.files.summary(row.box.count, formatSize(row.box.bytes))}
+                    </Td>
                     <Td>
                       {/* **Each badge is a flex item, not a word on a line.**
                           Left on a line it shares the baseline of the columns
@@ -284,7 +303,7 @@ function Filters({ view, locale }: ViewProps) {
               <Checkbox
                 key={status}
                 label={t.statuses[status]}
-                icon={<StatusIcon status={status} />}
+                icon={<Icon name={STATUS_MARK[status]} aria-hidden="true" className="mr-1 text-ink-muted" />}
                 name="status"
                 value={status}
                 checked={view.statuses.includes(status)}
@@ -311,22 +330,10 @@ function Filters({ view, locale }: ViewProps) {
 }
 
 /**
- * The glyph the two statuses are drawn by.
- *
- * **The same pair in the pane and down the table**, so that the shape a curator
- * narrows by is the shape they then read in the rows. The word stays beside it
- * in both places — an eye and a lock are only obvious once you know that the
- * question is who can see this.
+ * The glyph a status is drawn by: the question is who can see this, and an
+ * eye or a lock is only obvious once you know that is the question.
  */
-function StatusIcon({ status }: { status: AdminStatus }) {
-  return (
-    <Icon
-      name={status === "published" ? "eye" : "lock"}
-      aria-hidden="true"
-      className="mr-1 text-ink-muted"
-    />
-  )
-}
+const STATUS_MARK: Record<AdminStatus, IconName> = { published: "eye", unpublished: "lock" }
 
 /**
  * How the result is presented, carried across a change of conditions.

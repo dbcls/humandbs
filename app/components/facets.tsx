@@ -3,7 +3,8 @@ import { Form, Link } from "react-router"
 
 import { CLEAR, EDGE_SHADE, Fold, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
-import { Empty, TermLabel } from "~/components/page"
+import { Code, Empty, TermLabel } from "~/components/page"
+import { DateRange } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { matches, rolledUpFind } from "~/public/facet-find"
@@ -116,26 +117,23 @@ function Facet({ locale, target, query, sort, facet, open }: {
     >
       <Stack gap="tight">
         {facet.range !== null
-          ? (
-              <>
-                {facet.range.presets.length > 0 && (
-                  <div className="flex gap-1">
-                    {facet.range.presets.map((preset) => (
-                      <RefineLink
-                        key={preset.label}
-                        to={preset.href}
-                        aria-current={preset.current ? "true" : undefined}
-                        className={`flex-1 rounded border px-1 py-1 text-center text-xs no-underline ${
-                          preset.current
-                            ? "border-brand bg-surface-hover font-semibold text-ink"
-                            : "border-line text-brand hover:bg-surface-hover"
-                        }`}
-                      >
-                        {preset.label}
-                      </RefineLink>
-                    ))}
-                  </div>
-                )}
+          ? facet.kind === "date"
+            // The same windows and ends the management panes draw over a
+            // range of days, so the ends of this one are named in the query.
+            ? (
+                <DateRange
+                  locale={locale}
+                  action={href(locale, listPath(target))}
+                  windows={facet.range.presets}
+                  from={facet.range.from}
+                  to={facet.range.to}
+                  names={{ from: "rangeFrom", to: "rangeTo" }}
+                >
+                  <Carried query={query} sort={sort} />
+                  <input type="hidden" name="rangeKey" value={facet.code} />
+                </DateRange>
+              )
+            : (
                 <Form
                   ref={form}
                   method="get"
@@ -145,51 +143,17 @@ function Facet({ locale, target, query, sort, facet, open }: {
                   <Stack gap="tight">
                     <Carried query={query} sort={sort} />
                     <input type="hidden" name="rangeKey" value={facet.code} />
-                    {facet.kind === "date"
-                      ? (
-                          <>
-                            <Bound
-                              name="rangeFrom"
-                              label={messages.dateFrom}
-                              value={facet.range.from}
-                              kind={facet.kind}
-                              ask={ask}
-                            />
-                            <Bound
-                              name="rangeTo"
-                              label={messages.dateTo}
-                              value={facet.range.to}
-                              kind={facet.kind}
-                              ask={ask}
-                            />
-                          </>
-                        )
-                      : (
-                          <div className="flex items-center gap-1">
-                            <Bound
-                              name="rangeFrom"
-                              label={messages.from}
-                              value={facet.range.from}
-                              kind={facet.kind}
-                              ask={ask}
-                            />
-                            <span aria-hidden="true">–</span>
-                            <Bound
-                              name="rangeTo"
-                              label={messages.to}
-                              value={facet.range.to}
-                              kind={facet.kind}
-                              ask={ask}
-                            />
-                            {facet.range.unit !== null && (
-                              <span className="text-ink-muted text-xs">{facet.range.unit}</span>
-                            )}
-                          </div>
-                        )}
+                    <div className="flex items-center gap-1">
+                      <Bound name="rangeFrom" label={messages.from} value={facet.range.from} ask={ask} />
+                      <span aria-hidden="true">–</span>
+                      <Bound name="rangeTo" label={messages.to} value={facet.range.to} ask={ask} />
+                      {facet.range.unit !== null && (
+                        <span className="text-ink-muted text-xs">{facet.range.unit}</span>
+                      )}
+                    </div>
                   </Stack>
                 </Form>
-              </>
-            )
+              )
           : facet.values.length === 0
             // **A dimension nothing in the result carries still stands in the
             // pane** (`facets.server.ts`), so opening it has to say why it is
@@ -364,46 +328,33 @@ function Carried({ query, sort }: {
  * already showing. Enter asks too, since a form with two fields and no button
  * would otherwise do nothing with it.
  */
-function Bound({ name, label, value, kind, ask }: {
+function Bound({ name, label, value, ask }: {
   name: string
   label: string
   value: string
-  kind: FacetView["kind"]
   /** Go to the address this form now stands for. */
   ask: () => void
 }) {
-  const date = kind === "date"
   const settled = (event: { currentTarget: HTMLInputElement }) => {
     if (event.currentTarget.value !== value) ask()
   }
-  const input = (
+  return (
     <input
-      type={date ? "date" : "text"}
-      inputMode={date ? undefined : "decimal"}
+      type="text"
+      inputMode="decimal"
       name={name}
       defaultValue={value}
-      aria-label={date ? undefined : label}
-      {...(date
-        ? { onChange: settled }
-        : {
-            onBlur: settled,
-            onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
-              if (event.key !== "Enter") return
-              // The form has no button to submit it, so nothing would happen —
-              // and a page reload here would be a page the reader lost.
-              event.preventDefault()
-              settled(event)
-            },
-          })}
-      className={`${date ? "w-full" : "w-16"} ${CONTROL}`}
+      aria-label={label}
+      onBlur={settled}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return
+        // The form has no button to submit it, so nothing would happen — and a
+        // page reload here would be a page the reader lost.
+        event.preventDefault()
+        settled(event)
+      }}
+      className={`w-16 ${CONTROL}`}
     />
-  )
-  if (!date) return input
-  return (
-    <label className="flex flex-col gap-0.5">
-      <span className="text-ink-muted text-xs">{label}</span>
-      {input}
-    </label>
   )
 }
 
@@ -435,7 +386,7 @@ function Value({ locale, value, kind }: {
       <span className="min-w-0 break-words">
         {kind === "disease" && (
           <>
-            <code className="mr-1 font-mono text-ink-muted text-xs">{value.code}</code>
+            <Code className="mr-1" size="xs" muted>{value.code}</Code>
             {" "}
           </>
         )}

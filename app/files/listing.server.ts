@@ -117,6 +117,41 @@ export async function adminBox(
   return composeBox(publicNodes, privateNodes, pending)
 }
 
+/** What a box holds, in two numbers. */
+export interface BoxSummary {
+  count: number
+  bytes: number
+}
+
+/**
+ * What each research's box holds, for a page of the admin listing.
+ *
+ * **Both buckets, counted the way the research's own screen counts.** A
+ * curator reading the listing is asking how much has been put in, not how much
+ * is out, and a research still being written has everything on the private
+ * side. A name held by both buckets — a switch half done — is one file, which
+ * is what `composeBox` settles; which side it is on does not change the count,
+ * so the pending switches are not read.
+ *
+ * **One pair of listings per row**, bounded by the page size the way
+ * `publicBoxesOf` is. A row whose store did not answer is `null` and the others
+ * are kept, so one refusal does not blank the column.
+ */
+export async function boxSummariesOf(
+  rows: readonly { researchId: string, humLabel: string | null }[],
+): Promise<Map<string, BoxSummary | null>> {
+  const summaries = await Promise.all(rows.map(async (row) => {
+    const [publicNodes, privateNodes] = await Promise.all([
+      publicBox(row.humLabel),
+      tolerantly(() => listPrefix(PRIVATE_BUCKET, privatePrefix(row.researchId))),
+    ])
+    if (publicNodes === null || privateNodes === null) return null
+    const box = composeBox(publicNodes, privateNodes, [])
+    return { count: box.length, bytes: box.reduce((sum, entry) => sum + entry.size, 0) }
+  }))
+  return new Map(rows.map((row, at) => [row.researchId, summaries[at] ?? null]))
+}
+
 /**
  * A listed bucket as download rows. Everything in the public bucket is by
  * definition fetchable, so the flag is settled by which listing this came from.

@@ -26,6 +26,7 @@ import {
   fetchJgadRegistrations,
   searchDsBranches,
   type DsBranchDetail,
+  type DsBranchRow,
 } from "~/upstream/application-db.server"
 
 import {
@@ -40,6 +41,7 @@ import {
   upstreamBranchAction,
   upstreamBranchPage,
   upstreamDatasetPage,
+  upstreamDraftPage,
   upstreamResearchPage,
 } from "./templates.server"
 
@@ -386,15 +388,37 @@ describe("the screen that starts a research from an application", () => {
     )
   })
 
-  it("offers every draft of that research, and the version it could replace", async () => {
+  it("offers no form at all once the hum already names a research", async () => {
     const token = await signIn()
     const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
     if (held.status !== "created") throw new Error(held.status)
 
     const view = await upstreamBranchPage(get(token, ""), "ja", at)
 
-    expect(view.holder?.latestNumber).toBeNull()
-    expect(view.holder?.drafts.map((draft) => draft.draftId)).toEqual([held.draftId])
+    expect(view.holder).toEqual({ researchId: held.researchId, humLabel: "hum0522" })
+  })
+
+  it("refuses to take a branch into an existing draft or version from this screen", async () => {
+    const token = await signIn()
+    const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
+    if (held.status !== "created") throw new Error(held.status)
+
+    const intoDraft = await upstreamBranchAction(
+      post(token, [["into", `draft:${held.draftId}`]]),
+      "ja",
+      at,
+    ).then(() => null, (error: unknown) => error)
+    const intoVersion = await upstreamBranchAction(
+      post(token, [["into", "version:1"], ["research", held.researchId]]),
+      "ja",
+      at,
+    ).then(() => null, (error: unknown) => error)
+
+    expect((intoDraft as Response).status).toBe(400)
+    expect((intoVersion as Response).status).toBe(400)
+    // Nothing about the existing draft moved: no second draft, no dataset pinned.
+    expect(await db.select().from(s.researchDraft)).toHaveLength(1)
+    expect(await pinnedLabels("dataset")).toEqual([])
   })
 
   it("names the research an accession already belongs to, so it is not offered twice", async () => {
@@ -420,38 +444,122 @@ describe("the screen that starts a research from an application", () => {
     return { researchId: made.researchId, draftId: made.draftId }
   }
 
-  it("aims the listing and the branch screen at the draft the address names", async () => {
-    const token = await signIn()
-    const aim = await otherDraft()
-    const expected = { ...aim, humLabel: "hum0600" }
-
-    const listing = await upstreamResearchPage(get(token, `?draft=${aim.draftId}`), "ja")
-    const branchScreen = await upstreamBranchPage(get(token, `?draft=${aim.draftId}`), "ja", at)
-
-    expect(listing.target).toEqual(expected)
-    expect(branchScreen.target).toEqual(expected)
-  })
-
-  it("opens as it does from the bar when the address names no draft it can read", async () => {
-    const token = await signIn()
-
-    for (const asked of ["", "?draft=", "?draft=hum0522", "?draft=00000000-0000-0000-0000-000000000000"]) {
-      const listing = await upstreamResearchPage(get(token, asked), "ja")
-      const branchScreen = await upstreamBranchPage(get(token, asked), "ja", at)
-      expect(listing.target, asked).toBeNull()
-      expect(branchScreen.target, asked).toBeNull()
+  /** A row `searchDsBranches` could answer with, shaped like the mocked one. */
+  function branchRow(overrides: Partial<DsBranchRow> = {}): DsBranchRow {
+    return {
+      applicationId: branch.applicationId,
+      humLabel: branch.humLabel,
+      approvedOn: branch.approvedOn,
+      titleJa: branch.titleJa,
+      titleEn: branch.titleEn,
+      piNameJa: branch.piNameJa,
+      piNameEn: branch.piNameEn,
+      accessions: branch.accessions,
+      ...overrides,
     }
-  })
+  }
 
-  it("takes a branch into the draft it was opened from, even one another hum names", async () => {
-    const token = await signIn()
-    const aim = await otherDraft()
+  function draftGet(researchId: string, draftId: string, token: string, query = ""): Request {
+    const headers = new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" })
+    return new Request(
+      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/upstream${query}`,
+      { headers },
+    )
+  }
 
-    const answer = await upstreamBranchAction(post(token, [["into", `draft:${aim.draftId}`]]), "ja", at)
+  describe("the draft's own screen for taking an application in", () => {
+    it("reads only this research's own branches, filtered on the exact hum", async () => {
+      const token = await signIn()
+      const own = await otherDraft()
+      // A row whose hum only *contains* the searched one is not this research's.
+      vi.mocked(searchDsBranches).mockResolvedValue([
+        branchRow({ humLabel: "hum0600" }),
+        branchRow({ applicationId: "J-DS000999-002", humLabel: "hum06000" }),
+      ])
 
-    if (!(answer instanceof Response)) throw new Error("expected a redirect")
-    expect(answer.headers.get("Location"))
-      .toBe(`/admin/research/${aim.researchId}/draft/${aim.draftId}/upstream?application=${BRANCH}`)
+      const view = await upstreamDraftPage(draftGet(own.researchId, own.draftId, token), "ja", own)
+
+      expect(view.connected).toBe(true)
+      expect(view.applicationId).toBeNull()
+      expect(view.branches.map((row) => row.applicationId)).toEqual([BRANCH])
+      expect(vi.mocked(searchDsBranches))
+        .toHaveBeenLastCalledWith(expect.anything(), expect.anything(), "hum0600", null)
+    })
+
+    it("reads no branches and asks upstream nothing before a hum is issued", async () => {
+      const token = await signIn()
+      const made = await createResearchFromUpstream(db, seed(null, []), CURATOR)
+      if (made.status !== "created") throw new Error(made.status)
+      vi.mocked(searchDsBranches).mockClear()
+
+      const view = await upstreamDraftPage(
+        draftGet(made.researchId, made.draftId, token),
+        "ja",
+        { researchId: made.researchId, draftId: made.draftId },
+      )
+
+      expect(view.connected).toBe(true)
+      expect(view.branches).toEqual([])
+      expect(vi.mocked(searchDsBranches)).not.toHaveBeenCalled()
+    })
+
+    it("marks a branch this draft already took in, and no other", async () => {
+      const token = await signIn()
+      const own = await otherDraft()
+      await applyUpstreamToDraft(
+        db,
+        { draftId: own.draftId, revision: 1 },
+        { researchId: own.researchId, applicationId: BRANCH, content: emptyResearchContent(), datasets: [] },
+        CURATOR,
+      )
+      vi.mocked(searchDsBranches).mockResolvedValue([
+        branchRow({ humLabel: "hum0600" }),
+        branchRow({ applicationId: "J-DS000999-002", humLabel: "hum0600" }),
+      ])
+
+      const view = await upstreamDraftPage(draftGet(own.researchId, own.draftId, token), "ja", own)
+
+      expect(view.branches.map((row) => [row.applicationId, row.taken])).toEqual([
+        [BRANCH, true],
+        ["J-DS000999-002", false],
+      ])
+    })
+
+    it("turns into the three-column face once an application is chosen, and reads no table", async () => {
+      const token = await signIn()
+      const own = await otherDraft()
+
+      const view = await upstreamDraftPage(
+        draftGet(own.researchId, own.draftId, token, `?application=${BRANCH}`),
+        "ja",
+        own,
+      )
+
+      expect(view.branch?.applicationId).toBe(BRANCH)
+      expect(view.merge).not.toBeNull()
+      expect(view.branches).toEqual([])
+      // The branch's own hum (hum0522) is not the draft's (hum0600) — carried so
+      // the face can say so, rather than pretending they agree.
+      expect(view.humLabel).toBe("hum0600")
+      expect(view.branch?.humLabel).toBe("hum0522")
+    })
+
+    it("says an application ID is unknown rather than reporting the system unreachable", async () => {
+      const token = await signIn()
+      const own = await otherDraft()
+      vi.mocked(fetchDsBranch).mockResolvedValue(null)
+
+      const view = await upstreamDraftPage(
+        draftGet(own.researchId, own.draftId, token, "?application=J-DS999999-001"),
+        "ja",
+        own,
+      )
+
+      expect(view.connected).toBe(true)
+      expect(view.unknown).toBe("J-DS999999-001")
+      expect(view.branch).toBeNull()
+      expect(view.branches).toEqual([])
+    })
   })
 
   it("chooses no application on the dataset screen, and a typed JGAD takes only itself", async () => {
@@ -529,7 +637,7 @@ describe("the screen that starts a research from an application", () => {
       .map((row) => row.id)
     const content = (await readDraft(db, draftId ?? ""))?.content
     expect(content?.title.ja).toEqual(filled("ゲノム解析"))
-    expect(content?.dataProviders[0]?.email).toEqual(filled(""))
+    expect(Object.keys(content?.dataProviders[0] ?? {}).sort()).toEqual(["id", "name", "organization"])
     expect(content?.relatedPublications).toEqual([])
   })
 

@@ -1,12 +1,14 @@
+import { Form } from "react-router"
+
 import { newsAction, newsPage } from "~/admin/contents.server"
 import { adminNewsListPath } from "~/admin/urls"
-import { AdminBack } from "~/components/admin"
-import { Badge, Heading, Stack } from "~/components/base"
-import { LocaleEditors, ResultLine } from "~/components/contents"
+import { Badge, Confirm, Stack } from "~/components/base"
+import { ResultLine, useArticlePanes } from "~/components/contents"
+import { DraftHead } from "~/components/draft-tools"
 import { Answered, Editing, Field, Submit, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Page, Section } from "~/components/page"
-import { asLocalInput, minuteOf } from "~/dates"
+import { Page, Section } from "~/components/page"
+import { asLocalInput, dayOf, minuteOf } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
@@ -43,8 +45,8 @@ export async function action({ request, params }: Route.ActionArgs) {
  * that.
  */
 /** The first language that has been given a title. */
-function titleOf(editors: { draftTitle: string }[]): string | null {
-  return editors.map((editor) => editor.draftTitle).find((one) => one !== "") ?? null
+function titleOf(editors: { title: string }[]): string | null {
+  return editors.map((editor) => editor.title).find((one) => one !== "") ?? null
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -59,71 +61,93 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function AdminContentsNewsItem({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, publishedAt, scheduled, editors } = loaderData
+  const { locale, id, publishedAt, scheduled, editors } = loaderData
   const t = messagesFor(locale).admin.contents
   const save = messagesFor(locale).admin.editor.save
+
+  /*
+    **The date is the announcement's rather than a language's**, so it stands
+    in the head with the name rather than in a language's form, and the page
+    beside the form says the day under the title the way the public page does.
+
+    **The clock in the box is the one the announcement goes out on** (JST), and
+    a reader with no way to check which zone that is would have to guess from
+    the value — which reads the same either way. **Waiting is said by the date,
+    not by a state.** The two languages each have their own state and this date
+    belongs to the announcement as a whole, so a word about waiting in the state
+    would be the same word in two places saying something about a third.
+  */
+  const dating = (
+    <Section title={t.news.publishedAt}>
+      <Stack gap="tight">
+        <Editing method="post" className="flex flex-wrap items-end gap-2">
+          <Field
+            label={t.news.publishedAtField}
+            name="publishedAt"
+            type="datetime-local"
+            width="w-56"
+            value={publishedAt === null ? "" : asLocalInput(publishedAt)}
+          />
+          <span className="flex items-center gap-2">
+            <Submit intent="set-date" icon={<Icon name="save" />} saves>{save}</Submit>
+            <Unsaved locale={locale} />
+          </span>
+        </Editing>
+        {scheduled && (
+          <p className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
+            <Badge tone="accent">{t.news.scheduled}</Badge>
+            {t.news.scheduledNote}
+          </p>
+        )}
+      </Stack>
+    </Section>
+  )
+  const panes = useArticlePanes({
+    locale,
+    remember: `news:${id}`,
+    editors,
+    result: actionData,
+    dated: publishedAt === null ? null : dayOf(publishedAt),
+  })
 
   return (
     <Page>
       <Answered answer={actionData} locale={locale}>
         <ResultLine result={actionData} locale={locale} />
       </Answered>
-      <Card under={false}>
-        <Stack gap="block">
-          <Heading title={t.news.itemHeading}>
-            <AdminBack
-              to={href(locale, adminNewsListPath())}
-              label={t.news.backToList}
-              icon="chevron-left"
-            />
-          </Heading>
-
-          {/*
-            **The field names the zone and the value carries no offset.** The
-            clock in the box is the one the announcement goes out on, and a
-            reader with no way to check which zone that is would have to guess
-            from the value — which reads the same either way.
-
-            **A date still ahead is said here rather than by the published
-            state.** The two languages each have their own state and this date
-            belongs to the announcement as a whole, so a word about waiting in
-            the state would be the same word in two places saying something
-            about a third.
-          */}
-          <Section title={t.news.publishedAt}>
-            <Stack gap="tight">
-              <Editing method="post" className="flex flex-wrap items-end gap-2">
-                <Field
-                  label={t.news.publishedAtField}
-                  name="publishedAt"
-                  type="datetime-local"
-                  width="w-56"
-                  value={publishedAt === null ? "" : asLocalInput(publishedAt)}
-                />
-                <span className="flex items-center gap-2">
-                  <Submit intent="set-date" icon={<Icon name="save" />} saves>{save}</Submit>
-                  <Unsaved locale={locale} />
-                </span>
-              </Editing>
-              {scheduled && (
-                <p className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
-                  <Badge tone="accent">{t.news.scheduled}</Badge>
-                  {t.news.scheduledNote}
-                </p>
-              )}
-            </Stack>
-          </Section>
-
-          {/* **The announcement is deleted one language at a time**, the way an
-              article is: there is nothing to it apart from what it says, so
-              taking away the last thing it says takes it away. */}
-          <LocaleEditors
-            editors={editors}
-            locale={locale}
-            lastWarning={t.news.removeLastWarning}
-          />
-        </Stack>
-      </Card>
+      <Stack>
+        {/* **The head is left for the announcement; the tools row is what
+            stays while typing** (`draft-tools.tsx` の `DraftHead`/
+            `DraftTools`). Between the two, the head's second line carries the
+            publish date — the one thing here that belongs to the
+            announcement rather than to a language. */}
+        <DraftHead
+          locale={locale}
+          title={t.news.itemHeading}
+          updating={null}
+          back={{ to: href(locale, adminNewsListPath()), label: t.news.backToList, icon: "chevron-left" }}
+          headExtra={(
+            // **What takes the whole announcement away stands beside its
+            // name**, next to the way back, rather than among the languages:
+            // an announcement is made before anything is written into it,
+            // and a control that lives on the last written language is out
+            // of reach exactly when there is nothing to keep.
+            <Form method="post">
+              <Confirm
+                label={t.news.remove}
+                title={t.news.removeTitle}
+                warning={t.news.removeWarning}
+                confirm={t.news.removeConfirm}
+                cancel={t.cancel}
+                intent="delete-news"
+              />
+            </Form>
+          )}
+          overview={dating}
+        />
+        {panes.tools}
+        {panes.view}
+      </Stack>
     </Page>
   )
 }

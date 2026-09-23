@@ -31,7 +31,7 @@
  * back — so the two cannot drift.
  */
 
-import { inArray } from "drizzle-orm"
+import { and, eq, inArray, isNotNull } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
 import { publicDataset, publicResearchContent, PUBLISHED } from "~/content/public"
@@ -46,6 +46,7 @@ import { descriptionOf, draftContentOf } from "~/content/version"
 import type { Executor } from "~/db/client.server"
 import {
   accessionDate,
+  contentKey,
   labelPin,
   research,
   researchVersion,
@@ -159,6 +160,7 @@ interface NumberFacet {
 function facetValuesOf(
   content: DatasetContent,
   ancestorsOf: (id: string) => string[],
+  isNumberFacetKey: (keyId: string) => boolean,
 ): { terms: TermFacet[], numbers: NumberFacet[] } {
   const terms = new Map<string, TermFacet>()
   const numbers = new Map<string, NumberFacet>()
@@ -187,13 +189,23 @@ function facetValuesOf(
         }
       }
     }
-    // The canonical unit is what the facet compares; the entered one is not.
-    // Every number the key holds, each its own row: a range asked of the key
-    // is answered by any one of them, which is what makes "a dataset with
-    // several" findable by the one that matches.
-    if (value.kind === "number" && value.values.state === "value") {
+    // **Most number keys hold no row at all.** A key is a source of facet rows
+    // only when the catalog has given it a category (`isNumberFacetKey`), which
+    // today is `subject-count` and `read-length` — every other number is shown
+    // on the dataset page and nowhere else. The canonical unit is what the
+    // facet compares; the entered one is not.
+    if (value.kind === "number" && value.values.state === "value" && isNumberFacetKey(slot.keyId)) {
       for (const number of value.values.value) {
         numbers.set(`${slot.keyId}/${number.value}`, { keyId: slot.keyId, value: number.value })
+        // **A width is two rows, its lower and upper ends.** The table stays
+        // one value per row (`search_facet_number` は変わっていない), and a
+        // range asked of the key is answered by either end that falls inside
+        // it — the same rule that already makes several plain numbers under
+        // one key findable by the one that matches.
+        const high = number.high ?? null
+        if (high !== null) {
+          numbers.set(`${slot.keyId}/${high}`, { keyId: slot.keyId, value: high })
+        }
       }
     }
   }
@@ -304,6 +316,17 @@ export async function rebuildSearchDocs(
     }
     return chain
   }
+
+  // The number keys that are facets rather than display only
+  // (`~/search/catalog.server` の `loadFacetDefinitions`).
+  const numberFacetKeyIds = new Set(
+    (await db
+      .select({ id: contentKey.id })
+      .from(contentKey)
+      .where(and(eq(contentKey.valueType, "number"), isNotNull(contentKey.facetCategoryId))))
+      .map((row) => row.id),
+  )
+  const isNumberFacetKey = (keyId: string) => numberFacetKeyIds.has(keyId)
 
   // A research is published when it has a published version; a dataset is on
   // the public side when a published version lists it. Holding published
@@ -474,7 +497,7 @@ export async function rebuildSearchDocs(
   const researchNumbers = new Map<string, Map<string, NumberFacet>>()
 
   for (const row of projectedDatasets) {
-    const facets = facetValuesOf(row.content, ancestorsOf)
+    const facets = facetValuesOf(row.content, ancestorsOf, isNumberFacetKey)
     const docId = idOfTarget.get(`dataset/${row.id}`)
     if (docId !== undefined) {
       for (const term of facets.terms) termRows.push({ docId, ...term })

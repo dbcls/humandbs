@@ -186,10 +186,7 @@ export function publicResearchContent(
       name: text(provider.name, options),
       organization: {
         name: text(provider.organization.name, options),
-        address: text(provider.organization.address, options),
       },
-      orcid: single(provider.orcid, options),
-      email: single(provider.email, options),
     })),
     researchProjects: content.researchProjects.map((project) => ({
       id: project.id,

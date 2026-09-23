@@ -18,15 +18,16 @@
  */
 
 /**
- * **A data volume steps by 1024 and a sequence length by 1000.** They look like
- * the same prefixes and they are not: `GB` is written by people reading what a
- * filesystem reports, which counts in powers of two, while `kbp` is a thousand
- * bases because a base is a thing you count. Using one rule for both is how a
- * volume ends up out by 7% and a read length by 2.4%.
+ * **Both groups step by 1000.** A data volume and a sequence length are
+ * counted rather than measured — nothing in the archive settles whether a `GB`
+ * a curator typed meant powers of two or powers of ten, so 1000 (SI) is the
+ * portal's own policy rather than something read off the data. Keeping the
+ * two as separate groups is still right: `GB` and `kbp` name different things
+ * counted, and a value typed in one is never convertible into the other.
  */
 const GROUPS: readonly Readonly<Record<string, number>>[] = [
   /** Data volume, in gigabytes. */
-  { KB: 1 / 1024 ** 2, MB: 1 / 1024, GB: 1, TB: 1024, PB: 1024 ** 2 },
+  { KB: 1 / 1000 ** 2, MB: 1 / 1000, GB: 1, TB: 1000, PB: 1000 ** 2 },
   /** Sequence length, in bases. */
   { bp: 1, kbp: 1e3, Mbp: 1e6 },
 ]

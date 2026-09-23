@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { eq, sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
@@ -11,12 +13,14 @@ import { seedVersion } from "~/db/seed"
 
 import { PRESENCE_WINDOW_SECONDS } from "./presence"
 import {
+  changeListing,
   createDatasetInDraft,
-  createDraft,
+  createEmptyDraft,
   createResearchWithDraft,
   deleteDraftDataset,
   discardDraft,
-  draftToTakeInto,
+  draftCopiedFrom,
+  draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
   touchPresence,
@@ -110,72 +114,54 @@ describe("starting a research", () => {
 })
 
 describe("starting a draft of an existing research", () => {
-  it("copies the newest version and remembers the number it came from", async () => {
+  it("opens an empty draft, whatever is published", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 1, titled("first"))
+
+    const draftId = await createEmptyDraft(db, researchId)
+
+    expect((await readDraft(db, draftId))?.content).toEqual(emptyResearchContent())
+  })
+
+  it("copies the version named, not the newest", async () => {
     const researchId = await createResearch()
     await publish(researchId, 1, titled("first"))
     await publish(researchId, 4, titled("fourth"))
 
-    const draftId = await createDraft(db, researchId)
+    const draftId = await draftCopiedFrom(db, researchId, 1)
 
-    const draft = await readDraft(db, draftId)
-    expect(draft?.content.title.ja).toEqual(filled("fourth"))
-    expect(draft?.copiedFromNumber).toBe(4)
+    expect((await readDraft(db, draftId ?? ""))?.content.title.ja).toEqual(filled("first"))
   })
 
-  it("does not start from a version that has been withdrawn", async () => {
+  it("makes a draft each time it is asked, none of them knowing the other", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 3, titled("third"))
+
+    const first = await draftCopiedFrom(db, researchId, 3)
+    const again = await draftCopiedFrom(db, researchId, 3)
+
+    expect(again).not.toBe(first)
+    expect(await db.select().from(s.researchDraft)).toHaveLength(2)
+  })
+
+  it("answers with nothing for a number no version holds, and opens no draft", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 1, titled("first"))
+
+    expect(await draftCopiedFrom(db, researchId, 2)).toBeNull()
+    expect(await db.select().from(s.researchDraft)).toEqual([])
+  })
+
+  it("does not copy a version that has been withdrawn", async () => {
     const researchId = await createResearch()
     await publish(researchId, 1, titled("published"))
     await publish(researchId, 2, titled("withdrawn"))
-    // Withdrawing takes the row away, so the newest one left is v1.
+    // Withdrawing takes the row away.
     await db.delete(s.researchVersion).where(eq(s.researchVersion.number, 2))
 
-    const draft = await readDraft(db, await createDraft(db, researchId))
-
-    expect(draft?.content.title.ja).toEqual(filled("published"))
-  })
-
-  it("starts empty, remembering no number, when nothing has ever been published", async () => {
-    const researchId = await createResearch()
-
-    const draftId = await createDraft(db, researchId)
-
-    const draft = await readDraft(db, draftId)
-    expect(draft?.content).toEqual(emptyResearchContent())
-    expect(draft?.copiedFromNumber).toBeNull()
-  })
-
-  /**
-   * Which number a draft remembers is the whole of the difference between
-   * taking an upstream update into what is published and taking it into a
-   * version that is yet to be — it is what the publish screen offers first.
-   */
-  it("remembers the number when the draft is to replace what is published", async () => {
-    const researchId = await createResearch()
-    await publish(researchId, 3, titled("third"))
-
-    const draftId = await draftToTakeInto(db, researchId, "replacement")
-
-    const draft = await readDraft(db, draftId ?? "")
-    expect(draft?.content.title.ja).toEqual(filled("third"))
-    expect(draft?.copiedFromNumber).toBe(3)
-  })
-
-  it("remembers no number when the draft is to become the next version", async () => {
-    const researchId = await createResearch()
-    await publish(researchId, 3, titled("third"))
-
-    const draftId = await draftToTakeInto(db, researchId, "next-version")
-
-    const draft = await readDraft(db, draftId ?? "")
-    expect(draft?.content.title.ja).toEqual(filled("third"))
-    expect(draft?.copiedFromNumber).toBeNull()
-  })
-
-  it("answers with nothing where there is no version to copy", async () => {
-    const researchId = await createResearch()
-
-    expect(await draftToTakeInto(db, researchId, "replacement")).toBeNull()
-    expect(await db.select().from(s.researchDraft)).toEqual([])
+    expect(await draftCopiedFrom(db, researchId, 2)).toBeNull()
+    expect((await readDraft(db, (await draftCopiedFrom(db, researchId, 1)) ?? ""))?.content.title.ja)
+      .toEqual(filled("published"))
   })
 
   /**
@@ -191,10 +177,120 @@ describe("starting a draft of an existing research", () => {
       { datasetId, content: described("as published") },
     ])
 
-    const draftId = await createDraft(db, researchId)
+    const draftId = await draftCopiedFrom(db, researchId, 1)
 
-    const entry = await readDatasetEntry(db, draftId, datasetId)
+    const entry = await readDatasetEntry(db, draftId ?? "", datasetId)
     expect(entry?.content).toEqual(described("as published"))
+  })
+})
+
+describe("updating a version", () => {
+  it("opens a draft holding the version, and leaves the version as it is", async () => {
+    const researchId = await createResearch()
+    const versionId = await publish(researchId, 2, titled("out"))
+
+    const outcome = await draftUpdating(db, researchId, versionId)
+
+    if (outcome.status !== "opened") throw new Error(outcome.status)
+    const draft = await readDraft(db, outcome.draftId)
+    expect(draft?.content.title.ja).toEqual(filled("out"))
+    expect(draft?.updating).toEqual({ versionId, number: 2 })
+    expect(await db.select().from(s.researchVersion)).toHaveLength(1)
+  })
+
+  it("opens the same draft the second time, rather than a second one", async () => {
+    const researchId = await createResearch()
+    const versionId = await publish(researchId, 2, titled("out"))
+
+    const first = await draftUpdating(db, researchId, versionId)
+    const again = await draftUpdating(db, researchId, versionId)
+
+    expect(again).toEqual(first)
+    expect(await db.select().from(s.researchDraft)).toHaveLength(1)
+  })
+
+  it("answers gone for a version of another research, and opens no draft", async () => {
+    const researchId = await createResearch()
+    const other = await createResearch()
+    const versionId = await publish(other, 1, titled("theirs"))
+
+    expect(await draftUpdating(db, researchId, versionId)).toEqual({ status: "gone" })
+    expect(await db.select().from(s.researchDraft)).toEqual([])
+  })
+
+  it("is discarded like any draft, and the version stays out", async () => {
+    const researchId = await createResearch()
+    const versionId = await publish(researchId, 2, titled("out"))
+    const opened = await draftUpdating(db, researchId, versionId)
+    if (opened.status !== "opened") throw new Error(opened.status)
+
+    const outcome = await discardDraft(db, { draftId: opened.draftId, revision: 1 }, CURATOR)
+
+    expect(outcome).toEqual({ status: "discarded" })
+    expect(await db.select().from(s.researchDraft)).toEqual([])
+    expect(await db.select().from(s.researchVersion)).toHaveLength(1)
+  })
+})
+
+describe("deciding what a version lists", () => {
+  async function ground(): Promise<{ researchId: string, draftId: string, a: string, b: string }> {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const made = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
+    const madeAgain = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+    if (made.status !== "created" || madeAgain.status !== "created") throw new Error("not created")
+    return { researchId, draftId, a: made.datasetId, b: madeAgain.datasetId }
+  }
+
+  async function listed(draftId: string): Promise<string[]> {
+    return (await readDraft(db, draftId))?.content.datasetIds ?? []
+  }
+
+  it("takes a dataset off the list and puts it back at the end, moving the revision each time", async () => {
+    const { researchId, draftId, a, b } = await ground()
+
+    expect(await changeListing(db, { draftId, revision: 3 }, researchId, { kind: "unlist", datasetId: a }))
+      .toEqual({ status: "changed" })
+    expect(await listed(draftId)).toEqual([b])
+    expect(await changeListing(db, { draftId, revision: 4 }, researchId, { kind: "list", datasetId: a }))
+      .toEqual({ status: "changed" })
+    expect(await listed(draftId)).toEqual([b, a])
+    expect((await readDraft(db, draftId))?.revision).toBe(5)
+  })
+
+  it("moves a dataset one step, and leaves the end where it is", async () => {
+    const { researchId, draftId, a, b } = await ground()
+
+    await changeListing(db, { draftId, revision: 3 }, researchId, { kind: "move", datasetId: b, by: -1 })
+    expect(await listed(draftId)).toEqual([b, a])
+    await changeListing(db, { draftId, revision: 4 }, researchId, { kind: "move", datasetId: b, by: -1 })
+    expect(await listed(draftId)).toEqual([b, a])
+  })
+
+  it("refuses to list a dataset of another research, and writes nothing", async () => {
+    const { researchId, draftId } = await ground()
+    const other = await createResearchWithDraft(db)
+    const theirs = await createDatasetInDraft(db, { draftId: other.draftId, revision: 1 }, other.researchId)
+    if (theirs.status !== "created") throw new Error("not created")
+
+    const outcome = await changeListing(
+      db,
+      { draftId, revision: 3 },
+      researchId,
+      { kind: "list", datasetId: theirs.datasetId },
+    )
+
+    expect(outcome).toEqual({ status: "refused" })
+    expect((await readDraft(db, draftId))?.revision).toBe(3)
+  })
+
+  it("refuses a revision that has moved, and a draft that is gone", async () => {
+    const { researchId, draftId, a } = await ground()
+
+    expect(await changeListing(db, { draftId, revision: 1 }, researchId, { kind: "unlist", datasetId: a }))
+      .toEqual({ status: "conflict" })
+    expect(await listed(draftId)).toHaveLength(2)
+    expect(await changeListing(db, { draftId: randomUUID(), revision: 1 }, researchId, { kind: "unlist", datasetId: a }))
+      .toEqual({ status: "gone" })
   })
 })
 
@@ -243,12 +339,13 @@ describe("discarding a draft", () => {
     await db.insert(s.draftDatasetEntry)
       .values({ draftId, datasetId: dataset.id, content: emptyDatasetContent() })
     await db.insert(s.draftPresence).values({ draftId, sessionId: "a-session", displayName: "curator" })
-    const thread = only(await db.insert(s.commentThread)
-      .values({ draftId, anchor: { kind: "research-field", path: "title" } })
-      .returning({ id: s.commentThread.id }))
-    await db.insert(s.comment)
-      .values({ threadId: thread.id, authorName: "a provider", body: "please confirm" })
-    await db.insert(s.reviewAcknowledgement).values({ draftId, actorName: "a provider" })
+    await db.insert(s.comment).values({
+      draftId,
+      anchor: { kind: "research-field", path: "title" },
+      authorName: "a provider",
+      body: "please confirm",
+    })
+    await db.insert(s.reviewAcknowledgement).values({ draftId, kind: "commented", actorName: "a provider" })
   }
 
   it("takes the entries, the comments, the presence and its own datasets", async () => {
@@ -261,7 +358,6 @@ describe("discarding a draft", () => {
     expect(await db.select().from(s.researchDraft)).toHaveLength(0)
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
     expect(await db.select().from(s.draftPresence)).toHaveLength(0)
-    expect(await db.select().from(s.commentThread)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
     expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(0)
     expect(await db.select().from(s.dataset)).toHaveLength(0)
@@ -493,7 +589,7 @@ describe("a dataset a draft adds", () => {
 
   it("cannot destroy one that belongs to another draft", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
-    const otherDraftId = await createDraft(db, researchId)
+    const otherDraftId = await createEmptyDraft(db, researchId)
     const created = await createDatasetInDraft(db, { draftId: otherDraftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
 

@@ -70,7 +70,7 @@ export function ConsistencyReport({
         )}
         {result.head_phone_is_different_from_others === false && (
           <VerificationRow
-            label={words.headPhoneWarning}
+            label={words.headPhoneCheck}
             result={result.head_phone_is_representative_number}
             message={result.head_phone_difference_message}
             words={words}
@@ -130,7 +130,7 @@ export function Papers({
         {papers.map((paper, index) => (
           <tr key={`${paper.title}-${index}`}>
             <Td>{paper.title}</Td>
-            <Td>{paper.summary_jp ?? "-"}</Td>
+            <Td>{paper.summary_jp}</Td>
             <Td>{joined(paper.icd10_code_list, ", ")}</Td>
             <Td>
               <ExternalLink url={paper.url} words={words} />
@@ -192,7 +192,7 @@ export function PlanNotes({
                   •
                   {line}
                 </p>
-              )) ?? "-"}
+              ))}
             </Td>
           </tr>
         ))}

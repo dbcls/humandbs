@@ -18,7 +18,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
-import { threadsByPath, unresolvedCount, type CommentProblem } from "~/review/comments"
+import { commentsByPath, unresolvedCount, type CommentProblem, type CommentView } from "~/review/comments"
 import type {
   PreviewDatasetPageView,
   PreviewResearchPageView,
@@ -27,7 +27,7 @@ import type {
 import { previewDatasetPath, previewPath } from "~/review/urls"
 
 import { Badge, Button, Stack } from "./base"
-import { CommentSpot, DdbjMark, rememberName, useRememberedName, type CommentContext } from "./comments"
+import { CommentSpot, CommentTimeline, DdbjMark, rememberName, useRememberedName, type CommentContext } from "./comments"
 import { DatasetBody } from "./dataset"
 import { CONTROL } from "./form"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "./page"
@@ -47,15 +47,17 @@ export function PreviewResearchScreen({ view, problem }: {
     canResolve: false,
     signedInName: view.signedInName,
   }
-  const byPath = threadsByPath(view.threads, RESEARCH)
+  const byPath = commentsByPath(view.comments, RESEARCH)
 
   return (
     <Page>
       <PreviewHead
         shell={view}
         label={view.humLabel ?? title(view)}
-        threads={byPath}
+        comments={byPath}
         locale={locale}
+        problem={problem}
+        whole={{ ...context, subject: "draft" }}
       >
         <Stack gap="block">
           <AnnotationLayer annotate={(at) => (
@@ -63,7 +65,7 @@ export function PreviewResearchScreen({ view, problem }: {
               context={context}
               at={at}
               view={view}
-              threads={byPath[at] ?? []}
+              comments={byPath[at] ?? []}
               heading={view.publishedNumber === null
                 ? ""
                 : messagesFor(locale).preview.previousIn(view.publishedNumber)}
@@ -79,7 +81,6 @@ export function PreviewResearchScreen({ view, problem }: {
                 : href(locale, previewDatasetPath(view.token, ref.id))}
             />
           </AnnotationLayer>
-          <Acknowledge shell={view} problem={problem} />
         </Stack>
       </PreviewHead>
     </Page>
@@ -106,7 +107,7 @@ export function PreviewDatasetScreen({ view, problem }: {
     canResolve: false,
     signedInName: view.signedInName,
   }
-  const byPath = threadsByPath(view.threads, subject)
+  const byPath = commentsByPath(view.comments, subject)
   const t = messagesFor(locale).preview
 
   return (
@@ -114,8 +115,9 @@ export function PreviewDatasetScreen({ view, problem }: {
       <PreviewHead
         shell={view}
         label={view.datasetLabel ?? t.unnamedDataset}
-        threads={byPath}
+        comments={byPath}
         locale={locale}
+        problem={problem}
       >
         <Stack gap="block">
           <p className="text-sm">
@@ -126,7 +128,7 @@ export function PreviewDatasetScreen({ view, problem }: {
               context={context}
               at={at}
               view={view}
-              threads={byPath[at] ?? []}
+              comments={byPath[at] ?? []}
               heading={t.previousPublished}
             />
           )}
@@ -139,7 +141,6 @@ export function PreviewDatasetScreen({ view, problem }: {
               typeOfDataAnchor={view.typeOfDataAnchor}
             />
           </AnnotationLayer>
-          <Acknowledge shell={view} problem={problem} />
         </Stack>
       </PreviewHead>
     </Page>
@@ -156,34 +157,52 @@ export function PreviewDatasetScreen({ view, problem }: {
  * negative margin takes the difference back out of the line while the thing a
  * finger has to find keeps its size.
  */
-function Marks({ context, at, view, threads, heading }: {
+export function Marks({ context, at, view, comments, heading, fieldLabel }: {
   context: CommentContext
   at: string
   view: { changed: string[], previous: PreviewResearchPageView["previous"] }
-  threads: PreviewResearchPageView["threads"]
+  comments: readonly CommentView[]
   heading: string
+  /** The field's own name, for the comment panel's heading (`comments.tsx` の `CommentSpot`). */
+  fieldLabel?: string
 }) {
   return (
     <span className="-my-2 ml-2 inline-flex flex-wrap items-start gap-1 align-top">
       {view.changed.includes(at) && (
         <PreviousMark locale={context.locale} value={view.previous[at]} heading={heading} />
       )}
-      <CommentSpot context={context} at={at} threads={threads} />
+      <CommentSpot context={context} at={at} comments={comments} fieldLabel={fieldLabel} />
     </span>
   )
 }
 
-function PreviewHead({ shell, label, threads, locale, children }: {
+/**
+ * The banner over a preview: that this is not published, what to do here, the
+ * two marks a reader can leave, what has been said about the whole, and where
+ * the marked places are.
+ *
+ * **The steps come first and are written out**, numbered, rather than drawn as
+ * a chart: a provider opening the link for the first time has to know what is
+ * asked of them before reading, and a list is read in the same order by a
+ * screen reader. **The two marks stand under the steps that name them.** The
+ * research page carries all of this; a dataset page, which is one step down
+ * from it, carries only its own places and the way back.
+ */
+function PreviewHead({ shell, label, comments, locale, problem, whole, children }: {
   shell: PreviewShell & { changed: string[] }
   label: string
-  threads: Record<string, PreviewShell["threads"]>
+  comments: Record<string, CommentView[]>
   locale: Locale
+  /** What a form posted from the page itself was refused for. */
+  problem: CommentProblem | null
+  /** Where a comment on the whole posts, on the page that has one. */
+  whole?: CommentContext
   /** The page being previewed, which the same outline has to close around. */
   children: ReactNode
 }) {
   const t = messagesFor(locale).preview
-  const open = Object.entries(threads)
-  const unresolved = unresolvedCount(shell.threads)
+  const open = Object.entries(comments)
+  const unresolved = unresolvedCount(shell.comments)
 
   return (
     <>
@@ -198,9 +217,31 @@ function PreviewHead({ shell, label, threads, locale, children }: {
       */}
       <div className="rounded-b border-accent border-x border-b">
         <div className="border-line border-b bg-surface px-6 py-4 text-sm">
-          <Stack gap="tight">
+          <Stack gap="normal">
             <p className="font-semibold">{t.notPublished}</p>
-            <p className="text-ink-muted">{t.unsettledNotice}</p>
+            {whole !== undefined && (
+              <Stack gap="tight">
+                <p className="font-semibold">{t.stepsHeading}</p>
+                <ol className="list-decimal space-y-1 pl-6">
+                  {t.steps.map((step) => <li key={step}>{step}</li>)}
+                </ol>
+              </Stack>
+            )}
+            {whole !== undefined && <Decide shell={shell} problem={problem} />}
+            {whole !== undefined && (
+              <Stack gap="tight">
+                <p className="font-semibold">{t.whole}</p>
+                <CommentTimeline
+                  context={whole}
+                  comments={shell.comments.filter((one) => one.anchor.kind === "draft")}
+                  placeholder={t.wholePlaceholder}
+                  empty={t.wholeEmpty}
+                />
+              </Stack>
+            )}
+            {whole === undefined && problem !== null && (
+              <p className="text-danger text-xs">{problemText(locale, problem)}</p>
+            )}
             <p>
               {shell.publishedNumber === null
                 ? t.noPublished
@@ -268,8 +309,23 @@ function WhoBar({ shell, locale }: { shell: PreviewShell, locale: Locale }) {
   )
 }
 
-/** "I have looked at this." Not an approval, and not a step in publishing. */
-function Acknowledge({ shell, problem }: {
+function problemText(locale: Locale, problem: CommentProblem): string {
+  const t = messagesFor(locale).comment
+  if (problem === "name-required") return t.nameRequired
+  return problem === "body-required" ? t.bodyRequired : t.tooLong
+}
+
+/**
+ * The two marks a reader can leave: that they have finished commenting and it
+ * is the office's turn, or that there is nothing to fix. Neither is an
+ * approval, and neither says anything back once pressed — the name joins the
+ * list under the button, which is the record.
+ *
+ * **Each button says the whole sentence.** A reader who opens the link once
+ * has no other way to learn what pressing it means, so the words are long
+ * rather than short, and an abbreviation would say nothing to them.
+ */
+function Decide({ shell, problem }: {
   shell: PreviewShell
   problem: CommentProblem | null
 }) {
@@ -277,56 +333,46 @@ function Acknowledge({ shell, problem }: {
   const remembered = useRememberedName()
 
   return (
-    <section className="border-line border-t pt-6 text-sm">
-      <Stack gap="tight">
-        <Form method="post" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="intent" value="acknowledge" />
-          {shell.signedInName === null && (
-            <input
-              type="text"
-              name="name"
-              key={remembered}
-              defaultValue={remembered}
-              aria-label={t.who}
-              placeholder={t.whoPlaceholder}
-              className={CONTROL}
-            />
-          )}
-          <Button type="submit">{t.lgtm}</Button>
-          {/* Only a signed-in reader can be recognised in the list; a
-              self-declared name is whoever typed it this time. */}
-          {shell.signedInName !== null
-            && shell.acknowledgements.some((row) => row.name === shell.signedInName)
-            ? <span className="text-brand text-xs">{t.lgtmDone}</span>
-            : <span className="text-ink-muted text-xs">{t.lgtmHint}</span>}
-        </Form>
-
-        {problem !== null && (
-          <p className="text-danger text-xs">
-            {messagesFor(shell.locale).comment[
-              problem === "name-required"
-                ? "nameRequired"
-                : problem === "body-required" ? "bodyRequired" : "tooLong"
-            ]}
-          </p>
-        )}
-
-        {shell.acknowledgements.length > 0 && (
-          <Stack gap="tight">
-            <p className="text-ink-muted text-xs">{t.lgtmWho}</p>
-            <ul className="flex flex-wrap gap-2">
-              {shell.acknowledgements.map((row) => (
-                <li key={`${row.name}-${row.createdAt}`}>
-                  <Badge>
+    <Stack gap="tight">
+      {(["commented", "approved"] as const).map((kind) => {
+        const rows = shell.acknowledgements.filter((row) => row.kind === kind)
+        return (
+          <Stack key={kind} gap="tight">
+            <Form method="post" className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="intent" value="acknowledge" />
+              <input type="hidden" name="kind" value={kind} />
+              {shell.signedInName === null && (
+                <input
+                  type="text"
+                  name="name"
+                  key={remembered}
+                  defaultValue={remembered}
+                  aria-label={t.who}
+                  placeholder={t.whoPlaceholder}
+                  className={CONTROL}
+                />
+              )}
+              <Button type="submit" variant={kind === "approved" ? "primary" : "secondary"}>
+                {kind === "commented" ? t.commented : t.approved}
+              </Button>
+            </Form>
+            {rows.length > 0 && (
+              <p className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-ink-muted">{kind === "commented" ? t.commentedBy : t.approvedBy}</span>
+                {rows.map((row) => (
+                  <Badge key={`${row.name}-${row.createdAt}`}>
                     {row.name}
                     {row.bySignedIn && <DdbjMark locale={shell.locale} />}
                   </Badge>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </p>
+            )}
           </Stack>
-        )}
-      </Stack>
-    </section>
+        )
+      })}
+      {problem !== null && (
+        <p className="text-danger text-xs">{problemText(shell.locale, problem)}</p>
+      )}
+    </Stack>
   )
 }

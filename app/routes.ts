@@ -88,6 +88,9 @@ const management = [
       "routes/admin-contents-series.tsx",
       { id: "admin-contents-series" },
     ),
+    // Before the identity, so that `preview` is a way rather than a document
+    // that could never be found.
+    route("admin/documents/preview", "routes/admin-contents-preview.ts"),
     route(
       "admin/documents/:documentId",
       "routes/admin-contents-document.tsx",

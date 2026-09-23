@@ -128,8 +128,25 @@ describe("a value under a catalog key", () => {
       key: "read-length",
       label: { en: "Read length" },
       type: "number",
-      numbers: [{ value: 100, unit: "bp" }],
+      numbers: [{ value: 100, unit: "bp", high: null }],
     }])
+  })
+
+  it("carries the upper end of a width, and null on a number that is not one", () => {
+    const answer = dataset({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: "key-2",
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{ label: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, note: null }],
+          },
+        },
+      }],
+    })
+    expect(answer.values[0]).toMatchObject({ numbers: [{ value: 900, unit: "GB", high: 1300 }] })
   })
 
   it("comes out in the catalog's display order rather than the content's", () => {

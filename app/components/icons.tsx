@@ -46,6 +46,7 @@ export type IconName
     | "trash"
     | "edit"
     | "save"
+    | "merge"
     | "undo"
     | "refresh"
     | "eye"
@@ -67,6 +68,9 @@ export type IconName
     | "menu"
     | "log-in"
     | "spinner"
+    | "users"
+    | "help-circle"
+    | "circle-slash"
 
 const NODES: Record<IconName, ReactNode> = {
   /*
@@ -236,6 +240,17 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M7 3v4a1 1 0 0 0 1 1h7" />
     </>
   ),
+  /*
+    Two ways in and one way on: the term being folded goes into the other, and
+    whatever pointed at it follows.
+  */
+  "merge": (
+    <>
+      <path d="m8 6 4-4 4 4" />
+      <path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22" />
+      <path d="m20 22-5-5" />
+    </>
+  ),
   "undo": (
     <>
       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -397,9 +412,62 @@ const NODES: Record<IconName, ReactNode> = {
     </>
   ),
   "spinner": <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
+  /* Two people, one behind the other: who else has this open. */
+  "users": (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  /* A question mark in a circle: a field the reader has not answered yet. */
+  "help-circle": (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  /* A circle crossed by a line: a field the question does not reach. */
+  "circle-slash": (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="9" x2="15" y1="15" y2="9" />
+    </>
+  ),
 }
 
 export const ICON_NAMES = Object.keys(NODES) as IconName[]
+
+/**
+ * What glyph a kind of deed takes, wherever the admin area presses one
+ * (`docs/ui.md` の「押せるもの」).
+ *
+ * **The glyph says the kind of deed, not the screen.** A screen picks a
+ * `key` for what its control does and gets the glyph for free, rather than
+ * naming a glyph itself — which is how two screens end up drawing "作成" two
+ * different ways. `create` covers both 作る and 追加: the two differ in what
+ * is left after pressing (a new row saved, or a new row in the same form),
+ * never in the glyph.
+ */
+export const ACTION_ICON = {
+  create: "plus",
+  save: "save",
+  delete: "trash",
+  publish: "upload",
+  search: "search",
+  takeIn: "download",
+  assign: "link",
+  show: "eye",
+  hide: "eye-off",
+  revert: "undo",
+  resolve: "check",
+  goTo: "chevron-right",
+  reorderUp: "chevron-up",
+  reorderDown: "chevron-down",
+  remove: "close",
+} as const satisfies Record<string, IconName>
 
 /**
  * One glyph, sized in `em` so that it grows with the text it sits beside rather
@@ -420,4 +488,16 @@ export function Icon({ name, className = "" }: { name: IconName, className?: str
       {NODES[name]}
     </svg>
   )
+}
+
+/**
+ * The mark of a deed in flight.
+ *
+ * **It is drawn in the box the control's own icon stands in**, so nothing
+ * around the control moves while it waits: the name stays, the width stays,
+ * and the only thing that changes is inside a box that was already there
+ * (`docs/ui.md` の「壊れるもの」).
+ */
+export function Spinner({ className = "" }: { className?: string }) {
+  return <Icon name="spinner" className={`animate-spin ${className}`} />
 }

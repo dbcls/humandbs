@@ -21,6 +21,7 @@ SSR する単一の React Router アプリで、server 実行点 (loader / actio
 | [docs/auth.md](docs/auth.md) | 誰がサインインでき何を許されるか。capability、セッション、admin の付け外し |
 | [docs/assistant.md](docs/assistant.md) | 申請支援アシスタント。ポータルとの境界、認可の持ち方、責務の分かれ目、state |
 | [docs/ui.md](docs/ui.md) | 画面の部品。層の向き、色とコントラスト、守らないと壊れるもの |
+| [docs/admin-ui.md](docs/admin-ui.md) | 管理画面の組み立て。区画の枠、画面の名乗り、編集画面の 3 つの区画、語と文 |
 | [docs/glossary.md](docs/glossary.md) | ドメインの語の ja/en 対。画面・API・facet・語彙が従う訳語 |
 | [docs/testing.md](docs/testing.md) | テストの 5 階層。何を test にするか、mock の境界、e2e のシナリオ |
 | [docs/development.md](docs/development.md) | 開発環境の手順。起動、lint と test、DB とファイルストアの触り方、上流のキャッシュの更新 |

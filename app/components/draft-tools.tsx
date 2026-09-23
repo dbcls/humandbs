@@ -4,13 +4,13 @@
  * Who else has the draft open is about the draft rather than about the screen,
  * so a research and one of its datasets show the same people. **A dataset
  * editor is an editor of the draft**, and somebody who has one open is somebody
- * to be careful of on the other. The bar and the state behind it are here for
- * the same reason: the two screens differ in what a field is, not in what
- * saving one means.
+ * to be careful of on the other. `DraftHead`, `DraftTools` and the state behind
+ * them are here for the same reason: the two screens differ in what a field
+ * is, not in what saving one means.
  */
 
 import { useEffect, useState, type ReactNode } from "react"
-import { useFetcher, type SubmitTarget } from "react-router"
+import { Link, useFetcher, type SubmitTarget } from "react-router"
 
 import type { FieldProblem } from "~/admin/form.server"
 import { takeAll } from "~/admin/merge"
@@ -20,10 +20,16 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { AdminBack } from "./admin"
-import { Button, ButtonLink, Heading, Stack } from "./base"
+import { Badge, Button, controlFace, Heading, Stack, useDismissible } from "./base"
 import { Icon, type IconName } from "./icons"
 import { Card } from "./page"
 import type { Marks } from "./fields"
+
+/**
+ * How tall the tools row is, as the panes under it have to know (`admin.tsx`
+ * の `PANE_STANCE`). One row of 36px controls with 12px above and below.
+ */
+export const TOOLS_HEIGHT = "h-[3.75rem]"
 
 /**
  * Saying we are here, over and over, and showing who else is.
@@ -32,15 +38,23 @@ import type { Marks } from "./fields"
  * are one exchange. Nobody is made read-only by any of it: a save is checked
  * against a revision, and this is only so that two people editing the same
  * thing know about each other before that happens.
+ *
+ * **It stands beside the save, and always takes its place.** What it tells the
+ * person about to save is that the save may meet somebody else's — which is
+ * news about the save, and nowhere else on the screen. Drawn only when
+ * somebody else is there, it moved everything beside it when they arrived; so
+ * the mark and the count stay, and read "0" when the answer is nobody. The
+ * names are behind the count, where somebody who wants them can open them.
  */
-export function PresenceLine({ locale, path, initial }: {
+export function PresenceMark({ locale, path, initial }: {
   locale: Locale
   path: string
   initial: PresenceView[]
 }) {
-  const t = messagesFor(locale).admin.draft
+  const t = messagesFor(locale).admin.editor
   const fetcher = useFetcher<{ present: PresenceView[] }>()
   const submit = fetcher.submit
+  const box = useDismissible()
 
   useEffect(() => {
     const beat = () => {
@@ -54,150 +68,207 @@ export function PresenceLine({ locale, path, initial }: {
   }, [submit, path])
 
   const others = (fetcher.data?.present ?? initial).filter((row) => !row.isSelf)
-  if (others.length === 0) return null
-
+  if (others.length === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-ink-muted text-xs" title={t.presenceNobody}>
+        <Icon name="users" aria-hidden="true" />
+        {t.presence(0)}
+        <span className="sr-only">{t.presenceNobody}</span>
+      </span>
+    )
+  }
   return (
-    <p className="text-ink-muted text-xs">
-      {`${t.alsoEditing}: ${others.map((row) => row.name).join(", ")}`}
-    </p>
+    <details ref={box} className="relative">
+      <summary
+        className={`${controlFace({ size: "xs" })} list-none marker:content-none`}
+        title={t.presenceOthers}
+      >
+        <Icon name="users" aria-hidden="true" />
+        {t.presence(others.length)}
+      </summary>
+      <ul className="absolute top-[calc(100%+0.25rem)] right-0 z-20 min-w-48 rounded border border-line bg-white px-3 py-2 text-sm shadow">
+        {others.map((row) => <li key={row.name}>{row.name}</li>)}
+      </ul>
+    </details>
   )
 }
 
 /**
- * The bar an editing screen stands under: what is being edited, the way back
- * out of it, whether there is anything unsaved, and the way to save.
+ * The head of an editing screen: what is being edited, the way back out of
+ * it, and — for the research editor only — this draft's other faces and its
+ * memo.
  *
- * **It stays at the top of the window.** The screens it serves are long enough
- * that the only control able to keep what has been typed would otherwise be off
- * the screen for most of the time it is being typed.
+ * **The first line is the same name row every screen carries** (`Heading`):
+ * the role, the identifier beside it, and the way out on the right. An
+ * updating draft wears its version as a badge beside the identifier rather
+ * than folding it into the name, because it is a fact about the draft's
+ * state and not part of what the screen is called
+ * (`docs/admin-ui.md` の「画面の名乗り」).
  *
- * The two screens differ only in where they lead and in what they are called,
- * so both arrive as props; `children` is how a screen lets the reader arrange
- * what is below, which stands with the save rather than with the name.
+ * **The second line is what this draft is, read once.** Its other three
+ * faces, the memo, the comments about the whole of it, and the way to take in
+ * a data-providing application — read on the way in and not needed again
+ * while typing, which is why it stands here and not in the row that stays
+ * (`DraftTools`). A dataset is a part of the draft rather than a face of its
+ * own, so its screen carries no second line
+ * (`docs/admin-ui.md` の「編集画面」).
  */
-export function DraftBar({
+export function DraftHead({ locale, title, aside, updating, badge, back, headExtra, overview }: {
+  locale: Locale
+  title: string
+  aside?: string
+  /** The version this draft stands in for, when it does. */
+  updating: number | null
+  /**
+   * A mark beside the identifier for a fact only one screen has — the dataset
+   * editor's "未公開" — beside the one every draft can carry
+   * (`updating`).
+   */
+  badge?: ReactNode
+  /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
+  back: { to: string, label: string, icon: IconName }
+  /**
+   * What else stands in the name row after the way out — a document's slug
+   * editor, the container's own delete
+   * (`docs/admin-ui.md` の「画面の名乗り」の「名前の右に並ぶものの順」). The
+   * research editor has neither, so its own call leaves this out.
+   */
+  headExtra?: ReactNode
+  /** This draft's other faces and its memo — the research editor's own. */
+  overview?: ReactNode
+}) {
+  const t = messagesFor(locale).admin.editor
+  return (
+    <Card under={false}>
+      <Stack>
+        <Heading
+          title={title}
+          aside={aside}
+          badge={(
+            <>
+              {updating !== null && (
+                <Badge tone="accent" icon={<Icon name="edit" aria-hidden="true" />}>
+                  {t.updatingBadge(`v${updating}`)}
+                </Badge>
+              )}
+              {badge}
+            </>
+          )}
+        >
+          <AdminBack to={back.to} label={back.label} icon={back.icon} />
+          {headExtra}
+        </Heading>
+        {overview}
+      </Stack>
+    </Card>
+  )
+}
+
+/**
+ * The row an editing screen keeps at hand: the pane switch, unresolved
+ * comments, who else is here, and the way to save.
+ *
+ * **It, and only it, stays at the top of the window.** The screens it serves
+ * are thousands of pixels long, and a save that scrolled away with the head
+ * was off the screen for most of the time anything was being typed (measured:
+ * gone after 306px). The panes below stick under it (`admin.tsx` の
+ * `PANE_STANCE`). **Drawn as the head's own last row** — white, the same
+ * left and right margin, rounded at the bottom — it reads as one card until
+ * the head scrolls out from under it, at which point it is what is left.
+ *
+ * **Ctrl+S and Cmd+S save.** The hands typing are on the keyboard, and what the
+ * browser offers for that chord — saving the page as a file — is nothing anyone
+ * on this screen wants.
+ */
+export function DraftTools({
   locale,
-  heading,
-  back,
-  links,
-  note,
+  panesControl,
+  unresolved,
+  reviewHref,
   dirty,
   saved,
   saving,
   onSave,
-  memo,
   presencePath,
   presence,
-  children,
 }: {
   locale: Locale
-  /** What this screen edits, as it is known: a research ID, a dataset label. */
-  heading: string
-  /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
-  back: { to: string, label: string, icon: IconName }
-  /** The other faces of what is being edited, in the order it offers them. */
-  links: { to: string, label: string, icon: IconName }[]
-  /** Anything else the screen has to say about what it is editing. */
-  note?: ReactNode
-  /**
-   * What is written about the draft rather than about what it holds. Only the
-   * research editor carries it: a dataset is a part of the draft, and a note
-   * about the draft written on one of its parts would be found from one screen
-   * and not from the other.
-   */
-  memo?: ReactNode
+  /** The pane arrangement's own switch (`admin.tsx` の `usePanes`). */
+  panesControl: ReactNode
+  /** Comments nobody has closed yet. */
+  unresolved: number
+  /** Where the count leads: the review screen, so a curator can read what they are. */
+  reviewHref: string
   dirty: boolean
   saved: boolean
   saving: boolean
   onSave: () => void
   presencePath: string
   presence: PresenceView[]
-  children?: ReactNode
 }) {
-  const t = messagesFor(locale).admin.editor
+  const t = messagesFor(locale).admin
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "s" || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return
+      event.preventDefault()
+      if (dirty && !saving) onSave()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => {
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [dirty, saving, onSave])
+
   return (
-    <Card under={false}>
-      <Stack gap="tight">
+    <div className={`sticky top-0 z-30 flex ${TOOLS_HEIGHT} items-center gap-4 rounded-b bg-white px-6`}>
+      {/* **How the panes are arranged is about the boxes below, not about the
+          draft** — it stands first, beside nothing it acts on. */}
+      {panesControl}
+      {/* **The count is a way to the screen that reads them all.** A curator
+          picking it out here does not need to know which field yet — the
+          review screen lists them, each beside its place. */}
+      <Link to={reviewHref} className="no-underline">
+        <Badge tone={unresolved > 0 ? "accent" : undefined} icon={<Icon name="comment" aria-hidden="true" />}>
+          {t.detail.openComments(unresolved)}
+        </Badge>
+      </Link>
+      {/*
+        **Who else is here, and what to do with the work, at the far end.**
+        The two are one group: the first says what the second may run into.
+      */}
+      <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-sm">
+        <PresenceMark locale={locale} path={presencePath} initial={presence} />
         {/*
-          **The row that names what is being edited holds nothing else.** The
-          other faces of the draft are places to go rather than words the name
-          runs into, and the way out is the one of them that leaves — it stands
-          at the far end because that is where a row ends, not beside the name
-          it leaves behind.
+          **The one control that carries the accent, and only while there is
+          something to save.** The colour says there is unsaved work and the
+          disabled state says there is not — but neither reaches somebody
+          who is not looking at it, so the words beside it stay.
         */}
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-          <Heading level="h1" title={heading} />
-          <AdminBack to={back.to} label={back.label} icon={back.icon} />
-        </div>
+        <Button
+          type="button"
+          variant="accent"
+          onClick={onSave}
+          disabled={!dirty || saving}
+          icon={<Icon name="save" aria-hidden="true" />}
+        >
+          {t.editor.save}
+        </Button>
         {/*
-          **Each of the other faces is a control carrying the mark of what it
-          leads to.** As words alone they read as a sentence, and a card whose
-          only outlined thing is the way out says that leaving is the work
-          (`docs/ui.md`).
+          **What the save is doing is said here and not on the button.** A
+          control that renames itself while it works is a control the reader
+          cannot find again, and the three things this says — there is
+          unsaved work, it is being written, it is written — are one piece
+          of news that assistive tech should hear as it changes
+          (`docs/ui.md` の「壊れるもの」).
         */}
-        {(links.length > 0 || note !== undefined) && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {links.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                {links.map((link) => (
-                  <ButtonLink
-                    key={link.to}
-                    to={link.to}
-                    variant="secondary"
-                    icon={<Icon name={link.icon} aria-hidden="true" />}
-                  >
-                    {link.label}
-                  </ButtonLink>
-                ))}
-              </div>
-            )}
-            {note}
-          </div>
-        )}
-        {/*
-          **Who else is here, how the screen below is arranged, and what to do
-          with the work.** None of the three is about what is being edited — one
-          is about the people, one is the reader's own — so none of them belongs
-          in the row that names it. The arrangement and the save keep the far
-          end of the row whether or not anybody else is looking at the draft.
-        */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <PresenceLine locale={locale} path={presencePath} initial={presence} />
-          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
-            {children}
-            {/*
-              **The one control that carries the accent, and only while there is
-              something to save.** The colour says there is unsaved work and the
-              disabled state says there is not — but neither reaches somebody
-              who is not looking at it, so the words beside it stay.
-            */}
-            <Button
-              type="button"
-              variant="accent"
-              onClick={onSave}
-              disabled={!dirty || saving}
-              icon={<Icon name="save" aria-hidden="true" />}
-            >
-              {t.save}
-            </Button>
-            {/*
-              **What the save is doing is said here and not on the button.** A
-              control that renames itself while it works is a control the reader
-              cannot find again, and the three things this says — there is
-              unsaved work, it is being written, it is written — are one piece
-              of news that assistive tech should hear as it changes
-              (`docs/ui.md` の「壊れるもの」).
-            */}
-            <span role="status">
-              {saving && <span className="text-ink-muted">{t.saving}</span>}
-              {!saving && dirty && <span className="text-accent">{t.unsaved}</span>}
-              {!saving && !dirty && saved && <span className="text-ink-muted">{t.saved}</span>}
-            </span>
-          </div>
-        </div>
-        {memo}
-      </Stack>
-    </Card>
+        <span role="status">
+          {saving && <span className="text-ink-muted">{t.editor.saving}</span>}
+          {!saving && dirty && <span className="text-accent">{t.editor.unsaved}</span>}
+          {!saving && !dirty && saved && <span className="text-ink-muted">{t.editor.saved}</span>}
+        </span>
+      </div>
+    </div>
   )
 }
 

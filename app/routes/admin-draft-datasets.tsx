@@ -4,18 +4,17 @@ import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.serv
 import type { DraftDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetPath,
-  adminDraftPath,
+  adminDraftUpstreamPath,
+  adminResearchPath,
   adminUpstreamDatasetPath,
-  adminUpstreamResearchPath,
   draftPresencePath,
-  draftTargetQuery,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Confirm, Heading, Stack } from "~/components/base"
-import { PresenceLine } from "~/components/draft-tools"
+import { Confirm, Heading, IconButton, Stack } from "~/components/base"
+import { PresenceMark } from "~/components/draft-tools"
 import { Answered, Result, Submit } from "~/components/form"
-import { Icon } from "~/components/icons"
-import { Card, Counted, Empty, Page } from "~/components/page"
+import { Icon, type IconName } from "~/components/icons"
+import { Card, Page, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
@@ -24,7 +23,14 @@ import { href, readLocale } from "~/public/urls"
 import type { Route } from "./+types/admin-draft-datasets"
 
 /**
- * The datasets of a research, as one draft sees them.
+ * The datasets of a research, as one draft sees them — and which of them the
+ * version lists, in what order.
+ *
+ * **Everything about datasets is decided here** (docs/editing.md の「編集
+ * フォーム」): what the version lists and in what order, the three ways of
+ * adding one, destroying one this draft made, and the way to each one's
+ * description. The research's own form holds none of it, so that a dataset
+ * has one screen to be found on rather than two that each show half.
  *
  * The marks are separate facts and none of them implies another: a dataset can
  * be published and left off this version, listed and never touched, or
@@ -57,7 +63,15 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export default function AdminDraftDatasets({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const locale = view.locale
-  const t = messagesFor(locale).admin.draft
+  const messages = messagesFor(locale)
+  const t = messages.admin.draft
+  // The listing's own order first, then what is off it — by label, as the
+  // research's rows come.
+  const listed = view.listedIds.flatMap((id) => {
+    const row = view.rows.find((one) => one.id === id)
+    return row === undefined ? [] : [row]
+  })
+  const unlisted = view.rows.filter((row) => !row.listed)
 
   return (
     <Page>
@@ -74,37 +88,74 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           <Stack gap="tight">
             <Heading title={t.datasets} aside={view.humLabel ?? undefined}>
               <AdminBack
-                to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-                label={t.backToDraft}
+                to={href(locale, adminResearchPath(view.researchId))}
+                label={messages.admin.editor.backToResearch}
                 icon="chevron-left"
               />
             </Heading>
-            <PresenceLine
+            <PresenceMark
               locale={locale}
               path={draftPresencePath(view.researchId, view.draftId)}
               initial={view.presence}
             />
           </Stack>
 
-          <Stack gap="normal">
-            <Counted locale={locale} total={view.rows.length} />
-            {view.rows.length === 0
-              ? <Empty>{t.noDatasets}</Empty>
-              : (
-                  <Stack gap="normal" as="ul">
-                    {view.rows.map((row) => (
-                      <DatasetRow
-                        key={row.id}
-                        row={row}
-                        locale={locale}
-                        researchId={view.researchId}
-                        draftId={view.draftId}
-                        revision={view.revision}
-                      />
-                    ))}
-                  </Stack>
-                )}
-          </Stack>
+          {/* **The order is the public page's order**, so a row's arrows say
+              where it stands there. The table stays when empty: the column
+              names say what would stand here. */}
+          <Section title={t.listing}>
+            <Table
+              align="middle"
+              headers={[
+                messages.dataset.datasetId,
+                t.state,
+                <span key="order" className="sr-only">{t.order}</span>,
+                <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+              ]}
+              whenEmpty={t.noListed}
+            >
+              {listed.map((row, at) => (
+                <DatasetRow
+                  key={row.id}
+                  row={row}
+                  at={{ index: at, of: listed.length }}
+                  locale={locale}
+                  researchId={view.researchId}
+                  draftId={view.draftId}
+                  revision={view.revision}
+                />
+              ))}
+            </Table>
+          </Section>
+
+          {/* The research's datasets this version does not list: ones an
+              earlier version had, or ones made here and taken off. They are
+              not gone — listing one again is one press. */}
+          {unlisted.length > 0 && (
+            <Section title={t.notListedHeading}>
+              <Table
+                align="middle"
+                headers={[
+                  messages.dataset.datasetId,
+                  t.state,
+                  <span key="order" className="sr-only">{t.order}</span>,
+                  <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+                ]}
+              >
+                {unlisted.map((row) => (
+                  <DatasetRow
+                    key={row.id}
+                    row={row}
+                    at={null}
+                    locale={locale}
+                    researchId={view.researchId}
+                    draftId={view.draftId}
+                    revision={view.revision}
+                  />
+                ))}
+              </Table>
+            </Section>
+          )}
 
           <div className="flex flex-wrap items-center gap-4">
             <Form method="post">
@@ -112,19 +163,19 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
               <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
             </Form>
             {/* The two ways upstream can fill this draft: a whole application,
-                chosen on the listing of branches with this draft as where it
-                goes, and a single accession. */}
+                taken in through this research's own branches, and a single
+                accession. */}
             <Link
-              to={href(locale, adminUpstreamResearchPath() + draftTargetQuery(view.draftId))}
+              to={href(locale, adminDraftUpstreamPath(view.researchId, view.draftId))}
               className="text-sm"
             >
-              {messagesFor(locale).admin.templates.openApplication}
+              {messages.admin.templates.openApplication}
             </Link>
             <Link
               to={href(locale, adminUpstreamDatasetPath(view.researchId, view.draftId))}
               className="text-sm"
             >
-              {messagesFor(locale).admin.templates.openDataset}
+              {messages.admin.templates.openDataset}
             </Link>
           </div>
         </Stack>
@@ -133,43 +184,101 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
   )
 }
 
-function DatasetRow({ row, locale, researchId, draftId, revision }: {
+/**
+ * One dataset as this draft sees it. Listed, it can be moved and taken off;
+ * off the list, put on. Made here and never published, it can be destroyed.
+ */
+function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
   row: DraftDatasetRow
+  /** Where it stands among the listed, or null for one the version does not list. */
+  at: { index: number, of: number } | null
   locale: Locale
   researchId: string
   draftId: string
   revision: number
 }) {
-  const t = messagesFor(locale).admin.draft
-
+  const messages = messagesFor(locale)
+  const t = messages.admin.draft
+  const name = row.label ?? messages.admin.editor.unpinnedDataset
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded border border-line px-4 py-2 text-sm">
-      <Link
-        to={href(locale, adminDraftDatasetPath(researchId, draftId, row.id))}
-        className="min-w-48"
-      >
-        {row.label ?? messagesFor(locale).admin.editor.unpinnedDataset}
-      </Link>
-      <Mark>{row.listed ? t.listed : t.notListed}</Mark>
-      {row.published && <Mark>{t.publishedDataset}</Mark>}
-      {row.edited && <Mark>{t.edited}</Mark>}
-      {row.isOwn && <Mark>{t.own}</Mark>}
-      {row.isOwn && !row.published && (
-        <Form method="post">
-          <Confirm
-            label={t.deleteDataset}
-            title={t.deleteDatasetTitle(row.label ?? messagesFor(locale).admin.editor.unpinnedDataset)}
-            warning={t.deleteWarning}
-            confirm={t.deleteConfirm}
-            cancel={messagesFor(locale).admin.detail.cancel}
-          >
-            <input type="hidden" name="intent" value="delete-dataset" />
-            <input type="hidden" name="datasetId" value={row.id} />
+    <tr>
+      <Td nowrap>
+        <Link to={href(locale, adminDraftDatasetPath(researchId, draftId, row.id))}>{name}</Link>
+      </Td>
+      <Td>
+        <span className="flex flex-wrap items-center gap-2">
+          {row.published && <Mark>{t.publishedDataset}</Mark>}
+          {row.edited && <Mark>{t.edited}</Mark>}
+          {row.isOwn && <Mark>{t.own}</Mark>}
+        </span>
+      </Td>
+      <Td holds="mark">
+        {at !== null && (
+          <span className="flex gap-1">
+            <Move id={row.id} by={-1} icon="chevron-up" label={t.moveUp} stuck={at.index === 0} revision={revision} />
+            <Move id={row.id} by={1} icon="chevron-down" label={t.moveDown} stuck={at.index === at.of - 1} revision={revision} />
+          </span>
+        )}
+      </Td>
+      <Td nowrap holds="control">
+        <span className="flex items-center gap-1">
+          <Form method="post">
             <input type="hidden" name="revision" value={revision} />
-          </Confirm>
-        </Form>
-      )}
-    </li>
+            <input type="hidden" name="datasetId" value={row.id} />
+            <Submit
+              intent={at === null ? "list-dataset" : "unlist-dataset"}
+              size="row"
+              icon={<Icon name={at === null ? "eye" : "eye-off"} />}
+            >
+              {at === null ? t.list : t.unlist}
+            </Submit>
+          </Form>
+          {row.isOwn && !row.published && (
+            <Form method="post">
+              <input type="hidden" name="datasetId" value={row.id} />
+              <input type="hidden" name="revision" value={revision} />
+              <Confirm
+                label={t.deleteDataset}
+                title={t.deleteDatasetTitle(name)}
+                warning={t.deleteWarning}
+                confirm={t.deleteConfirm}
+                cancel={messages.admin.detail.cancel}
+                intent="delete-dataset"
+                size="row"
+              />
+            </Form>
+          )}
+        </span>
+      </Td>
+    </tr>
+  )
+}
+
+/**
+ * One step up or down. A form of its own, because the arrows are the only
+ * things on the row that are told apart by direction rather than by intent.
+ * **A glyph has no colour of its own to dim**, so the row's end is said by
+ * the box around it.
+ */
+function Move({ id, by, icon, label, stuck, revision }: {
+  id: string
+  by: -1 | 1
+  icon: IconName
+  label: string
+  /** At the end it points to, where there is nothing left to swap with. */
+  stuck: boolean
+  revision: number
+}) {
+  return (
+    <Form method="post">
+      <input type="hidden" name="revision" value={revision} />
+      <input type="hidden" name="datasetId" value={id} />
+      <input type="hidden" name="by" value={by} />
+      <input type="hidden" name="intent" value="move-dataset" />
+      <span className={stuck ? "opacity-50" : ""}>
+        <IconButton name={icon} label={label} type="submit" disabled={stuck} />
+      </span>
+    </Form>
   )
 }
 

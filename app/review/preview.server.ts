@@ -56,20 +56,20 @@ import { sharedDraftByToken, type SharedDraft } from "./access.server"
 import { isAnchorPath, type AnchorSubject } from "./anchors"
 import {
   checkComment,
-  threadsOfSubjects,
+  commentsForPage,
   type CommentProblem,
-  type ThreadView,
+  type CommentView,
 } from "./comments"
 import {
   acknowledgeDraft,
   readAcknowledgements,
-  readThreads,
-  replyToThread,
+  readComments,
+  postAboutDraft,
   postComment,
   type AcknowledgementView,
   type CommentAuthor,
 } from "./comments.server"
-import { latestPublishedVersion, previewDatasets } from "./queries.server"
+import { previewDatasets, versionAgainst } from "./queries.server"
 
 /** A preview keeps what has not been settled. No public route can ask for this. */
 const PREVIEW = { keepUnsettled: true }
@@ -101,7 +101,8 @@ export interface PreviewShell {
   humLabel: string | null
   /** The name comments will be signed with, when the reader is signed in. */
   signedInName: string | null
-  threads: ThreadView[]
+  /** What this page draws: the draft as a whole and the subjects on it. Never the memo. */
+  comments: CommentView[]
   acknowledgements: AcknowledgementView[]
   /** The version a reader sees now, which is what the marks are measured against. */
   publishedNumber: number | null
@@ -128,11 +129,12 @@ export interface PreviewDatasetPageView extends PreviewShell {
 /**
  * What every preview screen carries.
  *
- * **The threads are narrowed to what this screen draws.** A draft's threads
- * include ones about datasets the version does not list, and those are not
- * drawn — but a loader's return value is serialised into the page, so leaving
- * them in would hand their text to anybody holding the share link, and the count
- * of unanswered comments would include places the reader cannot reach.
+ * **The comments are narrowed to what this screen draws.** A draft's comments
+ * include ones about datasets the version does not list, and the memo, and
+ * those are not drawn — but a loader's return value is serialised into the
+ * page, so leaving them in would hand their text to anybody holding the share
+ * link, and the count of unanswered comments would include places the reader
+ * cannot reach.
  */
 async function shellOf(
   request: Request,
@@ -143,9 +145,9 @@ async function shellOf(
   drawn: readonly AnchorSubject[],
 ): Promise<PreviewShell> {
   const db = getDb()
-  const [actor, threads, acknowledgements] = await Promise.all([
+  const [actor, comments, acknowledgements] = await Promise.all([
     readActor(request),
-    readThreads(db, draft.draftId),
+    readComments(db, draft.draftId),
     readAcknowledgements(db, draft.draftId),
   ])
   return {
@@ -153,7 +155,7 @@ async function shellOf(
     token: draft.token,
     humLabel,
     signedInName: actor?.name ?? null,
-    threads: threadsOfSubjects(threads, drawn),
+    comments: commentsForPage(comments, drawn),
     acknowledgements,
     publishedNumber,
   }
@@ -233,14 +235,19 @@ function termIdsUnder(
 export async function drawDraft(
   request: Request,
   locale: Locale,
-  draft: { researchId: string, draftId: string, content: ResearchContent },
+  draft: {
+    researchId: string
+    draftId: string
+    content: ResearchContent
+    updating: { versionId: string } | null
+  },
 ): Promise<DrawnDraft> {
   const db = getDb()
   const [humLabel, catalog, datasets, published] = await Promise.all([
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
     previewDatasets(db, draft.draftId, draft.content.datasetIds),
-    latestPublishedVersion(db, draft.researchId),
+    versionAgainst(db, draft),
   ])
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
   // Both buckets: at draft time nothing is public yet, and showing only the
@@ -382,7 +389,7 @@ export interface DrawnDataset {
 export async function drawDatasetDraft(
   request: Request,
   locale: Locale,
-  draft: { researchId: string, draftId: string },
+  draft: { researchId: string, draftId: string, updating: { versionId: string } | null },
   datasetId: string,
   /** The content being written, when it is not the one that is filed. */
   content?: DatasetContent,
@@ -392,7 +399,7 @@ export async function drawDatasetDraft(
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
     previewDatasets(db, draft.draftId, [datasetId]),
-    latestPublishedVersion(db, draft.researchId),
+    versionAgainst(db, draft),
   ])
   const row = rows[0]
   if (row === undefined) notFound()
@@ -485,13 +492,15 @@ export interface PreviewActionResult {
 }
 
 /**
- * Writing from a share link: a comment, a reply, or "I have looked at this".
+ * Writing from a share link: a comment on a place or on the draft as a whole,
+ * or one of the two marks — "I have finished commenting", "nothing to fix".
  *
  * The author is the session when there is one and the typed name when there is
  * not — a data provider is among the intended readers, and requiring an account
  * would put the review out of their reach. What is written is checked against
  * the draft it claims to be about: the path has to lead somewhere in that
- * content, and a dataset has to be one this version lists.
+ * content, and a dataset has to be one this version lists. **The memo cannot
+ * be written from here**: a line of it is not a comment a reader is asked for.
  */
 export async function previewAction(
   request: Request,
@@ -512,29 +521,24 @@ export async function previewAction(
   const back = redirect(backTo(request, readString(form, "at")))
 
   if (intent === "acknowledge") {
+    const kind = form.get("kind")
+    if (kind !== "commented" && kind !== "approved") badRequest()
     if (author.name === "") return { status: "invalid", problem: "name-required" }
-    await acknowledgeDraft(db, { draftId: draft.draftId, actor: author })
+    await acknowledgeDraft(db, { draftId: draft.draftId, kind, actor: author })
     return back
   }
+
+  if (intent !== "comment") badRequest()
 
   const body = readString(form, "body")
   const problem = checkComment({ name: author.name, body })
   if (problem !== null) return { status: "invalid", problem }
 
-  if (intent === "reply") {
-    const threadId = readString(form, "threadId")
-    if (threadId === "") badRequest()
-    const outcome = await replyToThread(db, {
-      draftId: draft.draftId,
-      threadId,
-      author,
-      body: body.trim(),
-    })
+  if (form.get("subject") === "draft") {
+    const outcome = await postAboutDraft(db, { draftId: draft.draftId, kind: "draft", author, body })
     if (outcome.status === "gone") notFound()
     return back
   }
-
-  if (intent !== "comment") badRequest()
 
   const path = form.get("path")
   if (!isAnchorPath(path)) badRequest()

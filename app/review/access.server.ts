@@ -17,7 +17,7 @@ import { eq } from "drizzle-orm"
 
 import type { ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
-import { researchDraft } from "~/db/schema"
+import { researchDraft, researchVersion } from "~/db/schema"
 
 import { isShareOpen } from "./share"
 
@@ -26,6 +26,8 @@ export interface SharedDraft {
   researchId: string
   content: ResearchContent
   token: string
+  /** The version this draft is the update of, when it is one: what the preview measures against. */
+  updating: { versionId: string, number: number } | null
 }
 
 export async function sharedDraftByToken(
@@ -41,8 +43,11 @@ export async function sharedDraftByToken(
       content: researchDraft.content,
       shareEnabled: researchDraft.shareEnabled,
       shareExpiresAt: researchDraft.shareExpiresAt,
+      versionId: researchDraft.replacesVersionId,
+      number: researchVersion.number,
     })
     .from(researchDraft)
+    .leftJoin(researchVersion, eq(researchVersion.id, researchDraft.replacesVersionId))
     .where(eq(researchDraft.shareToken, token))
     .limit(1)
   if (row === undefined) return null
@@ -53,5 +58,13 @@ export async function sharedDraftByToken(
   )
   if (!open) return null
 
-  return { draftId: row.id, researchId: row.researchId, content: row.content, token }
+  return {
+    draftId: row.id,
+    researchId: row.researchId,
+    content: row.content,
+    token,
+    updating: row.versionId === null || row.number === null
+      ? null
+      : { versionId: row.versionId, number: row.number },
+  }
 }

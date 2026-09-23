@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { AppliedConditions, PageSizeChooser, Pagination, RefinableList, SearchForm, SortChooser } from "./search"
+import { AppliedConditions, DateRange, PageSizeChooser, Pagination, RefinableList, SearchForm, SortChooser } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -475,5 +475,49 @@ describe("a listing waiting for the answer to replace it", () => {
   it("fades in and out of it", () => {
     expect(of(true)).toContain("transition-opacity")
     expect(of(false)).toContain("transition-opacity")
+  })
+})
+
+describe("a range of days", () => {
+  const windows = [
+    { label: "すべて", href: "/admin/files", current: false },
+    { label: "1 年", href: "/admin/files?from=2025-09-23", current: true },
+    { label: "5 年", href: "/admin/files?from=2021-09-23", current: false },
+    { label: "10 年", href: "/admin/files?from=2016-09-23", current: false },
+  ]
+
+  it("offers the windows as links, and lights the one in force", () => {
+    const html = render(
+      <DateRange locale="ja" action="/admin/files" windows={windows} from="2025-09-23" to="" />,
+    )
+    for (const one of windows) {
+      expect(html).toContain(one.label)
+      expect(html).toContain(`href="${one.href}"`)
+    }
+    expect(html.match(/aria-current="true"/g)).toHaveLength(1)
+  })
+
+  it("is a GET form with an end named for each day, carrying what it is given", () => {
+    const html = render(
+      <DateRange
+        locale="ja"
+        action="/research"
+        windows={[]}
+        from=""
+        to="2026-09-23"
+        names={{ from: "rangeFrom", to: "rangeTo" }}
+      >
+        <input type="hidden" name="q" value="title:ゲノム" />
+      </DateRange>,
+    )
+    expect(html).toContain("method=\"get\"")
+    expect(html).toContain("action=\"/research\"")
+    expect(html.match(/type="date"/g)).toHaveLength(2)
+    expect(html).toContain("name=\"rangeFrom\" value=\"\"")
+    expect(html).toContain("name=\"rangeTo\" value=\"2026-09-23\"")
+    expect(html).toContain("type=\"hidden\" name=\"q\" value=\"title:ゲノム\"")
+    expect(html).toContain("開始日")
+    expect(html).toContain("終了日")
+    expect(html).not.toContain("すべて")
   })
 })

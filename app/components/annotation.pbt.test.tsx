@@ -138,9 +138,7 @@ function populated(): ResearchContent {
     dataProviders: [{
       id: "p1",
       name: pair("提供者"),
-      organization: { name: pair("機関"), address: pair("所在地") },
-      orcid: filled("0000"),
-      email: filled("a@example.jp"),
+      organization: { name: pair("機関") },
     }],
     researchProjects: [{
       id: "r1",

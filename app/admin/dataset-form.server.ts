@@ -29,7 +29,14 @@ import type {
 } from "~/content/types"
 import { convert } from "~/content/units"
 
-import type { DatasetContentInput, DiseaseRow, NumberRow, ValueBody, ValueInput } from "./dataset-form"
+import {
+  highBelowValue,
+  type DatasetContentInput,
+  type DiseaseRow,
+  type NumberRow,
+  type ValueBody,
+  type ValueInput,
+} from "./dataset-form"
 import {
   prosePair,
   slotState,
@@ -38,6 +45,23 @@ import {
   textSlot,
   type FieldProblem,
 } from "./form.server"
+
+/**
+ * One number row, as typed. **This shape alone does not refuse a width whose
+ * upper end sits below its lower end** — unlike a stray key or a malformed
+ * uuid, that is not a shape only a client bypassing the form could produce.
+ * The draw preview parses this same schema from content that is still being
+ * typed (`datasetPageAction`), and a width caught between two keystrokes is
+ * ordinary there. The save path alone refuses it, once parsing has already
+ * succeeded (`widthsOrdered`, below).
+ */
+const numberRowSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  unit: z.string().nullable(),
+  high: z.string(),
+  note: z.string(),
+})
 
 const valueBodySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: textPairSchema }),
@@ -49,12 +73,7 @@ const valueBodySchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("number"),
     state: slotState,
-    rows: z.array(z.object({
-      label: z.string(),
-      value: z.string(),
-      unit: z.string().nullable(),
-      note: z.string(),
-    })),
+    rows: z.array(numberRowSchema),
   }),
   z.object({
     kind: z.literal("disease"),
@@ -123,14 +142,38 @@ function numberValue(row: NumberRow, canonical: string | null): NumberValue | nu
   if (row.value.trim() === "" || !Number.isFinite(typed)) return null
   const converted = convert(typed, row.unit, canonical)
   if (converted === null) return null
+  const high = highValue(row.high, row.unit, canonical)
   return {
     label: row.label.trim() === "" ? null : row.label.trim(),
     value: converted,
     unit: canonical,
     inputValue: typed,
     inputUnit: row.unit,
+    high: high?.converted ?? null,
+    inputHigh: high?.typed ?? null,
     note: row.note.trim() === "" ? null : row.note.trim(),
   }
+}
+
+/**
+ * A width's upper end, converted the same way `value` is. Null when nothing
+ * was typed — most rows are a bare value rather than a width — dropped
+ * quietly rather than failing the row the way an unreadable `value` does: a
+ * width whose upper end cannot be converted is stored as a value with no
+ * upper end, not as no value at all. The schema has already refused a typed
+ * upper end below the typed value (above), so this only ever narrows or
+ * widens the number, never orders it.
+ */
+function highValue(
+  typed: string,
+  unit: string | null,
+  canonical: string | null,
+): { typed: number, converted: number } | null {
+  if (typed.trim() === "") return null
+  const value = Number(typed.trim())
+  if (!Number.isFinite(value)) return null
+  const converted = convert(value, unit, canonical)
+  return converted === null ? null : { typed: value, converted }
 }
 
 /**
@@ -235,4 +278,27 @@ export function datasetContentOf(
   }
 
   return problems.length > 0 ? { ok: false, problems } : { ok: true, content }
+}
+
+/**
+ * Whether every number row on the form has its typed upper end at or above
+ * its typed lower end.
+ *
+ * **Only the save path calls this.** The schema above lets a disordered width
+ * through because the draw preview parses content that has not finished being
+ * typed, and a width caught mid-edit is ordinary there — refusing the whole
+ * preview over one field somebody has not finished typing would blank the
+ * page they are looking at. A save is different: the screen marks this box
+ * `aria-invalid` the moment it is typed (`dataset-editor.tsx` の
+ * `NumberField`), so a save that still carries the disordered shape is a
+ * request that went around the form, and the caller answers it with a bad
+ * request (`app/admin/pages.server.ts` の `saveDatasetAction`).
+ */
+export function widthsOrdered(input: DatasetContentInput): boolean {
+  const rowsOf = (value: ValueInput): NumberRow[] => value.value.kind === "number" ? value.value.rows : []
+  const rows = [
+    ...input.values.flatMap(rowsOf),
+    ...input.experiments.flatMap((experiment) => experiment.values.flatMap(rowsOf)),
+  ]
+  return rows.every((row) => !highBelowValue(row))
 }

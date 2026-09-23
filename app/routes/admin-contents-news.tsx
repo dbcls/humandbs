@@ -27,6 +27,7 @@ import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/
 import { minuteOf } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
@@ -67,6 +68,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
   const messages = messagesFor(locale)
   const t = messages.admin.contents
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
 
   // Folded, the way back into the pane says how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
@@ -106,7 +108,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
 
           <RefinableList
             open={paneOpen}
-            busy={false}
+            busy={busy}
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { Chip, Clamped, Fold, foldShown, PaneHeading } from "./base"
+import { Button, Chip, Clamped, Confirm, Fold, foldShown, PaneHeading, Stated } from "./base"
 
 /** Rendered at an address, since a part may hold a link. */
 function render(element: React.ReactNode): string {
@@ -57,6 +57,23 @@ describe("a list cut short", () => {
 function visible(html: string): string {
   return html.replace(/<span class="sr-only">.*?<\/span>/g, "").replace(/<[^>]+>/g, "")
 }
+
+/**
+ * A glyph has no baseline, so a box placed by its first item's baseline is
+ * placed by the glyph's bottom edge and stretches the line it stands in. The
+ * pair takes a box of one line's height and sits at the top of it instead, the
+ * way a badge does (`docs/ui.md` の「壊れるもの」).
+ */
+describe("a state every row carries", () => {
+  it("takes one line's height and sits at the top of it, so it has no baseline to be placed by", () => {
+    const html = render(<Stated icon="eye">公開中</Stated>)
+    const box = (/<span class="([^"]*)"><svg/.exec(html)?.[1] ?? "").split(/\s+/)
+    expect(box).toContain("h-[1lh]")
+    expect(box).toContain("align-top")
+    expect(box).toContain("items-center")
+    expect(html).toContain("公開中")
+  })
+})
 
 describe("the name of a pane", () => {
   it("is a second-level heading, or a third where the pane sits under one", () => {
@@ -166,5 +183,92 @@ describe("a part of a panel that folds", () => {
 
     expect(html).toMatch(/<summary[^>]*\bpy-2\b/)
     expect(html).not.toMatch(/<details[^>]*\bpy-2\b/)
+  })
+})
+
+/**
+ * A question raised by something that happened, rather than by a control:
+ * files chosen whose names the box already holds. What raised it is the way in,
+ * so the panel draws none of its own.
+ */
+describe("a question held open from outside", () => {
+  const question = (open: boolean) => render(
+    <Confirm
+      held={{ open, close: () => undefined }}
+      title="同じ名前のファイルの上書き"
+      warning="2 件が既にあります: a.zip, b.zip。上書きすると、いまのファイルは元に戻せません。"
+      confirm="上書き"
+      cancel="キャンセル"
+      onConfirm={() => undefined}
+    />,
+  )
+
+  it("draws no way in, and nothing at all while it is shut", () => {
+    const html = question(false)
+    expect(html).not.toContain("<button")
+    expect(html).not.toContain("同じ名前のファイルの上書き")
+  })
+
+  it("asks with the sentence and both answers once it is open, and the deed sends no form", () => {
+    const html = question(true)
+    expect(html).toContain("同じ名前のファイルの上書き")
+    expect(html).toContain("2 件が既にあります: a.zip, b.zip。")
+    expect(html.match(/<button/g)).toHaveLength(2)
+    expect(html).toContain("キャンセル")
+    expect(html).toContain("上書き</button>")
+    expect(html).not.toContain("type=\"submit\"")
+  })
+
+  it("waits for nothing while nothing has been pressed: both answers can be pressed, and no spinner turns", () => {
+    const html = question(true)
+    expect(html).not.toMatch(/<button[^>]*\bdisabled=""/)
+    expect(html).not.toContain("aria-busy")
+    expect(html).not.toContain("animate-spin")
+    expect(html).not.toContain("role=\"status\"")
+  })
+})
+
+describe("a control that cannot be pressed", () => {
+  const html = render(<Button disabled="使われているので削除できません。">削除</Button>)
+
+  it("stays on the screen, disabled, rather than being taken away", () => {
+    expect(html).toContain("削除")
+    expect(html).toMatch(/<button[^>]*\bdisabled=""/)
+  })
+
+  it("says why over itself, and the reason is read out with it", () => {
+    const [, id] = /role="tooltip"[^>]*>|id="([^"]+)"[^>]*role="tooltip"/.exec(html) ?? []
+    expect(html).toContain("role=\"tooltip\"")
+    expect(html).toContain("使われているので削除できません。")
+    expect(id).toBeDefined()
+    expect(html).toMatch(new RegExp(`<button[^>]*aria-describedby="${id ?? ""}"`))
+  })
+
+  it("lets the pointer through to what stands the reason up, which can also take focus", () => {
+    expect(html).toMatch(/<span[^>]*tabindex="0"[^>]*>/)
+    expect(html).toContain("pointer-events-none")
+  })
+
+  it("hangs the reason from the right, or from the left when it stands at the left of a row", () => {
+    expect(html).toMatch(/role="tooltip"[^>]*right-0|right-0[^>]*role="tooltip"/)
+    const left = render(<Button disabled="理由" reasonAt="left">表示</Button>)
+    expect(left).toMatch(/role="tooltip"[^>]*left-0|left-0[^>]*role="tooltip"/)
+    expect(left).not.toContain("right-0")
+  })
+
+  it("is an ordinary button, with nothing over it, while it can be pressed or is merely off", () => {
+    expect(render(<Button>削除</Button>)).not.toContain("tooltip")
+    const off = render(<Button disabled>削除</Button>)
+    expect(off).toMatch(/<button[^>]*\bdisabled=""/)
+    expect(off).not.toContain("tooltip")
+  })
+
+  it("is the same control whether a panel's way in or a plain one", () => {
+    const wayIn = render(
+      <Confirm label="削除" title="x の削除" warning="削除されます。元に戻せません。" confirm="削除" cancel="キャンセル" disabled="使われています。" />,
+    )
+    expect(wayIn).toContain("role=\"tooltip\"")
+    expect(wayIn).toContain("使われています。")
+    expect(wayIn).toMatch(/<button[^>]*\bdisabled=""/)
   })
 })

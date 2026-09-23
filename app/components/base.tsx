@@ -21,7 +21,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
 
-import { Icon, type IconName } from "~/components/icons"
+import { Icon, Spinner, type IconName } from "~/components/icons"
+import { messagesFor } from "~/i18n/messages"
+import { usePressed, useSubmitting } from "~/navigating"
 
 /* ---------------------------------------------------------------- rhythm */
 
@@ -40,10 +42,19 @@ import { Icon, type IconName } from "~/components/icons"
  */
 const STACK_GAP = { tight: "gap-2", normal: "gap-4", block: "gap-8" }
 
-export function Stack({ gap = "normal", as: Tag = "div", at, children }: {
+export function Stack({ gap = "normal", as: Tag = "div", at, fill = false, children }: {
   gap?: keyof typeof STACK_GAP
   /** A list of things is a list; anything else is a plain box. */
   as?: "div" | "ul" | "section" | "nav"
+  /**
+   * Take the room the column this stands in has left, and no more, where the
+   * column is as tall as the window and one thing inside it is to scroll on
+   * its own. Every box on the way down from the column to that thing says it,
+   * or the room stops there. **"No more" is the `min-h-0`**: a flex item is
+   * otherwise never shorter than what it holds, and the length of the thing
+   * that should scroll would become the length of every box above it.
+   */
+  fill?: boolean
   /**
    * The place in the content this box holds, when it holds one. It goes onto
    * the markup so that something outside the form can tell which place the
@@ -53,7 +64,7 @@ export function Stack({ gap = "normal", as: Tag = "div", at, children }: {
   at?: string
   children: ReactNode
 }) {
-  return <Tag data-at={at} className={`flex flex-col ${STACK_GAP[gap]}`}>{children}</Tag>
+  return <Tag data-at={at} className={`flex flex-col ${STACK_GAP[gap]}${fill ? " min-h-0 flex-1" : ""}`}>{children}</Tag>
 }
 
 /* ------------------------------------------------------- marks and boxes */
@@ -205,7 +216,7 @@ const HEADING_LOOK = {
  * puts their middles below its middle — measured at 5.7px for the aside and
  * 2.8px for the controls, which reads as the title floating above its own row.
  */
-export function Heading({ level = "h1", look = level, rule = "edge", title, aside, note, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", title, aside, badge, note, children }: {
   level?: "h1" | "h2"
   /**
    * How large it is drawn, when that is not what its level would give.
@@ -234,6 +245,13 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
    */
   aside?: string
   /**
+   * A mark beside the identifier that names the screen's own state rather
+   * than what it is — an updating draft's "v3 を更新中"
+   * (`docs/admin-ui.md` の「画面の名乗り」). Not part of the name, so it
+   * stands beside `aside` rather than inside `title`.
+   */
+  badge?: ReactNode
+  /**
    * What the screen is for, in one line under its name.
    *
    * **The distance to it belongs to the heading rather than to the screen.** A
@@ -256,6 +274,7 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
             reader takes in character by character to know they are on the right
             screen, so it takes the size of body text rather than of an aside. */}
         {aside !== undefined && <span className="text-ink-muted text-base">{aside}</span>}
+        {badge}
       </div>
       {children !== undefined && (
         <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
@@ -381,6 +400,39 @@ export function Badge({
         {icon}
         {children}
       </span>
+    </span>
+  )
+}
+
+/**
+ * A state as a glyph and a word, on a line.
+ *
+ * **What every row has is not a badge.** A badge is a box, and a box is for
+ * what a reader has to pick out — the rows that carry a shortcoming, the one
+ * revision the pointer names, the term being folded away. A state that every
+ * row carries (published or not, shared or not, the type of a key) drawn in a
+ * box gives every row a box, and then nothing is picked out: the rows that
+ * need somebody look exactly like the rows that do not. The glyph is what tells
+ * the states apart at a glance; the word is what says which it is once the
+ * question is known (`docs/ui.md` の「壊れるもの」).
+ *
+ * **The same pair in the pane and down the table**, so the shape a curator
+ * narrows by is the shape they then read in the rows.
+ *
+ * **It takes one line's height and sits at the top of it**, the box a badge
+ * stands in (`Badge`). Left on the baseline, an inline-flex box is placed by
+ * its first item's baseline, and a glyph has none — the browser takes the
+ * bottom edge of the svg, which is 2.4px under the words' baseline. The line
+ * box grows by that much to hold it and the pair sits at the top of the taller
+ * line: measured, 1.9px above the words in the cells beside it, and every cell
+ * of a top-aligned row moved up with it. Top-aligned in a box of its own
+ * line's height, it has no baseline to be placed by.
+ */
+export function Stated({ icon, children }: { icon: IconName, children: ReactNode }) {
+  return (
+    <span className="inline-flex h-[1lh] items-center align-top text-nowrap">
+      <Icon name={icon} aria-hidden="true" className="mr-1 text-ink-muted" />
+      {children}
     </span>
   )
 }
@@ -537,19 +589,78 @@ export function Button({
   type = "submit",
   icon,
   className = "",
+  disabled,
+  reasonAt = "right",
   children,
   ...rest
-}: ButtonLook & { children?: ReactNode }
-  & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
+}: ButtonLook & {
+  /**
+   * Whether it can be pressed — and, given a sentence, why it cannot.
+   *
+   * **A control that cannot be pressed stays on the screen and says why.**
+   * Taken away, it is looked for among the other controls; left pressable, it
+   * is pressed only to be refused (`docs/ui.md` の「押せるもの」). The sentence
+   * is drawn over the control while the pointer is on it or it has focus, and
+   * read out with it.
+   *
+   * **The reason is drawn, not left to the browser.** A `title` shows late,
+   * only to a pointer, and not at all over a disabled button, which raises no
+   * pointer events. So the button lets the pointer through to a wrapper, and
+   * the wrapper — which can also take focus, since the button cannot — stands
+   * the reason over the control while it is pointed at or focused.
+   */
+  disabled?: boolean | string
+  /**
+   * Which edge of the control the reason hangs from.
+   *
+   * **It hangs from the edge nearest the window's.** The tag is up to 256px
+   * wide over a control that is not, so it runs out past one side of it — and
+   * past the window if that side is the near one. A control at the right end
+   * of a row (a row's delete) hangs it from the right; one at the left end of
+   * a row (an alert's show) hangs it from the left.
+   */
+  reasonAt?: "left" | "right"
+  children?: ReactNode
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children" | "disabled">) {
+  // The reason a closed control gives, named so the control can point at it.
+  const reasonId = useId()
+  const shape = buttonClass({ variant, size, listing, onBand, className })
+  if (typeof disabled !== "string") {
+    return (
+      <button type={type} className={shape} disabled={disabled} {...rest}>
+        {icon}
+        {children}
+      </button>
+    )
+  }
   return (
-    <button
-      type={type}
-      className={buttonClass({ variant, size, listing, onBand, className })}
-      {...rest}
+    <span
+      className="group relative inline-flex cursor-not-allowed"
+      tabIndex={0}
+      aria-describedby={reasonId}
     >
-      {icon}
-      {children}
-    </button>
+      <button
+        type={type}
+        className={`${shape} pointer-events-none`}
+        {...rest}
+        disabled
+        aria-describedby={reasonId}
+      >
+        {icon}
+        {children}
+      </button>
+      {/* `hidden` rather than `invisible`: a box that is only unseen still has
+          a width, and inside a table's scrolling box that width is what put an
+          8px sideways scroll on a table that fit. A description read through
+          `aria-describedby` is computed from a hidden node all the same. */}
+      <span
+        id={reasonId}
+        role="tooltip"
+        className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-64 rounded bg-ink px-2 py-1 text-left text-white text-xs shadow-md group-focus-visible:block group-hover:block ${reasonAt === "left" ? "left-0" : "right-0"}`}
+      >
+        {disabled}
+      </span>
+    </span>
   )
 }
 
@@ -571,6 +682,7 @@ export function ButtonLink({
   external = false,
   newTab = false,
   newTabLabel,
+  download = false,
   icon,
   className = "",
   children,
@@ -580,6 +692,11 @@ export function ButtonLink({
   newTab?: boolean
   /** Said for anyone not looking at the mark. Required wherever `newTab` is. */
   newTabLabel?: string
+  /**
+   * What the address answers with is saved rather than shown. For an `external`
+   * address only: the browser decides what to do with a page of its own.
+   */
+  download?: boolean
   children: ReactNode
 }) {
   const shape = buttonClass({ variant, size, listing, onBand, className })
@@ -599,7 +716,7 @@ export function ButtonLink({
           {newTabLabel !== undefined && <span className="sr-only">{newTabLabel}</span>}
         </a>
       )
-    : <a href={to} className={shape}>{inside}</a>
+    : <a href={to} className={shape} download={download || undefined}>{inside}</a>
 }
 
 /**
@@ -675,7 +792,8 @@ export function IconButton({ name, label, pressed, onClick, type = "button", ...
    * `aria-pressed` rather than by a third shade.
    */
   pressed?: boolean | "mixed"
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">
+& React.RefAttributes<HTMLButtonElement>) {
   const look = pressed === true || pressed === "mixed"
     ? "text-accent hover:bg-surface-hover"
     : "text-ink-muted hover:bg-surface-hover hover:text-ink"
@@ -723,8 +841,14 @@ export function IconButton({ name, label, pressed, onClick, type = "button", ...
  *
  * **Where the alternatives are many, or their words long, they are folded away
  * instead** (`Chooser`). Shown, they cost a row of the screen each time.
+ *
+ * **One answer can be the quiet one** (`quiet`): chosen, it is drawn as chosen
+ * but not filled. An editor asks the same three-way question of every box it
+ * holds, and nearly every box gives the ordinary answer — filled, that answer
+ * would put a brand fill on every field and the one that saves would be lost
+ * among them (`docs/ui.md` の「押せるもの」).
  */
-export function Choice<T extends string>({ label, value, options, onChange, size = "sm", pill = false }: {
+export function Choice<T extends string>({ label, value, options, onChange, size = "sm", pill = false, quiet }: {
   /** What the options are answers to, said for anyone not looking at them. */
   label: string
   value: T
@@ -740,7 +864,13 @@ export function Choice<T extends string>({ label, value, options, onChange, size
    * thing the form is asking for.
    */
   pill?: boolean
+  /** The answer that is drawn as chosen without the fill, being the ordinary one. */
+  quiet?: T
 }) {
+  const face = (id: T): string => {
+    if (value !== id) return "bg-white text-brand hover:bg-surface-hover"
+    return id === quiet ? "bg-surface text-ink" : "bg-brand text-white"
+  }
   return (
     <div
       role="group"
@@ -762,7 +892,7 @@ export function Choice<T extends string>({ label, value, options, onChange, size
             at === 0 ? "" : "-ml-px"
           } ${pill && at === 0 ? "rounded-l-full pl-4" : ""} ${
             pill && at === options.length - 1 ? "rounded-r-full pr-4" : ""
-          } ${value === one.id ? "bg-brand text-white" : "bg-white text-brand hover:bg-surface-hover"}`}
+          } ${face(one.id)}`}
         >
           {one.label}
         </button>
@@ -1196,12 +1326,18 @@ function tabbedAs(scope: string | undefined, id: string): string {
   return scope === undefined ? id : `${scope}-${id}`
 }
 
-export function SectionTabs({ label, tabs, current, onSelect, scope }: {
+export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
   label: string
   tabs: { id: string, label: string, mark?: ReactNode }[]
   current: string
   onSelect: (id: string) => void
   scope?: string
+  /**
+   * What stands at the far end of the strip, outside the tabs: a pane's way of
+   * arranging itself, which is about the box and so belongs on the box's own
+   * top edge rather than on a bar above it (`docs/ui.md` の「編集画面の 2 ペイン」).
+   */
+  aside?: ReactNode
 }) {
   const strip = useRef<HTMLDivElement>(null)
 
@@ -1253,6 +1389,7 @@ export function SectionTabs({ label, tabs, current, onSelect, scope }: {
           {tab.mark}
         </button>
       ))}
+      {aside !== undefined && <span className="ml-auto flex items-center py-1 pl-4">{aside}</span>}
     </div>
   )
 }
@@ -1669,6 +1806,20 @@ export function Toast({ label, announce, at = "band", children }: {
 /**
  * A panel drawn over the page, and the control that opens it.
  *
+ * **Every panel is built the same way, and the panel builds it.** Its name,
+ * then the one sentence it has to say, then what is written in it, then the
+ * row at the foot with the way out on the left and the deed on the right — the
+ * order a screen's own name row keeps (`docs/ui.md` の「押せるもの」). A screen
+ * hands over the fields and the deed and nothing else: a sentence a screen
+ * wrote itself stood wherever the screen put it, and two panels came to say
+ * the same kind of thing in two places.
+ *
+ * **The sentence is the panel's; the hint is the field's.** What pressing does
+ * is said once under the name, in the reading colour. How a value is written
+ * is said under the box it is written in, in the quieter one (`form.tsx` の
+ * `hint`). Neither says the other's thing, so a reader who has learned where
+ * each stands knows what each is before reading it.
+ *
  * **Nothing is inside it until it is open.** A submit button left in a closed
  * panel is still the form's default button, so pressing Enter in a box
  * elsewhere in the same form would fire the deed nobody asked for; and a form
@@ -1683,21 +1834,28 @@ export function Toast({ label, announce, at = "band", children }: {
  * the ones the browser sends; what the top layer moves is where it is drawn,
  * not where it belongs.
  *
- * **A panel that asks and a panel that is written in are two widths, and only
- * two.** A question is held to the width of the widest question; a form has
- * fields in it, and two language boxes one above the other inside 448px leave
- * each of them too narrow to read a sentence in. Neither is the width of its
- * own words.
- *
- * **It is one width, not the width of its words.** These stand over screens
- * that have nothing else to look at, so a panel drawn to fit a short sentence
- * came out 288px against the 448px of the one beside it, and the same question
- * changed size with the length of the answer. The width is held at the widest
- * it goes and gives way only to a window narrower than that.
+ * **It is one width, not the width of its words — and the same one whether it
+ * asks or is written in.** These stand over screens that have nothing else to
+ * look at, so a panel drawn to fit a short sentence came out 288px against the
+ * 448px of the one beside it, and the same question changed size with the
+ * length of the answer. A panel that asks and a panel with fields in it are
+ * opened from the same screen, and at two sizes they read as two kinds of
+ * thing; at one, the reader sees the same panel every time and reads what is
+ * different about it. The width is the one two language boxes stacked can be
+ * read in, and it gives way only to a window narrower than that.
  */
-export function Dialog({ label, title, variant = "secondary", size = "sm", icon, wide = false, held, children }: {
+export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled }: {
   /** The way in, when the panel has one of its own. */
   label?: string
+  /**
+   * Why the way in cannot be taken, when it cannot.
+   *
+   * **The way in stays on the screen and says why.** Taken away, it is looked
+   * for among the other controls; left pressable, the panel opens only to be
+   * refused. The reason is drawn over the way in while the pointer is on it or
+   * it has focus, and read out with the button (`Button` の `disabled`).
+   */
+  disabled?: string
   /**
    * What the panel is about, standing at the top of it.
    *
@@ -1707,6 +1865,14 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
    * of the things on the page underneath it is about to be acted on.
    */
   title: string
+  /**
+   * What pressing does, said once under the name.
+   *
+   * **It closes the way the deed can be taken back.** What cannot be undone
+   * ends by saying so; what can, ends by saying how — a reader deciding whether
+   * to press is deciding on exactly that.
+   */
+  note?: string
   /** The face of the way in, which is the face of what it opens. */
   variant?: ButtonVariant
   /**
@@ -1716,16 +1882,25 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
    */
   size?: ButtonSize
   icon?: ReactNode
-  /** A panel written in rather than answered, which needs room for its fields. */
-  wide?: boolean
   /**
    * Held open from outside, for a panel that opens because something was added
    * rather than because a control was pressed. **The way in is not drawn** —
    * whatever opened it is the way in.
    */
   held?: { open: boolean, close: () => void }
-  /** What stands in the panel, handed the way to shut it again. */
-  children: (close: () => void) => ReactNode
+  /** The word on the way out, which every panel has. */
+  dismiss: string
+  /**
+   * The deed, at the right of the foot, handed the way to shut the panel for a
+   * deed that is not a form being sent.
+   *
+   * **A panel without one writes as it goes** (`fields.tsx` の `ItemList`), and
+   * its way out wears the outlined face: it is the one thing there to press,
+   * and the word-only face is for a way out standing beside a deed.
+   */
+  action?: (close: () => void) => ReactNode
+  /** What is written in the panel — the fields, and only those. */
+  children?: ReactNode
 }) {
   const box = useRef<HTMLDialogElement>(null)
   const [ownOpen, setOwnOpen] = useState(false)
@@ -1733,6 +1908,16 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
   const close = held === undefined
     ? () => { setOwnOpen(false) }
     : held.close
+  /*
+    **While the deed the panel sent is in flight, the panel holds.** It is the
+    one thing over the page, so whatever is being sent came from it; and a way
+    out taken then would leave the reader on the page with no sign of a deed
+    that is still going to land. The deed's own button says it is waiting; the
+    three ways out — the foot, Escape and the dark outside — are shut until
+    the sending has ended (`docs/ui.md` の「壊れるもの」).
+  */
+  const submitting = useSubmitting()
+  const holding = open && submitting
 
   /*
     **The way out that costs nothing to find.** A panel over the page is shut by
@@ -1775,6 +1960,7 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
           variant={variant}
           size={size}
           icon={icon}
+          disabled={disabled}
           onClick={() => { setOwnOpen(true) }}
         >
           {label}
@@ -1783,16 +1969,19 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
       <dialog
         ref={box}
         onClose={close}
+        onCancel={(event) => { if (holding) event.preventDefault() }}
         onPointerDown={(event) => { pressedOut.current = outside(event) }}
         onClick={(event) => {
+          if (holding) return
           if (event.target === box.current && pressedOut.current && outside(event)) close()
         }}
+        aria-busy={holding || undefined}
         /* **The panel wraps its own words.** It is drawn in the top layer but
            inherits from where it stands in the markup, and a row's cell that
            holds its controls on one line would otherwise hand the panel that
            line too: the words inside would run off the side instead of
            breaking. */
-        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] overflow-y-auto whitespace-normal ${wide ? "max-w-2xl" : "max-w-md"} rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40`}
+        className="m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto whitespace-normal rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40"
       >
         {open && (
           <Stack gap="normal">
@@ -1802,7 +1991,19 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
                 The rule starts on the line rather than hanging out through a
                 card's padding, because there is no card around it. */}
             <Heading level="h2" look="bar" rule="start" title={title} />
-            {children(close)}
+            {note !== undefined && <p className="text-ink text-sm">{note}</p>}
+            {children}
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant={action === undefined ? "secondary" : "ghost"}
+                disabled={holding}
+                onClick={close}
+              >
+                {dismiss}
+              </Button>
+              {action?.(close)}
+            </span>
           </Stack>
         )}
       </dialog>
@@ -1825,11 +2026,11 @@ export function Dialog({ label, title, variant = "secondary", size = "sm", icon,
  * The warning says what will happen, not which of the four things in the row it
  * will happen to.
  *
- * **The warning is not drawn in the danger colour.** What is dangerous here is
- * the deed, and the button that does it wears that colour; a sentence in the
- * same red is the panel shouting the part the reader has to read most carefully,
- * and red text at 14px is the worst of the three places this screen could put
- * that colour.
+ * **The warning is the panel's own sentence** (`Dialog` の `note`), and it is
+ * not drawn in the danger colour. What is dangerous here is the deed, and the
+ * button that does it wears that colour; a sentence in the same red is the
+ * panel shouting the part the reader has to read most carefully, and red text
+ * at 14px is the worst of the three places this screen could put that colour.
  */
 export function Confirm({
   label,
@@ -1840,13 +2041,18 @@ export function Confirm({
   intent,
   icon = "trash",
   size = "sm",
+  held,
   onConfirm,
   children,
+  disabled,
 }: {
-  label: string
+  /** The way in. Absent when the panel is `held` open from outside, which draws none. */
+  label?: string
   /** What is about to happen and to which one, as a heading. */
   title: string
   warning: string
+  /** Why the way in cannot be taken, when it cannot (`Dialog`). */
+  disabled?: string
   confirm: string
   cancel: string
   /**
@@ -1868,6 +2074,12 @@ export function Confirm({
    */
   size?: ButtonSize
   /**
+   * Held open from outside (`Dialog`), for a question raised by something that
+   * happened rather than by a control being pressed — files chosen whose names
+   * the box already holds. The way in is whatever raised it.
+   */
+  held?: { open: boolean, close: () => void }
+  /**
    * The deed, where it is not a form being sent.
    *
    * **The panel is one part however the deed is done.** Most of these stand in
@@ -1881,6 +2093,11 @@ export function Confirm({
   /** The hidden fields naming what is being acted on. */
   children?: ReactNode
 }) {
+  // **The deed waits in place while it is in flight** (`Submit` の同じ形):
+  // pressed again it would send twice, and renamed or grown it would move the
+  // way out beside it. Only a deed that is a form being sent has anything to
+  // wait for; one done in the browser shuts the panel first.
+  const { pending, press } = usePressed()
   return (
     /* **The way in wears the face of what it leads to.** Taking something away
        is what this control is for whichever screen it stands on, and the panel
@@ -1897,33 +2114,39 @@ export function Confirm({
        **The mark is on the way in as well as on the deed.** It is the same
        deed at both ends, and a row of words with one glyph among them reads as
        one of them being of a different kind. */
-    <Dialog label={label} title={title} variant="danger" size={size} icon={<Icon name={icon} />}>
-      {(close) => (
+    <Dialog
+      label={label}
+      title={title}
+      note={warning}
+      variant="danger"
+      size={size}
+      icon={<Icon name={icon} />}
+      held={held}
+      dismiss={cancel}
+      disabled={disabled}
+      action={(close) => (
         <>
-          <p className="text-ink text-sm">{warning}</p>
-          <span className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={close}>
-              {cancel}
-            </Button>
-            {children}
-            <Button
-              type={onConfirm === undefined ? "submit" : "button"}
-              variant="danger"
-              icon={<Icon name={icon} />}
-              onClick={onConfirm === undefined
-                ? undefined
-                : () => {
-                    close()
-                    onConfirm()
-                  }}
-              {...(intent === undefined ? {} : { name: "intent", value: intent })}
-            >
-              {confirm}
-            </Button>
-          </span>
+          {children}
+          <Button
+            type={onConfirm === undefined ? "submit" : "button"}
+            variant="danger"
+            icon={pending ? <Spinner /> : <Icon name={icon} />}
+            disabled={pending}
+            aria-busy={pending || undefined}
+            onClick={onConfirm === undefined
+              ? (event) => { press(event.currentTarget.form) }
+              : () => {
+                  close()
+                  onConfirm()
+                }}
+            {...(intent === undefined ? {} : { name: "intent", value: intent })}
+          >
+            {confirm}
+          </Button>
+          {pending && <span role="status" className="sr-only">{messagesFor("ja").admin.busy}</span>}
         </>
       )}
-    </Dialog>
+    />
   )
 }
 
@@ -1940,7 +2163,7 @@ export function Confirm({
  * nothing has to be clipped — and clipping would take the focus ring of the
  * first and last lines with it.
  */
-const MENU_PANEL
+export const MENU_PANEL
   = "min-w-max flex-col items-stretch rounded-lg border border-line bg-white py-1 shadow-lg"
 
 /**

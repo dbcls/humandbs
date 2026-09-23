@@ -1,13 +1,13 @@
-import { data, Form } from "react-router"
+import { data, Form, Link } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
-import { adminUpstreamResearchPath, draftTargetQuery } from "~/admin/urls"
+import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
-import { Answered, RadioGroup, Result, Submit } from "~/components/form"
+import { Answered, Result } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
-import { UpstreamChoice, UpstreamNotConnected, UpstreamTarget } from "~/components/upstream"
+import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
@@ -15,16 +15,13 @@ import { href, readLocale } from "~/public/urls"
 import type { Route } from "./+types/admin-upstream-branch"
 
 /**
- * One approval branch: what taking it in would bring, and where it can go.
+ * One approval branch: what taking it in would bring, and — where the hum
+ * already names a research — the way there.
  *
- * **The work is the same whichever is chosen** — the branch's values are
- * written into a draft. What the choice settles is which draft that is, and a
- * research that is already there gets a copy of its newest version to take the
- * branch into (docs/editing.md の「下書きを外から作る」).
- *
- * **A new research is the only choice that writes here.** It has nothing to be
- * put beside, so this screen is already the whole of the decision; the other
- * three go on to the screen where the two columns stand side by side.
+ * **Two states only.** The hum is not in the portal, and the one thing to do
+ * is start a research from what the branch states; or it already names one,
+ * and this screen offers no form at all — taking the branch in is done from
+ * that research's own draft (docs/editing.md の「行き先」).
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -51,7 +48,6 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
   const messages = messagesFor(locale)
   const t = messages.admin.templates
   const holder = view.holder
-  const taken = holder?.drafts.some((draft) => draft.takenBranches.includes(view.applicationId))
 
   return (
     <Page>
@@ -65,15 +61,13 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
         <Stack gap="block">
           {/* The name says what is done here and the branch stands beside it —
               an application ID on its own would not say which screen this is. */}
-          <Heading title={t.branchHeading} aside={view.applicationId}>
+          <Heading title={t.branchHeading} aside={view.applicationId} note={t.branchHeadingNote}>
             <AdminBack
-              to={href(locale, adminUpstreamResearchPath() + draftTargetQuery(view.target?.draftId ?? null))}
+              to={href(locale, adminUpstreamResearchPath())}
               label={t.backToList}
               icon="chevron-left"
             />
           </Heading>
-
-          {view.target !== null && <UpstreamTarget locale={locale} target={view.target} />}
 
           {!view.connected || view.branch === null || view.chosen === null
             ? <UpstreamNotConnected locale={locale} />
@@ -86,7 +80,6 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                       {t.humLabelMissingHint}
                     </Note>
                   )}
-                  {taken === true && <Note kind="info">{t.takenAgain}</Note>}
 
                   {/*
                     The branch is read once and shown once. Where a research is
@@ -103,7 +96,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                         <div className="contents">
                           <dt className="text-ink-muted">{t.humLabel}</dt>
-                          <dd>{view.branch.humLabel ?? t.noHumLabel}</dd>
+                          <dd>{view.branch.humLabel ?? <span className="text-ink-muted">{t.noHumLabel}</span>}</dd>
                         </div>
                         <div className="contents">
                           <dt className="text-ink-muted">{t.approvedOn}</dt>
@@ -121,92 +114,41 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                         </div>
                       </dl>
 
-                      {holder === null && view.target === null
+                      {holder === null
                         ? (
                             <Form method="post">
                               <input type="hidden" name="into" value="new" />
                               <UpstreamChoice locale={locale} choice={view.chosen} submit={t.create} />
                             </Form>
                           )
-                        : <UpstreamChoice locale={locale} choice={view.chosen} />}
+                        : (
+                            <>
+                              <UpstreamChoice locale={locale} choice={view.chosen} />
+                              {/* **The way in is a link, and says it goes
+                                  somewhere.** The one thing this state offers
+                                  is the research it names, so it wears the
+                                  face of a way there — the word and the mark
+                                  after it (`docs/ui.md` の「押せるもの」) —
+                                  rather than a button that reads as an
+                                  operation done here. */}
+                              <p className="flex flex-wrap items-center gap-3 text-sm">
+                                <Link
+                                  to={href(locale, adminResearchPath(holder.researchId))}
+                                  className="inline-flex items-center gap-1 font-semibold"
+                                >
+                                  {t.toResearch}
+                                  <Icon name="chevron-right" aria-hidden="true" />
+                                </Link>
+                                <span className="text-ink-muted">{t.takeFromResearch}</span>
+                              </p>
+                            </>
+                          )}
                     </Stack>
                   </Section>
-
-                  {/* **Opened from a draft, the destination is already chosen**, so
-                      the one thing offered is to take the branch into it — a
-                      new research or a copy of the newest version would be an
-                      answer to a question this reader did not ask. Either way
-                      the section ends in the one press the screen is for. */}
-                  {(view.target !== null || holder !== null) && (
-                    <Section title={t.destination}>
-                      <Form method="post">
-                        <Stack gap="normal">
-                          {view.target !== null
-                            ? (
-                                <>
-                                  <input type="hidden" name="into" value={`draft:${view.target.draftId}`} />
-                                  {view.branch.humLabel !== null
-                                    && view.target.humLabel !== null
-                                    && view.branch.humLabel !== view.target.humLabel && (
-                                    <Note kind="warning">
-                                      {t.humDiffers(view.branch.humLabel, view.target.humLabel)}
-                                    </Note>
-                                  )}
-                                </>
-                              )
-                            : holder !== null && (
-                              <>
-                                <input type="hidden" name="research" value={holder.researchId} />
-                                <RadioGroup
-                                  label={t.destination}
-                                  name="into"
-                                  value={destinations(messages, holder)[0]?.value}
-                                  options={destinations(messages, holder)}
-                                />
-                              </>
-                            )}
-                          <div>
-                            <Submit variant="primary" icon={<Icon name="download" />}>
-                              {view.target !== null ? t.goIntoTarget : t.go}
-                            </Submit>
-                          </div>
-                        </Stack>
-                      </Form>
-                    </Section>
-                  )}
                 </>
               )}
         </Stack>
       </Card>
     </Page>
   )
-}
-
-/**
- * Where this branch can go, in the order a curator reads them: the version that
- * is out, the one that is not yet, then the drafts that are already open.
- */
-function destinations(
-  messages: ReturnType<typeof messagesFor>,
-  holder: NonNullable<Route.ComponentProps["loaderData"]["holder"]>,
-): { value: string, label: string }[] {
-  const t = messages.admin.templates
-  const detail = messages.admin.detail
-  const latest = holder.latestNumber
-  return [
-    ...(latest === null
-      ? []
-      : [
-          { value: "replacement", label: `${t.intoPublic(latest)} — ${t.intoPublicHint}` },
-          { value: "next-version", label: `${t.intoNext(latest + 1)} — ${t.intoNextHint}` },
-        ]),
-    // A draft is told from its siblings by where it was copied from, and by
-    // when it was last written to.
-    ...holder.drafts.map((draft) => ({
-      value: `draft:${draft.draftId}`,
-      label: `${t.intoDraft} — ${draft.copiedFromNumber === null
-        ? detail.copiedFromNone
-        : detail.copiedFrom(draft.copiedFromNumber)} ${t.draftUpdatedAt(draft.updatedAt.slice(0, 10))}`,
-    })),
-  ]
 }

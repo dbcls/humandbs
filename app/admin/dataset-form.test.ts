@@ -6,10 +6,11 @@ import {
   UneditableValueKind,
   datasetContentInput,
   emptyValueInput,
+  highBelowValue,
   type DatasetContentInput,
   type ValueInput,
 } from "./dataset-form"
-import { datasetContentOf } from "./dataset-form.server"
+import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-form.server"
 
 /** The units of the keys these tests use. Only the numeric ones have any. */
 const UNITS = (keyId: string): string | null => (keyId === "data-volume-gb" ? "GB" : null)
@@ -116,7 +117,11 @@ describe("reading a dataset back off the form", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "value", rows: [{ label: "", value: "1.5", unit: "TB", note: "" }] },
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+        },
       }]
     }), UNITS)
 
@@ -126,16 +131,127 @@ describe("reading a dataset back off the form", () => {
       kind: "number",
       values: {
         state: "value",
-        value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+        value: [{
+          label: null,
+          value: 1500,
+          unit: "GB",
+          inputValue: 1.5,
+          inputUnit: "TB",
+          high: null,
+          inputHigh: null,
+          note: null,
+        }],
       },
     })
+  })
+
+  it("converts a width's upper end the same way as its lower end, and keeps what was typed", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: "", value: "0.9", unit: "TB", high: "1.3", note: "" }],
+        },
+      }]
+    }), UNITS)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.content.values[0]?.value).toEqual({
+      kind: "number",
+      values: {
+        state: "value",
+        value: [{
+          label: null,
+          value: 900,
+          unit: "GB",
+          inputValue: 0.9,
+          inputUnit: "TB",
+          high: 1300,
+          inputHigh: 1.3,
+          note: null,
+        }],
+      },
+    })
+  })
+
+  it("still parses a row whose typed upper end sits below its typed lower end", () => {
+    // The schema alone lets this through — the draw preview parses this same
+    // shape from content that is still being typed, where a width caught
+    // mid-edit is ordinary, and a preview that refused it would blank the
+    // page over one field somebody has not finished typing
+    // (`app/admin/pages.server.ts` の `datasetPageAction`). Only a save calls
+    // `widthsOrdered` to refuse it (below).
+    const payload = {
+      revision: 1,
+      content: form((input) => {
+        input.values = [{
+          keyId: "c9c6d5e2-1f1d-4c17-9a2a-0a3a2c5f6b71",
+          value: {
+            kind: "number",
+            state: "value",
+            rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+          },
+        }]
+      }),
+    }
+
+    expect(saveDatasetSchema.safeParse(payload).success).toBe(true)
+  })
+
+  it("widthsOrdered refuses content carrying a row typed out of order, wherever it sits", () => {
+    const outOfOrderInValues = form((input) => {
+      input.values = [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+        },
+      }]
+    })
+    const outOfOrderInExperiment = form((input) => {
+      input.experiments = [{
+        id: "exp-1",
+        label: { state: "value", text: "" },
+        values: [{
+          keyId: "data-volume-gb",
+          value: {
+            kind: "number",
+            state: "value",
+            rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+          },
+        }],
+      }]
+    })
+    const ordered = form((input) => {
+      input.values = [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: "", value: "0.9", unit: "GB", high: "1.3", note: "" }],
+        },
+      }]
+    })
+
+    expect(widthsOrdered(outOfOrderInValues)).toBe(false)
+    expect(widthsOrdered(outOfOrderInExperiment)).toBe(false)
+    expect(widthsOrdered(ordered)).toBe(true)
+    expect(widthsOrdered(form())).toBe(true)
   })
 
   it("leaves out a number nobody typed, since there is no empty number to store", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "value", rows: [{ label: "", value: "  ", unit: "GB", note: "" }] },
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: "", value: "  ", unit: "GB", high: "", note: "" }],
+        },
       }]
     }), UNITS)
 
@@ -148,7 +264,11 @@ describe("reading a dataset back off the form", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
-        value: { kind: "number", state: "unknown", rows: [{ label: "", value: "1.5", unit: "TB", note: "" }] },
+        value: {
+          kind: "number",
+          state: "unknown",
+          rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+        },
       }]
     }), UNITS)
 
@@ -255,7 +375,7 @@ describe("putting a dataset on the form", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+            value: [{ label: null, value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
           },
         },
       }],
@@ -265,7 +385,40 @@ describe("putting a dataset on the form", () => {
     expect(datasetContentInput(content).values[0]?.value).toEqual({
       kind: "number",
       state: "value",
-      rows: [{ label: "", value: "1.5", unit: "TB", note: "" }],
+      rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+    })
+  })
+
+  it("shows a width's upper end as it was typed, beside the unit it was typed in", () => {
+    const content: DatasetContent = {
+      releaseDate: null,
+      fileSelection: [],
+      values: [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{
+              label: null,
+              value: 900,
+              unit: "GB",
+              inputValue: 0.9,
+              inputUnit: "TB",
+              high: 1300,
+              inputHigh: 1.3,
+              note: null,
+            }],
+          },
+        },
+      }],
+      experiments: [],
+    }
+
+    expect(datasetContentInput(content).values[0]?.value).toEqual({
+      kind: "number",
+      state: "value",
+      rows: [{ label: "", value: "0.9", unit: "TB", high: "1.3", note: "" }],
     })
   })
 
@@ -317,5 +470,28 @@ describe("putting a dataset on the form", () => {
       state: "value",
       diseases: [{ termIds: ["term-a"], nameJa: "", nameEn: "NASH" }],
     })
+  })
+})
+
+describe("highBelowValue", () => {
+  const row = (value: string, high: string) =>
+    ({ label: "", value, unit: null, high, note: "" })
+
+  it("is false when nothing is typed for the upper end", () => {
+    expect(highBelowValue(row("1.3", ""))).toBe(false)
+  })
+
+  it("is false when the upper end is typed at or above the lower end", () => {
+    expect(highBelowValue(row("0.9", "1.3"))).toBe(false)
+    expect(highBelowValue(row("1.3", "1.3"))).toBe(false)
+  })
+
+  it("is true when the upper end is typed below the lower end", () => {
+    expect(highBelowValue(row("1.3", "0.9"))).toBe(true)
+  })
+
+  it("is false when either end cannot be read as a number, since that is a different refusal", () => {
+    expect(highBelowValue(row("", "0.9"))).toBe(false)
+    expect(highBelowValue(row("見当たらない", "0.9"))).toBe(false)
   })
 })

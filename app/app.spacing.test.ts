@@ -13,6 +13,9 @@ import path from "node:path"
 
 import { describe, expect, it } from "vitest"
 
+import { ACTION_ICON } from "~/components/icons"
+import { messagesFor } from "~/i18n/messages"
+
 const ROOT = path.join(import.meta.dirname)
 
 /** The screens a reader sees. The management area is `managementFiles` below. */
@@ -134,19 +137,20 @@ describe("縦の間隔", () => {
    * (`routes/admin-contents-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
    * それが開くのは名前ではなく自分の状態のチップ。
    *
-   * **編集画面のバーだけが `tight`** (`components/draft-tools.tsx`)。あのカードが
-   * 並べるのは節ではなく 2 行 — 名前と行き先と保存、その下に出口と面の切り替え —
-   * で、節と節の距離を空けると 1 本の帯が 2 つに割れて見える。
+   * **研究の編集画面のバーはカードではない** (`components/draft-tools.tsx`)。1 行の帯で、
+   * 節を持たないので距離の選択そのものが無い。**記事とお知らせの編集画面のバーは
+   * `normal`** (`useArticlePanes` を呼ぶ画面) — 名前の行とペインの並びの行のあいだに、
+   * 名前を持つ節 (バージョン管理・公開日時) が立つ。h1 の 8px 下に節の名前が乗ると h1 の
+   * 2 行目に読め、32px 空けると帯が節を持つ箱に見える。
    */
   it("管理画面のカードは block で始まる — 絞り込む一覧と編集画面のバーだけが違う", async () => {
     const offenders: string[] = []
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
-      const sectionless = file.endsWith("admin-contents-files.tsx")
-        || file.endsWith("admin-contents-alert.tsx")
-      const wanted = /<RefinableList\b/.test(text) || sectionless
+      const sectionless = file.endsWith("admin-contents-alert.tsx")
+      const wanted = /<RefinableList\b/.test(text) || sectionless || text.includes("= useArticlePanes(")
         ? "normal"
-        : file.endsWith("draft-tools.tsx") ? "tight" : "block"
+        : "block"
       for (const found of text.matchAll(/<Card\b[^>]*>\s*<Stack gap="(\w+)"/g)) {
         if (found[1] !== wanted) offenders.push(`${file}: ${found[1]} (${wanted} を待つ)`)
       }
@@ -328,6 +332,25 @@ describe("表の縁", () => {
     const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
     expect(parts).not.toMatch(/\bborder-collapse\b/)
     expect(parts).toMatch(/\bborder-separate\b/)
+  })
+})
+
+/**
+ * The vertical alignment of a row, the frozen columns, the sideways scrollbar
+ * kept in sync with a second one above the fold — all of it lives in `Table` /
+ * `Td`, and a screen that writes its own `<table>` gets none of it and answers
+ * to no rule here either.
+ */
+describe("表そのもの", () => {
+  it("<table を書くのは page.tsx の Table だけ", async () => {
+    const files = [
+      ...await sourcesUnder("routes"),
+      ...await sourcesUnder("components"),
+    ]
+    for (const file of files) {
+      if (file.name === "components/page.tsx") continue
+      expect({ file: file.name, hasTable: /<table\b/.test(file.text) }).toEqual({ file: file.name, hasTable: false })
+    }
   })
 })
 
@@ -574,5 +597,707 @@ describe("ボタンの面と形", () => {
     const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
     expect(union?.match(/"[a-z]+"/g))
       .toEqual(["\"primary\"", "\"accent\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
+  })
+})
+
+describe("名前の行の並び", () => {
+  /**
+   * The kinds of thing that stand to the right of a screen's name, in the one
+   * order they keep (`docs/ui.md` の「管理画面の枠」): the way out, the ways
+   * elsewhere, what acts on the screen, and last what cannot be undone.
+   * `Dialog` is counted as an act because the only ones on a name row open a
+   * form that makes something.
+   */
+  const KIND = /<(AdminBack|ButtonLink|Submit|Dialog|Confirm)\b/g
+  const RANK: Record<string, number> = { AdminBack: 0, ButtonLink: 1, Submit: 2, Dialog: 2, Confirm: 3 }
+
+  /** Every `<Heading …>…</Heading>` with children, in the order the source draws them. */
+  function nameRows(text: string): string[] {
+    const rows: string[] = []
+    const opening = /<Heading\b[^>]*>/g
+    let match = opening.exec(text)
+    while (match !== null) {
+      if (!match[0].endsWith("/>")) {
+        const close = text.indexOf("</Heading>", opening.lastIndex)
+        if (close !== -1) rows.push(text.slice(opening.lastIndex, close))
+      }
+      match = opening.exec(text)
+    }
+    return rows
+  }
+
+  /**
+   * Every `<Dialog …>…</Dialog>` (or `<Dialog … />`) drawn by a screen or a
+   * part, as the text between the opening tag and its end.
+   */
+  function panels(text: string): string[] {
+    const found: string[] = []
+    const opening = /<Dialog\b/g
+    let match = opening.exec(text)
+    while (match !== null) {
+      const selfClose = text.indexOf("/>", match.index)
+      const close = text.indexOf("</Dialog>", match.index)
+      const next = text.indexOf("<Dialog", match.index + 1)
+      const end = close !== -1 && (next === -1 || close < next) ? close : selfClose
+      found.push(text.slice(match.index, end))
+      match = opening.exec(text)
+    }
+    return found
+  }
+
+  it("面の中で画面が文を書かず、足元の行も描かない — どちらも面のもの", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+      .filter(({ name }) => name !== "components/base.tsx")
+    const sentences = sources
+      .filter(({ text }) => panels(text).some((panel) => /<p\b/.test(panel)))
+      .map(({ name }) => name)
+    expect(sentences).toEqual([])
+    const feet = sources
+      .filter(({ text }) => panels(text).some((panel) => panel.includes("justify-end")))
+      .map(({ name }) => name)
+    expect(feet).toEqual([])
+    // The rule has something to hold: there are panels to look into.
+    expect(sources.flatMap(({ text }) => panels(text)).length).toBeGreaterThan(5)
+  })
+
+  it("値が無いセルを横棒で描かない — 語で言うか、空にするかの 2 つ", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+    // A dash handed over in place of a value (`?? "—"`, `|| "-"`), or drawn on
+    // its own as an element's whole text. React keys are not shown to anyone,
+    // and the en dash between the two ends of a range is a separator, not a
+    // value, so only the em dash and the hyphen count when drawn alone.
+    const dashed = sources
+      .map(({ name, text }) => ({ name, text: text.replace(/key=\{[^}]*\}/g, "") }))
+      .filter(({ text }) => /(?:\?\?|\|\|)\s*(?:<span[^>]*>)?["'`][—–-]["'`]/.test(text) || /<(?:>|span[^>]*>)[—-]<\//.test(text))
+      .map(({ name }) => name)
+    expect(dashed).toEqual([])
+  })
+
+  it("slug を打ち直す面は 1 つの部品で、画面が自分では描かない", async () => {
+    const screens = await sourcesUnder("routes")
+    // A screen that reaches for the panel's words is drawing the panel itself.
+    const drawnByHand = screens
+      .filter(({ text }) => /\bt\.(rename|renameTitle|renameWarning|renameConfirm)\b/.test(text))
+      .map(({ name }) => name)
+    expect(drawnByHand).toEqual([])
+    const users = screens.filter(({ text }) => /<SlugEditor\b/.test(text)).map(({ name }) => name).sort()
+    // The research box changes names on the same panel, from `components/files.tsx`.
+    expect(users).toEqual(["routes/admin-contents-document.tsx", "routes/admin-contents-files.tsx"])
+  })
+
+  it("出る道、他所への道、この画面への操作、取り消せない操作の順に立つ", async () => {
+    const screens = (await sourcesUnder("routes")).filter(({ name }) => name.startsWith("routes/admin"))
+    const outOfOrder: { name: string, row: string[] }[] = []
+    let rowsWithControls = 0
+    for (const { name, text } of screens) {
+      for (const row of nameRows(text)) {
+        const kinds = [...row.matchAll(KIND)].map((one) => one[1] ?? "")
+        if (kinds.length === 0) continue
+        rowsWithControls += 1
+        const ranks = kinds.map((kind) => RANK[kind] ?? -1)
+        if (ranks.some((rank, i) => i > 0 && rank < (ranks[i - 1] ?? 0))) outOfOrder.push({ name, row: kinds })
+      }
+    }
+    expect(outOfOrder).toEqual([])
+    // The rule has something to hold: the rows it reads are the ones with
+    // more than the name on them.
+    expect(rowsWithControls).toBeGreaterThan(10)
+  })
+
+  /**
+   * The draft's two rows keep their own order in one row each, instead of a
+   * `Heading`'s children (`docs/ui.md` の「管理画面の枠」). Neither is a
+   * `nameRows` row — the head's own `Heading` is self-closing, and the tools
+   * row is not a `Heading` at all — so both are checked here by where each
+   * part sits in `draft-tools.tsx`'s own markup.
+   */
+  it("DraftHead の行は出る道 1 本だけを持つ — 事実は 2 行目、名前の行には無い", async () => {
+    const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
+    const start = text.indexOf("export function DraftHead")
+    expect(start).toBeGreaterThan(-1)
+    const end = text.indexOf("export function DraftTools", start)
+    const body = text.slice(start, end)
+    expect([...body.matchAll(/<AdminBack\b/g)]).toHaveLength(1)
+  })
+
+  it("DraftTools の行は、切り替え・未解決・presence・保存・その状態の順に並ぶ", async () => {
+    const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
+    const start = text.indexOf("export function DraftTools")
+    expect(start).toBeGreaterThan(-1)
+    const body = text.slice(start)
+    const control = body.indexOf("{panesControl}")
+    const unresolved = body.indexOf("openComments")
+    const presence = body.indexOf("<PresenceMark")
+    const save = body.indexOf("variant=\"accent\"")
+    const status = body.indexOf("role=\"status\"")
+    expect(control).toBeGreaterThan(-1)
+    expect(unresolved).toBeGreaterThan(control)
+    expect(presence).toBeGreaterThan(unresolved)
+    expect(save).toBeGreaterThan(presence)
+    expect(status).toBeGreaterThan(save)
+  })
+})
+
+/**
+ * `Dialog` and `Confirm` build the panel themselves — the name, the panel's
+ * own sentence, the fields, the foot — at one width, whatever screen opens
+ * one (`docs/ui.md` の「押せるもの」). What follows reads the source for the
+ * ways a screen could still take that back: choosing its own width, writing
+ * `<dialog>` by hand, naming the panel after a bare value instead of a word,
+ * or a sentence that does not close the way one does.
+ */
+describe("面の幅・文・見出し", () => {
+  /** A `<Dialog …>` / `<Confirm …>` opening tag, read past any `{…}` inside it
+   * so a `>` in an expression (`() =>`, a nested `<Icon />`) is not mistaken
+   * for the tag's own end. */
+  function openingTagsOf(text: string, kinds: string[]): { kind: string, tag: string }[] {
+    const found: { kind: string, tag: string }[] = []
+    const opening = new RegExp(`<(${kinds.join("|")})\\b`, "g")
+    let match = opening.exec(text)
+    while (match !== null) {
+      let depth = 0
+      let end = text.length
+      for (let i = match.index; i < text.length; i += 1) {
+        const ch = text[i]
+        if (ch === "{") depth += 1
+        else if (ch === "}") depth -= 1
+        else if (ch === ">" && depth === 0) {
+          end = i + 1
+          break
+        }
+      }
+      found.push({ kind: match[1] ?? "", tag: text.slice(match.index, end) })
+      match = opening.exec(text)
+    }
+    return found
+  }
+
+  /** An attribute's value, written either as a literal string or a `{…}` expression. */
+  function attrOf(tag: string, name: string): { form: "literal" | "expr", value: string } | undefined {
+    const literal = new RegExp(`\\b${name}="([^"]*)"`).exec(tag)
+    if (literal !== null) return { form: "literal", value: literal[1] ?? "" }
+    const start = new RegExp(`\\b${name}=\\{`).exec(tag)
+    if (start === null) return undefined
+    const from = start.index + start[0].length
+    let depth = 1
+    let i = from
+    for (; i < tag.length; i += 1) {
+      if (tag[i] === "{") depth += 1
+      else if (tag[i] === "}") {
+        depth -= 1
+        if (depth === 0) break
+      }
+    }
+    return { form: "expr", value: tag.slice(from, i) }
+  }
+
+  /**
+   * Every screen and part that could open one, minus the two places this rule
+   * does not reach: `base.tsx` draws the one panel there is, and `fields.tsx`'s
+   * `ItemList` names a repeated element by what kind of thing it is, not by an
+   * object and an act on it (`docs/ui.md` の「押せるもの」の「繰り返しの要素」) —
+   * its title is the list's own word for an empty element, or the element's own
+   * summary once one is typed, neither of which is a bare identifier.
+   */
+  async function dialogSources(): Promise<{ name: string, text: string }[]> {
+    return [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+      .filter(({ name }) => name !== "components/base.tsx" && name !== "components/fields.tsx")
+  }
+
+  it("画面と部品は Dialog / Confirm に幅を渡さない", async () => {
+    const offenders: string[] = []
+    let total = 0
+    for (const { name, text } of await dialogSources()) {
+      for (const { tag } of openingTagsOf(text, ["Dialog", "Confirm"])) {
+        total += 1
+        if (/\bclassName=/.test(tag) || /\b(?:sm:|md:|lg:)?(?:w|max-w)-\S/.test(tag)) offenders.push(name)
+      }
+    }
+    expect(offenders).toEqual([])
+    // The rule has something to hold: there are panels to look into.
+    expect(total).toBeGreaterThan(20)
+  })
+
+  it("<dialog> を直に書くのは base.tsx だけ", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+    const writers = sources
+      .filter(({ name, text }) => name !== "components/base.tsx" && /<dialog\b/.test(text))
+      .map(({ name }) => name)
+    expect(writers).toEqual([])
+  })
+
+  /**
+   * The local names a file's messages reach a `title` / `note` / `warning`
+   * through: bound straight to `messagesFor(…)`, derived from one already
+   * bound (`const detail = messages.admin.detail`), or carried down as a prop
+   * named for the slice it holds (`words: AssistantWords`).
+   */
+  function messageRootsIn(text: string): Set<string> {
+    const roots = new Set(
+      [...text.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*messagesFor\(/g)].map((m) => m[1] ?? ""),
+    )
+    for (const m of text.matchAll(/\b(\w+)\s*:\s*\w*Words\b/g)) roots.add(m[1] ?? "")
+    let grew = roots.size > 0
+    while (grew) {
+      grew = false
+      const derived = new RegExp(`\\b(?:const|let)\\s+(\\w+)\\s*=\\s*(?:${[...roots].join("|")})\\.`, "g")
+      for (const m of text.matchAll(derived)) {
+        const found = m[1] ?? ""
+        if (!roots.has(found)) {
+          roots.add(found)
+          grew = true
+        }
+      }
+    }
+    return roots
+  }
+
+  it("title は空文字でも裸の識別子だけでもなく、messages の語を持つ", async () => {
+    const offenders: string[] = []
+    let total = 0
+    for (const { name, text } of await dialogSources()) {
+      const roots = [...messageRootsIn(text)]
+      const rootPattern = roots.length > 0 ? new RegExp(`\\b(?:${roots.join("|")})\\b`) : null
+      for (const { kind, tag } of openingTagsOf(text, ["Dialog", "Confirm"])) {
+        const title = attrOf(tag, "title")
+        if (title === undefined) continue
+        total += 1
+        if (title.form === "literal") {
+          if (title.value.trim().length === 0) offenders.push(`${name} (${kind}): title が空`)
+          continue
+        }
+        // A word from messages, however it is reached (`t.xTitle`, a call
+        // wrapping a value, `t.deleteResearchTitle(view.humLabel ?? t.heading)`),
+        // or a sentence written out as a literal (`dev-ui.tsx`'s catalogue).
+        const namesAWord = (rootPattern?.test(title.value) ?? false) || /["'`][^"'`]+["'`]/.test(title.value)
+        if (!namesAWord) offenders.push(`${name} (${kind}): title={${title.value}}`)
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(total).toBeGreaterThan(20)
+  })
+
+  /**
+   * Read at the call site rather than by the message key's name, so a
+   * `note` / `warning` whose key happens not to end in "Warning" is held to
+   * the same rule `app/i18n/messages.test.ts`'s「警告の文は句点で結ぶ」applies —
+   * that file belongs to the words, not to this one, so the check for `Dialog`
+   * の `note` lives here instead of being added there.
+   */
+  it("Dialog の note と Confirm の warning は句点で終わり「いま」で始まらない", async () => {
+    function flatten(node: unknown, at: string): [string, string][] {
+      if (typeof node === "function") return [[at, (node as (...args: unknown[]) => string)("x", "y", "z")]]
+      if (typeof node === "string") return [[at, node]]
+      if (node !== null && typeof node === "object") {
+        return Object.entries(node).flatMap(([key, value]) => flatten(value, at === "" ? key : `${at}.${key}`))
+      }
+      return []
+    }
+    const all = flatten(messagesFor("ja"), "")
+
+    const offenders: string[] = []
+    let total = 0
+    for (const { name, text } of await dialogSources()) {
+      for (const { kind, tag } of openingTagsOf(text, ["Dialog", "Confirm"])) {
+        const note = attrOf(tag, kind === "Dialog" ? "note" : "warning")
+        if (note === undefined) continue
+        total += 1
+
+        let texts: string[]
+        if (note.form === "literal") {
+          texts = [note.value]
+        } else {
+          // Only the chain right after the root, not a leaf reached inside a
+          // call's arguments (`t.deleteTitle(row.name)` names by `deleteTitle`,
+          // not by the `name` its sentence happens to take).
+          const chain = /^\s*\w+((?:\.\w+)*)/.exec(note.value)?.[1] ?? ""
+          const leaf = chain.split(".").filter((segment) => segment !== "").pop()
+          texts = leaf === undefined
+            ? []
+            : all.filter(([path]) => path === leaf || path.endsWith(`.${leaf}`)).map(([, text2]) => text2)
+        }
+        if (texts.length === 0) offenders.push(`${name} (${kind}): 語に解決できない — ${note.value}`)
+        for (const one of texts) {
+          if (!one.endsWith("。")) offenders.push(`${name} (${kind}): 句点で終わらない — ${one}`)
+          if (one.startsWith("いま")) offenders.push(`${name} (${kind}): 「いま」で始まる — ${one}`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(total).toBeGreaterThan(15)
+  })
+})
+
+/**
+ * **The glyph on a pressable control names the kind of deed, not the screen**
+ * (`docs/ui.md` の「押せるもの」の「印が言うのは操作の種類で、画面が選ぶものではない」)。
+ * A word ending in one of the endings below is naming one of the kinds
+ * `components/icons.tsx` の `ACTION_ICON` has a fixed glyph for, so the glyph
+ * the control carries has exactly one right answer once the word is read.
+ */
+describe("押せるものの印", () => {
+  // Longest ending first, so "非表示" is not read as "表示" with a prefix left over.
+  const WORD_ACTION: Record<string, keyof typeof ACTION_ICON> = {
+    非表示: "hide",
+    作成: "create",
+    追加: "create",
+    保存: "save",
+    削除: "delete",
+    公開: "publish",
+    取り込み: "takeIn",
+    解除: "remove",
+    解決: "resolve",
+    戻す: "revert",
+    表示: "show",
+    検索: "search",
+    外す: "remove",
+  }
+  const ENDINGS = Object.keys(WORD_ACTION).sort((a, b) => b.length - a.length)
+
+  function actionFor(word: string): keyof typeof ACTION_ICON | undefined {
+    const ending = ENDINGS.find((one) => word.endsWith(one))
+    return ending === undefined ? undefined : WORD_ACTION[ending]
+  }
+
+  /**
+   * Where a JSX opening tag ends: a nested `<Icon .../>` is one token deep
+   * rather than a close, and `=>` inside an inline handler is not a close
+   * either — both would otherwise read as the tag's own `>`.
+   */
+  function openingTag(text: string, start: number): { end: number, selfClosing: boolean, attrs: string } | null {
+    let i = start + 1
+    while (i < text.length && /[\w.]/.test(text[i] ?? "")) i++
+    let depth = 0
+    while (i < text.length) {
+      if (text.startsWith("/>", i)) {
+        if (depth === 0) return { end: i + 2, selfClosing: true, attrs: text.slice(start, i) }
+        depth--
+        i += 2
+        continue
+      }
+      if (text[i] === "<") {
+        depth++
+        i++
+        continue
+      }
+      if (text[i] === ">") {
+        if (text[i - 1] === "=") {
+          i++
+          continue
+        }
+        if (depth === 0) return { end: i + 1, selfClosing: false, attrs: text.slice(start, i) }
+        depth--
+        i++
+        continue
+      }
+      i++
+    }
+    return null
+  }
+
+  interface Usage { attrs: string, children: string | null }
+
+  function findUsages(text: string, component: string): Usage[] {
+    const found: Usage[] = []
+    const re = new RegExp(`<${component}\\b`, "g")
+    let match = re.exec(text)
+    while (match !== null) {
+      const tag = openingTag(text, match.index)
+      if (tag === null) {
+        match = re.exec(text)
+        continue
+      }
+      let children: string | null = null
+      if (!tag.selfClosing) {
+        const close = text.indexOf(`</${component}>`, tag.end)
+        if (close !== -1) children = text.slice(tag.end, close)
+      }
+      found.push({ attrs: tag.attrs, children })
+      match = re.exec(text)
+    }
+    return found
+  }
+
+  interface Assign { name: string, path: string, index: number }
+
+  /**
+   * Every `const t = messagesFor(locale).admin.a.b`, and every `const u = t.c`
+   * chained off one already seen — `t` is not always assigned straight from
+   * `messagesFor`, some screens go through a `messages` variable first.
+   */
+  function findAssignments(text: string): Assign[] {
+    const found: Assign[] = []
+    const latest: Record<string, string> = {}
+    const re = /\b(?:const|let)\s+(\w+)\s*=\s*(messagesFor\([^)]*\)|\w+)((?:\.\w+)*)/g
+    let match = re.exec(text)
+    while (match !== null) {
+      const name = match[1] ?? ""
+      const base = match[2] ?? ""
+      const chain = (match[3] ?? "").replace(/^\./, "")
+      let assigned: string | undefined
+      if (base.startsWith("messagesFor(")) assigned = chain
+      else if (base in latest) assigned = [latest[base], chain].filter((one) => one !== "").join(".")
+      if (assigned !== undefined) {
+        found.push({ name, path: assigned, index: match.index })
+        latest[name] = assigned
+      }
+      match = re.exec(text)
+    }
+    return found
+  }
+
+  /** The nearest assignment of `name` before `atIndex`, plus whatever path followed it. */
+  function resolvePath(assigns: Assign[], expr: string, atIndex: number): string | undefined {
+    const trimmed = expr.trim()
+    const direct = /^messagesFor\([^)]*\)((?:\.\w+)*)$/.exec(trimmed)
+    if (direct !== null) return (direct[1] ?? "").replace(/^\./, "")
+    const idMatch = /^(\w+)((?:\.\w+)*)$/.exec(trimmed)
+    if (idMatch === null) return undefined
+    const [, name, rest] = idMatch
+    const candidates = assigns.filter((a) => a.name === name && a.index < atIndex)
+    if (candidates.length === 0) return undefined
+    const best = candidates.reduce((a, b) => (b.index > a.index ? b : a))
+    return [best.path, (rest ?? "").replace(/^\./, "")].filter((one) => one !== "").join(".")
+  }
+
+  function getAt(obj: unknown, dotted: string): unknown {
+    if (dotted === "") return obj
+    return dotted.split(".").reduce<unknown>((acc, key) => {
+      if (acc === null || typeof acc !== "object") return undefined
+      return (acc as Record<string, unknown>)[key]
+    }, obj)
+  }
+
+  type AttrFound = { literal: string } | { expr: string } | undefined
+
+  function attrValue(attrs: string, prop: string): AttrFound {
+    const m = new RegExp(`\\b${prop}=(?:"([^"]*)"|\\{([^}]*)\\})`).exec(attrs)
+    if (m === null) return undefined
+    return m[1] !== undefined ? { literal: m[1] } : { expr: m[2] ?? "" }
+  }
+
+  /** The `IconName` an icon-carrying prop resolves to, or `undefined` for one this cannot read. */
+  function iconAt(attrs: string, prop: string, fallback?: string): string | undefined {
+    const found = attrValue(attrs, prop)
+    if (found === undefined) return fallback
+    if ("literal" in found) return found.literal
+    const nested = /<Icon\s+name="([\w-]+)"/.exec(found.expr)
+    return nested === null ? undefined : nested[1]
+  }
+
+  function wordAt(attrs: string, prop: string, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
+    const found = attrValue(attrs, prop)
+    if (found === undefined) return undefined
+    if ("literal" in found) return found.literal
+    const msgPath = resolvePath(assigns, found.expr, atIndex)
+    const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
+    return typeof value === "string" ? value : undefined
+  }
+
+  /** A control's own word is its children — plain text, or a single `{t.x}` expression. */
+  function wordInChildren(children: string | null, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
+    const text = children?.trim()
+    if (text === undefined || text === "") return undefined
+    const braced = /^\{([^{}]*)\}$/.exec(text)
+    if (braced !== null) {
+      const msgPath = resolvePath(assigns, braced[1] ?? "", atIndex)
+      const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
+      return typeof value === "string" ? value : undefined
+    }
+    // Anything else — a ternary, a nested tag, a function call — is a word this cannot read.
+    return /[{}<>]/.test(text) ? undefined : text
+  }
+
+  const PRESSABLE = ["Submit", "Button", "ButtonLink", "Confirm", "Dialog", "IconButton"] as const
+
+  it("語の結びが決める操作の印と、渡している印が一致する", async () => {
+    const ja = messagesFor("ja")
+    const offenders: string[] = []
+    let matched = 0
+
+    for (const name of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, name), "utf8")
+      const assigns = findAssignments(text)
+      for (const component of PRESSABLE) {
+        for (const usage of findUsages(text, component)) {
+          const atIndex = text.indexOf(usage.attrs)
+          const word = component === "Confirm"
+            ? wordAt(usage.attrs, "confirm", assigns, atIndex, ja)
+            : component === "IconButton" || component === "Dialog"
+              ? wordAt(usage.attrs, "label", assigns, atIndex, ja)
+              : wordInChildren(usage.children, assigns, atIndex, ja)
+          if (word === undefined) continue // resolved from something dynamic — not counted
+          const action = actionFor(word)
+          if (action === undefined) continue // not one of the rule's endings
+
+          const icon = component === "Confirm"
+            ? iconAt(usage.attrs, "icon", "trash")
+            : component === "IconButton"
+              ? iconAt(usage.attrs, "name")
+              : iconAt(usage.attrs, "icon")
+          if (icon === undefined) continue // the icon itself is dynamic — not counted
+
+          matched += 1
+          const expected: string = ACTION_ICON[action]
+          if (icon !== expected) offenders.push(`${name} [${component}] "${word}": ${icon} (${expected} を待つ)`)
+        }
+      }
+    }
+
+    expect(offenders).toEqual([])
+    // The rule has something to hold: this many admin controls carry a rule-covered word.
+    expect(matched).toBeGreaterThan(20)
+  })
+})
+
+describe("メニューの 1 行", () => {
+  /**
+   * **`MENU_ITEM` is a line inside an opened panel and nothing else** (`docs/ui.md`
+   * の「押せるもの」). Drawn anywhere else it is a bare word that grows a box
+   * on hover — a control the reader finds by pressing it. The panels are the
+   * two parts that open one, `Menu` and `Chooser`, and the `<details>` a part
+   * draws its own panel with (`form.tsx` の `Select`).
+   */
+  const OPENS = /<(Menu|Chooser|details)\b/g
+  const CLOSES = /<\/(Menu|Chooser|details)>/g
+
+  /** Whether the position is inside a panel: the nearest panel tag before it opens rather than closes. */
+  function insidePanel(text: string, at: number): boolean {
+    const before = text.slice(0, at)
+    const lastOpen = Math.max(-1, ...[...before.matchAll(OPENS)].map((one) => one.index))
+    const lastClose = Math.max(-1, ...[...before.matchAll(CLOSES)].map((one) => one.index))
+    return lastOpen > lastClose
+  }
+
+  it("メニューの外で MENU_ITEM を着ない", async () => {
+    const outside: string[] = []
+    for (const { name, text } of await everySource()) {
+      if (name === "components/base.tsx") continue
+      for (const use of text.matchAll(/\bMENU_ITEM(?:_HERE)?\b/g)) {
+        const line = text.slice(0, use.index).split("\n").length
+        // The import, the destructured name and a line handing the class to a
+        // variable are not a use: what is drawn is where the variable is put.
+        const row = text.split("\n")[line - 1] ?? ""
+        if (/^\s*(import\b|const\b|MENU_ITEM(?:_HERE)?,?\s*$)/.test(row) || /\bfrom\s+"/.test(row)) continue
+        if (!insidePanel(text, use.index)) outside.push(`${name}:${String(line)}`)
+      }
+    }
+    expect(outside).toEqual([])
+  })
+})
+
+describe("送信中の印", () => {
+  /**
+   * **A control that sent a deed waits in place, and the parts draw that**
+   * (`docs/ui.md` の「壊れるもの」): the spinner turns in the icon's box of the
+   * pressed `Submit` or `Confirm`, and a screen that drew one of its own would
+   * be a second way of saying the same thing — or a way of saying it in a
+   * place that moves.
+   */
+  it("spinner を描くのは Submit と Confirm だけで、画面は描かない", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+    const drawn = sources
+      .filter(({ name }) => !["components/base.tsx", "components/form.tsx", "components/icons.tsx"].includes(name))
+      .filter(({ text }) => /<Spinner\b|name="spinner"/.test(text))
+      .map(({ name }) => name)
+    expect(drawn).toEqual([])
+    // The rule has something to hold: the two parts do draw it.
+    const parts = sources.filter(({ name }) => ["components/base.tsx", "components/form.tsx"].includes(name))
+    expect(parts.every(({ text }) => /<Spinner\b/.test(text))).toBe(true)
+  })
+
+  /**
+   * The spinner stands in the icon's box, so a submit without an icon would
+   * grow by one box at the moment it is pressed — and everything beside it
+   * would move.
+   */
+  it("Submit はアイコンを持つ — spinner が立つ箱がそこにしか無い", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+    const bare: string[] = []
+    for (const { name, text } of sources) {
+      const opening = /<Submit\b[^>]*>/g
+      let match = opening.exec(text)
+      while (match !== null) {
+        if (!match[0].includes("icon=")) bare.push(`${name}: ${match[0].split("\n")[0] ?? ""}`)
+        match = opening.exec(text)
+      }
+    }
+    expect(bare).toEqual([])
+  })
+
+  /**
+   * A listing narrowed by its pane goes quiet for as long as the loader takes;
+   * `useBusyHere` says so after 200ms on the public side, and a management
+   * listing that pinned `busy` to false said nothing however long it took.
+   */
+  it("一覧の busy を false に固定しない — useBusyHere が言う", async () => {
+    const screens = await sourcesUnder("routes")
+    const pinned = screens.filter(({ text }) => text.includes("busy={false}")).map(({ name }) => name)
+    expect(pinned).toEqual([])
+    const listings = screens.filter(({ text }) => /<RefinableList\b/.test(text))
+    expect(listings.length).toBeGreaterThan(5)
+    expect(listings.every(({ text }) => text.includes("useBusyHere()"))).toBe(true)
+  })
+})
+
+/**
+ * **A draft's five screens read from the same three-section shape**
+ * (`docs/admin-ui.md` の「編集画面」) rather than from a strip of steps: the
+ * head names the screen and — for the research editor only — this draft's
+ * other faces as facts, and the tools row is the one thing that stays while
+ * typing.
+ */
+describe("下書きの頭の区画と道具の行", () => {
+  /** The five screens' own files — not `draft-tools.tsx` or `admin.tsx`, which draw the shape the five stand in. */
+  async function draftScreenSources(): Promise<{ name: string, text: string }[]> {
+    const routes = (await sourcesUnder("routes")).filter(({ name }) => name.startsWith("routes/admin-draft"))
+    const parts = ["components/dataset-editor.tsx", "components/editor.tsx", "components/publish.tsx", "components/review.tsx"]
+    const components = await Promise.all(parts.map(async (name) => ({
+      name, text: await readFile(path.join(ROOT, name), "utf8"),
+    })))
+    return [...routes, ...components]
+  }
+
+  it("下書きの 5 画面のどこにも段の列 (DraftSteps) は無い", async () => {
+    const drawn = (await draftScreenSources())
+      .filter(({ text }) => /<DraftSteps\b/.test(text))
+      .map(({ name }) => name)
+    expect(drawn).toEqual([])
+  })
+
+  it("道具の行 (DraftTools) を描くのは editor と dataset-editor の 2 つで、sticky は道具の行だけが持つ", async () => {
+    const sources = await draftScreenSources()
+    const drawsTools = sources.filter(({ text }) => /<DraftTools\b/.test(text)).map(({ name }) => name).sort()
+    expect(drawsTools).toEqual(["components/dataset-editor.tsx", "components/editor.tsx"])
+    // Five画面 own files never write `sticky` themselves — it is `DraftTools`'s alone (`draft-tools.tsx`).
+    const stickyHere = sources.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
+    expect(stickyHere).toEqual([])
+  })
+
+  it("頭の区画の 2 行目の道は ButtonLink で、番号を持たない", async () => {
+    const text = await readFile(path.join(ROOT, "components/editor.tsx"), "utf8")
+    const start = text.indexOf("function DraftOverview")
+    expect(start).toBeGreaterThan(-1)
+    const end = text.indexOf("\nfunction ", start + 1)
+    const body = text.slice(start, end === -1 ? undefined : end)
+    expect([...body.matchAll(/<ButtonLink\b/g)].length).toBeGreaterThanOrEqual(3)
+    // No chevron and no step number: the four ways are facts, not a stepper.
+    expect(body).not.toContain("chevron-right")
+    expect(body).not.toMatch(/>\s*\{at \+ 1\}\s*</)
+  })
+
+  it("記事とお知らせも道具の行 (ArticleTools) を持ち、sticky はそこだけが持つ", async () => {
+    const routeNames = ["routes/admin-contents-document.tsx", "routes/admin-contents-news-item.tsx"]
+    const routes = await Promise.all(routeNames.map(async (name) => ({
+      name, text: await readFile(path.join(ROOT, name), "utf8"),
+    })))
+    const drawsTools = routes.filter(({ text }) => text.includes("{panes.tools}")).map(({ name }) => name)
+    expect(drawsTools).toEqual(routeNames)
+    // The two screens never write `sticky` themselves — it is `ArticleTools`'s alone (`components/contents.tsx`).
+    const stickyHere = routes.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
+    expect(stickyHere).toEqual([])
+
+    const contents = await readFile(path.join(ROOT, "components/contents.tsx"), "utf8")
+    expect(contents.match(/\bsticky\b/g)?.length ?? 0).toBe(1)
   })
 })

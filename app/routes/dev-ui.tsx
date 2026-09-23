@@ -146,7 +146,7 @@ const SECTIONS = [
   ["big-action", "大きな導線"],
   ["badge", "バッジと印"],
   ["note", "注記"],
-  ["announcement", "告知"],
+  ["announcement", "アラート"],
   ["header-controls", "ヘッダの操作"],
   ["admin-shell", "Admin の区画"],
   ["trail", "パンくず"],
@@ -179,7 +179,7 @@ const COLOURS: [string, string, string][] = [
   ["surface-hover", "bg-surface-hover", "指した行"],
   ["surface-input", "bg-surface-input", "入力欄の地"],
   ["warning", "bg-warning", "見てほしいこと"],
-  ["warning-surface", "bg-warning-surface", "告知の地"],
+  ["warning-surface", "bg-warning-surface", "アラートの地"],
   ["danger", "bg-danger", "戻せないこと"],
   ["visited", "bg-visited", "読んだリンク"],
 ]
@@ -523,7 +523,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             </div>
           </Section>
 
-          <Section title="告知">
+          <Section title="アラート">
             <div id="announcement" className="flex flex-col gap-2">
               <Announcement dismiss="このお知らせを閉じる" onDismiss={() => undefined}>
                 現在、多数のデータ提供申請をいただいており、確認作業に通常よりも時間を要しております。
@@ -968,10 +968,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="ask" className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-6">
                 <Confirm
-                  label="この研究を削除する"
+                  label="研究の削除"
                   title="hum0001 の削除"
-                  warning="公開バージョンも下書きも消えます"
-                  confirm="削除する"
+                  warning="公開バージョンも下書きも削除されます。元に戻せません。"
+                  confirm="削除"
                   cancel="キャンセル"
                 />
                 <Menu label="ほかの操作">
@@ -1007,7 +1007,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <dl className="grid gap-x-8 sm:grid-cols-2">
                 <KeyValue title="代表者">中川 英刀</KeyValue>
                 <KeyValue title="所属機関">理化学研究所 生命医科学研究センター</KeyValue>
-                <KeyValue title="ORCID"><Empty>—</Empty></KeyValue>
               </dl>
             </div>
           </Section>

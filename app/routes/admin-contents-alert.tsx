@@ -107,7 +107,10 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  * **Both languages are the condition for showing it, so the button holds that
  * condition.** The server refuses an alert with an empty side, and a control
  * that can be pressed into a refusal is one the reader only hears about
- * afterwards.
+ * afterwards. While a side is empty the button cannot be pressed and says why
+ * over itself (`Button` の `disabled`); the two boxes wear the mark of a box
+ * that has to be filled (`form.tsx` の `required`) — for the showing, not for
+ * the save, which takes one language at a time.
  *
  * **One form rather than three.** Every button names its own intent, so what
  * has been typed travels with whichever of them is pressed.
@@ -128,55 +131,28 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
     >
       <input type="hidden" name="alertId" value={row.id} />
       {/* Which of these the site is saying, above the words rather than in the
-          state of a control at the foot of them. */}
-      <p className="text-sm">
-        {row.active
-          ? <Badge tone="accent" icon={<Icon name="eye" />}>{t.alert.shown}</Badge>
-          : <Badge tone="muted" icon={<Icon name="eye-off" />}>{t.alert.hidden}</Badge>}
-      </p>
-      {/* **The two languages are one value**, so they sit at the distance a
-          label sits from what it labels — closer than the parts of the form are
-          to each other. */}
-      <div className="flex flex-col gap-2">
-        <TextArea
-          label={t.languages.ja}
-          name="ja"
-          value={row.ja}
-          accepts={messages.admin.accepts.markdown}
-          rows={2}
-        />
-        <TextArea
-          label={t.languages.en}
-          name="en"
-          value={row.en}
-          accepts={messages.admin.accepts.markdown}
-          rows={2}
-        />
-      </div>
+          state of a control at the foot of them — and at the other end of that
+          line, the way to take the whole alert away. It acts on the alert
+          rather than on what is typed into it, so it stands with what names
+          the alert rather than among the controls that write it.
+
+          **The day it went up stands beside the state**, the way an article's
+          publish day stands beside its language's (`components/contents.tsx`
+          の `LocaleEditors`): the state says that the site is saying this, and
+          the day says since when. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="flex flex-wrap items-center gap-3">
+        <p className="flex flex-wrap items-center gap-3 text-sm">
           {row.active
-            ? (
-                <Submit intent="hide-alert" icon={<Icon name="eye-off" />} className={SHOWING}>
-                  {t.alert.hide}
-                </Submit>
-              )
-            : (
-                <Submit
-                  intent="show-alert"
-                  icon={<Icon name="eye" />}
-                  className={SHOWING}
-                  disabled={!ready}
-                >
-                  {t.alert.show}
-                </Submit>
-              )}
-          <Submit intent="update-alert" icon={<Icon name="save" />} saves>{t.alert.save}</Submit>
-          <Unsaved locale={locale} />
-          {!row.active && !ready && (
-            <span className="text-ink-muted text-xs">{t.alert.showBlocked}</span>
+            ? <Badge tone="accent" icon={<Icon name="eye" />}>{t.alert.shown}</Badge>
+            : <Badge tone="muted" icon={<Icon name="eye-off" />}>{t.alert.hidden}</Badge>}
+          {row.shownAt !== null && (
+            <span className="text-ink-muted text-xs">
+              {t.alert.shownOn}
+              {" "}
+              {row.shownAt}
+            </span>
           )}
-        </span>
+        </p>
         <Confirm
           label={t.alert.remove}
           title={t.alert.removeTitle}
@@ -185,6 +161,48 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           cancel={t.cancel}
           intent="delete-alert"
         />
+      </div>
+      {/* **The two languages are one value**, so they sit at the distance a
+          label sits from what it labels — closer than the parts of the form are
+          to each other. */}
+      <div className="flex flex-col gap-2">
+        <TextArea
+          label={t.languages.ja}
+          name="ja"
+          value={row.ja}
+          required={messages.admin.required}
+          accepts={messages.admin.accepts.markdown}
+          rows={2}
+        />
+        <TextArea
+          label={t.languages.en}
+          name="en"
+          value={row.en}
+          required={messages.admin.required}
+          accepts={messages.admin.accepts.markdown}
+          rows={2}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {row.active
+          ? (
+              <Submit intent="hide-alert" icon={<Icon name="eye-off" />} className={SHOWING}>
+                {t.alert.hide}
+              </Submit>
+            )
+          : (
+              <Submit
+                intent="show-alert"
+                icon={<Icon name="eye" />}
+                className={SHOWING}
+                disabled={ready ? undefined : t.alert.showBlocked}
+                reasonAt="left"
+              >
+                {t.alert.show}
+              </Submit>
+            )}
+        <Submit intent="update-alert" icon={<Icon name="save" />} saves>{t.alert.save}</Submit>
+        <Unsaved locale={locale} />
       </div>
     </Editing>
   )

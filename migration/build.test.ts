@@ -25,8 +25,18 @@ const KEY_IDS = new Map([
   ["access-criteria", "key-criteria"],
   ["type-of-data", "key-type"],
   ["materials-and-participants", "key-materials"],
+  ["total-data-volume", "key-volume"],
+  ["read-length", "key-read-length"],
+  ["coverage-depth", "key-coverage-depth"],
+  ["coverage-breadth", "key-coverage-breadth"],
 ])
-const CODE_BY_SOURCE = new Map([["Materials and Participants", "materials-and-participants"]])
+const CODE_BY_SOURCE = new Map([
+  ["Materials and Participants", "materials-and-participants"],
+  ["Total Data Volume", "total-data-volume"],
+  ["Read Length", "read-length"],
+  // The split's first key stands for the source cell (`catalog.ts`).
+  ["Coverage", "coverage-depth"],
+])
 const TERM_IDS = new Map([
   ["access-criteria/unrestricted-access", "term-unrestricted"],
   ["access-criteria/controlled-access-type-1", "term-type-1"],
@@ -215,6 +225,60 @@ describe("buildDatasetContent", () => {
 
   it("starts with no file selection, because that is a note a curator makes", () => {
     expect(dataset({}).fileSelection).toEqual([])
+  })
+
+  it("splits a cell naming two quantities into the two keys they belong to", () => {
+    const content = dataset({
+      experiments: [{ data: { Coverage: { ja: { text: "31.8x\n98%" } } } }],
+    })
+    const byKey = new Map(first(content.experiments).values.map((v) => [v.keyId, v.value]))
+    expect(byKey.get("key-coverage-depth")).toMatchObject({
+      kind: "number",
+      values: { state: "value", value: [{ value: 31.8, unit: "x" }] },
+    })
+    expect(byKey.get("key-coverage-breadth")).toMatchObject({
+      kind: "number",
+      values: { state: "value", value: [{ value: 98, unit: "%" }] },
+    })
+  })
+
+  it("reads a width as a value with an upper end, both converted to the canonical unit", () => {
+    const content = dataset({
+      experiments: [{ data: { "Total Data Volume": { ja: { text: "0.9-1.3 TB" } } } }],
+    })
+    const [slot] = first(content.experiments).values
+    expect(slot?.value).toMatchObject({
+      kind: "number",
+      values: { state: "value", value: [{ value: 900, high: 1300, unit: "GB" }] },
+    })
+  })
+
+  it("turns a cell nothing could read into an unknown slot rather than dropping it", () => {
+    const content = dataset({
+      experiments: [{ data: { "Total Data Volume": { ja: { text: "ご教示ください" } } } }],
+    })
+    expect(first(content.experiments).values).toEqual([{
+      keyId: "key-volume",
+      value: { kind: "number", values: { state: "unknown" } },
+    }])
+  })
+
+  it("leaves no slot at all for an empty cell rather than calling it unknown", () => {
+    const content = dataset({
+      experiments: [{ data: { "Total Data Volume": { ja: { text: "" } } } }],
+    })
+    expect(first(content.experiments).values).toEqual([])
+  })
+
+  it("keeps what a cell's readable lines say when its other lines are residue", () => {
+    const content = dataset({
+      experiments: [{ data: { "Total Data Volume": { ja: { text: "1.5 TB\nご教示ください" } } } }],
+    })
+    const [slot] = first(content.experiments).values
+    expect(slot?.value).toMatchObject({
+      kind: "number",
+      values: { state: "value", value: [{ value: 1500, unit: "GB" }] },
+    })
   })
 })
 

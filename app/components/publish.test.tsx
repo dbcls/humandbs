@@ -20,12 +20,13 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     humLabel: "hum0001",
     revision: 3,
     nextNumber: 2,
-    choices: [],
-    suggestedNumber: null,
-    today: "2026-08-10",
+    heldNumbers: [1],
+    releaseDate: "2026-08-10",
+    updating: null,
     blocks: [],
     groups: [],
     findingCount: 0,
+    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
     researchFields: 0,
     datasetChanges: [],
     listingAdded: [],
@@ -43,33 +44,38 @@ function render(page: PublishPageView, result: PublishResult | null = null): str
 }
 
 describe("the publish screen", () => {
-  it("offers a new version, and nothing to replace while no version exists", () => {
-    const html = render(view())
+  it("offers the next number in a box, names the held ones, and dates it today", () => {
+    const html = render(view({ nextNumber: 4, heldNumbers: [3, 1] }))
 
-    expect(html).toContain("v2 になります")
-    expect(html).not.toContain("を更新する")
+    expect(html).toContain("type=\"number\"")
+    expect(html).toContain("value=\"4\"")
+    expect(html).toContain("公開中の番号は選べません: v3, v1")
     expect(html).toContain("type=\"date\"")
+    expect(html).toContain("value=\"2026-08-10\"")
   })
 
-  it("offers to update a version that holds one of the numbers", () => {
-    const html = render(view({
-      choices: [{ number: 1, releaseDate: "2025-04-01" }],
-      suggestedNumber: 1,
-    }))
+  it("says it is the first version while none is held", () => {
+    const html = render(view({ nextNumber: 1, heldNumbers: [] }))
 
-    expect(html).toContain("v1 を更新する")
-    expect(html).toContain("2025-04-01")
+    expect(html).toContain("最初のバージョンです")
+    expect(html).not.toContain("選べません")
   })
 
-  /**
-   * A number a withdrawal left free has no version behind it, so nothing is
-   * being replaced — and the day it offers is today rather than one it lost.
-   */
-  it("offers a free number as a plain publish", () => {
-    const html = render(view({ choices: [{ number: 3, releaseDate: null }] }))
+  it("asks for no number for an update, names the version, and dates it the day it went out", () => {
+    const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", heldNumbers: [3, 1] }))
 
-    expect(html).toContain("v3 として公開する")
-    expect(html).not.toContain("v3 を更新する")
+    expect(html).toContain("更新の確認")
+    expect(html).toContain("v3 を更新します")
+    expect(html).toContain("v3 の更新")
+    expect(html).not.toContain("type=\"number\"")
+    expect(html).not.toContain("選べません")
+    expect(html).toContain("value=\"2024-05-01\"")
+  })
+
+  it("answers a number a version took in the meantime", () => {
+    const html = render(view(), { status: "number-unavailable" })
+
+    expect(html).toContain("その番号は公開中のバージョンが持っています")
   })
 
   it("will not let the publish be pressed while something structural is missing", () => {
@@ -155,5 +161,18 @@ describe("the publish screen", () => {
     expect(render(view(), { status: "conflict" })).toContain("別の場所で編集されました")
     expect(render(view(), { status: "unacknowledged" })).toContain("確認のチェック")
     expect(render(view(), { status: "taken" })).toContain("既に別のものに割り当てられています")
+  })
+
+  it("names the way out once, at the top — the way back to the research", () => {
+    const html = render(view())
+    expect(html).toContain("href=\"/admin/research/00000000-0000-0000-0000-000000000001\"")
+    expect(html).toContain("研究の編集へ")
+    // No second way out at the form's foot: publishing is the one thing to
+    // press, and leaving is the head's own way back.
+    expect(html).not.toContain("下書きへ戻る")
+  })
+
+  it("carries no strip of steps of its own — the head names the screen and nothing more", () => {
+    expect(render(view())).not.toContain("aria-label=\"下書きの段\"")
   })
 })

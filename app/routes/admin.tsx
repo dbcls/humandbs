@@ -124,8 +124,12 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                   {upstream.map((row) => (
                     <tr key={row.source}>
                       <Td>{words.sources[row.source]}</Td>
-                      <Td nowrap>{row.succeededAt === null ? "—" : minuteInJst(row.succeededAt)}</Td>
-                      <Td nowrap>{row.rowCount ?? "—"}</Td>
+                      <Td nowrap>
+                        {row.succeededAt === null
+                          ? <span className="text-ink-muted">{words.never}</span>
+                          : minuteInJst(row.succeededAt)}
+                      </Td>
+                      <Td nowrap>{row.rowCount}</Td>
                       {/* The reason a fetch gave is a sentence rather than a
                           state, so the badge says which of the three it is and
                           the sentence stands under it. */}

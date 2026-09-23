@@ -93,9 +93,7 @@ const researchContentInputSchema = z.object({
   dataProviders: elements(z.object({
     id: z.string().min(1),
     name: textPairSchema,
-    organization: z.object({ name: textPairSchema, address: textPairSchema }),
-    orcid: textInputSchema,
-    email: textInputSchema,
+    organization: z.object({ name: textPairSchema }),
   })),
   researchProjects: elements(z.object({
     id: z.string().min(1),
@@ -216,10 +214,7 @@ export function researchContentOf(input: ResearchContentInput): ContentResult {
       name: textPair(provider.name),
       organization: {
         name: textPair(provider.organization.name),
-        address: textPair(provider.organization.address),
       },
-      orcid: textSlot(provider.orcid),
-      email: textSlot(provider.email),
     })),
     researchProjects: input.researchProjects.map((project) => ({
       id: project.id,

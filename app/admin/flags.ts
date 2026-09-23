@@ -165,9 +165,6 @@ export function researchProblems(content: ResearchContent): ContentProblems {
     const at = `dataProviders.${provider.id}`
     walk.text(`${at}.name`, provider.name)
     walk.text(`${at}.organization.name`, provider.organization.name)
-    walk.text(`${at}.organization.address`, provider.organization.address)
-    walk.slot(`${at}.orcid`, ofText(provider.orcid))
-    walk.slot(`${at}.email`, ofText(provider.email))
   }
   for (const project of content.researchProjects) {
     const at = `researchProjects.${project.id}`

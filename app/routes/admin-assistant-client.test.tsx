@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server"
+import { createRoutesStub } from "react-router"
 import { describe, expect, it, vi } from "vitest"
 
 import { messagesFor } from "~/i18n/messages"
@@ -15,6 +16,12 @@ import { AssistantReport } from "./admin-assistant-report"
 
 const words = messagesFor("ja").admin.assistant
 
+/** Rendered under a router, since a control that sends watches the navigation to wait in place. */
+function render(element: React.ReactNode): string {
+  const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
+  return renderToStaticMarkup(<Stub initialEntries={["/admin/assistant"]} />)
+}
+
 const person = {
   name_jp: "山田 太郎",
   organization_jp: "テスト大学",
@@ -25,7 +32,7 @@ const person = {
 
 describe("アシスタントの人物検証表示", () => {
   it("法人格の根拠を単一の参考 URL ラベルでドメイン表示する", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.researcher}
         validation={{
@@ -48,7 +55,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("正規化後の電話番号が元の番号と同じなら重複表示しない", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.researcher}
         validation={{
@@ -67,7 +74,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("正規化によって電話番号が変わった場合は正規化後も表示する", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.researcher}
         validation={{
@@ -87,7 +94,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("所属機関長には住所と住所検証を表示しない", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.institutionHead}
         validation={{
@@ -110,7 +117,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("所属機関長の役職検証を役職の直後、所属の前に表示する", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.institutionHead}
         validation={{ person, verification: undefined }}
@@ -137,7 +144,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("所属・メール・電話・住所の直後に関連する検証結果をまとめて表示する", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.researcher}
         validation={{
@@ -208,7 +215,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("通らなかった判定だけに色を付け、通った判定は本文の色のままにする", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.researcher}
         validation={{
@@ -232,7 +239,7 @@ describe("アシスタントの人物検証表示", () => {
   })
 
   it("否定文に含まれる「一致」を肯定判定として扱わない", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <PersonReport
         title={words.institutionHead}
         validation={{ person, verification: undefined }}
@@ -252,7 +259,7 @@ describe("アシスタントの人物検証表示", () => {
 })
 
 function renderReport(report: AssessmentData) {
-  return renderToStaticMarkup(
+  return render(
     <AssistantReport
       locale="ja"
       report={report}
@@ -435,7 +442,7 @@ describe("アシスタント詳細の要求順", () => {
 })
 
 function renderDatasets(canManage: boolean): string {
-  return renderToStaticMarkup(
+  return render(
     <Datasets
       locale="ja"
       datasets={[{ id: "JGAD000001", found_in_database: false }]}
@@ -480,7 +487,7 @@ describe("アシスタントのデータセット管理", () => {
   })
 
   it("詳細 URL が未取得でも一覧にデータセット ID を表示する", () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <Datasets
         locale="ja"
         datasets={[{ id: "JGAD000001", found_in_database: true }]}

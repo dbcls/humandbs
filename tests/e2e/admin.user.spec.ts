@@ -58,14 +58,17 @@ test.describe("P-ADMIN", () => {
       await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
     }
 
-    // いちばん深いところからは、1 段ずつ親へ。データセット一覧 → 下書き → 研究 → 研究一覧。
+    // いちばん深いところからは、1 段ずつ親へ。下書きの面はどれも研究の画面が親で、
+    // 研究の内容 → 研究の編集 → 研究一覧。データセットの一覧からも同じ 1 本。
     const draft = await openADraft(page)
     const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
 
     await page.goto(`${draft}/dataset`)
-    await page.getByRole("link", { name: "下書きの編集へ" }).click()
-    await expect(page).toHaveURL(draft)
+    await page.getByRole("link", { name: "研究の編集へ" }).click()
+    await expect(page).toHaveURL(research)
 
+    await page.goto(draft)
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の内容/)
     // 戻る道の語は行き先の h1 に「へ」を付けたもの。語だけ直して h1 を直さない (または逆) と、ここで割れる。
     await page.getByRole("link", { name: "研究の編集へ" }).click()
     await expect(page).toHaveURL(research)
@@ -215,7 +218,7 @@ async function openADraft(page: Page): Promise<string> {
 
   const existing = page.locator(`a[href^="${research}/draft/"]`).first()
   if (await existing.count() === 0) {
-    await page.getByRole("button", { name: "下書きの作成" }).click()
+    await page.getByRole("button", { name: "空の下書き" }).click()
     await expect(page.locator(`a[href^="${research}/draft/"]`).first()).toBeVisible()
   }
   const href = await page.locator(`a[href^="${research}/draft/"]`).first().getAttribute("href")

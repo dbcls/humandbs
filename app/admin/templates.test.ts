@@ -70,11 +70,11 @@ function diseasesUnder(values: ValueSlot[], keyId: string): string[][] {
 }
 
 describe("the research an application seeds", () => {
-  it("writes no email and no ORCID, which are what the public API would carry", () => {
+  it("writes the investigator as a name and an affiliation, and nothing the application knows besides", () => {
     const provider = researchContentFrom(branch).dataProviders[0]
 
-    expect(provider?.email).toEqual({ state: "value", value: "" })
-    expect(provider?.orcid).toEqual({ state: "value", value: "" })
+    expect(Object.keys(provider ?? {}).sort()).toEqual(["id", "name", "organization"])
+    expect(Object.keys(provider?.organization ?? {})).toEqual(["name"])
   })
 
   it("writes one provider, the investigator, and not whoever filed the application", () => {

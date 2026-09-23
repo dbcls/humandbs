@@ -310,6 +310,11 @@ describe("a search submitted from the box", () => {
   })
 
   it("turns a range typed into a numeric facet into the address it stands for", async () => {
+    // A number key is a facet only once it has a category
+    // (`~/search/catalog.server` の `loadFacetDefinitions`).
+    const { id: category } = only(await db.insert(s.facetCategory)
+      .values({ code: "experiment", labelJa: "実験", labelEn: "Experiment" })
+      .returning({ id: s.facetCategory.id }))
     await db.insert(s.contentKey).values({
       code: "read-length",
       scope: "experiment",
@@ -318,6 +323,7 @@ describe("a search submitted from the box", () => {
       labelEn: "Read Length",
       canonicalUnit: "bp",
       inputUnits: ["bp"],
+      facetCategoryId: category,
     })
 
     const answer = await canonicalRedirect(

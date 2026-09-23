@@ -28,6 +28,7 @@ import {
   Page,
   PageHead,
   Pairs,
+  Place,
   Section,
   Table,
   Td,
@@ -277,11 +278,15 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             {view.researchProjects.map((project) => (
               <tr key={project.id}>
                 <Td>
-                  <Value field={project.name} locale={locale} />
+                  <Place at={`researchProjects.${project.id}.name`}>
+                    <Value field={project.name} locale={locale} />
+                  </Place>
                   <Annotation at={`researchProjects.${project.id}.name`} />
                 </Td>
                 <Td className="break-all">
-                  <LinksValue links={project.links} locale={locale} />
+                  <Place at={`researchProjects.${project.id}.url`}>
+                    <LinksValue links={project.links} locale={locale} />
+                  </Place>
                   <Annotation at={`researchProjects.${project.id}.url`} />
                 </Td>
               </tr>
@@ -299,21 +304,27 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             {view.grants.map((grant) => (
               <tr key={grant.id}>
                 <Td>
-                  <Value field={grant.agency} locale={locale} />
+                  <Place at={`grants.${grant.id}.agency.name`}>
+                    <Value field={grant.agency} locale={locale} />
+                  </Place>
                   <Annotation at={`grants.${grant.id}.agency.name`} />
                 </Td>
                 <Td>
-                  <Value field={grant.title} locale={locale} />
+                  <Place at={`grants.${grant.id}.title`}>
+                    <Value field={grant.title} locale={locale} />
+                  </Place>
                   <Annotation at={`grants.${grant.id}.title`} />
                 </Td>
                 <Td>
                   {/* A line each, because a grant carrying several numbers runs
                       them into one long code on a single line. */}
-                  <ul className="flex flex-col items-start gap-1">
-                    {grant.grantIds.map((grantId) => (
-                      <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                    ))}
-                  </ul>
+                  <Place at={`grants.${grant.id}.grantIds`}>
+                    <ul className="flex flex-col items-start gap-1">
+                      {grant.grantIds.map((grantId) => (
+                        <li key={grantId}><Badge pill>{grantId}</Badge></li>
+                      ))}
+                    </ul>
+                  </Place>
                   <Annotation at={`grants.${grant.id}.grantIds`} />
                 </Td>
               </tr>
@@ -328,25 +339,31 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             {view.relatedPublications.map((publication) => (
               <tr key={publication.id}>
                 <Td>
-                  <Value field={publication.title} locale={locale} />
+                  <Place at={`relatedPublications.${publication.id}.title`}>
+                    <Value field={publication.title} locale={locale} />
+                  </Place>
                   <Annotation at={`relatedPublications.${publication.id}.title`} />
                 </Td>
                 <Td className="break-all">
-                  {publication.doi.state === "plain" && publication.doi.text !== ""
-                    ? (
-                        <ExternalLink to={publication.doi.text} locale={locale}>
-                          {publication.doi.text}
-                        </ExternalLink>
-                      )
-                    : <Value field={publication.doi} locale={locale} />}
+                  <Place at={`relatedPublications.${publication.id}.doi`}>
+                    {publication.doi.state === "plain" && publication.doi.text !== ""
+                      ? (
+                          <ExternalLink to={publication.doi.text} locale={locale}>
+                            {publication.doi.text}
+                          </ExternalLink>
+                        )
+                      : <Value field={publication.doi} locale={locale} />}
+                  </Place>
                   <Annotation at={`relatedPublications.${publication.id}.doi`} />
                 </Td>
                 <Td>
-                  <DatasetList
-                    labels={publication.datasetLabels}
-                    linkTo={linkTo}
-                    messages={messages}
-                  />
+                  <Place at={`relatedPublications.${publication.id}.datasetIds`}>
+                    <DatasetList
+                      labels={publication.datasetLabels}
+                      linkTo={linkTo}
+                      messages={messages}
+                    />
+                  </Place>
                   <Annotation at={`relatedPublications.${publication.id}.datasetIds`} />
                 </Td>
               </tr>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { useLocation, useNavigation } from "react-router"
+import { useEffect, useRef, useState } from "react"
+import { useFetchers, useLocation, useNavigation } from "react-router"
 
 /**
  * How long a navigation has to have been under way before the page admits to it.
@@ -45,4 +45,59 @@ export function useBusyHere(): boolean {
   }, [going])
 
   return shown
+}
+
+/**
+ * Whether a deed is on its way to an action — by navigation or by a fetcher.
+ *
+ * **Reading is not sending.** A listing narrowed by its pane, or a presence
+ * line asking who else is here, is a load: nothing the reader pressed is
+ * waiting on it. What is held is the deed in flight, and it stays in flight
+ * through the read that follows it, until the screen shows what it did.
+ */
+export function useSubmitting(): boolean {
+  const navigation = useNavigation()
+  const fetchers = useFetchers()
+  const sends = (method: string | undefined): boolean =>
+    method !== undefined && method.toUpperCase() !== "GET"
+  return (navigation.state !== "idle" && sends(navigation.formMethod))
+    || fetchers.some((fetcher) => fetcher.state !== "idle" && sends(fetcher.formMethod))
+}
+
+/**
+ * Whether the deed a control started is still in flight.
+ *
+ * **Only the control that was pressed says it is waiting.** Every submit on
+ * the page could read the same navigation, and every one would then dim
+ * together; what the reader pressed is what has to answer, and the press is
+ * the one thing each control knows about itself (`docs/ui.md` の「壊れるもの」).
+ *
+ * **The press is remembered until a sending has ended**, not until the next
+ * render: the press and the router's first word about it can land in different
+ * renders, and clearing on a render in which nothing is being sent yet would
+ * forget the press before it counted. A press the browser refuses to send —
+ * a required box left empty — is not remembered at all.
+ */
+export function usePressed(): { pending: boolean, press: (form: HTMLFormElement | null) => void } {
+  const submitting = useSubmitting()
+  const pressed = useRef(false)
+  const wasSubmitting = useRef(false)
+  const [pending, setPending] = useState(false)
+
+  useEffect(() => {
+    if (submitting && pressed.current) setPending(true)
+    if (!submitting && wasSubmitting.current) {
+      pressed.current = false
+      setPending(false)
+    }
+    wasSubmitting.current = submitting
+  }, [submitting])
+
+  return {
+    pending,
+    press: (form) => {
+      if (form !== null && !form.noValidate && !form.checkValidity()) return
+      pressed.current = true
+    },
+  }
 }

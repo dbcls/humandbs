@@ -54,12 +54,13 @@ function destinationOf(node: Nodes): string | null {
 }
 
 function walk(node: Nodes, problems: ArticleProblem[]): void {
-  if (node.type === "html") problems.push({ syntax: "html", line: lineOf(node) })
+  const refuse = (syntax: ArticleSyntax) => {
+    problems.push({ syntax, line: lineOf(node) })
+  }
+  if (node.type === "html") refuse("html")
 
   const destination = destinationOf(node)
-  if (destination !== null && linkHref(destination) === null) {
-    problems.push({ syntax: "link", line: lineOf(node) })
-  }
+  if (destination !== null && linkHref(destination) === null) refuse("link")
 
   if ("children" in node) {
     for (const child of node.children) walk(child, problems)
@@ -72,8 +73,21 @@ function walk(node: Nodes, problems: ArticleProblem[]): void {
  * and finding out about the second tag only after the first is two round trips
  * for one edit.
  */
+/**
+ * **One line, one word for it.** An opening tag and its closing tag are two
+ * nodes on the same line, and the author mends them in one go; said twice, the
+ * second reads as a second thing to find.
+ */
 export function checkArticleBody(source: string): ArticleProblem[] {
   const problems: ArticleProblem[] = []
   walk(processor.parse(source), problems)
-  return problems.sort((a, b) => a.line - b.line)
+  const seen = new Set<string>()
+  return problems
+    .sort((a, b) => a.line - b.line)
+    .filter((one) => {
+      const key = `${String(one.line)}:${one.syntax}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
 }

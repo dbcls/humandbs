@@ -16,13 +16,12 @@ import { ICD10_SET_CODE } from "~/icd10/codes"
 import { AdminBack } from "~/components/admin"
 import {
   Badge,
-  Button,
+  ButtonLink,
   Chooser,
   CHOOSER_SIDE,
   Confirm,
   Dialog,
   Heading,
-  LISTING_CONTROL,
   MENU_ITEM,
   MENU_ITEM_HERE,
   Note,
@@ -37,11 +36,12 @@ import {
   Unsaved,
 } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Empty, ExternalLink, Page, Paging, Section, Table, Td } from "~/components/page"
+import { Card, Code, Empty, ExternalLink, Page, Paging, Section, Table, Td } from "~/components/page"
 import { RefinableList, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
 import { datasetsUsing, href } from "~/public/urls"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
@@ -140,6 +140,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
   const brought = set.code === ICD10_SET_CODE
   const here = adminExperimentFieldPath(view.field.code)
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
   const flipped = view.order === "asc" ? "desc" : "asc"
   const turn = flipped === "asc"
     ? messages.search.sort.toAscending
@@ -212,7 +213,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
       <Answered answer={actionData} locale={locale}>
         {actionData !== undefined && (
           <Result ok={actionData.status === "ok"}>
-            {actionData.status === "ok" ? t.done : t.problems[actionData.status]}
+            {actionData.status === "ok" ? t.done[actionData.did] : t.problems[actionData.status]}
           </Result>
         )}
       </Answered>
@@ -226,41 +227,44 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
               table of fields: it is the one thing a reader comes here to do
               that is not "open one of these". */}
           <Heading title={t.termsHeading} aside={catalogLabel(view.field, locale)} note={t.termsNote}>
-            {/* **A settled vocabulary has no way in either.** What it holds is
-                part of what the portal is, so the screen carries the name and
-                the rows and nothing to press. */}
-            {view.editable && (
-              <Editing method="post">
-                <input type="hidden" name="setId" value={set.id} />
-                <Dialog label={t.addTerm} title={t.addTerm} icon={<Icon name="plus" />}>
-                  {(close) => (
-                    <Stack gap="normal">
-                      {/* **The code is asked for only where the standard owns it.**
-                        Everywhere else it is made from the English label
-                        (`admin/catalog.ts` の `termCodeFrom`): it is an address
-                        the public side carries rather than a name to choose,
-                        and asking for one asks the curator to know which
-                        characters a query holds unquoted. */}
-                      {brought && <Field label={t.code} name="code" width="w-full" />}
-                      <Field label={t.labelJa} name="labelJa" width="w-full" />
-                      <Field label={t.labelEn} name="labelEn" width="w-full" />
-                      <span className="flex flex-wrap items-center justify-end gap-2">
-                        <Button type="button" variant="ghost" onClick={close}>{t.cancel}</Button>
-                        <Submit intent="create-term" variant="primary" icon={<Icon name="plus" />}>
-                          {t.addTerm}
-                        </Submit>
-                        <Unsaved locale={locale} />
-                      </span>
-                    </Stack>
-                  )}
-                </Dialog>
-              </Editing>
-            )}
             <AdminBack
               to={href(locale, adminExperimentFieldsPath())}
               label={t.backToList}
               icon="chevron-left"
             />
+            {/* **A settled vocabulary has no way in either.** What it holds is
+                part of what the portal is, so the screen carries the name and
+                the rows and nothing to press. */}
+            {view.editable && (
+              <Form method="post">
+                {/* **Nothing here is unsaved yet**: a panel that makes something
+                    has nothing loaded to compare what is typed against, so it is
+                    a plain form and the save is the ordinary one (unlike a row's
+                    panel, which answers whether there is anything to send). */}
+                <input type="hidden" name="setId" value={set.id} />
+                <Dialog
+                  label={t.addTerm}
+                  title={t.addTerm}
+                  icon={<Icon name="plus" />}
+                  dismiss={t.cancel}
+                  action={() => (
+                    <Submit intent="create-term" variant="primary" icon={<Icon name="plus" />}>
+                      {t.create}
+                    </Submit>
+                  )}
+                >
+                  {/* **The code is asked for only where the standard owns it.**
+                      Everywhere else it is made from the English label
+                      (`admin/catalog.ts` の `codeFrom`): it is an address
+                      the public side carries rather than a name to choose,
+                      and asking for one asks the curator to know which
+                      characters a query holds unquoted. */}
+                  {brought && <Field label={t.code} name="code" width="w-full" />}
+                  <Field label={t.labelJa} name="labelJa" width="w-full" />
+                  <Field label={t.labelEn} name="labelEn" width="w-full" />
+                </Dialog>
+              </Form>
+            )}
           </Heading>
 
           {set.hierarchical && (
@@ -277,18 +281,23 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
           {/* **Choosing where to fold a term into is reading this listing**, so
               what is in force says so over the rows it changes the meaning of —
               every row's control is now "keep this one" rather than "edit
-              this one". The way out stands in the same band as the way in. */}
+              this one". The way out stands in the same band as the way in,
+              and wears the outlined face: a bare word at the end of the
+              sentence reads as its last clause (`docs/ui.md` の「押せるもの」). */}
           {view.mergeFrom !== null && (
             <Note
               kind="warning"
               action={(
-                <Link to={at(view, { mergeFrom: null })} className={MENU_ITEM}>
+                <ButtonLink
+                  to={at(view, { mergeFrom: null })}
+                  icon={<Icon name="close" aria-hidden="true" />}
+                >
                   {t.mergeCancel}
-                </Link>
+                </ButtonLink>
               )}
             >
               <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <strong>{t.mergeChoosing(view.mergeFrom.labelJa ?? view.mergeFrom.labelEn)}</strong>
+                <strong>{t.mergeChoosing(catalogLabel(view.mergeFrom, locale))}</strong>
                 <span className="text-sm">{t.mergeChoosingNote}</span>
               </span>
             </Note>
@@ -296,7 +305,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
 
           <RefinableList
             open={paneOpen}
-            busy={false}
+            busy={busy}
             locale={locale}
             onToggle={togglePane}
             inForce={view.find === "" ? 0 : 1}
@@ -365,10 +374,9 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                       <input type="hidden" name="code" value={row.code} />
                       <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
                       <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
-                      <code className="w-24 shrink-0">{row.code}</code>
+                      <Code className="w-24 shrink-0">{row.code}</Code>
                       <span className="min-w-0 flex-1 break-words">
-                        {row.titleEn ?? "—"}
-                        {row.titleJa !== null && ` / ${row.titleJa}`}
+                        {[row.titleEn, row.titleJa].filter((name) => name !== null).join(" / ")}
                       </span>
                       {row.held
                         ? <Badge>{t.dictionaryHeld}</Badge>
@@ -447,19 +455,22 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.catalog
-  const naming = (row: TermRow) => row.labelJa ?? row.labelEn
 
   return (
     <tr>
+      {/* **A missing Japanese label is said, not dashed**: the English one is
+          always there, so what is missing is the translation, and that is a
+          thing to fix rather than a blank in the row (docs/ui.md の
+          「壊れるもの」). */}
       <Td floor="min-w-40">
-        {term.labelJa ?? <span className="text-ink-muted">—</span>}
+        {term.labelJa ?? <span className="text-ink-muted">{t.untranslated}</span>}
       </Td>
       <Td floor="min-w-40">{term.labelEn}</Td>
       {hierarchical && (
         <Td nowrap>
-          {term.parentCode === null
-            ? <span className="text-ink-muted">—</span>
-            : <code className="text-xs">{term.parentCode}</code>}
+          {/* A term at the top has no parent: nothing is missing, so the cell
+              is empty rather than marked. */}
+          {term.parentCode !== null && <Code size="xs">{term.parentCode}</Code>}
         </Td>
       )}
       {/* **How many published objects name it**, which is the one thing that
@@ -498,7 +509,7 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
                         <input type="hidden" name="intoId" value={term.id} />
                         <Confirm
                           label={t.mergeInto}
-                          title={t.mergeTitle(naming(mergeFrom), naming(term))}
+                          title={t.mergeTitle(catalogLabel(mergeFrom, locale), catalogLabel(term, locale))}
                           warning={t.mergeWarning}
                           confirm={t.mergeConfirm}
                           cancel={t.cancel}
@@ -518,64 +529,55 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
                       should this be now", so they are settled in one press. */}
                   <Editing method="post">
                     <input type="hidden" name="termId" value={term.id} />
+                    {/* **Named by the kind of thing in it, not by the row**:
+                        the boxes hold the labels and change as typed into
+                        (docs/ui.md の「押せるもの」). */}
                     <Dialog
                       label={t.edit}
-                      title={t.editTitle(term.code)}
+                      title={t.editTermTitle}
                       size="row"
                       icon={<Icon name="edit" />}
-                    >
-                      {(close) => (
-                        <Stack gap="normal">
-                          <Field
-                            label={t.labelJa}
-                            name="labelJa"
-                            value={term.labelJa ?? ""}
-                            width="w-full"
-                          />
-                          <Field
-                            label={t.labelEn}
-                            name="labelEn"
-                            value={term.labelEn}
-                            width="w-full"
-                          />
-                          <span className="flex flex-wrap items-center justify-end gap-2">
-                            <Button type="button" variant="ghost" onClick={close}>
-                              {t.cancel}
-                            </Button>
-                            <Submit intent="update-term" icon={<Icon name="save" />} saves>
-                              {t.save}
-                            </Submit>
-                            <Unsaved locale={locale} />
-                          </span>
-                        </Stack>
+                      dismiss={t.cancel}
+                      action={() => (
+                        <>
+                          <Submit intent="update-term" icon={<Icon name="save" />} saves>
+                            {t.save}
+                          </Submit>
+                          <Unsaved locale={locale} />
+                        </>
                       )}
+                    >
+                      <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} width="w-full" />
+                      <Field label={t.labelEn} name="labelEn" value={term.labelEn} width="w-full" />
                     </Dialog>
                   </Editing>
                   {/* **Folding is where a used term goes.** It is offered on
                       every row rather than only on the used ones, because
                       pulling two spellings together is the same operation and
                       neither of them has to be in use. */}
-                  <Link to={mergeAt(term.id)} className={LISTING_CONTROL}>
+                  <ButtonLink to={mergeAt(term.id)} size="row" icon={<Icon name="merge" />}>
                     {t.mergeStart}
-                  </Link>
-                  {/* Nothing names this term, so it can go — and going is what
-                      cannot be undone, unlike turning it off or folding it. */}
-                  {term.used === 0 && (
-                    <Form method="post">
-                      <input type="hidden" name="termId" value={term.id} />
-                      <Confirm
-                        label={t.remove}
-                        title={t.removeTitle(term.code)}
-                        warning={t.removeWarning}
-                        confirm={t.removeConfirm}
-                        cancel={t.cancel}
-                        icon="trash"
-                        size="row"
-                      >
-                        <input type="hidden" name="intent" value="delete-term" />
-                      </Confirm>
-                    </Form>
-                  )}
+                  </ButtonLink>
+                  {/* Going is what cannot be undone, unlike folding, and a
+                      term something still points at cannot go. The way in
+                      stands on every row and says so on the ones it refuses
+                      — the count beside it is of published datasets, and a
+                      draft holds a term without any of those. */}
+                  <Form method="post">
+                    <input type="hidden" name="termId" value={term.id} />
+                    <Confirm
+                      label={t.remove}
+                      title={t.removeTitle(catalogLabel(term, locale))}
+                      warning={t.removeTermWarning}
+                      confirm={t.removeConfirm}
+                      cancel={t.cancel}
+                      icon="trash"
+                      size="row"
+                      disabled={term.inUse ? t.inUseTerm : undefined}
+                    >
+                      <input type="hidden" name="intent" value="delete-term" />
+                    </Confirm>
+                  </Form>
                 </span>
               )}
       </Td>

@@ -29,18 +29,18 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
 import { isAnchorPath, isFieldAnchor, subjectOf, type AnchorSubject } from "./anchors"
-import { byAttention, checkComment, type CommentProblem, type ThreadView } from "./comments"
+import { byAttention, checkComment, unresolvedCount, type CommentProblem, type CommentView } from "./comments"
 import {
   readAcknowledgements,
-  readThreads,
-  replyToThread,
-  setThreadResolved,
+  readComments,
+  setCommentResolved,
+  postAboutDraft,
   postComment,
-  postDraftNote,
   type AcknowledgementView,
 } from "./comments.server"
 import { readShare } from "./queries.server"
 import { isShareExpired, isShareOpen } from "./share"
+import { draftSteps, type DraftStepsView } from "~/admin/steps.server"
 import { previewPath } from "./urls"
 
 function notFound(): never {
@@ -79,11 +79,11 @@ export interface ShareView {
   expiresOn: string | null
 }
 
-export interface ReviewThreadView {
-  thread: ThreadView
+export interface ReviewCommentView {
+  comment: CommentView
   /** What it is about, named as the screen names things. */
   subject: string
-  /** The place inside it, or null for the memo, which names none. */
+  /** The place inside it, or null for the draft as a whole, which names none. */
   path: string | null
   /** Where to go to deal with it. */
   href: string
@@ -97,9 +97,14 @@ export interface ReviewPageView {
   /** The administrator reading it, which is what their replies are signed with. */
   signedInName: string
   share: ShareView
-  threads: ReviewThreadView[]
+  /** Everything said to be dealt with, open first. The memo is not among them: it is a note, not a question. */
+  comments: ReviewCommentView[]
   unresolved: number
   acknowledgements: AcknowledgementView[]
+  /** The number of the version the draft updates, which names the last step. */
+  updating: number | null
+  /** The draft's facts (datasets, sharing, gate), as the research's screen and the head of the editor read them; the share and the threads are this screen's own. */
+  steps: DraftStepsView
 }
 
 export async function reviewPage(
@@ -107,11 +112,11 @@ export async function reviewPage(
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
 ): Promise<ReviewPageView> {
-  const { db, actor, researchId, draftId } = await draftOf(request, params)
+  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [share, threads, acknowledgements, humLabel, datasets] = await Promise.all([
+  const [share, comments, acknowledgements, humLabel, datasets] = await Promise.all([
     readShare(db, draftId),
-    readThreads(db, draftId),
+    readComments(db, draftId),
     readAcknowledgements(db, draftId),
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
@@ -120,6 +125,9 @@ export async function reviewPage(
 
   const t = messagesFor(locale)
   const labelOf = new Map(datasets.map((row) => [row.id, row.label]))
+  const shareNow = shareView(share, locale)
+  const unresolved = unresolvedCount(comments)
+  const steps = await draftSteps(db, researchId, draftId, draft.content, { shared: shareNow.open, unresolved })
 
   return {
     locale,
@@ -127,23 +135,23 @@ export async function reviewPage(
     draftId,
     humLabel,
     signedInName: actor.name,
-    share: shareView(share, locale),
-    unresolved: threads.filter((thread) => !thread.resolved).length,
-    threads: byAttention(threads).map((thread) => {
-      const anchor = thread.anchor
-      // The memo is about the draft rather than about a place in it, so it is
-      // named as itself and leads back to the screen it is written on.
+    share: shareNow,
+    unresolved,
+    comments: byAttention(comments.filter((one) => one.anchor.kind !== "memo")).map((comment) => {
+      const anchor = comment.anchor
+      // A comment on the draft as a whole names no place, so it is named as
+      // the whole and leads to the screen the draft is written on.
       if (!isFieldAnchor(anchor)) {
         return {
-          thread,
-          subject: t.admin.review.memo,
+          comment,
+          subject: t.admin.review.whole,
           path: null,
           href: href(locale, adminDraftPath(researchId, draftId)),
         }
       }
       const subject = subjectOf(anchor)
       return {
-        thread,
+        comment,
         subject: subject.kind === "research"
           ? t.admin.review.research
           : labelOf.get(subject.datasetId) ?? t.preview.unnamedDataset,
@@ -154,6 +162,8 @@ export async function reviewPage(
       }
     }),
     acknowledgements,
+    updating: draft.updating?.number ?? null,
+    steps,
   }
 }
 
@@ -174,22 +184,22 @@ function shareView(
 
 export type ReviewActionResult
   = | { status: "invalid", problem: CommentProblem }
-    | { status: "threads", threads: ThreadView[] }
+    | { status: "comments", comments: CommentView[] }
 
 /**
  * Everything the review screen and the editing screens do to a review: change
- * how the draft is shared, and add to or close a thread.
+ * how the draft is shared, and add or close a comment.
  *
  * `answer` decides what a caller gets back. The review screen and the preview
  * are pages and take a redirect, so a browser without JavaScript lands back
- * where it was; the editing screens take the threads, because they are holding
- * unsaved work and must not navigate.
+ * where it was; the editing screens take the comments, because they are
+ * holding unsaved work and must not navigate.
  */
 export async function reviewAction(
   request: Request,
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
-  answer: "redirect" | "threads",
+  answer: "redirect" | "comments",
 ): Promise<Response | ReviewActionResult> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
@@ -198,7 +208,7 @@ export async function reviewAction(
   const back = (): Response =>
     redirect(href(locale, adminDraftReviewPath(researchId, draftId)))
   const done = async (): Promise<Response | ReviewActionResult> =>
-    answer === "redirect" ? back() : { status: "threads", threads: await readThreads(db, draftId) }
+    answer === "redirect" ? back() : { status: "comments", comments: await readComments(db, draftId) }
 
   if (intent === "share") {
     const enabled = form.get("enabled") === "on"
@@ -217,11 +227,11 @@ export async function reviewAction(
   }
 
   if (intent === "resolve" || intent === "reopen") {
-    const threadId = readString(form, "threadId")
-    if (threadId === "") badRequest()
-    const outcome = await setThreadResolved(db, {
+    const commentId = readString(form, "commentId")
+    if (commentId === "") badRequest()
+    const outcome = await setCommentResolved(db, {
       draftId,
-      threadId,
+      commentId,
       resolved: intent === "resolve",
       actorSub: actor.sub,
     })
@@ -229,27 +239,20 @@ export async function reviewAction(
     return done()
   }
 
+  if (intent !== "comment") badRequest()
+
   const body = readString(form, "body")
   const problem = checkComment({ name: actor.name, body })
   if (problem !== null) return { status: "invalid", problem }
   const author = { sub: actor.sub, name: actor.name }
 
-  if (intent === "reply") {
-    const threadId = readString(form, "threadId")
-    if (threadId === "") badRequest()
-    const outcome = await replyToThread(db, { draftId, threadId, author, body: body.trim() })
-    if (outcome.status === "gone") notFound()
-    return done()
-  }
-
-  if (intent !== "comment") badRequest()
-
   const subject = readSubject(form)
   if (subject === null) badRequest()
 
-  // The memo names no place, so there is no path to check it against.
-  if (subject === "draft") {
-    const outcome = await postDraftNote(db, { draftId, author, body: body.trim() })
+  // The draft as a whole and the memo name no place, so there is no path to
+  // check either against.
+  if (subject === "draft" || subject === "memo") {
+    const outcome = await postAboutDraft(db, { draftId, kind: subject, author, body })
     if (outcome.status === "gone") notFound()
     return done()
   }
@@ -275,9 +278,9 @@ export async function reviewAction(
   return done()
 }
 
-function readSubject(form: FormData): AnchorSubject | "draft" | null {
+function readSubject(form: FormData): AnchorSubject | "draft" | "memo" | null {
   const subject = form.get("subject")
-  if (subject === "draft") return "draft"
+  if (subject === "draft" || subject === "memo") return subject
   if (subject === "research") return { kind: "research" }
   if (subject !== "dataset") return null
   const datasetId = readString(form, "datasetId")

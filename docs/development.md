@@ -236,6 +236,23 @@ docker compose exec app npm run s3:common-assets
 
 schema を変えたら `npm run db:push` の後にもう一度流す。
 
+研究・下書き・下書きのレビュー画面をレビューの姿 (コメントが付き、印があり、値が未確定または未翻訳の
+まま) で見るには、続けて `db:seed-review` を打つ。
+
+```bash
+docker compose exec app npm run db:seed-review
+```
+
+hum0127 に、field コメント・全体へのコメント・メモ・印・未確定/未翻訳/該当なしの欄・pin していない
+dataset を揃えた共有中の draft と、公開中の最新バージョンを更新する draft を足す。hum0005 には、
+空の draft と期限切れの共有リンクを持つ draft を足す。**べき等**: 足す先の draft はそれぞれ固定文字列を
+本文に持つ管理者メモで見分けており、既にあれば作り直さないので、二度打っても行は増えない。
+`db:load-dev-data` は研究を丸ごと入れ替えるので (上記)、打ち直すたびにこの分も打ち直す。
+
+申請支援アシスタントのタスクはここでは作らない。アシスタントは自分の container のファイルシステム
+(`work/`) に state を持ち、ポータルの DB には何も置かない ([assistant.md](assistant.md) の「state」)
+ので、DB への投入では用意できない。
+
 ## サインインを試す
 
 認証は DDBJ が所管する staging の Keycloak を使う。dev に Keycloak を立てないので、手元で要る設定は

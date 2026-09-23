@@ -17,6 +17,7 @@
  */
 
 export const PUBLIC_BUCKET = "files"
+import { dayInJst } from "~/dates"
 import { pageRange } from "~/paging"
 
 export const PRIVATE_BUCKET = "private"
@@ -197,6 +198,48 @@ export function sortedBox<T extends StoredNode>(
   }
   const sorted = [...rows].sort(by)
   return order === "desc" ? sorted.reverse() : sorted
+}
+
+/** The two sides of the store a research's file can be on, as the listing's axis names them. */
+export const BOX_STATES = ["public", "private"] as const
+export type BoxState = (typeof BOX_STATES)[number]
+
+export interface BoxFilter {
+  /** Words all of which have to appear in the slug. Empty is every file. */
+  keyword: string
+  /** The first and the last JST day to keep, each `null` when that end is open. */
+  from: string | null
+  to: string | null
+}
+
+/**
+ * The files a filter leaves, in the order they were given.
+ *
+ * **The words are looked for in the slug and nowhere else** — it is the one
+ * thing a row says about a file that a curator can have typed — and every word
+ * separated by whitespace has to appear, as in the other listings' boxes
+ * (`app/admin/listing.ts`). Case does not count: a slug is written in lower
+ * case and what is typed need not be.
+ *
+ * **The day is the JST day the file was written** (`dates.ts` の `dayInJst`),
+ * which is the day the row shows — a range read against a day the column does
+ * not print would keep rows the reader can see fall outside it. Both ends are
+ * inclusive and either may be open; a lower bound above the upper leaves
+ * nothing, which is what was asked.
+ */
+export function narrowedBox<T extends StoredNode>(rows: readonly T[], filter: BoxFilter): T[] {
+  const words = filter.keyword.toLowerCase().split(/\s+/).filter((word) => word !== "")
+  return rows.filter((row) => {
+    if (words.length > 0) {
+      const slug = row.name.toLowerCase()
+      if (!words.every((word) => slug.includes(word))) return false
+    }
+    if (filter.from === null && filter.to === null) return true
+    const day = dayInJst(row.updatedAt)
+    if (filter.from !== null && day < filter.from) return false
+    if (filter.to !== null && day > filter.to) return false
+    return true
+  })
 }
 
 export interface BoxPage<T> {

@@ -62,16 +62,20 @@ import {
 } from "./changes"
 import { today } from "~/dates"
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
-import { datasetContentOf, saveDatasetSchema } from "./dataset-form.server"
+import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-form.server"
 import {
+  changeListing,
   createDatasetInDraft,
-  createDraft,
+  createEmptyDraft,
   createResearchWithDraft,
   deleteDraftDataset,
   discardDraft,
+  draftCopiedFrom,
+  draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
   touchPresence,
+  type ListingChange,
 } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema, type FieldProblem } from "./form.server"
@@ -82,9 +86,10 @@ import {
   type GateFindingKind,
 } from "./gate"
 import { isHumLabel, proposeDatasetId } from "./labels"
-import { pinLabel, unpinLabel } from "./labels.server"
+import { pinLabel, promotePin, unpinLabel } from "./labels.server"
 import { compareDataset, compareResearch, isEmptyComparison } from "./merge"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
+import { draftSteps, researchDraftSteps, type DraftStepsView } from "./steps.server"
 import {
   activePresence,
   adminResearch,
@@ -129,12 +134,12 @@ import {
   adminResearchPath,
 } from "./urls"
 
-import type { ThreadView } from "~/review/comments"
-import { readThreads } from "~/review/comments.server"
+import type { CommentView } from "~/review/comments"
+import { readComments } from "~/review/comments.server"
 import { drawDatasetDraft, drawDraft, type DrawnDataset, type DrawnDraft } from "~/review/preview.server"
 import {
   draftReviewSummaries,
-  latestPublishedVersion,
+  versionAgainst,
   type DraftReviewSummary,
 } from "~/review/queries.server"
 
@@ -286,18 +291,40 @@ function resolved(pair: TranslatedText, locale: Locale): string {
   return value.state === "value" ? value.value : ""
 }
 
+/**
+ * A version, with what only the research screen's table needs beside it:
+ * how many datasets it lists. **Read once here rather than carried on
+ * `AdminVersionRow`** — every other screen that touches a version already has
+ * its content for its own reasons, and this is the one that does not.
+ */
+export interface AdminResearchVersionRow extends AdminVersionRow {
+  datasets: number
+}
+
+/**
+ * A draft's review, widened with what the research screen's table draws
+ * beside it: how many datasets it lists and what the publish gate would say.
+ * **The share and the threads stay a `DraftReviewSummary`** — this only adds
+ * to it, the way the table only adds two columns to what the row already
+ * shows.
+ */
+export interface AdminDraftReviewRow extends DraftReviewSummary {
+  datasets: number
+  /** What the publish gate would stop. */
+  blocks: number
+  /** What the publish gate would ask to confirm. */
+  findings: number
+}
+
 export interface AdminResearchPageView {
   locale: Locale
   researchId: string
   humLabel: string | null
   labels: { id: string, label: string, isPrimary: boolean }[]
-  versions: AdminVersionRow[]
+  versions: AdminResearchVersionRow[]
   drafts: AdminDraftRow[]
-  datasets: ResearchDatasetRow[]
-  /** What the portal would propose for a dataset with no id yet. */
-  datasetIdSuggestion: string | null
-  /** Whether a link is out there for each draft, and what is unanswered. */
-  reviews: DraftReviewSummary[]
+  /** Whether a link is out there for each draft, what is unanswered, and what its gate says. */
+  reviews: AdminDraftReviewRow[]
   /** What the box holds. Null when the store did not answer. */
   box: { count: number, bytes: number } | null
 }
@@ -315,22 +342,43 @@ export async function researchDetailPage(
   if (view === null) notFound()
 
   const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
-  const taken = view.datasets.flatMap((row) => row.label === null ? [] : [row.label])
-  const box = await adminBox(db, id, humLabel)
+
+  // A version being updated carries its draft's row rather than one of its
+  // own (docs/editing.md の「draft」), so the table's facts for it come from
+  // the same draft this gathers for every other one.
+  const draftIds = [
+    ...view.drafts.map((row) => row.id),
+    ...view.versions.flatMap((row) => row.updating === null ? [] : [row.updating.id]),
+  ]
+
+  const [box, reviews, draftRecords, versionContents] = await Promise.all([
+    adminBox(db, id, humLabel),
+    draftReviewSummaries(db, id),
+    Promise.all(draftIds.map((draftId) => readDraft(db, draftId))),
+    Promise.all(view.versions.map((row) => comparableVersion(db, id, row.number))),
+  ])
+
+  const drafts = draftRecords.flatMap((record) =>
+    record === null ? [] : [{ id: record.id, content: record.content }])
+  const steps = await researchDraftSteps(db, id, drafts, reviews)
 
   return {
     locale,
     researchId: id,
-    reviews: await draftReviewSummaries(db, id),
+    reviews: reviews.map((row) => {
+      const found = steps.get(row.draftId)
+      return { ...row, datasets: found?.datasets ?? 0, blocks: found?.blocks ?? 0, findings: found?.findings ?? 0 }
+    }),
     box: box === null
       ? null
       : { count: box.length, bytes: box.reduce((sum, entry) => sum + entry.size, 0) },
     humLabel,
     labels: view.labels,
-    versions: view.versions,
+    versions: view.versions.map((row, at) => ({
+      ...row,
+      datasets: versionContents[at]?.content.datasetIds.length ?? 0,
+    })),
     drafts: view.drafts,
-    datasets: view.datasets,
-    datasetIdSuggestion: humLabel === null ? null : proposeDatasetId(humLabel, taken),
   }
 }
 
@@ -357,7 +405,8 @@ export interface UpstreamView<T> {
 export interface ReviewMarksView {
   changed: string[]
   previous: Record<string, ShownLine[]>
-  threads: ThreadView[]
+  /** Everything said about the draft, the memo included: the screen picks what it draws. */
+  comments: CommentView[]
   /** The version being compared against; null when nothing is published. */
   publishedNumber: number | null
   /** The name the reader's own comments will be signed with. */
@@ -382,6 +431,14 @@ export interface AdminDraftPageView {
    * question "where does this value come out" has one answer.
    */
   page: DrawnDraft
+  /**
+   * The number of the version this draft is the update of, when it is one.
+   * The screen names the draft after it and offers the update where a draft
+   * of its own is offered the publish (docs/editing.md の「draft」).
+   */
+  updating: number | null
+  /** Where the draft stands on each of its steps (`DraftSteps`). */
+  steps: DraftStepsView
 }
 
 /**
@@ -425,14 +482,17 @@ export async function draftEditorPage(
 ): Promise<AdminDraftPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, datasets, presence, moved, threads, published, page] = await Promise.all([
+  // Every reading of "what differs" on this screen is against the same
+  // version: the one the draft updates, or else the newest out.
+  const published = await versionAgainst(db, draft)
+  const [humLabel, datasets, presence, moved, comments, page, steps] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     activePresence(db, draftId),
-    comparableVersion(db, researchId, null),
-    readThreads(db, draftId),
-    latestPublishedVersion(db, researchId),
-    drawDraft(request, locale, { researchId, draftId, content: draft.content }),
+    comparableVersion(db, researchId, published?.number ?? null),
+    readComments(db, draftId),
+    drawDraft(request, locale, { researchId, draftId, content: draft.content, updating: draft.updating }),
+    draftSteps(db, researchId, draftId, draft.content),
   ])
 
   const input = { content: researchContentInput(draft.content) }
@@ -453,11 +513,13 @@ export async function draftEditorPage(
     review: {
       changed,
       previous: published === null ? {} : describedResearch(published.content, changed),
-      threads,
+      comments,
       publishedNumber: published?.number ?? null,
       signedInName: actor.name,
     },
     page,
+    updating: draft.updating?.number ?? null,
+    steps,
   }
 }
 
@@ -481,10 +543,15 @@ export interface DraftDatasetListView {
   researchId: string
   draftId: string
   humLabel: string | null
-  /** The draft's revision, which creating and destroying a dataset both move. */
+  /** The draft's revision, which every change to the listing moves. */
   revision: number
   rows: DraftDatasetRow[]
+  /** What the version lists, in its order — the order the rows are shown in. */
+  listedIds: string[]
   presence: PresenceView[]
+  /** The number of the version the draft updates, which names the last step. */
+  updating: number | null
+  steps: DraftStepsView
 }
 
 export async function draftDatasetListPage(
@@ -494,10 +561,11 @@ export async function draftDatasetListPage(
 ): Promise<DraftDatasetListView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, rows, presence] = await Promise.all([
+  const [humLabel, rows, presence, steps] = await Promise.all([
     humLabelOf(db, researchId),
     draftDatasetRows(db, draftId, researchId, draft.content.datasetIds),
     activePresence(db, draftId),
+    draftSteps(db, researchId, draftId, draft.content),
   ])
 
   return {
@@ -507,7 +575,10 @@ export async function draftDatasetListPage(
     humLabel,
     revision: draft.revision,
     rows,
+    listedIds: draft.content.datasetIds,
     presence: presenceView(presence, actor.sessionId),
+    updating: draft.updating?.number ?? null,
+    steps,
   }
 }
 
@@ -517,8 +588,9 @@ export interface DatasetListRefusal {
 }
 
 /**
- * Making a dataset, and destroying one this draft made. Both change what the
- * version lists, so both carry the draft's revision.
+ * Making a dataset, destroying one this draft made, and deciding which
+ * datasets the version lists and in what order. All change the draft's
+ * content, so all carry its revision.
  */
 export async function draftDatasetListAction(
   request: Request,
@@ -541,14 +613,37 @@ export async function draftDatasetListAction(
     )
   }
 
-  if (intent !== "delete-dataset") badRequest()
-
   const named = form.get("datasetId")
   const datasetId = identity(typeof named === "string" ? named : undefined)
+  const listing = redirect(href(locale, adminDraftDatasetsPath(researchId, draftId)))
+
+  const change = listingChange(intent, datasetId, form.get("by"))
+  if (change !== null) {
+    const outcome = await changeListing(db, { draftId, revision }, researchId, change)
+    if (outcome.status === "gone") notFound()
+    if (outcome.status === "refused") badRequest()
+    if (outcome.status === "conflict") return { status: "conflict" }
+    return listing
+  }
+
+  if (intent !== "delete-dataset") badRequest()
   const outcome = await deleteDraftDataset(db, { draftId, revision }, datasetId)
   if (outcome.status === "gone") notFound()
   if (outcome.status !== "deleted") return { status: outcome.status }
-  return redirect(href(locale, adminDraftDatasetsPath(researchId, draftId)))
+  return listing
+}
+
+/** The listing change a form asked for, or null for a form that asked something else. */
+function listingChange(
+  intent: FormDataEntryValue | null,
+  datasetId: string,
+  by: FormDataEntryValue | null,
+): ListingChange | null {
+  if (intent === "list-dataset") return { kind: "list", datasetId }
+  if (intent === "unlist-dataset") return { kind: "unlist", datasetId }
+  if (intent !== "move-dataset") return null
+  if (by !== "-1" && by !== "1") badRequest()
+  return { kind: "move", datasetId, by: by === "-1" ? -1 : 1 }
 }
 
 export interface DatasetEditorView {
@@ -557,8 +652,16 @@ export interface DatasetEditorView {
   draftId: string
   datasetId: string
   humLabel: string | null
+  /** Where the draft stands on each of its steps (`DraftSteps`). */
+  steps: DraftStepsView
   datasetLabel: string | null
+  /** The ledger row behind the label, which is what unpinning names. */
+  datasetPinId: string | null
+  /** What the portal would propose as its id, while it has none. */
+  datasetIdSuggestion: string | null
   published: boolean
+  /** The number of the version this draft is the update of, when it is one. */
+  updating: number | null
   /**
    * Null when this draft has not written anything for the dataset yet, which is
    * what makes the first save an insert rather than an update.
@@ -618,13 +721,14 @@ export async function datasetEditorPage(
   // not a dataset this draft could be editing.
   if (row === undefined) notFound()
 
-  const [entry, published, humLabel, catalog, presence, threads] = await Promise.all([
+  const [entry, published, humLabel, catalog, presence, comments, steps] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
-    readPublishedDataset(db, researchId, datasetId),
+    readPublishedDataset(db, researchId, datasetId, draft.updating?.versionId ?? null),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
     activePresence(db, draftId),
-    readThreads(db, draftId),
+    readComments(db, draftId),
+    draftSteps(db, researchId, draftId, draft.content),
   ])
   const box = await adminBox(db, researchId, humLabel)
 
@@ -639,7 +743,12 @@ export async function datasetEditorPage(
     ...namedTerms(content),
     ...(published === null ? [] : namedTerms(published.content)),
   ])
-  const page = await drawDatasetDraft(request, locale, { researchId, draftId }, datasetId)
+  const page = await drawDatasetDraft(
+    request,
+    locale,
+    { researchId, draftId, updating: draft.updating },
+    datasetId,
+  )
 
   return {
     locale,
@@ -648,7 +757,13 @@ export async function datasetEditorPage(
     datasetId,
     humLabel,
     datasetLabel: row.label,
+    datasetPinId: row.pinId,
+    datasetIdSuggestion: humLabel === null || row.label !== null
+      ? null
+      : proposeDatasetId(humLabel, rows.flatMap((one) => one.label === null ? [] : [one.label])),
     published: row.published,
+    updating: draft.updating?.number ?? null,
+    steps,
     revision: entry?.revision ?? null,
     input,
     page,
@@ -659,7 +774,7 @@ export async function datasetEditorPage(
     review: {
       changed,
       previous: published === null ? {} : describedDataset(published.content, changed),
-      threads,
+      comments,
       publishedNumber: published?.number ?? null,
       signedInName: actor.name,
     },
@@ -769,6 +884,61 @@ async function catalogAccepts(
     && input.experiments.every((experiment) => accepts(experiment.values, "experiment"))
 }
 
+/** What pinning a dataset's id answers. */
+export interface DatasetLabelResult {
+  status: "pinned" | "unpinned" | "taken"
+}
+
+/**
+ * Attaching a dataset's id, or taking it off, from the screen the dataset is
+ * written on. **A form post beside a JSON save**: the id is not part of the
+ * description and goes into the ledger the moment it is pinned, so it neither
+ * waits for a save nor moves the entry's revision
+ * (docs/publishing.md の「ラベルを pin する」). **Nothing is redirected** — the
+ * screen posts through a fetcher so that what is typed around the id is not
+ * lost, and reads its listing again once the ledger has moved.
+ */
+export async function datasetLabelAction(
+  request: Request,
+  params: {
+    researchId: string | undefined
+    draftId: string | undefined
+    datasetId: string | undefined
+  },
+): Promise<DatasetLabelResult> {
+  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
+  await requireCapability(request, "manage-labels")
+  const datasetId = identity(params.datasetId)
+
+  const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
+  const row = rows.find((candidate) => candidate.id === datasetId)
+  if (row === undefined) notFound()
+
+  const form = await request.formData()
+  const intent = form.get("intent")
+
+  if (intent === "unpin") {
+    const pinId = identity(readString(form, "pinId"))
+    // Only this dataset's own row: the id of another dataset is not an input
+    // this screen offered.
+    if (row.pinId !== pinId) notFound()
+    const outcome = await unpinLabel(db, pinId, actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    return { status: "unpinned" }
+  }
+
+  if (intent !== "pin") badRequest()
+  const label = form.get("label")
+  if (typeof label !== "string") badRequest()
+  const outcome = await pinLabel(
+    db,
+    { kind: "dataset", label, subjectId: datasetId, isPrimary: true },
+    actorOf(actor),
+  )
+  if (outcome.status === "gone") notFound()
+  return { status: outcome.status === "taken" ? "taken" : "pinned" }
+}
+
 export async function saveDatasetAction(
   request: Request,
   params: {
@@ -782,6 +952,13 @@ export async function saveDatasetAction(
 
   const payload = saveDatasetSchema.safeParse(await request.json())
   if (!payload.success) badRequest()
+  // The screen marks a disordered width `aria-invalid` the moment it is typed
+  // (`dataset-editor.tsx` の `NumberField`), so a save still carrying one went
+  // around the form. Checked here rather than in the schema itself — the draw
+  // preview below parses the same schema from content that is still being
+  // typed, where a width caught mid-edit is ordinary
+  // (`app/admin/dataset-form.server.ts` の `widthsOrdered`).
+  if (!widthsOrdered(payload.data.content)) badRequest()
 
   const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
   const row = rows.find((candidate) => candidate.id === datasetId)
@@ -834,29 +1011,37 @@ export async function presenceAction(
   return { present: presenceView(await activePresence(db, draftId), actor.sessionId) }
 }
 
-/** A new research is created together with the draft it will be written in. */
+/**
+ * A new research is created together with the draft it will be written in.
+ *
+ * **It lands on the research, not in the draft.** What was made is a research,
+ * and its screen is where drafts are made and opened from; landing in the form
+ * hides that the research exists until the way back is pressed. The one thing
+ * to press there is the draft's row. A research made from an application is
+ * different (`templates.server.ts`): its draft already holds values, and what
+ * comes next is checking them.
+ */
 export async function createResearchAction(request: Request, locale: Locale): Promise<Response> {
   await requireCapability(request, "edit-content")
   const created = await createResearchWithDraft(getDb())
-  return redirect(href(locale, adminDraftPath(created.researchId, created.draftId)))
+  return redirect(href(locale, adminResearchPath(created.researchId)))
 }
 
 /** The answers the research screen has that are not a redirect. */
 export type ResearchDetailResult
   = | { status: "conflict" }
-    /**
-     * Which pin the answer is about. **The screen carries one of these forms
-     * per dataset as well as the research's own**, so an answer that did not
-     * name its subject would have to be said above all of them.
-     */
-    | { status: "taken", subjectId: string }
+    /** The version is being updated; stopping the update comes first. */
+    | { status: "updating" }
+    /** The label already names something. */
+    | { status: "taken" }
     /** A research ID was typed in a shape no address could be made from. */
-    | { status: "malformed", subjectId: string }
+    | { status: "malformed" }
 
 /**
- * Everything the research screen does: open a draft, throw one away, take a
- * version out of sight or put it back, and attach or remove a label. They are
- * ordinary form posts told apart by what the form says it is.
+ * Everything the research screen does: open an empty draft or a copy of a
+ * version, throw one away, take a version out of sight, and attach, promote
+ * or remove a research ID. They are ordinary form posts told apart by what
+ * the form says it is.
  *
  * The capability is asked for per operation rather than once at the top, so
  * that what each one requires is written where it is done.
@@ -882,29 +1067,34 @@ export async function researchDetailAction(
       actorOf(actor),
     )
     if (outcome.status === "gone") notFound()
+    if (outcome.status === "updating") return { status: "updating" }
     return back
   }
 
-  if (intent === "pin" || intent === "unpin") {
+  if (intent === "pin" || intent === "unpin" || intent === "make-primary") {
     const actor = await requireCapability(request, "manage-labels")
     if (intent === "unpin") {
       const outcome = await unpinLabel(db, identity(readString(form, "pinId")), actorOf(actor))
       if (outcome.status === "gone") notFound()
       return back
     }
-    const kind = form.get("kind")
-    if (kind !== "hum" && kind !== "dataset") badRequest()
+    if (intent === "make-primary") {
+      const outcome = await promotePin(db, identity(readString(form, "pinId")), actorOf(actor))
+      if (outcome.status === "gone") notFound()
+      return back
+    }
+    // Only the research's own ID is pinned here; a dataset's is pinned where
+    // the dataset is written (`datasetLabelAction`).
     const label = form.get("label")
     if (typeof label !== "string") badRequest()
-    const subjectId = kind === "hum" ? id : identity(readString(form, "datasetId"))
-    if (kind === "hum" && !isHumLabel(label.trim())) return { status: "malformed", subjectId }
+    if (!isHumLabel(label.trim())) return { status: "malformed" }
     const outcome = await pinLabel(
       db,
-      { kind, label, subjectId, isPrimary: form.get("isPrimary") === "on" },
+      { kind: "hum", label, subjectId: id, isPrimary: form.get("isPrimary") === "on" },
       actorOf(actor),
     )
     if (outcome.status === "gone") notFound()
-    return outcome.status === "taken" ? { status: "taken", subjectId } : back
+    return outcome.status === "taken" ? { status: "taken" } : back
   }
 
   if (intent === "delete-research") {
@@ -917,7 +1107,25 @@ export async function researchDetailAction(
   const actor = await requireCapability(request, "edit-content")
 
   if (intent === "create-draft") {
-    const draftId = await createDraft(db, id)
+    const draftId = await createEmptyDraft(db, id)
+    return redirect(href(locale, adminDraftPath(id, draftId)))
+  }
+
+  // Editing a version is opening the draft it is updated in, made now if none
+  // is open. The version itself is not touched (docs/editing.md の「draft」).
+  if (intent === "edit-version") {
+    const outcome = await draftUpdating(db, id, identity(readString(form, "versionId")))
+    if (outcome.status === "gone") notFound()
+    return redirect(href(locale, adminDraftPath(id, outcome.draftId)))
+  }
+
+  // A copy of a version: a draft like any other, opened for editing
+  // (docs/editing.md の「draft」).
+  if (intent === "copy-version") {
+    const number = Number(form.get("number"))
+    if (!Number.isInteger(number)) badRequest()
+    const draftId = await draftCopiedFrom(db, id, number)
+    if (draftId === null) notFound()
     return redirect(href(locale, adminDraftPath(id, draftId)))
   }
 
@@ -980,17 +1188,17 @@ export interface PublishPageView {
   researchId: string
   draftId: string
   humLabel: string | null
+  /** Where the draft stands on each of its steps (`DraftSteps`); the gate is this screen's own. */
+  steps: DraftStepsView
   revision: number
+  /** The number offered first: one past the highest a version holds. */
   nextNumber: number
-  /**
-   * The numbers this draft may take instead of a new one, newest first.
-   * `releaseDate` is set when a version holds it now, which is what the screen
-   * calls updating that version.
-   */
-  choices: { number: number, releaseDate: string | null }[]
-  /** The choice offered first: the version this draft was copied from. */
-  suggestedNumber: number | null
-  today: string
+  /** The numbers versions hold now, newest first — the ones the field refuses. */
+  heldNumbers: number[]
+  /** The day offered as the release date: today, or for an update the day its version went out. */
+  releaseDate: string
+  /** The version this draft updates, when it is an update: what the screen names instead of a number. */
+  updating: { number: number } | null
   blocks: PublishBlockView[]
   groups: PublishGroupView[]
   findingCount: number
@@ -1012,10 +1220,11 @@ export async function publishPage(
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
 ): Promise<PublishPageView> {
-  const { db, researchId, draftId } = await draftOf(request, params)
+  const { db, researchId, draftId, draft } = await draftOf(request, params)
 
   const preview = await publishPreview(db, draftId, await privateNames(researchId))
   if (preview === null) notFound()
+  const steps = await draftSteps(db, researchId, draftId, draft.content, { gate: preview.gate })
 
   const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
   const naming = (datasetId: string): string =>
@@ -1032,9 +1241,9 @@ export async function publishPage(
     humLabel: preview.humLabel,
     revision: preview.revision,
     nextNumber: preview.nextNumber,
-    choices: preview.choices,
-    suggestedNumber: preview.suggestedNumber,
-    today: today(),
+    heldNumbers: preview.heldNumbers,
+    releaseDate: preview.updating?.releaseDate ?? today(),
+    updating: preview.updating === null ? null : { number: preview.updating.number },
     blocks: preview.gate.blocks.map((block) => ({
       kind: block.kind,
       datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,
@@ -1049,6 +1258,7 @@ export async function publishPage(
       naming,
     }),
     findingCount: preview.gate.findings.length,
+    steps,
     researchFields: preview.researchFields,
     datasetChanges: preview.datasetChanges.map((change) => ({
       ...change,
@@ -1214,8 +1424,10 @@ export async function publishAction(
 
   const revision = Number(form.get("revision"))
   if (!Number.isInteger(revision)) badRequest()
-  const number = Number(form.get("number"))
-  if (!Number.isInteger(number) || number < 1) badRequest()
+  // An update carries its version's number, and the screen asks for none.
+  const numberField = form.get("number")
+  const number = numberField === null ? null : Number(numberField)
+  if (number !== null && (!Number.isInteger(number) || number < 1)) badRequest()
   const releaseDate = readString(form, "releaseDate") ?? ""
   if (!RELEASE_DATE.test(releaseDate)) badRequest()
 
@@ -1329,7 +1541,12 @@ export async function draftPageAction(
 
   const content = researchContentOf(payload.data.content)
   if (!content.ok) return null
-  return drawDraft(request, locale, { researchId, draftId, content: content.content })
+  return drawDraft(request, locale, {
+    researchId,
+    draftId,
+    content: content.content,
+    updating: draft.updating,
+  })
 }
 
 /**
@@ -1348,7 +1565,7 @@ export async function datasetPageAction(
     datasetId: string | undefined
   },
 ): Promise<DrawnDataset | null> {
-  const { db, researchId, draftId } = await draftOf(request, params)
+  const { db, researchId, draftId, draft } = await draftOf(request, params)
   const datasetId = identity(params.datasetId)
 
   const payload = saveDatasetSchema.safeParse(await request.json())
@@ -1358,5 +1575,11 @@ export async function datasetPageAction(
   const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
   const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)
   if (!content.ok) return null
-  return drawDatasetDraft(request, locale, { researchId, draftId }, datasetId, content.content)
+  return drawDatasetDraft(
+    request,
+    locale,
+    { researchId, draftId, updating: draft.updating },
+    datasetId,
+    content.content,
+  )
 }

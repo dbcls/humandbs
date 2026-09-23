@@ -31,7 +31,7 @@
  * itself.
  */
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
@@ -39,6 +39,8 @@ import {
   emptyDiseaseRow,
   emptyNumberRow,
   emptyValueInput,
+  highBelowValue,
+  labelCandidatesFor,
   UneditableValueKind,
   type DatasetContentInput,
   type DiseaseRow,
@@ -61,23 +63,24 @@ import {
 import {
   Badge,
   Button,
+  Confirm,
   Fold,
   IconButton,
   Note,
   Stack,
 } from "~/components/base"
-import { CONTROL, PULLDOWN, Pulldown } from "~/components/form"
+import { CONTROL, Field, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, researchPath } from "~/public/urls"
-import { threadsByPath } from "~/review/comments"
+import { commentsByPath } from "~/review/comments"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { PaneSpot, usePanes } from "./admin"
-import { DraftBar, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
+import { usePanes } from "./admin"
+import { DraftHead, DraftTools, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
 import { FileSelection } from "./files"
@@ -88,7 +91,6 @@ import {
   FieldHead,
   PairField,
   ProblemBand,
-  RowButton,
   Section,
   SingleField,
   StateSwitch,
@@ -107,6 +109,7 @@ import {
 const PICKER_RESULTS = 20
 
 /** How long the keys have to be still before the pane beside the form is redrawn. */
+const DATASET_ID = "dataset-id"
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
@@ -130,6 +133,27 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   const subject = { kind: "dataset" as const, datasetId: view.datasetId }
   const termLabelOf = new Map(view.terms.map((term) => [term.id, catalogLabel(term, locale)]))
+  const keyLabelOf = new Map(view.catalog.keys.map((key) => [key.id, catalogLabel(key, locale)]))
+
+  /**
+   * The field's own name for the comment panel's heading: the catalog's own
+   * label for a value slot, the section's name otherwise. Read off the path a
+   * mark is addressed by, the same one the field itself is written at
+   * (`fields.tsx` の `Marks`).
+   */
+  function fieldLabelFor(path: string): string | undefined {
+    const [head, ...rest] = path.split(".")
+    if (head === "releaseDate") return t.releaseDate
+    if (head === "fileSelection") return t.files
+    if (head === "values") return rest[0] === undefined ? t.values : keyLabelOf.get(rest[0]) ?? t.values
+    if (head === "experiments") {
+      if (rest[1] === "label") return t.experimentLabel
+      if (rest[1] === "values") return rest[2] === undefined ? t.values : keyLabelOf.get(rest[2]) ?? t.values
+      return t.experiments
+    }
+    return undefined
+  }
+
   // Declared above the editing state rather than below it: what a field hangs
   // beside itself is passed to the hook as a value at the call.
   const review: FieldReviewData = {
@@ -140,7 +164,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       canResolve: true,
       signedInName: view.review.signedInName,
     },
-    threads: threadsByPath(view.review.threads, subject),
+    comments: commentsByPath(view.review.comments, subject),
     changed: view.review.changed,
     previous: view.review.previous,
     heading: messagesFor(locale).preview.previousPublished,
@@ -191,11 +215,13 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
    * the section that will take it.
    */
   function goTo(path: string): void {
+    // The field itself when it stands open on the form; the section holding it
+    // when it is written inside a panel that is not open.
+    const field = document.querySelector<HTMLElement>(`[data-at="${CSS.escape(path)}"]`)
     const wanted = SECTION_OF[path.split(".")[0] ?? path]
-    if (wanted === undefined) return
-    const section = document.getElementById(wanted)
+    const section = field ?? (wanted === undefined ? null : document.getElementById(wanted))
     if (section === null) return
-    section.scrollIntoView()
+    section.scrollIntoView(field === null ? undefined : { block: "center" })
     // The first box that will take the caret, rather than the first in the
     // markup: the review layer hangs its own hidden boxes beside every field.
     for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
@@ -229,8 +255,10 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     <div onFocusCapture={onFormFocus}>
       <Card under={false}>
         <Stack>
-          {view.review.changed.length > 0 && (
-            <Note kind="plain">{editor.differsCount(view.review.changed.length)}</Note>
+          {view.review.publishedNumber !== null && view.review.changed.length > 0 && (
+            <Note kind="plain">
+              {editor.differsCount(view.review.publishedNumber, view.review.changed.length)}
+            </Note>
           )}
           {editing.conflict !== null && (
             <div onClick={onBandJump}>
@@ -248,6 +276,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           {editing.problems.length > 0 && (
             <ProblemBand locale={locale} problems={editing.problems} />
           )}
+
+          <DatasetIdSection view={view} locale={locale} />
 
           <Section id={BASICS} title={t.basics}>
             <Stack gap="tight">
@@ -320,7 +350,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               >
                 <Fold
                   summary={experiment.label.text === ""
-                    ? t.unnamedExperiment
+                    ? <span className="text-ink-muted">{t.unnamedExperiment}</span>
                     : experiment.label.text}
                   note={experimentNote(experiment)}
                   open={experiment.label.text === ""
@@ -362,6 +392,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const panes = usePanes({
     locale,
     remember: `${view.draftId}:${view.datasetId}`,
+    under: "bar",
     contents: [
       { id: "form", label: editor.paneForm, body: formBody },
       ...([["page", editor.panePageJa, "ja", pageJa], ["page-en", editor.panePageEn, "en", pageEn]] as const).map(
@@ -370,22 +401,17 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           label,
           body: (
             <AnnotationLayer
-              annotate={(anchor) => (
-                <>
-                  {/*
-                  The difference from what is published and the comments belong
-                  to the place a reader looks at; what a save refused and what
-                  somebody else moved belong to the hands typing, and stay in
-                  the form.
-                */}
-                  <FieldReview review={review} at={anchor} />
-                  <PaneSpot
-                    here={anchor === at}
-                    label={editor.goToField}
-                    onGo={() => { goTo(anchor) }}
-                  />
-                </>
-              )}
+              /*
+                The difference from what is published and the comments belong
+                to the place a reader looks at; what a save refused and what
+                somebody else moved belong to the hands typing, and stay in
+                the form. Where the caret is, the page shows on the value itself
+                (`page.tsx` の `Place`).
+              */
+              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
+              here={at}
+              onGo={goTo}
+              goLabel={editor.goToField}
             >
               <PageHead
                 level="p"
@@ -397,7 +423,9 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   </>
                 )}
               >
-                <Badge onBand>{editor.draftBadge}</Badge>
+                <Badge onBand>
+                  {view.updating === null ? editor.draftBadge : editor.updatingBadge(`v${view.updating}`)}
+                </Badge>
               </PageHead>
               <Card>
                 {/* **Nothing is drawn until this language has been drawn.** The
@@ -425,37 +453,33 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   return (
     <Page>
       <Stack>
-        {/* The way out is the list this dataset is in; beside it, the draft's
-            other face. */}
-        <DraftBar
+        {/* The way out is the list this dataset is in. A dataset is a part of
+            the draft rather than a face of its own, so the head carries no
+            second line (`docs/admin-ui.md` の「編集画面」). */}
+        <DraftHead
           locale={locale}
-          heading={view.datasetLabel === null ? t.heading : editor.headingOf(view.datasetLabel)}
+          title={t.heading}
+          aside={view.datasetLabel ?? editor.unpinnedDataset}
+          updating={view.updating}
+          badge={!view.published && <Badge>{messagesFor(locale).admin.detail.unpublishedDataset}</Badge>}
           back={{
             to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
             label: t.backToList,
             icon: "chevron-left",
           }}
-          links={[
-            {
-              to: href(locale, adminDraftReviewPath(researchId, draftId)),
-              label: editor.review,
-              icon: "comment",
-            },
-          ]}
-          note={!view.published && (
-            <span className="text-ink-muted text-xs">
-              {messagesFor(locale).admin.detail.unpublishedDataset}
-            </span>
-          )}
+        />
+        <DraftTools
+          locale={locale}
+          panesControl={panes.control}
+          unresolved={view.steps.unresolved}
+          reviewHref={href(locale, adminDraftReviewPath(researchId, draftId))}
           dirty={editing.dirty}
           saved={editing.saved}
           saving={editing.saving}
           onSave={editing.save}
           presencePath={draftPresencePath(researchId, draftId)}
           presence={view.presence}
-        >
-          {panes.control}
-        </DraftBar>
+        />
 
         {panes.view}
       </Stack>
@@ -550,8 +574,15 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
         const body = value.value
+        // **At the field name's own row, the same place every other row's
+        // delete stands** (`docs/admin-ui.md` の「編集画面」) — not a control of
+        // its own set apart from the field it acts on.
+        const remove = {
+          label: t.removeValue,
+          onClick: () => { onChange(values.filter((row) => row.keyId !== value.keyId)) },
+        }
         return (
-          <Stack key={value.keyId} gap="tight">
+          <div key={value.keyId}>
             {body.kind === "text" && (
               <PairField
                 label={catalogLabel(key, locale)}
@@ -559,6 +590,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 multiline
                 marks={marksFor(at)}
                 locale={locale}
+                remove={remove}
                 onChange={(text) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "text", text } })
                 }}
@@ -574,6 +606,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 multiple={key.multiple}
                 state={body.state}
                 termIds={body.termIds}
+                remove={remove}
                 onChange={(state, termIds) => {
                   replace(value.keyId, {
                     keyId: value.keyId,
@@ -588,8 +621,10 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 locale={locale}
                 marks={marksFor(at)}
                 units={key.inputUnits ?? []}
+                labelCandidates={labelCandidatesFor(key.code)}
                 state={body.state}
                 rows={body.rows}
+                remove={remove}
                 onChange={(next) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
                 }}
@@ -604,18 +639,13 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 known={terms}
                 state={body.state}
                 diseases={body.diseases}
+                remove={remove}
                 onChange={(next) => {
                   replace(value.keyId, { keyId: value.keyId, value: { kind: "disease", ...next } })
                 }}
               />
             )}
-            <div>
-              <RowButton
-                label={t.removeValue}
-                onClick={() => { onChange(values.filter((row) => row.keyId !== value.keyId)) }}
-              />
-            </div>
-          </Stack>
+          </div>
         )
       })}
       {spare.length > 0 && (
@@ -747,30 +777,43 @@ function AddValue({ locale, keys, onAdd }: {
  * when "which number is this" starts to have an answer) or when the row already
  * carries one.
  *
- * **The unit is a plain `<select>` wearing `CONTROL`.** A key offers a few
- * units and that is what a select is for, but everything on this screen is held
- * in React state and `form.tsx` の `Select` posts a `defaultValue`.
+ * **The unit is a `Select` the screen holds.** A key offers a few units and
+ * that is what a select is for; everything on this screen is in React state, so
+ * it is the controlled form and sends nothing of its own.
+ *
+ * **A row's upper end shares the lower end's unit and box.** Typed after the
+ * separator, it is what makes the row a width (`0.9〜1.3 GB`) rather than a bare
+ * number — a second unit for the same row would say the two ends could be
+ * measured differently, which they cannot (`docs/data-model.md` の「値と文」).
+ * A typed upper end below the lower end is a shape the save path refuses
+ * outright (`app/admin/dataset-form.server.ts`), so the box marks itself
+ * wrong the moment it is typed rather than waiting for that refusal
+ * (`docs/ui.md` の「壊れるもの」の「欄の誤りは、その欄が名乗る」).
  */
-function NumberField({ label, locale, marks, units, state, rows, onChange }: {
+function NumberField({ label, locale, marks, units, labelCandidates, state, rows, remove, onChange }: {
   label: string
   locale: Locale
   marks: Marks
   units: string[]
+  /** Free-text suggestions for the label box, not a closed set (`app/admin/dataset-form.ts`). */
+  labelCandidates: readonly string[]
   state: SlotState
   rows: NumberRow[]
+  remove?: { label: string, onClick: () => void }
   onChange: (next: { state: SlotState, rows: NumberRow[] }) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const disabled = state !== "value"
   const named = rows.length > 1 || rows.some((row) => row.label !== "" || row.note !== "")
   const box = `${CONTROL} text-sm disabled:opacity-50`
+  const labelListId = useId()
   const edit = (at: number, next: Partial<NumberRow>) => {
     onChange({ state, rows: rows.map((row, i) => (i === at ? { ...row, ...next } : row)) })
   }
 
   return (
     <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} />
+      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
       <div className="md:max-w-xl">
         <Stack gap="tight">
           <StateSwitch
@@ -778,64 +821,96 @@ function NumberField({ label, locale, marks, units, state, rows, onChange }: {
             onChange={(next) => { onChange({ state: next, rows }) }}
             locale={locale}
           />
-          {rows.map((row, at) => (
-            <div key={at} className="flex flex-wrap items-center gap-2">
-              {named && (
+          {labelCandidates.length > 0 && (
+            <datalist id={labelListId}>
+              {labelCandidates.map((candidate) => <option key={candidate} value={candidate} />)}
+            </datalist>
+          )}
+          {rows.map((row, at) => {
+            const highInvalid = highBelowValue(row)
+            const highErrorId = `${labelListId}-high-${at}`
+            // Rendered as a spread rather than `aria-invalid={false}` — React
+            // writes an `aria-*` prop out whichever way it is set, and a valid
+            // row has nothing to describe (`fields.tsx` の `SlotEditor` の `described`).
+            const invalidDescribed = highInvalid
+              ? { "aria-invalid": true, "aria-describedby": highErrorId }
+              : {}
+            return (
+              <div key={at} className="flex flex-wrap items-center gap-2">
+                {named && (
+                  <input
+                    type="text"
+                    value={row.label}
+                    disabled={disabled}
+                    aria-label={t.numberLabel}
+                    placeholder={t.numberLabel}
+                    list={labelCandidates.length > 0 ? labelListId : undefined}
+                    onChange={(event) => { edit(at, { label: event.target.value }) }}
+                    className={`${box} w-36`}
+                  />
+                )}
                 <input
-                  type="text"
-                  value={row.label}
+                  type="number"
+                  step="any"
+                  value={row.value}
                   disabled={disabled}
-                  aria-label={t.numberLabel}
-                  placeholder={t.numberLabel}
-                  onChange={(event) => { edit(at, { label: event.target.value }) }}
-                  className={`${box} w-36`}
+                  aria-label={label}
+                  onChange={(event) => { edit(at, { value: event.target.value }) }}
+                  className={`${box} w-40`}
                 />
-              )}
-              <input
-                type="number"
-                step="any"
-                value={row.value}
-                disabled={disabled}
-                aria-label={label}
-                onChange={(event) => { edit(at, { value: event.target.value }) }}
-                className={`${box} w-40`}
-              />
-              {units.length > 1
-                ? (
-                    <Pulldown>
-                      <select
+                <span aria-hidden="true" className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={row.high}
+                  disabled={disabled}
+                  aria-label={`${label} ${t.numberHigh}`}
+                  placeholder={t.numberHigh}
+                  {...invalidDescribed}
+                  onChange={(event) => { edit(at, { high: event.target.value }) }}
+                  className={`${box} w-40 ${highInvalid ? "border-danger" : ""}`}
+                />
+                {highInvalid && (
+                  <span id={highErrorId} className="flex items-center gap-1 text-danger text-xs">
+                    <Icon name="alert" aria-hidden="true" />
+                    {t.numberHighInvalid}
+                  </span>
+                )}
+                {units.length > 1
+                  ? (
+                      <Select
+                        label={t.unit}
+                        hideLabel
                         value={row.unit ?? ""}
+                        options={units.map((one) => ({ value: one, label: one }))}
                         disabled={disabled}
-                        aria-label={t.unit}
-                        onChange={(event) => { edit(at, { unit: event.target.value }) }}
-                        className={`${box} ${PULLDOWN}`}
-                      >
-                        {units.map((one) => <option key={one} value={one}>{one}</option>)}
-                      </select>
-                    </Pulldown>
-                  )
-                : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
-              {named && (
-                <input
-                  type="text"
-                  value={row.note}
-                  disabled={disabled}
-                  aria-label={t.numberNote}
-                  placeholder={t.numberNote}
-                  onChange={(event) => { edit(at, { note: event.target.value }) }}
-                  className={`${box} w-36`}
-                />
-              )}
-              {rows.length > 1 && (
-                <IconButton
-                  name="close"
-                  label={t.removeNumber}
-                  disabled={disabled}
-                  onClick={() => { onChange({ state, rows: rows.filter((_, i) => i !== at) }) }}
-                />
-              )}
-            </div>
-          ))}
+                        width="w-28"
+                        onChange={(unit) => { edit(at, { unit }) }}
+                      />
+                    )
+                  : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
+                {named && (
+                  <input
+                    type="text"
+                    value={row.note}
+                    disabled={disabled}
+                    aria-label={t.numberNote}
+                    placeholder={t.numberNote}
+                    onChange={(event) => { edit(at, { note: event.target.value }) }}
+                    className={`${box} w-36`}
+                  />
+                )}
+                {rows.length > 1 && (
+                  <IconButton
+                    name="trash"
+                    label={t.removeNumber}
+                    disabled={disabled}
+                    onClick={() => { onChange({ state, rows: rows.filter((_, i) => i !== at) }) }}
+                  />
+                )}
+              </div>
+            )
+          })}
           {!disabled && (
             <div>
               <Button
@@ -874,6 +949,7 @@ function VocabularyField({
   multiple,
   state,
   termIds,
+  remove,
   onChange,
 }: {
   label: string
@@ -885,27 +961,32 @@ function VocabularyField({
   multiple: boolean
   state: SlotState
   termIds: string[]
+  remove?: { label: string, onClick: () => void }
   onChange: (state: SlotState, termIds: string[]) => void
 }) {
   return (
     <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} />
+      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
       <div className="md:max-w-md">
-        <Stack gap="tight">
-          <StateSwitch
-            state={state}
-            onChange={(next) => { onChange(next, termIds) }}
-            locale={locale}
-          />
-          <TermPicker
-            locale={locale}
-            setId={setId}
-            disabled={state !== "value"}
-            chosen={resolveTerms(known, termIds)}
-            onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
-            onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
-          />
-        </Stack>
+        {/* **The two marks stand beside the search box**, the way a
+            translated field's stand beside its box (`fields.tsx` の
+            `SlotEditor`) — this field has one box, language-less, and the
+            search box is it (`docs/admin-ui.md` の「欄の状態」). */}
+        <TermPicker
+          locale={locale}
+          setId={setId}
+          disabled={state !== "value"}
+          chosen={resolveTerms(known, termIds)}
+          onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
+          onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
+          trailing={(
+            <StateSwitch
+              state={state}
+              onChange={(next) => { onChange(next, termIds) }}
+              locale={locale}
+            />
+          )}
+        />
       </div>
     </Stack>
   )
@@ -930,7 +1011,7 @@ function VocabularyField({
  * a curator away from the source they are copying
  * (`docs/editing.md` の「編集フォーム」).
  */
-function DiseaseField({ label, locale, marks, setId, known, state, diseases, onChange }: {
+function DiseaseField({ label, locale, marks, setId, known, state, diseases, remove, onChange }: {
   label: string
   locale: Locale
   marks: Marks
@@ -938,6 +1019,7 @@ function DiseaseField({ label, locale, marks, setId, known, state, diseases, onC
   known: EditableTerm[]
   state: SlotState
   diseases: DiseaseRow[]
+  remove?: { label: string, onClick: () => void }
   onChange: (next: { state: SlotState, diseases: DiseaseRow[] }) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
@@ -951,7 +1033,7 @@ function DiseaseField({ label, locale, marks, setId, known, state, diseases, onC
 
   return (
     <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} />
+      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
       <div className="md:max-w-xl">
         <Stack gap="tight">
           <StateSwitch
@@ -987,7 +1069,7 @@ function DiseaseField({ label, locale, marks, setId, known, state, diseases, onC
                     className={`${box} min-w-0 flex-1`}
                   />
                   <IconButton
-                    name="close"
+                    name="trash"
                     label={t.removeDisease}
                     disabled={disabled}
                     onClick={() => {
@@ -1059,7 +1141,7 @@ function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): E
  * condition and the way to lift it are the same object, as they are for a chip
  * over a listing.
  */
-function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: {
+function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, trailing }: {
   locale: Locale
   setId: string | null
   /**
@@ -1072,6 +1154,13 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
   chosen: EditableTerm[]
   onAdd: (id: string) => void
   onRemove: (id: string) => void
+  /**
+   * Stood beside the search box, the way a translated field's state marks
+   * stand beside its box (`fields.tsx` の `SlotEditor`). Only a field-level
+   * picker carries one — nested inside a disease row, there is no field-level
+   * state to show.
+   */
+  trailing?: React.ReactNode
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const [find, setFind] = useState("")
@@ -1114,15 +1203,18 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
               ))}
             </ul>
           )}
-      <input
-        type="search"
-        value={find}
-        disabled={disabled}
-        aria-label={t.findTerm}
-        placeholder={t.findTerm}
-        onChange={(event) => { look(event.target.value) }}
-        className={`${CONTROL} text-sm disabled:opacity-50`}
-      />
+      <div className="flex items-center gap-2">
+        <input
+          type="search"
+          value={find}
+          disabled={disabled}
+          aria-label={t.findTerm}
+          placeholder={t.findTerm}
+          onChange={(event) => { look(event.target.value) }}
+          className={`${CONTROL} min-w-0 flex-1 text-sm disabled:opacity-50`}
+        />
+        {trailing}
+      </div>
       {needle !== "" && candidates.length === 0 && search.state === "idle" && (
         <Empty>{t.noCandidate}</Empty>
       )}
@@ -1148,5 +1240,65 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove }: 
         </ul>
       )}
     </Stack>
+  )
+}
+
+/**
+ * The dataset's id, pinned from the screen the dataset is written on.
+ *
+ * **It is not part of the description.** The id goes into the ledger the moment
+ * it is pinned — it neither waits for a save nor moves the entry's revision —
+ * so it is posted as a form of its own beside the JSON save, and through a
+ * fetcher so that what is typed in the form around it survives the answer
+ * (docs/publishing.md の「ラベルを pin する」). Nothing is redirected: the
+ * listing under the screen is read again once the ledger has moved.
+ *
+ * The portal's proposal is written into the box, not chosen for the curator:
+ * an archive's accession is typed over it.
+ */
+function DatasetIdSection({ view, locale }: { view: DatasetEditorView, locale: Locale }) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.datasetEditor
+  const detail = messages.admin.detail
+  const fetcher = useFetcher<{ status: "pinned" | "unpinned" | "taken" } | null>()
+
+  return (
+    <Section id={DATASET_ID} title={t.idHeading}>
+      <Stack gap="tight">
+        <p className="text-ink-muted text-xs">{t.idNote}</p>
+        {view.datasetLabel === null || view.datasetPinId === null
+          ? (
+              <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
+                <Field
+                  label={detail.pinLabel}
+                  name="label"
+                  value={view.datasetIdSuggestion ?? undefined}
+                  placeholder={detail.pinDatasetPlaceholder}
+                  hideLabel
+                />
+                <Submit intent="pin" icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
+              </fetcher.Form>
+            )
+          : (
+              <span className="flex flex-wrap items-center gap-3 text-sm">
+                <span>{view.datasetLabel}</span>
+                <fetcher.Form method="post">
+                  <input type="hidden" name="pinId" value={view.datasetPinId} />
+                  <Confirm
+                    label={detail.unpin}
+                    title={detail.unpinTitle(view.datasetLabel)}
+                    warning={detail.unpinWarning}
+                    confirm={detail.unpinConfirm}
+                    cancel={detail.cancel}
+                    intent="unpin"
+                    icon="close"
+                    size="row"
+                  />
+                </fetcher.Form>
+              </span>
+            )}
+        {fetcher.data?.status === "taken" && <Note kind="danger" live>{detail.pinTaken}</Note>}
+      </Stack>
+    </Section>
   )
 }

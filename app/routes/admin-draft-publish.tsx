@@ -22,8 +22,15 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
+  const t = messages.admin.publish
   return [
-    { title: pageTitle(messages, messages.admin.publish.heading, loaderData.humLabel) },
+    {
+      title: pageTitle(
+        messages,
+        loaderData.updating === null ? t.heading : t.updateHeading,
+        loaderData.humLabel,
+      ),
+    },
     { name: "robots", content: "noindex" },
   ]
 }

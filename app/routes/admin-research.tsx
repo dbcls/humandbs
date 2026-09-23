@@ -1,9 +1,11 @@
 import { data, Form, Link } from "react-router"
 
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
+import type { AdminDraftReviewRow, AdminResearchVersionRow } from "~/admin/pages.server"
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
 import type { AdminDraftRow } from "~/admin/queries.server"
 import {
+  adminDraftDatasetsPath,
   adminDraftPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
@@ -11,32 +13,40 @@ import {
   adminResearchListPath,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Badge, Confirm, Heading, Note, Stack } from "~/components/base"
+import { Badge, ButtonLink, Confirm, Dialog, Heading, Stack, Stated } from "~/components/base"
 import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Counted, Empty, Page, Section, Table, Td } from "~/components/page"
+import { Card, Empty, ExternalLink, Page, Section, Table, Td } from "~/components/page"
+import { minuteInJst } from "~/dates"
 import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href, readLocale, researchPath } from "~/public/urls"
-import type { DraftReviewSummary } from "~/review/queries.server"
 
 import type { Route } from "./+types/admin-research"
 
 /**
- * One research: which labels are pinned to it, what has been published, and
- * what is being worked on.
+ * One research: what is out, what is being written, which IDs name it, and
+ * the way to its box.
  *
  * A research is addressed by its identity here rather than by its hum label,
  * because a research exists before a number has been issued for it — and
  * because a label can be corrected without the page moving.
+ *
+ * **Versions and drafts stand in one list.** Publishing turns a draft into a
+ * version and withdrawing turns a version back into a draft; a row moves and
+ * nothing is added or taken away (docs/publishing.md の「破棄と削除」). Two
+ * sections would draw the same row in two places and leave the reader to work
+ * out that they are one thing.
  *
  * **The ledger is managed here rather than at publish time.** A label is
  * attached to an identity, not to a version, and correcting one is an everyday
  * operation: the number originates as free text in a system upstream that has
  * typed it wrong before. Taking a version out of sight lives here for the same
  * reason — it is an operation on the version, not on anything being written.
+ * **A dataset's id is not pinned here**: datasets are decided on the draft's
+ * own screen, and the id where the dataset is written.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -65,28 +75,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
   const messages = messagesFor(locale)
   const t = messages.admin.detail
 
-  /**
-   * **撥ねられた理由は、その ID を打った欄の下に立つ。** 画面はデータセットの
-   * 数だけ同じ形の欄を持つので、画面の頭にまとめて出すと、どの欄の話なのかを
-   * 読む人が数えることになる。
-   */
-  const pinTrouble = (subjectId: string): string | undefined => {
-    if (actionData === undefined || actionData.status === "conflict") return undefined
-    if (actionData.subjectId !== subjectId) return undefined
-    return actionData.status === "taken" ? t.pinTaken : t.pinMalformed
-  }
-
-  /**
-   * **画面ぜんたいに向いた答えだけが浮く。**撥ねられた ID は打った欄の下に
-   * 立つので (上)、そちらをここに渡すと、どの欄の話かを言わない箱が窓の上に
-   * 出ることになる。
-   */
-  const answer = actionData?.status === "conflict" ? actionData : null
-
   return (
     <Page>
-      <Answered answer={answer} locale={locale}>
-        <Result ok={false}>{t.discardConflict}</Result>
+      <Answered answer={actionData} locale={locale}>
+        {actionData?.status === "conflict" && <Result ok={false}>{t.discardConflict}</Result>}
+        {actionData?.status === "updating" && <Result ok={false}>{t.withdrawUpdating}</Result>}
+        {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
+        {actionData?.status === "malformed" && <Result ok={false}>{t.pinMalformed}</Result>}
       </Answered>
       <Card under={false}>
         <Stack gap="block">
@@ -96,7 +91,80 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               label={t.backToList}
               icon="chevron-left"
             />
+            {/* Last on the row, because it takes the whole research with it.
+                The labels come free again afterwards, and what is left of it
+                is the event. */}
+            <Form method="post">
+              <Confirm
+                label={t.deleteResearch}
+                title={t.deleteResearchTitle(view.humLabel ?? t.heading)}
+                warning={t.deleteResearchWarning}
+                confirm={t.deleteResearchConfirm}
+                cancel={t.cancel}
+                intent="delete-research"
+              />
+            </Form>
           </Heading>
+
+          <Section title={t.rows}>
+            <Stack gap="normal">
+              {/* Drafts first, newest writing first; then the versions, newest
+                  number first. **The first column says which is which**, and
+                  every other column belongs to one kind or the other: a draft
+                  has when it was last written and what its review says, a
+                  version has a number and a day it went out. **The writing is
+                  told to the minute**: drafts carry no name, so two made on
+                  the same day would otherwise be the same row twice. The
+                  table stays when empty: the column names say what would
+                  stand here. */}
+              <Table
+                align="middle"
+                headers={[
+                  t.kind,
+                  t.version,
+                  t.updatedAt,
+                  t.releaseDate,
+                  t.datasets,
+                  t.review,
+                  t.problems,
+                  /* The column of things to press names itself for anyone reading
+                     the row aloud and nowhere else. */
+                  <span key="actions" className="sr-only">{messages.admin.actions}</span>,
+                ]}
+                whenEmpty={t.noRows}
+              >
+                {[...view.drafts]
+                  .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+                  .map((draft) => (
+                    <DraftRow
+                      key={draft.id}
+                      draft={draft}
+                      review={view.reviews.find((row) => row.draftId === draft.id) ?? null}
+                      researchId={view.researchId}
+                      locale={locale}
+                    />
+                  ))}
+                {view.versions.map((version) => (
+                  <VersionRow
+                    key={version.id}
+                    version={version}
+                    review={version.updating === null
+                      ? null
+                      : view.reviews.find((row) => row.draftId === version.updating?.id) ?? null}
+                    humLabel={view.humLabel}
+                    researchId={view.researchId}
+                    locale={locale}
+                  />
+                ))}
+              </Table>
+              {/* An empty draft: what it comes to hold is taken in or typed
+                  afterwards. Under the table and at its end, where a row
+                  would be added. */}
+              <Form method="post" className="flex justify-end">
+                <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createEmptyDraft}</Submit>
+              </Form>
+            </Stack>
+          </Section>
 
           <Section title={t.labels} note={t.labelsNote}>
             <Stack gap="normal">
@@ -105,7 +173,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 : (
                     /*
                       **ID は縦に読み、3 つの列で揃える。**1 行に流すと 2 本目の
-                      ID が 1 本目の操作の隣に来て、どの外すがどの ID のものか
+                      ID が 1 本目の操作の隣に来て、どの操作がどの ID のものか
                       読めなくなる。**列にするのは印の幅が揃わないため** —
                       「primary」と「secondary」は 11px 違うので、行ごとに流すと
                       ID の頭がその差だけ食い違う。
@@ -124,150 +192,84 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                             {label.isPrimary ? t.primary : t.secondary}
                           </Badge>
                           <span>{label.label}</span>
-                          <Unpin pinId={label.id} subject={label.label} locale={locale} />
+                          <span className="flex items-center gap-1">
+                            {/* Moving a label is not taking it away: the one
+                                that was primary stays, as secondary. */}
+                            {!label.isPrimary && (
+                              <Form method="post">
+                                <input type="hidden" name="pinId" value={label.id} />
+                                <Submit intent="make-primary" size="row" icon={<Icon name="link" />}>
+                                  {t.makePrimary}
+                                </Submit>
+                              </Form>
+                            )}
+                            <Unpin pinId={label.id} subject={label.label} locale={locale} />
+                          </span>
                         </li>
                       ))}
                     </ul>
                   )}
-              <PinForm
-                kind="hum"
-                placeholder={t.pinPlaceholder}
-                suggestion={null}
-                problem={pinTrouble(view.researchId)}
-                locale={locale}
-              />
-            </Stack>
-          </Section>
-
-          <Section title={t.versions} note={t.versionsNote}>
-            {/* 0 件でも表は消さない — 列の名前がここに何が並ぶかを言っている。 */}
-            {/* **状態の列を持たない。** 並んでいることが公開されていることなので、
-                行が言えるのは「出ている」だけになる。 */}
-            <Counted locale={locale} total={view.versions.length} />
-            <Table
-              align="middle"
-              headers={[
-                t.version,
-                t.releaseDate,
-                /* The column of things to press names itself for anyone reading
-                   the row aloud and nowhere else. */
-                <span key="actions" className="sr-only">{messages.admin.actions}</span>,
-              ]}
-              whenEmpty={t.noVersions}
-            >
-              {view.versions.map((version) => (
-                <tr key={version.id}>
-                  <Td className="whitespace-nowrap">
-                    {view.humLabel === null
-                      ? `v${version.number}`
-                      : (
-                          <Link to={href(locale, `${researchPath(view.humLabel)}/v${version.number}`)}>
-                            {`v${version.number}`}
-                          </Link>
-                        )}
-                  </Td>
-                  <Td className="whitespace-nowrap">{version.releaseDate}</Td>
-                  <Td holds="control">
-                    <Withdraw versionId={version.id} number={version.number} locale={locale} />
-                  </Td>
-                </tr>
-              ))}
-            </Table>
-          </Section>
-
-          <Section title={t.drafts} note={t.draftsNote}>
-            <Stack gap="normal">
+              {/*
+                **Attaching an ID is a panel, not a form on the page.** It is
+                done once when the number is issued and again only to correct
+                it; a box and a checked box standing open under every research
+                would be the loudest thing on a screen about something else.
+                Making it primary demotes the one that was, which keeps the old
+                spelling resolving. What has to hold is that no two identities
+                carry the same one, and that is the ledger's unique constraint
+                rather than anything this form can check.
+              */}
               <Form method="post">
-                <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createDraft}</Submit>
-              </Form>
-              <Counted locale={locale} total={view.drafts.length} />
-              {view.drafts.length === 0
-                ? <Empty>{t.noDrafts}</Empty>
-                : (
-                    <ul className="flex flex-col gap-3">
-                      {view.drafts.map((draft) => (
-                        <DraftRow
-                          key={draft.id}
-                          draft={draft}
-                          review={view.reviews.find((row) => row.draftId === draft.id) ?? null}
-                          researchId={view.researchId}
-                          locale={locale}
-                        />
-                      ))}
-                    </ul>
+                <Dialog
+                  label={t.addLabel}
+                  title={t.addLabelTitle}
+                  icon={<Icon name="plus" />}
+                  dismiss={t.cancel}
+                  action={() => (
+                    <Submit intent="pin" variant="primary" icon={<Icon name="link" />}>
+                      {t.pinSubmit}
+                    </Submit>
                   )}
+                >
+                  {/* **研究 ID の形は 1 つしかない。** dataset の ID は JGAD にも
+                      NHA にもなるが、ここで打つのは hum のほうだけ。 */}
+                  <Field
+                    label={t.pinLabel}
+                    name="label"
+                    placeholder={t.pinPlaceholder}
+                    pattern={HUM_LABEL_PATTERN}
+                    width="w-full"
+                  />
+                  <Checkbox label={t.pinPrimary} name="isPrimary" checked />
+                </Dialog>
+              </Form>
             </Stack>
           </Section>
 
-          <Section title={t.datasets}>
-            <Counted locale={locale} total={view.datasets.length} />
-            {view.datasets.length === 0
-              ? <Empty>{t.noDatasets}</Empty>
-              : (
-                  <Stack gap="tight" as="ul">
-                    {view.datasets.map((row) => (
-                      // The same grouping the research IDs above take: what is
-                      // read, then a step, then what acts on it.
-                      <li key={row.id} className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="flex items-center gap-2">
-                          <span>{row.label ?? messages.admin.editor.unpinnedDataset}</span>
-                          {!row.published && (
-                            <span className="text-ink-muted text-xs">{t.unpublishedDataset}</span>
-                          )}
-                        </span>
-                        {row.pinId === null
-                          ? (
-                              <PinForm
-                                kind="dataset"
-                                datasetId={row.id}
-                                placeholder={t.pinDatasetPlaceholder}
-                                suggestion={view.datasetIdSuggestion}
-                                problem={pinTrouble(row.id)}
-                                locale={locale}
-                              />
-                            )
-                          : (
-                              <Unpin
-                                pinId={row.pinId}
-                                subject={row.label ?? messages.admin.editor.unpinnedDataset}
-                                locale={locale}
-                              />
-                            )}
-                      </li>
-                    ))}
-                  </Stack>
-                )}
-          </Section>
-
-          <Section title={messages.admin.files.heading}>
+          {/* The box is not a draft's and not a version's, so it is reached
+              from here and not from either (docs/files.md の「画面」). The name
+              does not say what is in it, which is why this one section has a
+              line under its name. */}
+          <Section title={messages.admin.files.heading} note={t.filesNote}>
+            {/* **The way in is a link, and says it goes somewhere.** A button
+                standing alone under a section reads as something done here;
+                the one control this section has leads to another screen, so it
+                wears the face of a way there — the word and the mark after it
+                (`docs/ui.md` の「管理画面の枠」) — with what the box holds beside it. */}
             <p className="flex flex-wrap items-center gap-3 text-sm">
+              <Link
+                to={href(locale, adminResearchFilesPath(view.researchId))}
+                className="inline-flex items-center gap-1 font-semibold"
+              >
+                {t.openFiles}
+                <Icon name="chevron-right" aria-hidden="true" />
+              </Link>
               <span className="text-ink-muted">
                 {view.box === null
                   ? messages.admin.files.unavailable
                   : messages.admin.files.summary(view.box.count, formatSize(view.box.bytes))}
               </span>
-              <Link to={href(locale, adminResearchFilesPath(view.researchId))}>
-                {messages.admin.files.open}
-              </Link>
             </p>
-          </Section>
-
-          {/*
-            Last, because it takes the whole research with it. The labels come
-            free again afterwards, and what is left of it is the event.
-          */}
-          <Section title={t.deleteResearch}>
-            <Form method="post">
-              <Confirm
-                label={t.deleteResearch}
-                title={t.deleteResearchTitle(view.humLabel ?? t.heading)}
-                warning={t.deleteResearchWarning}
-                confirm={t.deleteResearchConfirm}
-                cancel={t.cancel}
-              >
-                <input type="hidden" name="intent" value="delete-research" />
-              </Confirm>
-            </Form>
           </Section>
         </Stack>
       </Card>
@@ -276,30 +278,268 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 }
 
 /**
- * Taking a version back. Nothing beside it puts it back, because what comes out
- * is a draft: the way back is to edit it and publish it under the number it
- * left free.
+ * A draft: when it was last written to, what its steps say, and the three
+ * things done to one. **A draft is a draft** — it does not say which version
+ * it came from, because it does not know (docs/editing.md の「draft」).
+ *
+ * **Every fact beside it is the way to the screen that fact is about**
+ * (docs/editing.md の「draft」): the dataset count leads to the dataset
+ * listing, the unresolved count to the review screen, a shortcoming to the
+ * publish confirmation.
+ *
+ * Discarding asks twice. It takes the whole draft with it and cannot be undone,
+ * and the revision travels with the request so a draft somebody has edited in
+ * the meantime is not thrown away on the strength of a stale screen.
  */
-function Withdraw({ versionId, number, locale }: {
-  versionId: string
-  number: number
+function DraftRow({ draft, review, researchId, locale }: {
+  draft: AdminDraftRow
+  review: AdminDraftReviewRow | null
+  researchId: string
+  locale: Locale
+}) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.detail
+
+  return (
+    <tr>
+      <Td nowrap>
+        <Stated icon="edit">{t.draft}</Stated>
+      </Td>
+      <Td />
+      <Td nowrap>{minuteInJst(draft.updatedAt)}</Td>
+      <Td />
+      <Td>
+        <Datasets
+          count={review?.datasets ?? 0}
+          to={href(locale, adminDraftDatasetsPath(researchId, draft.id))}
+          locale={locale}
+        />
+      </Td>
+      <Td><Review review={review} to={href(locale, adminDraftReviewPath(researchId, draft.id))} locale={locale} /></Td>
+      <Td><Problems review={review} to={href(locale, adminDraftPublishPath(researchId, draft.id))} locale={locale} /></Td>
+      <Td nowrap holds="control">
+        <span className="flex items-center gap-1">
+          <ButtonLink
+            to={href(locale, adminDraftPath(researchId, draft.id))}
+            size="row"
+            icon={<Icon name="edit" />}
+          >
+            {t.edit}
+          </ButtonLink>
+          <ButtonLink
+            to={href(locale, adminDraftPublishPath(researchId, draft.id))}
+            size="row"
+            icon={<Icon name="upload" />}
+          >
+            {messages.admin.publish.open}
+          </ButtonLink>
+          <Form method="post">
+            <input type="hidden" name="draftId" value={draft.id} />
+            <input type="hidden" name="revision" value={draft.revision} />
+            <Confirm
+              label={t.discard}
+              title={t.discardTitle}
+              warning={t.discardWarning}
+              confirm={t.discardConfirm}
+              cancel={t.cancel}
+              intent="discard-draft"
+              size="row"
+            />
+          </Form>
+        </span>
+      </Td>
+    </tr>
+  )
+}
+
+/** How many datasets a draft would list, which is always somewhere to go — even
+ * an empty list has a screen to add the first one on. */
+function Datasets({ count, to, locale }: { count: number, to: string, locale: Locale }) {
+  const t = messagesFor(locale).admin.detail
+  return <Link to={to}>{t.datasetCount(count)}</Link>
+}
+
+/*
+  **A state every row has is a mark and a word; a box is for what only some
+  rows have** (docs/ui.md の「壊れるもの」). Whether a draft is shared, every
+  draft answers — so it is a mark. Unresolved comments are a box, because they
+  are what a reader is picking out — and, having something to pick out, the way
+  to the screen that reads them. A version being updated shows its draft's in
+  the cells a version leaves empty.
+*/
+function Review({ review, to, locale }: { review: AdminDraftReviewRow | null, to: string, locale: Locale }) {
+  const t = messagesFor(locale).admin.detail
+  if (review === null) return null
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {review.shared
+        ? <Stated icon="link">{t.shared}</Stated>
+        : review.expired
+          ? <Stated icon="link">{t.shareExpired}</Stated>
+          : <Stated icon="lock">{t.notShared}</Stated>}
+      {review.unresolved > 0 && (
+        <Link to={to}>
+          <Badge tone="accent" icon={<Icon name="comment" />}>{t.unresolved(review.unresolved)}</Badge>
+        </Link>
+      )}
+    </span>
+  )
+}
+
+/**
+ * What the publish gate says of a draft: what would stop it and what it would
+ * ask to confirm, each leading to the confirmation screen that lists them.
+ * Nothing to stop and nothing to confirm is a state of its own, the same shape
+ * as "shared" — a mark and a word, not a box, because every draft has it or
+ * does not.
+ */
+function Problems({ review, to, locale }: { review: AdminDraftReviewRow | null, to: string, locale: Locale }) {
+  const t = messagesFor(locale).admin.detail
+  if (review === null) return null
+  if (review.blocks === 0 && review.findings === 0) return <Stated icon="check">{t.ready}</Stated>
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {review.blocks > 0 && (
+        <Link to={to}>
+          <Badge tone="danger" icon={<Icon name="alert" />}>{t.blocked(review.blocks)}</Badge>
+        </Link>
+      )}
+      {review.findings > 0 && (
+        <Link to={to}>
+          <Badge tone="warning" icon={<Icon name="warning" />}>{t.toConfirm(review.findings)}</Badge>
+        </Link>
+      )}
+    </span>
+  )
+}
+
+/**
+ * A version: its number, which is the way to the page it is (in a new tab —
+ * the reader is here to work, and the page is what they are checking), the
+ * day it was published and the day it says it was.
+ *
+ * **Editing one does not take it out.** It opens the draft the version is
+ * updated in — made now if none is open — and the version stays as it is until
+ * that draft is published in its place (docs/editing.md の「draft」). **The
+ * update is a state of this row, not a row of its own**: while it is on, the
+ * row says so, carries the draft's day, dataset count, review and
+ * shortcomings in the cells a version leaves empty, and offers stopping it;
+ * and the version cannot be withdrawn until it is stopped. Making a draft from
+ * a version copies it and leaves it out; pressed twice it makes two.
+ */
+function VersionRow({ version, review, humLabel, researchId, locale }: {
+  version: AdminResearchVersionRow
+  /** What the review says of the draft it is updated in, while it is. */
+  review: AdminDraftReviewRow | null
+  humLabel: string | null
+  researchId: string
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.detail
+  const name = `v${version.number}`
+  const updating = version.updating
   return (
-    <Form method="post">
-      <Confirm
-        label={t.withdraw}
-        title={t.withdrawTitle(`v${number}`)}
-        warning={t.withdrawWarning}
-        confirm={t.withdrawConfirm}
-        cancel={t.cancel}
-        size="row"
-      >
-        <input type="hidden" name="intent" value="withdraw-version" />
-        <input type="hidden" name="versionId" value={versionId} />
-      </Confirm>
-    </Form>
+    <tr>
+      <Td nowrap>
+        <span className="flex flex-wrap items-center gap-2">
+          {/* The same mark the listing gives a published research. */}
+          <Stated icon="eye">{t.published}</Stated>
+          {updating !== null && (
+            <Badge tone="accent" icon={<Icon name="edit" />}>{t.updating}</Badge>
+          )}
+        </span>
+      </Td>
+      <Td nowrap>
+        {humLabel === null
+          ? <span>{name}</span>
+          : (
+              <ExternalLink to={href(locale, `${researchPath(humLabel)}/${name}`)} locale={locale}>
+                {name}
+              </ExternalLink>
+            )}
+      </Td>
+      <Td nowrap>{minuteInJst(updating === null ? version.updatedAt : updating.updatedAt)}</Td>
+      <Td nowrap>{version.releaseDate}</Td>
+      <Td>
+        {updating === null
+          ? t.datasetCount(version.datasets)
+          : (
+              <Datasets
+                count={review?.datasets ?? 0}
+                to={href(locale, adminDraftDatasetsPath(researchId, updating.id))}
+                locale={locale}
+              />
+            )}
+      </Td>
+      <Td>
+        {updating !== null && (
+          <Review review={review} to={href(locale, adminDraftReviewPath(researchId, updating.id))} locale={locale} />
+        )}
+      </Td>
+      <Td>
+        {updating !== null && (
+          <Problems review={review} to={href(locale, adminDraftPublishPath(researchId, updating.id))} locale={locale} />
+        )}
+      </Td>
+      <Td nowrap holds="control">
+        <span className="flex items-center gap-1">
+          {updating === null
+            ? (
+                <Form method="post">
+                  <input type="hidden" name="versionId" value={version.id} />
+                  <Submit intent="edit-version" size="row" icon={<Icon name="edit" />}>{t.edit}</Submit>
+                </Form>
+              )
+            : (
+                <>
+                  <ButtonLink
+                    to={href(locale, adminDraftPath(researchId, updating.id))}
+                    size="row"
+                    icon={<Icon name="edit" />}
+                  >
+                    {t.edit}
+                  </ButtonLink>
+                  {/* Stopping is discarding the draft; the version is not
+                      touched, which is what the panel says. */}
+                  <Form method="post">
+                    <input type="hidden" name="draftId" value={updating.id} />
+                    <input type="hidden" name="revision" value={updating.revision} />
+                    <Confirm
+                      label={t.stopUpdating}
+                      title={t.stopUpdatingTitle(name)}
+                      warning={t.stopUpdatingWarning}
+                      confirm={t.stopUpdatingConfirm}
+                      cancel={t.cancel}
+                      intent="discard-draft"
+                      icon="close"
+                      size="row"
+                    />
+                  </Form>
+                </>
+              )}
+          <Form method="post">
+            <input type="hidden" name="number" value={version.number} />
+            <Submit intent="copy-version" size="row" icon={<Icon name="plus" />}>{t.copyToDraft}</Submit>
+          </Form>
+          {/* Taking a version out of sight: the mark is the one the listing
+              gives what is not published, not the one for throwing away. */}
+          <Form method="post">
+            <input type="hidden" name="versionId" value={version.id} />
+            <Confirm
+              label={t.withdraw}
+              title={t.withdrawTitle(name)}
+              warning={t.withdrawWarning}
+              confirm={t.withdrawConfirm}
+              cancel={t.cancel}
+              intent="withdraw-version"
+              icon="eye-off"
+              size="row"
+              disabled={updating === null ? undefined : t.withdrawUpdating}
+            />
+          </Form>
+        </span>
+      </Td>
+    </tr>
   )
 }
 
@@ -307,124 +547,17 @@ function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, loc
   const t = messagesFor(locale).admin.detail
   return (
     <Form method="post">
+      <input type="hidden" name="pinId" value={pinId} />
       <Confirm
         label={t.unpin}
         title={t.unpinTitle(subject)}
         warning={t.unpinWarning}
         confirm={t.unpinConfirm}
         cancel={t.cancel}
+        intent="unpin"
+        icon="close"
         size="row"
-      >
-        <input type="hidden" name="intent" value="unpin" />
-        <input type="hidden" name="pinId" value={pinId} />
-      </Confirm>
+      />
     </Form>
-  )
-}
-
-/**
- * Attaching a label. Making it primary demotes the one that was, which keeps
- * the old spelling resolving: moving a label is not taking it away. What has to
- * hold is that no two identities carry the same one, and that is the ledger's
- * unique constraint rather than anything this form can check.
- */
-function PinForm({ kind, datasetId, placeholder, suggestion, problem, locale }: {
-  kind: "hum" | "dataset"
-  datasetId?: string
-  placeholder: string
-  suggestion: string | null
-  /** 直前の試みが撥ねられた理由。**この欄に打たれたものについてだけ**。 */
-  problem?: string
-  locale: Locale
-}) {
-  const t = messagesFor(locale).admin.detail
-
-  return (
-    <Stack gap="tight">
-      {/* **1 行に並ぶものは、中心で揃える。** 名前を欄の上に置くと行が 2 段になり、
-          下端で揃えた欄・チェック・ボタンの中心が 24px 以上ばらける。名前は
-          読み上げのために残し、形の見本は欄の中の placeholder が言う。 */}
-      <Form method="post" className="flex flex-wrap items-center gap-3">
-        <input type="hidden" name="kind" value={kind} />
-        {datasetId !== undefined && <input type="hidden" name="datasetId" value={datasetId} />}
-        <Field
-          label={t.pinLabel}
-          name="label"
-          value={kind === "dataset" ? suggestion ?? undefined : undefined}
-          placeholder={placeholder}
-          // **研究 ID の形は 1 つしかない。** dataset の ID は JGAD にも NHA にも
-          // なるので、形を決めているのは hum のほうだけ。
-          pattern={kind === "hum" ? HUM_LABEL_PATTERN : undefined}
-          hideLabel
-        />
-        <Checkbox label={t.pinPrimary} name="isPrimary" checked />
-        <Submit intent="pin" icon={<Icon name="link" />}>{t.pinSubmit}</Submit>
-      </Form>
-      {problem !== undefined && <Note kind="danger" live>{problem}</Note>}
-    </Stack>
-  )
-}
-
-/**
- * Discarding asks twice. It takes the whole draft with it and cannot be undone,
- * and the revision travels with the request so a draft somebody has edited in
- * the meantime is not thrown away on the strength of a stale screen.
- */
-function DraftRow({ draft, review, researchId, locale }: {
-  draft: AdminDraftRow
-  review: DraftReviewSummary | null
-  researchId: string
-  locale: Locale
-}) {
-  const messages = messagesFor(locale)
-  const t = messages.admin.detail
-  const flags = messages.admin.research.flags
-
-  return (
-    <li className="rounded border border-line px-4 py-3">
-      <Stack gap="tight">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Link to={href(locale, adminDraftPath(researchId, draft.id))}>{t.edit}</Link>
-            <Link to={href(locale, adminDraftPublishPath(researchId, draft.id))}>
-              {messages.admin.publish.open}
-            </Link>
-            <Link to={href(locale, adminDraftReviewPath(researchId, draft.id))}>{t.review}</Link>
-            {review !== null && (
-              <span className="text-ink-muted text-xs">
-                {review.shared ? t.shared : review.expired ? t.shareExpired : t.notShared}
-              </span>
-            )}
-            {review !== null && review.unresolved > 0 && (
-              <Badge tone="accent">{t.openComments(review.unresolved)}</Badge>
-            )}
-            <span className="text-ink-muted text-xs">
-              {`${t.updatedAt}: ${draft.updatedAt.slice(0, 10)}`}
-            </span>
-            <span className="text-ink-muted text-xs">
-              {draft.copiedFromNumber === null
-                ? t.copiedFromNone
-                : t.copiedFrom(draft.copiedFromNumber)}
-            </span>
-            {draft.flags.unsettled && <Badge tone="accent">{flags.unsettled}</Badge>}
-            {draft.flags.untranslated && <Badge tone="accent">{flags.untranslated}</Badge>}
-          </div>
-          <Form method="post">
-            <Confirm
-              label={t.discard}
-              title={t.discardTitle}
-              warning={t.discardWarning}
-              confirm={t.discardConfirm}
-              cancel={t.cancel}
-              size="row"
-            >
-              <input type="hidden" name="intent" value="discard-draft" />
-              <input type="hidden" name="draftId" value={draft.id} />
-              <input type="hidden" name="revision" value={draft.revision} />
-            </Confirm>
-          </Form>
-        </div>
-      </Stack>
-    </li>
   )
 }

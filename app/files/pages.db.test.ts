@@ -15,7 +15,16 @@ import {
   privatePrefix,
   publicPrefix,
 } from "./box"
-import { commonFilesAction, filesAction, filesPage, fileUploadAction } from "./pages.server"
+import { today } from "~/dates"
+
+import {
+  commonFilesAction,
+  commonFilesPage,
+  commonUploadAction,
+  filesAction,
+  filesPage,
+  fileUploadAction,
+} from "./pages.server"
 import { clearPrefix, keysUnder, putThroughProxy, putTestObject } from "./_store"
 
 /**
@@ -109,8 +118,16 @@ function sentTo(answer: unknown): [string, [string, string][]] {
 }
 
 /** The ordering, page size and page a listing was read at, with something that is not one of them. */
-const READ_AT = "?sort=size&order=desc&size=50&page=2&q=unrelated"
-const KEPT: [string, string][] = [["sort", "size"], ["order", "desc"], ["size", "50"], ["page", "2"]]
+/** The settings this box is read at — what narrows it is one of them — with something that is not one. */
+const READ_AT = "?sort=size&order=desc&size=50&page=2&q=unrelated&state=public&other=x"
+const KEPT: [string, string][] = [
+  ["sort", "size"],
+  ["order", "desc"],
+  ["size", "50"],
+  ["page", "2"],
+  ["q", "unrelated"],
+  ["state", "public"],
+]
 
 async function thrown(work: () => Promise<unknown>): Promise<Response> {
   const result = await work().then(() => null, (error: unknown) => error)
@@ -148,7 +165,31 @@ describe("the box screen", () => {
     const view = await filesPage(get(token), JA, researchId)
 
     expect(view.total).toBe(2)
-    expect(view.totalBytes).toBe(8)
+    expect(view.counts).toEqual({ public: 0, private: 2 })
+  })
+
+  it("keeps the files whose name holds every word typed, and the side asked for, counting each side", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open-a.zip`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open-b.txt`)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}closed-a.zip`)
+    const names = async (search: string) =>
+      (await filesPage(get(token, search), JA, researchId)).rows?.map((row) => row.name)
+
+    expect(await names("?q=ZIP%20a")).toEqual(["closed-a.zip", "open-a.zip"])
+    expect(await names("?state=public")).toEqual(["open-a.zip", "open-b.txt"])
+    expect(await names("?state=private")).toEqual(["closed-a.zip"])
+    // Both sides is every file; a side that is not one is not a side.
+    expect(await names("?state=public&state=private")).toHaveLength(3)
+    expect(await names("?state=moved")).toHaveLength(3)
+
+    // The sides are counted with the side condition off and the words on.
+    const narrowed = await filesPage(get(token, "?q=zip&state=private"), JA, researchId)
+    expect(narrowed.states).toEqual(["private"])
+    expect(narrowed.rows?.map((row) => row.name)).toEqual(["closed-a.zip"])
+    expect(narrowed.counts).toEqual({ public: 1, private: 1 })
+    expect(narrowed.total).toBe(1)
   })
 
   it("cuts the box at the page size asked for, and at the default for any other", async () => {
@@ -264,6 +305,68 @@ describe("the box screen", () => {
       .filter((row) => row.subjectType === "file")
     expect(events.map((row) => row.action)).toEqual(["delete-file"])
     expect(only(events).subjectId).toBe("a.zip")
+  })
+
+  const rename = (token: string, from: string, to: string, search = "") =>
+    filesAction(postForm(token, [["intent", "rename"], ["from", from], ["to", to]], search), JA, researchId)
+
+  it("renames a private file on its own side, and writes nothing down", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`, "bytes")
+
+    const answer = await rename(token, "a.zip", "b.zip", READ_AT)
+
+    expect(sentTo(answer)).toEqual([`/admin/research/${researchId}/files`, KEPT])
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}b.zip`])
+    expect((await db.select().from(s.event)).filter((row) => row.subjectType === "file")).toEqual([])
+  })
+
+  it("renames a public file on both sides, and writes the move as an address that starts and one that stops", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    await rename(token, "a.zip", "b.zip")
+
+    expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(humLabel))).toEqual([`${publicPrefix(humLabel)}b.zip`])
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}b.zip`])
+    const events = (await db.select().from(s.event)).filter((row) => row.subjectType === "file")
+    expect(events.map((row) => [row.action, row.subjectId])).toEqual([
+      ["publish-file", "b.zip"],
+      ["delete-file", "a.zip"],
+    ])
+  })
+
+  it("refuses a name that is a file already on either side, and moves nothing", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}b.zip`)
+
+    expect(await rename(token, "a.zip", "b.zip")).toEqual({ status: "name-taken" })
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
+  })
+
+  it("refuses a name with a separator, since the box is flat", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    expect(await rename(token, "a.zip", "dir/a.zip")).toEqual({ status: "malformed-name" })
+    expect(await rename(token, "a.zip", "")).toEqual({ status: "malformed-name" })
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
+  })
+
+  it("leaves a file alone while its switch is still queued", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish" })
+
+    expect(await rename(token, "a.zip", "b.zip")).toEqual({ status: "switching" })
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
   })
 })
 
@@ -418,6 +521,67 @@ describe("an upload", () => {
     )
   })
 
+  it("says which of the names the box already holds, from either side of the store", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}b.zip`)
+
+    const answer = await fileUploadAction(
+      postJson(token, { kind: "check", names: ["c.zip", "b.zip", "a.zip"] }),
+      researchId,
+    )
+
+    expect(answer).toEqual({ kind: "check", existing: ["b.zip", "a.zip"] })
+  })
+
+  it("holds none of the names while the box is empty", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+
+    const answer = await fileUploadAction(
+      postJson(token, { kind: "check", names: ["a.zip"] }),
+      researchId,
+    )
+
+    expect(answer).toEqual({ kind: "check", existing: [] })
+  })
+
+  it("looks at the private side alone while no label has been pinned", async () => {
+    await research(false)
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    const answer = await fileUploadAction(
+      postJson(token, { kind: "check", names: ["a.zip", "b.zip"] }),
+      researchId,
+    )
+
+    expect(answer).toEqual({ kind: "check", existing: ["a.zip"] })
+  })
+
+  it("refuses a check that names something outside the box, even among good names", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+
+    const refusal = await thrown(() => fileUploadAction(
+      postJson(token, { kind: "check", names: ["a.zip", "../escape.zip"] }),
+      researchId,
+    ))
+    expect(refusal.status).toBe(400)
+  })
+
+  it("refuses a check that names nothing", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+
+    const refusal = await thrown(() => fileUploadAction(
+      postJson(token, { kind: "check", names: [] }),
+      researchId,
+    ))
+    expect(refusal.status).toBe(400)
+  })
+
   it("overwrites when the same name is sent again, because the name is the key", async () => {
     await research()
     const token = await signIn(CURATOR, true)
@@ -489,6 +653,94 @@ describe("the article assets", () => {
   async function held(): Promise<string[]> {
     return keysUnder(PUBLIC_BUCKET, commonPrefix() + MINE)
   }
+
+  function getCommon(token: string, search = ""): Request {
+    const headers = new Headers()
+    headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
+    return new Request(`http://localhost:8080/admin/files${search}`, { headers })
+  }
+
+  function postCommonJson(token: string, payload: unknown): Request {
+    const headers = new Headers({ "content-type": "application/json" })
+    headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
+    return new Request("http://localhost:8080/admin/files/upload", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    })
+  }
+
+  /** A name an upload could carry: flat, under this test's own prefix all the same. */
+  const flat = (slug: string): string => `${MINE}${counter}-${slug}`
+
+  /** The box is shared with whatever else the store holds, so every question is put under this test's own prefix. */
+  const own = (): string => `${MINE}${counter}/`
+  const under = (rest = ""): string => `?q=${encodeURIComponent(own())}${rest}`
+
+  /** The settings this box is read at — what narrows it is one of them — with something that is not one. */
+  const READ_COMMON_AT = "?sort=size&order=desc&size=50&page=2&q=pdf%20dac&from=2026-09-01&to=2026-09-30&other=x"
+  const KEPT_COMMON: [string, string][] = [
+    ["sort", "size"],
+    ["order", "desc"],
+    ["size", "50"],
+    ["page", "2"],
+    ["q", "pdf dac"],
+    ["from", "2026-09-01"],
+    ["to", "2026-09-30"],
+  ]
+
+  it("says which names are already in the box, and writes nothing to the trail for asking", async () => {
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, at(flat("a.png")))
+
+    const answer = await commonUploadAction(
+      postCommonJson(token, { kind: "check", names: [flat("b.png"), flat("a.png")] }),
+    )
+
+    expect(answer).toEqual({ kind: "check", existing: [flat("a.png")] })
+    const events = (await db.select().from(s.event)).filter((row) => row.subjectType === "file")
+    expect(events).toHaveLength(0)
+  })
+
+  it("keeps the files whose slug holds every word typed, and counts what is left", async () => {
+    const token = await signIn(CURATOR, true)
+    for (const slug of ["a.png", "b.pdf", "sub/c.pdf"]) await putTestObject(PUBLIC_BUCKET, at(mine(slug)))
+
+    const view = await commonFilesPage(getCommon(token, `?q=${encodeURIComponent(`${own()} PDF`)}`), JA)
+
+    expect(view.keyword).toBe(`${own()} PDF`)
+    expect(view.rows?.map((row) => row.name)).toEqual([mine("b.pdf"), mine("sub/c.pdf")])
+    expect(view.total).toBe(2)
+  })
+
+  it("keeps the files written between the two days, cut in JST, with either end open", async () => {
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
+    const day = today()
+    const shifted = (by: number): string =>
+      new Date(new Date(`${day}T00:00:00.000Z`).getTime() + by * 86_400_000).toISOString().slice(0, 10)
+    const names = async (rest: string): Promise<string[] | undefined> =>
+      (await commonFilesPage(getCommon(token, under(rest)), JA)).rows?.map((row) => row.name)
+
+    expect(await names(`&from=${day}`)).toEqual([mine("a.png")])
+    expect(await names(`&to=${day}`)).toEqual([mine("a.png")])
+    expect(await names(`&from=${day}&to=${day}`)).toEqual([mine("a.png")])
+    expect(await names(`&from=${shifted(1)}`)).toEqual([])
+    expect(await names(`&to=${shifted(-1)}`)).toEqual([])
+    expect(await names(`&from=${shifted(1)}&to=${shifted(-1)}`)).toEqual([])
+  })
+
+  it("reads a day that is not one as an end left open, and says so", async () => {
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
+
+    const view = await commonFilesPage(getCommon(token, under("&from=2026-02-31&to=tomorrow")), JA)
+
+    expect([view.from, view.to]).toEqual([null, null])
+    expect(view.rows?.map((row) => row.name)).toEqual([mine("a.png")])
+    // The day the windows over the range open from is the server's, in JST.
+    expect(view.today).toBe(today())
+  })
 
   it("moves a file to the slug it was given and leaves nothing at the old one", async () => {
     const token = await signIn(CURATOR, true)
@@ -571,29 +823,29 @@ describe("the article assets", () => {
     expect(await held()).toEqual([at(staying)])
   })
 
-  it("returns to the listing it was sent from, with its ordering, page size and page", async () => {
+  it("returns to the listing it was sent from, with its ordering, page size, page and what narrowed it", async () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
     await putTestObject(PUBLIC_BUCKET, at(mine("b.png")))
 
     const moved = await commonFilesAction(
-      postCommon(token, [["intent", "rename"], ["from", mine("a.png")], ["to", mine("c.png")]], READ_AT),
+      postCommon(token, [["intent", "rename"], ["from", mine("a.png")], ["to", mine("c.png")]], READ_COMMON_AT),
       JA,
     )
-    expect(sentTo(moved)).toEqual(["/admin/files", KEPT])
+    expect(sentTo(moved)).toEqual(["/admin/files", KEPT_COMMON])
 
     // Given the slug it already has, nothing moves, and the reader still comes back to where they were.
     const unmoved = await commonFilesAction(
-      postCommon(token, [["intent", "rename"], ["from", mine("b.png")], ["to", mine("b.png")]], READ_AT),
+      postCommon(token, [["intent", "rename"], ["from", mine("b.png")], ["to", mine("b.png")]], READ_COMMON_AT),
       JA,
     )
-    expect(sentTo(unmoved)).toEqual(["/admin/files", KEPT])
+    expect(sentTo(unmoved)).toEqual(["/admin/files", KEPT_COMMON])
 
     const deleted = await commonFilesAction(
-      postCommon(token, [["intent", "delete"], ["name", mine("b.png")]], READ_AT),
+      postCommon(token, [["intent", "delete"], ["name", mine("b.png")]], READ_COMMON_AT),
       JA,
     )
-    expect(sentTo(deleted)).toEqual(["/admin/files", KEPT])
+    expect(sentTo(deleted)).toEqual(["/admin/files", KEPT_COMMON])
 
     const bare = await commonFilesAction(
       postCommon(token, [["intent", "delete"], ["name", mine("c.png")]]),

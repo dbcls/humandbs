@@ -15,10 +15,7 @@ function research(): ResearchContent {
       name: { ja: filled("提供者"), en: filled("") },
       organization: {
         name: { ja: filled(""), en: filled("") },
-        address: { ja: filled(""), en: filled("") },
       },
-      orcid: filled(""),
-      email: filled(""),
     }],
   }
 }

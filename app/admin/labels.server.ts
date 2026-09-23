@@ -57,6 +57,10 @@ export type UnpinOutcome
   = | { status: "unpinned" }
     | { status: "gone" }
 
+export type PromoteOutcome
+  = | { status: "promoted" }
+    | { status: "gone" }
+
 function subjectColumns(request: PinRequest) {
   return request.kind === "hum"
     ? { researchId: request.subjectId, datasetId: null }
@@ -166,6 +170,59 @@ export async function pinLabelsIn(
     await writePin(tx, request, request.label, actor)
   }
   return { status: "pinned" }
+}
+
+/**
+ * Making a label the primary one. The one that was primary becomes secondary,
+ * so it keeps resolving — moving a label is not taking it away
+ * (docs/publishing.md の「ラベルを pin する」). A hum label moving is what moves
+ * the research's public box, the same as pinning a new primary does.
+ *
+ * Already primary, nothing is written: there is no move to record.
+ */
+export async function promotePin(
+  db: Database,
+  pinId: string,
+  actor: EventActor,
+): Promise<PromoteOutcome> {
+  const done = await db.transaction(async (tx) => {
+    const [pin] = await tx
+      .select({
+        kind: labelPin.kind,
+        label: labelPin.label,
+        researchId: labelPin.researchId,
+        datasetId: labelPin.datasetId,
+        isPrimary: labelPin.isPrimary,
+      })
+      .from(labelPin)
+      .where(eq(labelPin.id, pinId))
+      .limit(1)
+    if (pin === undefined) return null
+    const subjectId = pin.researchId ?? pin.datasetId
+    if (subjectId === null) return null
+    const researchId = pin.researchId ?? await researchOfDataset(tx, pin.datasetId)
+    if (pin.isPrimary) return { movedFrom: null, researchId }
+
+    const request: PinRequest = { kind: pin.kind, label: pin.label, subjectId, isPrimary: true }
+    const demoted = await demote(tx, request)
+    await tx.update(labelPin).set({ isPrimary: true }).where(eq(labelPin.id, pinId))
+    await recordEvent(tx, {
+      actor,
+      action: "pin-label",
+      subjectType: "label",
+      subjectId: pin.label,
+      detail: { kind: pin.kind, subject: subjectId, isPrimary: true, promoted: true },
+    })
+    if (researchId !== null) await rebuildSearchDocs(tx, { researchIds: [researchId] })
+    return { movedFrom: pin.kind === "hum" ? demoted : null, researchId }
+  })
+
+  if (done === null) return { status: "gone" }
+  if (done.movedFrom != null && done.researchId !== null) {
+    await requestBoxMove(db, done.researchId, done.movedFrom)
+    wakeFileRunner()
+  }
+  return { status: "promoted" }
 }
 
 export async function unpinLabel(

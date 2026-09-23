@@ -58,10 +58,7 @@ function provider(overrides: Partial<DataProvider> = {}): DataProvider {
     name: { ja: filled(""), en: filled("") },
     organization: {
       name: { ja: filled(""), en: filled("") },
-      address: { ja: filled(""), en: filled("") },
     },
-    orcid: filled(""),
-    email: filled(""),
     ...overrides,
   }
 }
@@ -104,22 +101,6 @@ describe("the untranslated notice", () => {
     const view = viewOf(content)
     expect(view.untranslated).toBe(false)
     expect(view.title).toEqual({ state: "unsettled" })
-  })
-
-  /**
-   * The page does not render these, so a reader told the page has untranslated
-   * items would have nothing to look at.
-   */
-  it("ignores a field the page does not render", () => {
-    const content = research({
-      dataProviders: [provider({
-        organization: {
-          name: { ja: filled("大学"), en: filled("University") },
-          address: { ja: filled("東京"), en: filled("") },
-        },
-      })],
-    })
-    expect(viewOf(content).untranslated).toBe(false)
   })
 
   it("ignores a controlled-access usage, which no curator can translate", () => {
@@ -321,6 +302,30 @@ describe("what a dataset page carries", () => {
     expect(view.experiments[0]?.values[0]?.field).toEqual({
       state: "rich",
       text: [[{ text: "375.31 GB" }]],
+      untranslated: false,
+    })
+  })
+
+  it("shows a width as its two typed ends joined by an en dash", () => {
+    const view = dataset({
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "e1",
+        label: filled("WES"),
+        values: [{
+          keyId: "k-early",
+          value: {
+            kind: "number",
+            values: filled([
+              { label: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, note: null },
+            ]),
+          },
+        }],
+      }],
+    })
+    expect(view.experiments[0]?.values[0]?.field).toEqual({
+      state: "rich",
+      text: [[{ text: "0.9–1.3 TB" }]],
       untranslated: false,
     })
   })

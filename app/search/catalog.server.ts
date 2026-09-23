@@ -1,11 +1,20 @@
 /**
  * Reading the catalog as the search sees it.
  *
- * **A key typed as a vocabulary, a number or a disease is a facet, and nothing
- * else is.** That one rule is why there is no list of facets anywhere: this
- * query is the list, and adding to it is a change of type on a key. Everything the panel and
- * the query language need — the field name, what its values are drawn from,
- * where it sits on the screen — is on the key or on the set it points at.
+ * **A key typed as a vocabulary or a disease is a facet, and nothing else is.**
+ * That one rule is why there is no list of vocabulary facets anywhere: this
+ * query is the list, and adding to it is a change of type on a key. Everything
+ * the panel and the query language need — the field name, what its values are
+ * drawn from, where it sits on the screen — is on the key or on the set it
+ * points at.
+ *
+ * **A number key is a facet only when it has been given a category.** Most
+ * number keys are display only — a dataset's total data volume is shown on its
+ * page but is not something a reader narrows a listing by — and `subject-count`
+ * and `read-length` are the two that are, marked by carrying a
+ * `facetCategoryId` the way every vocabulary and disease key always does. This
+ * reuses the column the panel's heading already comes from rather than adding
+ * one that means the same thing a second way.
  *
  * Terms are not read wholesale. A vocabulary can hold ten values or twelve
  * thousand, so labels are resolved for the values actually shown: the counts
@@ -13,7 +22,7 @@
  * up by the code the address carries.
  */
 
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm"
 
 import type { Executor } from "~/db/client.server"
 import { contentKey, facetCategory, vocabularyTerm } from "~/db/schema"
@@ -78,10 +87,15 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
     })
     .from(contentKey)
     .leftJoin(facetCategory, eq(facetCategory.id, contentKey.facetCategoryId))
-    .where(or(
-      eq(contentKey.valueType, "vocabulary"),
-      eq(contentKey.valueType, "number"),
-      eq(contentKey.valueType, "disease"),
+    .where(and(
+      or(
+        eq(contentKey.valueType, "vocabulary"),
+        eq(contentKey.valueType, "number"),
+        eq(contentKey.valueType, "disease"),
+      ),
+      // A number key with no category is display only (above); a vocabulary or
+      // disease key is always a facet regardless of whether it has one.
+      or(ne(contentKey.valueType, "number"), isNotNull(contentKey.facetCategoryId)),
     ))
     .orderBy(
       sql`${facetCategory.position} NULLS LAST`,

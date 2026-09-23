@@ -18,6 +18,7 @@ const SPARE_KEY = "00000000-0000-0000-0000-0000000000a3"
 const EXPERIMENT_KEY = "00000000-0000-0000-0000-0000000000a4"
 const NUMBER_KEY = "00000000-0000-0000-0000-0000000000a5"
 const DISEASE_KEY = "00000000-0000-0000-0000-0000000000a6"
+const LABELLED_NUMBER_KEY = "00000000-0000-0000-0000-0000000000a7"
 const SET = "00000000-0000-0000-0000-0000000000b1"
 const ICD10_SET = "00000000-0000-0000-0000-0000000000b2"
 
@@ -74,6 +75,19 @@ const catalog: EditableCatalog = {
       multiple: false,
       canonicalUnit: "GB",
       inputUnits: ["MB", "GB", "TB"],
+    },
+    {
+      id: LABELLED_NUMBER_KEY,
+      code: "variant-number",
+      scope: "dataset",
+      valueType: "number",
+      labelJa: "バリアント数",
+      labelEn: "Variant number",
+      position: 5,
+      vocabularySetId: null,
+      multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
     },
     {
       id: DISEASE_KEY,
@@ -160,8 +174,12 @@ function view(
     draftId: "00000000-0000-0000-0000-000000000002",
     datasetId: "00000000-0000-0000-0000-000000000003",
     humLabel: "hum0001",
+    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
     datasetLabel: portalIssued ? "hum0001-NHA001" : "JGAD000001",
+    datasetPinId: "00000000-0000-0000-0000-000000000004",
+    datasetIdSuggestion: null,
     published: true,
+    updating: null,
     portalIssued,
     terms: TERMS,
     page: drawn(content),
@@ -174,7 +192,7 @@ function view(
     review: {
       changed: [],
       previous: {},
-      threads: [],
+      comments: [],
       publishedNumber: null,
       signedInName: "curator",
     },
@@ -235,6 +253,62 @@ describe("the dataset editing form", () => {
     expect(html).toContain("未選択")
   })
 
+  it("puts a vocabulary item's own delete on its name row, ahead of its search box", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } }],
+    }))
+
+    const nameAt = html.indexOf("アクセス制限")
+    const removeAt = html.indexOf("項目の削除")
+    const searchAt = html.indexOf("選択肢を探す")
+    expect(nameAt).toBeGreaterThan(-1)
+    expect(removeAt).toBeGreaterThan(nameAt)
+    expect(removeAt).toBeLessThan(searchAt)
+  })
+
+  it("stands a vocabulary item's two state marks after the search box, not ahead of the chosen values", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } }],
+    }))
+
+    const searchAt = html.indexOf("選択肢を探す")
+    const markAt = html.indexOf("aria-label=\"未確定\"")
+    expect(searchAt).toBeGreaterThan(-1)
+    expect(markAt).toBeGreaterThan(searchAt)
+  })
+
+  it("puts every kind of value's own delete beside its own name, one per value", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [
+        {
+          keyId: TEXT_KEY,
+          value: { kind: "text", text: { ja: filled([[{ text: "x" }]]), en: filled([]) } },
+        },
+        { keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled([]) } },
+        {
+          keyId: NUMBER_KEY,
+          value: {
+            kind: "number",
+            values: filled([{
+              label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", high: null, inputHigh: null, note: null,
+            }]),
+          },
+        },
+        {
+          keyId: DISEASE_KEY,
+          value: { kind: "disease", diseases: filled([{ termIds: [], nameJa: "NASH", nameEn: "" }]) },
+        },
+      ],
+    }))
+
+    // `IconButton` says its name twice — `aria-label` and `title` — so one
+    // button per value is two occurrences of the word.
+    expect(html.split("項目の削除").length - 1).toBe(4 * 2)
+  })
+
   it("shows a number as it was typed, beside the unit it was typed in", () => {
     const html = render(view({
       ...emptyDatasetContent(),
@@ -252,7 +326,117 @@ describe("the dataset editing form", () => {
 
     expect(html).toContain("データ量")
     expect(html).toContain("value=\"1.5\"")
-    expect(html).toContain("<option value=\"TB\" selected=\"\">TB</option>")
+    // The unit stands in the site's own select: named on the closed box, lit in the list.
+    expect(html).not.toContain("<select")
+    expect(html).toContain("<span class=\"truncate\">TB</span>")
+    expect(html).toMatch(/aria-selected="true"[^>]*>TB<\/button>/)
+  })
+
+  it("offers a width's upper-end box after the lower end, sharing its unit", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{
+              label: null,
+              value: 900,
+              unit: "GB",
+              inputValue: 0.9,
+              inputUnit: "TB",
+              high: 1300,
+              inputHigh: 1.3,
+              note: null,
+            }],
+          },
+        },
+      }],
+    }))
+
+    expect(html).toContain("value=\"0.9\"")
+    expect(html).toContain("value=\"1.3\"")
+    expect(html).toContain("〜")
+    // One unit box for the whole row — not a second one for the upper end.
+    expect(html.match(/aria-selected="true"[^>]*>TB<\/button>/g)).toHaveLength(1)
+    expect(html).not.toContain("aria-invalid")
+  })
+
+  it("marks the upper-end box wrong when it is typed below the lower end", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{
+              label: null,
+              value: 1300,
+              unit: "GB",
+              inputValue: 1.3,
+              inputUnit: "GB",
+              high: 900,
+              inputHigh: 0.9,
+              note: null,
+            }],
+          },
+        },
+      }],
+    }))
+
+    const highBox = /<input[^>]*value="0\.9"[^>]*>/.exec(html)?.[0] ?? ""
+    expect(highBox).toContain("aria-invalid=\"true\"")
+    expect(highBox).toMatch(/aria-describedby="[^"]+"/)
+    expect(html).toContain("上限は下限より小さくできない")
+    // The lower-end box itself is not the one marked wrong.
+    const lowBox = /<input[^>]*value="1\.3"[^>]*>/.exec(html)?.[0] ?? ""
+    expect(lowBox).not.toContain("aria-invalid")
+  })
+
+  it("offers this key's label candidates on the label box, and no others", () => {
+    const withCandidates = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: LABELLED_NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [
+              { label: "常染色体", value: 1, unit: null, inputValue: 1, inputUnit: null, note: null },
+              { label: "", value: 2, unit: null, inputValue: 2, inputUnit: null, note: null },
+            ],
+          },
+        },
+      }],
+    }))
+
+    expect(withCandidates).toContain("<datalist")
+    expect(withCandidates).toContain("<option value=\"常染色体\"");
+    ["X染色体", "Y染色体", "ミトコンドリア", "全ゲノム"].forEach((candidate) => {
+      expect(withCandidates).toContain(`<option value="${candidate}"`)
+    })
+
+    const withoutCandidates = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+          },
+        },
+      }],
+    }))
+
+    expect(withoutCandidates).not.toContain("<datalist")
+    expect(withoutCandidates).not.toContain("<option")
   })
 
   it("shows a disease as the name somebody wrote and the code it is filed under", () => {
@@ -272,7 +456,7 @@ describe("the dataset editing form", () => {
     // The classification's own heading stands beside the name rather than
     // instead of it: the two answer different questions.
     expect(html).toContain("その他の明示された炎症性肝疾患")
-    expect(html).toContain("疾患を追加")
+    expect(html).toContain("疾患の追加")
   })
 
   it("shows a disease naming no code as an ordinary row, not as an empty item", () => {
@@ -291,7 +475,7 @@ describe("the dataset editing form", () => {
     expect(html).toContain("未選択")
     // The name is missing in one language, which is not a state: the box is
     // simply empty and the row is there to be written in.
-    expect(html).toContain("疾患名（英語）")
+    expect(html).toContain("疾患名 (英語)")
   })
 
   it("puts an experiment's items under the experiment rather than the dataset", () => {
@@ -330,7 +514,7 @@ describe("the dataset editing form", () => {
 
     expect(html).toContain("half written")
     expect(html).toContain("disabled")
-    expect(html).toContain("未確定にする")
+    expect(html).toContain("未確定")
   })
 
   it("says nothing about a conflict or refused markup until a save has been answered", () => {
@@ -357,5 +541,67 @@ describe("what the form carries but does not show", () => {
     })
 
     expect(input.fileSelection).toEqual(["hum0001.v1.zip"])
+  })
+})
+
+const RESEARCH_ID = "00000000-0000-0000-0000-000000000001"
+const DRAFT_ID = "00000000-0000-0000-0000-000000000002"
+
+describe("the head", () => {
+  it("names the screen \"データセットの編集\", the dataset's own label beside it, and the way back to the list", () => {
+    const html = render(view())
+    expect(html).toContain("データセットの編集")
+    expect(html).toContain("hum0001-NHA001")
+    expect(html).toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/dataset"`)
+    expect(html).toContain("データセットへ")
+  })
+
+  it("names the identifier \"ID 未発行\" while the dataset has none yet", () => {
+    const html = render({ ...view(), datasetLabel: null, datasetPinId: null })
+    expect(html).toContain("ID 未発行")
+  })
+
+  it("wears the version it updates as a badge beside the identifier", () => {
+    expect(render({ ...view(), updating: 3 })).toContain("v3 を更新中")
+  })
+
+  it("carries no second line — a dataset is a part of the draft, not a face of its own", () => {
+    const html = render(view())
+    expect(html).not.toContain("研究の編集へ")
+    expect(html).not.toContain("レビューと共有")
+    expect(html).not.toContain("公開の確認")
+  })
+})
+
+describe("the tools row", () => {
+  it("draws the pane switch and the unresolved count once, on the tools row", () => {
+    const html = render({ ...view(), steps: { datasets: 0, shared: false, unresolved: 2, blocks: 0, findings: 0 } })
+    expect([...html.matchAll(/aria-label="表示 pane"/g)]).toHaveLength(1)
+    expect(html).toContain("未解決のコメント 2 件")
+    expect(html).toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/review"`)
+  })
+})
+
+describe("the comment panel's own name", () => {
+  /**
+   * The page pane's own annotation needs a catalog to resolve a value slot's
+   * place, which `NO_CATALOG` deliberately withholds — this fixture only
+   * reaches the section-level spot the empty catalog still draws.
+   */
+  it("falls back to the section's own name where a value slot resolves no place of its own", () => {
+    const withComment = view(described())
+    withComment.review.comments = [{
+      id: "c1",
+      anchor: { kind: "dataset-field", datasetId: withComment.datasetId, path: "experiments" },
+      authorName: "provider",
+      bySignedIn: false,
+      body: "この項目でよいか確認したい",
+      resolved: false,
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }]
+    const html = render(withComment)
+    expect(html).toContain("title=\"解析手法 のコメント\"")
   })
 })

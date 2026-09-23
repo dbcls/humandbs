@@ -39,18 +39,9 @@ export function adminUpstreamResearchPath(): string {
   return "/admin/research/upstream"
 }
 
-/** One approval branch: what it brings, and the drafts it can be brought into. */
+/** One approval branch: what it brings, and — where the hum names one — the research it is for. */
 export function adminUpstreamBranchPath(applicationId: string): string {
   return `${adminUpstreamResearchPath()}/${encodeURIComponent(applicationId)}`
-}
-
-/**
- * The draft a branch is being chosen for, as it rides on the branch screens'
- * addresses. **Empty when there is none**, so a listing opened from the bar
- * keeps its bare address.
- */
-export function draftTargetQuery(draftId: string | null): string {
-  return draftId === null ? "" : `?${new URLSearchParams({ draft: draftId }).toString()}`
 }
 
 export function adminResearchPath(researchId: string): string {
@@ -190,14 +181,10 @@ export interface ListingQuery extends ListingPresentation {
   flags: readonly string[]
 }
 
-/**
- * The listing of approval branches narrows by two axes of its own, and carries
- * the draft the branches are being chosen for when it was opened from one.
- */
+/** The listing of approval branches narrows by two axes of its own. */
 export interface BranchListingQuery extends ListingPresentation {
   standings: readonly string[]
   registrations: readonly string[]
-  draft: string | null
 }
 
 /**
@@ -234,7 +221,6 @@ export function branchListingQuery(query: BranchListingQuery): string {
   return listingAddress(query, {
     standing: query.standings,
     registered: query.registrations,
-    draft: query.draft === null ? [] : [query.draft],
   })
 }
 
@@ -273,6 +259,38 @@ export interface NewsListingQuery extends ListingPresentation {
 
 export function newsQuery(query: NewsListingQuery): string {
   return listingAddress(query, { dating: query.dating, ja: query.ja, en: query.en })
+}
+
+/**
+ * The `common/` box narrows by the day a file was written — a range with either
+ * end open — beside the words looked for in the slug.
+ */
+export interface FilesListingQuery extends ListingPresentation {
+  from: string | null
+  to: string | null
+}
+
+export function filesQuery(query: FilesListingQuery): string {
+  return listingAddress(query, {
+    from: query.from === null ? [] : [query.from],
+    to: query.to === null ? [] : [query.to],
+  })
+}
+
+/**
+ * A research's box narrows by one axis more than the `common/` box: which side
+ * of the store a file is on, which that box has no second side for.
+ */
+export interface BoxListingQuery extends FilesListingQuery {
+  states: readonly string[]
+}
+
+export function boxQuery(query: BoxListingQuery): string {
+  return listingAddress(query, {
+    from: query.from === null ? [] : [query.from],
+    to: query.to === null ? [] : [query.to],
+    state: query.states,
+  })
 }
 
 /**
@@ -340,6 +358,16 @@ export function adminNewsListPath(): string {
 
 export function adminNewsPath(newsId: string): string {
   return `${adminNewsListPath()}/${newsId}`
+}
+
+/**
+ * Where an article's or an announcement's typed body is drawn as its page, for
+ * the pane beside the form. **No language prefix and no identity**: nothing it
+ * answers with is interface text, and the words come from the form rather than
+ * from any row.
+ */
+export function adminArticlePreviewPath(): string {
+  return "/admin/documents/preview"
 }
 
 /** The `common/` box: the images and PDFs the article bodies link to. */

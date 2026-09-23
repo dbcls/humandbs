@@ -17,7 +17,7 @@
  * scale of a day.
  */
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import type { Pool } from "pg"
 import { redirect } from "react-router"
 
@@ -25,7 +25,7 @@ import { requireCapability } from "~/auth/actor.server"
 import { can, type Actor } from "~/auth/capabilities"
 import { loadConfig } from "~/config.server"
 import { getDb, type Executor } from "~/db/client.server"
-import { dataset, labelPin, researchDraft, researchVersion } from "~/db/schema"
+import { dataset, labelPin, researchDraft } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
@@ -46,7 +46,6 @@ import {
   addDatasetsFromUpstream,
   applyUpstreamToDraft,
   createResearchFromUpstream,
-  draftToTakeInto,
   type SeededDataset,
 } from "./drafts.server"
 import {
@@ -85,16 +84,7 @@ import {
   type DroppedValue,
   type MergeRow,
 } from "./templates"
-import {
-  adminDraftDatasetsPath,
-  adminDraftPath,
-  adminDraftUpstreamPath,
-  adminUpstreamResearchPath,
-  upstreamQuery,
-} from "./urls"
-
-/** What a draft's identity looks like, so an address naming anything else names no draft. */
-const DRAFT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { adminDraftDatasetsPath, adminDraftPath } from "./urls"
 
 /** The two archives a dataset is seeded from. */
 const JGAD = /^JGAD\d+$/
@@ -181,38 +171,20 @@ export interface UpstreamResearchView {
   /** 1-based positions of the shown rows within the whole result. */
   rangeFrom: number
   rangeTo: number
-  /** The draft the branches are being chosen for, when the listing was opened from one. */
-  target: UpstreamTargetView | null
 }
 
-/**
- * The draft a branch is being chosen for.
- *
- * **Opened from a draft, the question is only which branch** — where it goes is
- * already answered, so the listing says so and the branch screen offers that
- * draft and nothing else (`docs/editing.md` の「行き先」).
- */
-export interface UpstreamTargetView {
-  researchId: string
-  draftId: string
-  humLabel: string | null
-}
-
-/** The research a branch's hum label already names, and what it holds. */
+/** The research a branch's hum label already names. */
 export interface UpstreamHolderView {
   researchId: string
   humLabel: string
-  /** The newest published version, when the research has one. */
-  latestNumber: number | null
-  drafts: {
-    draftId: string
-    copiedFromNumber: number | null
-    takenBranches: string[]
-    updatedAt: string
-  }[]
 }
 
-/** One branch: what taking it would bring, and where it can go. */
+/**
+ * One branch: what taking it would bring, and — where the hum already names a
+ * research — the way there. **Only a new research is written from here**;
+ * taking the branch into a research that exists is done from that research's
+ * own draft (`docs/editing.md` の「行き先」).
+ */
 export interface UpstreamBranchPageView {
   locale: Locale
   connected: boolean
@@ -220,7 +192,6 @@ export interface UpstreamBranchPageView {
   branch: UpstreamBranchView | null
   chosen: UpstreamChoiceView | null
   holder: UpstreamHolderView | null
-  target: UpstreamTargetView | null
 }
 
 export interface UpstreamDatasetView {
@@ -416,7 +387,7 @@ export async function upstreamResearchPage(
   const order = isSortOrder(askedOrder) ? askedOrder : branchOrder(sort)
   const askedSize = Number(url.searchParams.get("size") ?? "")
   const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
-  const presented = { ...filter, keyword, sort, order, size, target: await targetOf(db, url) }
+  const presented = { ...filter, keyword, sort, order, size }
 
   const rows = await withApplicationDb((at) =>
     searchDsBranches(at.pool, at.schema, keyword, null))
@@ -473,7 +444,8 @@ export async function upstreamResearchPage(
 }
 
 /**
- * One branch: what it would bring, and every draft it could be brought into.
+ * One branch: what it would bring, and — where the hum already names a
+ * research — the way there.
  *
  * **The branch is read whether or not a keyword would find it.** An address
  * naming a branch is followed on its own, so a screen reached from elsewhere
@@ -494,34 +466,31 @@ export async function upstreamBranchPage(
     const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
     return { branch, seeds: branch === null ? [] : await jgadSeeds(at, branch, catalog) }
   })
-  const target = await targetOf(db, new URL(request.url))
   if (read === null) {
-    return { locale, connected: false, applicationId, branch: null, chosen: null, holder: null, target }
+    return { locale, connected: false, applicationId, branch: null, chosen: null, holder: null }
   }
   if (read.branch === null) notFound()
 
   const [view] = await branchViews(db, [read.branch])
+  const holder = view?.heldBy == null || view.humLabel === null
+    ? null
+    : { researchId: view.heldBy, humLabel: view.humLabel }
   return {
     locale,
     connected: true,
     applicationId,
-    target,
     branch: view ?? null,
     chosen: await choiceOf(db, { applicationId, branch: read.branch, seeds: read.seeds }),
-    holder: view?.heldBy === undefined || view.heldBy === null || view.humLabel === null
-      ? null
-      : await holderView(db, view.heldBy, view.humLabel),
+    holder,
   }
 }
 
 /**
- * Where the branch goes.
+ * Starting a research from a branch.
  *
- * **Only the new research is written here.** It has nothing to be put beside,
- * so the choice on this screen is already the whole of it. The other three
- * arrive at a draft and the taking happens there, which is why they answer with
- * a redirect and no write of their own — except the draft that has to exist
- * first, which is made as a copy of the newest version.
+ * **The only thing written here.** Where the hum already names a research,
+ * this screen offers no form at all — taking the branch into that research's
+ * own draft is done from there (docs/editing.md の「行き先」).
  */
 export async function upstreamBranchAction(
   request: Request,
@@ -534,23 +503,8 @@ export async function upstreamBranchAction(
   if (applicationId === undefined || applicationId === "") notFound()
 
   const form = await request.formData()
-  const into = readString(form, "into")
+  if (readString(form, "into") !== "new") badRequest()
 
-  if (into?.startsWith("draft:") === true) {
-    const draftId = identity(into.slice("draft:".length))
-    const draft = await readDraft(db, draftId)
-    if (draft === null) notFound()
-    return redirect(takingInto(locale, draft.researchId, draftId, applicationId))
-  }
-
-  if (into === "replacement" || into === "next-version") {
-    const researchId = identity(readString(form, "research") ?? undefined)
-    const draftId = await draftToTakeInto(db, researchId, into)
-    if (draftId === null) notFound()
-    return redirect(takingInto(locale, researchId, draftId, applicationId))
-  }
-
-  if (into !== "new") badRequest()
   const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (at) => {
     const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
@@ -572,56 +526,13 @@ export async function upstreamBranchAction(
   return redirect(href(locale, adminDraftPath(outcome.researchId, outcome.draftId)))
 }
 
-function takingInto(
-  locale: Locale,
-  researchId: string,
-  draftId: string,
-  applicationId: string,
-): string {
-  return href(
-    locale,
-    adminDraftUpstreamPath(researchId, draftId) + upstreamQuery({ applicationId }),
-  )
-}
-
-/** The versions and drafts of the research a branch's hum names. */
-async function holderView(
-  db: Executor,
-  researchId: string,
-  humLabel: string,
-): Promise<UpstreamHolderView> {
-  const [versions, drafts] = await Promise.all([
-    db
-      .select({ number: researchVersion.number })
-      .from(researchVersion)
-      .where(eq(researchVersion.researchId, researchId))
-      .orderBy(desc(researchVersion.number))
-      .limit(1),
-    db
-      .select({
-        draftId: researchDraft.id,
-        copiedFromNumber: researchDraft.copiedFromNumber,
-        takenBranches: researchDraft.takenBranches,
-        updatedAt: researchDraft.updatedAt,
-      })
-      .from(researchDraft)
-      .where(eq(researchDraft.researchId, researchId))
-      .orderBy(asc(researchDraft.createdAt)),
-  ])
-  return {
-    researchId,
-    humLabel,
-    latestNumber: versions[0]?.number ?? null,
-    drafts: drafts.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() })),
-  }
-}
-
 // === adding datasets to a draft ===
 
 /**
- * What a typed accession can add to a draft. **Branches are not chosen here** —
- * the listing of branches is the one place a branch is chosen, and a draft opens
- * it aimed at itself (`upstreamResearchPage`'s `target`).
+ * What a typed accession can add to a draft. **A branch is not chosen here** —
+ * a whole application goes in through the table of this research's own
+ * branches, on the screen that takes an application in
+ * (`upstreamDraftPage`).
  *
  * A DRA accession is answered without the application system, which is why the
  * two halves are read apart — a deployment that cannot reach the application
@@ -749,6 +660,12 @@ export interface UpstreamProviderView {
   affiliationEn: string
 }
 
+/** One of this research's own branches, and whether this draft already took it in. */
+export interface UpstreamDraftBranchRow extends UpstreamBranchView {
+  /** Whether this branch is already among the draft's `takenBranches`. */
+  taken: boolean
+}
+
 export interface UpstreamDraftView {
   locale: Locale
   connected: boolean
@@ -756,7 +673,16 @@ export interface UpstreamDraftView {
   draftId: string
   revision: number
   humLabel: string | null
-  /** The branch being taken in. */
+  /** The application chosen, or typed — null while the screen shows the table. */
+  applicationId: string | null
+  /** An application ID that was typed and names no branch. */
+  unknown: string | null
+  /**
+   * This research's own branches, newest approval first — read when no
+   * application is chosen yet.
+   */
+  branches: UpstreamDraftBranchRow[]
+  /** The branch being taken in, once one is chosen. */
   branch: UpstreamBranchView | null
   /** The draft and the application, field by field. */
   merge: MergeRow[] | null
@@ -770,9 +696,10 @@ export interface UpstreamDraftView {
 /**
  * Taking an application into a draft that exists.
  *
- * **A branch is always named on the way in.** Which branch to take is settled
- * one screen back, on the branch's own; a second list here would be a second
- * place to answer the same question.
+ * **Without an application chosen, this is the table of the research's own
+ * branches** plus the box to type one that has not been given a hum label yet
+ * (`docs/editing.md` の「行き先」). Chosen, it is the three-column face that
+ * settles what goes into the draft.
  */
 export async function upstreamDraftPage(
   request: Request,
@@ -786,12 +713,12 @@ export async function upstreamDraftPage(
   if (draft === null) notFound()
 
   const applicationId = new URL(request.url).searchParams.get("application")
-  if (applicationId === null) throw redirect(href(locale, adminUpstreamResearchPath()))
-
-  const nothing = {
+  const base = {
     ...at,
     locale,
-    connected: false,
+    applicationId,
+    unknown: null,
+    branches: [],
     branch: null,
     merge: null,
     provider: null,
@@ -800,13 +727,31 @@ export async function upstreamDraftPage(
     unreachable: [],
   }
 
+  if (applicationId === null || applicationId === "") {
+    const humLabel = at.humLabel
+    const rows = await withApplicationDb((connection) =>
+      humLabel === null
+        ? Promise.resolve([])
+        : searchDsBranches(connection.pool, connection.schema, humLabel, null))
+    if (rows === null) return { ...base, connected: false }
+
+    const matched = humLabel === null ? [] : rows.filter((row) => row.humLabel === humLabel)
+    const views = await branchViews(db, matched)
+    const taken = await takenBranchesOf(db, at.draftId)
+    return {
+      ...base,
+      connected: true,
+      branches: views.map((view) => ({ ...view, taken: taken.includes(view.applicationId) })),
+    }
+  }
+
   const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (connection) => {
     const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
-    if (branch === null) return null
-    return { branch, seeds: await jgadSeeds(connection, branch, catalog) }
+    return { branch, seeds: branch === null ? [] : await jgadSeeds(connection, branch, catalog) }
   })
-  if (read == null) return nothing
+  if (read === null) return { ...base, connected: false }
+  if (read.branch === null) return { ...base, connected: true, unknown: applicationId }
 
   const choice = await choiceOf(db, {
     applicationId,
@@ -816,7 +761,7 @@ export async function upstreamDraftPage(
   })
   const [view] = await branchViews(db, [read.branch])
   return {
-    ...nothing,
+    ...base,
     connected: true,
     branch: view ?? null,
     merge: mergeRows(draft.content, read.branch),
@@ -916,19 +861,14 @@ async function requireSeeding(request: Request): Promise<Actor> {
   return actor
 }
 
-/**
- * The draft the branch screens are choosing for, when the address names one.
- *
- * **A draft that cannot be read is no draft.** An address outlives the draft it
- * was copied from, and answering 404 for it would take the listing away along
- * with the aim — so the listing opens as it does from the bar.
- */
-async function targetOf(db: Executor, url: URL): Promise<UpstreamTargetView | null> {
-  const asked = url.searchParams.get("draft")
-  if (asked === null || !DRAFT_ID.test(asked)) return null
-  const draft = await readDraft(db, asked)
-  if (draft === null) return null
-  return { researchId: draft.researchId, draftId: asked, humLabel: await humLabelOf(db, draft.researchId) }
+/** The branches this draft has already taken in, from its own record. */
+async function takenBranchesOf(db: Executor, draftId: string): Promise<string[]> {
+  const [row] = await db
+    .select({ takenBranches: researchDraft.takenBranches })
+    .from(researchDraft)
+    .where(eq(researchDraft.id, draftId))
+    .limit(1)
+  return row?.takenBranches ?? []
 }
 
 async function draftAt(

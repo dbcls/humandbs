@@ -39,12 +39,14 @@
 
 import type { NumberValue } from "~/content/types"
 
-/** A line as it was written, split into the four things v2 stores. */
+/** A line as it was written, split into what v2 stores. */
 export interface ReadNumber {
   label: string | null
   value: number
   /** As written. The catalog's canonical unit is applied by the caller. */
   unit: string | null
+  /** The upper end of a width (`0.9-1.3 GB`), converted the same way `value` is. */
+  high: number | null
   note: string | null
 }
 
@@ -120,6 +122,14 @@ const REGIONS: Readonly<Record<string, string>> = {
 function region(said: string): string | undefined {
   return REGIONS[said] ?? REGIONS[said.toLowerCase()]
 }
+
+/**
+ * The spellings a genome region label settles to, once each. This is human
+ * anatomy rather than data, so the set does not grow the way an open label
+ * does — offering it as candidates on the label field costs nothing to keep in
+ * step (`docs/data-model.md` の「値と文」).
+ */
+export const GENOME_REGION_LABELS: readonly string[] = [...new Set(Object.values(REGIONS))]
 
 /**
  * A region spelled the one way, and moved out of the note when that is where
@@ -218,7 +228,7 @@ function withUnit(
   const before = rest.slice(0, found.index)
   const after = rest.slice(found.index + found[0].length)
   const unit = found[2] === undefined ? null : unitAs(found[2], units, aliases)
-  return [{ label, value, unit, note: noteOf(before, after, moves ?? undefined) }]
+  return [{ label, value, unit, high: null, note: noteOf(before, after, moves ?? undefined) }]
 }
 
 /**
@@ -242,19 +252,47 @@ function withoutUnit(whole: string, label: string | null): ReadNumber[] {
     label,
     value,
     unit: null,
+    high: null,
     note: noteOf(rest.slice(0, found.index), rest.slice(found.index + found[0].length), moves ?? undefined),
   }]
 }
 
 /**
+ * A value written as two ends rather than one — `0.9-1.3 GB`, `85〜120 GB`. v1
+ * never repeats the unit on the lower end, so it is read from the upper one.
+ *
+ * **Read before `several` declines the line**, and only when the two ends are
+ * ordered low to high — a reversed pair is not a width anybody meant, and is
+ * left to a person the same way a line `several` catches is.
+ */
+function widthOf(rest: string, units: readonly string[], label: string | null): ReadNumber[] | null {
+  const spelled = [...units].sort((a, b) => b.length - a.length)
+    .map((one) => one.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|")
+  const pattern = spelled === ""
+    ? String.raw`([\d,]+(?:\.\d+)?)\s*[-〜～~]\s*([\d,]+(?:\.\d+)?)`
+    : String.raw`([\d,]+(?:\.\d+)?)\s*(?:${spelled})?\s*[-〜～~]\s*([\d,]+(?:\.\d+)?)\s*(${spelled})(?![A-Za-z0-9])`
+  const found = new RegExp(pattern, "i").exec(rest)
+  if (found === null) return null
+  const low = readNumber(found[1] ?? "")
+  const high = readNumber(found[2] ?? "")
+  if (low === null || high === null || high < low) return null
+  const unit = found[3] === undefined ? null : unitAs(found[3], units, {})
+  const before = rest.slice(0, found.index)
+  const after = rest.slice(found.index + found[0].length)
+  return [{ label, value: low, high, unit, note: noteOf(before, after) }]
+}
+
+/**
  * Whether a line holds more than one number, which this file declines rather
- * than picking one of them. Two shapes: a range (`0.9-1.3 GB`) and a sum
- * (`73 TB(fastq)＋49 TB(bam)`). Both are one fact written as two, and reducing
- * either to a single number invents a value nobody wrote.
+ * than picking one of them. A range this loose (`widthOf` did not confidently
+ * read it, but the shape is there) and a sum (`73 TB＋49 TB`) are both one
+ * fact written as two, and reducing either to a single number invents a value
+ * nobody wrote.
  */
 function several(rest: string, units: readonly string[]): boolean {
   if (/[\d.]\s*[-〜～~]\s*[\d.]/.test(rest)) return true
-  if (/[\d.）)]\s*[＋+]\s*[\d.\s]/.test(rest)) return true
+  if (topLevelSplit(rest, /[＋+](?=[\s\d])/g).length > 1) return true
   const spelled = [...units].map((one) => one.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")
   if (spelled === "") return false
   const all = rest.match(new RegExp(String.raw`[\d,.]+\s*(?:${spelled})(?![A-Za-z0-9])`, "gi"))
@@ -296,9 +334,11 @@ function topLevelSplit(line: string, marks: RegExp): string[] {
  *   one looking for the part are both asking something the cell answers
  * - `101 bp もしくは 93 bp` — two readings neither of which is the value
  *
- * What is **not** split is a range or a sum (`0.9-1.3 GB`, `73 TB＋49 TB`).
- * Those are one fact written as two numbers, and either half of them alone is a
- * value nobody wrote.
+ * A width (`0.9-1.3 GB`) is a fourth shape, and is one reading rather than two:
+ * `widthOf` reads it as a single value with an upper end. **A sum
+ * (`73 TB＋49 TB`) is not split.** Addition is arithmetic somebody already did,
+ * and neither addend is a value anybody wrote — the line is left to a person
+ * rather than guessed at.
  */
 /**
  * The marks that separate two readings sharing a line. **A comma is only one of
@@ -329,25 +369,6 @@ function spread(
 
   const { label, rest } = labelled(said)
 
-  // A sum is not one number written oddly — it is the parts, added up by
-  // whoever wrote it. `73 TB(fastq)＋49 TB(bam、vcf)` is the two rows it looks
-  // like. Where only the last part carries a unit (`2.4＋1.4 TB`), the unit is
-  // the line's and the earlier parts borrow it.
-  const added = topLevelSplit(rest, /[＋+](?=[\s\d])/g)
-  if (added.length > 1) {
-    const trailing = /([A-Za-z%×倍]+)\s*[（(][^)）]*[)）]\s*$|([A-Za-z%×倍]+)\s*$/
-      .exec(added[added.length - 1] ?? "")
-    const borrowed = trailing?.[1] ?? trailing?.[2] ?? ""
-    const each = added.flatMap((part) => {
-      const held = labelled(part)
-      const whole = /[A-Za-z%×倍]/.test(held.rest) || borrowed === ""
-        ? held.rest
-        : `${held.rest} ${borrowed}`
-      return one(whole, held.label ?? label)
-    })
-    if (each.length === added.length) return each
-  }
-
   const composite = BREAKDOWN.exec(rest)
   if (composite !== null) {
     const parts = topLevelSplit(composite[2] ?? "", SHARING).flatMap((part) => {
@@ -358,6 +379,9 @@ function spread(
     // and a reader looking for the other are each asking what the cell answers.
     if (parts.length > 1) return [...one(composite[1] ?? "", label), ...parts]
   }
+
+  const width = widthOf(rest, units, label)
+  if (width !== null) return width
 
   if (several(rest, units)) return null
   const held = one(rest, label)
@@ -386,11 +410,16 @@ export function counts(units: readonly string[] = []) {
     })
 }
 
-/** What the catalog stores, once the unit a line was written in is converted. */
+/**
+ * What the catalog stores, once the unit a line was written in is converted.
+ * `convertedHigh` is the upper end of a width, converted the same way; null on
+ * every reading that is not one.
+ */
 export function storedNumber(
   read: ReadNumber,
   converted: number,
   canonical: string | null,
+  convertedHigh: number | null = null,
 ): NumberValue {
   return {
     label: read.label,
@@ -398,6 +427,8 @@ export function storedNumber(
     unit: canonical,
     inputValue: read.value,
     inputUnit: read.unit,
+    high: convertedHigh,
+    inputHigh: read.high,
     note: read.note,
   }
 }

@@ -56,12 +56,6 @@ function byId(element: { id: string }): string {
 function provider(into: Diff, a: DataProviderInput, b: DataProviderInput, at: string): void {
   into.when(sameTextPair(a.name, b.name), `${at}.name`)
   into.when(sameTextPair(a.organization.name, b.organization.name), `${at}.organization.name`)
-  into.when(
-    sameTextPair(a.organization.address, b.organization.address),
-    `${at}.organization.address`,
-  )
-  into.when(sameText(a.orcid, b.orcid), `${at}.orcid`)
-  into.when(sameText(a.email, b.email), `${at}.email`)
 }
 
 function project(into: Diff, a: ResearchProjectInput, b: ResearchProjectInput, at: string): void {

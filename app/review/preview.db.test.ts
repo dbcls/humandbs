@@ -27,7 +27,7 @@ import {
 } from "./preview.server"
 import { anchorOf, RESEARCH } from "./anchors"
 import { unresolvedCount } from "./comments"
-import { readThreads, setThreadResolved, startThread } from "./comments.server"
+import { postAboutDraft, readComments, setCommentResolved } from "./comments.server"
 
 /**
  * The pages a share link opens.
@@ -93,6 +93,27 @@ async function publish(researchId: string, number: number, content: ResearchCont
     body,
     datasets: datasetIds.map((datasetId) => ({ datasetId })),
   })
+}
+
+/** Something said at a place, put there directly: what the page shows, not how it got there. */
+async function saidAt(input: {
+  draftId: string
+  anchor: ReturnType<typeof anchorOf>
+  author: { sub: string | null, name: string }
+  body: string
+}): Promise<{ status: "posted", commentId: string }> {
+  const [row] = await db
+    .insert(s.comment)
+    .values({
+      draftId: input.draftId,
+      anchor: input.anchor,
+      authorSub: input.author.sub,
+      authorName: input.author.name,
+      body: input.body,
+    })
+    .returning({ id: s.comment.id })
+  if (row === undefined) throw new Error("the comment was not written")
+  return { status: "posted", commentId: row.id }
 }
 
 async function status(run: Promise<unknown>): Promise<number> {
@@ -313,7 +334,7 @@ describe("the listing row a draft is drawn with", () => {
       },
     }
 
-    const drawn = await drawDraft(get(), "ja", { researchId, draftId, content: typed })
+    const drawn = await drawDraft(get(), "ja", { researchId, draftId, content: typed, updating: null })
 
     expect(drawn.row.methods).toEqual(expect.objectContaining({ state: "rich" }))
     expect(JSON.stringify(drawn.row.methods)).toContain("まだ保存していない手法")
@@ -324,7 +345,7 @@ describe("the listing row a draft is drawn with", () => {
   })
 })
 
-describe("the threads a preview shows", () => {
+describe("the comments a preview shows", () => {
   /**
    * A draft that has since stopped listing one of its research's datasets:
    * `unlistedId` still has an entry and could still be commented on from the
@@ -350,21 +371,21 @@ describe("the threads a preview shows", () => {
     return { draftId, token, listedId: listed.datasetId, unlistedId: unlisted.datasetId }
   }
 
-  it("returns research threads and threads of the datasets the version lists, and no others", async () => {
+  it("returns research comments and comments of the datasets the version lists, and no others", async () => {
     const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
       author: { sub: null, name: "reader" },
       body: "on research",
     })
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on the listed dataset",
     })
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
       author: { sub: null, name: "reader" },
@@ -373,48 +394,58 @@ describe("the threads a preview shows", () => {
 
     const view = await previewResearchPage(get(), "ja", token)
 
-    expect(view.threads.map((thread) => thread.comments[0]?.body).sort()).toEqual([
+    expect(view.comments.map((one) => one.body).sort()).toEqual([
       "on research",
       "on the listed dataset",
     ])
   })
 
-  it("drops a dataset's threads once the version stops listing it, resolved or not", async () => {
+  /** What a share link is handed: the whole, never the memo. */
+  it("returns what was said about the whole, and never a line of the memo", async () => {
+    const { draftId, token } = await sharedDraft()
+    await postAboutDraft(db, { draftId, kind: "draft", author: { sub: null, name: "reader" }, body: "on the whole" })
+    await postAboutDraft(db, { draftId, kind: "memo", author: { sub: "admin", name: "curator" }, body: "for admins" })
+
+    const view = await previewResearchPage(get(), "ja", token)
+
+    expect(view.comments.map((one) => one.body)).toEqual(["on the whole"])
+  })
+
+  it("drops a dataset's comments once the version stops listing it, resolved or not", async () => {
     const { draftId, token, unlistedId } = await withUnlistedDataset()
-    const open = await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "open",
     })
-    const toResolve = await startThread(db, {
+    const toResolve = await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k2"),
       author: { sub: null, name: "reader" },
       body: "resolved",
     })
-    if (open.status !== "posted" || toResolve.status !== "posted") throw new Error("expected both threads to post")
-    await setThreadResolved(db, {
+    await setCommentResolved(db, {
       draftId,
-      threadId: toResolve.threadId,
+      commentId: toResolve.commentId,
       resolved: true,
       actorSub: "keycloak|admin",
     })
 
     const view = await previewResearchPage(get(), "ja", token)
 
-    expect(view.threads).toEqual([])
+    expect(view.comments).toEqual([])
   })
 
-  it("counts unresolved threads only among the ones the page draws", async () => {
+  it("counts unresolved comments only among the ones the page draws", async () => {
     const { draftId, token, unlistedId } = await withUnlistedDataset()
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
       author: { sub: null, name: "reader" },
       body: "on research",
     })
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
       author: { sub: null, name: "reader" },
@@ -423,24 +454,24 @@ describe("the threads a preview shows", () => {
 
     const view = await previewResearchPage(get(), "ja", token)
 
-    expect(unresolvedCount(view.threads)).toBe(1)
+    expect(unresolvedCount(view.comments)).toBe(1)
   })
 
-  it("returns a dataset preview only the threads addressed to that dataset", async () => {
+  it("returns a dataset preview only the comments addressed to that dataset", async () => {
     const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
       author: { sub: null, name: "reader" },
       body: "on research",
     })
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on this dataset",
     })
-    await startThread(db, {
+    await saidAt({
       draftId,
       anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
       author: { sub: null, name: "reader" },
@@ -449,7 +480,7 @@ describe("the threads a preview shows", () => {
 
     const view = await previewDatasetPage(get(), "ja", token, listedId)
 
-    expect(view.threads.map((thread) => thread.comments[0]?.body)).toEqual(["on this dataset"])
+    expect(view.comments.map((one) => one.body)).toEqual(["on this dataset"])
   })
 })
 
@@ -464,11 +495,11 @@ describe("writing from a share link", () => {
     )
 
     expect(outcome).toBeInstanceOf(Response)
-    const [thread] = await readThreads(db, draftId)
-    expect(thread?.anchor).toEqual({ kind: "research-field", path: "summary.aims" })
-    expect(thread?.comments[0]?.authorName).toBe("提供者")
-    expect(thread?.comments[0]?.body).toBe("対象は何名ですか")
-    expect(thread?.comments[0]?.bySignedIn).toBe(false)
+    const [one] = await readComments(db, draftId)
+    expect(one?.anchor).toEqual({ kind: "research-field", path: "summary.aims" })
+    expect(one?.authorName).toBe("提供者")
+    expect(one?.body).toBe("対象は何名ですか")
+    expect(one?.bySignedIn).toBe(false)
   })
 
   it("refuses a comment nobody can be asked about, and writes nothing", async () => {
@@ -479,7 +510,7 @@ describe("writing from a share link", () => {
       token,
       RESEARCH,
     )).toEqual({ status: "invalid", problem: "name-required" })
-    expect(await readThreads(db, draftId)).toEqual([])
+    expect(await readComments(db, draftId)).toEqual([])
   })
 
   it("refuses an anchor that leads nowhere in the draft it claims to be about", async () => {
@@ -490,7 +521,7 @@ describe("writing from a share link", () => {
       token,
       RESEARCH,
     ))).toBe(400)
-    expect(await readThreads(db, draftId)).toEqual([])
+    expect(await readComments(db, draftId)).toEqual([])
   })
 
   it("refuses to comment on a dataset this version does not list", async () => {
@@ -504,16 +535,37 @@ describe("writing from a share link", () => {
     ))).toBe(400)
   })
 
-  it("records that a reader has looked at the draft", async () => {
+  it("records which of the two marks a reader left, under their name", async () => {
     const { draftId, token } = await sharedDraft()
 
-    await previewAction(post({ intent: "acknowledge", name: "提供者" }), token, RESEARCH)
+    await previewAction(post({ intent: "acknowledge", kind: "commented", name: "提供者" }), token, RESEARCH)
+    await previewAction(post({ intent: "acknowledge", kind: "approved", name: "提供者" }), token, RESEARCH)
 
     const rows = await db
-      .select({ name: s.reviewAcknowledgement.actorName })
+      .select({ kind: s.reviewAcknowledgement.kind, name: s.reviewAcknowledgement.actorName })
       .from(s.reviewAcknowledgement)
       .where(eq(s.reviewAcknowledgement.draftId, draftId))
-    expect(rows).toEqual([{ name: "提供者" }])
+    expect(rows).toEqual([{ kind: "commented", name: "提供者" }, { kind: "approved", name: "提供者" }])
+  })
+
+  it("refuses a mark of a kind it does not know, and writes nothing", async () => {
+    const { draftId, token } = await sharedDraft()
+
+    expect(await status(previewAction(post({ intent: "acknowledge", kind: "lgtm", name: "提供者" }), token, RESEARCH)))
+      .toBe(400)
+    expect(await db.select().from(s.reviewAcknowledgement).where(eq(s.reviewAcknowledgement.draftId, draftId)))
+      .toEqual([])
+  })
+
+  it("takes a comment on the draft as a whole, and refuses to write into the memo", async () => {
+    const { draftId, token } = await sharedDraft()
+
+    await previewAction(post({ intent: "comment", subject: "draft", name: "提供者", body: "全体について" }), token, RESEARCH)
+    expect(await status(previewAction(post({ intent: "comment", subject: "memo", name: "提供者", body: "…" }), token, RESEARCH)))
+      .toBe(400)
+
+    expect((await readComments(db, draftId)).map((one) => [one.anchor, one.body]))
+      .toEqual([[{ kind: "draft" }, "全体について"]])
   })
 
   it("writes nothing at all once the link is private", async () => {
@@ -525,7 +577,7 @@ describe("writing from a share link", () => {
       token,
       RESEARCH,
     ))).toBe(404)
-    expect(await readThreads(db, draftId)).toEqual([])
+    expect(await readComments(db, draftId)).toEqual([])
   })
 })
 

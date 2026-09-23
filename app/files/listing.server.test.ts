@@ -14,8 +14,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./store.server", () => ({ listPrefix: vi.fn() }))
 
-import { publicPrefix } from "./box"
-import { everyPublicBox, fileListOf, publicBox, publicBoxesOf, publicRows } from "./listing.server"
+import { PRIVATE_BUCKET, publicPrefix } from "./box"
+import {
+  boxSummariesOf,
+  everyPublicBox,
+  fileListOf,
+  publicBox,
+  publicBoxesOf,
+  publicRows,
+} from "./listing.server"
 import { listPrefix } from "./store.server"
 
 const mockedListPrefix = vi.mocked(listPrefix)
@@ -70,5 +77,46 @@ describe("publicBoxesOf", () => {
 
     expect(boxes.get("hum0001")?.map((node) => node.name)).toEqual(["a.zip"])
     expect(boxes.get("hum0002")).toEqual([])
+  })
+})
+
+describe("boxSummariesOf", () => {
+  const node = (name: string, size: number) => ({ name, size, updatedAt: "2020-01-01T00:00:00.000Z" })
+
+  it("両方の bucket を数え、両方にある名前は 1 件と数える", async () => {
+    mockedListPrefix.mockImplementation((bucket, prefix) => {
+      if (bucket === PRIVATE_BUCKET) return Promise.resolve([node("b.zip", 6), node("c.zip", 1)])
+      if (prefix === publicPrefix("hum0001")) return Promise.resolve([node("a.zip", 4), node("b.zip", 6)])
+      return Promise.resolve([])
+    })
+
+    const summaries = await boxSummariesOf([{ researchId: "r1", humLabel: "hum0001" }])
+
+    expect(summaries.get("r1")).toEqual({ count: 3, bytes: 11 })
+  })
+
+  it("研究 ID の無い研究は非公開側だけを数え、空なら 0 件", async () => {
+    mockedListPrefix.mockResolvedValue([])
+
+    const summaries = await boxSummariesOf([{ researchId: "r1", humLabel: null }])
+
+    expect(summaries.get("r1")).toEqual({ count: 0, bytes: 0 })
+    // The public side is not asked for: there is no label to name a prefix with.
+    expect(mockedListPrefix).toHaveBeenCalledTimes(1)
+  })
+
+  it("答えなかった行だけが null で、他の行は残る", async () => {
+    mockedListPrefix.mockImplementation((_bucket, prefix) => {
+      if (prefix === publicPrefix("hum0002")) return Promise.reject(new Error("ECONNREFUSED"))
+      return Promise.resolve([node("a.zip", 4)])
+    })
+
+    const summaries = await boxSummariesOf([
+      { researchId: "r1", humLabel: "hum0001" },
+      { researchId: "r2", humLabel: "hum0002" },
+    ])
+
+    expect(summaries.get("r1")).toEqual({ count: 1, bytes: 4 })
+    expect(summaries.get("r2")).toBeNull()
   })
 })

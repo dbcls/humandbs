@@ -1,10 +1,14 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import {
+  codeFrom,
   codeProblem,
   filterKeyRows,
+  freeCode,
+  freeKeyCode,
   moved,
-  termCodeFrom,
+  movedTo,
   termCodeProblem,
   type KeyFilter,
   type KeyFilterRow,
@@ -45,44 +49,93 @@ describe("the code of a term", () => {
   })
 })
 
-describe("the code a new term is stored under", () => {
+describe("the code a new key or term is stored under", () => {
   /* The codes already in the vocabulary were written by hand, and the labels
      they were written from are still there — so a generated one has to come out
      the same, or every value added from now on reads differently in an address
      than the ones beside it. */
   it("comes out as the ones written by hand already are", () => {
-    expect(termCodeFrom("ATAC-seq")).toBe("atac-seq")
-    expect(termCodeFrom("16S rRNA Sequencing")).toBe("16s-rrna-sequencing")
-    expect(termCodeFrom("Genotyping by array")).toBe("genotyping-by-array")
-    expect(termCodeFrom("CUT&RUN-seq")).toBe("cut-run-seq")
+    expect(codeFrom("ATAC-seq")).toBe("atac-seq")
+    expect(codeFrom("16S rRNA Sequencing")).toBe("16s-rrna-sequencing")
+    expect(codeFrom("Genotyping by array")).toBe("genotyping-by-array")
+    expect(codeFrom("CUT&RUN-seq")).toBe("cut-run-seq")
   })
 
   it("puts one hyphen where a run of anything else was", () => {
-    expect(termCodeFrom("Whole  —  genome")).toBe("whole-genome")
-    expect(termCodeFrom("a / b (c)")).toBe("a-b-c")
+    expect(codeFrom("Whole  —  genome")).toBe("whole-genome")
+    expect(codeFrom("a / b (c)")).toBe("a-b-c")
   })
 
   it("leaves no hyphen at either end", () => {
-    expect(termCodeFrom("  ATAC-seq  ")).toBe("atac-seq")
-    expect(termCodeFrom("(WGS)")).toBe("wgs")
+    expect(codeFrom("  ATAC-seq  ")).toBe("atac-seq")
+    expect(codeFrom("(WGS)")).toBe("wgs")
   })
 
   /* A label with nothing a code can hold leaves an empty one, and an empty code
      is what `termCodeProblem` already refuses — so the screen answers with the
      same problem it would for a code typed by hand. */
   it("leaves nothing to refuse when the label holds no letters or digits", () => {
-    expect(termCodeFrom("―")).toBe("")
-    expect(termCodeProblem(termCodeFrom("―"))).toBe("malformed")
-    expect(termCodeProblem(termCodeFrom("メチル化アレイ"))).toBe("malformed")
+    expect(codeFrom("―")).toBe("")
+    expect(termCodeProblem(codeFrom("―"))).toBe("malformed")
+    expect(termCodeProblem(codeFrom("メチル化アレイ"))).toBe("malformed")
   })
 
   /* Whatever the label holds, what comes out is a code a query can carry
      unquoted — that is the one thing the generated side must not get wrong. */
   it("never makes a code the query language would refuse", () => {
     for (const label of ["ATAC-seq", "a:b", "x (y) [z]", "q?w*e", "back\\slash", "'quoted'"]) {
-      const code = termCodeFrom(label)
+      const code = codeFrom(label)
       if (code !== "") expect(termCodeProblem(code)).toBeNull()
     }
+  })
+
+  /* A key is made from its label the same way, and a key's code has the
+     stricter shape of the two — so whatever the label held, what comes out
+     must be empty or pass the key's rule, or a key could be stored under a
+     code the address cannot carry. */
+  it("is empty or a well-formed key code, whatever the label holds", () => {
+    fc.assert(fc.property(fc.string({ unit: "grapheme" }), (label) => {
+      const code = codeFrom(label)
+      if (code !== "") expect(codeProblem(code)).not.toBe("malformed")
+    }))
+  })
+})
+
+describe("the first free spelling of a code", () => {
+  it("keeps the one the label made when nothing holds it", () => {
+    expect(freeCode("atac-seq", new Set())).toBe("atac-seq")
+    expect(freeCode("atac-seq", new Set(["rna-seq"]))).toBe("atac-seq")
+  })
+
+  it("counts up from 2 past every spelling already held", () => {
+    expect(freeCode("atac-seq", new Set(["atac-seq"]))).toBe("atac-seq-2")
+    expect(freeCode("atac-seq", new Set(["atac-seq", "atac-seq-2"]))).toBe("atac-seq-3")
+    // A gap left behind is taken before the count goes on.
+    expect(freeCode("atac-seq", new Set(["atac-seq", "atac-seq-3"]))).toBe("atac-seq-2")
+  })
+
+  it("never answers with a spelling the set holds, and never reshapes the wanted one", () => {
+    fc.assert(fc.property(
+      fc.stringMatching(/^[a-z][a-z0-9-]{0,8}$/),
+      fc.array(fc.stringMatching(/^[a-z][a-z0-9-]{0,10}$/), { maxLength: 30 }),
+      (wanted, held) => {
+        const taken = new Set(held)
+        const code = freeCode(wanted, taken)
+        expect(taken.has(code)).toBe(false)
+        expect(code === wanted || /^-[2-9][0-9]*$/.test(code.slice(wanted.length))).toBe(true)
+      },
+    ))
+  })
+
+  /* `title` is what the search means by the research's title, so a key cannot
+     live there — but the label "Title" is the curator's to choose, so the key
+     moves along rather than being refused. */
+  it("keeps a key clear of the field names the search owns", () => {
+    expect(freeKeyCode("title", [])).toBe("title-2")
+    expect(freeKeyCode("title", ["title-2"])).toBe("title-3")
+    expect(freeKeyCode("coverage", ["coverage"])).toBe("coverage-2")
+    expect(freeKeyCode("read-depth", ["coverage"])).toBe("read-depth")
+    expect(codeProblem(freeKeyCode("title", []))).toBeNull()
   })
 })
 
@@ -101,6 +154,44 @@ describe("moving an entry one place", () => {
 
   it("leaves the order alone when asked about something that is not there", () => {
     expect(moved(items, "z", "up").map((one) => one.id)).toEqual(["a", "b", "c"])
+  })
+})
+
+describe("putting an entry at a place", () => {
+  const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }]
+  const ids = (list: readonly { id: string }[]) => list.map((one) => one.id)
+
+  it("closes the rows between over the place it left", () => {
+    expect(ids(movedTo(items, "d", 0))).toEqual(["d", "a", "b", "c"])
+    expect(ids(movedTo(items, "a", 3))).toEqual(["b", "c", "d", "a"])
+    expect(ids(movedTo(items, "b", 2))).toEqual(["a", "c", "b", "d"])
+    expect(ids(movedTo(items, "b", 1))).toEqual(["a", "b", "c", "d"])
+  })
+
+  it("leaves the order alone for a place or an entry that is not there", () => {
+    expect(ids(movedTo(items, "b", 4))).toEqual(["a", "b", "c", "d"])
+    expect(ids(movedTo(items, "b", -1))).toEqual(["a", "b", "c", "d"])
+    expect(ids(movedTo(items, "b", 1.5))).toEqual(["a", "b", "c", "d"])
+    expect(ids(movedTo(items, "b", Number.NaN))).toEqual(["a", "b", "c", "d"])
+    expect(ids(movedTo(items, "z", 0))).toEqual(["a", "b", "c", "d"])
+  })
+
+  /* Whatever is asked, what comes back is the same rows once each, and the
+     one that was moved stands where it was put — the two things a table's
+     positions must be able to rely on. */
+  it("keeps every row once and puts the moved one where it was asked", () => {
+    fc.assert(fc.property(
+      fc.uniqueArray(fc.stringMatching(/^[a-z]{1,4}$/), { minLength: 1, maxLength: 12 }),
+      fc.nat(), fc.nat(),
+      (names, pick, place) => {
+        const list = names.map((id) => ({ id }))
+        const id = names[pick % names.length] ?? ""
+        const to = place % names.length
+        const out = ids(movedTo(list, id, to))
+        expect([...out].sort()).toEqual([...names].sort())
+        expect(out[to]).toBe(id)
+      },
+    ))
   })
 })
 

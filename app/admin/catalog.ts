@@ -44,7 +44,7 @@ export function termCodeProblem(code: string): CodeProblem | null {
 }
 
 /**
- * The code a new term is stored under, made from its English label.
+ * The code a new key or term is stored under, made from its English label.
  *
  * **Nobody is asked for it.** The code is an address the public side carries
  * (`?q=experimental-method:atac-seq`), not a name a curator chooses — and
@@ -56,10 +56,37 @@ export function termCodeProblem(code: string): CodeProblem | null {
  * thing. That is the one place a code is still typed.
  *
  * **Runs of anything else become one hyphen**, so `CUT&RUN-seq` and
- * `Genotyping by array` come out as they were already written by hand.
+ * `Genotyping by array` come out as they were already written by hand. What
+ * comes out is empty or a code `codeProblem` calls well-formed, so a key —
+ * whose shape is the stricter of the two — is made the same way as a term.
  */
-export function termCodeFrom(labelEn: string): string {
+export function codeFrom(labelEn: string): string {
   return labelEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+/**
+ * The first of `wanted`, `wanted-2`, `wanted-3`… that `taken` does not hold.
+ *
+ * **A generated code cannot refuse the value.** Two entries may honestly read
+ * the same in English, and the curator who typed the second one has no code to
+ * correct — so the second takes the next free spelling instead.
+ */
+export function freeCode(wanted: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(wanted)) return wanted
+  for (let n = 2; ; n++) {
+    const next = `${wanted}-${n}`
+    if (!taken.has(next)) return next
+  }
+}
+
+/**
+ * The code a new key takes: clear of the keys the catalog holds and of the
+ * field names the search owns (`codeProblem`). A key labelled "Title" is stored
+ * as `title-2` rather than refused — the label is the curator's to choose, and
+ * the code is only where the key lives in an address.
+ */
+export function freeKeyCode(wanted: string, held: Iterable<string>): string {
+  return freeCode(wanted, new Set([...held, ...BUILT_IN_FIELDS.keys()]))
 }
 
 /**
@@ -94,25 +121,39 @@ export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * The positions of a list after one entry has been moved one place. Positions
- * are rewritten from the order rather than swapped, so a list that arrived with
- * gaps or duplicates comes back consecutive.
+ * The order of a list after one entry has been put at `to`, the rows between
+ * closing over the place it left. Positions are rewritten from the order rather
+ * than swapped, so a list that arrived with gaps or duplicates comes back
+ * consecutive.
+ *
+ * **A place that is not there leaves the order alone**, as does an entry that
+ * is not: what a screen can ask for is bounded by what it was showing, and a
+ * request from a stale screen should do nothing rather than something else.
  */
+export function movedTo<T extends { id: string }>(
+  items: readonly T[],
+  id: string,
+  to: number,
+): T[] {
+  const at = items.findIndex((item) => item.id === id)
+  if (at === -1 || !Number.isInteger(to) || to < 0 || to >= items.length) return [...items]
+  const next = [...items]
+  const moving = next[at]
+  if (moving === undefined) return next
+  next.splice(at, 1)
+  next.splice(to, 0, moving)
+  return next
+}
+
+/** The order after one entry has been moved one place, which is `movedTo` its neighbour's place. */
 export function moved<T extends { id: string }>(
   items: readonly T[],
   id: string,
   direction: "up" | "down",
 ): T[] {
   const at = items.findIndex((item) => item.id === id)
-  const to = direction === "up" ? at - 1 : at + 1
-  if (at === -1 || to < 0 || to >= items.length) return [...items]
-  const next = [...items]
-  const moving = next[at]
-  const displaced = next[to]
-  if (moving === undefined || displaced === undefined) return next
-  next[at] = displaced
-  next[to] = moving
-  return next
+  if (at === -1) return [...items]
+  return movedTo(items, id, direction === "up" ? at - 1 : at + 1)
 }
 
 // === the fields listing ===

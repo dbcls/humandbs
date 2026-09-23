@@ -36,14 +36,16 @@ export const document = pgTable("document", {
 })
 
 /**
- * One locale of a document, with its own published state and its own draft.
- * Splitting by locale is right here precisely because there is no version: the
- * rule that publication is per version rather than per language is a statement
- * about versions.
+ * One locale of a document, with its own published state. Splitting by locale
+ * is right here precisely because there is no version: the rule that
+ * publication is per version rather than per language is a statement about
+ * versions.
  *
- * The draft sits beside the published body rather than in a table of its own,
- * and publishing moves it across. None of the machinery a research draft needs
- * applies — there is no version to compare against and no second editor.
+ * **There is no draft beside the body.** A save changes the one body there is,
+ * public or not; a rewrite that must not be read while it is being written is
+ * a new revision under a series (docs/data-model.md の「サイトコンテンツ」).
+ * None of the machinery a research draft needs applies — there is no version
+ * to compare against and no second editor.
  */
 export const documentContent = pgTable("document_content", {
   documentId: uuid().notNull().references(() => document.id, { onDelete: "cascade" }),
@@ -51,7 +53,6 @@ export const documentContent = pgTable("document_content", {
   content: jsonb().$type<ArticleContent>().notNull(),
   published: boolean().notNull().default(false),
   publishedAt: date(),
-  draftContent: jsonb().$type<ArticleContent>(),
   revision: integer().notNull().default(1),
   updatedAt: updatedAt(),
 }, (t) => [
@@ -107,7 +108,6 @@ export const newsContent = pgTable("news_content", {
   locale: locale().notNull(),
   content: jsonb().$type<ArticleContent>().notNull(),
   published: boolean().notNull().default(false),
-  draftContent: jsonb().$type<ArticleContent>(),
   revision: integer().notNull().default(1),
   updatedAt: updatedAt(),
 }, (t) => [

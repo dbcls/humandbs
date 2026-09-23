@@ -11,30 +11,30 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { RESEARCH, anchorOf } from "./anchors"
+import { RESEARCH } from "./anchors"
 import {
   acknowledgeDraft,
+  postAboutDraft,
+  postComment,
   readAcknowledgements,
-  postDraftNote,
-  readThreads,
-  replyToThread,
-  setThreadResolved,
-  startThread,
+  readComments,
+  setCommentResolved,
 } from "./comments.server"
 
 /**
  * Comments against the development database.
  *
- * The two things worth holding down are that a thread belongs to one draft and
- * cannot be reached through another, and that **nothing resolves a thread
- * except somebody deciding to** — editing the value a comment is about is the
- * operation being reviewed, and closing the thread for them would remove the
- * chance to check it.
+ * The things worth holding down are that a comment belongs to one draft and
+ * cannot be reached through another, that **nothing resolves a comment except
+ * somebody deciding to** — editing the value a comment is about is the
+ * operation being reviewed, and closing it for them would remove the chance
+ * to check it — and that a line of the memo is never a question.
  */
 const db = getDb()
 
 const PROVIDER = { sub: null, name: "provider" }
 const CURATOR_SUB = "0f3a-1b2c"
+const CURATOR = { sub: CURATOR_SUB, name: "curator" }
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
@@ -48,129 +48,175 @@ async function draft(): Promise<{ draftId: string, researchId: string }> {
   return createResearchWithDraft(db)
 }
 
-async function startedOn(draftId: string, path: string, body = "これは何ですか"): Promise<string> {
-  const outcome = await startThread(db, {
-    draftId,
-    anchor: anchorOf(RESEARCH, path),
-    author: PROVIDER,
+async function saidAt(
+  draftId: string,
+  path: string,
+  body = "これは何ですか",
+  author: { sub: string | null, name: string } = PROVIDER,
+): Promise<string> {
+  const outcome = await postComment(db, {
+    about: { draftId, content: emptyResearchContent(), datasetIds: [] },
+    subject: RESEARCH,
+    path,
+    author,
     body,
   })
-  if (outcome.status !== "posted") throw new Error("the thread was not started")
-  return outcome.threadId
+  if (outcome.status !== "posted") throw new Error("the comment was not posted")
+  return outcome.commentId
 }
 
-describe("a thread", () => {
-  it("is created with the first comment on it, in the order they were written", async () => {
+describe("a comment", () => {
+  it("stands at its place in the order it was said, with the next one under it rather than inside it", async () => {
     const { draftId } = await draft()
-    const threadId = await startedOn(draftId, "summary.aims", "対象は何名ですか")
-    await replyToThread(db, {
-      draftId,
-      threadId,
-      author: { sub: CURATOR_SUB, name: "curator" },
-      body: "確認します",
-    })
+    await saidAt(draftId, "summary.aims", "対象は何名ですか")
+    await saidAt(draftId, "summary.aims", "確認します", CURATOR)
 
-    const [thread] = await readThreads(db, draftId)
-    expect(thread?.anchor).toEqual({ kind: "research-field", path: "summary.aims" })
-    expect(thread?.resolved).toBe(false)
-    expect(thread?.comments.map((row) => [row.authorName, row.body, row.bySignedIn])).toEqual([
-      ["provider", "対象は何名ですか", false],
-      ["curator", "確認します", true],
+    const rows = await readComments(db, draftId)
+    expect(rows.map((row) => row.anchor)).toEqual([
+      { kind: "research-field", path: "summary.aims" },
+      { kind: "research-field", path: "summary.aims" },
+    ])
+    expect(rows.map((row) => [row.authorName, row.body, row.bySignedIn, row.resolved])).toEqual([
+      ["provider", "対象は何名ですか", false, false],
+      ["curator", "確認します", true, false],
     ])
   })
 
-  it("is started on the draft itself for the memo, with no place to check", async () => {
+  it("is refused at a place the draft does not have, and writes nothing", async () => {
     const { draftId } = await draft()
-    const outcome = await postDraftNote(db, {
-      draftId,
-      author: { sub: CURATOR_SUB, name: "curator" },
-      body: "提供者に電話した",
-    })
 
-    expect(outcome.status).toBe("posted")
-    const [thread] = await readThreads(db, draftId)
-    expect(thread?.anchor).toEqual({ kind: "draft" })
-    expect(thread?.comments.map((row) => row.body)).toEqual(["提供者に電話した"])
-  })
-
-  it("cannot be answered or closed through another draft's address", async () => {
-    const mine = await draft()
-    const other = await draft()
-    const threadId = await startedOn(mine.draftId, "title")
-
-    expect(await replyToThread(db, {
-      draftId: other.draftId,
-      threadId,
+    const outcome = await postComment(db, {
+      about: { draftId, content: emptyResearchContent(), datasetIds: [] },
+      subject: RESEARCH,
+      path: "nowhere.at.all",
       author: PROVIDER,
       body: "…",
-    })).toEqual({ status: "gone" })
-    expect(await setThreadResolved(db, {
+    })
+
+    expect(outcome).toEqual({ status: "no-such-place" })
+    expect(await readComments(db, draftId)).toEqual([])
+  })
+
+  it("is said about the draft as a whole, or into the memo, with no place to check", async () => {
+    const { draftId } = await draft()
+    expect((await postAboutDraft(db, { draftId, kind: "draft", author: PROVIDER, body: " 全体について " })).status)
+      .toBe("posted")
+    expect((await postAboutDraft(db, { draftId, kind: "memo", author: CURATOR, body: "提供者に電話した" })).status)
+      .toBe("posted")
+
+    const rows = await readComments(db, draftId)
+    expect(rows.map((row) => [row.anchor, row.body])).toEqual([
+      [{ kind: "draft" }, "全体について"],
+      [{ kind: "memo" }, "提供者に電話した"],
+    ])
+  })
+
+  it("is not said about a draft that is not there", async () => {
+    const { draftId } = await draft()
+    await discardDraft(db, { draftId, revision: 1 }, CURATOR)
+
+    expect(await postAboutDraft(db, { draftId, kind: "draft", author: PROVIDER, body: "…" }))
+      .toEqual({ status: "gone" })
+  })
+
+  it("cannot be closed through another draft's address", async () => {
+    const mine = await draft()
+    const other = await draft()
+    const commentId = await saidAt(mine.draftId, "title")
+
+    expect(await setCommentResolved(db, {
       draftId: other.draftId,
-      threadId,
+      commentId,
       resolved: true,
       actorSub: CURATOR_SUB,
     })).toEqual({ status: "gone" })
 
-    const [thread] = await readThreads(db, mine.draftId)
-    expect(thread?.comments).toHaveLength(1)
-    expect(thread?.resolved).toBe(false)
+    expect((await readComments(db, mine.draftId))[0]?.resolved).toBe(false)
   })
 
   it("names the administrator who closed it, and forgets them when it is reopened", async () => {
     const { draftId } = await draft()
-    const threadId = await startedOn(draftId, "title")
+    const commentId = await saidAt(draftId, "title")
     await db.insert(s.adminUser).values({ keycloakSub: CURATOR_SUB, displayName: "curator" })
 
-    await setThreadResolved(db, { draftId, threadId, resolved: true, actorSub: CURATOR_SUB })
-    expect((await readThreads(db, draftId))[0]?.resolvedBy).toBe("curator")
+    await setCommentResolved(db, { draftId, commentId, resolved: true, actorSub: CURATOR_SUB })
+    expect((await readComments(db, draftId))[0]?.resolvedBy).toBe("curator")
 
-    await setThreadResolved(db, { draftId, threadId, resolved: false, actorSub: CURATOR_SUB })
-    const [reopened] = await readThreads(db, draftId)
+    await setCommentResolved(db, { draftId, commentId, resolved: false, actorSub: CURATOR_SUB })
+    const [reopened] = await readComments(db, draftId)
     expect(reopened?.resolved).toBe(false)
     expect(reopened?.resolvedBy).toBe(null)
   })
 
+  it("is resolved on its own, leaving the others at the same place open", async () => {
+    const { draftId } = await draft()
+    const first = await saidAt(draftId, "title", "一つ目")
+    await saidAt(draftId, "title", "二つ目")
+
+    await setCommentResolved(db, { draftId, commentId: first, resolved: true, actorSub: CURATOR_SUB })
+
+    expect((await readComments(db, draftId)).map((row) => [row.body, row.resolved]))
+      .toEqual([["一つ目", true], ["二つ目", false]])
+  })
+
+  /** A note is not a question: there is nothing about it to close. */
+  it("is never resolved when it is a line of the memo", async () => {
+    const { draftId } = await draft()
+    const outcome = await postAboutDraft(db, { draftId, kind: "memo", author: CURATOR, body: "覚え書き" })
+    if (outcome.status !== "posted") throw new Error("the line was not written")
+
+    expect(await setCommentResolved(db, {
+      draftId,
+      commentId: outcome.commentId,
+      resolved: true,
+      actorSub: CURATOR_SUB,
+    })).toEqual({ status: "gone" })
+    expect((await readComments(db, draftId))[0]?.resolved).toBe(false)
+  })
+
   it("is not resolved by editing the value it is about", async () => {
     const { draftId } = await draft()
-    await startedOn(draftId, "title")
+    await saidAt(draftId, "title")
 
     await saveDraftContent(db, { draftId, revision: 1 }, {
       content: { ...emptyResearchContent(), title: { ja: filled("答え"), en: filled("") } },
     })
 
-    expect((await readThreads(db, draftId))[0]?.resolved).toBe(false)
+    expect((await readComments(db, draftId))[0]?.resolved).toBe(false)
   })
 
   /** A draft is not history; nothing that hung off it outlives it. */
   it("goes when the draft it belongs to is thrown away", async () => {
     const { draftId } = await draft()
-    await startedOn(draftId, "title")
+    await saidAt(draftId, "title")
 
-    await discardDraft(db, { draftId, revision: 1 }, { sub: CURATOR_SUB, name: "curator" })
+    await discardDraft(db, { draftId, revision: 1 }, CURATOR)
 
-    expect(await db.select().from(s.commentThread)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
   })
 })
 
-describe("saying that you have looked at a draft", () => {
-  it("keeps one note per signed-in reader, however often they say it", async () => {
+describe("the marks a reader leaves on a draft", () => {
+  it("keeps one of each kind per signed-in reader, moved to the latest press", async () => {
     const { draftId } = await draft()
-    const reader = { sub: CURATOR_SUB, name: "curator" }
 
-    await acknowledgeDraft(db, { draftId, actor: reader })
-    await acknowledgeDraft(db, { draftId, actor: { ...reader, name: "curator (renamed)" } })
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: CURATOR })
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: { ...CURATOR, name: "curator (renamed)" } })
+    await acknowledgeDraft(db, { draftId, kind: "approved", actor: CURATOR })
 
     const rows = await readAcknowledgements(db, draftId)
-    expect(rows.map((row) => [row.name, row.bySignedIn])).toEqual([["curator (renamed)", true]])
+    expect(rows.map((row) => [row.kind, row.name, row.bySignedIn])).toEqual([
+      ["commented", "curator (renamed)", true],
+      ["approved", "curator", true],
+    ])
   })
 
   /** There is nothing to recognise an anonymous reader by, so nothing is merged. */
-  it("keeps every note from readers who did not sign in", async () => {
+  it("keeps every mark from readers who did not sign in", async () => {
     const { draftId } = await draft()
 
-    await acknowledgeDraft(db, { draftId, actor: PROVIDER })
-    await acknowledgeDraft(db, { draftId, actor: { sub: null, name: "another" } })
+    await acknowledgeDraft(db, { draftId, kind: "approved", actor: PROVIDER })
+    await acknowledgeDraft(db, { draftId, kind: "approved", actor: { sub: null, name: "another" } })
 
     const rows = await readAcknowledgements(db, draftId)
     expect(rows.map((row) => row.name)).toEqual(["provider", "another"])
@@ -179,25 +225,23 @@ describe("saying that you have looked at a draft", () => {
 
   it("goes with the draft, like everything else hung off it", async () => {
     const { draftId } = await draft()
-    await acknowledgeDraft(db, { draftId, actor: PROVIDER })
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: PROVIDER })
 
-    await discardDraft(db, { draftId, revision: 1 }, { sub: CURATOR_SUB, name: "curator" })
+    await discardDraft(db, { draftId, revision: 1 }, CURATOR)
 
     expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(0)
   })
 })
 
-describe("reading a draft's threads", () => {
+describe("reading a draft's comments", () => {
   it("reads only that draft's, so two drafts of one research stay apart", async () => {
     const mine = await draft()
     const other = await draft()
-    await startedOn(mine.draftId, "title", "こちら")
-    await startedOn(other.draftId, "title", "あちら")
+    await saidAt(mine.draftId, "title", "こちら")
+    await saidAt(other.draftId, "title", "あちら")
 
-    const rows = await readThreads(db, mine.draftId)
-    expect(rows).toHaveLength(1)
-    expect(rows[0]?.comments[0]?.body).toBe("こちら")
-    expect(await db.select().from(s.commentThread).where(eq(s.commentThread.draftId, other.draftId)))
-      .toHaveLength(1)
+    const rows = await readComments(db, mine.draftId)
+    expect(rows.map((row) => row.body)).toEqual(["こちら"])
+    expect(await db.select().from(s.comment).where(eq(s.comment.draftId, other.draftId))).toHaveLength(1)
   })
 })

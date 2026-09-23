@@ -1,10 +1,10 @@
 /**
  * What the box screen loads, and what its forms and its uploads do.
  *
- * **The bytes never come through here.** An upload asks for a signature, puts
- * straight to the store and says nothing afterwards: the bucket a file sits in
- * is the whole of its state, so there is nothing to write down when one arrives
- * (docs/files.md).
+ * **The bytes never come through here.** An upload asks which of its names the
+ * box already holds, asks for a signature, puts straight to the store and says
+ * nothing afterwards: the bucket a file sits in is the whole of its state, so
+ * there is nothing to write down when one arrives (docs/files.md).
  *
  * Switching and deleting are ordinary form posts, and both take several files
  * at once — a switch is a copy of the actual bytes and is therefore queued, so
@@ -17,7 +17,9 @@ import { z } from "zod"
 import { requireCapability } from "~/auth/actor.server"
 import type { Actor } from "~/auth/capabilities"
 import { recordEvent, type EventActor } from "~/auth/events.server"
+import { mapConcurrently } from "~/concurrency"
 import { getDb } from "~/db/client.server"
+import { dayFromInput, today } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { href } from "~/public/urls"
@@ -26,24 +28,28 @@ import { adminContentFilesPath, adminResearchFilesPath } from "~/admin/urls"
 import { humLabelOf } from "~/admin/queries.server"
 
 import {
+  BOX_SORT,
+  BOX_STATES,
+  type BoxEntry,
+  type BoxSortKey,
+  type BoxState,
   commonPrefix,
+  isBoxSortKey,
   isFileSlug,
   isUploadableName,
+  MULTIPART_CONCURRENCY,
   MULTIPART_PART_SIZE,
   MULTIPART_THRESHOLD,
-  BOX_SORT,
-  type BoxSortKey,
-  isBoxSortKey,
+  narrowedBox,
   pageOfBox,
-  privatePrefix,
   PRIVATE_BUCKET,
-  publicPrefix,
+  privatePrefix,
   PUBLIC_BUCKET,
+  publicPrefix,
   sortedBox,
-  type BoxEntry,
   type StoredNode,
 } from "./box"
-import { boxesOf, forgetSwitches, switchFiles, type SwitchRequest } from "./jobs.server"
+import { boxesOf, forgetSwitches, pendingSwitches, switchFiles, type SwitchRequest } from "./jobs.server"
 import { adminBox, commonBox } from "./listing.server"
 import { wakeFileRunner } from "./runner.server"
 import {
@@ -68,7 +74,12 @@ function badRequest(): never {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** What a box listing reads from its address. */
-const LISTING_SETTINGS = ["sort", "order", "size", "page"] as const
+const LISTING_SETTINGS: readonly string[] = ["sort", "order", "size", "page"]
+/** The research's box is narrowed by a side of the store as well. */
+const BOX_LISTING_SETTINGS: readonly string[] = [...LISTING_SETTINGS, "q", "from", "to", "state"]
+
+/** The `common/` box is also narrowed, and what narrows it is a setting of the listing too. */
+const COMMON_LISTING_SETTINGS: readonly string[] = [...LISTING_SETTINGS, "q", "from", "to"]
 
 /**
  * The listing an operation on its rows answers with: the one it was sent from.
@@ -77,13 +88,19 @@ const LISTING_SETTINGS = ["sort", "order", "size", "page"] as const
  * a listing post to the address they stand on, so what the reader chose is in
  * the request's own query; dropping it put a reader who had asked for fifty rows
  * back on twenty after every delete. Only the listing's settings are carried —
- * the rest of a query is not the listing's to keep. A page the operation emptied
- * is the listing's to settle, the way it settles any page past the end.
+ * the rest of a query is not the listing's to keep, and which names are its
+ * settings is the listing's to say. A page the operation emptied is the
+ * listing's to settle, the way it settles any page past the end.
  */
-function backToListing(request: Request, locale: Locale, path: string): Response {
+function backToListing(
+  request: Request,
+  locale: Locale,
+  path: string,
+  settings: readonly string[] = LISTING_SETTINGS,
+): Response {
   const asked = new URL(request.url).searchParams
   const kept = new URLSearchParams()
-  for (const name of LISTING_SETTINGS) {
+  for (const name of settings) {
     const value = asked.get(name)
     if (value !== null) kept.set(name, value)
   }
@@ -102,6 +119,21 @@ export interface FilesPageView {
   humLabel: string | null
   /** Null when the store did not answer; the screen says so and offers nothing. */
   rows: BoxEntry[] | null
+  /** The words looked for in the name, as typed. Empty when none were. */
+  keyword: string
+  /** The first and the last day kept, each `null` when that end is open. */
+  from: string | null
+  to: string | null
+  /** The JST day the windows over the range open from (`~/search/date-window`). */
+  today: string
+  /** Which sides of the store are kept. Empty, or both, is every file. */
+  states: BoxState[]
+  /**
+   * How many files stand on each side, counted with the side condition off and
+   * the others on — the way every listing counts its values
+   * (docs/editing.md の「管理画面」).
+   */
+  counts: Record<BoxState, number>
   sort: BoxSortKey
   order: "asc" | "desc"
   size: PageSize
@@ -112,11 +144,18 @@ export interface FilesPageView {
   rangeFrom: number
   rangeTo: number
   /** How many switches have not finished, over the whole box rather than the page. */
-  switching: number
-  totalBytes: number
   /** Above this an upload is cut into parts, and each part is this many bytes. */
   multipartThreshold: number
   partSize: number
+}
+
+function isBoxState(value: string): value is BoxState {
+  return (BOX_STATES as readonly string[]).includes(value)
+}
+
+/** The side a file is on, as the axis names it. */
+function stateOf(entry: BoxEntry): BoxState {
+  return entry.isPublic ? "public" : "private"
 }
 
 export async function filesPage(
@@ -134,18 +173,38 @@ export async function filesPage(
   const asked = new URL(request.url).searchParams
   // Unreadable is the default rather than a refusal, for the reason the
   // `common/` box reads its own address that way.
+  const keyword = asked.get("q") ?? ""
+  const from = dayFromInput(asked.get("from") ?? "")
+  const to = dayFromInput(asked.get("to") ?? "")
+  const states = asked.getAll("state").filter(isBoxState)
   const sort = isBoxSortKey(asked.get("sort")) ? asked.get("sort") as BoxSortKey : BOX_SORT
   const order = asked.get("order") === "desc" ? "desc" : "asc"
   const chosen = Number(asked.get("size") ?? "")
   const size = isPageSize(chosen) ? chosen : PAGE_SIZE
   const wanted = Number(asked.get("page") ?? "1")
-  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1, size)
+
+  // The side is counted with its own condition off, so that a reader who
+  // picked one side can still see how many stand on the other.
+  const bySide = narrowedBox(box ?? [], { keyword, from, to })
+  const narrowed = states.length === 0
+    ? bySide
+    : bySide.filter((entry) => states.includes(stateOf(entry)))
+  const page = pageOfBox(sortedBox(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, size)
 
   return {
     locale,
     researchId: id,
     humLabel,
     rows: box === null ? null : page.rows,
+    keyword,
+    from,
+    to,
+    today: today(),
+    states,
+    counts: {
+      public: bySide.filter((entry) => entry.isPublic).length,
+      private: bySide.filter((entry) => !entry.isPublic).length,
+    },
     sort,
     order,
     size,
@@ -154,8 +213,6 @@ export async function filesPage(
     pageCount: page.pageCount,
     rangeFrom: page.rangeFrom,
     rangeTo: page.rangeTo,
-    switching: (box ?? []).filter((entry) => entry.pending !== null).length,
-    totalBytes: (box ?? []).reduce((sum, entry) => sum + entry.size, 0),
     multipartThreshold: MULTIPART_THRESHOLD,
     partSize: MULTIPART_PART_SIZE,
   }
@@ -166,10 +223,16 @@ export type FilesActionResult
     | { status: "nothing-selected" }
     | { status: "malformed-slug" }
     | { status: "slug-taken" }
+    /** A research file cannot carry this name: the box is flat, and a name is one file. */
+    | { status: "malformed-name" }
+    | { status: "name-taken" }
+    /** The file's switch has not finished, so which side it is renamed on is not settled. */
+    | { status: "switching" }
 
 /**
- * Switching a selection of files, and deleting one. Both name the files by the
- * checkboxes that were ticked, so both are the same shape of post.
+ * What is done to a file of the box from its row: switched, deleted, renamed.
+ * The first two name the file the way a selection would, so the post is the
+ * same shape whether one row sent it or the publish confirmation sent a list.
  */
 export async function filesAction(
   request: Request,
@@ -184,10 +247,11 @@ export async function filesAction(
 
   const form = await request.formData()
   const intent = form.get("intent")
+  const back = backToListing(request, locale, adminResearchFilesPath(id), BOX_LISTING_SETTINGS)
+  if (intent === "rename") return renameResearchFile(db, id, form, actorOf(actor), back)
+
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
-
-  const back = backToListing(request, locale, adminResearchFilesPath(id))
 
   if (intent === "publish" || intent === "unpublish") {
     // Nowhere to put a public copy. Refused here rather than left to fail in
@@ -210,6 +274,84 @@ export async function filesAction(
 
 function actorOf(actor: { sub: string, name: string }): EventActor {
   return { sub: actor.sub, name: actor.name }
+}
+
+/**
+ * Giving a file of the box a different name, on whichever sides it is on.
+ *
+ * **A copy and a delete on each side**, the copy first (`renameCommonFile`).
+ * A name that is one file already, on either side, is refused rather than
+ * written over; and a file whose switch is still queued is left alone, since
+ * the side it will be on is not settled and the runner would find nothing
+ * under the name it was given.
+ *
+ * **Only the public side is written down.** Readers can fetch what is there,
+ * and for them one address starts answering and another stops — the same two
+ * things deleting and publishing write. Moving the private copy changes
+ * nothing anybody can fetch (docs/publishing.md の「証跡」).
+ */
+async function renameResearchFile(
+  db: ReturnType<typeof getDb>,
+  researchId: string,
+  form: FormData,
+  actor: EventActor,
+  back: Response,
+): Promise<Response | FilesActionResult> {
+  const from = form.get("from")
+  const to = form.get("to")
+  if (typeof from !== "string" || typeof to !== "string") badRequest()
+  const name = to.trim()
+  if (!isUploadableName(from)) badRequest()
+  if (!isUploadableName(name)) return { status: "malformed-name" }
+  if (name === from) return back
+
+  const pending = await pendingSwitches(db, researchId)
+  if (pending.some((row) => row.fileName === from)) return { status: "switching" }
+
+  const boxes = await boxesOf(db, researchId)
+  const labels = [...(boxes.primary === null ? [] : [boxes.primary]), ...boxes.others]
+  interface Side { bucket: ObjectRef["bucket"], prefix: string, shown: boolean }
+  const sides: Side[] = [
+    { bucket: PRIVATE_BUCKET, prefix: privatePrefix(researchId), shown: false },
+    ...labels.map((label): Side => ({ bucket: PUBLIC_BUCKET, prefix: publicPrefix(label), shown: true })),
+  ]
+  for (const side of sides) {
+    if (await objectExists({ bucket: side.bucket, key: side.prefix + name })) {
+      return { status: "name-taken" }
+    }
+  }
+
+  const shown: { from: ObjectRef, to: ObjectRef }[] = []
+  for (const side of sides) {
+    const source: ObjectRef = { bucket: side.bucket, key: side.prefix + from }
+    if (!(await objectExists(source))) continue
+    const target: ObjectRef = { bucket: side.bucket, key: side.prefix + name }
+    await copyObject(source, target)
+    await deleteObject(source)
+    if (side.shown) shown.push({ from: source, to: target })
+  }
+
+  if (shown.length > 0) {
+    await db.transaction(async (tx) => {
+      for (const moved of shown) {
+        await recordEvent(tx, {
+          actor,
+          action: "publish-file",
+          subjectType: "file",
+          subjectId: name,
+          detail: { research: researchId, key: moved.to.key, renamedFrom: from },
+        })
+        await recordEvent(tx, {
+          actor,
+          action: "delete-file",
+          subjectType: "file",
+          subjectId: from,
+          detail: { research: researchId, key: moved.from.key, renamedTo: name },
+        })
+      }
+    })
+  }
+  return back
 }
 
 /**
@@ -257,8 +399,17 @@ async function deleteFiles(
  * The name, the size and the content type are all settled before a URL exists,
  * because all three go into the signature: that is the only limit that can be
  * placed on a transfer the application does not see.
+ *
+ * **The first question names the files and nothing else.** A name is the key,
+ * so sending one the box already holds replaces what is there; the screen asks
+ * which of its names would, before it asks for any signature, and puts the
+ * question to the reader (docs/files.md の「upload」).
  */
 const uploadRequest = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("check"),
+    names: z.array(z.string()).min(1).max(10_000),
+  }),
   z.object({
     kind: z.literal("single"),
     name: z.string(),
@@ -289,9 +440,11 @@ const uploadRequest = z.discriminatedUnion("kind", [
 ])
 
 type UploadPayload = z.infer<typeof uploadRequest>
+type SigningPayload = Exclude<UploadPayload, { kind: "check" }>
 
 export type UploadAnswer
-  = | { kind: "single", url: string }
+  = | { kind: "check", existing: string[] }
+    | { kind: "single", url: string }
     | { kind: "begin", uploadId: string, urls: string[] }
     | { kind: "done" }
 
@@ -299,8 +452,30 @@ export type UploadAnswer
 async function uploadBody(request: Request): Promise<UploadPayload> {
   const payload = uploadRequest.safeParse(await request.json())
   if (!payload.success) badRequest()
-  if (!isUploadableName(payload.data.name)) badRequest()
+  const names = payload.data.kind === "check" ? payload.data.names : [payload.data.name]
+  if (!names.every(isUploadableName)) badRequest()
   return payload.data
+}
+
+/**
+ * Which of the names are already in the box, in the order they were asked in.
+ *
+ * **A name is looked for everywhere the box lists it from.** A research's box
+ * is two buckets shown as one list, and a name on the public side is one the
+ * reader sees in that list as much as one on the private side. The same HEAD a
+ * slug change refuses a taken name with, a few at a time.
+ */
+async function alreadyThere(
+  names: readonly string[],
+  placesOf: (name: string) => ObjectRef[],
+): Promise<UploadAnswer> {
+  const found = await mapConcurrently(names, MULTIPART_CONCURRENCY, async (name) => {
+    for (const ref of placesOf(name)) {
+      if (await objectExists(ref)) return true
+    }
+    return false
+  })
+  return { kind: "check", existing: names.filter((_, index) => found[index] === true) }
 }
 
 /**
@@ -312,7 +487,7 @@ async function uploadBody(request: Request): Promise<UploadPayload> {
  * `arrived` runs at the two moments the portal last takes part in an upload.
  */
 async function signUpload(
-  body: UploadPayload,
+  body: SigningPayload,
   ref: ObjectRef,
   arrived?: () => Promise<void>,
 ): Promise<UploadAnswer> {
@@ -350,13 +525,30 @@ export async function fileUploadAction(
   await requireCapability(request, "manage-files")
   const id = identity(researchId)
   const body = await uploadBody(request)
-  return signUpload(body, { bucket: PRIVATE_BUCKET, key: privatePrefix(id) + body.name })
+  const privateAt = (name: string): ObjectRef => ({ bucket: PRIVATE_BUCKET, key: privatePrefix(id) + name })
+  if (body.kind === "check") {
+    // The list the reader sees is both sides of the store (`adminBox`), so a
+    // name is looked for on both — the public side only once there is a label
+    // to have put anything under.
+    const label = await humLabelOf(getDb(), id)
+    return alreadyThere(body.names, (name) => label === null
+      ? [privateAt(name)]
+      : [privateAt(name), { bucket: PUBLIC_BUCKET, key: publicPrefix(label) + name }])
+  }
+  return signUpload(body, privateAt(body.name))
 }
 
 export interface CommonFilesView {
   locale: Locale
   /** Null when the store did not answer; the screen says so and offers nothing. */
   rows: StoredNode[] | null
+  /** The words looked for in the slug, as typed. Empty when none were. */
+  keyword: string
+  /** The first and the last day kept, each `null` when that end is open. */
+  from: string | null
+  to: string | null
+  /** The JST day the windows over the range open from (`~/search/date-window`). */
+  today: string
   sort: BoxSortKey
   order: "asc" | "desc"
   size: PageSize
@@ -383,21 +575,29 @@ export async function commonFilesPage(
   const box = await commonBox()
   const asked = new URL(request.url).searchParams
   /*
-    **Anything unreadable is the default rather than a refusal.** These three
-    are typed into the address by hand as often as they are pressed, and a
-    listing that answers 400 to a mistyped ordering loses the reader the page
-    they were on.
+    **Anything unreadable is the default rather than a refusal.** These are
+    typed into the address by hand as often as they are pressed, and a listing
+    that answers 400 to a mistyped ordering loses the reader the page they were
+    on. A day that is not one is an end left open, for the same reason.
   */
+  const keyword = asked.get("q") ?? ""
+  const from = dayFromInput(asked.get("from") ?? "")
+  const to = dayFromInput(asked.get("to") ?? "")
   const sort = isBoxSortKey(asked.get("sort")) ? asked.get("sort") as BoxSortKey : BOX_SORT
   const order = asked.get("order") === "desc" ? "desc" : "asc"
   const chosen = Number(asked.get("size") ?? "")
   const size = isPageSize(chosen) ? chosen : PAGE_SIZE
   const wanted = Number(asked.get("page") ?? "1")
-  const page = pageOfBox(sortedBox(box ?? [], sort, order), Number.isInteger(wanted) ? wanted : 1, size)
+  const narrowed = narrowedBox(box ?? [], { keyword, from, to })
+  const page = pageOfBox(sortedBox(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, size)
 
   return {
     locale,
     rows: box === null ? null : page.rows,
+    keyword,
+    from,
+    to,
+    today: today(),
     sort,
     order,
     size,
@@ -439,7 +639,7 @@ export async function commonFilesAction(
     }
   })
 
-  return backToListing(request, locale, adminContentFilesPath())
+  return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
 }
 
 /**
@@ -469,7 +669,7 @@ async function renameCommonFile(
   const slug = to.trim()
   if (!isFileSlug(from)) badRequest()
   if (!isFileSlug(slug)) return { status: "malformed-slug" }
-  if (slug === from) return backToListing(request, locale, adminContentFilesPath())
+  if (slug === from) return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
 
   const at = (name: string): ObjectRef => ({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
   if (await objectExists(at(slug))) return { status: "slug-taken" }
@@ -495,7 +695,7 @@ async function renameCommonFile(
     })
   })
 
-  return backToListing(request, locale, adminContentFilesPath())
+  return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
 }
 
 /**
@@ -511,7 +711,10 @@ async function renameCommonFile(
 export async function commonUploadAction(request: Request): Promise<UploadAnswer> {
   const actor = await requireCapability(request, "manage-site-content")
   const body = await uploadBody(request)
-  const ref: ObjectRef = { bucket: PUBLIC_BUCKET, key: commonPrefix() + body.name }
+  const at = (name: string): ObjectRef => ({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
+  // Asking changes nothing readers can fetch, so nothing is written down.
+  if (body.kind === "check") return alreadyThere(body.names, (name) => [at(name)])
+  const ref = at(body.name)
 
   return signUpload(body, ref, async () => {
     await recordEvent(getDb(), {

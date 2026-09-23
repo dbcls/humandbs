@@ -228,18 +228,18 @@ describe("discarding a draft", () => {
     const draftId = await createDraft(researchId, "token-a")
     await db.insert(s.draftDatasetEntry).values({ draftId, datasetId, content: emptyDatasetContent() })
     await db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" })
-    const thread = only(await db.insert(s.commentThread).values({
+    await db.insert(s.comment).values({
       draftId,
       anchor: { kind: "research-field", path: "summary.aims" },
-    }).returning({ id: s.commentThread.id }))
-    await db.insert(s.comment).values({ threadId: thread.id, authorName: "provider", body: "please confirm" })
-    await db.insert(s.reviewAcknowledgement).values({ draftId, actorName: "provider" })
+      authorName: "provider",
+      body: "please confirm",
+    })
+    await db.insert(s.reviewAcknowledgement).values({ draftId, kind: "approved", actorName: "provider" })
 
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, draftId))
 
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
     expect(await db.select().from(s.draftPresence)).toHaveLength(0)
-    expect(await db.select().from(s.commentThread)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
     expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(0)
   })

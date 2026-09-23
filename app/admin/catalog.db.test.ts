@@ -121,9 +121,13 @@ function diseaseOrTerm(value: { termId?: string, asDisease?: boolean }): Content
     : { kind: "vocabulary", termIds: filled([value.termId]) }
 }
 
-/** A published dataset carrying one value, so that "in use" means something. */
+/**
+ * A published dataset carrying one value, so that "in use" means something.
+ * Each call is a research of its own, so a second one needs labels of its own.
+ */
 async function publishedValue(
   value: { keyId: string, termId?: string, asDisease?: boolean },
+  labels: { hum: string, dataset: string } = { hum: "hum0001", dataset: "JGAD000001" },
 ): Promise<void> {
   const { id: researchId } = only(await db.insert(s.research).values({})
     .returning({ id: s.research.id }))
@@ -148,12 +152,37 @@ async function publishedValue(
     }],
   })
   await db.insert(s.labelPin)
-    .values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
+    .values({ kind: "hum", label: labels.hum, researchId, isPrimary: true })
   await db.insert(s.labelPin)
-    .values({ kind: "dataset", label: "JGAD000001", datasetId, isPrimary: true })
+    .values({ kind: "dataset", label: labels.dataset, datasetId, isPrimary: true })
   // "In use" is asked of the published rows, which is where a publish would
   // have put this value.
   await rebuildSearchDocs(db)
+}
+
+/**
+ * A draft holding one value, published nowhere: what "in use" has to see and
+ * the public listing never shows.
+ */
+async function draftedValue(value: { keyId: string, termId?: string, asDisease?: boolean }): Promise<void> {
+  const { id: researchId } = only(await db.insert(s.research).values({})
+    .returning({ id: s.research.id }))
+  const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
+    .returning({ id: s.dataset.id }))
+  const { id: draftId } = only(await db.insert(s.researchDraft)
+    .values({ researchId, content: emptyResearchContent(), shareToken: `share-${researchId}` })
+    .returning({ id: s.researchDraft.id }))
+  await db.insert(s.draftDatasetEntry).values({
+    draftId,
+    datasetId,
+    content: {
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: value.keyId,
+        value: diseaseOrTerm(value),
+      }],
+    },
+  })
 }
 
 describe("who may read the catalog", () => {
@@ -165,53 +194,129 @@ describe("who may read the catalog", () => {
   })
 })
 
+describe("putting a key where a row was dropped", () => {
+  it("moves the key to that place and renumbers the rest", async () => {
+    const token = await signIn(CURATOR, true)
+    const a = await freeTextKey("a")
+    const b = await freeTextKey("b")
+    const c = await freeTextKey("c")
+    await db.update(s.contentKey).set({ position: 0 }).where(eq(s.contentKey.id, a))
+    await db.update(s.contentKey).set({ position: 1 }).where(eq(s.contentKey.id, b))
+    await db.update(s.contentKey).set({ position: 2 }).where(eq(s.contentKey.id, c))
+
+    expect(await catalogAction(post(token, { intent: "move-key-to", keyId: c, to: "0" })))
+      .toEqual({ status: "ok", did: "move-key-to", moved: { id: c, from: 2, to: 0, of: 3 } })
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => [key.code, key.position])).toEqual([["c", 0], ["a", 1], ["b", 2]])
+  })
+
+  it("does nothing for a place past the end, and refuses one that is not a number", async () => {
+    const token = await signIn(CURATOR, true)
+    const a = await freeTextKey("a")
+    await freeTextKey("b")
+
+    // Nothing moved, so there is nothing to take back.
+    expect(await catalogAction(post(token, { intent: "move-key-to", keyId: a, to: "5" }))).toEqual({ status: "ok", did: "move-key-to" })
+    expect(await catalogAction(post(token, { intent: "move-key-to", keyId: a, to: "first" }))).toEqual({ status: "unknown-target" })
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => key.code)).toEqual(["a", "b"])
+  })
+})
+
+describe("whether a key can still go", () => {
+  it("says a key is in use when a published dataset holds a value under it", async () => {
+    const token = await signIn(CURATOR, true)
+    const keyId = await freeTextKey("coverage")
+    await freeTextKey("depth")
+    await publishedValue({ keyId })
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => [key.code, key.used, key.inUse])).toEqual([["coverage", 1, true], ["depth", 0, false]])
+  })
+
+  it("says a key is in use when only a draft holds a value under it, though no dataset counts", async () => {
+    const token = await signIn(CURATOR, true)
+    const keyId = await freeTextKey("coverage")
+    await draftedValue({ keyId })
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => [key.used, key.inUse])).toEqual([[0, true]])
+  })
+
+  it("counts each published dataset once under the key", async () => {
+    const token = await signIn(CURATOR, true)
+    const keyId = await freeTextKey("coverage")
+    await publishedValue({ keyId })
+    await publishedValue({ keyId }, { hum: "hum0002", dataset: "JGAD000002" })
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => key.used)).toEqual([2])
+  })
+})
+
 describe("the keys an administrator may add", () => {
-  it("adds a free-text key and puts it last", async () => {
+  it("adds a free-text key under a code made from its English label, and puts it last", async () => {
     const token = await signIn(CURATOR, true)
     await freeTextKey("coverage")
 
     const result = await catalogAction(post(token, {
       intent: "create-key",
-      code: "read-depth",
+      // Nothing reads a typed code: the form has no box for one.
+      code: "typed-by-hand",
       scope: "experiment",
       labelJa: "深度",
       labelEn: "Read depth",
     }))
 
-    expect(result).toEqual({ status: "ok" })
+    expect(result).toMatchObject({ status: "ok" })
     const added = only(await db.select().from(s.contentKey).where(eq(s.contentKey.code, "read-depth")))
     expect(added.valueType).toBe("text")
     expect(added.position).toBe(1)
+    expect(await db.select().from(s.contentKey).where(eq(s.contentKey.code, "typed-by-hand"))).toHaveLength(0)
   })
 
-  it("refuses a code that is the name of a field the search already owns", async () => {
+  it("moves a key off the name of a field the search owns rather than refusing the label", async () => {
     const token = await signIn(CURATOR, true)
 
     const result = await catalogAction(post(token, {
       intent: "create-key",
-      code: "title",
       scope: "experiment",
       labelJa: "題目",
       labelEn: "Title",
     }))
 
-    expect(result).toEqual({ status: "reserved-code" })
-    expect(await db.select().from(s.contentKey)).toHaveLength(0)
+    expect(result).toMatchObject({ status: "ok" })
+    expect(only(await db.select().from(s.contentKey)).code).toBe("title-2")
   })
 
-  it("refuses a code the catalog already holds rather than failing on the constraint", async () => {
+  it("takes the next free code when the label reads the same as a key already there", async () => {
     const token = await signIn(CURATOR, true)
     await freeTextKey("coverage")
 
     const result = await catalogAction(post(token, {
       intent: "create-key",
-      code: "coverage",
       scope: "experiment",
       labelJa: "深度",
       labelEn: "Coverage",
     }))
 
-    expect(result).toEqual({ status: "duplicate-code" })
+    expect(result).toMatchObject({ status: "ok" })
+    expect((await db.select().from(s.contentKey)).map((one) => one.code).sort()).toEqual(["coverage", "coverage-2"])
+  })
+
+  it("refuses a label that nothing a code can hold can be made from", async () => {
+    const token = await signIn(CURATOR, true)
+
+    const result = await catalogAction(post(token, {
+      intent: "create-key",
+      scope: "experiment",
+      labelJa: "深度",
+      labelEn: "深度",
+    }))
+
+    expect(result).toEqual({ status: "no-code" })
+    expect(await db.select().from(s.contentKey)).toHaveLength(0)
   })
 })
 
@@ -244,7 +349,7 @@ describe("the keys an administrator may take away", () => {
     const keyId = await freeTextKey("coverage")
 
     expect(await catalogAction(post(token, { intent: "delete-key", keyId })))
-      .toEqual({ status: "ok" })
+      .toMatchObject({ status: "ok" })
     expect(await db.select().from(s.contentKey)).toHaveLength(0)
   })
 })
@@ -265,7 +370,7 @@ describe("the terms of a vocabulary", () => {
       termId,
       labelEn: "Lymphoid leukaemia",
       labelJa: "リンパ性白血病",
-    }))).toEqual({ status: "ok" })
+    }))).toMatchObject({ status: "ok" })
     const held = only(await db.select().from(s.vocabularyTerm))
     expect(held.labelEn).toBe("Lymphoid leukaemia")
     expect(held.labelJa).toBe("リンパ性白血病")
@@ -315,26 +420,45 @@ describe("the terms of a vocabulary", () => {
       termId,
       labelEn: "Whole genome sequencing",
       labelJa: "全ゲノムシークエンス",
-    }))).toEqual({ status: "ok" })
+    }))).toMatchObject({ status: "ok" })
 
     expect(only(await db.select().from(s.researchVersion)).content).toEqual(before)
     expect(only(await db.select().from(s.vocabularyTerm)).labelEn).toBe("Whole genome sequencing")
   })
 
-  it("shows how many published objects carry a term", async () => {
+  it("counts the published datasets that carry a term, and not the research rows beside them", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
     const termId = await term(setId, "wgs")
     const { id: keyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
       .returning({ id: s.contentKey.id }))
+    // Two researches of one dataset each: four search rows carry the term, and
+    // the public listing the count opens shows two.
     await publishedValue({ keyId, termId })
+    await publishedValue({ keyId, termId }, { hum: "hum0002", dataset: "JGAD000002" })
     // The search rows are what usage is counted from, and a catalog write is
     // what rebuilds them.
     await catalogAction(post(token, { intent: "update-term", termId, labelEn: "WGS" }))
+    expect(await db.select().from(s.searchFacetTerm)).toHaveLength(4)
 
     const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
     expect(view?.terms.map((row) => row.used)).toEqual([2])
+  })
+
+  it("says a term is in use when only a draft points at it, though no dataset counts", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    const termId = await term(setId, "wgs")
+    await term(setId, "wes")
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
+      .returning({ id: s.contentKey.id }))
+    await draftedValue({ keyId, termId })
+
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
+    expect(view?.terms.map((row) => [row.code, row.used, row.inUse]))
+      .toEqual([["wes", 0, false], ["wgs", 0, true]])
   })
 
   it("lists every term, whatever an address kept from before asks about their state", async () => {
@@ -429,7 +553,7 @@ describe("the ICD10 dictionary", () => {
       code: "C349",
       labelEn: "Bronchus or lung, unspecified",
       labelJa: "気管支又は肺，部位不明",
-    }))).toEqual({ status: "ok" })
+    }))).toMatchObject({ status: "ok" })
 
     // Without the root the four-character code would count as a root itself,
     // and "the disease facet is counted by three characters" would quietly stop
@@ -502,8 +626,6 @@ describe("narrowing the fields listing", () => {
     const view = await catalogPage(get(token, "/admin/experiment-fields?type=number"))
 
     expect(view.keys.map((one) => one.code)).toEqual(["read-length"])
-    // The name of the screen counts every field, not the ones left standing.
-    expect(view.total).toBe(3)
     // The type axis is counted with its own condition lifted, so all three.
     expect(view.counts.types).toEqual({ text: 1, vocabulary: 1, number: 1, disease: 0 })
   })
@@ -561,7 +683,7 @@ describe("folding one term into another", () => {
     await publishedValue({ keyId, termId: from })
 
     expect(await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into })))
-      .toEqual({ status: "ok" })
+      .toMatchObject({ status: "ok" })
 
     const version = only(await db.select().from(s.researchVersion))
     expect(chosenIn(version.content)).toEqual([into])

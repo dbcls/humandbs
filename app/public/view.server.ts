@@ -11,10 +11,7 @@
  *
  * Whether the page shows the untranslated notice is decided here for the same
  * reason: it is the disjunction over exactly the fields the page renders, and
- * only the code that walks them can know it. Fields that exist in the content
- * but are not rendered — a provider's ORCID, e-mail and address — do not count
- * towards it. They stay in the content and in the JSON API; the page does not
- * show them, so the reader cannot be sent looking for them.
+ * only the code that walks them can know it.
  */
 
 import type { CauUsage } from "~/content/public"
@@ -53,6 +50,11 @@ import {
  * unit, and whatever qualifies it. Each part is dropped when it is absent, so a
  * key holding a single bare number still reads as that number and nothing else.
  */
+/** A single figure, without its unit: broken at the thousands so six digits in a row never happen. */
+function writtenFigure(value: number): string {
+  return Math.abs(value) >= 10_000 ? value.toLocaleString("en-US") : String(value)
+}
+
 export function writtenNumber(number: NumberValue): string {
   // **What was typed, not what was stored.** The canonical unit exists so that
   // a range can be asked of the key at all; nobody wrote `1351.68 GB`, they
@@ -63,10 +65,16 @@ export function writtenNumber(number: NumberValue): string {
   // Figures are compared by eye down a column, and six digits without a break
   // in them cannot be. **A fold and a percentage close up against the number**
   // — `30x`, `98%` — where a unit that is a word takes a space.
-  const shown = Math.abs(value) >= 10_000 ? value.toLocaleString("en-US") : String(value)
-  const said = unit === null
-    ? shown
-    : `${shown}${/^[x×%倍]$/i.test(unit) ? "" : " "}${unit}`
+  const close = unit !== null && /^[x×%倍]$/i.test(unit)
+  // **A width is its two ends joined by an en dash**, the typographic mark for a
+  // span rather than a subtraction — a hyphen would read as a negative number
+  // beside the numbers either side of it. Only one unit is shown: the key has
+  // one, so repeating it after both ends would say the same word twice.
+  const high = number.inputHigh ?? null
+  const shown = high === null
+    ? writtenFigure(value)
+    : `${writtenFigure(value)}–${writtenFigure(high)}`
+  const said = unit === null ? shown : `${shown}${close ? "" : " "}${unit}`
   const named = number.label === null ? said : `${number.label}: ${said}`
   return number.note === null ? named : `${named} (${number.note})`
 }

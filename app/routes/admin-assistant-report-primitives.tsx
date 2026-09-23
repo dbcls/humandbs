@@ -100,7 +100,8 @@ export function StatusText({
   if (result === true) return <span>{words.verified}</span>
   if (result === false)
     return <span className="text-danger">{words.unverified}</span>
-  return <span className="text-ink-muted">-</span>
+  // Not checked: nothing to report, so nothing is drawn.
+  return null
 }
 
 export function ChecklistStatus({

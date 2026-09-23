@@ -7,10 +7,12 @@
  * catalog carried over unchanged — it is hand-written knowledge, not something
  * derivable from the data.
  *
- * **A key's type is what makes it a facet**, so the typed keys are where the
- * facets come from ([facets.ts](facets.ts)). Everything else stays free text:
- * deciding what the rest ought to become means choosing how their prose is read
- * into terms and numbers, which is work for the real migration.
+ * **A key's type is what makes it a facet, except for a number key with no
+ * category** — `facetCategoryCode: null` is a number that is shown but not
+ * narrowed by, which is most of them ([facets.ts](facets.ts)). Everything
+ * else stays free text: deciding what the rest ought to become means choosing
+ * how their prose is read into terms and numbers, which is work for the real
+ * migration.
  */
 
 import catalogDefaults from "./content-keys.json"
@@ -18,6 +20,7 @@ import {
   MERGED_SOURCES,
   NEW_KEY_ORDER,
   NUMBER_FACETS,
+  NUMBER_SPLITS,
   RETYPED_CODES,
   slugify,
   takesMany,
@@ -135,6 +138,36 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
       codeBySourceKey.set(labelJa, merged)
       return
     }
+
+    // A cell that names more than one quantity becomes more than one key
+    // (`facets.ts` の `NUMBER_SPLITS`) — `Coverage` is a depth and a breadth.
+    // The spelling resolves to the first, which is enough to tell a value read
+    // out of this cell from free text nobody typed under the key any more.
+    const splits = NUMBER_SPLITS.get(labelEn)
+    if (splits !== undefined) {
+      const [first] = splits
+      if (first !== undefined) {
+        codeBySourceKey.set(labelEn, first.code)
+        codeBySourceKey.set(labelJa, first.code)
+      }
+      for (const split of splits) {
+        keys.push({
+          ...freeText({
+            code: split.code,
+            scope: "experiment",
+            labelJa: split.labelJa,
+            labelEn: split.labelEn,
+            position: index,
+          }),
+          valueType: "number",
+          facetCategoryCode: split.categoryCode,
+          canonicalUnit: split.canonicalUnit,
+          inputUnits: split.inputUnits,
+        })
+      }
+      return
+    }
+
     const code = slugify(labelEn)
     codeBySourceKey.set(labelEn, code)
     codeBySourceKey.set(labelJa, code)

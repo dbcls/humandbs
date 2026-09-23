@@ -121,7 +121,7 @@ export function Datasets({
                   onChange={(event) => { setNewDatasetIds(event.target.value) }}
                   placeholder={words.datasetIdsPlaceholder}
                   disabled={busy}
-                  className={`${CONTROL} min-w-64 flex-1 disabled:opacity-50`}
+                  className={`${CONTROL} min-w-64 flex-1 text-sm disabled:opacity-50`}
                 />
                 <Button
                   type="submit"
@@ -293,18 +293,18 @@ function SourceValue({
       && [...primaryValues].sort().join("\u0000")
       !== [...secondaryValues].sort().join("\u0000")
   if (!mismatch)
-    return <>{primaryValues.join(", ") || secondaryValues.join(", ") || "-"}</>
+    return <>{primaryValues.join(", ") || secondaryValues.join(", ")}</>
   return (
     <span>
       <strong className="text-danger">{words.sourceMismatch}</strong>
       <br />
       HumanDBs:
       {" "}
-      {primaryValues.join(", ") || "-"}
+      {primaryValues.join(", ")}
       <br />
       DDBJ:
       {" "}
-      {secondaryValues.join(", ") || "-"}
+      {secondaryValues.join(", ")}
     </span>
   )
 }

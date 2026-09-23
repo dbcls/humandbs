@@ -9,14 +9,14 @@
  */
 
 import type { ShownLine } from "~/admin/changes"
-import type { ThreadView } from "~/review/comments"
+import type { CommentView } from "~/review/comments"
 
 import { CommentSpot, type CommentContext } from "./comments"
 import { PreviousLines } from "./previous"
 
 export interface FieldReviewData {
   context: CommentContext
-  threads: Record<string, ThreadView[]>
+  comments: Record<string, CommentView[]>
   /** Paths where the draft says something other than the published version. */
   changed: string[]
   previous: Record<string, ShownLine[]>
@@ -25,7 +25,12 @@ export interface FieldReviewData {
   termLabel?: (id: string) => string
 }
 
-export function FieldReview({ review, at }: { review: FieldReviewData, at: string }) {
+export function FieldReview({ review, at, fieldLabel }: {
+  review: FieldReviewData
+  at: string
+  /** The field's own name, for the comment panel's heading (`comments.tsx` の `CommentSpot`). */
+  fieldLabel?: string
+}) {
   return (
     <>
       {review.changed.includes(at) && (
@@ -36,7 +41,7 @@ export function FieldReview({ review, at }: { review: FieldReviewData, at: strin
           termLabel={review.termLabel}
         />
       )}
-      <CommentSpot context={review.context} at={at} threads={review.threads[at] ?? []} />
+      <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
     </>
   )
 }

@@ -119,7 +119,7 @@ describe("the state a links value carries to the page", () => {
   it("draws an unsettled URL as the unsettled frame in a preview", () => {
     const html = renderPreview({ state: "unsettled" })
 
-    expect(html).toContain("未確定")
+    expect(html).toContain("ご教示ください")
   })
 
   it("leaves the row out entirely when the resolved links are an empty list", () => {

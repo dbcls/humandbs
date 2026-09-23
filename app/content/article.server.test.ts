@@ -32,14 +32,15 @@ describe("本文の検査", () => {
   })
 
   it("HTML のブロックを弾く", () => {
-    expect(checkArticleBody("段落\n\n<div>中身</div>")).toEqual([{ syntax: "html", line: 3 }])
+    expect(checkArticleBody("段落\n\n<div>中身</div>")).toMatchObject([{ syntax: "html", line: 3 }])
   })
 
-  it("行の中のタグも弾く", () => {
-    expect(checkArticleBody("これは <u>下線</u> です")).toEqual([
-      { syntax: "html", line: 1 },
-      { syntax: "html", line: 1 },
-    ])
+  it("行の中のタグも弾き、開くタグと閉じるタグで同じ行を 2 度は言わない", () => {
+    expect(checkArticleBody("これは <u>下線</u> です")).toEqual([{ syntax: "html", line: 1 }])
+  })
+
+  it("返すのは種類と行番号だけ — 字面は欄の中でその行を見れば足りる", () => {
+    expect(checkArticleBody("一行目\n\n[x](javascript:alert(1)) の行")).toEqual([{ syntax: "link", line: 3 }])
   })
 
   it("**描画が落とすものを弾く。** ブロックは中身ごと消えるので、通してはいけない", () => {
@@ -49,12 +50,12 @@ describe("本文の検査", () => {
   })
 
   it("開けない行き先のリンクを弾く", () => {
-    expect(checkArticleBody("[x](javascript:alert(1))")).toEqual([{ syntax: "link", line: 1 }])
-    expect(checkArticleBody("![x](javascript:alert(1))")).toEqual([{ syntax: "link", line: 1 }])
+    expect(checkArticleBody("[x](javascript:alert(1))")).toMatchObject([{ syntax: "link", line: 1 }])
+    expect(checkArticleBody("![x](javascript:alert(1))")).toMatchObject([{ syntax: "link", line: 1 }])
   })
 
   it("参照リンクの行き先も見る", () => {
-    expect(checkArticleBody("[x][a]\n\n[a]: javascript:alert(1)")).toEqual([
+    expect(checkArticleBody("[x][a]\n\n[a]: javascript:alert(1)")).toMatchObject([
       { syntax: "link", line: 3 },
     ])
   })
@@ -66,7 +67,7 @@ describe("本文の検査", () => {
 
   it("`//host` は行き先として通らない", () => {
     // A scheme-relative URL is another host with the scheme left out.
-    expect(checkArticleBody("[x](//example.org)")).toEqual([{ syntax: "link", line: 1 }])
+    expect(checkArticleBody("[x](//example.org)")).toMatchObject([{ syntax: "link", line: 1 }])
   })
 
   it("**最初の 1 つで止めず**、全部を行の順に返す", () => {

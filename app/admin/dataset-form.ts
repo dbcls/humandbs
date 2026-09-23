@@ -47,12 +47,51 @@ export type ValueKind = "text" | "vocabulary" | "number" | "disease"
  * **A key holds a row per number** (`app/content/types.ts`), so the editor edits
  * a list. The label and the note are empty strings rather than nulls because
  * that is what a text box holds; they become nulls on the way in.
+ *
+ * **`high` is a width's upper end, typed in the same unit as `value`.** Empty
+ * rather than null for the same reason `value` is a string — there is no
+ * upper end until something is typed — and it becomes `null` on the way in,
+ * the same as an untouched `value` becomes no row at all
+ * (`app/admin/dataset-form.server.ts`).
  */
 export interface NumberRow {
   label: string
   value: string
   unit: string | null
+  high: string
   note: string
+}
+
+/**
+ * Whether a row's typed upper end sits below its typed lower end — the one
+ * shape a width refuses (`docs/data-model.md` の「値と文」). **Shared rather
+ * than checked twice**: the editor uses it to mark the upper-end box wrong as
+ * it is typed, and the save path refuses a request shaped this way outright,
+ * because the screen that draws this field never produces one
+ * (`app/admin/dataset-form.server.ts`).
+ */
+export function highBelowValue(row: NumberRow): boolean {
+  if (row.high.trim() === "") return false
+  const value = Number(row.value.trim())
+  const high = Number(row.high.trim())
+  return Number.isFinite(value) && Number.isFinite(high) && high < value
+}
+
+/**
+ * Labels a key's numbers are usually given, offered on the label box as
+ * suggestions a curator can still type past (`docs/data-model.md` の「値と文」).
+ * **Keyed by the catalog's own `code`**, which is the smallest way to reach
+ * this from the editing screen: the catalog has no column for it
+ * (`content_key` carries only what an admin can change), and the full set this
+ * is drawn from — `migration/facets.ts` の `TextNumberKey.labelCandidates` —
+ * belongs to the one-off migration and does not ship into the running app.
+ */
+const NUMBER_LABEL_CANDIDATES: Readonly<Record<string, readonly string[]>> = {
+  "variant-number": ["常染色体", "X染色体", "Y染色体", "ミトコンドリア", "全ゲノム"],
+}
+
+export function labelCandidatesFor(code: string): readonly string[] {
+  return NUMBER_LABEL_CANDIDATES[code] ?? []
 }
 
 /**
@@ -153,6 +192,7 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
               label: one.label ?? "",
               value: String(one.inputValue),
               unit: one.inputUnit,
+              high: one.inputHigh == null ? "" : String(one.inputHigh),
               note: one.note ?? "",
             })),
           }
@@ -227,7 +267,7 @@ export function emptyValueInput(keyId: string, kind: ValueKind, unit?: string | 
 }
 
 export function emptyNumberRow(unit: string | null): NumberRow {
-  return { label: "", value: "", unit, note: "" }
+  return { label: "", value: "", unit, high: "", note: "" }
 }
 
 export function emptyDiseaseRow(): DiseaseRow {

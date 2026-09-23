@@ -32,6 +32,7 @@ import {
   type DateBounds,
   type TermCount,
 } from "~/search/counts.server"
+import { dateWindows, type DateWindow } from "~/search/date-window"
 import { OPEN_BOUND, serializeQuery, type DslRange, type QueryNode } from "~/search/dsl"
 import { DATE_FACETS, type DateFacet, type QueryFields } from "~/search/fields"
 import { messagesFor } from "~/i18n/messages"
@@ -51,32 +52,17 @@ export interface FacetValueView {
   href: string
 }
 
-/**
- * A window offered as one press, rather than as two dates to type.
- *
- * **What the address carries is the absolute day**, so a link that is shared or
- * bookmarked keeps meaning what it meant when it was made. Which window is in
- * force is worked back out from that day against today, so a bookmark read on
- * another day matches none of them — it still holds the same rows.
- */
-export interface RangePresetView {
-  label: string
-  /** The search with this window in force, or with the range lifted for "all". */
-  href: string
-  current: boolean
-}
-
 export interface FacetRangeView {
   /** What the inputs hold; empty when that end is open. */
   from: string
   to: string
   unit: string | null
   /**
-   * The windows offered above the inputs. Empty on a facet that offers none:
-   * a number has no window everybody means the same thing by, the way the last
-   * year is one.
+   * The windows offered above the inputs (`~/search/date-window`). Empty on a
+   * facet that offers none: a number has no window everybody means the same
+   * thing by, the way the last year is one.
    */
-  presets: readonly RangePresetView[]
+  presets: readonly DateWindow[]
 }
 
 export interface FacetView {
@@ -323,20 +309,14 @@ function dateView(input: {
     ?? (only === undefined ? undefined : { from: only, to: only })
   const messages = messagesFor(locale).search.refine
   const lifted = address(withoutFacet(ast, fields, field))
-  const presets: RangePresetView[] = [
-    { label: messages.presetAll, href: lifted, current: chosen === undefined },
-    ...DATE_PRESET_YEARS.map((years) => {
-      const from = datePresetFrom(today, years)
-      return {
-        label: messages.presetYears(years),
-        href: address(withRange(ast, fields, field, { from, to: OPEN_BOUND })),
-        // A window is in force when it is the whole of the condition: the same
-        // opening day, and nothing closing it. A reader who typed those two
-        // dates by hand gets the window lit, which is the same search.
-        current: chosen?.from === from && chosen.to === OPEN_BOUND,
-      }
-    }),
-  ]
+  const presets = dateWindows({
+    today,
+    from: chosen === undefined || chosen.from === OPEN_BOUND ? null : chosen.from,
+    to: chosen === undefined || chosen.to === OPEN_BOUND ? null : chosen.to,
+    labels: { all: messages.presetAll, years: messages.presetYears },
+    lifted,
+    opening: (from) => address(withRange(ast, fields, field, { from, to: OPEN_BOUND })),
+  })
 
   return {
     code: field,
@@ -355,27 +335,6 @@ function dateView(input: {
           presets,
         },
   }
-}
-
-/** How far back the windows a date facet offers reach, in the order drawn. */
-export const DATE_PRESET_YEARS = [1, 5, 10] as const
-
-const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-
-/**
- * The day a relative window opens on: the same calendar day, `years` earlier.
- *
- * **The 29th of February has no counterpart in a common year.** The day is
- * pulled back to the end of the month rather than let roll into March, so the
- * window a reader is offered never opens later than the one they asked for.
- */
-export function datePresetFrom(today: string, years: number): string {
-  const [year = 0, month = 1, day = 1] = today.split("-").map(Number)
-  const opened = year - years
-  const leap = opened % 4 === 0 && (opened % 100 !== 0 || opened % 400 === 0)
-  const last = month === 2 && leap ? 29 : DAYS_IN_MONTH[month - 1] ?? 31
-  const pad = (value: number, width: number) => String(value).padStart(width, "0")
-  return `${pad(opened, 4)}-${pad(month, 2)}-${pad(Math.min(day, last), 2)}`
 }
 
 /**

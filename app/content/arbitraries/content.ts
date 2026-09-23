@@ -119,14 +119,27 @@ export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
   en: slotArb(linkListArb),
 })
 
+/**
+ * `high`, when drawn, is a width's upper end: **never below `value`**, which is
+ * the one law a `NumberValue` carries on its own shape rather than on how it is
+ * used. `inputHigh` is drawn the same amount above `inputValue`, so the two
+ * ends move together the way `value` and `inputValue` already do.
+ */
 const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
   label: fc.option(fc.string(), { nil: null }),
-  value: fc.double({ noNaN: true, noDefaultInfinity: true }),
+  value: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   unit: fc.option(fc.string(), { nil: null }),
-  inputValue: fc.double({ noNaN: true, noDefaultInfinity: true }),
+  inputValue: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   inputUnit: fc.option(fc.string(), { nil: null }),
   note: fc.option(fc.string(), { nil: null }),
-})
+}).chain((base) => fc.option(
+  fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1e6 }),
+  { nil: null },
+).map((span): NumberValue => ({
+  ...base,
+  high: span === null ? null : base.value + span,
+  inputHigh: span === null ? null : base.inputValue + span,
+})))
 
 /**
  * One disease. **Terms and names are drawn independently**, because a value
@@ -192,10 +205,7 @@ export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
       name: translatedTextArb,
       organization: fc.record({
         name: translatedTextArb,
-        address: translatedTextArb,
       }),
-      orcid: slotArb(fc.string()),
-      email: slotArb(fc.string()),
     }),
     { maxLength: 3 },
   ),

@@ -8,7 +8,7 @@ import { Badge, Confirm, Heading, Stack } from "~/components/base"
 import { ResultLine, StateCell } from "~/components/contents"
 import { Answered, Field, Result, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Counted, Page, Section, Table, Td } from "~/components/page"
+import { Card, Code, Page, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
 import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
@@ -16,8 +16,8 @@ import { href } from "~/public/urls"
 import type { Route } from "./+types/admin-contents-series"
 
 /**
- * One versioned article: the revisions under it, and which of them its
- * version-less address answers with.
+ * One versioned article: the address readers hold, which revision it answers
+ * with, and the revisions under it.
  *
  * **The pointer is moved by hand.** Publishing a revision does not move it — a
  * body is written and published over several sittings, and an address that
@@ -57,12 +57,27 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
       </Answered>
       <Card under={false}>
         <Stack gap="block">
+          {/* **What takes the whole series away stands beside its name**, next
+              to the way back, the way an article's or an announcement's does
+              (`admin-contents-news-item.tsx`): it acts on the series rather
+              than on any one revision, so it belongs with what names the
+              series rather than under the revisions. */}
           <Heading title={t.seriesHeading} aside={series.slug}>
             <AdminBack
               to={href(locale, adminContentsPath())}
               label={t.backToList}
               icon="chevron-left"
             />
+            <Form method="post">
+              <Confirm
+                label={t.removeSeries}
+                title={t.removeSeriesTitle(series.slug)}
+                warning={t.removeSeriesWarning(series.revisions.length)}
+                confirm={t.removeSeriesConfirm}
+                cancel={t.cancel}
+                intent="delete-series"
+              />
+            </Form>
           </Heading>
 
           {unanswered.length > 0 && (
@@ -72,13 +87,40 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
           )}
 
           {/*
-            **Which revision is current is a mark in the listing rather than a
-            line above it.** The listing is where the reader is choosing one
-            anyway, and said in both places the two drift apart the moment a
-            pointer is moved.
+            **What the screen is about comes first**: the address readers hold
+            and which revision it answers with. The name of the part says what
+            the address is called everywhere on this side, and the sentence
+            under it says the one thing a curator cannot work out from the
+            controls — that publishing does not move it.
           */}
-          <Section title={t.revisions}>
-            <Counted locale={locale} total={series.revisions.length} />
+          <Section title={t.representative} note={t.representativeNote(series.slug)}>
+            {series.revisions.length > 0 && (
+              <Form method="post" className="flex flex-wrap items-end gap-2">
+                <Select
+                  label={t.pointed}
+                  name="documentId"
+                  value={series.currentId}
+                  width="w-96"
+                  options={series.revisions.map((revision) => ({
+                    value: revision.id,
+                    label: revision.slug,
+                  }))}
+                />
+                <Submit intent="repoint-series" icon={<Icon name="link" />}>{t.repoint}</Submit>
+              </Form>
+            )}
+          </Section>
+
+          {/*
+            **Which revision the address answers with is a mark in the listing
+            rather than a line above it.** The listing is where the reader is
+            choosing one anyway, and said in both places the two drift apart the
+            moment the pointer is moved.
+
+            **No count over the rows.** Every revision is on screen, and a number
+            over ten visible rows says what the rows already say.
+          */}
+          <Section title={t.revisionList}>
             <Table
               headers={[t.slug, t.title, t.languages.ja, t.languages.en]}
               whenEmpty={t.noRevision}
@@ -88,7 +130,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                   <Td nowrap>
                     <span className="flex flex-wrap items-center gap-2">
                       <Link to={href(locale, adminDocumentPath(revision.id))}>
-                        <code>{revision.slug}</code>
+                        <Code>{revision.slug}</Code>
                       </Link>
                       {revision.id === series.currentId && <Badge>{t.isCurrent}</Badge>}
                     </span>
@@ -109,35 +151,6 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                 value={String(nextVersionNumber(series.slug, series.revisions.map((one) => one.slug)))}
               />
               <Submit intent="add-version" icon={<Icon name="plus" />}>{t.addVersion}</Submit>
-            </Form>
-          </Section>
-
-          <Section title={t.current} note={t.currentNote}>
-            <Form method="post" className="flex flex-wrap items-end gap-2">
-              <Select
-                label={t.versions}
-                name="documentId"
-                value={series.currentId}
-                options={series.revisions.map((revision) => ({
-                  value: revision.id,
-                  label: revision.slug,
-                }))}
-              />
-              <Submit intent="repoint-series" icon={<Icon name="link" />}>{t.repoint}</Submit>
-            </Form>
-          </Section>
-
-          <Section title={t.removeHeading}>
-            <Form method="post">
-              <Confirm
-                label={t.removeSeries}
-                title={t.removeSeriesTitle(series.slug)}
-                warning={t.removeSeriesNote(series.revisions.length)}
-                confirm={t.removeSeriesConfirm}
-                cancel={t.cancel}
-              >
-                <input type="hidden" name="intent" value="delete-series" />
-              </Confirm>
             </Form>
           </Section>
         </Stack>

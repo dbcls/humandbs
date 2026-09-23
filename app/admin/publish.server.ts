@@ -62,10 +62,11 @@ import { isPortalIssuedId } from "./labels"
 export interface PublishRequest {
   at: DraftAt
   /**
-   * The number this version will carry. One that a version holds now replaces
-   * that version; the next unused one starts a new version.
+   * The number this version will carry: any whole number no version holds.
+   * **Null for an update**, which carries the number of the version it updates
+   * and takes no other — the draft says which version that is.
    */
-  number: number
+  number: number | null
   /** The day the version says it went out. */
   releaseDate: string
   /** The administrator has seen the listed findings and passed them. */
@@ -80,24 +81,26 @@ export interface PublishRequest {
 }
 
 export type PublishOutcome
-  = | { status: "published", versionNumber: number, replaced: boolean }
+  = | { status: "published", versionNumber: number }
     | { status: "blocked", blocks: GateBlock[] }
     | { status: "unacknowledged", findings: GateFinding[] }
     | { status: "conflict" }
     | { status: "gone" }
-    /** A number no version holds, that nothing issued, and that is not next. */
+    /** A number a version holds, or none at all for a draft that is not an update. */
     | { status: "number-unavailable" }
 
 export type WithdrawOutcome
   = | { status: "withdrawn", draftId: string }
+    /** The version is being updated, so it stays out: the update is stopped first. */
+    | { status: "updating" }
     | { status: "gone" }
 
 interface DraftRow {
   id: string
   researchId: string
   content: ResearchContent
-  copiedFromNumber: number | null
   revision: number
+  replacesVersionId: string | null
 }
 
 interface VersionRow {
@@ -131,6 +134,11 @@ interface Ground {
   entries: Map<string, DatasetContent>
   /** Newest number first. */
   versions: VersionRow[]
+  /**
+   * The version this draft is the update of, held with the draft while it is
+   * locked. Null for a draft of its own.
+   */
+  updating: VersionRow | null
   upstreamHumLabelOf: Map<string, string>
 }
 
@@ -144,8 +152,8 @@ async function readGround(
       id: researchDraft.id,
       researchId: researchDraft.researchId,
       content: researchDraft.content,
-      copiedFromNumber: researchDraft.copiedFromNumber,
       revision: researchDraft.revision,
+      replacesVersionId: researchDraft.replacesVersionId,
     })
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
@@ -199,12 +207,24 @@ async function readGround(
     .select({ accession: humAccession.accession, humLabel: humAccession.humLabel })
     .from(humAccession)
 
+  // The version being updated is held along with the draft, so that nothing
+  // can take it out between here and its row going (`withdrawVersion`).
+  const updating = versionRows.find((row) => row.id === draft.replacesVersionId) ?? null
+  if (lock && updating !== null) {
+    await tx
+      .select({ id: researchVersion.id })
+      .from(researchVersion)
+      .where(eq(researchVersion.id, updating.id))
+      .for("update")
+  }
+
   return {
     draft,
     humLabel: humLabels[0]?.label ?? null,
     datasets: new Map(datasetRows.map((row) => [row.id, row])),
     entries: new Map(entryRows.map((row) => [row.datasetId, row.content])),
     versions: versionRows,
+    updating,
     upstreamHumLabelOf: new Map(upstreamRows.map((row) => [row.accession, row.humLabel])),
   }
 }
@@ -232,20 +252,17 @@ function nextNumber(versions: readonly VersionRow[]): number {
 }
 
 /**
- * The numbers this draft is allowed to publish under: the ones versions hold
- * now, the next unused one, and the one this draft was copied from.
- *
- * **The third is what lets a withdrawn version come back under its own
- * number.** Withdrawing deletes the row, so nothing else remembers that the
- * number was ever issued — the draft that came out of it does. Anything beyond
- * these would put a version under a number that nothing ever carried, which is
- * a hole a reader cannot tell from a withdrawal.
+ * Whether a draft of its own may be published under this number: any whole
+ * number from one that no version holds now. **A held number is never taken
+ * over this way** — the one road under a held number is the update, and only
+ * the draft opened for that version travels it (docs/publishing.md の
+ * 「版番号」). A number nothing ever carried is allowed; the sequence is not
+ * promised to be unbroken.
  */
-function availableNumbers(ground: Ground): Set<number> {
-  const numbers = new Set(ground.versions.map((version) => version.number))
-  numbers.add(nextNumber(ground.versions))
-  if (ground.draft.copiedFromNumber !== null) numbers.add(ground.draft.copiedFromNumber)
-  return numbers
+function isFreeNumber(ground: Ground, number: number): boolean {
+  return Number.isInteger(number)
+    && number >= 1
+    && !ground.versions.some((version) => version.number === number)
 }
 
 /**
@@ -295,15 +312,15 @@ export interface PublishPreview {
   humLabel: string | null
   /** What a save would have to match; the form carries it back. */
   revision: number
-  /** The number a new version would take. */
+  /** The number offered first: one past the highest a version holds. */
   nextNumber: number
+  /** The numbers versions hold now, newest first — the ones that cannot be taken. */
+  heldNumbers: number[]
   /**
-   * The other numbers this draft may take, newest first. `releaseDate` is set
-   * when a version holds the number now, which is what taking it replaces.
+   * The version this draft updates, when it is an update: the number it will
+   * carry, and the day that version went out, offered back as the release date.
    */
-  choices: { number: number, releaseDate: string | null }[]
-  /** Which choice the screen offers first: where this draft was copied from. */
-  suggestedNumber: number | null
+  updating: { number: number, releaseDate: string } | null
   gate: PublishGate
   /** Fields of the research that differ from what this publish stands in front of. */
   researchFields: number | null
@@ -324,16 +341,8 @@ export async function publishPreview(
     if (ground === null) return null
 
     const datasets = gateDatasets(ground)
-    const previous = standingInFrontOf(ground, ground.draft.copiedFromNumber)
-
-    const gate = publishGate({
-      humLabel: ground.humLabel,
-      content: ground.draft.content,
-      datasets,
-      previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
-      upstream: ground.upstreamHumLabelOf,
-      privateFiles,
-    })
+    const previous = ground.updating ?? ground.versions[0]
+    const gate = gateOf(ground, privateFiles)
 
     const listedIds = datasets.map((row) => row.datasetId)
     const before = new Set(previous === undefined ? [] : datasetIdsOf(previous))
@@ -344,14 +353,10 @@ export async function publishPreview(
       humLabel: ground.humLabel,
       revision: ground.draft.revision,
       nextNumber: next,
-      choices: [...availableNumbers(ground)]
-        .filter((number) => number !== next)
-        .sort((a, b) => b - a)
-        .map((number) => ({
-          number,
-          releaseDate: ground.versions.find((held) => held.number === number)?.releaseDate ?? null,
-        })),
-      suggestedNumber: ground.draft.copiedFromNumber,
+      heldNumbers: ground.versions.map((version) => version.number),
+      updating: ground.updating === null
+        ? null
+        : { number: ground.updating.number, releaseDate: ground.updating.releaseDate },
       gate,
       researchFields: previous === undefined
         ? null
@@ -368,15 +373,36 @@ export async function publishPreview(
 }
 
 /**
- * The version a publish under this number would stand in front of: the one
- * holding the number, or the newest when the number is free. What "changed"
- * means on the confirmation screen is measured against it.
+ * The gate as it stands for a draft, read without a lock and without writing.
+ *
+ * **Every screen of the draft says how the gate stands**, not only the
+ * confirmation (docs/editing.md の「draft」): the step strip counts what would
+ * stop a publish and what would have to be confirmed. It is advice, the same
+ * as the confirmation screen's — what a publish is allowed to do is decided
+ * under the lock.
  */
-function standingInFrontOf(ground: Ground, number: number | null): VersionRow | undefined {
-  const held = number === null
-    ? undefined
-    : ground.versions.find((version) => version.number === number)
-  return held ?? ground.versions[0]
+export async function draftGate(
+  db: Database,
+  draftId: string,
+  privateFiles: ReadonlySet<string>,
+): Promise<PublishGate | null> {
+  return db.transaction(async (tx): Promise<PublishGate | null> => {
+    const ground = await readGround(tx, draftId, false)
+    return ground === null ? null : gateOf(ground, privateFiles)
+  })
+}
+
+/** The gate's question, put from what was read. */
+function gateOf(ground: Ground, privateFiles: ReadonlySet<string>): PublishGate {
+  const previous = ground.updating ?? ground.versions[0]
+  return publishGate({
+    humLabel: ground.humLabel,
+    content: ground.draft.content,
+    datasets: gateDatasets(ground),
+    previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
+    upstream: ground.upstreamHumLabelOf,
+    privateFiles,
+  })
 }
 
 /**
@@ -418,11 +444,18 @@ export async function publishDraft(
     // Checked here rather than left to the delete at the end: everything below
     // writes, and a refusal has to come before the first of them.
     if (ground.draft.revision !== request.at.revision) return { status: "conflict" }
-    if (!availableNumbers(ground).has(request.number)) return { status: "number-unavailable" }
+    // An update carries the number of the version it stands in for and is
+    // offered no other; a draft of its own takes any free one.
+    const updating = ground.updating
+    const number = updating === null ? request.number : updating.number
+    if (number === null || (updating === null && !isFreeNumber(ground, number))) {
+      return { status: "number-unavailable" }
+    }
 
-    const replacing = ground.versions.find((held) => held.number === request.number)
+    // What "changed" means is measured against the version this publish
+    // stands in front of: the one it updates, or else the newest out.
     const datasets = gateDatasets(ground)
-    const previous = standingInFrontOf(ground, request.number)
+    const previous = updating ?? ground.versions[0]
     const gate = publishGate({
       humLabel: ground.humLabel,
       content: ground.draft.content,
@@ -454,10 +487,12 @@ export async function publishDraft(
       throw new Error("the locked draft changed under a publish")
     }
 
-    // The old row leaves before the new one arrives: the number is unique
-    // within a research, so the two cannot hold it at once.
-    if (replacing !== undefined) {
-      await tx.delete(researchVersion).where(eq(researchVersion.id, replacing.id))
+    // An update takes the version's place: its row goes in the same
+    // transaction as the new one appears under the number, so no reader finds
+    // the number empty and no row changes under one. The draft is already
+    // consumed, so nothing hangs off the row that goes.
+    if (updating !== null) {
+      await tx.delete(researchVersion).where(eq(researchVersion.id, updating.id))
     }
 
     const content = versionContentOf(ground.draft.content, datasets, request.releaseDate)
@@ -465,7 +500,7 @@ export async function publishDraft(
       .insert(researchVersion)
       .values({
         researchId: ground.draft.researchId,
-        number: request.number,
+        number,
         content,
         releaseDate: request.releaseDate,
       })
@@ -474,20 +509,20 @@ export async function publishDraft(
 
     await recordEvent(tx, {
       actor,
-      action: replacing === undefined ? "publish-version" : "replace-version",
+      action: updating === null ? "publish-version" : "replace-version",
       subjectType: "research-version",
       subjectId: row.id,
       detail: {
         researchId: ground.draft.researchId,
         draftId: request.at.draftId,
-        versionNumber: request.number,
+        versionNumber: number,
         datasetCount: listedIds.length,
       },
     })
 
-    await recordDatasetChanges(tx, replacing, content.datasets, {
+    await recordDatasetChanges(tx, previous, content.datasets, {
       actor,
-      versionNumber: request.number,
+      versionNumber: number,
     })
 
     if (gate.findings.length > 0) {
@@ -501,17 +536,13 @@ export async function publishDraft(
     }
 
     await rebuildSearchDocs(tx, { researchIds: [ground.draft.researchId] })
-    return {
-      status: "published",
-      versionNumber: request.number,
-      replaced: replacing !== undefined,
-    }
+    return { status: "published", versionNumber: number }
   })
 }
 
 /**
- * One event per dataset this publish describes differently from the version it
- * replaces.
+ * One event per dataset this publish describes differently from the newest
+ * version before it.
  *
  * **Recorded against the dataset rather than read out of the version's own
  * event**, because the identity outlives the versions: "when did this
@@ -520,11 +551,11 @@ export async function publishDraft(
  */
 async function recordDatasetChanges(
   tx: Transaction,
-  replacing: VersionRow | undefined,
+  previous: VersionRow | undefined,
   datasets: readonly PublishedDataset[],
   into: { actor: EventActor, versionNumber: number },
 ): Promise<void> {
-  const before = describedBy(replacing?.content)
+  const before = describedBy(previous?.content)
   for (const row of datasets) {
     const published = before.get(row.datasetId)
     if (published !== undefined && unchanged(published, row)) continue
@@ -576,9 +607,12 @@ function withReleaseDate(
  *
  * **The row is deleted rather than flagged.** Being in the table is what
  * published means, so there is no state to set — and the content has to land
- * somewhere it can be edited, which is what a draft is. The number travels with
- * it, so the draft can be published back under it
- * (`availableNumbers`).
+ * somewhere it can be edited, which is what a draft is. The number is freed,
+ * so the draft can be published back under it (`isFreeNumber`).
+ *
+ * **A version being updated is refused.** The draft it is updated in is its
+ * vessel and would go with it, and what withdrawing leaves is a draft of its
+ * own — two of them, if both stayed. The update is stopped first.
  */
 export async function withdrawVersion(
   db: Database,
@@ -598,6 +632,13 @@ export async function withdrawVersion(
       .limit(1)
       .for("update")
     if (version === undefined) return { status: "gone" }
+
+    const [open] = await tx
+      .select({ id: researchDraft.id })
+      .from(researchDraft)
+      .where(eq(researchDraft.replacesVersionId, versionId))
+      .limit(1)
+    if (open !== undefined) return { status: "updating" }
 
     await tx.delete(researchVersion).where(eq(researchVersion.id, versionId))
     const draftId = await draftFromVersion(tx, version)

@@ -137,12 +137,24 @@ export interface NumberValue {
    * single number, which is most of them and wants no label at all.
    */
   label: string | null
-  /** Converted to the key's canonical unit. Search and facets read only this. */
+  /** Converted to the key's canonical unit. A width's lower end when `high` is set. */
   value: number
   unit: string | null
   /** What the editor actually typed, kept so a bad conversion can be redone. */
   inputValue: number
   inputUnit: string | null
+  /**
+   * The upper end of a value written as a width — `0.9-1.3 GB`, `85〜120 GB` —
+   * converted the same way `value` is. **Optional rather than always present**,
+   * so that every place a bare number was ever written on its own continues to
+   * compile and needs no escort of a field it never had anything to say about.
+   * Absent and `null` mean the same thing: there is no upper end. Code that
+   * builds a `NumberValue` writes `null` explicitly; only values from before
+   * this field existed omit it.
+   */
+  high?: number | null
+  /** `high` in the unit it was typed in, the way `inputValue` is `value`'s. */
+  inputHigh?: number | null
   /**
    * What qualifies the number without being part of it — `平均`, the assembly a
    * count was made against, the format a volume is in. Kept apart from the
@@ -230,8 +242,8 @@ export interface ResearchContent {
      * would leave no way to tell a name someone chose for the table from one
      * that was only ever copied there.
      *
-     * Names alone. The organisation, the ORCID and the address stay on
-     * `dataProviders`, which is the section a reader opens to find them.
+     * Names alone. The organisation stays on `dataProviders`, which is the
+     * section a reader opens to find it.
      */
     dataProviders: ListingProvider[]
   }
@@ -280,16 +292,20 @@ export interface ListingProvider {
   name: TranslatedText
 }
 
-/** Array elements carry an identity because comments address them. */
+/**
+ * Array elements carry an identity because comments address them.
+ *
+ * **A name and an affiliation, and nothing the page does not show.** Contact
+ * details and an address were once carried here without being rendered; a
+ * value the page does not show is one more box to fill and one more way for
+ * it to leak, and nothing else.
+ */
 export interface DataProvider {
   id: string
   name: TranslatedText
   organization: {
     name: TranslatedText
-    address: TranslatedText
   }
-  orcid: Slot<string>
-  email: Slot<string>
 }
 
 export interface ResearchProject {
@@ -374,12 +390,23 @@ export interface AlertContent {
  * and a value slot is addressed by the catalog key it sits under. Because a
  * slot is a path like any other place, only the subject has to be named.
  *
- * **A thread may be attached to the draft itself** — that is the memo. What is
- * written there is about the work rather than about any one field: what the
- * draft is for, who was telephoned, why publishing is waiting. It names no
- * place, and a share link neither shows one nor accepts one.
+ * **Two anchors name no place.** `draft` is the draft as a whole — what a
+ * reader has to say about the research rather than about one field — and a
+ * share link shows and accepts it like any field. `memo` is the administrators'
+ * own note about the work: what the draft is for, who was telephoned, why
+ * publishing is waiting. A share link neither shows one nor accepts one, and a
+ * memo line is never resolved.
  */
 export type CommentAnchor
   = | { kind: "draft" }
+    | { kind: "memo" }
     | { kind: "research-field", path: string }
     | { kind: "dataset-field", datasetId: string, path: string }
+
+/**
+ * What a reader of a share link says about the draft as a whole, apart from a
+ * comment: that they have finished commenting and it is the office's turn to
+ * read, or that there is nothing left to fix. Neither is an approval —
+ * publishing is an administrator's own decision.
+ */
+export type AcknowledgementKind = "commented" | "approved"

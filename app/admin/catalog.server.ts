@@ -43,13 +43,16 @@ import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
+  codeFrom,
   codeProblem,
   filterKeyRows,
+  freeCode,
+  freeKeyCode,
   isKeyValueType,
   KEY_VALUE_TYPES,
   moved,
+  movedTo,
   SETTLED_VOCABULARIES,
-  termCodeFrom,
   termCodeProblem,
   TERM_SORT,
   TERM_SORT_KEYS,
@@ -72,6 +75,15 @@ export interface CatalogKeyRow {
   /** How many terms the field draws from, or null when it draws from none. */
   terms: number | null
   canonicalUnit: string | null
+  /** How many published datasets hold a value under the key (`publishedDatasetsByKey`). */
+  used: number
+  /**
+   * Whether a published or drafted description holds a value under the key —
+   * the same question `deleteKey` asks, answered up front so the screen can say
+   * why the key cannot go rather than letting the press find out. Not `used > 0`:
+   * a draft holds a key without any dataset being published under it.
+   */
+  inUse: boolean
 }
 
 export interface VocabularyRow {
@@ -100,8 +112,6 @@ export interface CatalogView {
   locale: Locale
   /** The fields the conditions leave, in the order the public table has them. */
   keys: CatalogKeyRow[]
-  /** Every field there is, which is what the name of the screen counts. */
-  total: number
   /** The conditions in force, as the address carries them. */
   keyword: string
   types: KeyValueType[]
@@ -120,8 +130,14 @@ export interface TermRow {
   labelJa: string | null
   labelEn: string
   parentCode: string | null
-  /** How many published objects carry this value. */
+  /** How many published datasets carry this value (`usageOfTerms`). */
   used: number
+  /**
+   * Whether a published or drafted value points at the term. Not the same
+   * question as `used`: a draft holds the term without any dataset being
+   * published under it, and that is enough to keep it from being deleted.
+   */
+  inUse: boolean
 }
 
 /** One candidate of the ICD10 dictionary, and whether the vocabulary has it. */
@@ -174,14 +190,56 @@ export interface VocabularyView {
 /** What a form did, when it did not simply work. */
 export type CatalogProblem
   = | "malformed-code"
-    | "reserved-code"
+    | "no-code"
     | "duplicate-code"
     | "missing-label"
     | "in-use"
     | "not-editable"
     | "unknown-target"
 
-export type CatalogResult = { status: "ok" } | { status: CatalogProblem }
+/** Everything the screens may ask of the catalog, by the name the form sends. */
+export type CatalogIntent
+  = | "create-key"
+    | "update-key"
+    | "move-key-up"
+    | "move-key-down"
+    | "move-key-to"
+    | "delete-key"
+    | "create-term"
+    | "update-term"
+    | "delete-term"
+    | "merge-term"
+
+const INTENTS: ReadonlySet<string> = new Set<CatalogIntent>([
+  "create-key", "update-key", "move-key-up", "move-key-down", "move-key-to", "delete-key",
+  "create-term", "update-term", "delete-term", "merge-term",
+])
+
+function isIntent(intent: string): intent is CatalogIntent {
+  return INTENTS.has(intent)
+}
+
+/** Where a row went: its place before and after, 0-based, out of how many. */
+export interface Moved {
+  id: string
+  from: number
+  to: number
+  of: number
+}
+
+/** What one operation came to, before the action says which operation it was. */
+type Outcome = { status: "ok", moved?: Moved } | { status: CatalogProblem }
+
+/**
+ * What the form did.
+ *
+ * **The answer names the deed** (`did`), so that the screen can say "key を
+ * 作成しました" rather than "保存しました" for everything, and a move says
+ * where the row went (`moved`) — which is also what taking it back needs.
+ */
+export type CatalogResult
+  = | { status: "ok", did: CatalogIntent, moved?: Moved }
+    | { status: CatalogProblem }
 
 /**
  * **A total order.** Labels repeat where codes cannot, so the code decides
@@ -198,7 +256,7 @@ function termOrder(sort: TermSortKey, order: "asc" | "desc") {
 /** How many codes one search of the dictionary answers with. */
 const DICTIONARY_CANDIDATES = 20
 
-async function keyRows(db: Executor): Promise<CatalogKeyRow[]> {
+async function keyRows(db: Executor): Promise<Omit<CatalogKeyRow, "inUse" | "used">[]> {
   return db
     .select({
       id: contentKey.id,
@@ -226,7 +284,14 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
   await requireCapability(request, "manage-catalog")
   const db = getDb()
   const url = new URL(request.url)
-  const fields = (await keyRows(db)).filter((key) => key.scope === "experiment")
+  const used = await publishedDatasetsByKey(db)
+  const drafted = await draftedKeyIds(db)
+  const fields = (await keyRows(db))
+    .filter((key) => key.scope === "experiment")
+    .map((key) => {
+      const count = used.get(key.id) ?? 0
+      return { ...key, used: count, inUse: count > 0 || drafted.has(key.id) }
+    })
 
   const types = url.searchParams.getAll("type").filter(isKeyValueType)
   const filter: KeyFilter = {
@@ -247,7 +312,6 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
   return {
     locale: readLocale(url.pathname).locale,
     keys: filterKeyRows(fields, filter),
-    total: fields.length,
     keyword: filter.keyword,
     types,
     counts,
@@ -336,6 +400,7 @@ export async function fieldTermsPage(
     .offset((at - 1) * size)
 
   const used = await usageOfTerms(db, rows.map((row) => row.id))
+  const held = await usedTermIds(db)
 
   // Read on its own rather than found among the rows: the term being folded is
   // named by the address, and the page it sits on is not the page being read.
@@ -368,7 +433,7 @@ export async function fieldTermsPage(
     size,
     field,
     set: { ...set, terms: total?.count ?? 0 },
-    terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0 })),
+    terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0, inUse: held.has(row.id) })),
     page: at,
     pageCount,
     ...pageRange(at, size, total?.count ?? 0),
@@ -376,7 +441,7 @@ export async function fieldTermsPage(
     editable,
     mergeFrom: aimed === undefined
       ? null
-      : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number },
+      : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number, inUse: held.has(aimed.id) },
     dictionary: set.code === ICD10_SET_CODE
       ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }
       : null,
@@ -427,7 +492,64 @@ async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
   return drafted !== undefined
 }
 
-/** How many published objects carry each of the given terms. */
+/**
+ * How many published datasets hold a value under each key.
+ *
+ * **One question for the whole table**, asked the way `keyInUse` asks it of one
+ * key: the listing needs the answer for every row, and a path query per row
+ * over every description is the same work done eighty times. Datasets only,
+ * for the reason `usageOfTerms` gives.
+ */
+async function publishedDatasetsByKey(db: Executor): Promise<Map<string, number>> {
+  const rows = await db.execute<{ id: string, n: number }>(sql`
+    SELECT held #>> '{}' AS id, count(DISTINCT doc.id)::int AS n
+    FROM search_doc AS doc, jsonb_path_query(doc.content, '$.**.keyId') AS held
+    WHERE doc.target_type = 'dataset'
+    GROUP BY 1
+  `)
+  return new Map(rows.rows.map((row) => [row.id, row.n]))
+}
+
+/** Every key a draft holds a value under: the other half of what `keyInUse` asks. */
+async function draftedKeyIds(db: Executor): Promise<Set<string>> {
+  const rows = await db.execute<{ id: string }>(sql`
+    SELECT DISTINCT held #>> '{}' AS id
+    FROM draft_dataset_entry, jsonb_path_query(content, '$.**.keyId') AS held
+  `)
+  return new Set(rows.rows.map((row) => row.id))
+}
+
+/**
+ * Every term a published or drafted value points at, from both of the shapes
+ * `pointingAt` reads (a vocabulary slot, and the diseases inside a disease
+ * slot). The set-valued form of `termInUse`, for the reason `usedKeyIds` gives.
+ */
+async function usedTermIds(db: Executor): Promise<Set<string>> {
+  const rows = await db.execute<{ id: string }>(sql`
+    SELECT DISTINCT held #>> '{}' AS id FROM (
+      SELECT jsonb_path_query(content, '$.**.termIds.value[*]') AS held
+      FROM search_doc WHERE target_type = 'dataset'
+      UNION ALL
+      SELECT jsonb_path_query(content, '$.**.diseases.value[*].termIds[*]')
+      FROM search_doc WHERE target_type = 'dataset'
+      UNION ALL
+      SELECT jsonb_path_query(content, '$.**.termIds.value[*]') FROM draft_dataset_entry
+      UNION ALL
+      SELECT jsonb_path_query(content, '$.**.diseases.value[*].termIds[*]') FROM draft_dataset_entry
+    ) AS q
+  `)
+  return new Set(rows.rows.map((row) => row.id))
+}
+
+/**
+ * How many published datasets carry each of the given terms.
+ *
+ * **Datasets only.** A research row carries every term its datasets do, so
+ * counting both kinds of row says 22 where the public listing the count leads
+ * to (`datasetsUsing`) shows 12 — and a number that does not match what it
+ * opens is worse than none. Drafts are not counted either: the count is what
+ * a reader of the site can find.
+ */
 async function usageOfTerms(
   db: Executor,
   termIds: readonly string[],
@@ -436,6 +558,8 @@ async function usageOfTerms(
   const rows = await db.execute<{ term_id: string, n: number }>(sql`
     SELECT term_id, count(DISTINCT doc_id)::int AS n
     FROM search_facet_term
+    JOIN search_doc ON search_doc.id = search_facet_term.doc_id
+      AND search_doc.target_type = 'dataset'
     WHERE term_id IN (${sql.join(termIds.map((id) => sql`${id}::uuid`), sql`, `)})
     GROUP BY term_id
   `)
@@ -496,24 +620,26 @@ async function nextPosition(db: Executor, scope: "dataset" | "experiment"): Prom
  * `position` as each page is asked for, so rebuilding every document to move
  * one row rewrites the same documents it started with.
  */
-const ORDER_ONLY = new Set(["move-key-up", "move-key-down"])
+const ORDER_ONLY: ReadonlySet<CatalogIntent> = new Set<CatalogIntent>(["move-key-up", "move-key-down", "move-key-to"])
 
 export async function catalogAction(request: Request): Promise<CatalogResult> {
   await requireCapability(request, "manage-catalog")
   const form = await request.formData()
   const intent = text(form, "intent")
+  if (!isIntent(intent)) return { status: "unknown-target" }
   const db = getDb()
 
   return db.transaction(async (tx) => {
     const result = await apply(tx, intent, form)
+    if (result.status !== "ok") return result
     // Which catalog changes reach the search rows and which do not is a
     // distinction nobody should have to make at a call site.
-    if (result.status === "ok" && !ORDER_ONLY.has(intent)) await rebuildSearchDocs(tx)
-    return result
+    if (!ORDER_ONLY.has(intent)) await rebuildSearchDocs(tx)
+    return { ...result, did: intent }
   })
 }
 
-async function apply(tx: Executor, intent: string, form: FormData): Promise<CatalogResult> {
+async function apply(tx: Executor, intent: CatalogIntent, form: FormData): Promise<Outcome> {
   switch (intent) {
     case "create-key":
       return createKey(tx, form)
@@ -525,6 +651,9 @@ async function apply(tx: Executor, intent: string, form: FormData): Promise<Cata
       return moveKey(tx, form, "up")
     case "move-key-down":
       return moveKey(tx, form, "down")
+    // Where a dropped row landed, as the place it was let go over.
+    case "move-key-to":
+      return moveKeyTo(tx, form)
     case "delete-key":
       return deleteKey(tx, form)
     // The facet categories are not here. What the refinement panel groups its
@@ -539,21 +668,7 @@ async function apply(tx: Executor, intent: string, form: FormData): Promise<Cata
       return deleteTerm(tx, form)
     case "merge-term":
       return mergeTerm(tx, form)
-    default:
-      return { status: "unknown-target" }
   }
-}
-
-/** A code the table already holds comes back as a refusal rather than a crash. */
-async function guardCode(db: Executor, code: string): Promise<CatalogProblem | null> {
-  const problem = codeProblem(code)
-  if (problem !== null) return problem === "malformed" ? "malformed-code" : "reserved-code"
-  const [held] = await db
-    .select({ id: contentKey.id })
-    .from(contentKey)
-    .where(eq(contentKey.code, code))
-    .limit(1)
-  return held === undefined ? null : "duplicate-code"
 }
 
 /**
@@ -563,7 +678,7 @@ async function guardCode(db: Executor, code: string): Promise<CatalogProblem | n
  * not offer them, but a form is reachable by anybody who can post one, and a
  * screen is not a check (`admin/catalog.ts`).
  */
-async function refusedKey(db: Executor, id: string): Promise<CatalogResult | null> {
+async function refusedKey(db: Executor, id: string): Promise<Outcome | null> {
   const [key] = await db
     .select({ scope: contentKey.scope })
     .from(contentKey)
@@ -573,13 +688,18 @@ async function refusedKey(db: Executor, id: string): Promise<CatalogResult | nul
   return key.scope === "dataset" ? { status: "not-editable" } : null
 }
 
-async function createKey(db: Executor, form: FormData): Promise<CatalogResult> {
-  const code = text(form, "code")
+async function createKey(db: Executor, form: FormData): Promise<Outcome> {
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
-  const problem = await guardCode(db, code)
-  if (problem !== null) return { status: problem }
+  // The code is made from the English label and never typed (`catalog.ts` の
+  // `codeFrom`), so a label with nothing a code can hold is the one refusal
+  // left; a spelling already taken moves on to the next free one instead.
+  const wanted = codeFrom(labelEn)
+  if (codeProblem(wanted) === "malformed") return { status: "no-code" }
+  const code = freeKeyCode(wanted, (await db
+    .select({ code: contentKey.code })
+    .from(contentKey)).map((one) => one.code))
 
   await db.insert(contentKey).values({
     code,
@@ -596,7 +716,7 @@ async function createKey(db: Executor, form: FormData): Promise<CatalogResult> {
   return { status: "ok" }
 }
 
-async function updateKey(db: Executor, form: FormData): Promise<CatalogResult> {
+async function updateKey(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "keyId")
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
@@ -630,13 +750,17 @@ async function updateKey(db: Executor, form: FormData): Promise<CatalogResult> {
  * of them.
  */
 async function renumber(
-  rows: readonly { id: string }[],
+  before: readonly { id: string }[],
+  ordered: readonly { id: string }[],
   id: string,
-  direction: "up" | "down",
   write: (ordered: readonly { id: string }[]) => Promise<unknown>,
-): Promise<CatalogResult> {
-  await write(moved(rows, id, direction))
-  return { status: "ok" }
+): Promise<Outcome> {
+  await write(ordered)
+  const from = before.findIndex((row) => row.id === id)
+  const to = ordered.findIndex((row) => row.id === id)
+  // A row that stayed where it was (an end, or a place that was not there)
+  // has nowhere to be taken back to.
+  return from === to || from === -1 ? { status: "ok" } : { status: "ok", moved: { id, from, to, of: ordered.length } }
 }
 
 /**
@@ -651,12 +775,15 @@ function positions(ordered: readonly { id: string }[], column: PgColumn) {
   return sql`case ${column} ${sql.join(branches, sql` `)} end`
 }
 
-async function moveKey(
+/**
+ * The keys of the analysis method in their order, reordered by `reorder` and
+ * written back — the one path both ways of moving a row go down.
+ */
+async function reorderKeys(
   db: Executor,
-  form: FormData,
-  direction: "up" | "down",
-): Promise<CatalogResult> {
-  const id = text(form, "keyId")
+  id: string,
+  reorder: (siblings: readonly { id: string }[]) => readonly { id: string }[],
+): Promise<Outcome> {
   const refused = await refusedKey(db, id)
   if (refused !== null) return refused
   const key = { scope: "experiment" } as const
@@ -666,14 +793,31 @@ async function moveKey(
     .from(contentKey)
     .where(eq(contentKey.scope, key.scope))
     .orderBy(asc(contentKey.position), asc(contentKey.code))
-  return renumber(siblings, id, direction, (ordered) =>
+  return renumber(siblings, reorder(siblings), id, (ordered) =>
     db
       .update(contentKey)
       .set({ position: positions(ordered, contentKey.id) })
       .where(inArray(contentKey.id, ordered.map((row) => row.id))))
 }
 
-async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
+async function moveKey(
+  db: Executor,
+  form: FormData,
+  direction: "up" | "down",
+): Promise<Outcome> {
+  const id = text(form, "keyId")
+  return reorderKeys(db, id, (siblings) => moved(siblings, id, direction))
+}
+
+async function moveKeyTo(db: Executor, form: FormData): Promise<Outcome> {
+  const id = text(form, "keyId")
+  const to = Number(text(form, "to"))
+  // A place that is not a whole number was never on the screen that asked.
+  if (!Number.isInteger(to)) return { status: "unknown-target" }
+  return reorderKeys(db, id, (siblings) => movedTo(siblings, id, to))
+}
+
+async function deleteKey(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "keyId")
   const refused = await refusedKey(db, id)
   if (refused !== null) return refused
@@ -691,25 +835,16 @@ async function deleteKey(db: Executor, form: FormData): Promise<CatalogResult> {
   return { status: "ok" }
 }
 
-/**
- * The first code this vocabulary does not already hold, counting up from the
- * one the label made. **A generated code cannot refuse the value** — two terms
- * may honestly read the same in English, and the curator who typed the second
- * one has no code to correct.
- */
-async function freeCode(db: Executor, setId: string, wanted: string): Promise<string> {
+/** The first code this vocabulary does not already hold (`catalog.ts` の `freeCode`). */
+async function freeTermCode(db: Executor, setId: string, wanted: string): Promise<string> {
   const taken = new Set((await db
     .select({ code: vocabularyTerm.code })
     .from(vocabularyTerm)
     .where(eq(vocabularyTerm.setId, setId))).map((one) => one.code))
-  if (!taken.has(wanted)) return wanted
-  for (let n = 2; ; n++) {
-    const next = `${wanted}-${n}`
-    if (!taken.has(next)) return next
-  }
+  return freeCode(wanted, taken)
 }
 
-async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> {
+async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
   const setId = text(form, "setId")
   const labelEn = text(form, "labelEn")
   const labelJa = text(form, "labelJa")
@@ -722,11 +857,11 @@ async function createTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   if (set === undefined) return { status: "unknown-target" }
   if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
   // The standard's own spelling is what the dictionary and the data already
-  // carry; everywhere else the label says it (`catalog.ts` の `termCodeFrom`).
+  // carry; everywhere else the label says it (`catalog.ts` の `codeFrom`).
   const brought = set.code === ICD10_SET_CODE
-  const asked = brought ? text(form, "code") : termCodeFrom(labelEn)
-  if (termCodeProblem(asked) !== null) return { status: "malformed-code" }
-  const code = brought ? asked : await freeCode(db, setId, asked)
+  const asked = brought ? text(form, "code") : codeFrom(labelEn)
+  if (termCodeProblem(asked) !== null) return { status: brought ? "malformed-code" : "no-code" }
+  const code = brought ? asked : await freeTermCode(db, setId, asked)
   if (brought) {
     const [held] = await db
       .select({ id: vocabularyTerm.id })
@@ -789,7 +924,7 @@ async function icd10Root(
  * screen offers no way in, but a form is reachable by anybody who can post one
  * (`admin/catalog.ts` の `SETTLED_VOCABULARIES`).
  */
-async function refusedTerm(db: Executor, id: string): Promise<CatalogResult | null> {
+async function refusedTerm(db: Executor, id: string): Promise<Outcome | null> {
   const [term] = await db
     .select({ setCode: vocabularySet.code })
     .from(vocabularyTerm)
@@ -801,7 +936,7 @@ async function refusedTerm(db: Executor, id: string): Promise<CatalogResult | nu
 }
 
 /** The labels a term is offered under, settled together as the one panel that holds them. */
-async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> {
+async function updateTerm(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "termId")
   const labelEn = text(form, "labelEn")
   const labelJa = text(form, "labelJa")
@@ -818,7 +953,7 @@ async function updateTerm(db: Executor, form: FormData): Promise<CatalogResult> 
   return { status: "ok" }
 }
 
-async function deleteTerm(db: Executor, form: FormData): Promise<CatalogResult> {
+async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "termId")
   const refused = await refusedTerm(db, id)
   if (refused !== null) return refused
@@ -845,7 +980,7 @@ async function deleteTerm(db: Executor, form: FormData): Promise<CatalogResult> 
  * save has to be refused the way any other outside change refuses it
  * (`docs/editing.md` の「サイトコンテンツ」の revision 照合と同じ線).
  */
-async function mergeTerm(db: Executor, form: FormData): Promise<CatalogResult> {
+async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   const from = text(form, "termId")
   const into = text(form, "intoId")
   // Folding a term into itself is not an operation; it would only delete it.

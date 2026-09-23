@@ -20,9 +20,7 @@ function withProvider(id: string, name: string): DraftInput {
       dataProviders: [{
         id,
         name: { ja: value, en: empty },
-        organization: { name: { ja: empty, en: empty }, address: { ja: empty, en: empty } },
-        orcid: empty,
-        email: empty,
+        organization: { name: { ja: empty, en: empty } },
       }],
     },
   }

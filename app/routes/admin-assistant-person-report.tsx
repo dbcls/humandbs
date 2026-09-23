@@ -385,7 +385,7 @@ function MapLinks({
   links: AddressVerification["google_map_urls"]
   words: AssistantWords
 }) {
-  if (links === undefined || links.length === 0) return <>-</>
+  if (links === undefined || links.length === 0) return null
   return (
     <>
       {links.map((link, index) => {

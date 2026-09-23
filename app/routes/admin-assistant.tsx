@@ -49,7 +49,7 @@ export default function AdminAssistant({ loaderData }: Route.ComponentProps) {
     <Page>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={words.heading} />
+          <Heading title={words.heading} note={words.note} />
           {deployed ? <AssistantContents locale={locale} /> : <Empty>{words.absent}</Empty>}
         </Stack>
       </Card>

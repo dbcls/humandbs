@@ -4,7 +4,7 @@ import { createdAt, primaryId } from "./common"
 
 export const eventAction = pgEnum("event_action", [
   "publish-version",
-  /** A publish that took a number already in use, so the version under it went. */
+  /** A publish in a version's place: the update of it, under its number, so the row under it went. */
   "replace-version",
   /** A dataset whose description this publish wrote differently. */
   "publish-dataset",

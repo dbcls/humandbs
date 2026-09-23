@@ -3,8 +3,10 @@
  *
  * v1 kept a derived layer beside the free text — twenty-six fields a language
  * model had read out of it — and drew its facets from that. v2 has no such
- * layer: **a facet is a catalog key whose type is a vocabulary or a number**, so
- * the same information arrives as ordinary values under ordinary keys and the
+ * layer: **a facet is a catalog key whose type is a vocabulary or a disease, or
+ * a number with a facet category** — most number keys have none and are shown
+ * but not narrowed by (`subject-count` and `read-length` are the two that are).
+ * The same information arrives as ordinary values under ordinary keys and the
  * layer disappears. What this file holds is the mapping from that layer to the
  * keys, plus the keys themselves.
  *
@@ -12,8 +14,9 @@
  * `Read Type`, `Reference Sequence` and `Platform` are already in the catalog as
  * free text and already on the public page; giving them a type changes how the
  * value is held, not whether it is shown. The rest are new keys standing beside
- * the free text they were read out of, and those are not shown — they exist to
- * be filtered by.
+ * the free text they were read out of, and most of those are not shown either —
+ * they exist to be filtered by, or, for most of the numbers, to be shown on the
+ * dataset page and nothing more.
  *
  * **The vocabularies are what the data actually says.** A term is minted for
  * every distinct value the dump carries, because deciding what the controlled
@@ -24,7 +27,7 @@
 
 import type { DiseaseValue, NumberValue, ValueSlot } from "~/content/types"
 
-import { counts, numbersWithUnit, type ReadNumber } from "./numbers"
+import { counts, GENOME_REGION_LABELS, numbersWithUnit, type ReadNumber } from "./numbers"
 import { icd10Parent, icd10Resolve } from "~/icd10/codes"
 
 import { diseasesIn } from "./diseases"
@@ -602,9 +605,22 @@ export interface TextNumberKey {
   code: string
   labelJa: string
   labelEn: string
-  categoryCode: string
+  /**
+   * **Null for a key that is shown but not narrowed by.** Only `subject-count`
+   * (above) and `read-length` carry a category — the refinement panel's range
+   * control and `search_facet_number` are both sourced from a number key that
+   * has one (`~/search/catalog.server` の `loadFacetDefinitions`). Every other
+   * number here is a value on the dataset page and nothing a query can name.
+   */
+  categoryCode: string | null
   canonicalUnit: string | null
   inputUnits: string[] | null
+  /**
+   * Labels this key's numbers are usually given, for the editor to offer as
+   * suggestions. **Not a vocabulary** — a label is free text and a candidate
+   * not on this list can still be typed (`docs/data-model.md` の「値と文」).
+   */
+  labelCandidates?: readonly string[]
   /** Null where the rules could not read the line at all (`numbers.ts`). */
   read: (said: string) => ReadNumber[] | null
 }
@@ -620,7 +636,8 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     code: "total-data-volume",
     labelJa: "総データ量",
     labelEn: "Total data volume",
-    categoryCode: "data",
+    // Shown on the dataset page; not a facet (above).
+    categoryCode: null,
     canonicalUnit: "GB",
     inputUnits: ["KB", "MB", "GB", "TB", "PB"],
     read: numbersWithUnit(["KB", "MB", "GB", "TB", "PB"], { kB: "KB", KB: "KB" }),
@@ -630,6 +647,7 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     code: "read-length",
     labelJa: "リード長",
     labelEn: "Read length",
+    // The one experiment-scoped number the panel narrows by, beside `subject-count`.
     categoryCode: "experiment",
     canonicalUnit: "bp",
     inputUnits: ["bp", "kbp", "Mbp"],
@@ -641,27 +659,19 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     code: "variant-number",
     labelJa: "バリアント数",
     labelEn: "Variant number",
-    categoryCode: "data",
+    categoryCode: null,
     canonicalUnit: null,
     inputUnits: null,
+    // 95% of this key's labels name a part of the genome (`.claude/plan/numeric-values/README.md`).
+    labelCandidates: GENOME_REGION_LABELS,
     read: counts(COUNTED),
-  },
-  {
-    source: "Coverage",
-    code: "coverage",
-    labelJa: "カバレッジ",
-    labelEn: "Coverage",
-    categoryCode: "data",
-    canonicalUnit: null,
-    inputUnits: null,
-    read: numbersWithUnit(["x", "×", "X", "%", "倍", "depth"]),
   },
   {
     source: "Gene Number",
     code: "gene-number",
     labelJa: "遺伝子数",
     labelEn: "Gene number",
-    categoryCode: "data",
+    categoryCode: null,
     canonicalUnit: null,
     inputUnits: null,
     read: counts(["genes", "gene", "遺伝子"]),
@@ -671,12 +681,50 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     code: "probe-number",
     labelJa: "プローブ数",
     labelEn: "Probe number",
-    categoryCode: "data",
+    categoryCode: null,
     canonicalUnit: null,
     inputUnits: null,
     read: counts(["probes", "probe", "プローブ"]),
   },
 ]
+
+/**
+ * `Coverage` names two different quantities in the same v1 cell — a depth
+ * (`31.8x`) and a breadth (`98%`) — so it becomes two keys rather than one,
+ * each reading only the unit it is about and declining the other's
+ * (`docs/data-model.md` の「値と文」).
+ */
+export const COVERAGE_DEPTH: TextNumberKey = {
+  source: "Coverage",
+  code: "coverage-depth",
+  labelJa: "カバレッジ (深度)",
+  labelEn: "Coverage (depth)",
+  categoryCode: null,
+  canonicalUnit: "x",
+  inputUnits: ["x"],
+  read: numbersWithUnit(["x", "×", "X", "倍", "depth"], { "×": "x", "X": "x", "倍": "x", "depth": "x" }),
+}
+
+export const COVERAGE_BREADTH: TextNumberKey = {
+  source: "Coverage",
+  code: "coverage-breadth",
+  labelJa: "カバレッジ (割合)",
+  labelEn: "Coverage (breadth)",
+  categoryCode: null,
+  canonicalUnit: "%",
+  inputUnits: ["%"],
+  read: numbersWithUnit(["%"]),
+}
+
+/**
+ * The v1 sources that become more than one key. **The order here is the order
+ * the two are inserted in**, and `[0].code` is what a source key's `code`
+ * resolves to elsewhere a single code is asked for
+ * ([catalog.ts](catalog.ts) の `codeBySourceKey`).
+ */
+export const NUMBER_SPLITS = new Map<string, TextNumberKey[]>([
+  ["Coverage", [COVERAGE_DEPTH, COVERAGE_BREADTH]],
+])
 
 /**
  * The v1 cells that are the same key under another name. Their values join the
@@ -828,7 +876,7 @@ export function collectTerms(
 }
 
 function numberValue(value: number, unit: string | null): NumberValue {
-  return { label: null, value, unit, inputValue: value, inputUnit: unit, note: null }
+  return { label: null, value, unit, inputValue: value, inputUnit: unit, high: null, inputHigh: null, note: null }
 }
 
 /**

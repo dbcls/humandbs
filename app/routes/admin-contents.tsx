@@ -16,7 +16,6 @@ import {
   type ContentsListingQuery,
 } from "~/admin/urls"
 import {
-  Button,
   Chooser,
   Dialog,
   Heading,
@@ -27,10 +26,11 @@ import {
 import { ResultLine, StateCell, StateIcon } from "~/components/contents"
 import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Page, Paging, Table, Td } from "~/components/page"
+import { Card, Code, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
@@ -87,6 +87,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
   const messages = messagesFor(locale)
   const t = messages.admin.contents
   const [paneOpen, togglePane] = usePaneOpen()
+  const busy = useBusyHere()
 
   // Folded, the way back into the pane says how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
@@ -121,16 +122,14 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
           <Heading title={t.heading}>
             <Form method="post">
               <input type="hidden" name="intent" value="create-document" />
-              <Dialog label={t.addDocument} title={t.addDocument} icon={<Icon name="plus" />}>
-                {(close) => (
-                  <Stack gap="normal">
-                    <Field label={t.slug} name="slug" width="w-full" hint={t.slugHint} />
-                    <span className="flex flex-wrap items-center justify-end gap-2">
-                      <Button type="button" variant="ghost" onClick={close}>{t.cancel}</Button>
-                      <Submit variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>
-                    </span>
-                  </Stack>
-                )}
+              <Dialog
+                label={t.addDocument}
+                title={t.addDocument}
+                icon={<Icon name="plus" />}
+                dismiss={t.cancel}
+                action={() => <Submit variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>}
+              >
+                <Field label={t.slug} name="slug" width="w-full" hint={t.slugHint} />
               </Dialog>
             </Form>
           </Heading>
@@ -143,7 +142,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
 
           <RefinableList
             open={paneOpen}
-            busy={false}
+            busy={busy}
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
@@ -202,7 +201,7 @@ function Row({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
     <tr>
       <Td nowrap>
         <div className={indent}>
-          <Link to={href(locale, to)}><code>{slug}</code></Link>
+          <Link to={href(locale, to)}><Code>{slug}</Code></Link>
         </div>
       </Td>
       <Td floor="min-w-64">

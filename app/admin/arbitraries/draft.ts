@@ -98,12 +98,30 @@ export function CANONICAL_UNITS(keyId: string): string | null {
   return keyId === "key-c" ? "bp" : null
 }
 
-/** A stored number under a key with the given unit: already in that unit. */
+/**
+ * A stored number under a key with the given unit: already in that unit.
+ *
+ * **`high`, when drawn, is never below `value`** — the one shape a width
+ * carries on its own (`app/content/arbitraries/content.ts`). Both ends share
+ * the row's unit, so `inputHigh` moves the same amount above `inputValue` that
+ * `high` moves above `value`, the way the editor's own upper-end box does
+ * (`app/components/dataset-editor.tsx` の `NumberField`).
+ */
 function numberValueArb(unit: string | null): fc.Arbitrary<NumberValue> {
   const held = fc.integer({ min: -1_000_000, max: 1_000_000 })
-  return held.map((value) => ({
-    label: null, value, unit, inputValue: value, inputUnit: unit, note: null,
-  }))
+  return held.chain((value) => fc.option(
+    fc.integer({ min: 0, max: 1_000_000 }),
+    { nil: null },
+  ).map((span): NumberValue => ({
+    label: null,
+    value,
+    unit,
+    inputValue: value,
+    inputUnit: unit,
+    high: span === null ? null : value + span,
+    inputHigh: span === null ? null : value + span,
+    note: null,
+  })))
 }
 
 const valuesArb: fc.Arbitrary<ValueSlot[]> = fc

@@ -6,25 +6,35 @@ import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
+import * as s from "~/db/schema"
 
 import { RESEARCH, anchorOf } from "./anchors"
-import { readThreads } from "./comments.server"
-import { startThread } from "./comments.server"
+import { postAboutDraft, readComments } from "./comments.server"
 import { readShare } from "./queries.server"
 import { reviewAction, reviewPage } from "./review.server"
 
 /**
  * The management side of a review, with its guard on.
  *
- * Managing the link and closing a thread are editing the draft, so both ask for
- * `edit-content`; a signed-in reader without it gets 403 rather than a redirect,
- * because signing in again would not change the answer.
+ * Managing the link and closing a comment are editing the draft, so both ask
+ * for `edit-content`; a signed-in reader without it gets 403 rather than a
+ * redirect, because signing in again would not change the answer.
  *
  * The same action serves two callers and answers them differently: the review
- * screen takes a redirect, and an editing screen takes the threads, because it
- * is holding unsaved work and must not navigate.
+ * screen takes a redirect, and an editing screen takes the comments, because
+ * it is holding unsaved work and must not navigate.
  */
 const db = getDb()
+
+/** Something a provider said at a place, put there directly: what the screen finds, not how it got there. */
+async function saidAt(draftId: string, path: string, body: string): Promise<string> {
+  const [row] = await db
+    .insert(s.comment)
+    .values({ draftId, anchor: anchorOf(RESEARCH, path), authorName: "provider", body })
+    .returning({ id: s.comment.id })
+  if (row === undefined) throw new Error("the comment was not written")
+  return row.id
+}
 
 const CURATOR = { sub: "0f3a-1b2c", name: "curator", idToken: "an-id-token" }
 const READER = { sub: "9c8b-7a6d", name: "somebody", idToken: "another-id-token" }
@@ -94,25 +104,32 @@ describe("the review screen", () => {
     expect(refusal.status).toBe(404)
   })
 
-  it("shows the link, what has been said, and where each thread has to be dealt with", async () => {
+  it("shows the link, what has been said, and where each comment has to be dealt with", async () => {
     const created = await createResearchWithDraft(db)
-    await startThread(db, {
-      draftId: created.draftId,
-      anchor: anchorOf(RESEARCH, "summary.aims"),
-      author: { sub: null, name: "provider" },
-      body: "対象は何名ですか",
-    })
+    await saidAt(created.draftId, "summary.aims", "対象は何名ですか")
     const token = await signIn(CURATOR, true)
 
     const view = await reviewPage(get(token), "ja", created)
     expect(view.share.open).toBe(false)
     expect(view.share.url).toContain("/preview/")
     expect(view.unresolved).toBe(1)
-    expect(view.threads[0]?.href).toContain(`/draft/${created.draftId}`)
-    expect(view.threads[0]?.thread.anchor).toEqual({
+    expect(view.comments[0]?.href).toContain(`/draft/${created.draftId}`)
+    expect(view.comments[0]?.comment.anchor).toEqual({
       kind: "research-field",
       path: "summary.aims",
     })
+  })
+
+  /** The memo is the editing screen's note, not a question the list is for. */
+  it("lists what was said about the whole, and leaves the memo out", async () => {
+    const created = await createResearchWithDraft(db)
+    await postAboutDraft(db, { draftId: created.draftId, kind: "draft", author: { sub: null, name: "provider" }, body: "全体" })
+    await postAboutDraft(db, { draftId: created.draftId, kind: "memo", author: { sub: CURATOR.sub, name: CURATOR.name }, body: "覚え書き" })
+    const token = await signIn(CURATOR, true)
+
+    const view = await reviewPage(get(token), "ja", created)
+    expect(view.comments.map((row) => [row.comment.body, row.path])).toEqual([["全体", null]])
+    expect(view.unresolved).toBe(1)
   })
 })
 
@@ -149,31 +166,25 @@ describe("what the review screen does", () => {
     expect((await readShare(db, created.draftId))?.token).not.toBe(before?.token)
   })
 
-  it("closes a thread in the name of the administrator who closed it", async () => {
+  it("closes a comment in the name of the administrator who closed it", async () => {
     const created = await createResearchWithDraft(db)
-    const started = await startThread(db, {
-      draftId: created.draftId,
-      anchor: anchorOf(RESEARCH, "title"),
-      author: { sub: null, name: "provider" },
-      body: "…",
-    })
-    if (started.status !== "posted") throw new Error("the thread was not started")
+    const commentId = await saidAt(created.draftId, "title", "…")
     const token = await signIn(CURATOR, true)
 
     await reviewAction(
-      postForm(token, { intent: "resolve", threadId: started.threadId }),
+      postForm(token, { intent: "resolve", commentId }),
       "ja",
       created,
       "redirect",
     )
 
-    const [thread] = await readThreads(db, created.draftId)
-    expect(thread?.resolved).toBe(true)
-    expect(thread?.resolvedBy).toBe("curator")
+    const [one] = await readComments(db, created.draftId)
+    expect(one?.resolved).toBe(true)
+    expect(one?.resolvedBy).toBe("curator")
   })
 
-  /** What an open editor needs back: the threads, and no navigation. */
-  it("answers an editing screen with the threads rather than with a redirect", async () => {
+  /** What an open editor needs back: the comments, and no navigation. */
+  it("answers an editing screen with the comments rather than with a redirect", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
 
@@ -181,14 +192,29 @@ describe("what the review screen does", () => {
       postForm(token, { intent: "comment", subject: "research", path: "title", body: "直します" }),
       "ja",
       created,
-      "threads",
+      "comments",
     )
 
     expect(outcome).not.toBeInstanceOf(Response)
-    expect(outcome).toMatchObject({ status: "threads" })
-    if (outcome instanceof Response || outcome.status !== "threads") throw new Error("no threads")
-    expect(outcome.threads[0]?.comments[0]?.authorName).toBe("curator")
-    expect(outcome.threads[0]?.comments[0]?.bySignedIn).toBe(true)
+    expect(outcome).toMatchObject({ status: "comments" })
+    if (outcome instanceof Response || outcome.status !== "comments") throw new Error("no comments")
+    expect(outcome.comments[0]?.authorName).toBe("curator")
+    expect(outcome.comments[0]?.bySignedIn).toBe(true)
+  })
+
+  it("writes a line of the memo from the editing screen, which no share link can", async () => {
+    const created = await createResearchWithDraft(db)
+    const token = await signIn(CURATOR, true)
+
+    const outcome = await reviewAction(
+      postForm(token, { intent: "comment", subject: "memo", body: "提供者に電話した" }),
+      "ja",
+      created,
+      "comments",
+    )
+
+    if (outcome instanceof Response || outcome.status !== "comments") throw new Error("no comments")
+    expect(outcome.comments.map((one) => [one.anchor, one.body])).toEqual([[{ kind: "memo" }, "提供者に電話した"]])
   })
 
   it("refuses an anchor that leads nowhere in the draft", async () => {
@@ -199,9 +225,9 @@ describe("what the review screen does", () => {
       postForm(token, { intent: "comment", subject: "research", path: "nowhere", body: "…" }),
       "ja",
       created,
-      "threads",
+      "comments",
     ))
     expect(refusal.status).toBe(400)
-    expect(await readThreads(db, created.draftId)).toEqual([])
+    expect(await readComments(db, created.draftId)).toEqual([])
   })
 })

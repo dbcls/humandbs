@@ -33,6 +33,7 @@ const OPTED_OUT_FIELDS = new Set([
   "unit",
   "inputUnit",
   "inputValue",
+  "inputHigh",
 ])
 
 export interface SearchText {

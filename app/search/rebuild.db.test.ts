@@ -388,8 +388,21 @@ describe("rebuildSearchDocs", () => {
     const { id: assayKeyId } = only(await db.insert(s.contentKey)
       .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: assaySetId })
       .returning({ id: s.contentKey.id }))
+    // A number key is a facet row source only once it has a category
+    // (`~/search/catalog.server` の `loadFacetDefinitions`).
+    const { id: dataCategoryId } = only(await db.insert(s.facetCategory)
+      .values({ code: "data", labelJa: "データ", labelEn: "Data" })
+      .returning({ id: s.facetCategory.id }))
     const { id: volumeKeyId } = only(await db.insert(s.contentKey)
-      .values({ code: "data-volume", scope: "experiment", valueType: "number", labelJa: "データ量", labelEn: "Data volume", canonicalUnit: "GB" })
+      .values({
+        code: "data-volume",
+        scope: "experiment",
+        valueType: "number",
+        labelJa: "データ量",
+        labelEn: "Data volume",
+        canonicalUnit: "GB",
+        facetCategoryId: dataCategoryId,
+      })
       .returning({ id: s.contentKey.id }))
 
     const withExperiments = async (
@@ -504,6 +517,92 @@ describe("rebuildSearchDocs", () => {
     expect(await orderedDocs()).toEqual(firstDocs)
     expect(await orderedFacetTerms()).toEqual(firstFacetTerms)
     expect(await orderedFacetNumbers()).toEqual(firstFacetNumbers)
+  })
+})
+
+describe("which number keys become facet rows", () => {
+  async function key(code: string, categoryId: string | null): Promise<string> {
+    const { id } = only(await db.insert(s.contentKey)
+      .values({
+        code,
+        scope: "experiment",
+        valueType: "number",
+        labelJa: code,
+        labelEn: code,
+        canonicalUnit: "bp",
+        facetCategoryId: categoryId,
+      })
+      .returning({ id: s.contentKey.id }))
+    return id
+  }
+
+  async function facetNumbersOf(datasetId: string): Promise<{ keyId: string, value: number }[]> {
+    return db
+      .select({ keyId: s.searchFacetNumber.keyId, value: s.searchFacetNumber.value })
+      .from(s.searchFacetNumber)
+      .innerJoin(s.searchDoc, eq(s.searchDoc.id, s.searchFacetNumber.docId))
+      .where(eq(s.searchDoc.targetId, datasetId))
+      .orderBy(s.searchFacetNumber.value)
+  }
+
+  /**
+   * `subject-count` and `read-length` are the two axes the panel narrows by;
+   * every other number key is shown on the dataset page and nowhere else
+   * (`docs/public-pages.md` の「絞り込み」).
+   */
+  it("makes no facet row for a number key that has been given no category", async () => {
+    const displayOnly = await key("gene-number", null)
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "experiment-1",
+        label: filled("WES"),
+        values: [{
+          keyId: displayOnly,
+          value: { kind: "number", values: filled([{ label: null, value: 21_000, unit: null, inputValue: 21_000, inputUnit: null, note: null }]) },
+        }],
+      }],
+    })
+    await publish(researchId, 1, [datasetId])
+
+    await rebuildSearchDocs(db)
+
+    expect(await facetNumbersOf(datasetId)).toEqual([])
+  })
+
+  it("writes a width as two rows, its lower and upper end", async () => {
+    const { id: categoryId } = only(await db.insert(s.facetCategory)
+      .values({ code: "experiment", labelJa: "実験", labelEn: "Experiment" })
+      .returning({ id: s.facetCategory.id }))
+    const readLength = await key("read-length", categoryId)
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    describeDataset(datasetId, {
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "experiment-1",
+        label: filled("WGS"),
+        values: [{
+          keyId: readLength,
+          value: {
+            kind: "number",
+            values: filled([
+              { label: null, value: 90, unit: "bp", inputValue: 90, inputUnit: "bp", high: 200, inputHigh: 200, note: null },
+            ]),
+          },
+        }],
+      }],
+    })
+    await publish(researchId, 1, [datasetId])
+
+    await rebuildSearchDocs(db)
+
+    expect(await facetNumbersOf(datasetId)).toEqual([
+      { keyId: readLength, value: 90 },
+      { keyId: readLength, value: 200 },
+    ])
   })
 })
 

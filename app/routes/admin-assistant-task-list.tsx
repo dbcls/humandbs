@@ -61,16 +61,19 @@ export function AdminAssistantTaskList({
               }
             >
               <Td nowrap>
+                {/* The identifier opens the task beside the listing; the mark
+                    says so, where the identifier alone reads as a cell of text. */}
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
+                  icon={<Icon name="chevron-right" aria-hidden="true" />}
                   onClick={() => { onSelect(task.task_id) }}
                 >
                   {task.task_id}
                 </Button>
               </Td>
-              <Td>{task.application_type ?? "-"}</Td>
+              <Td>{task.application_type}</Td>
               <Td>
                 <span className={statusClass(task.status)}>
                   {words.statuses[task.status]}

@@ -80,6 +80,14 @@ describe("サイトコンテンツの markdown", () => {
     expect(html).toContain("aria-label=\"この見出しへのリンク\"")
   })
 
+  it("headingLinks: false では脇のリンクが出ず、id と本文の中のリンクは残る", () => {
+    const html = renderMarkdown("## はじめに\n\n[上へ](#はじめに)\n", "ja", { headingLinks: false })
+    expect(html).toContain("<h2 id=\"はじめに\">はじめに</h2>")
+    expect(html).not.toContain("この見出しへのリンク")
+    expect(html).toContain("<a href=\"#%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB\">上へ</a>")
+    expect(headings(html)).toEqual(["h2:はじめに"])
+  })
+
   it("アンカーの名前は読み手の言語で付く", () => {
     expect(renderMarkdown("## Overview\n", "en")).toContain("aria-label=\"Link to this heading\"")
   })

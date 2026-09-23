@@ -14,7 +14,7 @@
  * same function.
  */
 
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm"
 
 import { emptyDatasetContent } from "~/content/empty"
 import type { ArchiveDates } from "~/content/public"
@@ -23,7 +23,7 @@ import type { Executor } from "~/db/client.server"
 import { draftContentOf } from "~/content/version"
 import {
   accessionDate,
-  commentThread,
+  comment,
   draftDatasetEntry,
   labelPin,
   researchDraft,
@@ -175,12 +175,17 @@ export async function draftReviewSummaries(
       })
       .from(researchDraft)
       .where(eq(researchDraft.researchId, researchId)),
+    // The memo is not a question, so its lines are never waiting for one.
     db
-      .select({ draftId: commentThread.draftId, count: count() })
-      .from(commentThread)
-      .innerJoin(researchDraft, eq(researchDraft.id, commentThread.draftId))
-      .where(and(eq(researchDraft.researchId, researchId), eq(commentThread.resolved, false)))
-      .groupBy(commentThread.draftId),
+      .select({ draftId: comment.draftId, count: count() })
+      .from(comment)
+      .innerJoin(researchDraft, eq(researchDraft.id, comment.draftId))
+      .where(and(
+        eq(researchDraft.researchId, researchId),
+        eq(comment.resolved, false),
+        ne(sql`${comment.anchor}->>'kind'`, "memo"),
+      ))
+      .groupBy(comment.draftId),
   ])
 
   const now = new Date()
@@ -199,6 +204,27 @@ export async function draftReviewSummaries(
 export interface PublishedVersion {
   number: number
   content: ResearchContent
+}
+
+/**
+ * The version a draft is measured against: the one it is the update of, when
+ * it is one, and otherwise the one a reader sees now. The marks, the comparison
+ * and the confirmation all take this answer, so that "what changes" means one
+ * thing on every screen of the draft (docs/editing.md の「draft」).
+ */
+export async function versionAgainst(
+  db: Executor,
+  draft: { researchId: string, updating: { versionId: string } | null },
+): Promise<PublishedVersion | null> {
+  if (draft.updating === null) return latestPublishedVersion(db, draft.researchId)
+  const [row] = await db
+    .select({ number: researchVersion.number, content: researchVersion.content })
+    .from(researchVersion)
+    .where(eq(researchVersion.id, draft.updating.versionId))
+    .limit(1)
+  return row === undefined
+    ? null
+    : { number: row.number, content: draftContentOf(row.content) }
 }
 
 /** The version a reader would see now, which is what a preview is measured against. */

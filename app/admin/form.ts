@@ -72,9 +72,7 @@ export interface ListingProviderInput {
 export interface DataProviderInput {
   id: string
   name: TextPairInput
-  organization: { name: TextPairInput, address: TextPairInput }
-  orcid: TextInput
-  email: TextInput
+  organization: { name: TextPairInput }
 }
 
 export interface ResearchProjectInput {
@@ -177,10 +175,7 @@ export function researchContentInput(content: ResearchContent): ResearchContentI
       name: textPair(provider.name),
       organization: {
         name: textPair(provider.organization.name),
-        address: textPair(provider.organization.address),
       },
-      orcid: textInput(provider.orcid),
-      email: textInput(provider.email),
     })),
     researchProjects: content.researchProjects.map((project) => ({
       id: project.id,

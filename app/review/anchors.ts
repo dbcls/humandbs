@@ -11,6 +11,9 @@
  * path has to lead somewhere in that content, so a link holder cannot leave a
  * comment on a place that does not exist, and cannot address a dataset that is
  * not the draft's.
+ *
+ * **Two anchors name no place** (`CommentAnchor`): the draft as a whole, which a
+ * share link may write to, and the administrators' memo, which it may not.
  */
 
 import { readAt } from "~/admin/paths"
@@ -21,21 +24,21 @@ export type AnchorSubject
     | { kind: "dataset", datasetId: string }
 
 /** An anchor that names a place inside the content, rather than the draft. */
-export type FieldAnchor = Exclude<CommentAnchor, { kind: "draft" }>
+export type FieldAnchor = Exclude<CommentAnchor, { kind: "draft" } | { kind: "memo" }>
 
 export const RESEARCH: AnchorSubject = { kind: "research" }
 
-/**
- * The anchor the draft's own threads carry — the memo.
- *
- * **It names no place.** What is written there is about the work rather than
- * about a field, so there is no path to check it against and nothing for a
- * reader of the published page to look at beside.
- */
+/** The draft as a whole: what is said about the research rather than about a field. */
 export const DRAFT_ANCHOR: CommentAnchor = { kind: "draft" }
 
+/**
+ * The administrators' memo. **It names no place and reaches no reader**: a
+ * share link neither shows it nor accepts a line of it.
+ */
+export const MEMO_ANCHOR: CommentAnchor = { kind: "memo" }
+
 export function isFieldAnchor(anchor: CommentAnchor): anchor is FieldAnchor {
-  return anchor.kind !== "draft"
+  return anchor.kind === "research-field" || anchor.kind === "dataset-field"
 }
 
 /** A path is names joined by dots; identities and catalog keys are names too. */
@@ -59,7 +62,7 @@ export function subjectOf(anchor: FieldAnchor): AnchorSubject {
 
 /** One string for one place, for grouping and for looking a place up. */
 export function anchorKey(anchor: CommentAnchor): string {
-  if (anchor.kind === "draft") return "draft"
+  if (anchor.kind === "draft" || anchor.kind === "memo") return anchor.kind
   return anchor.kind === "research-field"
     ? `research:${anchor.path}`
     : `dataset:${anchor.datasetId}:${anchor.path}`

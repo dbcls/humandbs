@@ -155,6 +155,7 @@ function numberOf(slot: Slot<NumberValue[]>): ApiNumber[] | null | undefined {
   return slot.value.map((one) => ({
     value: one.value,
     unit: one.unit,
+    high: one.high ?? null,
     ...(one.label === null ? {} : { label: one.label }),
     ...(one.note === null ? {} : { note: one.note }),
   }))
@@ -272,10 +273,7 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
       name: textOf(provider.name),
       organization: {
         name: textOf(provider.organization.name),
-        address: textOf(provider.organization.address),
       },
-      orcid: held(provider.orcid),
-      email: held(provider.email),
     })),
     researchProjects: input.content.researchProjects.map((project) => ({
       name: textOf(project.name),

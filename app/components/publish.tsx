@@ -1,14 +1,13 @@
-import { useState } from "react"
 import { Form, Link } from "react-router"
 
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
-import { adminDraftPath } from "~/admin/urls"
+import { adminResearchPath } from "~/admin/urls"
 import { href } from "~/public/urls"
 
 import { AdminBack } from "./admin"
 import { Fold, Heading, Stack } from "./base"
-import { Answered, Checkbox, CONTROL, Field, RadioGroup, Result, Submit } from "./form"
+import { Answered, Checkbox, CONTROL, Field, Result, Submit } from "./form"
 import { Icon } from "./icons"
 import { Card, Empty, Page, Section } from "./page"
 import { messagesFor } from "~/i18n/messages"
@@ -28,6 +27,10 @@ import { messagesFor } from "~/i18n/messages"
  * The two checks read differently on purpose. What is structural is a wall:
  * there is no confirmation that gets past it. Everything else is a list with a
  * single box under it, and ticking that box is recorded.
+ *
+ * **An update asks for no number.** The draft carries the number of the version
+ * it stands in for, so the screen names that version instead and offers the day
+ * it went out as the release date (docs/publishing.md の「公開の確認画面」).
  */
 export function PublishConfirmation({ view, result }: {
   view: PublishPageView
@@ -37,11 +40,6 @@ export function PublishConfirmation({ view, result }: {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.publish
-  // **The number is the whole of the choice.** Taking one a version holds
-  // replaces it; taking the next one starts a new version. The draft's origin
-  // decides which is offered first and nothing else.
-  const [number, setNumber] = useState(view.suggestedNumber ?? view.nextNumber)
-  const chosen = view.choices.find((one) => one.number === number)
   const blocked = view.blocks.length > 0
 
   return (
@@ -55,13 +53,25 @@ export function PublishConfirmation({ view, result }: {
           <Result ok={false}>{t.acknowledgeRequired}</Result>
         )}
         {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
+        {actionData?.status === "number-unavailable" && (
+          <Result ok={false}>{t.numberUnavailable}</Result>
+        )}
         {actionData?.status === "malformed" && (
           <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
         )}
       </Answered>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading} aside={view.humLabel ?? undefined} />
+          <Heading
+            title={view.updating === null ? t.heading : t.updateHeading}
+            aside={view.humLabel ?? undefined}
+          >
+            <AdminBack
+              to={href(locale, adminResearchPath(view.researchId))}
+              label={messages.admin.editor.backToResearch}
+              icon="chevron-left"
+            />
+          </Heading>
 
           {blocked && <Blocked view={view} />}
           <PrivateFiles view={view} />
@@ -73,42 +83,35 @@ export function PublishConfirmation({ view, result }: {
             <Stack gap="block">
               <Section title={t.what}>
                 <Stack gap="normal">
-                  {/* `RadioGroup` is uncontrolled, so the choice is read back
-                      from the change event that bubbles through this box
-                      rather than from a handler passed to the group itself. */}
-                  <div
-                    onChange={(event) => {
-                      const target = event.target as HTMLInputElement
-                      if (target.name === "number") setNumber(Number(target.value))
-                    }}
-                  >
-                    <RadioGroup
-                      label={t.what}
-                      name="number"
-                      value={String(number)}
-                      options={[
-                        {
-                          value: String(view.nextNumber),
-                          label: `${t.cut} — ${t.cutHint(view.nextNumber)}`,
-                        },
-                        ...view.choices.map((one) => ({
-                          value: String(one.number),
-                          label: one.releaseDate === null
-                            ? `${t.reissue(one.number)} — ${t.reissueHint}`
-                            : `${t.replace(one.number)} — ${t.replaceHint}`,
-                        })),
-                      ]}
-                    />
-                  </div>
-                  {/* **Remounted when the choice moves**, so the day it offers
-                      is the one that belongs to what is now selected: a version
-                      being updated keeps its own, and a new one starts today. */}
+                  {view.updating === null
+                    ? (
+                        <>
+                          {/* **The number is typed, not chosen from a list.** Any
+                              free whole number will do — the next one is offered
+                              first, and the ones versions hold are said beside the
+                              box because they are the ones the server refuses
+                              (docs/publishing.md の「版番号」). */}
+                          <Field
+                            label={t.number}
+                            name="number"
+                            type="number"
+                            value={String(view.nextNumber)}
+                            width="w-28"
+                            hint={t.numberHint}
+                          />
+                          <p className="text-ink-muted text-xs">
+                            {view.heldNumbers.length === 0
+                              ? t.noneHeld
+                              : t.held(view.heldNumbers.map((number) => `v${number}`).join(", "))}
+                          </p>
+                        </>
+                      )
+                    : <p className="text-sm">{t.updateWhat(`v${view.updating.number}`)}</p>}
                   <Field
-                    key={number}
                     label={t.releaseDate}
                     name="releaseDate"
                     type="date"
-                    value={chosen?.releaseDate ?? view.today}
+                    value={view.releaseDate}
                   />
                 </Stack>
               </Section>
@@ -128,16 +131,14 @@ export function PublishConfirmation({ view, result }: {
 
               <Changes view={view} />
 
+              {/* **The one thing to press.** The way out of this screen is the
+                  head's own back to the research (`docs/admin-ui.md` の
+                  「編集画面」) — a second one here would be a foot repeating
+                  what the top of the screen already offers. */}
               <div className="flex items-center gap-4">
-                <Submit variant="primary" icon={<Icon name="upload" />} disabled={blocked}>{t.submit}</Submit>
-                {/* **The way out of this screen**, which is also what giving
-                    up on publishing is: the two are one act, so there is no
-                    second link back (`components/admin.tsx` の `AdminBack`). */}
-                <AdminBack
-                  to={href(locale, adminDraftPath(view.researchId, view.draftId))}
-                  label={t.cancel}
-                  icon="chevron-left"
-                />
+                <Submit variant="primary" icon={<Icon name="upload" />} disabled={blocked}>
+                  {view.updating === null ? t.submit : t.update(`v${view.updating.number}`)}
+                </Submit>
               </div>
             </Stack>
           </Form>
